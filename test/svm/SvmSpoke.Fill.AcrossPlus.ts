@@ -27,7 +27,7 @@ import {
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
   sendTransactionWithLookupTable,
-  loadFillV3RelayParams,
+  loadFillRelayParams,
   intToU8Array32,
 } from "../../src/svm/web3-v1";
 import { MulticallHandler } from "../../target/types/multicall_handler";
@@ -99,7 +99,7 @@ describe("svm_spoke.fill.across_plus", () => {
     // Prepare fill instruction.
     const fillV3RelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
     if (bufferParams) {
-      await loadFillV3RelayParams(program, relayer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+      await loadFillRelayParams(program, relayer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
       [accounts.instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
         program.programId
@@ -109,7 +109,7 @@ describe("svm_spoke.fill.across_plus", () => {
       ? [fillV3RelayValues[0], null, null, null]
       : fillV3RelayValues;
     const fillIx = await program.methods
-      .fillV3Relay(...fillV3RelayParams)
+      .fillRelay(...fillV3RelayParams)
       .accounts(accounts)
       .remainingAccounts(remainingAccounts)
       .instruction();

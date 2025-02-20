@@ -28,7 +28,7 @@ declare_id!("27dua7HMuaZrAc6PRfxmvshHChypFLzZVSpKKaDAPjsq");
 pub mod multicall_handler {
     use super::*;
 
-    // Handler to receive AcrossV3 message formatted as serialized message compiled instructions. When deserialized,
+    // Handler to receive Across message formatted as serialized message compiled instructions. When deserialized,
     // these are matched with the passed accounts and executed as CPIs.
     pub fn handle_v3_across_message(ctx: Context<HandleV3AcrossMessage>, message: Vec<u8>) -> Result<()> {
         // Some instructions might require being signed by handler PDA.

@@ -31,7 +31,7 @@ const argv = yargs(hideBin(process.argv))
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" }).argv;
 
-async function depositV3(): Promise<void> {
+async function deposit(): Promise<void> {
   const resolvedArgv = await argv;
   const seed = new BN(resolvedArgv.seed);
   const recipient = new PublicKey(resolvedArgv.recipient);
@@ -111,7 +111,7 @@ async function depositV3(): Promise<void> {
   );
 
   const depositIx = await (
-    program.methods.depositV3(
+    program.methods.deposit(
       signer.publicKey,
       recipient,
       inputToken,
@@ -143,4 +143,4 @@ async function depositV3(): Promise<void> {
 }
 
 // Run the depositV3 function
-depositV3();
+deposit();

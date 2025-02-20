@@ -37,7 +37,7 @@ const argv = yargs(hideBin(process.argv))
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" }).argv;
 
-async function fillV3Relay(): Promise<void> {
+async function fillRelay(): Promise<void> {
   const resolvedArgv = await argv;
   const depositor = new PublicKey(resolvedArgv.depositor);
   const recipient = new PublicKey(resolvedArgv.recipient);
@@ -146,7 +146,7 @@ async function fillV3Relay(): Promise<void> {
   );
 
   const fillIx = await (
-    program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey) as any
+    program.methods.fillRelay(Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey) as any
   )
     .accounts({
       state: statePda,
@@ -169,4 +169,4 @@ async function fillV3Relay(): Promise<void> {
 }
 
 // Run the fillV3Relay function
-fillV3Relay();
+fillRelay();
