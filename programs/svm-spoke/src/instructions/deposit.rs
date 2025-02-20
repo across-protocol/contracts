@@ -92,7 +92,7 @@ pub fn _deposit_v3(
         return err!(CommonError::InvalidQuoteTimestamp);
     }
 
-    if fill_deadline < current_time || fill_deadline > current_time + state.fill_deadline_buffer {
+    if fill_deadline > current_time + state.fill_deadline_buffer {
         return err!(CommonError::InvalidFillDeadline);
     }
 
