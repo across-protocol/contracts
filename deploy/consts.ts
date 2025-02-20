@@ -1,5 +1,5 @@
 import { ZERO_ADDRESS } from "@uma/common";
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export { ZERO_ADDRESS } from "@uma/common";
 
@@ -89,7 +89,7 @@ export const OP_STACK_ADDRESS_MAP: {
       L1CrossDomainMessenger: "0x5D4472f31Bd9385709ec61305AFc749F0fA8e9d0",
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     },
-    [CHAIN_IDs.DOCTOR_WHO]: {
+    [CHAIN_IDs.UNICHAIN]: {
       L1CrossDomainMessenger: "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
       L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
     },
@@ -150,6 +150,10 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
       L1CrossDomainMessenger: "0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef",
       L1StandardBridge: "0xFBb0621E0B23b5478B630BD55a5f21f67730B0F1",
+    },
+    [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
+      L1CrossDomainMessenger: "0x448A37330A60494E666F6DD60aD48d930AEbA381",
+      L1StandardBridge: "0xea58fcA6849d79EAd1f26608855c2D6407d54Ce2",
     },
   },
 };
@@ -231,9 +235,13 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2Weth: "0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C",
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
-  [CHAIN_IDs.DOCTOR_WHO]: {
+  [CHAIN_IDs.UNICHAIN]: {
     cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
     cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+  },
+  [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
+    cctpTokenMessenger: "0x8ed94B8dAd2Dc5453862ea5e316A8e71AAed9782",
+    cctpMessageTransmitter: "0xbc498c326533d675cf571B90A2Ced265ACb7d086",
   },
 };
 
@@ -247,16 +255,6 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
  * and is an internal mappinng maintained by Circle.
  * @link https://developers.circle.com/stablecoins/docs/supported-domains
  */
-export const CIRCLE_DOMAIN_IDs: { [chainId: number]: number } = {
-  [CHAIN_IDs.MAINNET]: 0,
-  [CHAIN_IDs.OPTIMISM]: 2,
-  [CHAIN_IDs.ARBITRUM]: 3,
-  [CHAIN_IDs.BASE]: 6,
-  [CHAIN_IDs.POLYGON]: 7,
-  // Testnet
-  [CHAIN_IDs.SEPOLIA]: 0,
-  [CHAIN_IDs.OPTIMISM_SEPOLIA]: 2,
-  [CHAIN_IDs.ARBITRUM_SEPOLIA]: 3,
-  [CHAIN_IDs.BASE_SEPOLIA]: 6,
-  [CHAIN_IDs.POLYGON_AMOY]: 7,
-};
+export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
+  Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
+);

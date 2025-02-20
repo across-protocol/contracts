@@ -114,20 +114,16 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    // If relayer and receiver are the same, there is no need to do the transfer. This might be a case when relayers
-    // intentionally self-relay in a capital efficient way (no need to have funds on the destination).
-    if ctx.accounts.relayer_token_account.key() != ctx.accounts.recipient_token_account.key() {
-        // Relayer must have delegated output_amount to the state PDA (but only if not self-relaying)
-        transfer_from(
-            &ctx.accounts.relayer_token_account,
-            &ctx.accounts.recipient_token_account,
-            relay_data.output_amount,
-            state,
-            ctx.bumps.state,
-            &ctx.accounts.mint,
-            &ctx.accounts.token_program,
-        )?;
-    }
+    // Relayer must have delegated output_amount to the state PDA
+    transfer_from(
+        &ctx.accounts.relayer_token_account,
+        &ctx.accounts.recipient_token_account,
+        relay_data.output_amount,
+        state,
+        ctx.bumps.state,
+        &ctx.accounts.mint,
+        &ctx.accounts.token_program,
+    )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
     fill_status_account.status = FillStatus::Filled;
