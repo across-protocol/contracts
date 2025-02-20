@@ -11,10 +11,17 @@ import {
   getMint,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { AccountMeta, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayHashUint8Array, getSpokePoolProgram, intToU8Array32 } from "../../src/svm/web3-v1";
+import {
+  MulticallHandlerCoder,
+  calculateRelayHashUint8Array,
+  getMulticallHandlerProgram,
+  getSpokePoolProgram,
+  intToU8Array32,
+} from "../../src/svm/web3-v1";
+import { FillDataValues } from "../../src/types/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -133,6 +140,16 @@ async function fillRelay(): Promise<void> {
 
   const tokenDecimals = (await getMint(provider.connection, outputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
 
+  // Create the ATA using the create_token_accounts method
+  const createTokenAccountsIx = await program.methods
+    .createTokenAccounts()
+    .accounts({ signer: signer.publicKey, mint: outputToken, tokenProgram: TOKEN_PROGRAM_ID })
+    .remainingAccounts([
+      { pubkey: recipient, isWritable: false, isSigner: false },
+      { pubkey: recipientTokenAccount, isWritable: true, isSigner: false },
+    ])
+    .instruction();
+
   // Delegate state PDA to pull relayer tokens.
   const approveIx = await createApproveCheckedInstruction(
     relayerTokenAccount,
@@ -145,24 +162,38 @@ async function fillRelay(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
 
-  const fillIx = await (
-    program.methods.fillRelay(Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey) as any
-  )
-    .accounts({
-      state: statePda,
-      signer: signer.publicKey,
-      instructionParams: program.programId,
-      mint: outputToken,
-      relayerTokenAccount: relayerTokenAccount,
-      recipientTokenAccount: recipientTokenAccount,
-      fillStatus: fillStatusPda,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId,
-      programId: programId,
-    })
+  const fillDataValues: FillDataValues = [Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey];
+
+  const handlerProgram = getMulticallHandlerProgram(provider);
+  const multicallHandlerCoder = new MulticallHandlerCoder([]);
+
+  const fillRemainingAccounts: AccountMeta[] = [
+    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+    ...multicallHandlerCoder.compiledKeyMetas,
+  ];
+
+  const fillAccounts = {
+    state: statePda,
+    signer: signer.publicKey,
+    instructionParams: program.programId,
+    mint: outputToken,
+    relayerTokenAccount: relayerTokenAccount,
+    recipientTokenAccount: recipientTokenAccount,
+    fillStatus: fillStatusPda,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    systemProgram: SystemProgram.programId,
+    programId: programId,
+    program: program.programId,
+  };
+
+  const fillIx = await program.methods
+    .fillRelay(...fillDataValues)
+    .accounts(fillAccounts)
+    .remainingAccounts(fillRemainingAccounts)
     .instruction();
-  const fillTx = new Transaction().add(approveIx, fillIx);
+
+  const fillTx = new Transaction().add(createTokenAccountsIx, approveIx, fillIx);
   const tx = await sendAndConfirmTransaction(provider.connection, fillTx, [signer]);
 
   console.log("Transaction signature:", tx);
