@@ -178,5 +178,23 @@
   "130": {
     "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 7915488 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 7930191 }
+  },
+  "133268194659241": {
+    "SvmSpoke": {
+      "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
+      "blockNumber": 356313770
+    },
+    "MulticallHandler": {
+      "address": "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h",
+      "blockNumber": 356321050
+    },
+    "MessageTransmitter": {
+      "address": "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
+      "blockNumber": 339604856
+    },
+    "TokenMessengerMinter": {
+      "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
+      "blockNumber": 277864039
+    }
   }
 }
