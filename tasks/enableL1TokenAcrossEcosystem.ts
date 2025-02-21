@@ -125,9 +125,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       console.log(`\nAdding calldata to enable ensure atomic deposit-and-burn of LP token ${lpTokenAddress}`);
 
       const minDeposit = "1";
-      callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
-
       const lpToken = (await ethers.getContractFactory("ExpandedERC20")).attach(lpTokenAddress);
+      callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
       callData.push(lpToken.interface.encodeFunctionData("transfer", [ZERO_ADDRESS, minDeposit]));
     }
 
