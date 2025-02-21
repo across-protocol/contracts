@@ -109,7 +109,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const callData = [];
 
     // If the l1 token is not yet enabled for LP, enable it.
-    let { lpTokenAddress } = await hubPool.pooledTokens(l1Token);
+    let { lpToken: lpTokenAddress } = await hubPool.pooledTokens(l1Token);
     if (lpTokenAddress === ZERO_ADDRESS) {
       const [lpFactoryAddr, { abi: lpFactoryABI }] = await Promise.all([
         hubPool.lpTokenFactory(),
