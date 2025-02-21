@@ -62,6 +62,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     console.log(`\nRunning task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1Token}`);
     const { deployments, ethers } = hre;
+    const { AddressZero: ZERO_ADDRESS } = ethers.constants;
     const [signer] = await hre.ethers.getSigners();
 
     // Remove chainIds that are in the ignore list.
@@ -107,10 +108,25 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     // Construct calldata to enable these tokens.
     const callData = [];
 
-    // If deposit route chains are defined then we don't want to add a new LP token:
-    if (depositRouteChains.length === 0) {
+    // If the l1 token is not yet enabled for LP, enable it.
+    let { lpTokenAddress } = await hubPool.pooledTokens(l1Token);
+    if (lpTokenAddress === ZERO_ADDRESS) {
       console.log(`\nAdding calldata to enable liquidity provision on ${l1Token}`);
       callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
+
+      // Ensure to always seed the LP with at least 1 unit of the LP token. Burn the LP token to prevent 0 LP.
+      if (hubChainId === CHAIN_IDs.MAINNET) {
+        console.log(`\nAdding calldata to enable ensure atomic deposit-and-burn of ${l1Token}`);
+        const _lpTokenFactory = await hubPool.lpTokenFactory();
+        const lpTokenFactory = new ethers.Contract(_lpTokenFactory.address, _lpTokenFactory.abi, signer);
+        lpTokenAddress = await lpTokenFactory.callStatic.createLpToken(l1Token);
+
+        const minDeposit = "1";
+        callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
+
+        const lpToken = (await ethers.getContractFactory("ExpandedERC20")).attach(lpTokenAddress);
+        callData.push(lpToken.interface.encodeFunctionData("transfer", [ZERO_ADDRESS, minDeposit]));
+      }
     } else {
       depositRouteChains.forEach((chainId) =>
         assert(tokens[chainId].symbol !== NO_SYMBOL, `Token ${symbol} is not defined for chain ${chainId}`)
