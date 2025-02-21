@@ -111,26 +111,24 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     // If the l1 token is not yet enabled for LP, enable it.
     let { lpTokenAddress } = await hubPool.pooledTokens(l1Token);
     if (lpTokenAddress === ZERO_ADDRESS) {
-      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token}`);
+      const [lpFactoryAddr, { abi: lpFactoryABI }] = await Promise.all([
+        hubPool.lpTokenFactory(),
+        deployments.get("LpTokenFactory"),
+      ]);
+      const lpTokenFactory = new ethers.Contract(lpFactoryAddr, lpFactoryABI, signer);
+      lpTokenAddress = await lpTokenFactory.callStatic.createLpToken(l1Token);
+      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token} (LP token ${lpTokenAddress})`);
+
       callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
 
       // Ensure to always seed the LP with at least 1 unit of the LP token. Burn the LP token to prevent 0 LP.
-      if (hubChainId === CHAIN_IDs.MAINNET) {
-        console.log(`\nAdding calldata to enable ensure atomic deposit-and-burn of ${l1Token}`);
-        const _lpTokenFactory = await hubPool.lpTokenFactory();
-        const lpTokenFactory = new ethers.Contract(_lpTokenFactory.address, _lpTokenFactory.abi, signer);
-        lpTokenAddress = await lpTokenFactory.callStatic.createLpToken(l1Token);
+      console.log(`\nAdding calldata to enable ensure atomic deposit-and-burn of LP token ${lpTokenAddress}`);
 
-        const minDeposit = "1";
-        callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
+      const minDeposit = "1";
+      callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
 
-        const lpToken = (await ethers.getContractFactory("ExpandedERC20")).attach(lpTokenAddress);
-        callData.push(lpToken.interface.encodeFunctionData("transfer", [ZERO_ADDRESS, minDeposit]));
-      }
-    } else {
-      depositRouteChains.forEach((chainId) =>
-        assert(tokens[chainId].symbol !== NO_SYMBOL, `Token ${symbol} is not defined for chain ${chainId}`)
-      );
+      const lpToken = (await ethers.getContractFactory("ExpandedERC20")).attach(lpTokenAddress);
+      callData.push(lpToken.interface.encodeFunctionData("transfer", [ZERO_ADDRESS, minDeposit]));
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
