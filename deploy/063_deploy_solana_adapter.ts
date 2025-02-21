@@ -52,7 +52,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   await hre.deployments.deploy("Solana_Adapter", {
     from: deployer,
     log: true,
-    skipIfAlreadyDeployed: false,
+    skipIfAlreadyDeployed: true,
     args: [
       l1Usdc,
       cctpTokenMessenger,
