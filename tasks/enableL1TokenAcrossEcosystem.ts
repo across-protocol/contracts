@@ -109,25 +109,25 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const callData = [];
 
     // If the l1 token is not yet enabled for LP, enable it.
-    let { lpToken: lpTokenAddress } = await hubPool.pooledTokens(l1Token);
-    if (lpTokenAddress === ZERO_ADDRESS) {
+    let { lpToken } = await hubPool.pooledTokens(l1Token);
+    if (lpToken === ZERO_ADDRESS) {
       const [lpFactoryAddr, { abi: lpFactoryABI }] = await Promise.all([
         hubPool.lpTokenFactory(),
         deployments.get("LpTokenFactory"),
       ]);
       const lpTokenFactory = new ethers.Contract(lpFactoryAddr, lpFactoryABI, signer);
-      lpTokenAddress = await lpTokenFactory.callStatic.createLpToken(l1Token);
-      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token} (LP token ${lpTokenAddress})`);
+      lpToken = await lpTokenFactory.callStatic.createLpToken(l1Token);
+      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token} (LP token ${lpToken})`);
 
       callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
 
-      // Ensure to always seed the LP with at least 1 unit of the LP token. Burn the LP token to prevent 0 LP.
-      console.log(`\nAdding calldata to enable ensure atomic deposit-and-burn of LP token ${lpTokenAddress}`);
-
+      // Ensure to always seed the LP with at least 1 unit of the LP token.
+      console.log(
+        `\nAdding calldata to enable ensure atomic deposit of L1 token for LP token ${lpToken}` +
+          "\n\n\tNOTE: ENSURE TO BURN AT LEAST 1 UNIT OF THE LP TOKEN AFTER EXECUTING."
+      );
       const minDeposit = "1";
-      const lpToken = (await ethers.getContractFactory("ExpandedERC20")).attach(lpTokenAddress);
       callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
-      callData.push(lpToken.interface.encodeFunctionData("transfer", [ZERO_ADDRESS, minDeposit]));
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
@@ -136,7 +136,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const routeChainIds = Object.keys(tokens).map(Number);
     routeChainIds.forEach((fromId) => {
       const formattedFromId = formatChainId(fromId);
-      const { symbol, address: inputToken } = tokens[fromId];
+      const { address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
       routeChainIds.forEach((toId) => {
         if (fromId === toId || [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)) {
