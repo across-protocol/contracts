@@ -65,4 +65,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["SolanaAdapter"];
+func.tags = ["Solana_Adapter"];
