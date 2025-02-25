@@ -33,20 +33,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vault = getAssociatedTokenAddressSync(mint, state, true);
   const solanaSpokePoolUsdcVault = fromBase58ToBytes32(vault.toBase58());
   const solanaSpokePoolBytes32 = fromBase58ToBytes32(solanaSpokePool);
-
-  await hre.deployments.deploy("Solana_Adapter", {
+  const args = [
+    l1Usdc,
+    cctpTokenMessenger,
+    cctpMessageTransmitter,
+    solanaSpokePoolBytes32,
+    solanaUsdc,
+    solanaSpokePoolUsdcVault,
+  ];
+  const instance = await hre.deployments.deploy("Solana_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
-    args: [
-      l1Usdc,
-      cctpTokenMessenger,
-      cctpMessageTransmitter,
-      solanaSpokePoolBytes32,
-      solanaUsdc,
-      solanaSpokePoolUsdcVault,
-    ],
+    args,
   });
+  await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
 };
 
 module.exports = func;
