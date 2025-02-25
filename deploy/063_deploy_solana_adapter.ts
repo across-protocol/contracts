@@ -17,7 +17,7 @@ const SOLANA_USDC = {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
-  const solanaTargetNetwork = chainId != CHAIN_IDs.MAINNET ? "devnet" : "mainnet";
+  const solanaTargetNetwork = chainId == CHAIN_IDs.MAINNET ? "mainnet" : "devnet";
 
   const l1Usdc = USDC[chainId];
   const cctpTokenMessenger = L1_ADDRESS_MAP[chainId].cctpTokenMessenger;
