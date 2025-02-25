@@ -38,7 +38,7 @@
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-evm-assets": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
-    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-evm-assets",
+    "prepublishOnly": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-evm-assets",
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
@@ -49,6 +49,9 @@
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/abstract-signer": "5.7.0",
     "@ethersproject/bignumber": "5.7.0",
+    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.70",
+    "@layerzerolabs/oapp-evm": "^0.3.1",
+    "@layerzerolabs/oft-evm": "^3.1.2",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@scroll-tech/contracts": "^0.1.0",

@@ -8,6 +8,7 @@ remappings = [
     "@ensdomains/=node_modules/@ensdomains/",
     "@eth-optimism/=node_modules/@eth-optimism/",
     "@gnosis.pm/=node_modules/@gnosis.pm/",
+    "@layerzerolabs/=node_modules/@layerzerolabs/",
     "@maticnetwork/=node_modules/@maticnetwork/",
     "@matterlabs/=node_modules/@matterlabs/",
     "@openzeppelin/=node_modules/@openzeppelin/",
