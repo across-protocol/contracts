@@ -2,15 +2,9 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IOFT, SendParam, OFTReceipt, MessagingReceipt, MessagingFee } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
-// import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol"; // todo: commented for now, potentially used in the code below, see todo comments
-
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IOFT, SendParam, MessagingFee } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
-
-// todo: why does `IERC20` not provide `decimals` fn?
-interface IERC20Decimals {
-    function decimals() external view returns (uint8);
-}
 
 /**
  * @notice Facilitate bridging USDT via LayerZero's OFT.
@@ -18,6 +12,7 @@ interface IERC20Decimals {
  * @custom:security-contact bugs@across.to
  */
 contract OFTTransportAdapter {
+    using SafeERC20 for IERC20;
     using AddressToBytes32 for address;
 
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
@@ -28,7 +23,7 @@ contract OFTTransportAdapter {
     // OFTAdapter address on current chain. Mailbox for OFT cross-chain transfers
     IOFT public immutable oftMessenger;
 
-    // todo: make sure it can't change under us
+    // todo: make sure it can't change under us. In the docs, they mention 'Supported Chains', but can't find it anywhere
     /**
      * @notice The destination endpoint id in the OFT messaging protocol
      * @dev Can be found on target chain OFTAdapter -> endpoint() -> eid()
@@ -43,9 +38,6 @@ contract OFTTransportAdapter {
      */
     constructor(IERC20 _usdt, IOFT _oftMessenger, uint32 _dstEid) {
         usdt = _usdt;
-        // todo: do we need this check? amountLD == minAmountLD in _transferUSDT protects us from the same thing.
-        // @dev: this contract assumes this decimal parity later in amount calculation.
-        require(IERC20Decimals(address(_usdt)).decimals() == _oftMessenger.sharedDecimals(), "decimals don't match"); // todo: ugh, this is ugly and perhaps not required
         oftMessenger = _oftMessenger;
         dstEid = _dstEid;
     }
@@ -66,9 +58,9 @@ contract OFTTransportAdapter {
     function _transferUsdt(address _to, uint256 _amount) internal {
         bytes32 to = _to.toBytes32();
 
-        // todo: should probably just comment these 2 vars and use _amount in send call below
-        // @dev these 2 amounts have a subtle relationship. OFT "removes dust" on the send, which should not affect USDT transfer
-        // @dev setting these two equal protects us from dust subtraction on the OFT side. If any dust is subtracted, the later .send should revert. Should be cautious with this logic
+        // todo: should probably just comment these 2 vars and use `_amount` in send call below
+        // @dev `amountLD` and `minAmountLD` have a subtle relationship. OFT "removes dust" on .send, which should not affect USDT transfer because of how OFT works internally with 6-decimal tokens.
+        // @dev Setting these two equal protects us from dust subtraction on the OFT side. If any dust is subtracted, the later .send should revert. Should be cautious with this logic.
         uint256 amountLD = _amount;
         uint256 minAmountLD = _amount;
 
@@ -83,6 +75,9 @@ contract OFTTransportAdapter {
         );
 
         MessagingFee memory fee = oftMessenger.quoteSend(sendParam, false);
+
+        // todo: here, we're relying on `oftMessenger` to use the full allowance. Otherwise, next .safeApprove will revert.
+        usdt.safeApprove(address(this), _amount);
 
         // todo: not really sure if we should blindly trust the fee.nativeFee here and just send it away. Should we check it against some sane cap?
         // @dev setting refundAddress to zero addr here, because we calculate the fees precicely and we can save gas this way
