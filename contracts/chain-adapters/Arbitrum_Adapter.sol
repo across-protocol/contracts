@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
+import "../libraries/OFTTransportAdapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
 
 /**
@@ -18,7 +19,7 @@ import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } 
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
+contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapter {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -61,14 +62,23 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _l1Usdt USDT address on L1.
+     * @param _oftTransport OFTAdapter proxy address on L1 to bridge via OFT.
+     * @param _arbitrumUsdtDstEid destination endpoint id of USDT OFTAdater on Arbitrum.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
+        ITokenMessenger _cctpTokenMessenger,
+        IERC20 _l1Usdt,
+        IOFT _oftTransport,
+        uint32 _arbitrumUsdtDstEid
+    )
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
+        OFTTransportAdapter(_l1Usdt, _oftTransport, _arbitrumUsdtDstEid)
+    {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
@@ -116,6 +126,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
+        } else if (_isOFTEnabled(l1Token)) {
+            _transferUsdt(to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {

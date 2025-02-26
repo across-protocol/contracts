@@ -17,14 +17,20 @@ contract AlephZero_SpokePool is Arbitrum_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        IERC20 _l2Usdt,
+        IOFT _oftMessenger,
+        uint32 _ethereumUsdtDstEid
     )
         Arbitrum_SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            _l2Usdt,
+            _oftMessenger,
+            _ethereumUsdtDstEid
         )
     {} // solhint-disable-line no-empty-blocks
 }

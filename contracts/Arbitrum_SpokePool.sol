@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
+import "./libraries/OFTTransportAdapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
 
@@ -10,7 +11,7 @@ import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  * @custom:security-contact bugs@across.to
  */
-contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
+contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter {
     // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
@@ -27,10 +28,14 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        IERC20 _l2Usdt,
+        IOFT _oftMessenger,
+        uint32 _ethereumUsdtDstEid
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+        OFTTransportAdapter(_l2Usdt, _oftMessenger, _ethereumUsdtDstEid)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -86,6 +91,10 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
+        }
+        // If the l2TokenAddress is USDT, we need to use the OFT bridge.
+        else if (_isOFTEnabled(l2TokenAddress)) {
+            _transferUsdt(withdrawalRecipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
