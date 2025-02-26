@@ -11,16 +11,10 @@ import {
   getMint,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { AccountMeta, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import {
-  MulticallHandlerCoder,
-  calculateRelayHashUint8Array,
-  getMulticallHandlerProgram,
-  getSpokePoolProgram,
-  intToU8Array32,
-} from "../../src/svm/web3-v1";
+import { calculateRelayHashUint8Array, getSpokePoolProgram, intToU8Array32 } from "../../src/svm/web3-v1";
 import { FillDataValues } from "../../src/types/svm";
 
 // Set up the provider
@@ -164,14 +158,6 @@ async function fillRelay(): Promise<void> {
 
   const fillDataValues: FillDataValues = [Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey];
 
-  const handlerProgram = getMulticallHandlerProgram(provider);
-  const multicallHandlerCoder = new MulticallHandlerCoder([]);
-
-  const fillRemainingAccounts: AccountMeta[] = [
-    { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-    ...multicallHandlerCoder.compiledKeyMetas,
-  ];
-
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
@@ -190,7 +176,6 @@ async function fillRelay(): Promise<void> {
   const fillIx = await program.methods
     .fillRelay(...fillDataValues)
     .accounts(fillAccounts)
-    .remainingAccounts(fillRemainingAccounts)
     .instruction();
 
   const fillTx = new Transaction().add(createTokenAccountsIx, approveIx, fillIx);
