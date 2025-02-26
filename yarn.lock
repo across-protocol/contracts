@@ -1574,6 +1574,23 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
+"@layerzerolabs/lz-evm-protocol-v2@^3.0.70":
+  version "3.0.73"
+  resolved "https://registry.yarnpkg.com/@layerzerolabs/lz-evm-protocol-v2/-/lz-evm-protocol-v2-3.0.73.tgz#bad4727008143dbb3aaa352ac5bb8aff458c6dd1"
+  integrity sha512-I1mw4/r/IN4S4BRMMgMY/eM7Ov8pHEuW3Wcw83cFGcwDjIwxGKbiDe4ueujHxRgJpNOcsz435waqdue5qxTp2Q==
+
+"@layerzerolabs/oapp-evm@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@layerzerolabs/oapp-evm/-/oapp-evm-0.3.1.tgz#79ebeba4f9a9b1b72e0674775ce4e9e027303d1b"
+  integrity sha512-SOuvqy1s+tWwgixR+hw5d9izS8z2tiO8XwGddlnSte24e9lxnOrqwMaOdIJt0GorTJk5rdUgrMlBW0HVwYMZDw==
+  dependencies:
+    ethers "^5.7.2"
+
+"@layerzerolabs/oft-evm@^3.1.2":
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/@layerzerolabs/oft-evm/-/oft-evm-3.1.2.tgz#599056728ea065038092084ba490579f8e88de55"
+  integrity sha512-2aqbnZW8SuLzhSBpQEraEl4LJYi97oNqxg5GTWoIvQNebQ/qkbppEs6kaEQxFqgo+I78v6Vu3SB7XIwpvG7K/w==
+
 "@ledgerhq/cryptoassets@^5.27.2":
   version "5.53.0"
   resolved "https://registry.yarnpkg.com/@ledgerhq/cryptoassets/-/cryptoassets-5.53.0.tgz#11dcc93211960c6fd6620392e4dd91896aaabe58"
