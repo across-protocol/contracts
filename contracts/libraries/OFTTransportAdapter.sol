@@ -18,15 +18,15 @@ contract OFTTransportAdapter {
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
     address public constant ZERO_ADDRESS = address(0);
 
-    // USDT address on current chain
+    // USDT address on current chain.
     IERC20 public immutable usdt;
-    // OFTAdapter address on current chain. Mailbox for OFT cross-chain transfers
+    // Mailbox address for OFT cross-chain transfers.
     IOFT public immutable oftMessenger;
 
-    // todo: make sure it can't change under us. In the docs, they mention 'Supported Chains', but can't find it anywhere
     /**
-     * @notice The destination endpoint id in the OFT messaging protocol
-     * @dev Can be found on target chain OFTAdapter -> endpoint() -> eid()
+     * @notice The destination endpoint id in the OFT messaging protocol.
+     * @dev Source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts.
+     * @dev Can also be found on target chain OFTAdapter -> endpoint() -> eid().
      */
     uint32 public immutable dstEid;
 
@@ -59,8 +59,8 @@ contract OFTTransportAdapter {
         bytes32 to = _to.toBytes32();
 
         // todo: should probably just comment these 2 vars and use `_amount` in send call below
-        // @dev `amountLD` and `minAmountLD` have a subtle relationship. OFT "removes dust" on .send, which should not affect USDT transfer because of how OFT works internally with 6-decimal tokens.
-        // @dev Setting these two equal protects us from dust subtraction on the OFT side. If any dust is subtracted, the later .send should revert. Should be cautious with this logic.
+        // `amountLD` and `minAmountLD` have a subtle relationship. OFT "removes dust" on .send, which should not affect USDT transfer because of how OFT works internally with 6-decimal tokens.
+        // Setting these two equal protects us from dust subtraction on the OFT side. If any dust is subtracted, the later .send should revert. Should be cautious with this logic.
         uint256 amountLD = _amount;
         uint256 minAmountLD = _amount;
 
@@ -80,7 +80,7 @@ contract OFTTransportAdapter {
         usdt.safeApprove(address(this), _amount);
 
         // todo: not really sure if we should blindly trust the fee.nativeFee here and just send it away. Should we check it against some sane cap?
-        // @dev setting refundAddress to zero addr here, because we calculate the fees precicely and we can save gas this way
+        // setting refundAddress to zero addr here, because we calculate the fees precicely and we can save gas this way
         oftMessenger.send{ value: fee.nativeFee }(sendParam, fee, ZERO_ADDRESS);
 
         // todo: OFTAdapter enforces this, but should we check anyway?
