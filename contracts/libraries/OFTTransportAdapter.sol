@@ -18,9 +18,6 @@ interface IERC20Decimals {
 contract OFTTransportAdapter {
     using AddressToBytes32 for address;
 
-    bytes public constant MSG_EMPTY_PARAM = new bytes(0);
-    address public constant ZERO_ADDRESS = address(0);
-
     IERC20 public immutable usdt;
     IOFT public immutable oftTransport;
 
@@ -52,13 +49,8 @@ contract OFTTransportAdapter {
         return address(oftTransport) != address(0) && address(usdt) == _token;
     }
 
-    /**
-     * @notice Transfers USDT from the current domain to the given address on the new domain.
-     * @dev This function will revert if the OFT bridge is disabled. I.e. if the zero address is passed to the constructor for the cctpTokenMessenger.
-     * @param _to Address to receive USDT on the new domain represented as bytes32.
-     * @param amount Amount of USDT to transfer.
-     */
     function _transferUsdt(address _to, uint256 amount) internal {
+        // @dev: building `SendParam` struct
         // receiver address converted to bytes32
         bytes32 to = _to.toBytes32();
 
@@ -75,19 +67,11 @@ contract OFTTransportAdapter {
         // bytes memory extraOptions = OptionsBuilder.newOptions(); // todo: this requires installing an extra lib `solidity-bytes-utils`
         bytes memory extraOptions = new bytes(0);
 
+        // todo: can make these an immutable storage var, ZERO_BYTES? Idk
         bytes memory composeMsg = new bytes(0);
         bytes memory oftCmd = new bytes(0);
 
-        // we don't use last 3 params to the `send()` call later, so we set them to zero bytes const, `MSG_EMPTY_PARAM`
-        SendParam memory sendParam = SendParam(
-            dstEid,
-            to,
-            amountLD,
-            minAmountLD,
-            MSG_EMPTY_PARAM,
-            MSG_EMPTY_PARAM,
-            MSG_EMPTY_PARAM
-        );
+        SendParam memory sendParam = SendParam(dstEid, to, amountLD, minAmountLD, extraOptions, composeMsg, oftCmd);
 
         MessagingFee memory fee = oftTransport.quoteSend(sendParam, false);
 
@@ -96,7 +80,7 @@ contract OFTTransportAdapter {
         (MessagingReceipt memory msgReceipt, OFTReceipt memory oftReceipt) = oftTransport.send{ value: fee.nativeFee }(
             sendParam,
             fee,
-            ZERO_ADDRESS
+            address(0)
         );
 
         // todo: possible further actions:
