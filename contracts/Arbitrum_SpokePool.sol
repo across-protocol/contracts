@@ -30,12 +30,11 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         IERC20 _l2Usdt,
-        IOFT _oftMessenger,
-        uint32 _ethereumUsdtDstEid
+        IOFT _oftMessenger
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
-        OFTTransportAdapter(_l2Usdt, _oftMessenger, _ethereumUsdtDstEid)
+        OFTTransportAdapter(_l2Usdt, _oftMessenger, OFTEIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**

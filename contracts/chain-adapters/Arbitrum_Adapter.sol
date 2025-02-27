@@ -64,7 +64,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _l1Usdt USDT address on L1.
      * @param _oftTransport OFTAdapter proxy address on L1 to bridge via OFT.
-     * @param _arbitrumUsdtDstEid destination endpoint id of USDT OFTAdater on Arbitrum.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -73,11 +72,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
         IERC20 _l1Usdt,
-        IOFT _oftTransport,
-        uint32 _arbitrumUsdtDstEid
+        IOFT _oftTransport
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
-        OFTTransportAdapter(_l1Usdt, _oftTransport, _arbitrumUsdtDstEid)
+        OFTTransportAdapter(_l1Usdt, _oftTransport, OFTEIds.Arbitrum)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
