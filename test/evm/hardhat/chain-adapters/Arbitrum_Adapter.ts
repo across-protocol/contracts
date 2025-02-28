@@ -68,7 +68,6 @@ describe("Arbitrum Chain Adapter", function () {
     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
-    // todo: creating a contract with full abi here. Mb not reqruired?
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi] as any[]);
 
     l1Inbox = await createFake("Inbox");

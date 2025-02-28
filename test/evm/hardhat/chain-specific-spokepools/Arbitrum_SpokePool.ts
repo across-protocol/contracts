@@ -174,8 +174,6 @@ describe("Arbitrum Spoke Pool", function () {
     expect(l2GatewayRouter[functionKey]).to.have.been.calledWith(dai.address, hubPool.address, amountToReturn, "0x");
   });
 
-  // IS_TEST=true yarn hardhat test --grep "Bridge tokens to hub pool correctly using the OFT messaging for L2 USDT token" --show-stack-traces | tee out.out
-
   it("Bridge tokens to hub pool correctly using the OFT messaging for L2 USDT token", async function () {
     const l2UsdtSendAmount = BigNumber.from("1234567");
     const { leaves, tree } = await constructSingleRelayerRefundTree(
