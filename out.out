@@ -1,0 +1,14 @@
+yarn run v1.22.22
+$ /Users/dev/dev/contracts/node_modules/.bin/hardhat test --grep 'Bridge tokens to hub pool correctly using the OFT messaging for L2 USDT token' --show-stack-traces
+
+
+secp256k1 unavailable, reverting to browser version
+
+
+  Arbitrum Spoke Pool
+    ✔ Bridge tokens to hub pool correctly using the OFT messaging for L2 USDT token
+
+
+  1 passing (2s)
+
+Done in 4.13s.

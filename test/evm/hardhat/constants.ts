@@ -50,6 +50,8 @@ export const finalFee = toWei("1");
 
 export const finalFeeUsdc = ethers.utils.parseUnits("1", 6);
 
+export const finalFeeUsdt = ethers.utils.parseUnits("1", 6);
+
 export const totalBond = bondAmount.add(finalFee);
 
 export const refundProposalLiveness = 7200;

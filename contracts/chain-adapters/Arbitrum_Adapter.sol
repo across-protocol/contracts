@@ -125,7 +125,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else if (_isOFTEnabled(l1Token)) {
-            _transferUsdt(to, amount);
+            _transferUsdtViaOFT(to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {

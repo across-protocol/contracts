@@ -31,8 +31,10 @@ contract OFTTransportAdapter {
     address public constant ZERO_ADDRESS = address(0);
 
     // USDT address on current chain.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     IERC20 public immutable USDT;
     // Mailbox address for OFT cross-chain transfers.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     IOFT public immutable OFT_MESSENGER;
 
     /**
@@ -40,6 +42,7 @@ contract OFTTransportAdapter {
      * @dev Source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts.
      * @dev Can also be found on target chain OFTAdapter -> endpoint() -> eid().
      */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable DST_EID;
 
     /**
@@ -48,6 +51,7 @@ contract OFTTransportAdapter {
      * @param _oftMessenger OFTAdapter contract to bridge to the other chain. If address is set to zero, OFT bridging will be disabled.
      * @param _oftDstEid The endpoint ID that OFT will transfer funds to.
      */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdt,
         IOFT _oftMessenger,
@@ -67,11 +71,11 @@ contract OFTTransportAdapter {
     }
 
     /**
-     * @notice transfers usdt to destination endpoint
+     * @notice transfer usdt to the other domain via OFT messaging protocol
      * @param _to address to receive a trasnfer on the destination chain
      * @param _amount amount to send
      */
-    function _transferUsdt(address _to, uint256 _amount) internal {
+    function _transferUsdtViaOFT(address _to, uint256 _amount) internal {
         bytes32 to = _to.toBytes32();
 
         SendParam memory sendParam = SendParam(
@@ -100,6 +104,7 @@ contract OFTTransportAdapter {
         USDT.forceApprove(address(OFT_MESSENGER), _amount);
 
         // todo: not really sure if we should blindly trust the fee.nativeFee here and just send it away. Should we check it against some sane cap?
+        // todo: parent pool calls `_contractHasSufficientEthBalance` on canonical bridge transfer. Should we do the same?
         // setting `refundAddress` to `ZERO_ADDRESS` here, because we calculate the fees precicely and we can save gas this way
         (, OFTReceipt memory oftReceipt) = OFT_MESSENGER.send{ value: fee.nativeFee }(sendParam, fee, ZERO_ADDRESS);
 

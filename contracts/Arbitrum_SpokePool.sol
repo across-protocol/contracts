@@ -91,9 +91,9 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         }
-        // If the l2TokenAddress is USDT, we need to use the OFT bridge.
+        // If OFT is enabled for token, we need to use the OFT bridge.
         else if (_isOFTEnabled(l2TokenAddress)) {
-            _transferUsdt(withdrawalRecipient, amountToReturn);
+            _transferUsdtViaOFT(withdrawalRecipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
