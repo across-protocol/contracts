@@ -3,7 +3,7 @@ import { BN } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
-import { readEventsUntilFound } from "./utils";
+import { readEventsUntilFound } from "../../src/svm/web3-v1";
 
 const { provider, program, owner, initializeState, crossDomainAdmin, assertSE } = common;
 
@@ -124,8 +124,17 @@ describe("svm_spoke.ownership", () => {
 
   it("Transfers ownership", async () => {
     // Transfer ownership to newOwner
-    const transferOwnershipAccounts = { state, signer: owner };
-    await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
+    const transferOwnershipAccounts = { state, signer: owner, program: program.programId };
+    const tx = await program.methods.transferOwnership(newOwner.publicKey).accounts(transferOwnershipAccounts).rpc();
+
+    // Verify the TransferredOwnership event
+    let events = await readEventsUntilFound(provider.connection, tx, [program]);
+    let transferredOwnershipEvents = events.filter((event) => event.name === "transferredOwnership");
+    assert.equal(
+      transferredOwnershipEvents[0].data.newOwner.toString(),
+      newOwner.publicKey.toString(),
+      "TransferredOwnership event should indicate the new owner"
+    );
 
     // Verify the new owner
     let stateAccountData = await program.account.state.fetch(state);
@@ -133,7 +142,7 @@ describe("svm_spoke.ownership", () => {
 
     // Try to transfer ownership as non-owner
     try {
-      const transferOwnershipAccounts = { state, signer: nonOwner.publicKey };
+      const transferOwnershipAccounts = { state, signer: nonOwner.publicKey, program: program.programId };
       await program.methods
         .transferOwnership(nonOwner.publicKey)
         .accounts(transferOwnershipAccounts)

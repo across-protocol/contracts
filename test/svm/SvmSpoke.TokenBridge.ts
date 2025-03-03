@@ -1,21 +1,20 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN, workspace, web3, AnchorProvider, Wallet, Program, AnchorError } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { AnchorError, AnchorProvider, BN, Program, Wallet, web3, workspace } from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { common } from "./SvmSpoke.common";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
+import { assert } from "chai";
 import {
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
-  relayerRefundHashFn,
+  decodeMessageSentData,
   findProgramAddress,
   loadExecuteRelayerRefundLeafParams,
   readEventsUntilFound,
-} from "./utils";
-import { assert } from "chai";
-import { decodeMessageSentData } from "./cctpHelpers";
+  relayerRefundHashFn,
+} from "../../src/svm/web3-v1";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
+import { common } from "./SvmSpoke.common";
 
 const { provider, program, owner, initializeState, connection, remoteDomain, chainId, crossDomainAdmin } = common;
 

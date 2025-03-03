@@ -1,59 +1,53 @@
 // This script executes root bundle on HubPool that rebalances tokens to Solana Spoke Pool. Required environment:
-// - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
-// - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
+// - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
+import { getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { AccountMeta, PublicKey, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { getNodeUrl } from "@uma/common";
 // eslint-disable-next-line camelcase
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
+import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { evmAddressToPublicKey } from "../../src/SvmUtils";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { ethers, BigNumber } from "ethers";
-// eslint-disable-next-line camelcase
-import { HubPool__factory } from "../../typechain";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  evmAddressToPublicKey,
+  getMessages,
+  getMessageTransmitterProgram,
+  getSolanaChainId,
+  getSpokePoolProgram,
+  getTokenMessengerMinterProgram,
+  isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "./utils/constants";
+} from "../../src/svm/web3-v1";
+import { HubPool__factory } from "../../typechain";
+import { requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
-const tokenMessengerMinterIdl = require("../../target/idl/token_messenger_minter.json");
-const tokenMessengerMinterProgram = new Program<TokenMessengerMinter>(tokenMessengerMinterIdl, provider);
+const svmSpokeProgram = getSpokePoolProgram(provider);
+const messageTransmitterProgram = getMessageTransmitterProgram(provider);
+const tokenMessengerMinterProgram = getTokenMessengerMinterProgram(provider);
 
-// Set up Ethereum provider.
-if (!process.env.ETHERS_PROVIDER_URL) {
-  throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
-}
-const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
-if (!process.env.ETHERS_MNEMONIC) {
-  throw new Error("Environment variable ETHERS_MNEMONIC is not set");
-}
-const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
+// Set up Ethereum provider and signer.
+const isDevnet = isSolanaDevnet(provider);
+const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
+const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
 // Get the HubPool contract instance.
-if (!process.env.HUB_POOL_ADDRESS) {
-  throw new Error("Environment variable HUB_POOL_ADDRESS is not set");
-}
-const hubPoolAddress = ethers.utils.getAddress(process.env.HUB_POOL_ADDRESS);
+const hubPoolAddress = ethers.utils.getAddress(requireEnv("HUB_POOL_ADDRESS"));
 const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
 
 // CCTP domains.
@@ -79,16 +73,9 @@ async function executeRebalanceToSpokePool(): Promise<void> {
   const netSendAmount = resolvedArgv.netSendAmount ? BigNumber.from(resolvedArgv.netSendAmount) : BigNumber.from(0);
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
 
-  // Resolve Solana cluster, EVM chain ID, Iris API URL and USDC addresses.
-  let isDevnet: boolean;
-  const solanaRpcEndpoint = provider.connection.rpcEndpoint;
-  if (solanaRpcEndpoint.includes("devnet")) isDevnet = true;
-  else if (solanaRpcEndpoint.includes("mainnet")) isDevnet = false;
-  else throw new Error(`Unsupported solanaCluster endpoint: ${solanaRpcEndpoint}`);
+  // Resolve chain IDs, Iris API URL and USDC addresses.
   const solanaCluster = isDevnet ? "devnet" : "mainnet";
-  const solanaChainId = BigNumber.from(
-    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${solanaCluster}`))) & BigInt("0xFFFFFFFFFFFFFFFF")
-  );
+  const solanaChainId = getSolanaChainId(solanaCluster);
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
   const supportedEvmChainId = isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
   const evmChainId = (await ethersProvider.getNetwork()).chainId;

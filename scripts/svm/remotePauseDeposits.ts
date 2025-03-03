@@ -1,17 +1,28 @@
 // This script bridges remote call to pause deposits on Solana Spoke Pool. Required environment:
-// - ETHERS_PROVIDER_URL: Ethereum RPC provider URL.
-// - ETHERS_MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
+// - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
+// - MNEMONIC: Mnemonic of the wallet that will sign the sending transaction on Ethereum
 
-import "dotenv/config";
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { getNodeUrl } from "@uma/common";
+import "dotenv/config";
+import { ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { ethers } from "ethers";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
+import {
+  CIRCLE_IRIS_API_URL_DEVNET,
+  CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  getMessages,
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
+  isSolanaDevnet,
+  MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
+  SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
+} from "../../src/svm/web3-v1";
+import { CHAIN_IDs } from "../../utils/constants";
+import { requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -38,29 +49,23 @@ async function remotePauseDeposits(): Promise<void> {
   const pause = resolvedArgv.pause;
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
 
-  // Set up Ethereum provider.
-  if (!process.env.ETHERS_PROVIDER_URL) {
-    throw new Error("Environment variable ETHERS_PROVIDER_URL is not set");
-  }
-  const ethersProvider = new ethers.providers.JsonRpcProvider(process.env.ETHERS_PROVIDER_URL);
-  if (!process.env.ETHERS_MNEMONIC) {
-    throw new Error("Environment variable ETHERS_MNEMONIC is not set");
-  }
-  const ethersSigner = ethers.Wallet.fromMnemonic(process.env.ETHERS_MNEMONIC).connect(ethersProvider);
+  // Set up Ethereum provider and signer.
+  const isDevnet = isSolanaDevnet(provider);
+  const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+  const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
+  const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
   // CCTP domains.
   const remoteDomain = 0; // Ethereum
   const localDomain = 5; // Solana
 
   // Get Solana programs and accounts.
-  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
+  const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
-  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId
@@ -75,19 +80,12 @@ async function remotePauseDeposits(): Promise<void> {
     svmSpokeProgram.programId
   );
 
-  let cluster: "devnet" | "mainnet";
-  const rpcEndpoint = provider.connection.rpcEndpoint;
-  if (rpcEndpoint.includes("devnet")) cluster = "devnet";
-  else if (rpcEndpoint.includes("mainnet")) cluster = "mainnet";
-  else throw new Error(`Unsupported cluster endpoint: ${rpcEndpoint}`);
-
-  const irisApiUrl = cluster == "devnet" ? "https://iris-api-sandbox.circle.com" : "https://iris-api.circle.com";
-
-  const supportedChainId = cluster == "devnet" ? 11155111 : 1; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
-  const chainId = (await ethersProvider.getNetwork()).chainId;
-  // TODO: improve type casting.
-  if ((chainId as any) !== BigInt(supportedChainId)) {
-    throw new Error(`Chain ID ${chainId} does not match expected Solana cluster ${cluster}`);
+  const solanaCluster = isDevnet ? "devnet" : "mainnet";
+  const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
+  const supportedEvmChainId = isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET; // Sepolia is bridged to devnet, Ethereum to mainnet in CCTP.
+  const evmChainId = (await ethersProvider.getNetwork()).chainId;
+  if (evmChainId !== supportedEvmChainId) {
+    throw new Error(`Chain ID ${evmChainId} does not match expected Solana cluster ${solanaCluster}`);
   }
 
   const messageTransmitterRemoteIface = new ethers.utils.Interface([
@@ -96,8 +94,9 @@ async function remotePauseDeposits(): Promise<void> {
   ]);
 
   // CCTP MessageTransmitter from https://developers.circle.com/stablecoins/docs/evm-smart-contracts
-  const messageTransmitterRemoteAddress =
-    cluster == "devnet" ? "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD" : "0x0a992d191deec32afe36203ad87d7d289a738f81";
+  const messageTransmitterRemoteAddress = isDevnet
+    ? SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS
+    : MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS;
 
   const messageTransmitterRemote = new ethers.Contract(
     messageTransmitterRemoteAddress,
@@ -110,7 +109,7 @@ async function remotePauseDeposits(): Promise<void> {
   console.log("Remotely controlling pausedDeposits...");
   console.table([
     { Property: "seed", Value: seed.toString() },
-    { Property: "chainId", Value: (chainId as any).toString() },
+    { Property: "evmChainId", Value: evmChainId.toString() },
     { Property: "pause", Value: pause },
     { Property: "svmSpokeProgramProgramId", Value: svmSpokeProgram.programId.toString() },
     { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },

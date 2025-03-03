@@ -6,18 +6,15 @@
  * liabilities for bridging back to the Hub Pool.
  *
  * Required Environment Variables:
- * - TESTNET: (Optional) Set to "true" to use Sepolia; defaults to mainnet.
  * - MNEMONIC: Wallet mnemonic to sign the Ethereum transaction.
  * - HUB_POOL_ADDRESS: Ethereum address of the Hub Pool.
- * - NODE_URL_1: Ethereum RPC URL for mainnet (ignored if TESTNET=true).
- * - NODE_URL_11155111: Ethereum RPC URL for Sepolia (ignored if TESTNET=false).
+ * - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
  *
  * Required Arguments:
  * - `--netSendAmount`: The unscaled amount of USDC to rebalance (e.g., for USDC with 6 decimals, 1 = 0.000001 USDC).
  * - `--resumeRemoteTx`: (Optional) Hash of a previously submitted remote transaction to resume.
  *
  * Example Usage:
- * TESTNET=true \
  * NODE_URL_11155111=$NODE_URL_11155111 \
  * MNEMONIC=$MNEMONIC \
  * HUB_POOL_ADDRESS=$HUB_POOL_ADDRESS \
@@ -46,43 +43,42 @@ import {
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import { CHAIN_IDs } from "../../utils/constants";
 // eslint-disable-next-line camelcase
 import { HubPool__factory } from "../../typechain";
 import {
-  CIRCLE_IRIS_API_URL_DEVNET,
-  CIRCLE_IRIS_API_URL_MAINNET,
-  SOLANA_SPOKE_STATE_SEED,
-  SOLANA_USDC_DEVNET,
-  SOLANA_USDC_MAINNET,
-} from "./utils/constants";
-import {
   constructEmptyPoolRebalanceTree,
   constructSimpleRebalanceTreeToHubPool,
   formatUsdc,
-  getSolanaChainId,
   requireEnv,
 } from "./utils/helpers";
 
 import { getNodeUrl, MerkleTree } from "@uma/common";
-import { decodeMessageHeader, getMessages } from "../../test/svm/cctpHelpers";
 import {
+  CIRCLE_IRIS_API_URL_DEVNET,
+  CIRCLE_IRIS_API_URL_MAINNET,
+  decodeMessageHeader,
+  getMessages,
+  getMessageTransmitterProgram,
+  getSolanaChainId,
+  getSpokePoolProgram,
+  isSolanaDevnet,
   loadExecuteRelayerRefundLeafParams,
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
-} from "../../test/svm/utils";
+  SOLANA_SPOKE_STATE_SEED,
+  SOLANA_USDC_DEVNET,
+  SOLANA_USDC_MAINNET,
+} from "../../src/svm/web3-v1";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { SvmSpokeAnchor } from "../../src/svm";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+
+const svmSpokeProgram = getSpokePoolProgram(provider);
+const messageTransmitterProgram = getMessageTransmitterProgram(provider);
 
 const [messageTransmitterState] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter")],
@@ -99,7 +95,8 @@ const [eventAuthority] = PublicKey.findProgramAddressSync(
 );
 
 // Set up Ethereum provider and signer.
-const nodeURL = process.env.TESTNET === "true" ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+const isDevnet = isSolanaDevnet(provider);
+const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
 const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
@@ -123,11 +120,6 @@ async function executeRebalanceToHubPool(): Promise<void> {
   const resumeRemoteTx = resolvedArgv.resumeRemoteTx;
 
   // Resolve Solana cluster, EVM chain ID, Iris API URL and USDC addresses.
-  let isDevnet: boolean;
-  const solanaRpcEndpoint = provider.connection.rpcEndpoint;
-  if (solanaRpcEndpoint.includes("devnet")) isDevnet = true;
-  else if (solanaRpcEndpoint.includes("mainnet")) isDevnet = false;
-  else throw new Error(`Unsupported solanaCluster endpoint: ${solanaRpcEndpoint}`);
   const solanaCluster = isDevnet ? "devnet" : "mainnet";
   const solanaChainId = getSolanaChainId(solanaCluster);
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
@@ -150,7 +142,7 @@ async function executeRebalanceToHubPool(): Promise<void> {
 
   console.log("Executing rebalance to hub pool...");
   console.table([
-    { Property: "isTestnet", Value: process.env.TESTNET === "true" },
+    { Property: "isTestnet", Value: isDevnet },
     { Property: "originChainId", Value: evmChainId.toString() },
     { Property: "targetChainId", Value: solanaChainId.toString() },
     { Property: "hubPoolAddress", Value: hubPool.address },
@@ -348,7 +340,7 @@ async function executeRootBalanceOnHubPool(solanaChainId: BigNumber) {
 
 async function executeRelayerRefundLeaf(
   signer: anchor.Wallet,
-  program: Program<SvmSpoke>,
+  program: Program<SvmSpokeAnchor>,
   statePda: PublicKey,
   rootBundle: PublicKey,
   relayerRefundLeaf: RelayerRefundLeafSolana,

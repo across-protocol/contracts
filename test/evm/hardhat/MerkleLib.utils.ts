@@ -4,9 +4,10 @@ import {
   BigNumber,
   defaultAbiCoder,
   keccak256,
-  toBNWei,
+  toBNWeiWithDecimals,
   createRandomBytes32,
   Contract,
+  addressToBytes,
 } from "../../../utils/utils";
 import { amountToReturn, repaymentChainId } from "./constants";
 import { MerkleTree } from "../../../utils/MerkleTree";
@@ -119,9 +120,14 @@ export async function constructSingleRelayerRefundTree(l2Token: Contract | Strin
   return { leaves, tree };
 }
 
-export async function constructSingleChainTree(token: string, scalingSize = 1, repaymentChain = repaymentChainId) {
-  const tokensSendToL2 = toBNWei(100 * scalingSize);
-  const realizedLpFees = toBNWei(10 * scalingSize);
+export async function constructSingleChainTree(
+  token: string,
+  scalingSize = 1,
+  repaymentChain = repaymentChainId,
+  decimals = 18
+) {
+  const tokensSendToL2 = toBNWeiWithDecimals(100 * scalingSize, decimals);
+  const realizedLpFees = toBNWeiWithDecimals(10 * scalingSize, decimals);
   const leaves = buildPoolRebalanceLeaves(
     [repaymentChain], // repayment chain. In this test we only want to send one token to one chain.
     [[token]], // l1Token. We will only be sending 1 token to one chain.

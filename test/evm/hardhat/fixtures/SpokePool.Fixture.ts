@@ -16,6 +16,9 @@ export const spokePoolFixture = hre.deployments.createFixture(async ({ ethers })
   return await deploySpokePool(ethers);
 });
 
+// Silence warnings from openzeppelin/hardhat-upgrades for this fixture.
+hre.upgrades.silenceWarnings();
+
 // Have a separate function that deploys the contract and returns the contract addresses. This is called by the fixture
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
 export async function deploySpokePool(
@@ -40,7 +43,7 @@ export async function deploySpokePool(
   ).deploy("Unwhitelisted", "UNWHITELISTED", 18);
   await unwhitelistedErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
   const destErc20 = await (
-    await getContractFactory("ExpandedERC20", deployerWallet)
+    await getContractFactory("ExpandedERC20WithBlacklist", deployerWallet)
   ).deploy("L2 USD Coin", "L2 USDC", 18);
   await destErc20.addMember(consts.TokenRolesEnum.MINTER, deployerWallet.address);
 
@@ -102,7 +105,7 @@ export interface V3RelayData {
   inputAmount: BigNumber;
   outputAmount: BigNumber;
   originChainId: number;
-  depositId: number;
+  depositId: BigNumber;
   fillDeadline: number;
   exclusivityDeadline: number;
   message: string;
@@ -177,6 +180,20 @@ export function getRelayHash(
 }
 
 export function getV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
+  return ethers.utils.keccak256(
+    defaultAbiCoder.encode(
+      [
+        "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
+        "uint256 destinationChainId",
+      ],
+      [relayData, destinationChainId]
+    )
+  );
+}
+
+// @todo we likely don't need to keep this function around for too long but its useful for making sure that the new relay hash is identical to the
+// legacy one.
+export function getLegacyV3RelayHash(relayData: V3RelayData, destinationChainId: number): string {
   return ethers.utils.keccak256(
     defaultAbiCoder.encode(
       [
@@ -336,19 +353,20 @@ export async function modifyRelayHelper(
 
 export async function getUpdatedV3DepositSignature(
   depositor: SignerWithAddress,
-  depositId: number,
+  depositId: BigNumber,
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
-  updatedMessage: string
+  updatedMessage: string,
+  isAddressOverload: boolean = false
 ): Promise<string> {
   const typedData = {
     types: {
       UpdateDepositDetails: [
-        { name: "depositId", type: "uint32" },
+        { name: "depositId", type: "uint256" },
         { name: "originChainId", type: "uint256" },
         { name: "updatedOutputAmount", type: "uint256" },
-        { name: "updatedRecipient", type: "address" },
+        { name: "updatedRecipient", type: isAddressOverload ? "address" : "bytes32" },
         { name: "updatedMessage", type: "bytes" },
       ],
     },

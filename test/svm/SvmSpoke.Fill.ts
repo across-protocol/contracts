@@ -21,10 +21,11 @@ import {
   calculateRelayHashUint8Array,
   sendTransactionWithLookupTable,
   hashNonEmptyMessage,
-} from "../../src/SvmUtils";
-import { intToU8Array32 } from "./utils";
-import { common, RelayData, FillDataValues } from "./SvmSpoke.common";
+  intToU8Array32,
+} from "../../src/svm/web3-v1";
+import { common } from "./SvmSpoke.common";
 import { testAcrossPlusMessage } from "./utils";
+import { FillDataValues, RelayData } from "../../src/types/svm";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
 
@@ -85,7 +86,7 @@ describe("svm_spoke.fill", () => {
     };
   }
 
-  const approvedFillV3Relay = async (
+  const approvedFillRelay = async (
     fillDataValues: FillDataValues,
     calledFillAccounts: FillAccounts = accounts,
     callingRelayer: Keypair = relayer
@@ -102,7 +103,7 @@ describe("svm_spoke.fill", () => {
       tokenProgram
     );
     const fillIx = await program.methods
-      .fillV3Relay(...fillDataValues)
+      .fillRelay(...fillDataValues)
       .accounts(calledFillAccounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -161,7 +162,7 @@ describe("svm_spoke.fill", () => {
     assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
 
     // Verify relayer's balance after the fill
     relayerAccount = await getAccount(connection, relayerTA);
@@ -176,14 +177,14 @@ describe("svm_spoke.fill", () => {
     assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
   });
 
-  it("Verifies FilledV3Relay event after filling a relay", async () => {
+  it("Verifies FilledRelay event after filling a relay", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    const tx = await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
+    const tx = await approvedFillRelay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
 
-    // Fetch and verify the FilledV3Relay event
+    // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "filledRelay")?.data;
+    assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data matches the relay data.
     Object.entries(relayData).forEach(([key, value]) => {
@@ -210,7 +211,7 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
-      await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+      await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
       assert.fail("Fill should have failed due to fill deadline passed");
     } catch (err: any) {
       assert.include(err.toString(), "ExpiredFillDeadline", "Expected ExpiredFillDeadline error");
@@ -223,7 +224,7 @@ describe("svm_spoke.fill", () => {
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
-      await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey], undefined, otherRelayer);
+      await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey], undefined, otherRelayer);
       assert.fail("Fill should have failed due to non-exclusive relayer before exclusivity deadline");
     } catch (err: any) {
       assert.include(err.toString(), "NotExclusiveRelayer", "Expected NotExclusiveRelayer error");
@@ -240,7 +241,7 @@ describe("svm_spoke.fill", () => {
     const relayerAccountBefore = await getAccount(connection, otherRelayerTA);
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey], undefined, otherRelayer);
+    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey], undefined, otherRelayer);
 
     // Verify relayer's balance after the fill
     const relayerAccountAfter = await getAccount(connection, otherRelayerTA);
@@ -263,11 +264,11 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // First fill attempt
-    await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
 
     // Second fill attempt with the same data
     try {
-      await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+      await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
       assert.fail("Fill should have failed due to RelayFilled error");
     } catch (err: any) {
       assert.include(err.toString(), "RelayFilled", "Expected RelayFilled error");
@@ -285,7 +286,7 @@ describe("svm_spoke.fill", () => {
     };
 
     // Execute the fill_v3_relay call
-    await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
 
     // Verify the fill PDA exists before closing
     const fillStatusAccountBefore = await connection.getAccountInfo(accounts.fillStatus);
@@ -323,7 +324,7 @@ describe("svm_spoke.fill", () => {
     assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before fillV3Relay");
 
     // Fill the relay
-    await approvedFillV3Relay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey]);
 
     // Fetch FillStatusAccount after fillV3Relay
     fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
@@ -342,7 +343,7 @@ describe("svm_spoke.fill", () => {
     // Try to fill the relay. This should fail because fills are paused.
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
     try {
-      await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+      await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
       assert.fail("Should not be able to fill relay when fills are paused");
     } catch (err: any) {
       assert.include(err.toString(), "Fills are currently paused!", "Expected fills paused error");
@@ -358,7 +359,7 @@ describe("svm_spoke.fill", () => {
     const [wrongFillStatus] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash], program.programId);
 
     try {
-      await approvedFillV3Relay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey], {
+      await approvedFillRelay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey], {
         ...accounts,
         recipientTokenAccount: wrongRecipientTA,
         fillStatus: wrongFillStatus,
@@ -380,7 +381,7 @@ describe("svm_spoke.fill", () => {
     await mintTo(connection, payer, wrongMint, wrongRelayerTA, owner, seedBalance);
 
     try {
-      await approvedFillV3Relay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey], {
+      await approvedFillRelay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey], {
         ...accounts,
         mint: wrongMint,
         relayerTokenAccount: wrongRelayerTA,
@@ -390,42 +391,6 @@ describe("svm_spoke.fill", () => {
     } catch (err: any) {
       assert.include(err.toString(), "InvalidMint", "Expected InvalidMint error");
     }
-  });
-
-  it("Self-relay does not invoke token transfer", async () => {
-    // Set recipient to be the same as relayer.
-    updateRelayData({ ...relayData, depositor: relayer.publicKey, recipient: relayer.publicKey });
-    accounts.recipientTokenAccount = relayerTA;
-
-    // Store relayer's balance before the fill
-    const iRelayerBalance = (await getAccount(connection, relayerTA)).amount;
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-
-    // No need for approval in self-relay.
-    const txSignature = await program.methods
-      .fillV3Relay(relayHash, relayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
-      .remainingAccounts(fillRemainingAccounts)
-      .signers([relayer])
-      .rpc();
-
-    // Verify relayer's balance after the fill is unchanged
-    const fRelayerBalance = (await getAccount(connection, relayerTA)).amount;
-    assertSE(fRelayerBalance, iRelayerBalance, "Relayer's balance should not have changed");
-
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for tx processing
-    const txResult = await connection.getTransaction(txSignature, {
-      commitment: "confirmed",
-      maxSupportedTransactionVersion: 0,
-    });
-    if (txResult === null || txResult.meta === null) throw new Error("Transaction meta not confirmed");
-    if (txResult.meta.logMessages === null || txResult.meta.logMessages === undefined)
-      throw new Error("Transaction logs not found");
-    assert.isTrue(
-      txResult.meta.logMessages.every((log) => !log.includes(`Program ${TOKEN_PROGRAM_ID} invoke`)),
-      "Token Program should not be invoked"
-    );
   });
 
   it("Fills a V3 relay from custom relayer token account", async () => {
@@ -441,7 +406,7 @@ describe("svm_spoke.fill", () => {
     // Fill relay from custom relayer token account
     accounts.relayerTokenAccount = customRelayerTA;
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
 
     // Verify balances after the fill
     const fRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
@@ -469,7 +434,7 @@ describe("svm_spoke.fill", () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
 
     try {
-      await approvedFillV3Relay([relayHash, newRelayData, new BN(1), relayer.publicKey]);
+      await approvedFillRelay([relayHash, newRelayData, new BN(1), relayer.publicKey]);
       assert.fail("Fill should have failed due to missing ATA");
     } catch (err: any) {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
@@ -497,7 +462,7 @@ describe("svm_spoke.fill", () => {
       tokenProgram
     );
     const fillInstruction = await program.methods
-      .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+      .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
       .accounts(accounts)
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
@@ -546,7 +511,7 @@ describe("svm_spoke.fill", () => {
       accounts.recipientTokenAccount = recipientAssociatedTokens[i];
       const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
       const fillInstruction = await program.methods
-        .fillV3Relay(relayHash, newRelayData, new BN(1), relayer.publicKey)
+        .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .remainingAccounts(fillRemainingAccounts)
         .instruction();
@@ -585,7 +550,7 @@ describe("svm_spoke.fill", () => {
     });
   });
 
-  it("Fills a V3 relay with enabled CPI-guard", async () => {
+  it("Fills a relay with enabled CPI-guard", async () => {
     // CPI-guard is available only for the 2022 token program.
     tokenProgram = TOKEN_2022_PROGRAM_ID;
 
@@ -637,7 +602,7 @@ describe("svm_spoke.fill", () => {
     assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillV3Relay([relayHash, relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
 
     // Verify relayer's balance after the fill
     relayerAccount = await getAccount(connection, relayerTA, undefined, tokenProgram);
@@ -655,12 +620,12 @@ describe("svm_spoke.fill", () => {
   it("Emits zeroed hash for empty message", async () => {
     updateRelayData({ ...relayData, message: Buffer.alloc(0) });
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    const tx = await approvedFillV3Relay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
+    const tx = await approvedFillRelay([relayHash, relayData, new BN(420), otherRelayer.publicKey]);
 
-    // Fetch and verify the FilledV3Relay event
+    // Fetch and verify the FilledRelay event
     const events = await readEventsUntilFound(connection, tx, [program]);
-    const event = events.find((event) => event.name === "filledV3Relay")?.data;
-    assert.isNotNull(event, "FilledV3Relay event should be emitted");
+    const event = events.find((event) => event.name === "filledRelay")?.data;
+    assert.isNotNull(event, "FilledRelay event should be emitted");
 
     // Verify that the event data has zeroed message hash.
     assertSE(event.messageHash, new Uint8Array(32), `MessageHash should be zeroed`);

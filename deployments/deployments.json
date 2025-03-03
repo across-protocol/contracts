@@ -28,7 +28,10 @@
     "Redstone_Adapter": { "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA", "blockNumber": 20432774 },
     "Zora_Adapter": { "address": "0x024f2fc31cbdd8de17194b1892c834f98ef5169b", "blockNumber": 20512287 },
     "WorldChain_Adapter": { "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32", "blockNumber": 20963234 },
-    "AlephZero_Adapter": { "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af", "blockNumber": 21131132 }
+    "AlephZero_Adapter": { "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af", "blockNumber": 21131132 },
+    "Ink_Adapter": { "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2", "blockNumber": 21438590 },
+    "Cher_Adapter": { "address": "0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2", "blockNumber": 21597341 },
+    "DoctorWho_Adapter": { "address": "0xFADcC43096756e1527306FD92982FEbBe3c629Fa", "blockNumber": 21773451 }
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
@@ -152,10 +155,51 @@
     "PolygonTokenBridger": { "address": "0x4e3737679081c4D3029D88cA560918094f2e0284", "blockNumber": 5984560 },
     "Polygon_Adapter": { "address": "0x540029039E493b1B843653f93C3064A956931747", "blockNumber": 5984591 },
     "Lisk_Adapter": { "address": "0x13a8B1D6443016424e2b8Bac40dD884Ee679AFc4", "blockNumber": 6226289 },
-    "Blast_Adapter": { "address": "0x09500Ffd743e01B4146a4BA795231Ca7Ca37819f", "blockNumber": 6233857 }
+    "Lens_Adapter": { "address": "0x8fac6F764ae0b4F632FE2E6c938ED5637E629ff2", "blockNumber": 7448085 },
+    "Blast_Adapter": { "address": "0x09500Ffd743e01B4146a4BA795231Ca7Ca37819f", "blockNumber": 6233857 },
+    "DoctorWho_Adapter": { "address": "0x2b482aFb675e1F231521d5E56770ce4aac592246", "blockNumber": 7698546 }
+  },
+  "37111": {
+    "SpokePool": { "address": "0x6A0a7f39530923911832Dd60667CE5da5449967B", "blockNumber": 156275 },
+    "MulticallHandler": { "address": "0x02D2B95F631E0CF6c203E77f827381B0885F7822", "blockNumber": 145561 }
   },
   "41455": {
     "SpokePool": { "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97", "blockNumber": 4240318 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 4112529 }
+  },
+  "57073": {
+    "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 1139240 },
+    "SpokePoolVerifier": { "address": "0xB4A8d45647445EA9FC3E1058096142390683dBC2", "blockNumber": 1152853 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1145284 }
+  },
+  "1868": {
+    "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 1709997 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 1711482 }
+  },
+  "130": {
+    "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 7915488 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 7930191 }
+  },
+  "1301": {
+    "SpokePool": { "address": "0x6999526e507Cc3b03b180BbE05E1Ff938259A874", "blockNumber": 12593713 },
+    "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 12594561 }
+  },
+  "133268194659241": {
+    "SvmSpoke": {
+      "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
+      "blockNumber": 356313770
+    },
+    "MulticallHandler": {
+      "address": "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h",
+      "blockNumber": 356321050
+    },
+    "MessageTransmitter": {
+      "address": "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
+      "blockNumber": 339604856
+    },
+    "TokenMessengerMinter": {
+      "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
+      "blockNumber": 277864039
+    }
   }
 }

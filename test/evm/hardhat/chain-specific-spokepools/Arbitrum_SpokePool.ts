@@ -11,6 +11,7 @@ import {
   seedContract,
   avmL1ToL2Alias,
   createFakeFromABI,
+  addressToBytes,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
