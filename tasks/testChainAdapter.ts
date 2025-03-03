@@ -20,7 +20,7 @@ task("testChainAdapter", "Verify a chain adapter")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
     const { deployments, ethers, getChainId, network } = hre;
     const provider = new ethers.providers.StaticJsonRpcProvider(network.config.url);
-    const signer = new ethers.Wallet.fromMnemonic(getMnemonic()).connect(provider);
+    const signer = ethers.Wallet.fromMnemonic(getMnemonic()).connect(provider);
 
     const hubChainId = await getChainId();
     const spokeChainId = parseInt(args.chain);
