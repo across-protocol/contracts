@@ -9,11 +9,11 @@ import "../external/interfaces/IPermit2.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
 
 /**
- * @notice ERC7683OrderDepositorExternal processes an external order type and translates it into an AcrossV3Deposit
+ * @notice AcrossOriginSettler processes an external order type and translates it into an AcrossV3Deposit
  * that it sends to the SpokePool contract.
  * @custom:security-contact bugs@across.to
  */
-contract ERC7683OrderDepositorExternal is ERC7683OrderDepositor, Ownable, MultiCaller {
+contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
     using AddressToBytes32 for address;
 
