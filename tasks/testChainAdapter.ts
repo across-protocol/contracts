@@ -1,7 +1,7 @@
 import assert from "assert";
 import { getMnemonic } from "@uma/common";
 import { task } from "hardhat/config";
-import { HardhatRuntimeEnvironment, HttpNetworkConfig } from "hardhat/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { askYesNoQuestion, resolveTokenOnChain } from "./utils";
 
