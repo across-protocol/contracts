@@ -1,7 +1,7 @@
 import assert from "assert";
 import { getMnemonic } from "@uma/common";
 import { task } from "hardhat/config";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { HardhatRuntimeEnvironment, HttpNetworkConfig } from "hardhat/types";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { askYesNoQuestion, resolveTokenOnChain } from "./utils";
 
@@ -19,7 +19,7 @@ task("testChainAdapter", "Verify a chain adapter")
   .addParam("amount", "Amount to bridge to the destination chain")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
     const { deployments, ethers, getChainId, network } = hre;
-    const provider = new ethers.providers.StaticJsonRpcProvider(network.config.url);
+    const provider = new ethers.providers.StaticJsonRpcProvider((network.config as any).url);
     const signer = ethers.Wallet.fromMnemonic(getMnemonic()).connect(provider);
 
     const hubChainId = await getChainId();
