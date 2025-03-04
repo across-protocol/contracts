@@ -106,10 +106,25 @@ export function buildPoolRebalanceLeaves(
     });
 }
 
-export async function constructSingleRelayerRefundTree(l2Token: Contract | String, destinationChainId: number) {
+export async function constructSingleRelayerRefundTree(
+  l2Token: Contract | String,
+  destinationChainId: number,
+  amount?: BigNumber
+) {
+  // Explicitly determine which amount to use based on whether amount parameter is provided
+  let amountToUse: BigNumber;
+
+  if (amount !== undefined) {
+    // Use the explicitly provided amount
+    amountToUse = amount;
+  } else {
+    // Fall back to the default amount
+    amountToUse = amountToReturn;
+  }
+
   const leaves = buildRelayerRefundLeaves(
     [destinationChainId], // Destination chain ID.
-    [amountToReturn], // amountToReturn.
+    [amountToUse], // Use the explicitly determined amount
     [l2Token as string], // l2Token.
     [[]], // refundAddresses.
     [[]] // refundAmounts.

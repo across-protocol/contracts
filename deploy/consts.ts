@@ -4,6 +4,7 @@ import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
 export { ZERO_ADDRESS } from "@uma/common";
 
 export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
+export const USDT = TOKEN_SYMBOLS_MAP.USDT.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
@@ -32,6 +33,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
+    oftMessenger: "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
     lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce",
@@ -171,6 +173,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
     cctpTokenMessenger: "0x19330d10D9Cc8751218eaf51E8885D058642E08A",
     cctpMessageTransmitter: "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
+    oftMessenger: "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },

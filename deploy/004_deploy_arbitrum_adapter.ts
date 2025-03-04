@@ -1,4 +1,4 @@
-import { L1_ADDRESS_MAP, USDC } from "./consts";
+import { L1_ADDRESS_MAP, USDC, USDT } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -16,6 +16,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     l2RefundAddress,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+    USDT[chainId],
+    L1_ADDRESS_MAP[chainId].oftMessenger,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
@@ -27,6 +29,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+      USDT[chainId],
+      L1_ADDRESS_MAP[chainId].oftMessenger,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
