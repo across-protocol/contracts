@@ -38,7 +38,7 @@
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-evm-assets": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
-    "prepublishOnly": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-evm-assets",
+    "prepublish": "yarn build && hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json && yarn generate-evm-assets",
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
