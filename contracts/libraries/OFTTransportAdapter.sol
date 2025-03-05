@@ -55,7 +55,7 @@ contract OFTTransportAdapter {
     }
 
     /**
-     * @notice transfer usdt to the other domain via OFT messaging protocol
+     * @notice transfer token to the other dstEId (e.g. chain) via OFT messaging protocol
      * @dev the caller has to provide both _token and _messenger. The caller is responsible for knowing the correct _messenger
      * @param _token token we're sending on current chain.
      * @param _messenger corresponding OFT messenger on current chain.
@@ -75,8 +75,13 @@ contract OFTTransportAdapter {
             to,
             /**
              * _amount, _amount here specify `amountLD` and `minAmountLD`. These 2 have a subtle relationship
-             * OFT "removes dust" on .send, which should not affect USDT transfer because of how OFT works internally with 6-decimal tokens.
-             * Setting them both to `_amount` protects us from dust subtraction on the OFT side. If any dust is subtracted, the later .send should revert.
+             * OFT "removes dust" on .send, which doesn't affect tokens like `USDT` because `USDT.decimals() = USDT_IOFT.sharedDecimals()`.
+             * However, for other tokens we need to make sure that we're passing the correct `amount` to this function.
+             * In order for OFT to remove zero dust, we need to make sure that last `token.decimals() - token_IOFT.sharedDecimals()` digits
+             * in our amount are set to 0.
+             * That said, setting both these vars to `_amount` protects us from dust subtraction on `OFT` contract side, which will revert
+             * if we pass amount with some dust. It's important for our HubPool accounting to keep this behavior, meaning have
+             * `sentAmount == receivedAmount` always
              */
             _amount,
             _amount,
