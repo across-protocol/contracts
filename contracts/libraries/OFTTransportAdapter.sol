@@ -44,6 +44,10 @@ contract OFTTransportAdapter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable DST_EID;
 
+    error FeeCapExceeded(uint256 feeRequested);
+    error InsufficientBalanceForFee(uint256 feeRequested, uint256 balance);
+    error IncorrectAmountReceivedLD(uint256 amountExpected, uint256 amountReceivedLD);
+
     /**
      * @notice intiailizes the OFTTransportAdapter contract.
      * @param _oftDstEid the endpoint ID that OFT protocol will transfer funds to.
@@ -75,14 +79,8 @@ contract OFTTransportAdapter {
             DST_EID,
             to,
             /**
-             * _amount, _amount here specify `amountLD` and `minAmountLD`. These 2 have a subtle relationship
-             * OFT "removes dust" on .send, which doesn't affect tokens like `USDT` because `USDT.decimals() = USDT_IOFT.sharedDecimals()`.
-             * However, for other tokens we need to make sure that we're passing the correct `amount` to this function.
-             * In order for OFT to remove zero dust, we need to make sure that last `token.decimals() - token_IOFT.sharedDecimals()` digits
-             * in our amount are set to 0.
-             * That said, setting both these vars to `_amount` protects us from dust subtraction on `OFT` contract side, which will revert
-             * if we pass amount with some dust. It's important for our HubPool accounting to keep this behavior, meaning have
-             * `sentAmount == receivedAmount` always
+             * _amount, _amount here specify `amountLD` and `minAmountLD`. Setting `minAmountLD` equal to `amountLD` protects us
+             * from any changes to the sent amount due to internal OFT contract logic, e.g. `_removeDust`
              */
             _amount,
             _amount,
@@ -97,8 +95,9 @@ contract OFTTransportAdapter {
 
         // `false` in the 2nd param here refers to `bool _payInLzToken`. We will pay in native token, so set to `false`
         MessagingFee memory fee = _messenger.quoteSend(sendParam, false);
-        require(fee.nativeFee <= FEE_CAP, "OFT FEE_CAP exceeded");
-        require(fee.nativeFee <= address(this).balance, "OFT insufficient funds for fee");
+        if (fee.nativeFee > FEE_CAP) revert FeeCapExceeded(fee.nativeFee);
+        if (fee.nativeFee > address(this).balance)
+            revert InsufficientBalanceForFee(fee.nativeFee, address(this).balance);
 
         // approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
         _token.forceApprove(address(_messenger), _amount);
@@ -106,6 +105,7 @@ contract OFTTransportAdapter {
         (, OFTReceipt memory oftReceipt) = _messenger.send{ value: fee.nativeFee }(sendParam, fee, address(this));
 
         // we require that received amount of this transfer at destination exactly matches the sent amount
-        require(_amount == oftReceipt.amountReceivedLD, "OFT incorrect amountReceivedLD");
+        if (_amount != oftReceipt.amountReceivedLD)
+            revert IncorrectAmountReceivedLD(_amount, oftReceipt.amountReceivedLD);
     }
 }

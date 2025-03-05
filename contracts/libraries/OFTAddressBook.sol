@@ -6,8 +6,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IOFT } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 
 /**
- * @dev a helper contract for chain adapters that support OFT messaging from L1
- * @dev handles OFT token -> messenger mapping storage, as adapters are called via delegatecall and don't have relevant storage space
+ * @dev A helper contract for chain adapters that support OFT messaging from L1
+ * @dev Handles OFT token -> messenger mapping storage, as adapters are called via delegatecall and don't have relevant storage space
  */
 contract OFTAddressBook is Ownable {
     mapping(IERC20 => IOFT) public oftMessengers;

@@ -28,7 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      L1_ADDRESS_MAP[chainId].oftAddressBook, // todo: will this get populated once we deploy oftAddressBook via a deploy script #63?
+      L1_ADDRESS_MAP[chainId].oftAddressBook,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });

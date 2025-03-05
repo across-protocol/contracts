@@ -19,12 +19,11 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
-    // a map to store token -> IOFT relationships for OFT bridging.
+    // A map to store token -> IOFT relationships for OFT bridging.
     mapping(IERC20 => IOFT) public oftMessengers;
 
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
-    // todo: do we really need this event? Considering we're approaching contract size limits
     event OFTMessengerSet(IERC20 indexed token, IOFT indexed messenger);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -34,7 +33,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        // _oftFeeCap can be set to 1 ether for arbitrum, but has to be custom-set for other chains that might use inherit this adapter, like AlephZero
+        // _oftFeeCap can be set to 1 ether for Arbitrum, but has to be custom-set for other chains that might inherit this adapter, like AlephZero
         uint256 _oftFeeCap
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
@@ -101,14 +100,12 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        (IOFT oftMessenger, bool oftEnabled) = _getOftMessenger(IERC20(l2TokenAddress));
+        IOFT oftMessenger = _getOftMessenger(IERC20(l2TokenAddress));
 
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
-        }
-        // If OFT is enabled for token, we need to use the OFT bridge.
-        else if (oftEnabled) {
+        } else if (address(oftMessenger) != address(0)) {
             _transferViaOFT(IERC20(l2TokenAddress), oftMessenger, withdrawalRecipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
@@ -142,9 +139,8 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         emit OFTMessengerSet(_token, _messenger);
     }
 
-    function _getOftMessenger(IERC20 _token) internal view returns (IOFT messenger, bool oftEnabled) {
-        messenger = oftMessengers[_token];
-        return (messenger, address(messenger) != address(0));
+    function _getOftMessenger(IERC20 _token) internal view returns (IOFT messenger) {
+        return oftMessengers[_token];
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without

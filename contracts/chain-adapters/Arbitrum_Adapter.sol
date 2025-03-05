@@ -57,10 +57,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // we don't allow fees to go higher than `OFT_FEE_CAP` when calling .send in `OFTTransportAdapter`. It gives us some protection from potential bugs on OFT's end
+    // We don't allow fees to go higher than `OFT_FEE_CAP` when calling .send in `OFTTransportAdapter`. It gives us some protection from potential bugs on OFT's end
     uint256 public constant OFT_FEE_CAP = 1 ether;
 
-    // helper contract to help us map token -> oft messenger for OFT-enabled tokens
+    // Helper contract to help us map token -> OFT messenger for OFT-enabled tokens
     OFTAddressBook public immutable OFT_ADDRESS_BOOK;
 
     /**
@@ -133,7 +133,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-            // If oft messaging is enabled for token, use it as a bridging mechanism
         } else if (oftEnabled) {
             _transferViaOFT(IERC20(l1Token), oftMessenger, to, amount);
         }

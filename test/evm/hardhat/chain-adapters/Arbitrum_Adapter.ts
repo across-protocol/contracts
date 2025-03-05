@@ -24,6 +24,7 @@ import {
   MessagingFeeStructOutput,
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
+  SendParamStruct,
 } from "../../../../typechain/@layerzerolabs/oft-evm/contracts/interfaces/IOFT";
 import { IOFT__factory } from "../../../../typechain/factories/@layerzerolabs/oft-evm/contracts/interfaces/IOFT__factory";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
@@ -70,8 +71,8 @@ describe("Arbitrum Chain Adapter", function () {
     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
-    oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi] as any[]);
-    oftAddressBook = await createTypedFakeFromABI([...OFTAddressBook__factory.abi] as any[]);
+    oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
+    oftAddressBook = await createTypedFakeFromABI([...OFTAddressBook__factory.abi]);
     await oftAddressBook.connect(owner).setOFTMessenger(usdt.address, oftMessenger.address);
 
     l1Inbox = await createFake("Inbox");
@@ -287,7 +288,20 @@ describe("Arbitrum Chain Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20.
     expect(await usdt.allowance(hubPool.address, oftMessenger.address)).to.equal(tokensSendToL2);
 
-    // We should have called send on the oftMessenger
+    // source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
+    const arbitrumDstEId = 30110;
+    const sendParam: SendParamStruct = {
+      dstEid: arbitrumDstEId,
+      to: ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      amountLD: tokensSendToL2,
+      minAmountLD: tokensSendToL2,
+      extraOptions: "0x",
+      composeMsg: "0x",
+      oftCmd: "0x",
+    };
+
+    // We should have called send on the oftMessenger once with correct params
     expect(oftMessenger.send).to.have.been.calledOnce;
+    expect(oftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, hubPool.address);
   });
 });
