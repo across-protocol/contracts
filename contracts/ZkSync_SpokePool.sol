@@ -121,4 +121,9 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    uint256[1000] private __gap;
 }
