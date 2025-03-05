@@ -20,8 +20,8 @@ const argvPromise = yargs(hideBin(process.argv)).option("eventName", {
   describe: "Name of the event to query",
   choices: [
     "any",
-    "filledV3Relay",
-    "v3FundsDeposited",
+    "filledRelay",
+    "fundsDeposited",
     "enabledDepositRoute",
     "relayedRootBundle",
     "executedRelayerRefundRoot",

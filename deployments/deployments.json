@@ -201,5 +201,23 @@
       "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
       "blockNumber": 277864039
     }
+  },
+  "34268394551451": {
+    "SvmSpoke": {
+      "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
+      "blockNumber": 317101505
+    },
+    "MulticallHandler": {
+      "address": "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h",
+      "blockNumber": 317112562
+    },
+    "MessageTransmitter": {
+      "address": "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
+      "blockNumber": 312515728
+    },
+    "TokenMessengerMinter": {
+      "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
+      "blockNumber": 262177984
+    }
   }
 }
