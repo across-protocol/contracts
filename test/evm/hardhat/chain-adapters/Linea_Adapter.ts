@@ -1,4 +1,11 @@
-import { amountToLp, mockTreeRoot, refundProposalLiveness, bondAmount } from "../constants";
+import {
+  amountToLp,
+  mockTreeRoot,
+  refundProposalLiveness,
+  bondAmount,
+  mockRelayerRefundRoot,
+  mockSlowRelayRoot,
+} from "../constants";
 import {
   ethers,
   expect,
@@ -10,10 +17,13 @@ import {
   randomAddress,
   toWei,
   BigNumber,
+  createFakeFromABI,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
+import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
 
 let hubPool: Contract,
   lineaAdapter: Contract,
@@ -25,6 +35,7 @@ let hubPool: Contract,
 let l2Weth: string, l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract, lineaUsdcBridge: FakeContract;
+let cctpMessenger: FakeContract, cctpTokenMinter: FakeContract;
 
 const lineaChainId = 59144;
 
@@ -56,31 +67,6 @@ const lineaTokenBridgeAbi = [
   },
 ];
 
-const lineaUsdcBridgeAbi = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "amount", type: "uint256" },
-      { internalType: "address", name: "to", type: "address" },
-    ],
-    name: "depositTo",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "usdc",
-    outputs: [
-      {
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-];
-
 describe("Linea Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -99,18 +85,18 @@ describe("Linea Chain Adapter", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(usdc.address, amountToLp);
     await usdc.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
 
+    cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    cctpMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
     lineaMessageService = await smock.fake(lineaMessageServiceAbi, {
       address: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     });
     lineaTokenBridge = await smock.fake(lineaTokenBridgeAbi, { address: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319" });
-    lineaUsdcBridge = await smock.fake(lineaUsdcBridgeAbi, {
-      address: "0x504a330327a089d8364c4ab3811ee26976d388ce",
-    });
-    lineaUsdcBridge.usdc.returns(usdc.address);
 
     lineaAdapter = await (
       await getContractFactory("Linea_Adapter", owner)
-    ).deploy(weth.address, lineaMessageService.address, lineaTokenBridge.address, lineaUsdcBridge.address);
+    ).deploy(weth.address, lineaMessageService.address, lineaTokenBridge.address, usdc.address, cctpMessenger.address);
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("100000") });
@@ -142,17 +128,89 @@ describe("Linea Chain Adapter", function () {
     const expectedErc20L1ToL2BridgeParams = [dai.address, tokensSendToL2, mockSpoke.address];
     expect(lineaTokenBridge.bridgeToken).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
   });
-  it("Correctly calls appropriate bridge functions when making USDC cross chain calls", async function () {
+  it("Correctly calls the CCTP bridge adapter when attempting to bridge USDC", async function () {
+    const internalChainId = lineaChainId;
     // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
     // and check that at it's finalization the L2 bridge contracts are called as expected.
-    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdc.address, 1, lineaChainId);
-    await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdc.address, 1, internalChainId);
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), mockRelayerRefundRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
     await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
 
-    // The correct functions should have been called on the optimism contracts.
-    const expectedErc20L1ToL2BridgeParams = [tokensSendToL2, mockSpoke.address];
-    expect(lineaUsdcBridge.depositTo).to.have.been.calledWith(...expectedErc20L1ToL2BridgeParams);
+    // Adapter should have approved gateway to spend its ERC20.
+    expect(await usdc.allowance(hubPool.address, cctpMessenger.address)).to.equal(tokensSendToL2);
+
+    // The correct functions should have been called on the bridge contracts
+    expect(cctpMessenger.depositForBurn).to.have.been.calledOnce;
+    expect(cctpMessenger.depositForBurn).to.have.been.calledWith(
+      ethers.BigNumber.from(tokensSendToL2),
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+  });
+  it("Splits USDC into parts to stay under per-message limit when attempting to bridge USDC", async function () {
+    const internalChainId = lineaChainId;
+    // Create an action that will send an L1->L2 tokens transfer and bundle. For this, create a relayer repayment bundle
+    // and check that at it's finalization the L2 bridge contracts are called as expected.
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdc.address, 1, internalChainId);
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), mockRelayerRefundRoot, mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
+
+    // 1) Set limit below amount to send and where amount does not divide evenly into limit.
+    let newLimit = tokensSendToL2.div(2).sub(1);
+    cctpTokenMinter.burnLimitsPerMessage.returns(newLimit);
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // The correct functions should have been called on the bridge contracts
+    expect(cctpMessenger.depositForBurn).to.have.been.calledThrice;
+    expect(cctpMessenger.depositForBurn.atCall(0)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+    expect(cctpMessenger.depositForBurn.atCall(1)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+    expect(cctpMessenger.depositForBurn.atCall(2)).to.have.been.calledWith(
+      2, // each of the above calls left a remainder of 1
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+
+    // 2) Set limit below amount to send and where amount divides evenly into limit.
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), mockRelayerRefundRoot, mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
+
+    newLimit = tokensSendToL2.div(2);
+    cctpTokenMinter.burnLimitsPerMessage.returns(newLimit);
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // 2 more calls added to prior 3.
+    expect(cctpMessenger.depositForBurn).to.have.callCount(5);
+    expect(cctpMessenger.depositForBurn.atCall(3)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
+    expect(cctpMessenger.depositForBurn.atCall(4)).to.have.been.calledWith(
+      newLimit,
+      CIRCLE_DOMAIN_IDs[internalChainId],
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      usdc.address
+    );
   });
   it("Correctly unwraps WETH and bridges ETH", async function () {
     const { leaves, tree } = await constructSingleChainTree(weth.address, 1, lineaChainId);
