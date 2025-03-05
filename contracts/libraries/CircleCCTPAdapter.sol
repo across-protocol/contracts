@@ -14,6 +14,7 @@ library CircleDomainIds {
     uint32 public constant Base = 6;
     uint32 public constant Polygon = 7;
     uint32 public constant DoctorWho = 10;
+    uint32 public constant Linea = 11; // TODO replace with actual domain once we know it.
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
     // assigned a domain ID by Circle.
     uint32 public constant UNINITIALIZED = type(uint32).max;
@@ -105,4 +106,9 @@ abstract contract CircleCCTPAdapter {
             remainingAmount -= partAmount;
         }
     }
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    uint256[1000] private __gap;
 }

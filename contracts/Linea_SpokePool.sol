@@ -5,6 +5,7 @@
 pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Linea specific SpokePool.
  * @custom:security-contact bugs@across.to
  */
-contract Linea_SpokePool is SpokePool {
+contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     /**
@@ -29,7 +30,7 @@ contract Linea_SpokePool is SpokePool {
     /**
      * @notice Address of Linea's USDC Bridge contract on L2.
      */
-    IUSDCBridge public l2UsdcBridge;
+    IUSDCBridge private DEPRECATED_l2UsdcBridge;
 
     /**************************************
      *               EVENTS               *
@@ -50,8 +51,13 @@ contract Linea_SpokePool is SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Initialize Linea-specific SpokePool.
@@ -59,7 +65,6 @@ contract Linea_SpokePool is SpokePool {
      * relay hash collisions.
      * @param _l2MessageService Address of Canonical Message Service. Can be reset by admin.
      * @param _l2TokenBridge Address of Canonical Token Bridge. Can be reset by admin.
-     * @param _l2UsdcBridge Address of USDC Bridge. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
      * likely be the hub pool.
@@ -68,14 +73,12 @@ contract Linea_SpokePool is SpokePool {
         uint32 _initialDepositId,
         IMessageService _l2MessageService,
         ITokenBridge _l2TokenBridge,
-        IUSDCBridge _l2UsdcBridge,
         address _crossDomainAdmin,
         address _withdrawalRecipient
     ) public initializer {
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
         _setL2TokenBridge(_l2TokenBridge);
         _setL2MessageService(_l2MessageService);
-        _setL2UsdcBridge(_l2UsdcBridge);
     }
 
     /**
@@ -104,14 +107,6 @@ contract Linea_SpokePool is SpokePool {
      */
     function setL2MessageService(IMessageService _l2MessageService) public onlyAdmin nonReentrant {
         _setL2MessageService(_l2MessageService);
-    }
-
-    /**
-     * @notice Change L2 USDC bridge address. Callable only by admin.
-     * @param _l2UsdcBridge New address of L2 USDC bridge.
-     */
-    function setL2UsdcBridge(IUSDCBridge _l2UsdcBridge) public onlyAdmin nonReentrant {
-        _setL2UsdcBridge(_l2UsdcBridge);
     }
 
     /**************************************
@@ -147,6 +142,11 @@ contract Linea_SpokePool is SpokePool {
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
         // send ETH directly via the Canonical Message Service.
         if (l2TokenAddress == address(wrappedNativeToken)) {
+            // We require that the caller pass in the fees as msg.value instead of pulling ETH out of this contract's balance.
+            // Using the contract's balance would require a separate accounting system to keep LP funds separated from system funds
+            // used to pay for L2->L1 messages.
+            require(msg.value == minFee, "MESSAGE_FEE_MISMATCH");
+
             // msg.value is added here because the entire native balance (including msg.value) is auto-wrapped
             // before the execution of any wrapped token refund leaf. So it must be unwrapped before being sent as a
             // fee to the l2MessageService.
@@ -154,12 +154,16 @@ contract Linea_SpokePool is SpokePool {
             l2MessageService.sendMessage{ value: amountToReturn + msg.value }(withdrawalRecipient, msg.value, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
-        else if (l2TokenAddress == l2UsdcBridge.usdc()) {
-            IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2UsdcBridge), amountToReturn);
-            l2UsdcBridge.depositTo{ value: msg.value }(amountToReturn, withdrawalRecipient);
+        else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
+            // We require that the caller pass in the fees as msg.value instead of pulling ETH out of this contract's balance.
+            // Using the contract's balance would require a separate accounting system to keep LP funds separated from system funds
+            // used to pay for L2->L1 messages.
+            require(msg.value == minFee, "MESSAGE_FEE_MISMATCH");
+
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
             l2TokenBridge.bridgeToken{ value: msg.value }(l2TokenAddress, amountToReturn, withdrawalRecipient);
         }
@@ -176,12 +180,6 @@ contract Linea_SpokePool is SpokePool {
         address oldTokenBridge = address(l2TokenBridge);
         l2TokenBridge = _l2TokenBridge;
         emit SetL2TokenBridge(address(_l2TokenBridge), oldTokenBridge);
-    }
-
-    function _setL2UsdcBridge(IUSDCBridge _l2UsdcBridge) internal {
-        address oldUsdcBridge = address(l2UsdcBridge);
-        l2UsdcBridge = _l2UsdcBridge;
-        emit SetL2UsdcBridge(address(_l2UsdcBridge), oldUsdcBridge);
     }
 
     function _setL2MessageService(IMessageService _l2MessageService) internal {
