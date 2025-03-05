@@ -149,7 +149,7 @@ contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
             l2MessageService.sendMessage{ value: amountToReturn + msg.value }(withdrawalRecipient, msg.value, "");
         }
         // If the l1Token is USDC, then we need sent it via the USDC Bridge.
-        else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+        else if (l2TokenAddress == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         }
         // For other tokens, we can use the Canonical Token Bridge.
