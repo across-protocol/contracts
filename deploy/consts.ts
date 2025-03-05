@@ -34,7 +34,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
-    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce",
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
     scrollGasPriceOracle: "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
@@ -53,7 +52,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F", // No sepolia deploy address
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319", // No sepolia deploy address
-    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce", // No sepolia deploy address
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
@@ -217,7 +215,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-    lineaUsdcBridge: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
+    cctpTokenMessenger: "0xtodo",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
   },
   [CHAIN_IDs.SCROLL_SEPOLIA]: {
