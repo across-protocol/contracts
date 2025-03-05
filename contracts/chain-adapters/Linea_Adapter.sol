@@ -66,7 +66,7 @@ contract Linea_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 amount,
         address to
     ) external payable override {
-        if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
+        if (l1Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(to, amount);
         }
         // If the l1Token is WETH then unwrap it to ETH then send the ETH directly
