@@ -5,10 +5,12 @@ import "./interfaces/AdapterInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IOFT } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
+import { OFTAddressBook } from "../libraries/OFTAddressBook.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -55,6 +57,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
+    // we check against this value in `OFTTransportAdapter` when calling .send()
+    uint256 public constant OFT_SANE_FEE_CAP = 1 ether;
+
+    // helper contract to help us map token -> oft messenger for OFT-enabled tokens
+    OFTAddressBook public immutable OFT_ADDRESS_BOOK;
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
@@ -62,8 +70,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _l1Usdt USDT address on L1.
-     * @param _oftTransport OFTAdapter proxy address on L1 to bridge via OFT.
+     * @param _oftAddressBook OFTAddressBook contract to helps identify token -> oftMessenger relationship for OFT bridging.
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -71,15 +78,15 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        IERC20 _l1Usdt,
-        IOFT _oftTransport
+        OFTAddressBook _oftAddressBook
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
-        OFTTransportAdapter(_l1Usdt, _oftTransport, OFTEIds.Arbitrum)
+        OFTTransportAdapter(OFTEIds.Arbitrum, OFT_SANE_FEE_CAP)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
+        OFT_ADDRESS_BOOK = _oftAddressBook;
     }
 
     /**
@@ -121,11 +128,14 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         uint256 amount,
         address to
     ) external payable override {
+        (IOFT oftMessenger, bool oftEnabled) = _getOftMessenger(IERC20(l1Token));
+
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-        } else if (_isOFTEnabled(l1Token)) {
-            _transferUsdtViaOFT(to, amount);
+            // If oft is enabled for token, use that
+        } else if (oftEnabled) {
+            _transferViaOFT(IERC20(l1Token), oftMessenger, to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {
@@ -187,5 +197,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
         return requiredL1CallValue;
+    }
+
+    function _getOftMessenger(IERC20 _token) internal view returns (IOFT messenger, bool oftEnabled) {
+        messenger = OFT_ADDRESS_BOOK.oftMessengers(_token);
+        return (messenger, address(messenger) != address(0));
     }
 }

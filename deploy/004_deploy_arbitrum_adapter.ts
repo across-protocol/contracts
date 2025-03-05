@@ -16,8 +16,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     l2RefundAddress,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    USDT[chainId],
-    L1_ADDRESS_MAP[chainId].oftMessenger,
+    L1_ADDRESS_MAP[chainId].oftAddressBook,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
@@ -29,8 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      USDT[chainId],
-      L1_ADDRESS_MAP[chainId].oftMessenger,
+      L1_ADDRESS_MAP[chainId].oftAddressBook, // todo: will this get populated once we deploy oftAddressBook via a deploy script #63?
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });

@@ -29,6 +29,7 @@ import { IOFT__factory } from "../../../../typechain/factories/@layerzerolabs/of
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
+import { OFTAddressBook, OFTAddressBook__factory } from "../../../../typechain";
 
 let hubPool: Contract,
   arbitrumAdapter: Contract,
@@ -45,7 +46,8 @@ let l1ERC20GatewayRouter: FakeContract,
   l1Inbox: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
-  oftMessenger: FakeContract<IOFT>;
+  oftMessenger: FakeContract<IOFT>,
+  oftAddressBook: FakeContract<OFTAddressBook>;
 
 const arbitrumChainId = 42161;
 
@@ -69,6 +71,8 @@ describe("Arbitrum Chain Adapter", function () {
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi] as any[]);
+    oftAddressBook = await createTypedFakeFromABI([...OFTAddressBook__factory.abi] as any[]);
+    await oftAddressBook.connect(owner).setOFTMessenger(usdt.address, oftMessenger.address);
 
     l1Inbox = await createFake("Inbox");
     l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
@@ -83,8 +87,7 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      usdt.address,
-      oftMessenger.address
+      oftAddressBook.address
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
@@ -257,6 +260,9 @@ describe("Arbitrum Chain Adapter", function () {
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+    // set up correct messenger to be returned on a proper `oftMessengers` call
+    oftAddressBook.oftMessengers.whenCalledWith(usdt.address).returns(oftMessenger.address);
 
     // set up `quoteSend` return val
     const msgFeeStruct: MessagingFeeStructOutput = [

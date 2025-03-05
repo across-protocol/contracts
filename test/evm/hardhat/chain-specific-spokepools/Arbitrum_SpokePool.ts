@@ -72,14 +72,14 @@ describe("Arbitrum Spoke Pool", function () {
           9 * 60 * 60,
           l2Usdc,
           l2CctpTokenMessenger.address,
-          l2UsdtContract.address,
-          l2OftMessenger.address,
+          ethers.utils.parseEther("0.1"),
         ],
       }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
+    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
@@ -95,8 +95,7 @@ describe("Arbitrum Spoke Pool", function () {
           9 * 60 * 60,
           l2Usdc,
           l2CctpTokenMessenger.address,
-          l2UsdtContract.address,
-          l2OftMessenger.address,
+          ethers.utils.parseEther("0.1"),
         ],
       }
     );
