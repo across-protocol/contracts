@@ -146,7 +146,8 @@ describe("Linea Chain Adapter", function () {
     expect(cctpMessenger.depositForBurn).to.have.been.calledOnce;
     expect(cctpMessenger.depositForBurn).to.have.been.calledWith(
       ethers.BigNumber.from(tokensSendToL2),
-      CIRCLE_DOMAIN_IDs[internalChainId],
+      // TODO: Change this once we have the actual Linea domain ID
+      11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );
@@ -170,19 +171,22 @@ describe("Linea Chain Adapter", function () {
     expect(cctpMessenger.depositForBurn).to.have.been.calledThrice;
     expect(cctpMessenger.depositForBurn.atCall(0)).to.have.been.calledWith(
       newLimit,
-      CIRCLE_DOMAIN_IDs[internalChainId],
+      // TODO: Change this once we have the actual Linea domain ID
+      11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );
     expect(cctpMessenger.depositForBurn.atCall(1)).to.have.been.calledWith(
       newLimit,
-      CIRCLE_DOMAIN_IDs[internalChainId],
+      // TODO: Change this once we have the actual Linea domain ID
+      11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );
     expect(cctpMessenger.depositForBurn.atCall(2)).to.have.been.calledWith(
       2, // each of the above calls left a remainder of 1
-      CIRCLE_DOMAIN_IDs[internalChainId],
+      // TODO: Change this once we have the actual Linea domain ID
+      11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );
@@ -207,7 +211,8 @@ describe("Linea Chain Adapter", function () {
     );
     expect(cctpMessenger.depositForBurn.atCall(4)).to.have.been.calledWith(
       newLimit,
-      CIRCLE_DOMAIN_IDs[internalChainId],
+      // TODO: Change this once we have the actual Linea domain ID
+      11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );
