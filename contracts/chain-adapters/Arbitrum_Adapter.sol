@@ -57,8 +57,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // we check against this value in `OFTTransportAdapter` when calling .send()
-    uint256 public constant OFT_SANE_FEE_CAP = 1 ether;
+    // we don't allow fees to go higher than `OFT_FEE_CAP` when calling .send in `OFTTransportAdapter`. It gives us some protection from potential bugs on OFT's end
+    uint256 public constant OFT_FEE_CAP = 1 ether;
 
     // helper contract to help us map token -> oft messenger for OFT-enabled tokens
     OFTAddressBook public immutable OFT_ADDRESS_BOOK;
@@ -81,7 +81,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         OFTAddressBook _oftAddressBook
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
-        OFTTransportAdapter(OFTEIds.Arbitrum, OFT_SANE_FEE_CAP)
+        OFTTransportAdapter(OFTEIds.Arbitrum, OFT_FEE_CAP)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
@@ -133,7 +133,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-            // If oft is enabled for token, use that
+            // If oft messaging is enabled for token, use it as a bridging mechanism
         } else if (oftEnabled) {
             _transferViaOFT(IERC20(l1Token), oftMessenger, to, amount);
         }
@@ -199,6 +199,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         return requiredL1CallValue;
     }
 
+    /**
+     * @notice Queries for an OFT messenger from an oft address book contract
+     * @param _token Token to query the messenger for
+     * @return messenger OFT messenger contract
+     * @return oftEnabled whether or not the messenger has been set
+     */
     function _getOftMessenger(IERC20 _token) internal view returns (IOFT messenger, bool oftEnabled) {
         messenger = OFT_ADDRESS_BOOK.oftMessengers(_token);
         return (messenger, address(messenger) != address(0));

@@ -30,7 +30,8 @@ contract OFTTransportAdapter {
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
 
     /**
-     * @dev sane fee cap we check against before sending that amount to OFTMessenger as fees.
+     * @dev a fee cap we check against before sending a message with value to OFTMessenger as fees.
+     * @dev this cap should be pretty conservative (high) to not interfere with operations under normal conditions.
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint256 public immutable FEE_CAP;
@@ -46,7 +47,7 @@ contract OFTTransportAdapter {
     /**
      * @notice intiailizes the OFTTransportAdapter contract.
      * @param _oftDstEid the endpoint ID that OFT protocol will transfer funds to.
-     * @param _feeCap sane fee cap we check against before sending that amount to OFTMessenger as fees.
+     * @param _feeCap a fee cap we check against before sending a message with value to OFTMessenger as fees.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(uint32 _oftDstEid, uint256 _feeCap) {

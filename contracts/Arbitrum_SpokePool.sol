@@ -34,12 +34,12 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        // _oftSaneFeeCap can be set to 0.1 ether for arbitrum, but has to be custom-set for other chains that might use inherit this adapter, like AlephZero
-        uint256 _oftSaneFeeCap
+        // _oftFeeCap can be set to 1 ether for arbitrum, but has to be custom-set for other chains that might use inherit this adapter, like AlephZero
+        uint256 _oftFeeCap
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
-        OFTTransportAdapter(OFTEIds.Ethereum, _oftSaneFeeCap)
+        OFTTransportAdapter(OFTEIds.Ethereum, _oftFeeCap)
     {} // solhint-disable-line no-empty-blocks
 
     /**
