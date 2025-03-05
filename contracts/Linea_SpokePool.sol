@@ -133,10 +133,6 @@ contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
         uint256 minFee = minimumFeeInWei();
-        // We require that the caller pass in the fees as msg.value instead of pulling ETH out of this contract's balance.
-        // Using the contract's balance would require a separate accounting system to keep LP funds separated from system funds
-        // used to pay for L2->L1 messages.
-        require(msg.value == minFee, "MESSAGE_FEE_MISMATCH");
 
         // SpokePool is expected to receive ETH from the L1 HubPool, then we need to first unwrap it to ETH and then
         // send ETH directly via the Canonical Message Service.
