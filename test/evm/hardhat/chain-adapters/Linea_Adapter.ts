@@ -34,7 +34,7 @@ let hubPool: Contract,
   mockSpoke: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
-let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract, lineaUsdcBridge: FakeContract;
+let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract;
 let cctpMessenger: FakeContract, cctpTokenMinter: FakeContract;
 
 const lineaChainId = 59144;
@@ -205,7 +205,8 @@ describe("Linea Chain Adapter", function () {
     expect(cctpMessenger.depositForBurn).to.have.callCount(5);
     expect(cctpMessenger.depositForBurn.atCall(3)).to.have.been.calledWith(
       newLimit,
-      CIRCLE_DOMAIN_IDs[internalChainId],
+      // TODO: Change this once we have the actual Linea domain ID
+      11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );

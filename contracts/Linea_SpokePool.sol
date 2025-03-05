@@ -37,7 +37,6 @@ contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
      **************************************/
     event SetL2TokenBridge(address indexed newTokenBridge, address oldTokenBridge);
     event SetL2MessageService(address indexed newMessageService, address oldMessageService);
-    event SetL2UsdcBridge(address indexed newUsdcBridge, address oldUsdcBridge);
 
     /**
      * @notice Construct Linea-specific SpokePool.

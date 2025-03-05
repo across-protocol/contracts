@@ -14,7 +14,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     1_000_000,
     L2_ADDRESS_MAP[chainId].lineaMessageService,
     L2_ADDRESS_MAP[chainId].lineaTokenBridge,
-    L2_ADDRESS_MAP[chainId].lineaUsdcBridge,
     hubPool.address,
     hubPool.address,
   ];

@@ -8,16 +8,19 @@ import {
   getContractFactory,
   seedContract,
   toWei,
+  createFakeFromABI,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
+import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 
-let hubPool: Contract, lineaSpokePool: Contract, dai: Contract, weth: Contract, usdc: Contract;
+let hubPool: Contract, lineaSpokePool: Contract, dai: Contract, weth: Contract, usdc: Contract, l2Usdc: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract, lineaUsdcBridge: FakeContract;
+let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract;
+let l2CctpTokenMessenger: FakeContract, cctpTokenMinter: FakeContract;
 
 const lineaMessageServiceAbi = [
   {
@@ -71,35 +74,10 @@ const lineaTokenBridgeAbi = [
   },
 ];
 
-const lineaUsdcBridgeAbi = [
-  {
-    inputs: [
-      { internalType: "uint256", name: "amount", type: "uint256" },
-      { internalType: "address", name: "to", type: "address" },
-    ],
-    name: "depositTo",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "usdc",
-    outputs: [
-      {
-        name: "",
-        type: "address",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-];
-
 describe("Linea Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, dai, usdc, hubPool } = await hubPoolFixture());
+    ({ weth, dai, usdc, hubPool, l2Usdc } = await hubPoolFixture());
 
     lineaMessageService = await smock.fake(lineaMessageServiceAbi, {
       address: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
@@ -107,24 +85,21 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.minimumFeeInWei.returns(0);
     lineaMessageService.sender.reset();
     lineaTokenBridge = await smock.fake(lineaTokenBridgeAbi, { address: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9" });
-    lineaUsdcBridge = await smock.fake(lineaUsdcBridgeAbi, {
-      address: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
-    });
-    lineaUsdcBridge.usdc.returns(usdc.address);
+    l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
+    l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     await owner.sendTransaction({ to: lineaMessageService.address, value: toWei("1") });
 
     lineaSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Linea_SpokePool", owner),
-      [
-        0,
-        lineaMessageService.address,
-        lineaTokenBridge.address,
-        lineaUsdcBridge.address,
-        owner.address,
-        hubPool.address,
-      ],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      [0, lineaMessageService.address, lineaTokenBridge.address, owner.address, hubPool.address],
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+      }
     );
 
     await seedContract(lineaSpokePool, relayer, [dai, usdc], weth, amountHeldByPool);
@@ -134,13 +109,11 @@ describe("Linea Spoke Pool", function () {
     const implementation = await hre.upgrades.deployImplementation(await getContractFactory("Linea_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
-      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60],
+      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
     });
 
     // upgradeTo fails unless called by cross domain admin
-    await expect(lineaSpokePool.connect(lineaMessageService.wallet).upgradeTo(implementation)).to.be.revertedWith(
-      "ONLY_COUNTERPART_GATEWAY"
-    );
+    await expect(lineaSpokePool.upgradeTo(implementation)).to.be.revertedWith("ONLY_COUNTERPART_GATEWAY");
     lineaMessageService.sender.returns(owner.address);
     // msg.sender must be lineaMessageService
     await expect(lineaSpokePool.connect(owner).upgradeTo(implementation)).to.be.revertedWith(
@@ -159,12 +132,6 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).setL2TokenBridge(rando.address);
     expect(await lineaSpokePool.l2TokenBridge()).to.equal(rando.address);
-  });
-  it("Only cross domain owner can set l2UsdcBridge", async function () {
-    await expect(lineaSpokePool.setL2UsdcBridge(lineaMessageService.wallet)).to.be.reverted;
-    lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(lineaMessageService.wallet).setL2UsdcBridge(rando.address);
-    expect(await lineaSpokePool.l2UsdcBridge()).to.equal(rando.address);
   });
   it("Only cross domain owner can relay admin root bundles", async function () {
     const { tree } = await constructSingleRelayerRefundTree(dai.address, await lineaSpokePool.callStatic.chainId());
@@ -204,23 +171,6 @@ describe("Linea Spoke Pool", function () {
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(lineaTokenBridge.bridgeToken).to.have.been.calledWith(dai.address, amountToReturn, hubPool.address);
-  });
-  it("Bridge USDC to hub pool correctly calls the L2 USDC Bridge", async function () {
-    const { leaves, tree } = await constructSingleRelayerRefundTree(
-      usdc.address,
-      await lineaSpokePool.callStatic.chainId()
-    );
-    lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    const fee = toWei("0.01");
-    lineaMessageService.minimumFeeInWei.returns(fee);
-    await lineaSpokePool
-      .connect(relayer)
-      .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee });
-
-    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
-    expect(lineaUsdcBridge.depositTo).to.have.been.calledWith(amountToReturn, hubPool.address);
-    expect(lineaUsdcBridge.depositTo).to.have.been.calledWithValue(fee);
   });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
