@@ -80,7 +80,8 @@ contract OFTTransportAdapter {
             to,
             /**
              * _amount, _amount here specify `amountLD` and `minAmountLD`. Setting `minAmountLD` equal to `amountLD` protects us
-             * from any changes to the sent amount due to internal OFT contract logic, e.g. `_removeDust`
+             * from any changes to the sent amount due to internal OFT contract logic, e.g. `_removeDust`. Meaning that if any
+             * dust is subtracted, the `.send()` should revert
              */
             _amount,
             _amount,
@@ -99,12 +100,12 @@ contract OFTTransportAdapter {
         if (fee.nativeFee > address(this).balance)
             revert InsufficientBalanceForFee(fee.nativeFee, address(this).balance);
 
-        // approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
+        // Approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
         _token.forceApprove(address(_messenger), _amount);
 
         (, OFTReceipt memory oftReceipt) = _messenger.send{ value: fee.nativeFee }(sendParam, fee, address(this));
 
-        // we require that received amount of this transfer at destination exactly matches the sent amount
+        // We require that received amount of this transfer at destination exactly matches the sent amount
         if (_amount != oftReceipt.amountReceivedLD)
             revert IncorrectAmountReceivedLD(_amount, oftReceipt.amountReceivedLD);
     }

@@ -15,6 +15,7 @@ import {
   createTypedFakeFromABI,
   BigNumber,
   randomBytes32,
+  toWeiWithDecimals,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -67,14 +68,7 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [
-          l2Weth,
-          60 * 60,
-          9 * 60 * 60,
-          l2Usdc,
-          l2CctpTokenMessenger.address,
-          ethers.utils.parseEther("0.1"),
-        ],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, toWei("0.1")],
       }
     );
 
@@ -90,14 +84,7 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [
-          l2Weth,
-          60 * 60,
-          9 * 60 * 60,
-          l2Usdc,
-          l2CctpTokenMessenger.address,
-          ethers.utils.parseEther("0.1"),
-        ],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, toWei("0.1")],
       }
     );
 
@@ -183,7 +170,7 @@ describe("Arbitrum Spoke Pool", function () {
     );
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
-    const oftNativeFee = BigNumber.from(1e9 * 200_000); // 1 GWEI gas price * 200,000 gas cost
+    const oftNativeFee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
 
     // seed `arbitrumSpokePool` with some eth for native fee payment in OFT logic
     await ethers.provider.send("hardhat_setBalance", [arbitrumSpokePool.address, oftNativeFee.toHexString()]);

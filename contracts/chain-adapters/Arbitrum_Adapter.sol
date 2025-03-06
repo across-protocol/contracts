@@ -128,12 +128,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         uint256 amount,
         address to
     ) external payable override {
-        (IOFT oftMessenger, bool oftEnabled) = _getOftMessenger(IERC20(l1Token));
+        IOFT oftMessenger = _getOftMessenger(IERC20(l1Token));
 
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-        } else if (oftEnabled) {
+        } else if (address(oftMessenger) != address(0)) {
             _transferViaOFT(IERC20(l1Token), oftMessenger, to, amount);
         }
         // If not, we can use the Arbitrum gateway
@@ -199,13 +199,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     }
 
     /**
-     * @notice Queries for an OFT messenger from an oft address book contract
+     * @notice Queries for an OFT messenger from an OFT address book contract
      * @param _token Token to query the messenger for
      * @return messenger OFT messenger contract
-     * @return oftEnabled whether or not the messenger has been set
      */
-    function _getOftMessenger(IERC20 _token) internal view returns (IOFT messenger, bool oftEnabled) {
-        messenger = OFT_ADDRESS_BOOK.oftMessengers(_token);
-        return (messenger, address(messenger) != address(0));
+    function _getOftMessenger(IERC20 _token) internal view returns (IOFT) {
+        return OFT_ADDRESS_BOOK.oftMessengers(_token);
     }
 }

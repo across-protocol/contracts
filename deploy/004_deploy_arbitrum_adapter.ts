@@ -1,4 +1,4 @@
-import { L1_ADDRESS_MAP, USDC, USDT } from "./consts";
+import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 

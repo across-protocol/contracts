@@ -17,6 +17,7 @@ import {
   createTypedFakeFromABI,
   BigNumber,
   randomBytes32,
+  toWeiWithDecimals,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import {
@@ -267,7 +268,7 @@ describe("Arbitrum Chain Adapter", function () {
 
     // set up `quoteSend` return val
     const msgFeeStruct: MessagingFeeStructOutput = [
-      BigNumber.from(1e9 * 200_000), // nativeFee: 1 GWEI gas price * 200,000 gas cost
+      toWeiWithDecimals("1", 9).mul(200_000), // nativeFee: 1 GWEI gas price * 200,000 gas cost
       BigNumber.from(0), // lzTokenFee: 0
     ] as MessagingFeeStructOutput;
     oftMessenger.quoteSend.returns(msgFeeStruct);

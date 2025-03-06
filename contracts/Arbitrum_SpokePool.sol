@@ -24,7 +24,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
 
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
-    event OFTMessengerSet(IERC20 indexed token, IOFT indexed messenger);
+    event SetOFTMessenger(IERC20 indexed token, IOFT indexed messenger);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -136,10 +136,10 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
 
     function _setOftMessenger(IERC20 _token, IOFT _messenger) internal {
         oftMessengers[_token] = _messenger;
-        emit OFTMessengerSet(_token, _messenger);
+        emit SetOFTMessenger(_token, _messenger);
     }
 
-    function _getOftMessenger(IERC20 _token) internal view returns (IOFT messenger) {
+    function _getOftMessenger(IERC20 _token) internal view returns (IOFT) {
         return oftMessengers[_token];
     }
 
