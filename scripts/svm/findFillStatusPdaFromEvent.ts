@@ -1,4 +1,5 @@
-// This script finds the associated Fill Status PDA from a fill event by re-deriving it without doing any on-chain calls.
+// This script finds the associated Fill Status PDA from a fill OR deposit event by re-deriving it without doing any
+// // on-chain calls. Note the props required are present in both deposit and fill events.
 // Example usage:
 // anchor run findFillStatusPdaFromFill -- \
 //  --input_token "0x1c7d4b196cb0c7b01d743fbc6116a902379c7238" \
@@ -11,7 +12,6 @@
 //  --fill_deadline 1740569770 \
 //  --exclusivity_deadline 1740569740 \
 //  --exclusive_relayer "0x0000000000000000000000000000000000000000" \
-//  --relayer "FmMK62wrtWVb5SVoTZftSCGw3nEDA79hDbZNTRnC1R6t" \
 //  --depositor "0x9a8f92a830a5cb89a3816e3d267cb7791c16b04d" \
 //  --recipient "5HRmK3G6BzWAtF22dBgoTiPGVovSmG4rLvVQoUhum9FJ" \
 //  --message_hash "0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0"
@@ -41,7 +41,6 @@ const argv = yargs(hideBin(process.argv))
   .option("fill_deadline", { type: "number", demandOption: true, describe: "Fill deadline" })
   .option("exclusivity_deadline", { type: "number", demandOption: true, describe: "Exclusivity deadline" })
   .option("exclusive_relayer", { type: "string", demandOption: true, describe: "Exclusive relayer address" })
-  .option("relayer", { type: "string", demandOption: true, describe: "Relayer public key" })
   .option("depositor", { type: "string", demandOption: true, describe: "Depositor address" })
   .option("recipient", { type: "string", demandOption: true, describe: "Recipient address" })
   .option("message_hash", { type: "string", demandOption: true, describe: "Message hash" }).argv;
