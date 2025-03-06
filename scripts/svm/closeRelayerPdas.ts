@@ -32,7 +32,7 @@ async function closeExpiredRelays(): Promise<void> {
   try {
     const events = await readProgramEvents(provider.connection, program);
     const fillEvents = events.filter(
-      (event) => event.name === "filledV3Relay" && new PublicKey(event.data.relayer).equals(relayer)
+      (event) => event.name === "filledRelay" && new PublicKey(event.data.relayer).equals(relayer)
     );
 
     console.log(`Number of fill events found: ${fillEvents.length}`);
@@ -51,6 +51,7 @@ async function closeExpiredRelays(): Promise<void> {
           `Found relay with depositId: ${event.data.depositId} from source chain id: ${event.data.originChainId}, but it is not expired yet.`
         );
       }
+      break;
     }
   } catch (error) {
     console.error("An error occurred while fetching the fill events:", error);
@@ -86,7 +87,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
   const relayHashUint8Array = calculateRelayEventHashUint8Array(relayEventData, chainId);
 
   const [fillStatusPda] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHashUint8Array], programId);
-
+  console.log("fillStatusPda", fillStatusPda.toString());
   try {
     // Check if the fillStatusPda account exists
     const accountInfo = await provider.connection.getAccountInfo(fillStatusPda);
@@ -109,6 +110,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
       { Property: "Fill Status PDA", Value: fillStatusPda.toString() },
       { Property: "Relay Hash", Value: Buffer.from(relayHashUint8Array).toString("hex") },
     ]);
+    console.log("closing fill pda...");
 
     const tx = await (program.methods.closeFillPda() as any)
       .accounts({

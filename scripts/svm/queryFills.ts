@@ -38,7 +38,8 @@ async function queryFills(): Promise<void> {
 
   try {
     const events = await readProgramEvents(provider.connection, program);
-    const fillEvents = events.filter((event) => event.name === "filledV3Relay");
+    console.log(events);
+    const fillEvents = events.filter((event) => event.name === "filledRelay");
 
     if (fillEvents.length === 0) {
       console.log("No fill events found for the given seed.");

@@ -24,20 +24,7 @@ export async function readProgramEvents(
   finality: Commitment = "confirmed",
   options: GetSignaturesForAddressConfig = { limit: 1000 }
 ) {
-  const allSignatures: GetSignaturesForAddressTransaction[] = [];
-
-  // Fetch all signatures in sequential batches
-  while (true) {
-    const signatures = await rpc.getSignaturesForAddress(program, options).send();
-    allSignatures.push(...signatures);
-
-    // Update options for the next batch. Set before to the last fetched signature.
-    if (signatures.length > 0) {
-      options = { ...options, before: signatures[signatures.length - 1].signature };
-    }
-
-    if (options.limit && signatures.length < options.limit) break; // Exit early if the number of signatures < limit
-  }
+  const allSignatures: GetSignaturesForAddressTransaction[] = await searchSignaturesUntilLimit(rpc, program, options);
 
   // Fetch events for all signatures in parallel
   const eventsWithSlots = await Promise.all(
@@ -55,6 +42,27 @@ export async function readProgramEvents(
     })
   );
   return eventsWithSlots.flat();
+}
+
+async function searchSignaturesUntilLimit(
+  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
+  program: Address,
+  options: GetSignaturesForAddressConfig = { limit: 1000 }
+): Promise<GetSignaturesForAddressTransaction[]> {
+  const allSignatures: GetSignaturesForAddressTransaction[] = [];
+  // Fetch all signatures in sequential batches
+  while (true) {
+    const signatures = await rpc.getSignaturesForAddress(program, options).send();
+    allSignatures.push(...signatures);
+
+    // Update options for the next batch. Set before to the last fetched signature.
+    if (signatures.length > 0) {
+      options = { ...options, before: signatures[signatures.length - 1].signature };
+    }
+
+    if (options.limit && signatures.length < options.limit) break; // Exit early if the number of signatures < limit
+  }
+  return allSignatures;
 }
 
 /**
@@ -117,5 +125,23 @@ async function processEventFromTx(
     }
   }
 
+  return events;
+}
+
+/**
+ * For a given fillStatusPDa & associated spokePool ProgramID, return the fill event.
+ */
+export async function readFillEventFromFillStatusPda(
+  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
+  fillStatusPda: Address,
+  programId: Address,
+  programIdl: Idl
+) {
+  const signatures = await searchSignaturesUntilLimit(rpc, fillStatusPda);
+  if (signatures.length === 0) return [];
+
+  // The first signature will always be PDA creation, and therefore CPI event carrying signature. Any older signatures
+  // will therefore be either spam or PDA closure signatures and can be ignored when looking for the fill event.
+  const events = await readEvents(rpc, signatures[signatures.length - 1].signature, programId, programIdl);
   return events;
 }
