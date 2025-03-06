@@ -244,8 +244,8 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.message = acrossOrderData.message;
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
-            destinationSettler: _destinationSettler(acrossOrderData.destinationChainId).toBytes32(),
-            originData: abi.encode(relayData)
+            destinationSettler: acrossOrderData.destinationSettler.toBytes32(),
+            originData: abi.encode(relayData, acrossOrderData.destinationSettler)
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
@@ -256,7 +256,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
+            orderId: keccak256(
+                abi.encode(relayData, acrossOrderData.destinationSettler, acrossOrderData.destinationChainId)
+            )
         });
     }
 
@@ -308,8 +310,8 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.message = acrossOrderData.message;
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
-            destinationSettler: _destinationSettler(acrossOrderData.destinationChainId).toBytes32(),
-            originData: abi.encode(relayData)
+            destinationSettler: acrossOrderData.destinationSettler.toBytes32(),
+            originData: abi.encode(relayData, acrossOrderData.destinationSettler)
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
@@ -320,7 +322,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
+            orderId: keccak256(
+                abi.encode(relayData, acrossOrderData.destinationSettler, acrossOrderData.destinationChainId)
+            )
         });
     }
 
@@ -369,6 +373,4 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint32 exclusivityPeriod,
         bytes memory message
     ) internal virtual;
-
-    function _destinationSettler(uint256 chainId) internal view virtual returns (address);
 }

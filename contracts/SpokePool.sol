@@ -1122,12 +1122,21 @@ abstract contract SpokePool is
         bytes calldata originData,
         bytes calldata fillerData
     ) external {
-        if (keccak256(abi.encode(originData, chainId())) != orderId) {
+        if (keccak256(abi.encode(originData, address(this), chainId())) != orderId) {
             revert WrongERC7683OrderId();
         }
 
         // Ensure that the call is not malformed. If the call is malformed, abi.decode will fail.
-        V3SpokePoolInterface.V3RelayData memory relayData = abi.decode(originData, (V3SpokePoolInterface.V3RelayData));
+        (V3SpokePoolInterface.V3RelayData memory relayData, address destinationSettler) = abi.decode(
+            originData,
+            (V3SpokePoolInterface.V3RelayData, address)
+        );
+        if (destinationSettler != address(this)) {
+            // @todo I added in this check because I'm assuming that just because the FillInstructions emitted in the ResolvedCrossChainOrder specify a
+            // destinationSettler address, that doens't prevent the filler from being that fill to a different destinationSettler. So, we
+            // enforce that the correct destinationSettler is used here.
+            revert InvalidDestinationSettler();
+        }
         AcrossDestinationFillerData memory destinationFillerData = abi.decode(
             fillerData,
             (AcrossDestinationFillerData)
