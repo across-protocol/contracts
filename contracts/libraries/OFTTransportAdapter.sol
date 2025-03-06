@@ -105,7 +105,7 @@ contract OFTTransportAdapter {
 
         (, OFTReceipt memory oftReceipt) = _messenger.send{ value: fee.nativeFee }(sendParam, fee, address(this));
 
-        // We require that received amount of this transfer at destination exactly matches the sent amount
+        // The HubPool expects that the amount received by the SpokePool is exactly the sent amount
         if (_amount != oftReceipt.amountReceivedLD)
             revert IncorrectAmountReceivedLD(_amount, oftReceipt.amountReceivedLD);
     }
