@@ -13,6 +13,7 @@ struct AcrossOrderData {
     uint256 destinationChainId;
     bytes32 recipient;
     address exclusiveRelayer;
+    address destinationSettler;
     uint256 depositNonce;
     uint32 exclusivityPeriod;
     bytes message;
@@ -34,7 +35,8 @@ bytes constant ACROSS_ORDER_DATA_TYPE = abi.encodePacked(
     "uint256 outputAmount,",
     "uint256 destinationChainId,",
     "bytes32 recipient,",
-    "address exclusiveRelayer,"
+    "address exclusiveRelayer,",
+    "address destinationSettler,",
     "uint256 depositNonce,",
     "uint32 exclusivityPeriod,",
     "bytes message)"
@@ -106,6 +108,7 @@ library ERC7683Permit2Lib {
                     orderData.destinationChainId,
                     orderData.recipient,
                     orderData.exclusiveRelayer,
+                    orderData.destinationSettler,
                     orderData.exclusivityPeriod,
                     keccak256(orderData.message)
                 )

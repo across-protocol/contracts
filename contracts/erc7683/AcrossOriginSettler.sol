@@ -17,16 +17,7 @@ contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
     using SafeERC20 for IERC20;
     using AddressToBytes32 for address;
 
-    event SetDestinationSettler(
-        uint256 indexed chainId,
-        address indexed prevDestinationSettler,
-        address indexed destinationSettler
-    );
-
     SpokePool public immutable SPOKE_POOL;
-
-    // Mapping of chainIds to destination settler addresses.
-    mapping(uint256 => address) public destinationSettlers;
 
     constructor(
         SpokePool _spokePool,
@@ -34,12 +25,6 @@ contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
         uint256 _quoteBeforeDeadline
     ) ERC7683OrderDepositor(_permit2, _quoteBeforeDeadline) {
         SPOKE_POOL = _spokePool;
-    }
-
-    function setDestinationSettler(uint256 chainId, address destinationSettler) external onlyOwner {
-        address prevDestinationSettler = destinationSettlers[chainId];
-        destinationSettlers[chainId] = destinationSettler;
-        emit SetDestinationSettler(chainId, prevDestinationSettler, destinationSettler);
     }
 
     function _callDeposit(
@@ -98,10 +83,5 @@ contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
             depositNonce == 0
                 ? SPOKE_POOL.numberOfDeposits()
                 : SPOKE_POOL.getUnsafeDepositId(address(this), depositor.toBytes32(), depositNonce);
-    }
-
-    function _destinationSettler(uint256 chainId) internal view override returns (address) {
-        if (destinationSettlers[chainId] == address(0)) revert NoDestinationSettlerForChain(chainId);
-        return destinationSettlers[chainId];
     }
 }

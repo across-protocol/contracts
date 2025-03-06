@@ -244,7 +244,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.message = acrossOrderData.message;
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
-            destinationSettler: _destinationSettler(acrossOrderData.destinationChainId).toBytes32(),
+            destinationSettler: acrossOrderData.destinationSettler.toBytes32(),
             originData: abi.encode(relayData)
         });
 
@@ -308,7 +308,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.message = acrossOrderData.message;
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
-            destinationSettler: _destinationSettler(acrossOrderData.destinationChainId).toBytes32(),
+            destinationSettler: acrossOrderData.destinationSettler.toBytes32(),
             originData: abi.encode(relayData)
         });
 
@@ -369,6 +369,4 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint32 exclusivityPeriod,
         bytes memory message
     ) internal virtual;
-
-    function _destinationSettler(uint256 chainId) internal view virtual returns (address);
 }
