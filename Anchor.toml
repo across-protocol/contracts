@@ -51,7 +51,7 @@ generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/gener
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
 addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressToPublicKey.ts"
 publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
-findFillStatusPdaFromFill = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusPdaFromFill.ts"
+findFillStatusPdaFromFillEvent = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusPdaFromFillEvent.ts"
 findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusFromFillStatusPda.ts"
 
 [test.validator]
