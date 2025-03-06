@@ -25,14 +25,19 @@ async function findFillStatusFromFillStatusPda(): Promise<void> {
   console.log(`Looking for Fill Event for Fill Status PDA: ${fillStatusPda.toString()}`);
 
   const rpc = createSolanaRpc(provider.connection.rpcEndpoint);
-  const events = await readFillEventFromFillStatusPda(rpc, fillStatusPda, address(resolvedArgv.programId), SvmSpokeIdl);
-  if (!events || events.length === 0) {
+  const { event, slot } = await readFillEventFromFillStatusPda(
+    rpc,
+    fillStatusPda,
+    address(resolvedArgv.programId),
+    SvmSpokeIdl
+  );
+  if (!event) {
     console.log("No fill events found");
     return;
   }
 
   console.table(
-    Object.entries(events[0].data).map(([key, value]) => {
+    Object.entries(event.data).map(([key, value]) => {
       if (key === "relay_execution_info") {
         const info = value as any;
         return { Property: key, Value: `relayer: ${info.relayer}, executionTimestamp: ${info.executionTimestamp}` };
@@ -51,6 +56,7 @@ async function findFillStatusFromFillStatusPda(): Promise<void> {
   }
 
   console.log("fillStatus", fillStatus);
+  console.log("slot", slot);
 }
 
 findFillStatusFromFillStatusPda();

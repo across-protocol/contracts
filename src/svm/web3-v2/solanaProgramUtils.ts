@@ -136,12 +136,12 @@ export async function readFillEventFromFillStatusPda(
   fillStatusPda: Address,
   programId: Address,
   programIdl: Idl
-) {
+): Promise<{ event: any; slot: number }> {
   const signatures = await searchSignaturesUntilLimit(rpc, fillStatusPda);
-  if (signatures.length === 0) return [];
+  if (signatures.length === 0) return { event: null, slot: 0 };
 
   // The first signature will always be PDA creation, and therefore CPI event carrying signature. Any older signatures
   // will therefore be either spam or PDA closure signatures and can be ignored when looking for the fill event.
   const events = await readEvents(rpc, signatures[signatures.length - 1].signature, programId, programIdl);
-  return events;
+  return { event: events[0], slot: Number(signatures[signatures.length - 1].slot) };
 }
