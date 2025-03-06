@@ -245,7 +245,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
             destinationSettler: acrossOrderData.destinationSettler.toBytes32(),
-            originData: abi.encode(relayData)
+            originData: abi.encode(relayData, acrossOrderData.destinationSettler)
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
@@ -256,7 +256,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
+            orderId: keccak256(
+                abi.encode(relayData, acrossOrderData.destinationSettler, acrossOrderData.destinationChainId)
+            )
         });
     }
 
@@ -309,7 +311,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
             destinationSettler: acrossOrderData.destinationSettler.toBytes32(),
-            originData: abi.encode(relayData)
+            originData: abi.encode(relayData, acrossOrderData.destinationSettler)
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
@@ -320,7 +322,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
+            orderId: keccak256(
+                abi.encode(relayData, acrossOrderData.destinationSettler, acrossOrderData.destinationChainId)
+            )
         });
     }
 
