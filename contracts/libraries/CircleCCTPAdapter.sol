@@ -14,6 +14,7 @@ library CircleDomainIds {
     uint32 public constant Base = 6;
     uint32 public constant Polygon = 7;
     uint32 public constant DoctorWho = 10;
+    uint32 public constant Linea = 11; // TODO replace with actual domain once we know it.
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
     // assigned a domain ID by Circle.
     uint32 public constant UNINITIALIZED = type(uint32).max;
@@ -71,7 +72,7 @@ abstract contract CircleCCTPAdapter {
      * @notice Returns whether or not the CCTP bridge is enabled.
      * @dev If the CCTPTokenMessenger is the zero address, CCTP bridging is disabled.
      */
-    function _isCCTPEnabled() internal view returns (bool) {
+    function _isCCTPEnabled() internal view virtual returns (bool) {
         return address(cctpTokenMessenger) != address(0);
     }
 
@@ -91,7 +92,7 @@ abstract contract CircleCCTPAdapter {
      * @param to Address to receive USDC on the new domain represented as bytes32.
      * @param amount Amount of USDC to transfer.
      */
-    function _transferUsdc(bytes32 to, uint256 amount) internal {
+    function _transferUsdc(bytes32 to, uint256 amount) internal virtual {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger.
