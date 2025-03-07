@@ -16,7 +16,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 
 /**
- * @notice Contract containing logic to send messages from L1 to Doctor Who. This is a modified version of the Optimism adapter
+ * @notice Contract containing logic to send messages from L1 to Unichain. This is a modified version of the Optimism adapter
  * that excludes the custom bridging logic.
  * @custom:security-contact bugs@across.to
  * @dev Public functions calling external contracts do not guard against reentrancy because they are expected to be
@@ -26,7 +26,7 @@ import "../external/interfaces/CCTPInterfaces.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
+contract Unichain_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
@@ -50,15 +50,15 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         ITokenMessenger _cctpTokenMessenger
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.DoctorWho)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Unichain)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
     }
 
     /**
-     * @notice Send cross-chain message to target on Doctor Who.
-     * @param target Contract on Doctor Who that will receive message.
+     * @notice Send cross-chain message to target on Unichain.
+     * @param target Contract on Unichain that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -67,7 +67,7 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
     }
 
     /**
-     * @notice Bridge tokens to Doctor Who.
+     * @notice Bridge tokens to Unichain.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.

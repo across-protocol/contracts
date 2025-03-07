@@ -6,10 +6,10 @@ import "./Ovm_SpokePool.sol";
 import "./external/interfaces/CCTPInterfaces.sol";
 
 /**
- * @notice DoctorWho Spoke pool.
+ * @notice Unichain Spoke pool.
  * @custom:security-contact bugs@across.to
  */
-contract DoctorWho_SpokePool is Ovm_SpokePool {
+contract Unichain_SpokePool is Ovm_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
@@ -28,7 +28,7 @@ contract DoctorWho_SpokePool is Ovm_SpokePool {
     {} // solhint-disable-line no-empty-blocks
 
     /**
-     * @notice Construct the OVM DoctorWho SpokePool.
+     * @notice Construct the OVM Unichain SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
