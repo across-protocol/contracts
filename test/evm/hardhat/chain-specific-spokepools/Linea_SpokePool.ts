@@ -15,7 +15,7 @@ import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
-import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
+import { CCTPTokenV2MessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 
 let hubPool: Contract, lineaSpokePool: Contract, dai: Contract, weth: Contract, usdc: Contract, l2Usdc: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -85,7 +85,7 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.minimumFeeInWei.returns(0);
     lineaMessageService.sender.reset();
     lineaTokenBridge = await smock.fake(lineaTokenBridgeAbi, { address: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9" });
-    l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    l2CctpTokenMessenger = await createFakeFromABI(CCTPTokenV2MessengerInterface);
     cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
     l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));

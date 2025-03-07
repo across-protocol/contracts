@@ -22,7 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
     USDC[chainId],
-    L2_ADDRESS_MAP[chainId].cctpTokenMessenger,
+    L2_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
   ];
 
   await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs);

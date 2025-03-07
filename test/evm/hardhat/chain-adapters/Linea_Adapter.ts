@@ -22,7 +22,7 @@ import {
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
-import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
+import { CCTPTokenV2MessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
 
 let hubPool: Contract,
@@ -85,7 +85,7 @@ describe("Linea Chain Adapter", function () {
     await hubPool.connect(liquidityProvider).addLiquidity(usdc.address, amountToLp);
     await usdc.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
 
-    cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
+    cctpMessenger = await createFakeFromABI(CCTPTokenV2MessengerInterface);
     cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
@@ -149,7 +149,10 @@ describe("Linea Chain Adapter", function () {
       // TODO: Change this once we have the actual Linea domain ID
       11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      usdc.address
+      usdc.address,
+      ethers.constants.HashZero,
+      ethers.BigNumber.from(0),
+      2000
     );
   });
   it("Splits USDC into parts to stay under per-message limit when attempting to bridge USDC", async function () {
@@ -174,21 +177,30 @@ describe("Linea Chain Adapter", function () {
       // TODO: Change this once we have the actual Linea domain ID
       11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      usdc.address
+      usdc.address,
+      ethers.constants.HashZero,
+      ethers.BigNumber.from(0),
+      2000
     );
     expect(cctpMessenger.depositForBurn.atCall(1)).to.have.been.calledWith(
       newLimit,
       // TODO: Change this once we have the actual Linea domain ID
       11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      usdc.address
+      usdc.address,
+      ethers.constants.HashZero,
+      ethers.BigNumber.from(0),
+      2000
     );
     expect(cctpMessenger.depositForBurn.atCall(2)).to.have.been.calledWith(
       2, // each of the above calls left a remainder of 1
       // TODO: Change this once we have the actual Linea domain ID
       11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      usdc.address
+      usdc.address,
+      ethers.constants.HashZero,
+      ethers.BigNumber.from(0),
+      2000
     );
 
     // 2) Set limit below amount to send and where amount divides evenly into limit.
@@ -208,14 +220,20 @@ describe("Linea Chain Adapter", function () {
       // TODO: Change this once we have the actual Linea domain ID
       11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      usdc.address
+      usdc.address,
+      ethers.constants.HashZero,
+      ethers.BigNumber.from(0),
+      2000
     );
     expect(cctpMessenger.depositForBurn.atCall(4)).to.have.been.calledWith(
       newLimit,
       // TODO: Change this once we have the actual Linea domain ID
       11, // CIRCLE_DOMAIN_IDs[internalChainId],
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      usdc.address
+      usdc.address,
+      ethers.constants.HashZero,
+      ethers.BigNumber.from(0),
+      2000
     );
   });
   it("Correctly unwraps WETH and bridges ETH", async function () {

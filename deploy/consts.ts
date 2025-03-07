@@ -31,6 +31,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
+    cctpV2TokenMessenger: "0xtodo",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
@@ -215,7 +216,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-    cctpTokenMessenger: "0xtodo",
+    cctpV2TokenMessenger: "0xtodo",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
   },
   [CHAIN_IDs.SCROLL_SEPOLIA]: {
