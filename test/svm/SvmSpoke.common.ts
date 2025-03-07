@@ -5,7 +5,7 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { randomBytes } from "crypto";
 import { ethers } from "ethers";
-import { evmAddressToPublicKey } from "../../src/svm";
+import { evmAddressToPublicKey } from "../../src/svm/web3-v1";
 import { DepositData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 

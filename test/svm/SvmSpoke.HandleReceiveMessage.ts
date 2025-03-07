@@ -5,7 +5,7 @@ import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
-import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm";
+import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm/web3-v1";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";
@@ -26,9 +26,8 @@ describe("svm_spoke.handle_receive_message", () => {
   let usedNonces: web3.PublicKey;
   let selfAuthority: web3.PublicKey;
   let eventAuthority: web3.PublicKey;
-  const firstNonce = 1;
   const attestation = Buffer.alloc(0);
-  let nonce = firstNonce;
+  let nonce = 0;
   let remainingAccounts: web3.AccountMeta[];
   const cctpMessageversion = 0;
   let destinationCaller = new web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
@@ -57,10 +56,15 @@ describe("svm_spoke.handle_receive_message", () => {
       [Buffer.from("message_transmitter")],
       messageTransmitterProgram.programId
     );
-    [usedNonces] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("used_nonces"), Buffer.from(remoteDomain.toString()), Buffer.from(firstNonce.toString())],
-      messageTransmitterProgram.programId
-    );
+    usedNonces = await messageTransmitterProgram.methods
+      .getNoncePda({
+        nonce: new BN(nonce.toString()),
+        sourceDomain: remoteDomain.toNumber(),
+      })
+      .accounts({
+        messageTransmitter: messageTransmitterState,
+      })
+      .view();
     [selfAuthority] = web3.PublicKey.findProgramAddressSync([Buffer.from("self_authority")], program.programId);
     [eventAuthority] = web3.PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId);
 
@@ -145,10 +149,15 @@ describe("svm_spoke.handle_receive_message", () => {
 
   it("Block Wrong Source Domain", async () => {
     const sourceDomain = 666;
-    [receiveMessageAccounts.usedNonces] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("used_nonces"), Buffer.from(sourceDomain.toString()), Buffer.from(firstNonce.toString())],
-      messageTransmitterProgram.programId
-    );
+    receiveMessageAccounts.usedNonces = await messageTransmitterProgram.methods
+      .getNoncePda({
+        nonce: new BN(nonce.toString()),
+        sourceDomain,
+      })
+      .accounts({
+        messageTransmitter: messageTransmitterState,
+      })
+      .view();
 
     const calldata = ethereumIface.encodeFunctionData("pauseDeposits", [true]);
     const messageBody = Buffer.from(calldata.slice(2), "hex");
@@ -520,34 +529,34 @@ describe("svm_spoke.handle_receive_message", () => {
       messageBody,
     });
 
-    // Remaining accounts specific to EmergencyDeleteRootBundle.
+    // Remaining accounts specific to EmergencyDeletedRootBundle.
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const emergencyDeleteRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
-    // closer in self-invoked EmergencyDeleteRootBundle.
+    // closer in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: true,
       isWritable: true,
       pubkey: provider.wallet.publicKey,
     });
-    // state in self-invoked EmergencyDeleteRootBundle.
+    // state in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: state,
     });
-    // root_bundle in self-invoked EmergencyDeleteRootBundle.
+    // root_bundle in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: true,
       pubkey: rootBundle,
     });
-    // event_authority in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    // event_authority in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: eventAuthority,
     });
-    // program in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    // program in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,

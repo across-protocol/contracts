@@ -1,0 +1,2049 @@
+{
+  "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
+  "metadata": {
+    "name": "token_messenger_minter",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "upgrade_authority",
+          "signer": true
+        },
+        {
+          "name": "authority_pda"
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "token_messenger_minter_program_data"
+        },
+        {
+          "name": "token_messenger_minter_program"
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transfer_ownership",
+      "discriminator": [
+        65,
+        177,
+        215,
+        73,
+        53,
+        45,
+        99,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "TransferOwnershipParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "accept_ownership",
+      "discriminator": [
+        172,
+        23,
+        43,
+        13,
+        238,
+        213,
+        85,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "pending_owner",
+          "signer": true
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "AcceptOwnershipParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "add_remote_token_messenger",
+      "discriminator": [
+        12,
+        149,
+        172,
+        165,
+        111,
+        202,
+        24,
+        33
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "AddRemoteTokenMessengerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "remove_remote_token_messenger",
+      "discriminator": [
+        65,
+        114,
+        66,
+        85,
+        169,
+        98,
+        177,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RemoveRemoteTokenMessengerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_for_burn",
+      "discriminator": [
+        215,
+        60,
+        61,
+        46,
+        114,
+        55,
+        128,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "event_rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender_authority_pda"
+        },
+        {
+          "name": "burn_token_account",
+          "writable": true
+        },
+        {
+          "name": "message_transmitter",
+          "writable": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true
+        },
+        {
+          "name": "burn_token_mint",
+          "writable": true
+        },
+        {
+          "name": "message_sent_event_data",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "message_transmitter_program"
+        },
+        {
+          "name": "token_messenger_minter_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "DepositForBurnParams"
+            }
+          }
+        }
+      ],
+      "returns": "u64"
+    },
+    {
+      "name": "deposit_for_burn_with_caller",
+      "discriminator": [
+        167,
+        222,
+        19,
+        114,
+        85,
+        21,
+        14,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "event_rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender_authority_pda"
+        },
+        {
+          "name": "burn_token_account",
+          "writable": true
+        },
+        {
+          "name": "message_transmitter",
+          "writable": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true
+        },
+        {
+          "name": "burn_token_mint",
+          "writable": true
+        },
+        {
+          "name": "message_sent_event_data",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "message_transmitter_program"
+        },
+        {
+          "name": "token_messenger_minter_program"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "DepositForBurnWithCallerParams"
+            }
+          }
+        }
+      ],
+      "returns": "u64"
+    },
+    {
+      "name": "replace_deposit_for_burn",
+      "discriminator": [
+        7,
+        27,
+        93,
+        132,
+        1,
+        80,
+        19,
+        163
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "event_rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender_authority_pda"
+        },
+        {
+          "name": "message_transmitter",
+          "writable": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "message_sent_event_data",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "message_transmitter_program"
+        },
+        {
+          "name": "token_messenger_minter_program"
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "ReplaceDepositForBurnParams"
+            }
+          }
+        }
+      ],
+      "returns": "u64"
+    },
+    {
+      "name": "handle_receive_message",
+      "discriminator": [
+        133,
+        102,
+        1,
+        180,
+        145,
+        11,
+        138,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "authority_pda",
+          "signer": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true
+        },
+        {
+          "name": "token_pair"
+        },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "HandleReceiveMessageParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_token_controller",
+      "discriminator": [
+        88,
+        6,
+        98,
+        10,
+        79,
+        59,
+        15,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetTokenControllerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "pauser",
+          "signer": true
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "PauseParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "pauser",
+          "signer": true
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UnpauseParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_pauser",
+      "discriminator": [
+        140,
+        171,
+        211,
+        132,
+        57,
+        201,
+        16,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UpdatePauserParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_max_burn_amount_per_message",
+      "discriminator": [
+        30,
+        128,
+        145,
+        240,
+        70,
+        237,
+        109,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "token_controller",
+          "signer": true
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetMaxBurnAmountPerMessageParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "add_local_token",
+      "discriminator": [
+        213,
+        199,
+        205,
+        18,
+        98,
+        124,
+        73,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true
+        },
+        {
+          "name": "local_token_mint"
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "AddLocalTokenParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "remove_local_token",
+      "discriminator": [
+        27,
+        43,
+        66,
+        170,
+        188,
+        44,
+        109,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RemoveLocalTokenParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "link_token_pair",
+      "discriminator": [
+        68,
+        162,
+        24,
+        104,
+        125,
+        46,
+        130,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "token_pair",
+          "writable": true
+        },
+        {
+          "name": "system_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "LinkTokenPairParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unlink_token_pair",
+      "discriminator": [
+        52,
+        198,
+        100,
+        114,
+        104,
+        174,
+        85,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "token_pair",
+          "writable": true
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UninkTokenPairParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "burn_token_custody",
+      "discriminator": [
+        233,
+        136,
+        180,
+        175,
+        112,
+        41,
+        62,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token"
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true
+        },
+        {
+          "name": "custody_token_mint",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "event_authority"
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "BurnTokenCustodyParams"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "TokenMessenger",
+      "discriminator": [
+        162,
+        4,
+        242,
+        52,
+        147,
+        243,
+        221,
+        96
+      ]
+    },
+    {
+      "name": "RemoteTokenMessenger",
+      "discriminator": [
+        105,
+        115,
+        174,
+        34,
+        95,
+        233,
+        138,
+        252
+      ]
+    },
+    {
+      "name": "TokenMinter",
+      "discriminator": [
+        122,
+        133,
+        84,
+        63,
+        57,
+        159,
+        171,
+        206
+      ]
+    },
+    {
+      "name": "TokenPair",
+      "discriminator": [
+        17,
+        214,
+        45,
+        176,
+        229,
+        149,
+        197,
+        71
+      ]
+    },
+    {
+      "name": "LocalToken",
+      "discriminator": [
+        159,
+        131,
+        58,
+        170,
+        193,
+        84,
+        128,
+        182
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "OwnershipTransferStarted",
+      "discriminator": [
+        183,
+        253,
+        239,
+        246,
+        140,
+        179,
+        133,
+        105
+      ]
+    },
+    {
+      "name": "OwnershipTransferred",
+      "discriminator": [
+        172,
+        61,
+        205,
+        183,
+        250,
+        50,
+        38,
+        98
+      ]
+    },
+    {
+      "name": "DepositForBurn",
+      "discriminator": [
+        144,
+        252,
+        145,
+        146,
+        6,
+        74,
+        167,
+        235
+      ]
+    },
+    {
+      "name": "MintAndWithdraw",
+      "discriminator": [
+        75,
+        67,
+        229,
+        70,
+        162,
+        126,
+        0,
+        71
+      ]
+    },
+    {
+      "name": "RemoteTokenMessengerAdded",
+      "discriminator": [
+        251,
+        29,
+        63,
+        244,
+        48,
+        114,
+        210,
+        175
+      ]
+    },
+    {
+      "name": "RemoteTokenMessengerRemoved",
+      "discriminator": [
+        255,
+        121,
+        137,
+        39,
+        230,
+        125,
+        11,
+        30
+      ]
+    },
+    {
+      "name": "SetTokenController",
+      "discriminator": [
+        193,
+        44,
+        243,
+        83,
+        230,
+        72,
+        120,
+        216
+      ]
+    },
+    {
+      "name": "PauserChanged",
+      "discriminator": [
+        142,
+        157,
+        158,
+        87,
+        127,
+        8,
+        119,
+        55
+      ]
+    },
+    {
+      "name": "SetBurnLimitPerMessage",
+      "discriminator": [
+        98,
+        152,
+        88,
+        191,
+        245,
+        30,
+        27,
+        209
+      ]
+    },
+    {
+      "name": "LocalTokenAdded",
+      "discriminator": [
+        146,
+        8,
+        224,
+        150,
+        122,
+        173,
+        23,
+        39
+      ]
+    },
+    {
+      "name": "LocalTokenRemoved",
+      "discriminator": [
+        181,
+        204,
+        1,
+        95,
+        2,
+        50,
+        66,
+        210
+      ]
+    },
+    {
+      "name": "TokenPairLinked",
+      "discriminator": [
+        2,
+        14,
+        177,
+        64,
+        155,
+        93,
+        196,
+        141
+      ]
+    },
+    {
+      "name": "TokenPairUnlinked",
+      "discriminator": [
+        78,
+        232,
+        230,
+        208,
+        180,
+        212,
+        246,
+        72
+      ]
+    },
+    {
+      "name": "Pause",
+      "discriminator": [
+        194,
+        251,
+        232,
+        196,
+        118,
+        95,
+        111,
+        219
+      ]
+    },
+    {
+      "name": "Unpause",
+      "discriminator": [
+        241,
+        149,
+        104,
+        90,
+        199,
+        136,
+        219,
+        146
+      ]
+    },
+    {
+      "name": "TokenCustodyBurned",
+      "discriminator": [
+        219,
+        143,
+        107,
+        226,
+        67,
+        75,
+        178,
+        46
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAuthority",
+      "msg": "Invalid authority"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidTokenMessengerState",
+      "msg": "Invalid token messenger state"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidTokenMessenger",
+      "msg": "Invalid token messenger"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidOwner",
+      "msg": "Invalid owner"
+    },
+    {
+      "code": 6004,
+      "name": "MalformedMessage",
+      "msg": "Malformed message"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidMessageBodyVersion",
+      "msg": "Invalid message body version"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    },
+    {
+      "code": 6007,
+      "name": "InvalidDestinationDomain",
+      "msg": "Invalid destination domain"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidDestinationCaller",
+      "msg": "Invalid destination caller"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidMintRecipient",
+      "msg": "Invalid mint recipient"
+    },
+    {
+      "code": 6010,
+      "name": "InvalidSender",
+      "msg": "Invalid sender"
+    },
+    {
+      "code": 6011,
+      "name": "InvalidTokenPair",
+      "msg": "Invalid token pair"
+    },
+    {
+      "code": 6012,
+      "name": "InvalidTokenMint",
+      "msg": "Invalid token mint"
+    }
+  ],
+  "types": [
+    {
+      "name": "AcceptOwnershipParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "AddRemoteTokenMessengerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositForBurnWithCallerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination_domain",
+            "type": "u32"
+          },
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_caller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositForBurnParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination_domain",
+            "type": "u32"
+          },
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HandleReceiveMessageParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "message_body",
+            "type": "bytes"
+          },
+          {
+            "name": "authority_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          },
+          {
+            "name": "local_message_transmitter",
+            "type": "pubkey"
+          },
+          {
+            "name": "message_body_version",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoveRemoteTokenMessengerParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "ReplaceDepositForBurnParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "original_message",
+            "type": "bytes"
+          },
+          {
+            "name": "original_attestation",
+            "type": "bytes"
+          },
+          {
+            "name": "new_destination_caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_mint_recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransferOwnershipParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AddLocalTokenParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "BurnTokenCustodyParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LinkTokenPairParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PauseParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "RemoveLocalTokenParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "SetMaxBurnAmountPerMessageParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burn_limit_per_message",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetTokenControllerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UninkTokenPairParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "UnpauseParams",
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "UpdatePauserParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_pauser",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMinterError",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "InvalidAuthority"
+          },
+          {
+            "name": "InvalidTokenMinterState"
+          },
+          {
+            "name": "ProgramPaused"
+          },
+          {
+            "name": "InvalidTokenPairState"
+          },
+          {
+            "name": "InvalidLocalTokenState"
+          },
+          {
+            "name": "InvalidPauser"
+          },
+          {
+            "name": "InvalidTokenController"
+          },
+          {
+            "name": "BurnAmountExceeded"
+          },
+          {
+            "name": "InvalidAmount"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMessenger",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "local_message_transmitter",
+            "type": "pubkey"
+          },
+          {
+            "name": "message_body_version",
+            "type": "u32"
+          },
+          {
+            "name": "authority_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoteTokenMessenger",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMinter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          },
+          {
+            "name": "pauser",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPair",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LocalToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "burn_limit_per_message",
+            "type": "u64"
+          },
+          {
+            "name": "messages_sent",
+            "type": "u64"
+          },
+          {
+            "name": "messages_received",
+            "type": "u64"
+          },
+          {
+            "name": "amount_sent",
+            "type": "u128"
+          },
+          {
+            "name": "amount_received",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "custody_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OwnershipTransferStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OwnershipTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositForBurn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "nonce",
+            "type": "u64"
+          },
+          {
+            "name": "burn_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_domain",
+            "type": "u32"
+          },
+          {
+            "name": "destination_token_messenger",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_caller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAndWithdraw",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "mint_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoteTokenMessengerAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoteTokenMessengerRemoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetTokenController",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PauserChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_address",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetBurnLimitPerMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token",
+            "type": "pubkey"
+          },
+          {
+            "name": "burn_limit_per_message",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LocalTokenAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LocalTokenRemoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPairLinked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPairUnlinked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pause",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "Unpause",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "TokenCustodyBurned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    }
+  ]
+}

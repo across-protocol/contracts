@@ -65,3 +65,17 @@ export const IOpUSDCBridgeAdapterAbi = [
     type: "function",
   },
 ];
+
+export const CCTPMessageTransmitterInterface = [
+  {
+    inputs: [
+      { internalType: "uint32", name: "destinationDomain", type: "uint32" },
+      { internalType: "bytes32", name: "recipient", type: "bytes32" },
+      { internalType: "bytes", name: "messageBody", type: "bytes" },
+    ],
+    name: "sendMessage",
+    outputs: [{ internalType: "uint64", name: "", type: "uint64" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+];

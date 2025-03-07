@@ -1,8 +1,7 @@
 // This script is used to initiate a Solana deposit. useful in testing.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -10,15 +9,15 @@ import {
   getAssociatedTokenAddressSync,
   getMint,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { PublicKey, Transaction, sendAndConfirmTransaction, TransactionInstruction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { getSpokePoolProgram } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 console.log("SVM-Spoke Program ID:", programId.toString());
 
@@ -30,9 +29,10 @@ const argv = yargs(hideBin(process.argv))
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
   .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
-  .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" }).argv;
+  .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" })
+  .option("integratorId", { type: "string", demandOption: false, describe: "integrator ID" }).argv;
 
-async function depositV3(): Promise<void> {
+async function deposit(): Promise<void> {
   const resolvedArgv = await argv;
   const seed = new BN(resolvedArgv.seed);
   const recipient = new PublicKey(resolvedArgv.recipient);
@@ -46,7 +46,8 @@ async function depositV3(): Promise<void> {
   const fillDeadline = quoteTimestamp + 3600; // 1 hour from now
   const exclusivityDeadline = 0;
   const message = Buffer.from([]); // Convert to Buffer
-
+  console.log("integratorId", resolvedArgv.integratorId);
+  const integratorId = resolvedArgv.integratorId || "";
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
@@ -88,6 +89,8 @@ async function depositV3(): Promise<void> {
     { property: "quoteTimestamp", value: quoteTimestamp.toString() },
     { property: "fillDeadline", value: fillDeadline.toString() },
     { property: "exclusivityDeadline", value: exclusivityDeadline.toString() },
+    { property: "message", value: message.toString("hex") },
+    { property: "integratorId", value: integratorId },
     { property: "programId", value: programId.toString() },
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
@@ -112,7 +115,7 @@ async function depositV3(): Promise<void> {
   );
 
   const depositIx = await (
-    program.methods.depositV3(
+    program.methods.deposit(
       signer.publicKey,
       recipient,
       inputToken,
@@ -137,11 +140,22 @@ async function depositV3(): Promise<void> {
       mint: inputToken,
     })
     .instruction();
-  const depositTx = new Transaction().add(approveIx, depositIx);
-  const tx = await sendAndConfirmTransaction(provider.connection, depositTx, [signer]);
+  // Create a custom instruction with arbitrary data
 
+  const depositTx = new Transaction().add(approveIx, depositIx);
+
+  if (integratorId !== "") {
+    const MemoIx = new TransactionInstruction({
+      keys: [{ pubkey: signer.publicKey, isSigner: true, isWritable: true }],
+      data: Buffer.from(integratorId, "utf-8"),
+      programId: new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr"), // Memo program ID
+    });
+    depositTx.add(MemoIx);
+  }
+
+  const tx = await sendAndConfirmTransaction(provider.connection, depositTx, [signer]);
   console.log("Transaction signature:", tx);
 }
 
 // Run the depositV3 function
-depositV3();
+deposit();

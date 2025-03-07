@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, getContractFactory } from "../../../utils/utils";
+import { expect, ethers, Contract, SignerWithAddress, getContractFactory, addressToBytes } from "../../../utils/utils";
 import { hre } from "../../../utils/utils.hre";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
@@ -49,7 +49,7 @@ describe("SpokePool Admin Functions", async function () {
     expect(await spokePool.rootBundles(0)).has.property("relayerRefundRoot", mockRelayerRefundRoot);
 
     await expect(spokePool.connect(owner).emergencyDeleteRootBundle(0))
-      .to.emit(spokePool, "EmergencyDeleteRootBundle")
+      .to.emit(spokePool, "EmergencyDeletedRootBundle")
       .withArgs(0);
 
     expect(await spokePool.rootBundles(0)).has.property("slowRelayRoot", ethers.utils.hexZeroPad("0x0", 32));
