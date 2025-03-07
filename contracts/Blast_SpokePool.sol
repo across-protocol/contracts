@@ -62,6 +62,9 @@ contract Blast_SpokePool is Ovm_SpokePool {
     address public constant L2_BLAST_BRIDGE = 0x4300000000000000000000000000000000000005;
     IBlast public constant BLAST_YIELD_CONTRACT = IBlast(0x4300000000000000000000000000000000000002);
 
+    // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
+    uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
+
     error InvalidClaimedAmount(address token);
     event YieldClaimed(address indexed recipient, address indexed token, uint256 amount);
 
@@ -82,7 +85,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            HYP_XERC20_FEE_CAP
         )
     {
         USDB = usdb;

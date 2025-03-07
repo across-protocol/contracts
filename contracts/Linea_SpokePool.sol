@@ -8,13 +8,17 @@ import "./SpokePool.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./libraries/HypXERC20Adapter.sol";
 
 /**
  * @notice Linea specific SpokePool.
  * @custom:security-contact bugs@across.to
  */
-contract Linea_SpokePool is SpokePool {
+contract Linea_SpokePool is SpokePool, HypXERC20Adapter {
     using SafeERC20 for IERC20;
+
+    // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
+    uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
 
     /**
      * @notice Address of Linea's Canonical Message Service contract on L2.
@@ -31,12 +35,18 @@ contract Linea_SpokePool is SpokePool {
      */
     IUSDCBridge public l2UsdcBridge;
 
+    /**
+     * @notice A map to store token => IHypXERC20Router relationships for XERC20 bridging via Hyperlane.
+     */
+    mapping(IERC20 => IHypXERC20Router) public hypXERC20Routers;
+
     /**************************************
      *               EVENTS               *
      **************************************/
     event SetL2TokenBridge(address indexed newTokenBridge, address oldTokenBridge);
     event SetL2MessageService(address indexed newMessageService, address oldMessageService);
     event SetL2UsdcBridge(address indexed newUsdcBridge, address oldUsdcBridge);
+    event SetHypXERC20Router(IERC20 indexed token, IHypXERC20Router indexed router);
 
     /**
      * @notice Construct Linea-specific SpokePool.
@@ -45,13 +55,17 @@ contract Linea_SpokePool is SpokePool {
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
+     * @param _hypXERC20FeeCap Fee cap for Hyperlane XERC20 transfers.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        HypXERC20Adapter(HyperlaneDomainIds.Ethereum, HYP_XERC20_FEE_CAP)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Initialize Linea-specific SpokePool.
@@ -114,6 +128,15 @@ contract Linea_SpokePool is SpokePool {
         _setL2UsdcBridge(_l2UsdcBridge);
     }
 
+    /**
+     * @notice Add token -> IHypXERC20Router relationship. Callable only by admin.
+     * @param token L2 token.
+     * @param router IHypXERC20Router contract that accepts cross-chain transfers.
+     */
+    function setXERC20HypRouter(IERC20 token, IHypXERC20Router router) public onlyAdmin nonReentrant {
+        _setXERC20HypRouter(token, router);
+    }
+
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
@@ -137,6 +160,15 @@ contract Linea_SpokePool is SpokePool {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        // Check if this token has a Hyperlane XERC20 router set. If so, use it
+        IHypXERC20Router hypRouter = _getXERC20HypRouter(IERC20(l2TokenAddress));
+        if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l2TokenAddress), hypRouter, withdrawalRecipient, amountToReturn);
+            // todo: early return here saves us from nested if branches, which are annoying. Also, set up a separate branch like this because
+            // todo: we're not enforcing a fee check in XERC20 transfers. Maybe we should? Then we'd have to expose a quoteFee fn from XERC20 adapter.
+            return;
+        }
+
         // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
         uint256 minFee = minimumFeeInWei();
         // We require that the caller pass in the fees as msg.value instead of pulling ETH out of this contract's balance.
@@ -188,5 +220,14 @@ contract Linea_SpokePool is SpokePool {
         address oldMessageService = address(l2MessageService);
         l2MessageService = _l2MessageService;
         emit SetL2MessageService(address(_l2MessageService), oldMessageService);
+    }
+
+    function _setXERC20HypRouter(IERC20 _token, IHypXERC20Router _router) internal {
+        hypXERC20Routers[_token] = _router;
+        emit SetHypXERC20Router(_token, _router);
+    }
+
+    function _getXERC20HypRouter(IERC20 _token) internal view returns (IHypXERC20Router) {
+        return hypXERC20Routers[_token];
     }
 }

@@ -8,13 +8,15 @@ import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfac
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "../libraries/HypXERC20Adapter.sol";
+import { AddressBook } from "../libraries/AddressBook.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
  * @custom:security-contact bugs@across.to
  */
 // solhint-disable-next-line contract-name-camelcase
-contract Linea_Adapter is AdapterInterface {
+contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
     using SafeERC20 for IERC20;
 
     WETH9Interface public immutable L1_WETH;
@@ -22,23 +24,32 @@ contract Linea_Adapter is AdapterInterface {
     ITokenBridge public immutable L1_TOKEN_BRIDGE;
     IUSDCBridge public immutable L1_USDC_BRIDGE;
 
+    // Fee cap to check against in Hyperlane XERC20 adapter when sending a transfer
+    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
+
+    // Helper contract to help us map token -> router for XERC20-enabled tokens
+    AddressBook public immutable ADDRESS_BOOK;
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _l1MessageService Canonical message service contract on L1.
      * @param _l1TokenBridge Canonical token bridge contract on L1.
      * @param _l1UsdcBridge L1 USDC Bridge to ConsenSys's L2 Linea.
+     * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
      */
     constructor(
         WETH9Interface _l1Weth,
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
-        IUSDCBridge _l1UsdcBridge
-    ) {
+        IUSDCBridge _l1UsdcBridge,
+        AddressBook _addressBook
+    ) HypXERC20Adapter(HyperlaneDomainIds.Linea, HYP_FEE_CAP_CONST) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;
         L1_USDC_BRIDGE = _l1UsdcBridge;
+        ADDRESS_BOOK = _addressBook;
     }
 
     /**
@@ -67,6 +78,9 @@ contract Linea_Adapter is AdapterInterface {
         uint256 amount,
         address to
     ) external payable override {
+        // Get the Hyperlane XERC20 router for this token, if any
+        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
+
         // If the l1Token is WETH then unwrap it to ETH then send the ETH directly
         // via the Canoncial Message Service.
         if (l1Token == address(L1_WETH)) {
@@ -78,6 +92,10 @@ contract Linea_Adapter is AdapterInterface {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_USDC_BRIDGE), amount);
             L1_USDC_BRIDGE.depositTo(amount, to);
         }
+        // Check if this token has a Hyperlane XERC20 router set. If so, use it
+        else if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
+        }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_TOKEN_BRIDGE), amount);
@@ -85,5 +103,9 @@ contract Linea_Adapter is AdapterInterface {
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
+    }
+
+    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+        return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }

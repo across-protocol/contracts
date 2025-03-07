@@ -7,6 +7,10 @@ import "./Ovm_SpokePool.sol";
  * @notice Boba Spoke pool. Note that the l2ETH and l2WETH are the opposite as that in Optimism.
  */
 contract Boba_SpokePool is Ovm_SpokePool {
+    // todo: is 1 ether for Boba still in ETH?
+    // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
+    uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
@@ -18,7 +22,8 @@ contract Boba_SpokePool is Ovm_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             IERC20(address(0)),
-            ITokenMessenger(address(0))
+            ITokenMessenger(address(0)),
+            HYP_XERC20_FEE_CAP
         )
     {} // solhint-disable-line no-empty-blocks
 

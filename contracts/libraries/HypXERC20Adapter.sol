@@ -13,6 +13,12 @@ import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 library HyperlaneDomainIds {
     uint32 public constant Ethereum = 1;
     uint32 public constant Arbitrum = 42161;
+    uint32 public constant Base = 8453;
+    uint32 public constant Blast = 81457;
+    uint32 public constant Linea = 59144;
+    uint32 public constant Mode = 34443;
+    uint32 public constant Unichain = 130;
+
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
     // assigned a domain ID by Hyperlane messaging protocol.
     uint32 public constant UNINITIALIZED = type(uint32).max;
@@ -77,6 +83,7 @@ contract HypXERC20Adapter {
      * @param _feeCap a fee cap we check against before sending a message with value to Hyperlane as fees.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
+    // todo: as inheriting adapters all live on L1, we could avoid this _feeCap argument in constructor and just set it here as a constant at 1 ether
     constructor(uint32 _dstDomainId, uint256 _feeCap) {
         HYP_DST_DOMAIN = _dstDomainId;
         HYP_FEE_CAP = _feeCap;
