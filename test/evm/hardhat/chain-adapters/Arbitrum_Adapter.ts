@@ -31,7 +31,7 @@ import { IOFT__factory } from "../../../../typechain/factories/@layerzerolabs/of
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
-import { OFTAddressBook, OFTAddressBook__factory } from "../../../../typechain";
+import { AddressBook, AddressBook__factory } from "../../../../typechain";
 
 let hubPool: Contract,
   arbitrumAdapter: Contract,
@@ -49,7 +49,7 @@ let l1ERC20GatewayRouter: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
   oftMessenger: FakeContract<IOFT>,
-  oftAddressBook: FakeContract<OFTAddressBook>;
+  oftAddressBook: FakeContract<AddressBook>;
 
 const arbitrumChainId = 42161;
 
@@ -73,7 +73,7 @@ describe("Arbitrum Chain Adapter", function () {
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
-    oftAddressBook = await createTypedFakeFromABI([...OFTAddressBook__factory.abi]);
+    oftAddressBook = await createTypedFakeFromABI([...AddressBook__factory.abi]);
     await oftAddressBook.connect(owner).setOFTMessenger(usdt.address, oftMessenger.address);
 
     l1Inbox = await createFake("Inbox");
