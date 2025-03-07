@@ -23,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
   ];
 
-  const instance = await hre.deployments.deploy("DoctorWho_Adapter", {
+  const instance = await hre.deployments.deploy("Unichain_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
@@ -33,4 +33,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["DoctorWhoAdapter", "doctorwho"];
+func.tags = ["UnichainAdapter", "unichain"];
