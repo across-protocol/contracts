@@ -18,6 +18,7 @@ library HyperlaneDomainIds {
     uint32 public constant Linea = 59144;
     uint32 public constant Mode = 34443;
     uint32 public constant Unichain = 130;
+    uint32 public constant Optimism = 10;
 
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
     // assigned a domain ID by Hyperlane messaging protocol.

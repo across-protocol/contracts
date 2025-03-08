@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, TokenRolesEnum } from "../constants";
 import {
   ethers,
   expect,
@@ -8,16 +8,24 @@ import {
   getContractFactory,
   seedContract,
   toWei,
+  toWeiWithDecimals,
+  BigNumber,
+  randomBytes32,
+  createTypedFakeFromABI,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
+import { IHypXERC20Router__factory } from "../../../../typechain";
 
-let hubPool: Contract, lineaSpokePool: Contract, dai: Contract, weth: Contract, usdc: Contract;
+let hubPool: Contract, lineaSpokePool: Contract, dai: Contract, weth: Contract, usdc: Contract, l2EzETH: Contract;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
-let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract, lineaUsdcBridge: FakeContract;
+let lineaMessageService: FakeContract,
+  lineaTokenBridge: FakeContract,
+  lineaUsdcBridge: FakeContract,
+  l2HypXERC20Router: FakeContract;
 
 const lineaMessageServiceAbi = [
   {
@@ -101,6 +109,10 @@ describe("Linea Spoke Pool", function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, dai, usdc, hubPool } = await hubPoolFixture());
 
+    // create ezETH token for XERC20 testing
+    l2EzETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
+    await l2EzETH.addMember(TokenRolesEnum.MINTER, owner.address);
+
     lineaMessageService = await smock.fake(lineaMessageServiceAbi, {
       address: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     });
@@ -111,6 +123,7 @@ describe("Linea Spoke Pool", function () {
       address: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
     });
     lineaUsdcBridge.usdc.returns(usdc.address);
+    l2HypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
 
     await owner.sendTransaction({ to: lineaMessageService.address, value: toWei("1") });
 
@@ -127,7 +140,14 @@ describe("Linea Spoke Pool", function () {
       { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
-    await seedContract(lineaSpokePool, relayer, [dai, usdc], weth, amountHeldByPool);
+    await seedContract(lineaSpokePool, relayer, [dai, usdc, l2EzETH], weth, amountHeldByPool);
+
+    // Set up XERC20 router for l2EzETH
+    lineaMessageService.sender.returns(owner.address);
+    await lineaSpokePool
+      .connect(lineaMessageService.wallet)
+      .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
+    lineaMessageService.sender.reset();
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
@@ -242,5 +262,33 @@ describe("Linea Spoke Pool", function () {
     ).to.changeTokenBalance(weth, lineaSpokePool, amountToReturn.mul(-1));
     expect(lineaMessageService.sendMessage).to.have.been.calledWith(hubPool.address, fee, "0x");
     expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(amountToReturn.add(fee));
+  });
+  it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
+    const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
+    l2HypXERC20Router.quoteGasPayment.returns(hypXERC20Fee);
+
+    const ezETHSendAmount = BigNumber.from("1234567000000000000");
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2EzETH.address,
+      await lineaSpokePool.callStatic.chainId(),
+      ezETHSendAmount
+    );
+    lineaMessageService.sender.returns(owner.address);
+    await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+
+    await lineaSpokePool
+      .connect(relayer)
+      .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: hypXERC20Fee.add(hypXERC20Fee) });
+
+    // Adapter should have approved l2HypXERC20Router to spend its ERC20
+    expect(await l2EzETH.allowance(lineaSpokePool.address, l2HypXERC20Router.address)).to.equal(ezETHSendAmount);
+
+    const hubPoolHypDomainId = 1;
+    expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
+    expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
+      hubPoolHypDomainId,
+      ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
+      ezETHSendAmount
+    );
   });
 });

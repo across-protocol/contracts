@@ -78,6 +78,10 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         uint256 amount,
         address to
     ) external payable override {
+        // IHypXERC20Router hypRouter2 = _getHypXERC20Router(IERC20(l1Token));
+        // _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter2, to, amount);
+        // return;
+
         // Get the Hyperlane XERC20 router for this token, if any
         IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
 
