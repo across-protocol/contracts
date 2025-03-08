@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 import "./libraries/OFTTransportAdapter.sol";
+import "./libraries/HypXERC20Adapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
 
@@ -11,7 +12,7 @@ import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  * @custom:security-contact bugs@across.to
  */
-contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter {
+contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter, HypXERC20Adapter {
     // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
@@ -19,12 +20,16 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
-    // A map to store token -> IOFT relationships for OFT bridging.
+    // A map to store token => IOFT relationships for OFT bridging.
     mapping(IERC20 => IOFT) public oftMessengers;
+
+    // A map to store token => IHypXERC20Router relationships for XERC20 bridging via Hyperlane.
+    mapping(IERC20 => IHypXERC20Router) public hypXERC20Routers;
 
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
     event SetOFTMessenger(IERC20 indexed token, IOFT indexed messenger);
+    event SetHypXERC20Router(IERC20 indexed token, IHypXERC20Router indexed router);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -34,11 +39,14 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         // _oftFeeCap can be set to 1 ether for Arbitrum, but has to be custom-set for other chains that might inherit this adapter, like AlephZero
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        // same as above
+        uint256 _hypXERC20FeeCap
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
         OFTTransportAdapter(OFTEIds.Ethereum, _oftFeeCap)
+        HypXERC20Adapter(HyperlaneDomainIds.Ethereum, _hypXERC20FeeCap)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -95,18 +103,30 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         _setOftMessenger(token, messenger);
     }
 
+    /**
+     * @notice Add token -> IHypXERC20Router relationship. Callable only by admin.
+     * @param token Arbitrum token.
+     * @param router IHypXERC20Router contract that accepts cross-chain transfers.
+     */
+    function setXERC20HypRouter(IERC20 token, IHypXERC20Router router) public onlyAdmin nonReentrant {
+        _setXERC20HypRouter(token, router);
+    }
+
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         IOFT oftMessenger = _getOftMessenger(IERC20(l2TokenAddress));
+        IHypXERC20Router hypRouter = _getXERC20HypRouter(IERC20(l2TokenAddress));
 
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         } else if (address(oftMessenger) != address(0)) {
             _transferViaOFT(IERC20(l2TokenAddress), oftMessenger, withdrawalRecipient, amountToReturn);
+        } else if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l2TokenAddress), hypRouter, withdrawalRecipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
@@ -141,6 +161,15 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
 
     function _getOftMessenger(IERC20 _token) internal view returns (IOFT) {
         return oftMessengers[_token];
+    }
+
+    function _setXERC20HypRouter(IERC20 _token, IHypXERC20Router _router) internal {
+        hypXERC20Routers[_token] = _router;
+        emit SetHypXERC20Router(_token, _router);
+    }
+
+    function _getXERC20HypRouter(IERC20 _token) internal view returns (IHypXERC20Router) {
+        return hypXERC20Routers[_token];
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without

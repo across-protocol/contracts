@@ -1,4 +1,4 @@
-import { amountToLp, mockTreeRoot, refundProposalLiveness, bondAmount } from "../constants";
+import { amountToLp, mockTreeRoot, refundProposalLiveness, bondAmount, TokenRolesEnum } from "../constants";
 import {
   ethers,
   expect,
@@ -10,21 +10,30 @@ import {
   randomAddress,
   toWei,
   BigNumber,
+  createTypedFakeFromABI,
+  fromWei,
+  toBN,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
+import { AddressBook, AddressBook__factory, IHypXERC20Router, IHypXERC20Router__factory } from "../../../../typechain";
 
 let hubPool: Contract,
   lineaAdapter: Contract,
   weth: Contract,
   dai: Contract,
   usdc: Contract,
+  ezETH: Contract,
   timer: Contract,
   mockSpoke: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
-let lineaMessageService: FakeContract, lineaTokenBridge: FakeContract, lineaUsdcBridge: FakeContract;
+let lineaMessageService: FakeContract,
+  lineaTokenBridge: FakeContract,
+  lineaUsdcBridge: FakeContract,
+  addressBook: FakeContract<AddressBook>,
+  hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const lineaChainId = 59144;
 
@@ -85,10 +94,16 @@ describe("Linea Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
     ({ weth, dai, usdc, l2Weth, l2Dai, l2Usdc, hubPool, mockSpoke, timer } = await hubPoolFixture());
-    await seedWallet(dataWorker, [dai, usdc], weth, amountToLp);
-    await seedWallet(liquidityProvider, [dai, usdc], weth, amountToLp.mul(10));
 
-    await enableTokensForLP(owner, hubPool, weth, [weth, dai, usdc]);
+    // Create ezETH token for XERC20 testing
+    ezETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
+    await ezETH.addMember(TokenRolesEnum.MINTER, owner.address);
+    const l2EzETH = randomAddress();
+
+    await seedWallet(dataWorker, [dai, usdc, ezETH], weth, amountToLp);
+    await seedWallet(liquidityProvider, [dai, usdc, ezETH], weth, amountToLp.mul(10));
+
+    await enableTokensForLP(owner, hubPool, weth, [weth, dai, usdc, ezETH]);
     await weth.connect(liquidityProvider).approve(hubPool.address, amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(weth.address, amountToLp);
     await weth.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
@@ -98,6 +113,9 @@ describe("Linea Chain Adapter", function () {
     await usdc.connect(liquidityProvider).approve(hubPool.address, amountToLp);
     await hubPool.connect(liquidityProvider).addLiquidity(usdc.address, amountToLp);
     await usdc.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
+    await ezETH.connect(liquidityProvider).approve(hubPool.address, amountToLp);
+    await hubPool.connect(liquidityProvider).addLiquidity(ezETH.address, amountToLp);
+    await ezETH.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
 
     lineaMessageService = await smock.fake(lineaMessageServiceAbi, {
       address: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
@@ -108,9 +126,18 @@ describe("Linea Chain Adapter", function () {
     });
     lineaUsdcBridge.usdc.returns(usdc.address);
 
+    hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
+    addressBook = await createTypedFakeFromABI([...AddressBook__factory.abi]);
+
     lineaAdapter = await (
       await getContractFactory("Linea_Adapter", owner)
-    ).deploy(weth.address, lineaMessageService.address, lineaTokenBridge.address, lineaUsdcBridge.address);
+    ).deploy(
+      weth.address,
+      lineaMessageService.address,
+      lineaTokenBridge.address,
+      lineaUsdcBridge.address,
+      addressBook.address
+    );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("100000") });
@@ -119,6 +146,7 @@ describe("Linea Chain Adapter", function () {
     await hubPool.setPoolRebalanceRoute(lineaChainId, weth.address, l2Weth);
     await hubPool.setPoolRebalanceRoute(lineaChainId, dai.address, l2Dai);
     await hubPool.setPoolRebalanceRoute(lineaChainId, usdc.address, l2Usdc);
+    await hubPool.setPoolRebalanceRoute(lineaChainId, ezETH.address, l2EzETH);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -168,5 +196,36 @@ describe("Linea Chain Adapter", function () {
     ).to.changeTokenBalance(weth, hubPool, leaves[0].netSendAmounts[0].add(proposalBond).mul(-1));
     expect(lineaMessageService.sendMessage).to.have.been.calledWith(mockSpoke.address, 0, "0x");
     expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(leaves[0].netSendAmounts[0]);
+  });
+  it("Correctly calls Hyperlane XERC20 bridge", async function () {
+    // set hyperlane router in address book
+    await addressBook.connect(owner).setHypXERC20Router(ezETH.address, hypXERC20Router.address);
+
+    // construct repayment bundle
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, lineaChainId);
+    await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
+
+    addressBook.hypXERC20Routers.whenCalledWith(ezETH.address).returns(hypXERC20Router.address);
+    hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));
+
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+    // Adapter should have approved gateway to spend its ERC20.
+
+    expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
+
+    // source https://github.com/hyperlane-xyz/hyperlane-registry
+    const lineaDstDomainId = 59144;
+
+    // We should have called send on the oftMessenger once with correct params
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(lineaDstDomainId);
+
+    expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
+    expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
+      lineaDstDomainId,
+      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      tokensSendToL2
+    );
   });
 });

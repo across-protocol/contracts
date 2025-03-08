@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
+import "../libraries/HypXERC20Adapter.sol";
+import { AddressBook } from "../libraries/AddressBook.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Base adapter
@@ -25,7 +27,7 @@ import "../external/interfaces/CCTPInterfaces.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
+contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20Adapter {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
@@ -33,18 +35,26 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
 
     IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
 
+    // fee cap to check against in Hyperlane XERC20 adapter when sending a transfer
+    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
+
+    // Helper contract to help us map token -> router for XERC20-enabled tokens
+    AddressBook public immutable ADDRESS_BOOK;
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _crossDomainMessenger XDomainMessenger Mode system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
+     * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
-        IERC20 _l1Usdc
+        IERC20 _l1Usdc,
+        AddressBook _addressBook
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(
@@ -53,9 +63,11 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
             ITokenMessenger(address(0)),
             CircleDomainIds.UNINITIALIZED
         )
+        HypXERC20Adapter(HyperlaneDomainIds.Mode, HYP_FEE_CAP_CONST)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
+        ADDRESS_BOOK = _addressBook;
     }
 
     /**
@@ -81,6 +93,8 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         uint256 amount,
         address to
     ) external payable override {
+        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
+
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
@@ -89,6 +103,10 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
+        }
+        // Check if this token has a Hyperlane XERC20 router set. If so, use it
+        else if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
@@ -96,5 +114,9 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
+    }
+
+    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+        return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }

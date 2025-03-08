@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
+import "../libraries/HypXERC20Adapter.sol";
+import { AddressBook } from "../libraries/AddressBook.sol";
 
 interface IL1ERC20Bridge {
     /// @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
@@ -46,7 +48,7 @@ interface IL1ERC20Bridge {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
+contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20Adapter {
     using SafeERC20 for IERC20;
     uint32 public immutable L2_GAS_LIMIT; // 200,000 is a reasonable default.
 
@@ -58,12 +60,22 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     IL1ERC20Bridge public immutable L1_BLAST_BRIDGE; // 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115 on mainnet.
     address public immutable L1_DAI; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
 
+    // Fee cap to check against in Hyperlane XERC20 adapter when sending a transfer
+    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
+
+    // Helper contract to help us map token -> router for XERC20-enabled tokens
+    AddressBook public immutable ADDRESS_BOOK;
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _crossDomainMessenger XDomainMessenger Blast system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
+     * @param l1BlastBridge Blast-specific bridge for yielding tokens.
+     * @param l1Dai DAI address on L1.
+     * @param l2GasLimit Gas limit for L2 execution.
+     * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
      */
     constructor(
         WETH9Interface _l1Weth,
@@ -72,17 +84,20 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         IERC20 _l1Usdc,
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
-        uint32 l2GasLimit
+        uint32 l2GasLimit,
+        AddressBook _addressBook
     )
         CrossDomainEnabled(_crossDomainMessenger)
         // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
         CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINITIALIZED)
+        HypXERC20Adapter(HyperlaneDomainIds.Blast, HYP_FEE_CAP_CONST)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
         L1_BLAST_BRIDGE = l1BlastBridge;
         L1_DAI = l1Dai;
         L2_GAS_LIMIT = l2GasLimit;
+        ADDRESS_BOOK = _addressBook;
     }
 
     /**
@@ -109,7 +124,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         address to
     ) external payable override {
         // If token can be bridged into yield-ing version of ERC20 on L2 side, then use Blast Bridge, otherwise
-        // use standard bridge.
+        // use standard bridge or Hyperlane router, if available
+        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
 
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
@@ -121,6 +137,10 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         else if (l1Token == L1_DAI) {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_BLAST_BRIDGE), amount);
             L1_BLAST_BRIDGE.bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
+        }
+        // Check if this token has a Hyperlane XERC20 router set. If so, use it
+        else if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
@@ -128,5 +148,9 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
+    }
+
+    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+        return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }

@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
+import "./libraries/HypXERC20Adapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
@@ -32,7 +33,7 @@ interface IL2ERC20Bridge {
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  * @custom:security-contact bugs@across.to
  */
-contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
+contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     using SafeERC20 for IERC20;
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
@@ -57,9 +58,16 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     // requires specfiying an L1 token.
     mapping(address => address) public remoteL1Tokens;
 
+    // A map to store token => IHypXERC20Router relationships for XERC20 bridging via Hyperlane.
+    mapping(IERC20 => IHypXERC20Router) public hypXERC20Routers;
+
+    // Fee cap for Hyperlane XERC20 transfers
+    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
+
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
     event SetRemoteL1Token(address indexed l2Token, address indexed l1Token);
+    event SetHypXERC20Router(IERC20 indexed token, IHypXERC20Router indexed router);
 
     error NotCrossDomainAdmin();
 
@@ -69,10 +77,12 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint256 _hypXERC20FeeCap
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+        HypXERC20Adapter(HyperlaneDomainIds.Ethereum, _hypXERC20FeeCap)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -125,6 +135,15 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         emit SetL2TokenBridge(l2Token, tokenBridge);
     }
 
+    /**
+     * @notice Add token -> IHypXERC20Router relationship. Callable only by admin.
+     * @param token L2 token.
+     * @param router IHypXERC20Router contract that accepts cross-chain transfers.
+     */
+    function setXERC20HypRouter(IERC20 token, IHypXERC20Router router) public onlyAdmin nonReentrant {
+        _setXERC20HypRouter(token, router);
+    }
+
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
@@ -147,6 +166,9 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
+        IERC20 l2ERC20 = IERC20(l2TokenAddress);
+        IHypXERC20Router hypRouter = _getXERC20HypRouter(l2ERC20);
+
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
         if (l2TokenAddress == address(wrappedNativeToken)) {
@@ -163,6 +185,10 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
+        }
+        // If the token has a Hyperlane XERC20 router, use it for bridging
+        else if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(l2ERC20, hypRouter, withdrawalRecipient, amountToReturn);
         }
         // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
         // the l2TokenAddress. withdrawTo should be used to bridge back non-native L2 tokens
@@ -208,8 +234,17 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
     }
 
+    function _setXERC20HypRouter(IERC20 _token, IHypXERC20Router _router) internal {
+        hypXERC20Routers[_token] = _router;
+        emit SetHypXERC20Router(_token, _router);
+    }
+
+    function _getXERC20HypRouter(IERC20 _token) internal view returns (IHypXERC20Router) {
+        return hypXERC20Routers[_token];
+    }
+
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure its always at the end of storage.
-    uint256[999] private __gap;
+    uint256[998] private __gap;
 }

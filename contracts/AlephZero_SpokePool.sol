@@ -20,7 +20,9 @@ contract AlephZero_SpokePool is Arbitrum_SpokePool {
         ITokenMessenger _cctpTokenMessenger,
         // _oftFeeCap can be set to 0 for AlephZero_SpokePool as AlephZero does not support OFT transfers.
         // If we want to support them, would have to do some fee research calling `quoteSend` on relevant IOFT contracts
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        // same as above, but for hyperlane XERC20 transfers
+        uint256 _hypFeeCap
     )
         Arbitrum_SpokePool(
             _wrappedNativeTokenAddress,
@@ -28,7 +30,8 @@ contract AlephZero_SpokePool is Arbitrum_SpokePool {
             _fillDeadlineBuffer,
             _l2Usdc,
             _cctpTokenMessenger,
-            _oftFeeCap
+            _oftFeeCap,
+            _hypFeeCap
         )
     {} // solhint-disable-line no-empty-blocks
 }
