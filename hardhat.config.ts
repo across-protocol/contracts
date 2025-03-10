@@ -61,6 +61,15 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
+// This is only used by Blast_SpokePool for now, as it's the largest bytecode-wise
+const LARGEST_CONTRACT_COMPILER_SETTINGS = {
+  version: solcVersion,
+  settings: {
+    optimizer: { enabled: true, runs: 200 },
+    viaIR: true,
+    debug: { revertStrings: isTest ? "debug" : "strip" },
+  },
+};
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -81,7 +90,6 @@ const config: HardhatUserConfig = {
       },
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -92,6 +100,7 @@ const config: HardhatUserConfig = {
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {

@@ -75,8 +75,8 @@ contract HypXERC20Adapter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable HYP_DST_DOMAIN;
 
-    error HypFeeCapExceeded(uint256 feeRequested);
-    error HypInsufficientBalanceForFee(uint256 feeRequested, uint256 balance);
+    error HypFeeCapExceeded();
+    error HypInsufficientBalanceForFee();
 
     /**
      * @notice initializes the HyperlaneXERC20Adapter contract.
@@ -84,7 +84,6 @@ contract HypXERC20Adapter {
      * @param _feeCap a fee cap we check against before sending a message with value to Hyperlane as fees.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
-    // todo: as inheriting adapters all live on L1, we could avoid this _feeCap argument in constructor and just set it here as a constant at 1 ether
     constructor(uint32 _dstDomainId, uint256 _feeCap) {
         HYP_DST_DOMAIN = _dstDomainId;
         HYP_FEE_CAP = _feeCap;
@@ -108,8 +107,8 @@ contract HypXERC20Adapter {
 
         // Quote the gas payment required for the transfer
         uint256 fee = _router.quoteGasPayment(HYP_DST_DOMAIN);
-        if (fee > HYP_FEE_CAP) revert HypFeeCapExceeded(fee);
-        if (fee > address(this).balance) revert HypInsufficientBalanceForFee(fee, address(this).balance);
+        if (fee > HYP_FEE_CAP) revert HypFeeCapExceeded();
+        if (fee > address(this).balance) revert HypInsufficientBalanceForFee();
 
         // Approve the exact _amount for `_router` to spend
         _token.forceApprove(address(_router), _amount);

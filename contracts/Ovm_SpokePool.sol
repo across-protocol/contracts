@@ -59,15 +59,13 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     mapping(address => address) public remoteL1Tokens;
 
     // A map to store token => IHypXERC20Router relationships for XERC20 bridging via Hyperlane.
-    mapping(IERC20 => IHypXERC20Router) public hypXERC20Routers;
-
-    // Fee cap for Hyperlane XERC20 transfers
-    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
+    // todo: move this to `SpokePool`, as it's used by most of SpokePools
+    mapping(address => address) public hypXERC20Routers;
 
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
     event SetRemoteL1Token(address indexed l2Token, address indexed l1Token);
-    event SetHypXERC20Router(IERC20 indexed token, IHypXERC20Router indexed router);
+    event SetHypXERC20Router(address indexed token, address indexed router);
 
     error NotCrossDomainAdmin();
 
@@ -137,11 +135,12 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
 
     /**
      * @notice Add token -> IHypXERC20Router relationship. Callable only by admin.
-     * @param token L2 token.
-     * @param router IHypXERC20Router contract that accepts cross-chain transfers.
+     * @param l2Token L2 token.
+     * @param hypRouter IHypXERC20Router contract that accepts cross-chain transfers.
      */
-    function setXERC20HypRouter(IERC20 token, IHypXERC20Router router) public onlyAdmin nonReentrant {
-        _setXERC20HypRouter(token, router);
+    function setXERC20HypRouter(address l2Token, address hypRouter) public onlyAdmin nonReentrant {
+        hypXERC20Routers[l2Token] = hypRouter;
+        emit SetHypXERC20Router(l2Token, hypRouter);
     }
 
     /**************************************
@@ -166,8 +165,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
-        IERC20 l2ERC20 = IERC20(l2TokenAddress);
-        IHypXERC20Router hypRouter = _getXERC20HypRouter(l2ERC20);
+        address hypRouter = hypXERC20Routers[l2TokenAddress];
 
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
@@ -187,8 +185,13 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         }
         // If the token has a Hyperlane XERC20 router, use it for bridging
-        else if (address(hypRouter) != address(0)) {
-            _transferXERC20ViaHyperlane(l2ERC20, hypRouter, withdrawalRecipient, amountToReturn);
+        else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(
+                IERC20(l2TokenAddress),
+                IHypXERC20Router(hypRouter),
+                withdrawalRecipient,
+                amountToReturn
+            );
         }
         // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
         // the l2TokenAddress. withdrawTo should be used to bridge back non-native L2 tokens
@@ -232,15 +235,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     // Apply OVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal view override {
         if (LibOptimismUpgradeable.crossChainSender(MESSENGER) != crossDomainAdmin) revert NotCrossDomainAdmin();
-    }
-
-    function _setXERC20HypRouter(IERC20 _token, IHypXERC20Router _router) internal {
-        hypXERC20Routers[_token] = _router;
-        emit SetHypXERC20Router(_token, _router);
-    }
-
-    function _getXERC20HypRouter(IERC20 _token) internal view returns (IHypXERC20Router) {
-        return hypXERC20Routers[_token];
     }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
