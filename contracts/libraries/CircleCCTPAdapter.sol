@@ -120,6 +120,7 @@ abstract contract CircleCCTPAdapter {
                     to,
                     address(usdcToken),
                     // The following parameters are new in this function from V2 to V1, can read more here:
+                    // https://developers.circle.com/stablecoins/evm-smart-contracts
                     bytes32(0), // destinationCaller is set to bytes32(0) to indicate that anyone can call
                     // receiveMessage on the destination to finalize the transfer
                     0, // maxFee can be set to 0 for a "standard transfer"
