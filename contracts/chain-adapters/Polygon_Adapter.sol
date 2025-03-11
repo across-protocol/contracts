@@ -100,8 +100,9 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
         address _l1Matic,
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Polygon) {
+        address _cctpTokenMessenger,
+        bool _cctpV2
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpV2, CircleDomainIds.Polygon) {
         ROOT_CHAIN_MANAGER = _rootChainManager;
         FX_STATE_SENDER = _fxStateSender;
         DEPOSIT_MANAGER = _depositManager;

@@ -92,7 +92,8 @@ contract WithdrawalAdapterTest is Test {
             fillDeadlineBuffer,
             fillDeadlineBuffer,
             l2Usdc,
-            tokenMessenger
+            address(tokenMessenger),
+            false
         );
         address proxy = address(
             // The cross domain admin is set as the messenger so that we may set remote token mappings.
@@ -115,7 +116,8 @@ contract WithdrawalAdapterTest is Test {
 
         arbitrumWithdrawalHelper = new Arbitrum_WithdrawalHelper(
             l2Usdc,
-            tokenMessenger,
+            address(tokenMessenger),
+            false,
             WETH9Interface(address(l2Weth)),
             CircleDomainIds.Ethereum,
             address(arbBridge),
@@ -131,7 +133,8 @@ contract WithdrawalAdapterTest is Test {
 
         ovmWithdrawalHelper = new Ovm_WithdrawalHelper(
             l2Usdc,
-            tokenMessenger,
+            address(tokenMessenger),
+            false,
             WETH9Interface(address(l2Weth)),
             CircleDomainIds.Ethereum,
             address(ovmBridge),
@@ -211,7 +214,8 @@ contract WithdrawalAdapterTest is Test {
         address newImplementation = address(
             new Arbitrum_WithdrawalHelper(
                 l2Usdc,
-                tokenMessenger,
+                address(tokenMessenger),
+                false,
                 WETH9Interface(address(l2Weth)),
                 CircleDomainIds.Ethereum,
                 address(arbBridge),

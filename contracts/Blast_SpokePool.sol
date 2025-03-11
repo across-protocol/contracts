@@ -71,7 +71,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger,
+        address _cctpTokenMessenger,
+        bool _cctpV2,
         address usdb,
         address l1Usdb,
         address yieldRecipient,
@@ -82,7 +83,8 @@ contract Blast_SpokePool is Ovm_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            _cctpV2
         )
     {
         USDB = usdb;

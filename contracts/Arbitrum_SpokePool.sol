@@ -27,10 +27,11 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        address _cctpTokenMessenger,
+        bool _cctpV2
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _cctpV2, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**

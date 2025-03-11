@@ -62,7 +62,14 @@ describe("Arbitrum Chain Adapter", function () {
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
-    ).deploy(l1Inbox.address, l1ERC20GatewayRouter.address, refundAddress.address, usdc.address, cctpMessenger.address);
+    ).deploy(
+      l1Inbox.address,
+      l1ERC20GatewayRouter.address,
+      refundAddress.address,
+      usdc.address,
+      cctpMessenger.address,
+      false
+    );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });

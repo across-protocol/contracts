@@ -12,7 +12,6 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitrum_Forwarder.sol";
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
@@ -62,7 +61,8 @@ contract ForwarderTest is Test {
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
             IERC20(address(0)),
-            ITokenMessenger(address(0))
+            address(0),
+            false
         );
 
         arbitrumForwarder = new Arbitrum_Forwarder(WETH9Interface(address(l2Weth)));

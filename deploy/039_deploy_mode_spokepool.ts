@@ -21,6 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
+    false,
   ];
   await deployNewProxy("Mode_SpokePool", constructorArgs, initArgs);
 };

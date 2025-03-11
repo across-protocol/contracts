@@ -67,10 +67,11 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        address _cctpTokenMessenger,
+        bool _cctpV2
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Optimism)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpV2, CircleDomainIds.Optimism)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

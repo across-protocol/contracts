@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IMessageTransmitter, ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
+import { IMessageTransmitter } from "../external/interfaces/CCTPInterfaces.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
@@ -76,12 +76,19 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
      */
     constructor(
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger,
+        address _cctpTokenMessenger,
         IMessageTransmitter _cctpMessageTransmitter,
         bytes32 solanaSpokePool,
         bytes32 solanaUsdc,
         bytes32 solanaSpokePoolUsdcVault
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Solana) {
+    )
+        CircleCCTPAdapter(
+            _l1Usdc,
+            _cctpTokenMessenger,
+            false, /* CCTPV2 sendMessage not supported */
+            CircleDomainIds.Solana
+        )
+    {
         // Solana adapter requires CCTP TokenMessenger and MessageTransmitter contracts to be set.
         if (address(_cctpTokenMessenger) == address(0)) {
             revert InvalidCctpTokenMessenger(address(_cctpTokenMessenger));

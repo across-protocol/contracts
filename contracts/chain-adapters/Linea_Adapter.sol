@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
-import "../libraries/CircleCCTPV2Adapter.sol";
+import "../libraries/CircleCCTPAdapter.sol";
 
 import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfaces/LineaInterfaces.sol";
 
@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @custom:security-contact bugs@across.to
  */
 // solhint-disable-next-line contract-name-camelcase
-contract Linea_Adapter is AdapterInterface, CircleCCTPV2Adapter {
+contract Linea_Adapter is AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     WETH9Interface public immutable L1_WETH;
@@ -33,8 +33,9 @@ contract Linea_Adapter is AdapterInterface, CircleCCTPV2Adapter {
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
         IERC20 _l1Usdc,
-        ITokenMessengerV2 _cctpTokenMessenger
-    ) CircleCCTPV2Adapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Linea) {
+        address _cctpTokenMessenger,
+        bool _cctpV2
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpV2, CircleDomainIds.Linea) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;

@@ -50,7 +50,8 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         CircleCCTPAdapter(
             _l1Usdc,
             // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
-            ITokenMessenger(address(0)),
+            address(0),
+            false,
             CircleDomainIds.UNINITIALIZED
         )
     {

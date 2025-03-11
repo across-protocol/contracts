@@ -18,7 +18,8 @@ contract Boba_SpokePool is Ovm_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             IERC20(address(0)),
-            ITokenMessenger(address(0))
+            address(0),
+            false
         )
     {} // solhint-disable-line no-empty-blocks
 

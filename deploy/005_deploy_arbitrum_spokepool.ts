@@ -22,6 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    false,
   ];
   await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs);
 };

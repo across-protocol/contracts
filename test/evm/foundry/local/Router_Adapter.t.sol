@@ -13,7 +13,6 @@ import { Router_Adapter } from "../../../../contracts/chain-adapters/Router_Adap
 import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { HubPool } from "../../../../contracts/HubPool.sol";
@@ -99,7 +98,8 @@ contract RouterAdapterTest is Test {
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
             IERC20(address(0)),
-            ITokenMessenger(address(0))
+            address(0),
+            false
         );
         routerAdapter = new Mock_Router_Adapter(address(optimismAdapter), l2Target, L2_CHAIN_ID, L3_CHAIN_ID, hubPool);
     }
