@@ -74,7 +74,7 @@ abstract contract CircleCCTPAdapter {
      * @notice Returns whether or not the CCTP bridge is enabled.
      * @dev If the CCTPTokenMessenger is the zero address, CCTP bridging is disabled.
      */
-    function _isCCTPEnabled() internal view virtual returns (bool) {
+    function _isCCTPEnabled() internal view returns (bool) {
         return address(cctpTokenMessenger) != address(0);
     }
 
@@ -94,7 +94,7 @@ abstract contract CircleCCTPAdapter {
      * @param to Address to receive USDC on the new domain represented as bytes32.
      * @param amount Amount of USDC to transfer.
      */
-    function _transferUsdc(bytes32 to, uint256 amount) internal virtual {
+    function _transferUsdc(bytes32 to, uint256 amount) internal {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger.
