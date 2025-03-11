@@ -98,7 +98,7 @@ describe("Linea Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, true],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
       }
     );
 
@@ -109,7 +109,7 @@ describe("Linea Spoke Pool", function () {
     const implementation = await hre.upgrades.deployImplementation(await getContractFactory("Linea_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
-      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, true],
+      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
     });
 
     // upgradeTo fails unless called by cross domain admin

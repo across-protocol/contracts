@@ -21,7 +21,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     opStack.L1StandardBridge,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    false,
   ];
 
   const instance = await hre.deployments.deploy("DoctorWho_Adapter", {

@@ -47,7 +47,7 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, false],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
       }
     );
 
@@ -62,7 +62,7 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, false],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
       }
     );
 

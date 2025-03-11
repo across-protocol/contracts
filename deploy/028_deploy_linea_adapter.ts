@@ -17,7 +17,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       // TODO: Requires USDC Linea address to be added, currently only USDC.e is set for Linea
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
-      true,
     ],
   });
 };

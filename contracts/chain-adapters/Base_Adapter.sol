@@ -47,12 +47,8 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        address _cctpTokenMessenger,
-        bool _cctpV2
-    )
-        CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpV2, CircleDomainIds.Base)
-    {
+        ITokenMessenger _cctpTokenMessenger
+    ) CrossDomainEnabled(_crossDomainMessenger) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base) {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
     }

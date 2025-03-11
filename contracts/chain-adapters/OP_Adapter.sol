@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
+import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { IOpUSDCBridgeAdapter } from "../external/interfaces/IOpUSDCBridgeAdapter.sol";
 import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
@@ -52,8 +53,7 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
         CircleCCTPAdapter(
             _l1Usdc,
             // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
-            address(0),
-            false,
+            ITokenMessenger(address(0)),
             CircleDomainIds.UNINITIALIZED
         )
     {

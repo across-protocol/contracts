@@ -5,6 +5,7 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { ArbitrumERC20Bridge as ArbitrumL1ERC20Bridge, ArbitrumCustomGasTokenInbox as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
 
@@ -108,14 +109,13 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        address _cctpTokenMessenger,
-        bool _cctpV2,
+        ICCTPTokenMessenger _cctpTokenMessenger,
         uint32 _cctpDomainId,
         uint8 _nativeTokenDecimals,
         FunderInterface _customGasTokenFunder,
         uint256 _l2MaxSubmissionCost,
         uint256 _l2GasPrice
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpV2, _cctpDomainId) {
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpDomainId) {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;

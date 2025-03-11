@@ -47,11 +47,10 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        address _cctpTokenMessenger,
-        bool _cctpV2
+        ITokenMessenger _cctpTokenMessenger
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpV2, CircleDomainIds.DoctorWho)
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.DoctorWho)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import { CircleCCTPAdapter, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
+import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -52,13 +52,12 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      */
     constructor(
         IERC20 _l2Usdc,
-        address _cctpTokenMessenger,
-        bool _cctpV2,
+        ITokenMessenger _cctpTokenMessenger,
         WETH9Interface _wrappedNativeToken,
         uint32 _destinationCircleDomainId,
         address _l2TokenGateway,
         address _tokenRecipient
-    ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _cctpV2, _destinationCircleDomainId) {
+    ) CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, _destinationCircleDomainId) {
         L2_TOKEN_GATEWAY = _l2TokenGateway;
         TOKEN_RECIPIENT = _tokenRecipient;
         WRAPPED_NATIVE_TOKEN = _wrappedNativeToken;

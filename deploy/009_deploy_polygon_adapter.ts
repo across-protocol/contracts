@@ -18,7 +18,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WETH[chainId],
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    false,
   ];
   const instance = await hre.deployments.deploy("Polygon_Adapter", {
     from: deployer,

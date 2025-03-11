@@ -5,6 +5,7 @@ import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
+import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import { IL2ERC20Bridge } from "../../Ovm_SpokePool.sol";
@@ -60,8 +61,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
      */
     constructor(
         IERC20 _l2Usdc,
-        address _cctpTokenMessenger,
-        bool _cctpV2,
+        ITokenMessenger _cctpTokenMessenger,
         WETH9Interface _wrappedNativeToken,
         uint32 _destinationCircleDomainId,
         address _l2Gateway,
@@ -71,7 +71,6 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
         WithdrawalHelperBase(
             _l2Usdc,
             _cctpTokenMessenger,
-            _cctpV2,
             _wrappedNativeToken,
             _destinationCircleDomainId,
             _l2Gateway,

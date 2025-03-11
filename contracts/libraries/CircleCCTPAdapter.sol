@@ -49,31 +49,22 @@ abstract contract CircleCCTPAdapter {
      * @dev Posted officially here: https://developers.circle.com/stablecoins/docs/evm-smart-contracts
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    address public immutable cctpTokenMessenger;
-
-    /**
-     * @notice Whether or not the CCTP messenger is a V2 interface.
-     */
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    bool public immutable cctpV2;
+    ITokenMessenger public immutable cctpTokenMessenger;
 
     /**
      * @notice intiailizes the CircleCCTPAdapter contract.
      * @param _usdcToken USDC address on the current chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
-     * @param cctpV2 Whether or not the CCTP messenger is a V2 interface.
      * @param _recipientCircleDomainId The domain ID that CCTP will transfer funds to.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdcToken,
-        address _cctpTokenMessenger,
-        bool _cctpV2,
+        ITokenMessenger _cctpTokenMessenger,
         uint32 _recipientCircleDomainId
     ) {
         usdcToken = _usdcToken;
         cctpTokenMessenger = _cctpTokenMessenger;
-        cctpV2 = _cctpV2;
         recipientCircleDomainId = _recipientCircleDomainId;
     }
 
@@ -81,7 +72,7 @@ abstract contract CircleCCTPAdapter {
      * @notice Returns whether or not the CCTP bridge is enabled.
      * @dev If the CCTPTokenMessenger is the zero address, CCTP bridging is disabled.
      */
-    function _isCCTPEnabled() internal view returns (bool) {
+    function _isCCTPEnabled() internal view virtual returns (bool) {
         return address(cctpTokenMessenger) != address(0);
     }
 
@@ -101,12 +92,12 @@ abstract contract CircleCCTPAdapter {
      * @param to Address to receive USDC on the new domain represented as bytes32.
      * @param amount Amount of USDC to transfer.
      */
-    function _transferUsdc(bytes32 to, uint256 amount) internal {
+    function _transferUsdc(bytes32 to, uint256 amount) internal virtual {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger.
         // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
-        ITokenMinter cctpMinter = ITokenMessenger(cctpTokenMessenger).localMinter();
+        ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();
         uint256 burnLimit = cctpMinter.burnLimitsPerMessage(address(usdcToken));
         uint256 remainingAmount = amount;
         while (remainingAmount > 0) {

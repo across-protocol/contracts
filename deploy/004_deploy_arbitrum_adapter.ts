@@ -27,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      false,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });

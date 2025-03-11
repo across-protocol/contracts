@@ -96,14 +96,7 @@ describe("Linea Chain Adapter", function () {
 
     lineaAdapter = await (
       await getContractFactory("Linea_Adapter", owner)
-    ).deploy(
-      weth.address,
-      lineaMessageService.address,
-      lineaTokenBridge.address,
-      usdc.address,
-      cctpMessenger.address,
-      true
-    );
+    ).deploy(weth.address, lineaMessageService.address, lineaTokenBridge.address, usdc.address, cctpMessenger.address);
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("100000") });

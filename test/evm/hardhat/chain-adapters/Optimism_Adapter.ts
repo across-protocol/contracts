@@ -70,8 +70,7 @@ describe("Optimism Chain Adapter", function () {
       l1CrossDomainMessenger.address,
       l1StandardBridge.address,
       usdc.address,
-      cctpMessenger.address,
-      false
+      cctpMessenger.address
     );
 
     await hubPool.setCrossChainContracts(optimismChainId, optimismAdapter.address, mockSpoke.address);

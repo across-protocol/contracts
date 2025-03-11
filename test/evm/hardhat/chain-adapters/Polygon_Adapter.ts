@@ -83,8 +83,7 @@ describe("Polygon Chain Adapter", function () {
       matic.address,
       weth.address,
       usdc.address,
-      cctpMessenger.address,
-      false
+      cctpMessenger.address
     );
 
     await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
