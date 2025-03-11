@@ -52,6 +52,13 @@ abstract contract CircleCCTPAdapter {
     ITokenMessenger public immutable cctpTokenMessenger;
 
     /**
+     * @notice Indicates if the CCTP V2 TokenMessenger is being used.
+     * @dev This is determined by checking if the feeRecipient() function exists and returns a non-zero address.
+     */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    bool public immutable cctpV2;
+
+    /**
      * @notice intiailizes the CircleCCTPAdapter contract.
      * @param _usdcToken USDC address on the current chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
@@ -68,6 +75,15 @@ abstract contract CircleCCTPAdapter {
         usdcToken = _usdcToken;
         cctpTokenMessenger = _cctpTokenMessenger;
         recipientCircleDomainId = _recipientCircleDomainId;
+
+        // Only the CCTP V2 TokenMessenger has a feeRecipient() function, so we use it to
+        // figure out if we are using CCTP V2 or V1. `success` can be true even if the contract doesn't
+        // implement feeRecipient but it has a fallback function so to be extra safe, we check the return value
+        // of feeRecipient() as well.
+        (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).call(
+            abi.encodeWithSignature("feeRecipient()")
+        );
+        cctpV2 = (success && address(bytes20(feeRecipient)) != address(0));
     }
 
     /**
@@ -104,14 +120,7 @@ abstract contract CircleCCTPAdapter {
         uint256 remainingAmount = amount;
         while (remainingAmount > 0) {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
-            // Only the CCTP V2 TokenMessenger has a feeRecipient() function, so we use it to
-            // figure out if we are using CCTP V2 or V1. `success` can be true even if the contract doesn't
-            // implement feeRecipient but it has a fallback function so to be extra safe, we check the return value
-            // of feeRecipient() as well.
-            (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).call(
-                abi.encodeWithSignature("feeRecipient()")
-            );
-            if (success && address(bytes20(feeRecipient)) != address(0)) {
+            if (cctpV2) {
                 //  Uses the CCTP V2 "standard transfer" speed and
                 // therefore pays no additional fee for the transfer to be sped up.
                 ITokenMessengerV2(address(cctpTokenMessenger)).depositForBurn(
