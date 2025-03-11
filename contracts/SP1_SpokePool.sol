@@ -22,7 +22,6 @@ contract SP1_SpokePool is SpokePool {
     // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
     struct ContractPublicValues {
         bytes32 stateRoot;
-        address contractAddress;
         bytes contractCalldata;
         bytes contractOutput;
     }
@@ -40,13 +39,13 @@ contract SP1_SpokePool is SpokePool {
     bytes32 public acrossCallProgramVKey;
 
     /// @notice Stores all proofs verified to prevent replay attacks.
-    mapping(bytes32 => bytes) public proofs;
+    mapping(bytes32 => bool) public verifiedProofs;
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
     // private. Leaving it set to true can permanently disable admin calls.
     bool private _adminCallValidated;
 
-    event VerifiedProof(bytes32 indexed proofHash, address caller);
+    event VerifiedProof(bytes32 indexed dataHash, address caller);
 
     error NotHubPool();
     error NotTarget();
@@ -54,6 +53,7 @@ contract SP1_SpokePool is SpokePool {
     error StateRootMismatch();
     error AdminCallNotValidated();
     error DelegateCallFailed();
+    error AlreadyReceived();
 
     // All calls that have admin privileges must be fired from within the receiveL1State method that validates that
     // the input data was published on L1 by the HubPool. This input data is then executed on this contract.
@@ -118,7 +118,7 @@ contract SP1_SpokePool is SpokePool {
 
         // Validate state is intended to be sent to this contract:
         (address _hubPool, address _target, bytes memory _message) = abi.decode(
-            publicValues.contractCalldata,
+            publicValues.contractOutput,
             (address, address, bytes)
         );
         if (_hubPool != hubPool) {
@@ -128,10 +128,14 @@ contract SP1_SpokePool is SpokePool {
             revert NotTarget();
         }
 
-        // Store proof to prevent replay attacks:
-        bytes32 proofHash = keccak256(_proofBytes);
-        proofs[proofHash] = _proofBytes;
-        emit VerifiedProof(proofHash, msg.sender);
+        // Store proof to prevent replay attacks. Proof and publicValues should have a 1 to 1 relationship
+        // so we can either store the hash of the proof or the public values here.
+        bytes32 dataHash = keccak256(_publicValues);
+        if (verifiedProofs[dataHash]) {
+            revert AlreadyReceived();
+        }
+        verifiedProofs[dataHash] = true;
+        emit VerifiedProof(dataHash, msg.sender);
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
