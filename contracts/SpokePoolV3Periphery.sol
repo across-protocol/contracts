@@ -44,7 +44,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
     error ContractInitialized();
 
     /**
-     * @notice Construct a new Proxy contract.
+     * @notice Construct a new PeripheryProxy contract.
      * @dev Is empty and all of the state variables are initialized in the initialize function
      * to allow for deployment at a deterministic address via create2, which requires that the bytecode
      * across different networks is the same. Constructor parameters affect the bytecode so we can only
@@ -158,7 +158,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     error InvalidSignature();
 
     /**
-     * @notice Construct a new Proxy contract.
+     * @notice Construct a new Periphery contract.
      * @dev Is empty and all of the state variables are initialized in the initialize function
      * to allow for deployment at a deterministic address via create2, which requires that the bytecode
      * across different networks is the same. Constructor parameters affect the bytecode so we can only
