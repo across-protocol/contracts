@@ -13,7 +13,7 @@ function replaceInFiles(dir: string): void {
       replaceInFiles(filePath);
     } else if (file.endsWith(".ts")) {
       const fileContent = fs.readFileSync(filePath, "utf8");
-      const updatedContent = fileContent.replace("@solana/web3.js", "@solana/web3-v2.js");
+      const updatedContent = fileContent.replace("@solana/web3.js", "@solana/kit");
       fs.writeFileSync(filePath, updatedContent);
     }
   });
