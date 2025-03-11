@@ -2,10 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import { ISP1Verifier } from "@sp1-contracts/ISP1Verifier.sol";
 
 interface IHelios {
     function executionStateRoots(uint256) external view returns (bytes32);
+}
+
+interface ISP1Verifier {
+    function verifyProof(
+        bytes32 programVKey,
+        bytes calldata publicValues,
+        bytes calldata proofBytes
+    ) external view;
 }
 
 /**
