@@ -105,8 +105,13 @@ abstract contract CircleCCTPAdapter {
         while (remainingAmount > 0) {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
             // Only the CCTP V2 TokenMessenger has a feeRecipient() function, so we use it to
-            // figure out if we are using CCTP V2 or V1.
-            try ITokenMessengerV2(address(cctpTokenMessenger)).feeRecipient() {
+            // figure out if we are using CCTP V2 or V1. `success` can be true even if the contract doesn't
+            // implement feeRecipient but it has a fallback function so to be extra safe, we check the return value
+            // of feeRecipient() as well.
+            (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).call(
+                abi.encodeWithSignature("feeRecipient()")
+            );
+            if (success && address(bytes20(feeRecipient)) != address(0)) {
                 //  Uses the CCTP V2 "standard transfer" speed and
                 // therefore pays no additional fee for the transfer to be sped up.
                 ITokenMessengerV2(address(cctpTokenMessenger)).depositForBurn(
@@ -122,7 +127,7 @@ abstract contract CircleCCTPAdapter {
                     2000 // minFinalityThreshold can be set to 20000 for a "standard transfer",
                     // https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/FinalityThresholds.sol#L21
                 );
-            } catch {
+            } else {
                 cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, to, address(usdcToken));
             }
             remainingAmount -= partAmount;

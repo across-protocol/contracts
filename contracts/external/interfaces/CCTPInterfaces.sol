@@ -88,11 +88,6 @@ interface ITokenMessengerV2 {
         uint256 maxFee,
         uint32 minFinalityThreshold
     ) external;
-
-    /**
-     * @dev We only call this function to check if a TokenMessenger is V2 or V1.
-     */
-    function feeRecipient() external view returns (address);
 }
 
 /**

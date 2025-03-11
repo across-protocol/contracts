@@ -88,6 +88,7 @@ describe("Linea Chain Adapter", function () {
     cctpMessenger = await createFakeFromABI(CCTPTokenV2MessengerInterface);
     cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
+    cctpMessenger.feeRecipient.returns(owner.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
     lineaMessageService = await smock.fake(lineaMessageServiceAbi, {
       address: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
