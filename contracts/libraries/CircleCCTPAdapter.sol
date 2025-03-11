@@ -60,6 +60,8 @@ abstract contract CircleCCTPAdapter {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdcToken,
+        /// @dev This should ideally be an address but its kept as an ITokenMessenger to avoid rippling changes to the
+        /// constructors for every SpokePool/Adapter.
         ITokenMessenger _cctpTokenMessenger,
         uint32 _recipientCircleDomainId
     ) {
@@ -102,10 +104,12 @@ abstract contract CircleCCTPAdapter {
         uint256 remainingAmount = amount;
         while (remainingAmount > 0) {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
-            if (cctpV2) {
+            // Only the CCTP V2 TokenMessenger has a feeRecipient() function, so we use it to
+            // figure out if we are using CCTP V2 or V1.
+            try ITokenMessengerV2(address(cctpTokenMessenger)).feeRecipient() {
                 //  Uses the CCTP V2 "standard transfer" speed and
                 // therefore pays no additional fee for the transfer to be sped up.
-                ITokenMessengerV2(cctpTokenMessenger).depositForBurn(
+                ITokenMessengerV2(address(cctpTokenMessenger)).depositForBurn(
                     partAmount,
                     recipientCircleDomainId,
                     to,
@@ -118,13 +122,8 @@ abstract contract CircleCCTPAdapter {
                     2000 // minFinalityThreshold can be set to 20000 for a "standard transfer",
                     // https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/FinalityThresholds.sol#L21
                 );
-            } else {
-                ITokenMessenger(cctpTokenMessenger).depositForBurn(
-                    partAmount,
-                    recipientCircleDomainId,
-                    to,
-                    address(usdcToken)
-                );
+            } catch {
+                cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, to, address(usdcToken));
             }
             remainingAmount -= partAmount;
         }

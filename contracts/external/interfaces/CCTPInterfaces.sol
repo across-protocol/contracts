@@ -90,12 +90,9 @@ interface ITokenMessengerV2 {
     ) external;
 
     /**
-     * @notice Minter responsible for minting and burning tokens on the local domain
-     * @dev A TokenMessenger stores a TokenMinter contract which extends the TokenController contract.
-     * https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/BaseTokenMessenger.sol#L87
-     * @return minter Token Minter contract.
+     * @dev We only call this function to check if a TokenMessenger is V2 or V1.
      */
-    function localMinter() external view returns (ITokenMinter minter);
+    function feeRecipient() external view returns (address);
 }
 
 /**

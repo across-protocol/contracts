@@ -93,6 +93,13 @@ export const CCTPTokenV2MessengerInterface = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [],
+    name: "feeRecipient",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ];
 
 export const CCTPTokenMinterInterface = [

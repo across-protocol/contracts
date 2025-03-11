@@ -5,7 +5,7 @@
 pragma solidity ^0.8.19;
 
 import "./SpokePool.sol";
-import "./libraries/CircleCCTPV2Adapter.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Linea specific SpokePool.
  * @custom:security-contact bugs@across.to
  */
-contract Linea_SpokePool is SpokePool, CircleCCTPV2Adapter {
+contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     /**
@@ -52,10 +52,10 @@ contract Linea_SpokePool is SpokePool, CircleCCTPV2Adapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessengerV2 _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPV2Adapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
     /**
