@@ -80,7 +80,7 @@ abstract contract CircleCCTPAdapter {
         // figure out if we are using CCTP V2 or V1. `success` can be true even if the contract doesn't
         // implement feeRecipient but it has a fallback function so to be extra safe, we check the return value
         // of feeRecipient() as well.
-        (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).call(
+        (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).staticcall(
             abi.encodeWithSignature("feeRecipient()")
         );
         cctpV2 = (success && address(bytes20(feeRecipient)) != address(0));
