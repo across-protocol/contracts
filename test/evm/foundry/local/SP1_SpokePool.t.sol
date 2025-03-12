@@ -45,11 +45,12 @@ contract SP1SpokePoolTest is Test {
         bytes32 refundRoot = bytes32("test");
         bytes32 slowRelayRoot = bytes32("test2");
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
+        SP1_SpokePool.Data memory data = SP1_SpokePool.Data({ target: address(spokePool), data: message, nonce: 0 });
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
             contractAddress: hubPoolStore,
             contractCalldata: "",
-            contractOutput: abi.encode(address(spokePool), message)
+            contractOutput: abi.encode(data)
         });
         vm.expectCall(
             address(spokePool),
@@ -64,11 +65,12 @@ contract SP1SpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
+        SP1_SpokePool.Data memory data = SP1_SpokePool.Data({ target: address(spokePool), data: message, nonce: 0 });
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
             contractAddress: hubPoolStore,
             contractCalldata: "",
-            contractOutput: abi.encode(address(spokePool), message)
+            contractOutput: abi.encode(data)
         });
         spokePool.receiveL1State(abi.encode(publicValues), "", 100);
         vm.expectRevert(SP1_SpokePool.AlreadyReceived.selector);
