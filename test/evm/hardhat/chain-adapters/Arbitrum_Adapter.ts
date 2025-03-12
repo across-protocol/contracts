@@ -26,8 +26,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/@layerzerolabs/oft-evm/contracts/interfaces/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/@layerzerolabs/oft-evm/contracts/interfaces/IOFT__factory";
+} from "../../../../typechain/contracts/interfaces/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
@@ -91,6 +91,8 @@ describe("Arbitrum Chain Adapter", function () {
     gatewayAddress = randomAddress();
     l1ERC20GatewayRouter.getGateway.returns(gatewayAddress);
 
+    const oftFeeCap = toWei("1");
+
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
     ).deploy(
@@ -99,7 +101,8 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      addressBook.address
+      addressBook.address,
+      oftFeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.

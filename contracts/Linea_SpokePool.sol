@@ -17,6 +17,9 @@ import "./libraries/HypXERC20Adapter.sol";
 contract Linea_SpokePool is SpokePool, HypXERC20Adapter {
     using SafeERC20 for IERC20;
 
+    // Linea_SpokePool does not use OFT messaging, setting the cap to 0
+    uint256 private constant OFT_FEE_CAP = 0;
+
     // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
     uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
 
@@ -63,7 +66,7 @@ contract Linea_SpokePool is SpokePool, HypXERC20Adapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP)
         HypXERC20Adapter(HyperlaneDomainIds.Ethereum, HYP_XERC20_FEE_CAP)
     {} // solhint-disable-line no-empty-blocks
 

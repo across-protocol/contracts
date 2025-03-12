@@ -152,9 +152,15 @@
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
-      "label": "__gap",
+      "label": "oftMessengers",
       "offset": 0,
       "slot": "2164"
+    },
+    {
+      "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2165"
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
@@ -173,6 +179,12 @@
       "label": "l2UsdcBridge",
       "offset": 0,
       "slot": "3164"
+    },
+    {
+      "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
+      "label": "hypXERC20Routers",
+      "offset": 0,
+      "slot": "3165"
     }
   ]
 }

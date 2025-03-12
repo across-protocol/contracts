@@ -152,9 +152,15 @@
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "__gap",
+      "label": "oftMessengers",
       "offset": 0,
       "slot": "2164"
+    },
+    {
+      "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2165"
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
@@ -170,7 +176,7 @@
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "oftMessengers",
+      "label": "hypXERC20Routers",
       "offset": 0,
       "slot": "3164"
     },

@@ -28,8 +28,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/@layerzerolabs/oft-evm/contracts/interfaces/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/@layerzerolabs/oft-evm/contracts/interfaces/IOFT__factory";
+} from "../../../../typechain/contracts/interfaces/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
 import { IHypXERC20Router__factory } from "../../../../typechain";
 import { randomAddress } from "../../../svm/utils";
 

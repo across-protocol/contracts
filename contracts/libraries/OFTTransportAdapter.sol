@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IOFT, SendParam, MessagingFee, OFTReceipt } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
+import { IOFT, SendParam, MessagingFee, OFTReceipt } from "../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
@@ -44,9 +44,9 @@ contract OFTTransportAdapter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable DST_EID;
 
-    error FeeCapExceeded(uint256 feeRequested);
-    error InsufficientBalanceForFee(uint256 feeRequested, uint256 balance);
-    error IncorrectAmountReceivedLD(uint256 amountExpected, uint256 amountReceivedLD);
+    error OftFeeCapExceeded();
+    error OftInsufficientBalanceForFee();
+    error OftIncorrectAmountReceivedLD();
 
     /**
      * @notice intiailizes the OFTTransportAdapter contract.
@@ -96,9 +96,8 @@ contract OFTTransportAdapter {
 
         // `false` in the 2nd param here refers to `bool _payInLzToken`. We will pay in native token, so set to `false`
         MessagingFee memory fee = _messenger.quoteSend(sendParam, false);
-        if (fee.nativeFee > FEE_CAP) revert FeeCapExceeded(fee.nativeFee);
-        if (fee.nativeFee > address(this).balance)
-            revert InsufficientBalanceForFee(fee.nativeFee, address(this).balance);
+        if (fee.nativeFee > FEE_CAP) revert OftFeeCapExceeded();
+        if (fee.nativeFee > address(this).balance) revert OftInsufficientBalanceForFee();
 
         // Approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
         _token.forceApprove(address(_messenger), _amount);
@@ -106,7 +105,6 @@ contract OFTTransportAdapter {
         (, OFTReceipt memory oftReceipt) = _messenger.send{ value: fee.nativeFee }(sendParam, fee, address(this));
 
         // The HubPool expects that the amount received by the SpokePool is exactly the sent amount
-        if (_amount != oftReceipt.amountReceivedLD)
-            revert IncorrectAmountReceivedLD(_amount, oftReceipt.amountReceivedLD);
+        if (_amount != oftReceipt.amountReceivedLD) revert OftIncorrectAmountReceivedLD();
     }
 }

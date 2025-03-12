@@ -152,9 +152,15 @@
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
-      "label": "__gap",
+      "label": "oftMessengers",
       "offset": 0,
       "slot": "2164"
+    },
+    {
+      "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2165"
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
@@ -188,9 +194,15 @@
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
-      "label": "__gap",
+      "label": "hypXERC20Routers",
       "offset": 0,
       "slot": "3166"
+    },
+    {
+      "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "3167"
     }
   ]
 }
