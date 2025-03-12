@@ -1,24 +1,38 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
-import { BigNumber, ethers } from "ethers";
+import { getApproveCheckedInstruction } from "@solana-program/token";
+import {
+  address,
+  airdropFactory,
+  appendTransactionMessageInstruction,
+  createKeyPairFromBytes,
+  createSignerFromKeyPair,
+  getProgramDerivedAddress,
+  lamports,
+  pipe,
+} from "@solana/kit";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
+  ExtensionType,
   TOKEN_2022_PROGRAM_ID,
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  getAccount,
+  TOKEN_PROGRAM_ID,
   createApproveCheckedInstruction,
   createEnableCpiGuardInstruction,
+  createMint,
   createReallocateInstruction,
-  ExtensionType,
+  getAccount,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
 } from "@solana/spl-token";
-import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
-import { common } from "./SvmSpoke.common";
+import { Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { BigNumber, ethers } from "ethers";
+import { SvmSpokeClient } from "../../src/svm";
+import { DepositInput } from "../../src/svm/clients/SvmSpoke";
+import { intToU8Array32, readEventsUntilFound, u8Array32ToBigNumber, u8Array32ToInt } from "../../src/svm/web3-v1";
 import { DepositDataValues } from "../../src/types/svm";
-import { intToU8Array32, readEventsUntilFound, u8Array32ToInt, u8Array32ToBigNumber } from "../../src/svm/web3-v1";
 import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
+import { common } from "./SvmSpoke.common";
+import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
 const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
   common;
@@ -697,5 +711,83 @@ describe("svm_spoke.deposit", () => {
     } catch (err: any) {
       assert.include(err.toString(), "owner does not match");
     }
+  });
+
+  describe("codama client and solana kit", () => {
+    it("Deposit with with solana kit and codama client", async () => {
+      // typescript is not happy with the depositData object
+      if (!depositData.inputToken || !depositData.depositor) {
+        throw new Error("Input token or depositor is null");
+      }
+
+      const rpcClient = createDefaultSolanaClient();
+      const signer = await createSignerFromKeyPair(await createKeyPairFromBytes(depositor.secretKey));
+
+      await airdropFactory(rpcClient)({
+        recipientAddress: signer.address,
+        lamports: lamports(100000000000000n),
+        commitment: "confirmed",
+      });
+
+      const [eventAuthority] = await getProgramDerivedAddress({
+        programAddress: address(program.programId.toString()),
+        seeds: ["__event_authority"],
+      });
+
+      // note that we are using getApproveCheckedInstruction from @solana-program/token
+      const approveIx = getApproveCheckedInstruction({
+        source: address(depositAccounts.depositorTokenAccount.toString()),
+        mint: address(depositAccounts.mint.toString()),
+        delegate: address(depositAccounts.state.toString()),
+        owner: address(depositor.publicKey.toString()),
+        amount: BigInt(depositData.inputAmount.toString()),
+        decimals: tokenDecimals,
+      });
+
+      const formattedDepositData = {
+        depositor: address(depositData.depositor.toString()),
+        recipient: address(depositData.recipient.toString()),
+        inputToken: address(depositData.inputToken.toString()),
+        outputToken: address(depositData.outputToken.toString()),
+        inputAmount: BigInt(depositData.inputAmount.toString()),
+        outputAmount: BigInt(depositData.outputAmount.toString()),
+        destinationChainId: depositData.destinationChainId.toNumber(),
+        exclusiveRelayer: address(depositData.exclusiveRelayer.toString()),
+        quoteTimestamp: depositData.quoteTimestamp.toNumber(),
+        fillDeadline: depositData.fillDeadline.toNumber(),
+        exclusivityParameter: depositData.exclusivityParameter.toNumber(),
+        message: depositData.message,
+      };
+
+      const formattedAccounts = {
+        state: address(depositAccounts.state.toString()),
+        route: address(depositAccounts.route.toString()),
+        depositorTokenAccount: address(depositAccounts.depositorTokenAccount.toString()),
+        mint: address(depositAccounts.mint.toString()),
+        tokenProgram: address(tokenProgram.toString()),
+        program: address(program.programId.toString()),
+        vault: address(vault.toString()),
+      };
+
+      const depositInput: DepositInput = {
+        ...formattedDepositData,
+        ...formattedAccounts,
+        eventAuthority,
+        signer,
+      };
+
+      const depositIx = await SvmSpokeClient.getDepositInstructionAsync(depositInput);
+
+      const tx = await pipe(
+        await createDefaultTransaction(rpcClient, signer),
+        (tx) => appendTransactionMessageInstruction(approveIx, tx),
+        (tx) => appendTransactionMessageInstruction(depositIx, tx),
+        (tx) => signAndSendTransaction(rpcClient, tx)
+      );
+
+      const events = await readEventsUntilFound(connection, tx, [program]);
+      const event = events[0].data; // 0th event is the latest event;
+      assertSE(event.depositId, intToU8Array32(1), "Deposit ID should match the expected hash");
+    });
   });
 });
