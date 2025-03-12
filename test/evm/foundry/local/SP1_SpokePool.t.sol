@@ -49,8 +49,8 @@ contract SP1SpokePoolTest is Test {
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
             contractAddress: hubPoolStore,
-            contractCalldata: "",
-            contractOutput: abi.encode(data)
+            storageKey: "",
+            storageValue: abi.encode(data)
         });
         vm.expectCall(
             address(spokePool),
@@ -69,8 +69,8 @@ contract SP1SpokePoolTest is Test {
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
             contractAddress: hubPoolStore,
-            contractCalldata: "",
-            contractOutput: abi.encode(data)
+            storageKey: "",
+            storageValue: abi.encode(data)
         });
         spokePool.receiveL1State(abi.encode(publicValues), "", 100);
         vm.expectRevert(SP1_SpokePool.AlreadyReceived.selector);

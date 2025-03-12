@@ -26,10 +26,10 @@ contract SP1_SpokePool is SpokePool {
     }
     // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
     struct ContractPublicValues {
-        bytes32 stateRoot;
-        address contractAddress;
-        bytes contractCalldata;
-        bytes contractOutput;
+        bytes32 stateRoot; // State root containing the storage slot in question.
+        address contractAddress; // Address of contract whose storage slot we want to load into this contract.
+        bytes storageKey; // Data used to identify storage slot key.
+        bytes storageValue; // Storage slot value.
     }
     /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
@@ -137,7 +137,7 @@ contract SP1_SpokePool is SpokePool {
 
         // Validate state is intended to be sent to this contract. The target could have been set to the zero address
         // which is used by the SP1_Adapter to denote messages that can be sent to any target.
-        Data memory l1Data = abi.decode(publicValues.contractOutput, (Data));
+        Data memory l1Data = abi.decode(publicValues.storageValue, (Data));
         if (l1Data.target != address(0) && l1Data.target != address(this)) {
             revert NotTarget();
         }
@@ -145,7 +145,7 @@ contract SP1_SpokePool is SpokePool {
         // Prevent replay attacks by hashing the data which includes a nonce. The only way for someone to re-execute
         // an identical message on this target spoke pool would be to get the HubPool to re-publish the data. This lets
         // the HubPool owner re-execute admin actions that have the same calldata.
-        bytes32 dataHash = keccak256(publicValues.contractOutput);
+        bytes32 dataHash = keccak256(publicValues.storageValue);
         if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
