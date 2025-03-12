@@ -5,9 +5,12 @@ import "./interfaces/AdapterInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IOFT } from "../interfaces/IOFT.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
+import "../libraries/OFTTransportAdapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
+import { OFTAddressBook } from "../libraries/OFTAddressBook.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -18,7 +21,7 @@ import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } 
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
+contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapter {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -54,6 +57,9 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
+    // Helper contract to help us map token -> OFT messenger for OFT-enabled tokens
+    OFTAddressBook public immutable OFT_ADDRESS_BOOK;
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1ArbitrumInbox Inbox helper contract to send messages to Arbitrum.
@@ -61,17 +67,25 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _oftAddressBook OFTAddressBook contract to help identify token -> oftMessenger relationship for OFT bridging.
+     * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
+        ITokenMessenger _cctpTokenMessenger,
+        OFTAddressBook _oftAddressBook,
+        uint256 _oftFeeCap
+    )
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
+        OFTTransportAdapter(OFTEIds.Arbitrum, _oftFeeCap)
+    {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
+        OFT_ADDRESS_BOOK = _oftAddressBook;
     }
 
     /**
@@ -113,9 +127,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 amount,
         address to
     ) external payable override {
+        address oftMessenger = _getOftMessenger(l1Token);
+
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
+        } else if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {
@@ -177,5 +195,14 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 requiredL1CallValue = getL1CallValue(l2GasLimit);
         require(address(this).balance >= requiredL1CallValue, "Insufficient ETH balance");
         return requiredL1CallValue;
+    }
+
+    /**
+     * @notice Queries for an OFT messenger from an OFT address book contract
+     * @param _token Token to query the messenger for
+     * @return messenger OFT messenger contract
+     */
+    function _getOftMessenger(address _token) internal view returns (address) {
+        return OFT_ADDRESS_BOOK.oftMessengers(_token);
     }
 }

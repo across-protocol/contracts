@@ -17,6 +17,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
+    // Linea_SpokePool does not use OFT messaging, setting the cap to 0
+    uint256 private constant OFT_FEE_CAP = 0;
+
     /**
      * @notice Address of Linea's Canonical Message Service contract on L2.
      */
@@ -54,7 +57,7 @@ contract Linea_SpokePool is SpokePool, CircleCCTPAdapter {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
