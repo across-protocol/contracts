@@ -28,7 +28,7 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // Scroll_SpokePool does not use OFT messaging, setting the cap to 0
+    // ZkSync_SpokePool does not use OFT messaging, setting the cap to 0
     uint256 private constant OFT_FEE_CAP = 0;
 
     // ZkSync_SpokePool does not use OFT messaging, setting the cap to 0

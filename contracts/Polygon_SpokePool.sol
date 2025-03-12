@@ -35,7 +35,7 @@ interface IFxMessageProcessor {
 contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter {
     using SafeERC20Upgradeable for PolygonIERC20Upgradeable;
 
-    // Ovm_SpokePool does not use OFT messaging, setting the cap to 0
+    // Polygon_SpokePool does not use OFT messaging, setting the cap to 0
     uint256 private constant OFT_FEE_CAP = 0;
 
     // Polygon_SpokePool does not use XERC20 messaging, setting the cap to 0
