@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
-import "./libraries/OFTTransportAdapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
 
@@ -11,7 +10,7 @@ import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
  * @notice AVM specific SpokePool. Uses AVM cross-domain-enabled logic to implement admin only access to functions.
  * @custom:security-contact bugs@across.to
  */
-contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter {
+contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
     // Address of the Arbitrum L2 token gateway to send funds to L1.
     address public l2GatewayRouter;
 
@@ -19,12 +18,8 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
     // are necessary params used when bridging tokens to L1.
     mapping(address => address) public whitelistedTokens;
 
-    // A map to store token -> IOFT relationships for OFT bridging.
-    mapping(IERC20 => IOFT) public oftMessengers;
-
     event SetL2GatewayRouter(address indexed newL2GatewayRouter);
     event WhitelistedTokens(address indexed l2Token, address indexed l1Token);
-    event SetOFTMessenger(IERC20 indexed token, IOFT indexed messenger);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -36,9 +31,8 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         // _oftFeeCap can be set to 1 ether for Arbitrum, but has to be custom-set for other chains that might inherit this adapter, like AlephZero
         uint256 _oftFeeCap
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftFeeCap)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
-        OFTTransportAdapter(OFTEIds.Ethereum, _oftFeeCap)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -86,27 +80,18 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
         _whitelistToken(l2Token, l1Token);
     }
 
-    /**
-     * @notice Add token -> OFTMessenger relationship. Callable only by admin.
-     * @param token Arbitrum token.
-     * @param messenger IOFT contract that acts as OFT mailbox.
-     */
-    function setOftMessenger(IERC20 token, IOFT messenger) public onlyAdmin nonReentrant {
-        _setOftMessenger(token, messenger);
-    }
-
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        IOFT oftMessenger = _getOftMessenger(IERC20(l2TokenAddress));
+        address oftMessenger = _getOftMessenger(l2TokenAddress);
 
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
-        } else if (address(oftMessenger) != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), oftMessenger, withdrawalRecipient, amountToReturn);
+        } else if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];
@@ -133,15 +118,6 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter, OFTTransportAdapter
 
     // Apply AVM-specific transformation to cross domain admin address on L1.
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
-
-    function _setOftMessenger(IERC20 _token, IOFT _messenger) internal {
-        oftMessengers[_token] = _messenger;
-        emit SetOFTMessenger(_token, _messenger);
-    }
-
-    function _getOftMessenger(IERC20 _token) internal view returns (IOFT) {
-        return oftMessengers[_token];
-    }
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables

@@ -19,7 +19,6 @@ contract AlephZero_SpokePool is Arbitrum_SpokePool {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         // _oftFeeCap can be set to 0 for AlephZero_SpokePool as AlephZero does not support OFT transfers.
-        // If we want to support them, would have to do some fee research calling `quoteSend` on relevant IOFT contracts
         uint256 _oftFeeCap
     )
         Arbitrum_SpokePool(

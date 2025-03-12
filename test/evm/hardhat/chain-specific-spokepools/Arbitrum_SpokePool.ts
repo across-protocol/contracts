@@ -27,8 +27,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/@layerzerolabs/oft-evm/contracts/interfaces/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/@layerzerolabs/oft-evm/contracts/interfaces/IOFT__factory";
+} from "../../../../typechain/contracts/interfaces/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
 
 let hubPool: Contract,
   arbitrumSpokePool: Contract,

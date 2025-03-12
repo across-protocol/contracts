@@ -5,7 +5,7 @@ import "./interfaces/AdapterInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IOFT } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
+import { IOFT } from "../interfaces/IOFT.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
@@ -67,7 +67,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _oftAddressBook OFTAddressBook contract to helps identify token -> oftMessenger relationship for OFT bridging.
+     * @param _oftAddressBook OFTAddressBook contract to help identify token -> oftMessenger relationship for OFT bridging.
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -127,13 +127,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         uint256 amount,
         address to
     ) external payable override {
-        IOFT oftMessenger = _getOftMessenger(IERC20(l1Token));
+        address oftMessenger = _getOftMessenger(l1Token);
 
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-        } else if (address(oftMessenger) != address(0)) {
-            _transferViaOFT(IERC20(l1Token), oftMessenger, to, amount);
+        } else if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {
@@ -202,7 +202,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _token Token to query the messenger for
      * @return messenger OFT messenger contract
      */
-    function _getOftMessenger(IERC20 _token) internal view returns (IOFT) {
+    function _getOftMessenger(address _token) internal view returns (address) {
         return OFT_ADDRESS_BOOK.oftMessengers(_token);
     }
 }
