@@ -22,21 +22,22 @@ contract SP1_SpokePool is SpokePool {
     // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
     struct ContractPublicValues {
         bytes32 stateRoot;
+        address contractAddress;
         bytes contractCalldata;
         bytes contractOutput;
     }
-    /// @notice The address of the HubPool contract. Checked against public values to ensure only state
+    /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
-    address public immutable hubPool;
+    address public immutable hubPoolStore;
 
     /// @notice The address of the SP1 verifier contract.
-    address public verifier;
+    address public immutable verifier;
 
     /// @notice The address of the Helios light client contract.
-    address public helios;
+    address public immutable helios;
 
     /// @notice The verification key for the acrossCall program.
-    bytes32 public acrossCallProgramVKey;
+    bytes32 public immutable acrossCallProgramVKey;
 
     /// @notice Stores all proofs verified to prevent replay attacks.
     mapping(bytes32 => bool) public verifiedProofs;
@@ -47,13 +48,14 @@ contract SP1_SpokePool is SpokePool {
 
     event VerifiedProof(bytes32 indexed dataHash, address caller);
 
-    error NotHubPool();
+    error NotHubPoolStore();
     error NotTarget();
     error AdminCallAlreadySet();
     error StateRootMismatch();
     error AdminCallNotValidated();
     error DelegateCallFailed();
     error AlreadyReceived();
+    error NotImplemented();
 
     // All calls that have admin privileges must be fired from within the receiveL1State method that validates that
     // the input data was published on L1 by the HubPool. This input data is then executed on this contract.
@@ -81,7 +83,7 @@ contract SP1_SpokePool is SpokePool {
         address _verifier,
         address _helios,
         bytes32 _acrossCallProgramVKey,
-        address _hubPool,
+        address _hubPoolStore,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
@@ -89,7 +91,15 @@ contract SP1_SpokePool is SpokePool {
         verifier = _verifier;
         helios = _helios;
         acrossCallProgramVKey = _acrossCallProgramVKey;
-        hubPool = _hubPool;
+        hubPoolStore = _hubPoolStore;
+    }
+
+    function initialize(
+        uint32 _initialDepositId,
+        address _crossDomainAdmin,
+        address _withdrawalRecipient
+    ) public initializer {
+        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
     }
 
     /**
@@ -109,6 +119,9 @@ contract SP1_SpokePool is SpokePool {
         // Verify proof and public values match:
         ISP1Verifier(verifier).verifyProof(acrossCallProgramVKey, _publicValues, _proofBytes);
         ContractPublicValues memory publicValues = abi.decode(_publicValues, (ContractPublicValues));
+        if (publicValues.contractAddress != hubPoolStore) {
+            revert NotHubPoolStore();
+        }
 
         // Verify Helios light client is aware of the state root containing the public values:
         bytes32 executionStateRoot = IHelios(helios).executionStateRoots(_head);
@@ -116,15 +129,10 @@ contract SP1_SpokePool is SpokePool {
             revert StateRootMismatch();
         }
 
-        // Validate state is intended to be sent to this contract:
-        (address _hubPool, address _target, bytes memory _message) = abi.decode(
-            publicValues.contractOutput,
-            (address, address, bytes)
-        );
-        if (_hubPool != hubPool) {
-            revert NotHubPool();
-        }
-        if (_target != address(this)) {
+        // Validate state is intended to be sent to this contract. The target could have been set to the zero address
+        // which is used by the SP1_Adapter to denote messages that can be sent to any target.
+        (address target, bytes memory message) = abi.decode(publicValues.contractOutput, (address, bytes));
+        if (target != address(0) && target != address(this)) {
             revert NotTarget();
         }
 
@@ -139,24 +147,15 @@ contract SP1_SpokePool is SpokePool {
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
-        (bool success, ) = address(this).delegatecall(_message);
+        (bool success, ) = address(this).delegatecall(message);
         if (!success) {
             revert DelegateCallFailed();
         }
     }
 
-    function initialize(
-        uint32 _initialDepositId,
-        address _crossDomainAdmin,
-        address _withdrawalRecipient
-    ) public initializer {
-        __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
-    }
-
-    function _bridgeTokensToHubPool(uint256, address) internal override {
-        // This method is a no-op. If the chain intends to include bridging functionality, this must be overriden.
-        // If not, leaving this unimplemented means this method may be triggered, but the result will be that no
-        // balance is transferred.
+    function _bridgeTokensToHubPool(uint256, address) internal pure override {
+        //  If the chain intends to include bridging functionality, this must be overriden.
+        revert NotImplemented();
     }
 
     // Check that the admin call is only triggered by a receiveL1State() call.

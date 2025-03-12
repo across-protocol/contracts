@@ -24,12 +24,20 @@ contract SP1SpokePoolTest is Test {
     MockHelios helios;
     MockSP1Verifier verifier;
 
-    address hubPool;
+    address hubPoolStore;
 
     function setUp() public {
         helios = new MockHelios();
         verifier = new MockSP1Verifier();
-        spokePool = new SP1_SpokePool(address(verifier), address(helios), bytes32(0), hubPool, address(0), 7200, 7200);
+        spokePool = new SP1_SpokePool(
+            address(verifier),
+            address(helios),
+            bytes32(0),
+            hubPoolStore,
+            address(0),
+            7200,
+            7200
+        );
     }
 
     function testReceiveL1State() public {
@@ -39,8 +47,9 @@ contract SP1SpokePoolTest is Test {
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
+            contractAddress: hubPoolStore,
             contractCalldata: "",
-            contractOutput: abi.encode(hubPool, address(spokePool), message)
+            contractOutput: abi.encode(address(spokePool), message)
         });
         vm.expectCall(
             address(spokePool),
@@ -57,8 +66,9 @@ contract SP1SpokePoolTest is Test {
         );
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
+            contractAddress: hubPoolStore,
             contractCalldata: "",
-            contractOutput: abi.encode(hubPool, address(spokePool), message)
+            contractOutput: abi.encode(address(spokePool), message)
         });
         spokePool.receiveL1State(abi.encode(publicValues), "", 100);
         vm.expectRevert(SP1_SpokePool.AlreadyReceived.selector);
