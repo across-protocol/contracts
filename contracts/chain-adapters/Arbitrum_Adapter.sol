@@ -57,9 +57,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // We don't allow fees to go higher than `OFT_FEE_CAP` when calling .send in `OFTTransportAdapter`. It gives us some protection from potential bugs on OFT's end
-    uint256 public constant OFT_FEE_CAP = 1 ether;
-
     // Helper contract to help us map token -> OFT messenger for OFT-enabled tokens
     OFTAddressBook public immutable OFT_ADDRESS_BOOK;
 
@@ -71,6 +68,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _oftAddressBook OFTAddressBook contract to helps identify token -> oftMessenger relationship for OFT bridging.
+     * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -78,10 +76,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        OFTAddressBook _oftAddressBook
+        OFTAddressBook _oftAddressBook,
+        uint256 _oftFeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
-        OFTTransportAdapter(OFTEIds.Arbitrum, OFT_FEE_CAP)
+        OFTTransportAdapter(OFTEIds.Arbitrum, _oftFeeCap)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;

@@ -81,6 +81,8 @@ describe("Arbitrum Chain Adapter", function () {
     gatewayAddress = randomAddress();
     l1ERC20GatewayRouter.getGateway.returns(gatewayAddress);
 
+    const oftFeeCap = toWei("1");
+
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
     ).deploy(
@@ -89,7 +91,8 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      oftAddressBook.address
+      oftAddressBook.address,
+      oftFeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.

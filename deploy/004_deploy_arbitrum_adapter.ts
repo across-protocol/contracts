@@ -1,3 +1,4 @@
+import { toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -10,6 +11,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
   const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
+  // 1 ether is a good default for oftFeeCap for cross-chain OFT sends
+  const oftFeeCap = toWei("1");
+
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
     L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
@@ -17,6 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     L1_ADDRESS_MAP[chainId].oftAddressBook,
+    oftFeeCap,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
@@ -29,6 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
       L1_ADDRESS_MAP[chainId].oftAddressBook,
+      oftFeeCap,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
