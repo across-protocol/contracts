@@ -24,7 +24,7 @@ contract HubPoolStore {
 
     address public immutable hubPool;
 
-    event StoredDataForTarget(address indexed target, bytes data, uint256 uuid);
+    event StoredDataForTarget(bytes32 dataHash, address indexed target, bytes data, uint256 uuid);
 
     modifier onlyHubPool() {
         if (msg.sender != hubPool) {
@@ -38,14 +38,15 @@ contract HubPoolStore {
     }
 
     function storeDataForTarget(address target, bytes calldata data) external onlyHubPool {
-        Data memory _data = Data({ data: data, target: target, nonce: dataUuid++ });
-        bytes32 dataHash = keccak256(abi.encode(_data));
+        // Don't include nonce in data hash so that the same data with the same target doesn't need to be rewritten.
+        bytes32 dataHash = keccak256(abi.encode(target, data));
         if (storedData[dataHash].data.length > 0) {
             // Data is already stored, do nothing.
             return;
         }
-        storedData[dataHash] = _data;
-        emit StoredDataForTarget(target, data, _data.nonce);
+        Data memory newData = Data({ data: data, target: target, nonce: dataUuid++ });
+        storedData[dataHash] = newData;
+        emit StoredDataForTarget(dataHash, target, data, newData.nonce);
     }
 }
 

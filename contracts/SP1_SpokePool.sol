@@ -145,7 +145,7 @@ contract SP1_SpokePool is SpokePool {
         // Prevent replay attacks by hashing the data which includes a nonce. The only way for someone to re-execute
         // an identical message on this target spoke pool would be to get the HubPool to re-publish the data. This lets
         // the HubPool owner re-execute admin actions that have the same calldata.
-        bytes32 dataHash = keccak256(abi.encode(publicValues.contractOutput));
+        bytes32 dataHash = keccak256(publicValues.contractOutput);
         if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
