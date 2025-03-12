@@ -8,7 +8,7 @@ import "./external/interfaces/SuccinctInterfaces.sol";
  * @notice Succinct Spoke pool.
  */
 contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
-    // Scroll_SpokePool does not use OFT messaging, setting the cap to 0
+    // Succinct_SpokePool does not use OFT messaging, setting the cap to 0
     uint256 private constant OFT_FEE_CAP = 0;
 
     // Address of the succinct AMB contract.
