@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
   ];
-  await deployNewProxy("DoctorWho_SpokePool", constructorArgs, initArgs);
+  await deployNewProxy("Unichain_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
-func.tags = ["DoctorWhoSpokePool", "doctorwho"];
+func.tags = ["UnichainSpokePool", "unichain"];
