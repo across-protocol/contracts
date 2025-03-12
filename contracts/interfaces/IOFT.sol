@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
-// ! todo: should this file live under a MIT licence? It's MIT-licenced in LZ code
 
 /**
- * @notice This file contains minimal copies of relevant structs / interfaces for OFT bridging.
- * The source code lives here @layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol, but it's
- * incompatible with our compiler version requirements, so we copy it here
+ * @notice This file contains minimal copies of relevant structs / interfaces for OFT bridging. Source code link:
+ * https://github.com/LayerZero-Labs/LayerZero-v2/blob/9a4049ae3a374e1c0ef01ac9fb53dd83f4257a68/packages/layerzero-v2/evm/oapp/contracts/oft/interfaces/IOFT.sol
+ * It's also published as a part of an npm package: @layerzerolabs/oft-evm. The published code is incompatible with
+ * our compiler version requirements, so we copy it here instead
  */
 
 struct MessagingReceipt {
