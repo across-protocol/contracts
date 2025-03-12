@@ -38,15 +38,31 @@ contract HubPoolStore {
     }
 
     function storeDataForTarget(address target, bytes calldata data) external onlyHubPool {
-        // Don't include nonce in data hash so that the same data with the same target doesn't need to be rewritten.
-        bytes32 dataHash = keccak256(abi.encode(target, data));
+        uint256 nonce = dataUuid++;
+        _storeData(target, data, nonce);
+    }
+
+    function storeDataForTargetWithNonce(
+        address target,
+        bytes calldata data,
+        uint256 nonce
+    ) external onlyHubPool {
+        _storeData(target, data, nonce);
+    }
+
+    function _storeData(
+        address target,
+        bytes calldata data,
+        uint256 nonce
+    ) internal {
+        Data memory newData = Data({ data: data, target: target, nonce: nonce });
+        bytes32 dataHash = keccak256(abi.encode(newData));
         if (storedData[dataHash].data.length > 0) {
             // Data is already stored, do nothing.
             return;
         }
-        Data memory newData = Data({ data: data, target: target, nonce: dataUuid++ });
         storedData[dataHash] = newData;
-        emit StoredDataForTarget(dataHash, target, data, newData.nonce);
+        emit StoredDataForTarget(dataHash, target, data, nonce);
     }
 }
 
@@ -68,14 +84,15 @@ contract SP1_Adapter is AdapterInterface {
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        // Check if the message contains a relayRootBundle() call for the target SpokePool. If so, then
-        // store the data without a specific target in-mind. This is a gas optimization so that we only update a
-        // storage slot in the HubPoolStore once per root bundle execution, since the data passed to relayRootBundle
-        // will be the same for all chains.
         bytes4 selector = bytes4(message[:4]);
         if (selector == SpokePoolInterface.relayRootBundle.selector) {
-            // Assume that the zero address is a placeholder for "no specific target".
-            DATA_STORE.storeDataForTarget(address(0), message);
+            // Check if the message contains a relayRootBundle() call for the target SpokePool. If so, then
+            // store the data without a specific target in-mind and hardcode nonce.
+            // This is a gas optimization so that we only update a
+            // storage slot in the HubPoolStore once per root bundle execution, since the data passed to relayRootBundle
+            // will be the same for all chains. We are assuming therefore that the relayerRefundRoot and slowRelayRoot
+            // combination are never repeated for a root bundle.
+            DATA_STORE.storeDataForTargetWithNonce(address(0), message, 0);
         } else {
             // Because we do not have the chain ID where the target is deployed, we can only associate this message
             // with the target address. Therefore we are assuming that target spoke pool addresses are unique across
