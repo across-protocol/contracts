@@ -51,7 +51,7 @@ contract SP1_SpokePool is SpokePool {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private _adminCallValidated;
 
-    event VerifiedProof(bytes32 indexed dataHash, address caller);
+    event VerifiedProof(bytes32 indexed dataHash, address caller, Data data);
 
     error NotHubPoolStore();
     error NotTarget();
@@ -150,7 +150,7 @@ contract SP1_SpokePool is SpokePool {
             revert AlreadyReceived();
         }
         verifiedProofs[dataHash] = true;
-        emit VerifiedProof(dataHash, msg.sender);
+        emit VerifiedProof(dataHash, msg.sender, l1Data);
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
