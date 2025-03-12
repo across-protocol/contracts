@@ -62,6 +62,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
     console.log(`\nRunning task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1Token}`);
     const { deployments, ethers } = hre;
+    const { AddressZero: ZERO_ADDRESS } = ethers.constants;
     const [signer] = await hre.ethers.getSigners();
 
     // Remove chainIds that are in the ignore list.
@@ -108,14 +109,26 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     // Construct calldata to enable these tokens.
     const callData = [];
 
-    // If deposit route chains are defined then we don't want to add a new LP token:
-    if (depositRouteChains.length === 0) {
-      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token}`);
+    // If the l1 token is not yet enabled for LP, enable it.
+    let { lpToken } = await hubPool.pooledTokens(l1Token);
+    if (lpToken === ZERO_ADDRESS) {
+      const [lpFactoryAddr, { abi: lpFactoryABI }] = await Promise.all([
+        hubPool.lpTokenFactory(),
+        deployments.get("LpTokenFactory"),
+      ]);
+      const lpTokenFactory = new ethers.Contract(lpFactoryAddr, lpFactoryABI, signer);
+      lpToken = await lpTokenFactory.callStatic.createLpToken(l1Token);
+      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token} (LP token ${lpToken})`);
+
       callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
-    } else {
-      depositRouteChains.forEach((chainId) =>
-        assert(tokens[chainId].symbol !== NO_SYMBOL, `Token ${symbol} is not defined for chain ${chainId}`)
+
+      // Ensure to always seed the LP with at least 1 unit of the LP token.
+      console.log(
+        `\nAdding calldata to enable ensure atomic deposit of L1 token for LP token ${lpToken}` +
+          "\n\n\tNOTE: ENSURE TO BURN AT LEAST 1 UNIT OF THE LP TOKEN AFTER EXECUTING."
       );
+      const minDeposit = "1";
+      callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
