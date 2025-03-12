@@ -92,7 +92,7 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         address to
     ) external payable override {
         // Get the Hyperlane XERC20 router for this token, if any
-        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
+        address hypRouter = _getHypXERC20Router(l1Token);
 
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
@@ -104,8 +104,8 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
             _transferUsdc(to, amount);
         }
         // Check if this token has a Hyperlane XERC20 router set. If so, use it
-        else if (address(hypRouter) != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
+        else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
@@ -115,7 +115,7 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
-    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+    function _getHypXERC20Router(address _token) internal view returns (address) {
         return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }

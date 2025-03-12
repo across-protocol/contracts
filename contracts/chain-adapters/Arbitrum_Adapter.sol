@@ -133,15 +133,15 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address to
     ) external payable override {
         address oftMessenger = _getOftMessenger(l1Token);
-        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
+        address hypRouter = _getHypXERC20Router(l1Token);
 
         // Check if the token needs to use any of the custom bridge solutions first
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else if (oftMessenger != address(0)) {
             _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
-        } else if (address(hypRouter) != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
+        } else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {
@@ -214,7 +214,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         return ADDRESS_BOOK.oftMessengers(_token);
     }
 
-    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+    function _getHypXERC20Router(address _token) internal view returns (address) {
         return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }

@@ -78,12 +78,8 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         uint256 amount,
         address to
     ) external payable override {
-        // IHypXERC20Router hypRouter2 = _getHypXERC20Router(IERC20(l1Token));
-        // _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter2, to, amount);
-        // return;
-
         // Get the Hyperlane XERC20 router for this token, if any
-        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
+        address hypRouter = _getHypXERC20Router(l1Token);
 
         // If the l1Token is WETH then unwrap it to ETH then send the ETH directly
         // via the Canoncial Message Service.
@@ -97,8 +93,8 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
             L1_USDC_BRIDGE.depositTo(amount, to);
         }
         // Check if this token has a Hyperlane XERC20 router set. If so, use it
-        else if (address(hypRouter) != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
+        else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {
@@ -109,7 +105,7 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
-    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+    function _getHypXERC20Router(address _token) internal view returns (address) {
         return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }

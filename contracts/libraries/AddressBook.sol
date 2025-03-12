@@ -11,17 +11,17 @@ import { IHypXERC20Router } from "./HypXERC20Adapter.sol";
  */
 contract AddressBook is Ownable {
     mapping(address => address) public oftMessengers;
-    mapping(IERC20 => IHypXERC20Router) public hypXERC20Routers;
+    mapping(address => address) public hypXERC20Routers;
 
     event OFTMessengerSet(address indexed token, address indexed messenger);
-    event HypXERC20RouterSet(IERC20 indexed token, IHypXERC20Router indexed router);
+    event HypXERC20RouterSet(address indexed token, address indexed router);
 
     function setOFTMessenger(address _token, address _messenger) external onlyOwner {
         oftMessengers[_token] = _messenger;
         emit OFTMessengerSet(_token, _messenger);
     }
 
-    function setHypXERC20Router(IERC20 _token, IHypXERC20Router _router) external onlyOwner {
+    function setHypXERC20Router(address _token, address _router) external onlyOwner {
         hypXERC20Routers[_token] = _router;
         emit HypXERC20RouterSet(_token, _router);
     }

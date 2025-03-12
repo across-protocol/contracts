@@ -125,7 +125,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     ) external payable override {
         // If token can be bridged into yield-ing version of ERC20 on L2 side, then use Blast Bridge, otherwise
         // use standard bridge or Hyperlane router, if available
-        IHypXERC20Router hypRouter = _getHypXERC20Router(IERC20(l1Token));
+        address hypRouter = _getHypXERC20Router(l1Token);
 
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
@@ -139,8 +139,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
             L1_BLAST_BRIDGE.bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         // Check if this token has a Hyperlane XERC20 router set. If so, use it
-        else if (address(hypRouter) != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), hypRouter, to, amount);
+        else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
@@ -150,7 +150,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         emit TokensRelayed(l1Token, l2Token, amount, to);
     }
 
-    function _getHypXERC20Router(IERC20 _token) internal view returns (IHypXERC20Router) {
+    function _getHypXERC20Router(address _token) internal view returns (address) {
         return ADDRESS_BOOK.hypXERC20Routers(_token);
     }
 }
