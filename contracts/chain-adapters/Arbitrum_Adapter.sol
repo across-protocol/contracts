@@ -10,7 +10,7 @@ import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
-import { AddressBook } from "../libraries/AddressBook.sol";
+import { AdapterStore } from "../libraries/AdapterStore.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -57,11 +57,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // Helper contract to help us map token => OFT messenger for OFT bridging
-    AddressBook public immutable ADDRESS_BOOK;
+    // Helper storage contract to help this Adapter map token => OFT messenger for OFT bridging.
+    AdapterStore public immutable ADAPTER_STORE;
 
-    // Uniquely identifies adapter type (Aritrum, Optimism etc.) for calls to ADDRESS_BOOK
-    uint256 public immutable ADAPTER_ID;
+    // Chain id of the chain this adapter helps bridge to.
+    uint256 public immutable DESTINATION_CHAIN_ID;
 
     /**
      * @notice Constructs new Adapter.
@@ -70,8 +70,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _adapterId Unique adapter identifier. Used for _addressBook
-     * @param _addressBook AddressBook contract to help identify token -> oftMessenger relationship for OFT bridging.
+     * @param _dstChainId Chain id of a destination chain for this adapter.
+     * @param _adapterStore AdapterStore contract to help identify token => oftMessenger relationship for OFT bridging.
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -80,8 +80,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        uint256 _adapterId,
-        AddressBook _addressBook,
+        uint256 _dstChainId,
+        AdapterStore _adapterStore,
         uint256 _oftFeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
@@ -90,8 +90,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
-        ADAPTER_ID = _adapterId;
-        ADDRESS_BOOK = _addressBook;
+        DESTINATION_CHAIN_ID = _dstChainId;
+        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -209,6 +209,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @return messenger OFT messenger contract
      */
     function _getOftMessenger(address _token) internal view returns (address) {
-        return ADDRESS_BOOK.oftMessengers(ADAPTER_ID, _token);
+        return ADAPTER_STORE.oftMessengers(DESTINATION_CHAIN_ID, _token);
     }
 }

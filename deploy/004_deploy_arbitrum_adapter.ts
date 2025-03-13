@@ -1,3 +1,4 @@
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
@@ -12,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
   // id that uniquely identifies a chain adapter type. Set to closely match chain ids
-  const adapterId = 42161;
+  const dstChainId = CHAIN_IDs.ARBITRUM;
   // 1 ether is a good default for oftFeeCap for cross-chain OFT sends
   const oftFeeCap = toWei("1");
 
@@ -22,8 +23,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     l2RefundAddress,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    adapterId,
-    L1_ADDRESS_MAP[chainId].addressBook,
+    dstChainId,
+    L1_ADDRESS_MAP[chainId].adapterStore,
     oftFeeCap,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
@@ -36,8 +37,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      adapterId,
-      L1_ADDRESS_MAP[chainId].addressBook,
+      dstChainId,
+      L1_ADDRESS_MAP[chainId].adapterStore,
       oftFeeCap,
     ],
   });
