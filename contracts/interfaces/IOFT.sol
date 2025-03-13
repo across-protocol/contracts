@@ -49,6 +49,12 @@ struct OFTReceipt {
  */
 interface IOFT {
     /**
+     * @notice Retrieves the address of the token associated with the OFT.
+     * @return token The address of the ERC20 token implementation.
+     */
+    function token() external view returns (address);
+
+    /**
      * @notice Provides a quote for the send() operation.
      * @param _sendParam The parameters for the send() operation.
      * @param _payInLzToken Flag indicating whether the caller is paying in the LZ token.
