@@ -52,7 +52,6 @@ let l1ERC20GatewayRouter: FakeContract,
   adapterStore: FakeContract<AdapterStore>;
 
 const arbitrumChainId = 42161;
-const adapterId = arbitrumChainId;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
@@ -91,7 +90,7 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      adapterId,
+      arbitrumChainId,
       adapterStore.address,
       oftFeeCap
     );
@@ -262,7 +261,7 @@ describe("Arbitrum Chain Adapter", function () {
     const internalChainId = arbitrumChainId;
 
     oftMessenger.token.returns(usdt.address);
-    await adapterStore.connect(owner).setOFTMessenger(adapterId, usdt.address, oftMessenger.address);
+    await adapterStore.connect(owner).setOFTMessenger(arbitrumChainId, usdt.address, oftMessenger.address);
 
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
     await hubPool
@@ -271,7 +270,7 @@ describe("Arbitrum Chain Adapter", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // set up correct messenger to be returned on a proper `oftMessengers` call
-    adapterStore.oftMessengers.whenCalledWith(adapterId, usdt.address).returns(oftMessenger.address);
+    adapterStore.oftMessengers.whenCalledWith(arbitrumChainId, usdt.address).returns(oftMessenger.address);
 
     // set up `quoteSend` return val
     const msgFeeStruct: MessagingFeeStructOutput = [

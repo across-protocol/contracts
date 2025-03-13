@@ -1,4 +1,4 @@
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
 import { toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
@@ -12,8 +12,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
   const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
-  // id that uniquely identifies a chain adapter type. Set to closely match chain ids
-  const dstChainId = CHAIN_IDs.ARBITRUM;
+  // pick correct destination chain id to set based on deployment network
+  const dstChainId = chainId == MAINNET_CHAIN_IDs.MAINNET ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA;
+
   // 1 ether is a good default for oftFeeCap for cross-chain OFT sends
   const oftFeeCap = toWei("1");
 
