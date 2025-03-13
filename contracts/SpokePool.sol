@@ -209,6 +209,8 @@ abstract contract SpokePool is
     event SetOFTMessenger(address indexed token, address indexed messenger);
     event SetHypXERC20Router(address indexed token, address indexed router);
 
+    error OFTTokenMismatch();
+
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
      * have constructors since the following code will be executed within the logic contract's state, not the
@@ -1777,6 +1779,9 @@ abstract contract SpokePool is
     }
 
     function _setOftMessenger(address _token, address _messenger) internal {
+        if (IOFT(_messenger).token() != _token) {
+            revert OFTTokenMismatch();
+        }
         oftMessengers[_token] = _messenger;
         emit SetOFTMessenger(_token, _messenger);
     }

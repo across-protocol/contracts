@@ -31,7 +31,12 @@ import { IOFT__factory } from "../../../../typechain/factories/contracts/interfa
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
-import { AddressBook, AddressBook__factory, IHypXERC20Router, IHypXERC20Router__factory } from "../../../../typechain";
+import {
+  AdapterStore,
+  AdapterStore__factory,
+  IHypXERC20Router,
+  IHypXERC20Router__factory,
+} from "../../../../typechain";
 
 let hubPool: Contract,
   arbitrumAdapter: Contract,
@@ -50,7 +55,7 @@ let l1ERC20GatewayRouter: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
   oftMessenger: FakeContract<IOFT>,
-  addressBook: FakeContract<AddressBook>,
+  adapterStore: FakeContract<AdapterStore>,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const arbitrumChainId = 42161;
@@ -81,10 +86,7 @@ describe("Arbitrum Chain Adapter", function () {
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
-    addressBook = await createTypedFakeFromABI([...AddressBook__factory.abi]);
-    await addressBook.connect(owner).setOFTMessenger(usdt.address, oftMessenger.address);
-
-    hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
+    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
 
     l1Inbox = await createFake("Inbox");
     l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
@@ -101,8 +103,10 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      addressBook.address,
+      arbitrumChainId,
+      adapterStore.address,
       oftFeeCap
+      // todo: hypfeecap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
@@ -271,6 +275,9 @@ describe("Arbitrum Chain Adapter", function () {
   it("Correctly calls the OFT bridge adapter when attempting to bridge USDT", async function () {
     const internalChainId = arbitrumChainId;
 
+    oftMessenger.token.returns(usdt.address);
+    await adapterStore.connect(owner).setOFTMessenger(arbitrumChainId, usdt.address, oftMessenger.address);
+
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
     await hubPool
       .connect(dataWorker)
@@ -278,7 +285,7 @@ describe("Arbitrum Chain Adapter", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // set up correct messenger to be returned on a proper `oftMessengers` call
-    addressBook.oftMessengers.whenCalledWith(usdt.address).returns(oftMessenger.address);
+    adapterStore.oftMessengers.whenCalledWith(arbitrumChainId, usdt.address).returns(oftMessenger.address);
 
     // set up `quoteSend` return val
     const msgFeeStruct: MessagingFeeStructOutput = [
@@ -320,6 +327,7 @@ describe("Arbitrum Chain Adapter", function () {
     expect(oftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, hubPool.address);
   });
 
+  // todo: change to adapterStore
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
     // set hyperlane router in address book
     await addressBook.connect(owner).setHypXERC20Router(ezETH.address, hypXERC20Router.address);

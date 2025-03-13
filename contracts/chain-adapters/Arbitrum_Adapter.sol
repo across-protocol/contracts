@@ -11,7 +11,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
 import "../libraries/HypXERC20Adapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
-import { AddressBook } from "../libraries/AddressBook.sol";
+import { AdapterStore } from "../libraries/AdapterStore.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -58,8 +58,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // Helper contract to help us map token -> messenger/router for OFT- and XERC20-enabled tokens
-    AddressBook public immutable ADDRESS_BOOK;
+    // Helper storage contract to help this Adapter map token => OFT messenger for OFT bridging.
+    AdapterStore public immutable ADAPTER_STORE;
+
+    // Chain id of the chain this adapter helps bridge to.
+    uint256 public immutable DESTINATION_CHAIN_ID;
 
     /**
      * @notice Constructs new Adapter.
@@ -68,7 +71,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _addressBook AddressBook contract to helps identify token -> messenger/router relationship for OFT and XERC20 bridging.
+     * @param _dstChainId Chain id of a destination chain for this adapter.
+     * @param _adapterStore AdapterStore contract to help identify token => oftMessenger relationship for OFT bridging.
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
@@ -78,7 +82,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        AddressBook _addressBook,
+        uint256 _dstChainId,
+        AdapterStore _adapterStore,
         uint256 _oftFeeCap,
         uint256 _hypXERC20FeeCap
     )
@@ -89,7 +94,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
-        ADDRESS_BOOK = _addressBook;
+        DESTINATION_CHAIN_ID = _dstChainId;
+        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -210,10 +216,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @return messenger OFT messenger contract
      */
     function _getOftMessenger(address _token) internal view returns (address) {
-        return ADDRESS_BOOK.oftMessengers(_token);
+        return ADAPTER_STORE.oftMessengers(DESTINATION_CHAIN_ID, _token);
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADDRESS_BOOK.hypXERC20Routers(_token);
+        // todo
+        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
     }
 }
