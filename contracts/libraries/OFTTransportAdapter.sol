@@ -96,13 +96,15 @@ contract OFTTransportAdapter {
 
         // `false` in the 2nd param here refers to `bool _payInLzToken`. We will pay in native token, so set to `false`
         MessagingFee memory fee = _messenger.quoteSend(sendParam, false);
-        if (fee.nativeFee > FEE_CAP) revert OftFeeCapExceeded();
-        if (fee.nativeFee > address(this).balance) revert OftInsufficientBalanceForFee();
+        // Create a stack variable to optimize gas usage on subsequent reads
+        uint256 nativeFee = fee.nativeFee;
+        if (nativeFee > FEE_CAP) revert OftFeeCapExceeded();
+        if (nativeFee > address(this).balance) revert OftInsufficientBalanceForFee();
 
         // Approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
         _token.forceApprove(address(_messenger), _amount);
 
-        (, OFTReceipt memory oftReceipt) = _messenger.send{ value: fee.nativeFee }(sendParam, fee, address(this));
+        (, OFTReceipt memory oftReceipt) = _messenger.send{ value: nativeFee }(sendParam, fee, address(this));
 
         // The HubPool expects that the amount received by the SpokePool is exactly the sent amount
         if (_amount != oftReceipt.amountReceivedLD) revert OftIncorrectAmountReceivedLD();
