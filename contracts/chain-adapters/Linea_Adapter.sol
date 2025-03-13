@@ -24,9 +24,6 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
     ITokenBridge public immutable L1_TOKEN_BRIDGE;
     IUSDCBridge public immutable L1_USDC_BRIDGE;
 
-    // Fee cap to check against in Hyperlane XERC20 adapter when sending a transfer
-    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
-
     // Helper contract to help us map token -> router for XERC20-enabled tokens
     AddressBook public immutable ADDRESS_BOOK;
 
@@ -37,14 +34,16 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
      * @param _l1TokenBridge Canonical token bridge contract on L1.
      * @param _l1UsdcBridge L1 USDC Bridge to ConsenSys's L2 Linea.
      * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
+     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         WETH9Interface _l1Weth,
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
         IUSDCBridge _l1UsdcBridge,
-        AddressBook _addressBook
-    ) HypXERC20Adapter(HyperlaneDomainIds.Linea, HYP_FEE_CAP_CONST) {
+        AddressBook _addressBook,
+        uint256 _hypXERC20FeeCap
+    ) HypXERC20Adapter(HyperlaneDomainIds.Linea, _hypXERC20FeeCap) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;

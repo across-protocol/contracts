@@ -11,6 +11,9 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     // Scroll_SpokePool does not use OFT messaging, setting the cap to 0
     uint256 private constant OFT_FEE_CAP = 0;
 
+    // Succinct_SpokePool does not use OFT messaging, setting the cap to 0
+    uint256 private constant HYP_XERC20_FEE_CAP = 0;
+
     // Address of the succinct AMB contract.
     address public succinctTargetAmb;
 
@@ -50,7 +53,15 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {} // solhint-disable-line no-empty-blocks
+    )
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            OFT_FEE_CAP,
+            HYP_XERC20_FEE_CAP
+        )
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Succinct SpokePool.

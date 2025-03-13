@@ -2,6 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WETH } from "./consts";
+import { toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -15,12 +16,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
   ];
 
+  const hypXERC20FeeCap = toWei("1"); // 1 ether is our default fee cap for XERC20 transfers via hyperlane
   const constructorArgs = [
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    hypXERC20FeeCap,
   ];
   await deployNewProxy("Optimism_SpokePool", constructorArgs, initArgs);
 };

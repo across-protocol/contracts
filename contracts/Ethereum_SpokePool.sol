@@ -14,12 +14,23 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
     // Ethereum_SpokePool does not use OFT messaging, setting the cap to 0
     uint256 private constant OFT_FEE_CAP = 0;
 
+    // Ethereum_SpokePool does not use XERC20 messaging, setting the cap to 0
+    uint256 private constant HYP_XERC20_FEE_CAP = 0;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {} // solhint-disable-line no-empty-blocks
+    )
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            OFT_FEE_CAP,
+            HYP_XERC20_FEE_CAP
+        )
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Ethereum SpokePool.

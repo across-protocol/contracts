@@ -60,9 +60,6 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     IL1ERC20Bridge public immutable L1_BLAST_BRIDGE; // 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115 on mainnet.
     address public immutable L1_DAI; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
 
-    // Fee cap to check against in Hyperlane XERC20 adapter when sending a transfer
-    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
-
     // Helper contract to help us map token -> router for XERC20-enabled tokens
     AddressBook public immutable ADDRESS_BOOK;
 
@@ -76,6 +73,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param l1Dai DAI address on L1.
      * @param l2GasLimit Gas limit for L2 execution.
      * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
+     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         WETH9Interface _l1Weth,
@@ -85,12 +83,13 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
         uint32 l2GasLimit,
-        AddressBook _addressBook
+        AddressBook _addressBook,
+        uint256 _hypXERC20FeeCap
     )
         CrossDomainEnabled(_crossDomainMessenger)
         // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
         CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINITIALIZED)
-        HypXERC20Adapter(HyperlaneDomainIds.Blast, HYP_FEE_CAP_CONST)
+        HypXERC20Adapter(HyperlaneDomainIds.Blast, _hypXERC20FeeCap)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

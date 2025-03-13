@@ -58,9 +58,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // todo: move to constructor param
-    uint256 public constant HYP_FEE_CAP_CONST = 1 ether;
-
     // Helper contract to help us map token -> messenger/router for OFT- and XERC20-enabled tokens
     AddressBook public immutable ADDRESS_BOOK;
 
@@ -73,6 +70,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _addressBook AddressBook contract to helps identify token -> messenger/router relationship for OFT and XERC20 bridging.
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
+     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -81,11 +79,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
         AddressBook _addressBook,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        uint256 _hypXERC20FeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
         OFTTransportAdapter(OFTEIds.Arbitrum, _oftFeeCap)
-        HypXERC20Adapter(HyperlaneDomainIds.Arbitrum, HYP_FEE_CAP_CONST)
+        HypXERC20Adapter(HyperlaneDomainIds.Arbitrum, _hypXERC20FeeCap)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;

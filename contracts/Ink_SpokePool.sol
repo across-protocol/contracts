@@ -16,16 +16,14 @@ contract Ink_SpokePool is Ovm_SpokePool {
     // Address of the custom L2 USDC bridge.
     address private constant USDC_BRIDGE = address(0);
 
-    // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
-    uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint256 _hypXERC20FeeCap
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
@@ -33,7 +31,7 @@ contract Ink_SpokePool is Ovm_SpokePool {
             _fillDeadlineBuffer,
             _l2Usdc,
             _cctpTokenMessenger,
-            HYP_XERC20_FEE_CAP
+            _hypXERC20FeeCap
         )
     {} // solhint-disable-line no-empty-blocks
 

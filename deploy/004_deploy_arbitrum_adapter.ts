@@ -13,6 +13,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // 1 ether is a good default for oftFeeCap for cross-chain OFT sends
   const oftFeeCap = toWei("1");
+  // same as above, but for XERC20 transfers via hyperlane
+  const hypXERC20FeeCap = toWei("1");
 
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
@@ -22,6 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     L1_ADDRESS_MAP[chainId].oftAddressBook,
     oftFeeCap,
+    hypXERC20FeeCap,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
@@ -33,8 +36,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      L1_ADDRESS_MAP[chainId].oftAddressBook,
+      L1_ADDRESS_MAP[chainId].addressBookArbitrumAdapter,
       oftFeeCap,
+      hypXERC20FeeCap,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });

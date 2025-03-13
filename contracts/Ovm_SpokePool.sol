@@ -33,7 +33,7 @@ interface IL2ERC20Bridge {
  * @notice OVM specific SpokePool. Uses OVM cross-domain-enabled logic to implement admin only access to functions. * Optimism, Base, and Boba each implement this spoke pool and set their chain specific contract addresses for l2Eth and l2Weth.
  * @custom:security-contact bugs@across.to
  */
-contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
+contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     // Ovm_SpokePool does not use OFT messaging, setting the cap to 0
@@ -62,14 +62,9 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     // requires specfiying an L1 token.
     mapping(address => address) public remoteL1Tokens;
 
-    // A map to store token => IHypXERC20Router relationships for XERC20 bridging via Hyperlane.
-    // todo: move this to `SpokePool`, as it's used by most of SpokePools
-    mapping(address => address) public hypXERC20Routers;
-
     event SetL1Gas(uint32 indexed newL1Gas);
     event SetL2TokenBridge(address indexed l2Token, address indexed tokenBridge);
     event SetRemoteL1Token(address indexed l2Token, address indexed l1Token);
-    event SetHypXERC20Router(address indexed token, address indexed router);
 
     error NotCrossDomainAdmin();
 
@@ -82,9 +77,14 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
         ITokenMessenger _cctpTokenMessenger,
         uint256 _hypXERC20FeeCap
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP)
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            OFT_FEE_CAP,
+            _hypXERC20FeeCap
+        )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
-        HypXERC20Adapter(HyperlaneDomainIds.Ethereum, _hypXERC20FeeCap)
     {} // solhint-disable-line no-empty-blocks
 
     /**
@@ -137,16 +137,6 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
         emit SetL2TokenBridge(l2Token, tokenBridge);
     }
 
-    /**
-     * @notice Add token -> IHypXERC20Router relationship. Callable only by admin.
-     * @param l2Token L2 token.
-     * @param hypRouter IHypXERC20Router contract that accepts cross-chain transfers.
-     */
-    function setXERC20HypRouter(address l2Token, address hypRouter) public onlyAdmin nonReentrant {
-        hypXERC20Routers[l2Token] = hypRouter;
-        emit SetHypXERC20Router(l2Token, hypRouter);
-    }
-
     /**************************************
      *        INTERNAL FUNCTIONS          *
      **************************************/
@@ -169,7 +159,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
-        address hypRouter = hypXERC20Routers[l2TokenAddress];
+        address hypRouter = _getXERC20HypRouter(l2TokenAddress);
 
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
@@ -244,5 +234,5 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter, HypXERC20Adapter {
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure its always at the end of storage.
-    uint256[998] private __gap;
+    uint256[999] private __gap;
 }

@@ -10,16 +10,14 @@ import "./external/interfaces/CCTPInterfaces.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Redstone_SpokePool is Ovm_SpokePool {
-    // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
-    uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint256 _hypXERC20FeeCap
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
@@ -27,7 +25,7 @@ contract Redstone_SpokePool is Ovm_SpokePool {
             _fillDeadlineBuffer,
             _l2Usdc,
             _cctpTokenMessenger,
-            HYP_XERC20_FEE_CAP
+            _hypXERC20FeeCap
         )
     {} // solhint-disable-line no-empty-blocks
 

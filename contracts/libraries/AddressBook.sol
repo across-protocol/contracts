@@ -10,6 +10,9 @@ import { IHypXERC20Router } from "./HypXERC20Adapter.sol";
  * @dev Handles token => messenger/router mapping storage, as adapters are called via delegatecall and don't have relevant storage space
  */
 contract AddressBook is Ownable {
+    mapping(uint256 => mapping(address => address)) public oftMessengers2;
+    mapping(uint256 => mapping(address => address)) public hypXERC20Routers2;
+
     mapping(address => address) public oftMessengers;
     mapping(address => address) public hypXERC20Routers;
 
