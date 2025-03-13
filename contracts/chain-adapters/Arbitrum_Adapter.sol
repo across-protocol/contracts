@@ -57,10 +57,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // Helper contract to help us map token -> OFT messenger for OFT-enabled tokens
-    AddressBook public immutable OFT_ADDRESS_BOOK;
+    // Helper contract to help us map token => OFT messenger for OFT bridging
+    AddressBook public immutable ADDRESS_BOOK;
 
-    // A unique adapter identifier. Used for _addressBook
+    // Uniquely identifies adapter type (Aritrum, Optimism etc.) for calls to ADDRESS_BOOK
     uint256 public immutable ADAPTER_ID;
 
     /**
@@ -91,7 +91,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
         ADAPTER_ID = _adapterId;
-        OFT_ADDRESS_BOOK = _addressBook;
+        ADDRESS_BOOK = _addressBook;
     }
 
     /**
@@ -209,6 +209,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @return messenger OFT messenger contract
      */
     function _getOftMessenger(address _token) internal view returns (address) {
-        return OFT_ADDRESS_BOOK.oftMessengers(ADAPTER_ID, _token);
+        return ADDRESS_BOOK.oftMessengers(ADAPTER_ID, _token);
     }
 }
