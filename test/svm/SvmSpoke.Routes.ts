@@ -1,10 +1,21 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN } from "@coral-xyz/anchor";
+import {
+  address,
+  appendTransactionMessageInstruction,
+  createKeyPairFromBytes,
+  createSignerFromKeyPair,
+  getProgramDerivedAddress,
+  pipe,
+} from "@solana/kit";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint, getAccount } from "@solana/spl-token";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
-import { common } from "./SvmSpoke.common";
+import { SvmSpokeClient } from "../../src/svm";
+import { SetEnableRouteInput } from "../../src/svm/clients/SvmSpoke";
 import { readEventsUntilFound } from "../../src/svm/web3-v1";
+import { common } from "./SvmSpoke.common";
+import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
 
 const { provider, program, owner, initializeState, createRoutePda, getVaultAta } = common;
 
@@ -115,5 +126,57 @@ describe("svm_spoke.routes", () => {
       assert.instanceOf(err, anchor.AnchorError);
       assert.strictEqual(err.error.errorCode.code, "InvalidMint", "Expected error code InvalidMint");
     }
+  });
+
+  describe("codama client and solana kit", () => {
+    it("Sets and retrieves route enablement with codama", async () => {
+      const rpcClient = createDefaultSolanaClient();
+      const signer = await createSignerFromKeyPair(
+        await createKeyPairFromBytes((anchor.AnchorProvider.env().wallet as anchor.Wallet).payer.secretKey)
+      );
+
+      const [eventAuthority] = await getProgramDerivedAddress({
+        programAddress: address(program.programId.toString()),
+        seeds: ["__event_authority"],
+      });
+
+      const input: SetEnableRouteInput = {
+        signer: signer,
+        payer: signer,
+        state: address(state.toString()),
+        route: address(routePda.toString()),
+        vault: address(vault.toString()),
+        originTokenMint: address(tokenMint.toString()),
+        tokenProgram: address(TOKEN_PROGRAM_ID.toString()),
+        associatedTokenProgram: address(ASSOCIATED_TOKEN_PROGRAM_ID.toString()),
+        systemProgram: address(anchor.web3.SystemProgram.programId.toString()),
+        eventAuthority: address(eventAuthority.toString()),
+        program: address(program.programId.toString()),
+        originToken: address(tokenMint.toString()),
+        destinationChainId: routeChainId.toNumber(),
+        enabled: true,
+      };
+      const instructions = SvmSpokeClient.getSetEnableRouteInstruction(input);
+      const tx = await pipe(
+        await createDefaultTransaction(rpcClient, signer),
+        (tx) => appendTransactionMessageInstruction(instructions, tx),
+        (tx) => signAndSendTransaction(rpcClient, tx)
+      );
+
+      // Retrieve and verify the route is enabled
+      let routeAccount = await SvmSpokeClient.fetchRoute(rpcClient.rpc, address(routePda.toString()));
+      assert.isTrue(routeAccount.data.enabled, "Route should be enabled");
+
+      // Verify the enabledDepositRoute event
+      let events = await readEventsUntilFound(provider.connection, tx, [program]);
+      let event = events[0].data;
+      assert.strictEqual(event.originToken.toString(), tokenMint.toString(), "originToken event match");
+      assert.strictEqual(
+        event.destinationChainId.toString(),
+        routeChainId.toString(),
+        "destinationChainId should match"
+      );
+      assert.isTrue(event.enabled, "enabledDepositRoute enabled");
+    });
   });
 });
