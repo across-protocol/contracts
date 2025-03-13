@@ -39,6 +39,9 @@ contract SP1_SpokePool is SpokePool {
     /// @notice The verification key for the acrossCall program.
     bytes32 public immutable acrossCallProgramVKey;
 
+    // This SpokePool does not use OFT messaging, setting the cap to 0
+    uint256 private constant OFT_FEE_CAP = 0;
+
     /// @notice Stores all proofs verified to prevent replay attacks.
     mapping(bytes32 => bool) public verifiedProofs;
 
@@ -87,7 +90,7 @@ contract SP1_SpokePool is SpokePool {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {
         verifier = _verifier;
         helios = _helios;
         acrossCallProgramVKey = _acrossCallProgramVKey;
