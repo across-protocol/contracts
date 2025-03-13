@@ -5,7 +5,7 @@ import "hardhat-deploy";
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
-  await hre.deployments.deploy("OFTAddressBook", {
+  await hre.deployments.deploy("AddressBook", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
@@ -13,4 +13,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["OFTAddressBook", "mainnet"];
+func.tags = ["AddressBook", "mainnet"];

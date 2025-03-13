@@ -10,7 +10,7 @@ import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
-import { OFTAddressBook } from "../libraries/OFTAddressBook.sol";
+import { AddressBook } from "../libraries/AddressBook.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -58,7 +58,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
     // Helper contract to help us map token -> OFT messenger for OFT-enabled tokens
-    OFTAddressBook public immutable OFT_ADDRESS_BOOK;
+    AddressBook public immutable OFT_ADDRESS_BOOK;
+
+    // A unique adapter identifier. Used for _addressBook
+    uint256 public immutable ADAPTER_ID;
 
     /**
      * @notice Constructs new Adapter.
@@ -67,7 +70,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _oftAddressBook OFTAddressBook contract to help identify token -> oftMessenger relationship for OFT bridging.
+     * @param _adapterId Unique adapter identifier. Used for _addressBook
+     * @param _addressBook AddressBook contract to help identify token -> oftMessenger relationship for OFT bridging.
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -76,7 +80,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        OFTAddressBook _oftAddressBook,
+        uint256 _adapterId,
+        AddressBook _addressBook,
         uint256 _oftFeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
@@ -85,7 +90,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
-        OFT_ADDRESS_BOOK = _oftAddressBook;
+        ADAPTER_ID = _adapterId;
+        OFT_ADDRESS_BOOK = _addressBook;
     }
 
     /**
@@ -203,6 +209,6 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @return messenger OFT messenger contract
      */
     function _getOftMessenger(address _token) internal view returns (address) {
-        return OFT_ADDRESS_BOOK.oftMessengers(_token);
+        return OFT_ADDRESS_BOOK.oftMessengers(ADAPTER_ID, _token);
     }
 }
