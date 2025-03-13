@@ -28,9 +28,6 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // ZkSync_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
     // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
     address public l2Eth;
 
@@ -44,7 +41,7 @@ contract ZkSync_SpokePool is SpokePool {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {} // solhint-disable-line no-empty-blocks
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the ZkSync SpokePool.
@@ -124,9 +121,4 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
-
-    // Reserve storage slots for future versions of this base contract to add state variables without
-    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    uint256[1000] private __gap;
 }

@@ -152,15 +152,9 @@
     },
     {
       "contract": "contracts/AlephZero_SpokePool.sol:AlephZero_SpokePool",
-      "label": "oftMessengers",
-      "offset": 0,
-      "slot": "2164"
-    },
-    {
-      "contract": "contracts/AlephZero_SpokePool.sol:AlephZero_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2165"
+      "slot": "2164"
     },
     {
       "contract": "contracts/AlephZero_SpokePool.sol:AlephZero_SpokePool",
@@ -173,12 +167,6 @@
       "label": "whitelistedTokens",
       "offset": 0,
       "slot": "3163"
-    },
-    {
-      "contract": "contracts/AlephZero_SpokePool.sol:AlephZero_SpokePool",
-      "label": "__gap",
-      "offset": 0,
-      "slot": "3164"
     }
   ]
 }

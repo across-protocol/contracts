@@ -152,15 +152,9 @@
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
-      "label": "oftMessengers",
-      "offset": 0,
-      "slot": "2164"
-    },
-    {
-      "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2165"
+      "slot": "2164"
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",

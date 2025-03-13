@@ -20,9 +20,6 @@ interface IL2GatewayRouterExtended is IL2GatewayRouter {
 contract Scroll_SpokePool is SpokePool {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // Scroll_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
     /**
      * @notice The address of the official l2GatewayRouter contract for Scroll for bridging tokens from L2 -> L1
      * @dev We can find these (main/test)net deployments here: https://docs.scroll.io/en/developers/scroll-contracts/#scroll-contracts
@@ -51,7 +48,7 @@ contract Scroll_SpokePool is SpokePool {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {} // solhint-disable-line no-empty-blocks
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Scroll SpokePool.
