@@ -22,7 +22,7 @@ security_txt! {
 
 // If changing the program ID, make sure to check that the resulting handler_signer PDA has the highest bump of 255 so
 // to minimize the compute cost when finding the PDA.
-declare_id!("27dua7HMuaZrAc6PRfxmvshHChypFLzZVSpKKaDAPjsq");
+declare_id!("Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h");
 
 #[program]
 pub mod multicall_handler {
