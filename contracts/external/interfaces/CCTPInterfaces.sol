@@ -74,3 +74,24 @@ interface ITokenMinter {
      */
     function burnLimitsPerMessage(address token) external view returns (uint256);
 }
+
+/**
+ * IMessageTransmitter in CCTP inherits IRelayer and IReceiver, but here we only import sendMessage from IRelayer:
+ * https://github.com/circlefin/evm-cctp-contracts/blob/377c9bd813fb86a42d900ae4003599d82aef635a/src/interfaces/IMessageTransmitter.sol#L25
+ * https://github.com/circlefin/evm-cctp-contracts/blob/377c9bd813fb86a42d900ae4003599d82aef635a/src/interfaces/IRelayer.sol#L23-L35
+ */
+interface IMessageTransmitter {
+    /**
+     * @notice Sends an outgoing message from the source domain.
+     * @dev Increment nonce, format the message, and emit `MessageSent` event with message information.
+     * @param destinationDomain Domain of destination chain
+     * @param recipient Address of message recipient on destination domain as bytes32
+     * @param messageBody Raw bytes content of message
+     * @return nonce reserved by message
+     */
+    function sendMessage(
+        uint32 destinationDomain,
+        bytes32 recipient,
+        bytes calldata messageBody
+    ) external returns (uint64);
+}

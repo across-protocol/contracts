@@ -47,9 +47,9 @@ const mnemonic = getMnemonic();
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 1000 },
+    optimizer: { enabled: true, runs: 800 },
     viaIR: true,
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -58,7 +58,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "default" : "strip" },
+    debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
 
@@ -68,7 +68,7 @@ const config: HardhatUserConfig = {
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Linea_SpokePool.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        ...LARGE_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
@@ -79,6 +79,8 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -87,6 +89,9 @@ const config: HardhatUserConfig = {
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -189,6 +194,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    ink: {
+      chainId: CHAIN_IDs.INK,
+      url: "https://rpc-gel.inkonchain.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     linea: {
       chainId: CHAIN_IDs.LINEA,
       url: `https://linea-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
@@ -237,6 +249,16 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
+    },
+    "lens-sepolia": {
+      chainId: CHAIN_IDs.LENS_SEPOLIA,
+      url: "https://rpc.testnet.lens.dev",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+      ethNetwork: "sepolia",
+      verifyURL: "https://block-explorer-verify.testnet.lens.dev/contract_verification",
+      zksync: true,
     },
     lisk: {
       chainId: CHAIN_IDs.LISK,
@@ -294,6 +316,27 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    soneium: {
+      chainId: CHAIN_IDs.SONEIUM,
+      url: "https://soneium.blockscout.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    unichain: {
+      chainId: CHAIN_IDs.UNICHAIN,
+      url: "https://mainnet.unichain.org",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    "unichain-sepolia": {
+      chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
+      url: "https://sepolia.unichain.org",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -313,16 +356,20 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      mode: process.env.MODE_ETHERSCAN_API_KEY!,
-      "mode-sepolia": process.env.MODE_ETHERSCAN_API_KEY!,
-      lisk: process.env.LISK_ETHERSCAN_API_KEY!,
-      "lisk-sepolia": process.env.LISK_ETHERSCAN_API_KEY!,
-      redstone: process.env.REDSTONE_ETHERSCAN_API_KEY!,
+      mode: "blockscout",
+      "mode-sepolia": "blockscout",
+      lisk: "blockscout",
+      "lisk-sepolia": "blockscout",
+      redstone: "blockscout",
       blast: process.env.BLAST_ETHERSCAN_API_KEY!,
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
       worldchain: "blockscout",
       alephzero: "blockscout",
+      ink: "blockscout",
+      soneium: "blockscout",
+      unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
+      "unichain-sepolia": process.env.UNICHAIN_ETHERSCAN_API_KEY!,
     },
     customChains: [
       {
@@ -350,11 +397,27 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "ink",
+        chainId: CHAIN_IDs.INK,
+        urls: {
+          apiURL: "https://explorer.inkonchain.com/api",
+          browserURL: "https://explorer.inkonchain.com",
+        },
+      },
+      {
+        network: "soneium",
+        chainId: CHAIN_IDs.SONEIUM,
+        urls: {
+          apiURL: "https://soneium.blockscout.com/api",
+          browserURL: "https://soneium.blockscout.com",
+        },
+      },
+      {
         network: "linea",
         chainId: CHAIN_IDs.LINEA,
         urls: {
           apiURL: "https://api.lineascan.build/api",
-          browserURL: "https://lineascan.org",
+          browserURL: "https://lineascan.build",
         },
       },
       {
@@ -370,7 +433,7 @@ const config: HardhatUserConfig = {
         chainId: CHAIN_IDs.SCROLL,
         urls: {
           apiURL: "https://api.scrollscan.com/api",
-          browserURL: "https://api.scrollscan.com",
+          browserURL: "https://scrollscan.com",
         },
       },
       {
@@ -491,6 +554,22 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
           browserURL: "https://zorascan.xyz",
+        },
+      },
+      {
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
+        urls: {
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
+        },
+      },
+      {
+        network: "unichain-sepolia",
+        chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
+        urls: {
+          apiURL: "https://api-sepolia.uniscan.xyz/api",
+          browserURL: "https://sepolia.uniscan.xyz",
         },
       },
     ],

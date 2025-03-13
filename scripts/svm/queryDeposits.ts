@@ -1,18 +1,16 @@
 // This script fetches all deposits for a given spoke pool.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEvents } from "../../src/SvmUtils";
+import { getSpokePoolProgram, readProgramEvents } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 console.log("SVM-Spoke Program ID:", programId.toString());
 
@@ -41,7 +39,7 @@ async function queryDeposits(): Promise<void> {
 
   try {
     const events = await readProgramEvents(provider.connection, program);
-    const depositEvents = events.filter((event) => event.name === "v3FundsDeposited");
+    const depositEvents = events.filter((event) => event.name === "fundsDeposited");
 
     if (depositEvents.length === 0) {
       console.log("No deposit events found for the given seed.");

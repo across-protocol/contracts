@@ -146,9 +146,21 @@
     },
     {
       "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",
-      "label": "__gap",
+      "label": "relayerRefund",
       "offset": 0,
       "slot": "2163"
+    },
+    {
+      "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",
+      "label": "oftMessengers",
+      "offset": 0,
+      "slot": "2164"
+    },
+    {
+      "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2165"
     },
     {
       "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",

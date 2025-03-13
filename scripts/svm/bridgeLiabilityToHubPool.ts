@@ -6,14 +6,11 @@
  * updates the Hub Pool’s USDC balance.
  *
  * Required Environment Variables:
- * - TESTNET: (Optional) Set to "true" to use Sepolia; defaults to mainnet.
  * - MNEMONIC: Wallet mnemonic to sign the Ethereum transaction.
  * - HUB_POOL_ADDRESS: Ethereum address of the Hub Pool.
- * - NODE_URL_1: Ethereum RPC URL for mainnet (ignored if TESTNET=true).
- * - NODE_URL_11155111: Ethereum RPC URL for Sepolia (ignored if TESTNET=false).
+ * - NODE_URL_${CHAIN_ID}: Ethereum RPC URL (must point to the Mainnet or Sepolia depending on Solana cluster).
  *
  * Example Usage:
- * TESTNET=true \
  * NODE_URL_11155111=$NODE_URL_11155111 \
  * MNEMONIC=$MNEMONIC \
  * HUB_POOL_ADDRESS=$HUB_POOL_ADDRESS \
@@ -27,28 +24,30 @@
  */
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-// eslint-disable-next-line camelcase
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 // eslint-disable-next-line camelcase
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
+  getMessages,
+  isSolanaDevnet,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "./utils/constants";
+} from "../../src/svm/web3-v1";
 
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
-import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
-import { getMessages } from "../../test/svm/cctpHelpers";
+import {
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
+  getTokenMessengerMinterProgram,
+} from "../../src/svm/web3-v1";
 import { BondToken__factory } from "../../typechain";
 import { formatUsdc, requireEnv } from "./utils/helpers";
 
@@ -57,17 +56,15 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 
 // Get Solana programs and IDLs.
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-const tokenMessengerMinterIdl = require("../../target/idl/token_messenger_minter.json");
+const svmSpokeProgram = getSpokePoolProgram(provider);
 
 // CCTP domains.
 const ethereumDomain = 0; // Ethereum
 const solanaDomain = 5; // Solana
 
 // Set up Ethereum provider and signer.
-const nodeURL = process.env.TESTNET === "true" ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+const isDevnet = isSolanaDevnet(provider);
+const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
 const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
@@ -123,13 +120,7 @@ const messageTransmitterAbi = [
 async function bridgeLiabilityToHubPool(): Promise<void> {
   const seed = SOLANA_SPOKE_STATE_SEED; // Seed is always 0 for the state account PDA in public networks.
 
-  // Resolve Solana cluster, EVM chain ID, Iris API URL and USDC addresses.
-  let isDevnet: boolean;
-  const solanaRpcEndpoint = provider.connection.rpcEndpoint;
-  if (solanaRpcEndpoint.includes("devnet")) isDevnet = true;
-  else if (solanaRpcEndpoint.includes("mainnet")) isDevnet = false;
-  else throw new Error(`Unsupported solanaCluster endpoint: ${solanaRpcEndpoint}`);
-
+  // Resolve Solana USDC addresses.
   const svmUsdc = isDevnet ? SOLANA_USDC_DEVNET : SOLANA_USDC_MAINNET;
 
   const [statePda, _] = PublicKey.findProgramAddressSync(
@@ -152,7 +143,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 
   console.log("Receiving liability from Solana Spoke Pool to Ethereum Hub Pool...");
   console.table([
-    { Property: "isTestnet", Value: process.env.TESTNET === "true" },
+    { Property: "isTestnet", Value: isDevnet },
     { Property: "hubPoolAddress", Value: hubPoolAddress },
     { Property: "svmSpokeProgramProgramId", Value: svmSpokeProgram.programId.toString() },
     { Property: "providerPublicKey", Value: provider.wallet.publicKey.toString() },
@@ -207,7 +198,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 }
 
 async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda: PublicKey, inputToken: PublicKey) {
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
 
   const vault = getAssociatedTokenAddressSync(
     inputToken,
@@ -222,7 +213,7 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
     [Buffer.from("transfer_liability"), inputToken.toBuffer()],
     svmSpokeProgram.programId
   );
-  const tokenMessengerMinterProgram = new Program<TokenMessengerMinter>(tokenMessengerMinterIdl, provider);
+  const tokenMessengerMinterProgram = getTokenMessengerMinterProgram(provider);
 
   const [tokenMessengerMinterSenderAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("sender_authority")],

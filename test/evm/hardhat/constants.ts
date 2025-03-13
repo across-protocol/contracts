@@ -42,13 +42,15 @@ export const originChainId = 666;
 
 export const repaymentChainId = 777;
 
-export const firstDepositId = 0;
+export const firstDepositId = toBN(0);
 
 export const bondAmount = toWei("5");
 
 export const finalFee = toWei("1");
 
 export const finalFeeUsdc = ethers.utils.parseUnits("1", 6);
+
+export const finalFeeUsdt = ethers.utils.parseUnits("1", 6);
 
 export const totalBond = bondAmount.add(finalFee);
 
@@ -100,7 +102,7 @@ export const l1TokenTransferThreshold = toWei(100);
 
 export const MAX_UINT32 = BigNumber.from("0xFFFFFFFF");
 
-export const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365; // 1 year
+export const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365;
 
 // DAI's Rate model.
 export const sampleRateModel = {

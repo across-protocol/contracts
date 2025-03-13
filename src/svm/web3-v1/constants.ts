@@ -1,4 +1,3 @@
-import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import BN from "bn.js";
 
 export const CIRCLE_IRIS_API_URL_DEVNET = "https://iris-api-sandbox.circle.com";

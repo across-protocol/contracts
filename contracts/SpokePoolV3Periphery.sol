@@ -44,7 +44,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
     error ContractInitialized();
 
     /**
-     * @notice Construct a new Proxy contract.
+     * @notice Construct a new PeripheryProxy contract.
      * @dev Is empty and all of the state variables are initialized in the initialize function
      * to allow for deployment at a deterministic address via create2, which requires that the bytecode
      * across different networks is the same. Constructor parameters affect the bytecode so we can only
@@ -64,11 +64,7 @@ contract SpokePoolPeripheryProxy is SpokePoolV3PeripheryProxyInterface, Lockable
     }
 
     /**
-     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
-     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
+     * @inheritdoc SpokePoolV3PeripheryProxyInterface
      */
     function swapAndBridge(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
         external
@@ -162,7 +158,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     error InvalidSignature();
 
     /**
-     * @notice Construct a new Proxy contract.
+     * @notice Construct a new Periphery contract.
      * @dev Is empty and all of the state variables are initialized in the initialize function
      * to allow for deployment at a deterministic address via create2, which requires that the bytecode
      * across different networks is the same. Constructor parameters affect the bytecode so we can only
@@ -198,7 +194,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         permit2 = _permit2;
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function deposit(
         address recipient,
         address inputToken,
@@ -232,7 +230,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
         // as though the user deposited a wrapped native token.
@@ -253,7 +253,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _swapAndBridge(swapAndDepositData);
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function swapAndBridgeWithPermit(
         address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
@@ -284,7 +286,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _swapAndBridge(swapAndDepositData);
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
@@ -314,7 +318,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _swapAndBridge(swapAndDepositData);
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
@@ -355,7 +361,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _swapAndBridge(swapAndDepositData);
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function depositWithPermit(
         address signatureOwner,
         DepositData calldata depositData,
@@ -396,7 +404,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function depositWithPermit2(
         address signatureOwner,
         DepositData calldata depositData,
@@ -440,7 +450,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
     }
 
-    // @inheritdoc SpokePoolV3PeripheryInterface
+    /**
+     * @inheritdoc SpokePoolV3PeripheryInterface
+     */
     function depositWithAuthorization(
         address signatureOwner,
         DepositData calldata depositData,

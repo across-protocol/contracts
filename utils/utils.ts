@@ -7,7 +7,7 @@ import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
+import { BigNumber, Signer, Contract, ContractFactory, BaseContract } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers);
@@ -101,6 +101,19 @@ export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
+export const hexZeroPad = (input: string, length: number) => ethers.utils.hexZeroPad(input, length);
+
+export const addressToBytes = (input: string) => hexZeroPad(input.toLowerCase(), 32);
+
+export const bytes32ToAddress = (input: string) => {
+  if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
+    throw new Error("Invalid bytes32 input");
+  }
+  return ethers.utils.getAddress("0x" + input.slice(26));
+};
+
+export const isBytes32 = (input: string) => /^0x[0-9a-fA-F]{64}$/.test(input);
+
 export async function seedWallet(
   walletToFund: Signer,
   tokens: Contract[],
@@ -134,6 +147,10 @@ export function randomAddress() {
   return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
 }
 
+export function randomBytes32() {
+  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
+}
+
 export async function getParamType(contractName: string, functionName: string, paramName: string) {
   const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
   const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
@@ -149,8 +166,12 @@ export async function createFake(contractName: string, targetAddress: string = "
 }
 
 export async function createFakeFromABI(abi: any[], targetAddress: string = "") {
+  return createTypedFakeFromABI(abi, targetAddress);
+}
+
+export async function createTypedFakeFromABI<T extends BaseContract>(abi: any[], targetAddress: string = "") {
   const signer = new ethers.VoidSigner(ethers.constants.AddressZero);
-  return smock.fake(abi, {
+  return smock.fake<T>(abi, {
     address: !targetAddress ? undefined : targetAddress,
     provider: signer.provider,
   });
@@ -164,6 +185,25 @@ function avmL1ToL2Alias(l1Address: string) {
 
   const mask = toBN("2").pow(toBN("160"));
   return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
+}
+
+export function trimSolanaAddress(bytes32Address: string): string {
+  if (!ethers.utils.isHexString(bytes32Address, 32)) {
+    throw new Error("Invalid bytes32 address");
+  }
+
+  const uint160Address = ethers.BigNumber.from(bytes32Address).mask(160);
+  return ethers.utils.hexZeroPad(ethers.utils.hexlify(uint160Address), 20);
+}
+
+export function hashNonEmptyMessage(message: string) {
+  if (!ethers.utils.isHexString(message) || message.length % 2 !== 0) throw new Error("Invalid hex message bytes");
+
+  // account for 0x prefix when checking length
+  if (message.length > 2) {
+    return ethers.utils.keccak256(message);
+  }
+  return ethers.utils.hexlify(new Uint8Array(32));
 }
 
 const { defaultAbiCoder, keccak256 } = ethers.utils;
