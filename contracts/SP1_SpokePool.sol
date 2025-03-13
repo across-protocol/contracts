@@ -19,11 +19,6 @@ interface ISP1Verifier {
  * @notice SP1 Spoke pool capable of receiving data stored in L1 state via SP1 + Helios light clients.
  */
 contract SP1_SpokePool is SpokePool {
-    struct Data {
-        bytes data;
-        address target;
-        uint256 nonce;
-    }
     // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
     struct ContractPublicValues {
         bytes32 stateRoot; // State root containing the storage slot in question.
@@ -51,7 +46,7 @@ contract SP1_SpokePool is SpokePool {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private _adminCallValidated;
 
-    event VerifiedProof(bytes32 indexed dataHash, address caller, Data data);
+    event VerifiedProof(bytes32 indexed dataHash, address caller);
 
     error NotHubPoolStore();
     error NotTarget();
@@ -137,24 +132,24 @@ contract SP1_SpokePool is SpokePool {
 
         // Validate state is intended to be sent to this contract. The target could have been set to the zero address
         // which is used by the SP1_Adapter to denote messages that can be sent to any target.
-        Data memory l1Data = abi.decode(publicValues.storageValue, (Data));
-        if (l1Data.target != address(0) && l1Data.target != address(this)) {
+        (address target, bytes memory message) = abi.decode(publicValues.storageValue, (address, bytes));
+        if (target != address(0) && target != address(this)) {
             revert NotTarget();
         }
 
-        // Prevent replay attacks by hashing the data which includes a nonce. The only way for someone to re-execute
+        // Prevent replay attacks by using storage key which includes a nonce. The only way for someone to re-execute
         // an identical message on this target spoke pool would be to get the HubPool to re-publish the data. This lets
         // the HubPool owner re-execute admin actions that have the same calldata.
-        bytes32 dataHash = keccak256(publicValues.storageValue);
+        bytes32 dataHash = bytes32(publicValues.storageKey);
         if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
         verifiedProofs[dataHash] = true;
-        emit VerifiedProof(dataHash, msg.sender, l1Data);
+        emit VerifiedProof(dataHash, msg.sender);
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
-        (bool success, ) = address(this).delegatecall(l1Data.data);
+        (bool success, ) = address(this).delegatecall(message);
         if (!success) {
             revert DelegateCallFailed();
         }

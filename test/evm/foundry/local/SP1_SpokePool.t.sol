@@ -25,6 +25,7 @@ contract SP1SpokePoolTest is Test {
     MockSP1Verifier verifier;
 
     address hubPoolStore;
+    uint256 nonce = 0;
 
     function setUp() public {
         helios = new MockHelios();
@@ -45,12 +46,11 @@ contract SP1SpokePoolTest is Test {
         bytes32 refundRoot = bytes32("test");
         bytes32 slowRelayRoot = bytes32("test2");
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
-        SP1_SpokePool.Data memory data = SP1_SpokePool.Data({ target: address(spokePool), data: message, nonce: 0 });
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
             contractAddress: hubPoolStore,
-            storageKey: "",
-            storageValue: abi.encode(data)
+            storageKey: abi.encodePacked(keccak256(abi.encode(address(spokePool), message, nonce))),
+            storageValue: abi.encode(address(spokePool), message)
         });
         vm.expectCall(
             address(spokePool),
@@ -65,15 +65,53 @@ contract SP1SpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        SP1_SpokePool.Data memory data = SP1_SpokePool.Data({ target: address(spokePool), data: message, nonce: 0 });
         SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
             stateRoot: bytes32(0),
             contractAddress: hubPoolStore,
-            storageKey: "",
-            storageValue: abi.encode(data)
+            storageKey: abi.encodePacked(keccak256(abi.encode(address(spokePool), message, nonce))),
+            storageValue: abi.encode(address(spokePool), message)
         });
         spokePool.receiveL1State(abi.encode(publicValues), "", 100);
         vm.expectRevert(SP1_SpokePool.AlreadyReceived.selector);
+        spokePool.receiveL1State(abi.encode(publicValues), "", 100);
+    }
+
+    function testVerifyProof() public {
+        // Reverts if sp1 verifyProof fails
+    }
+
+    function testIncorrectContractAddress() public {
+        // Reverts if the contract address in publicValues is not the hubPoolStore
+    }
+
+    function testHeliosProof() public {
+        // Reverts if helios light client state doesn't match with publicValues
+    }
+
+    function testIncorrectTarget() public {
+        // Reverts if the target in publicValues is not the zero address or this contract
+    }
+
+    function testDelegateCall() public {
+        // Can call other functions on the contract
+        address originToken = makeAddr("origin");
+        uint256 destinationChainId = 111;
+        bytes memory message = abi.encodeWithSignature(
+            "setEnableRoute(address,uint256,bool)",
+            originToken,
+            destinationChainId,
+            true
+        );
+        SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
+            stateRoot: bytes32(0),
+            contractAddress: hubPoolStore,
+            storageKey: abi.encodePacked(keccak256(abi.encode(address(spokePool), message, nonce))),
+            storageValue: abi.encode(address(spokePool), message)
+        });
+        vm.expectCall(
+            address(spokePool),
+            abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
+        );
         spokePool.receiveL1State(abi.encode(publicValues), "", 100);
     }
 }

@@ -11,13 +11,8 @@ import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 contract HubPoolStore {
     error NotHubPool();
 
-    struct Data {
-        bytes data;
-        address target;
-        uint256 nonce;
-    }
-    // Mapping from data hash to unique data.
-    mapping(bytes32 => Data) public storedData;
+    // Maps unique data hashes to data to relay to target.
+    mapping(bytes32 => bytes) public storedData;
 
     // Counter to ensure that each stored data is unique.
     uint256 private dataUuid;
@@ -55,13 +50,12 @@ contract HubPoolStore {
         bytes calldata data,
         uint256 nonce
     ) internal {
-        Data memory newData = Data({ data: data, target: target, nonce: nonce });
-        bytes32 dataHash = keccak256(abi.encode(newData));
-        if (storedData[dataHash].data.length > 0) {
+        bytes32 dataHash = keccak256(abi.encode(target, data, nonce));
+        if (storedData[dataHash].length > 0) {
             // Data is already stored, do nothing.
             return;
         }
-        storedData[dataHash] = newData;
+        storedData[dataHash] = abi.encode(target, data);
         emit StoredDataForTarget(dataHash, target, data, nonce);
     }
 }
