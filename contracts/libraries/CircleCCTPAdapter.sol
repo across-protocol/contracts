@@ -14,6 +14,7 @@ library CircleDomainIds {
     uint32 public constant Base = 6;
     uint32 public constant Polygon = 7;
     uint32 public constant DoctorWho = 10;
+    uint32 public constant Linea = 11; // TODO replace with actual domain once Circle publishes it.
     // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
     // assigned a domain ID by Circle.
     uint32 public constant UNINITIALIZED = type(uint32).max;
@@ -51,6 +52,13 @@ abstract contract CircleCCTPAdapter {
     ITokenMessenger public immutable cctpTokenMessenger;
 
     /**
+     * @notice Indicates if the CCTP V2 TokenMessenger is being used.
+     * @dev This is determined by checking if the feeRecipient() function exists and returns a non-zero address.
+     */
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    bool public immutable cctpV2;
+
+    /**
      * @notice intiailizes the CircleCCTPAdapter contract.
      * @param _usdcToken USDC address on the current chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
@@ -59,12 +67,23 @@ abstract contract CircleCCTPAdapter {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdcToken,
+        /// @dev This should ideally be an address but its kept as an ITokenMessenger to avoid rippling changes to the
+        /// constructors for every SpokePool/Adapter.
         ITokenMessenger _cctpTokenMessenger,
         uint32 _recipientCircleDomainId
     ) {
         usdcToken = _usdcToken;
         cctpTokenMessenger = _cctpTokenMessenger;
         recipientCircleDomainId = _recipientCircleDomainId;
+
+        // Only the CCTP V2 TokenMessenger has a feeRecipient() function, so we use it to
+        // figure out if we are using CCTP V2 or V1. `success` can be true even if the contract doesn't
+        // implement feeRecipient but it has a fallback function so to be extra safe, we check the return value
+        // of feeRecipient() as well.
+        (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).staticcall(
+            abi.encodeWithSignature("feeRecipient()")
+        );
+        cctpV2 = (success && address(bytes20(feeRecipient)) != address(0));
     }
 
     /**
@@ -101,7 +120,25 @@ abstract contract CircleCCTPAdapter {
         uint256 remainingAmount = amount;
         while (remainingAmount > 0) {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
-            cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, to, address(usdcToken));
+            if (cctpV2) {
+                //  Uses the CCTP V2 "standard transfer" speed and
+                // therefore pays no additional fee for the transfer to be sped up.
+                ITokenMessengerV2(address(cctpTokenMessenger)).depositForBurn(
+                    partAmount,
+                    recipientCircleDomainId,
+                    to,
+                    address(usdcToken),
+                    // The following parameters are new in this function from V2 to V1, can read more here:
+                    // https://developers.circle.com/stablecoins/evm-smart-contracts
+                    bytes32(0), // destinationCaller is set to bytes32(0) to indicate that anyone can call
+                    // receiveMessage on the destination to finalize the transfer
+                    0, // maxFee can be set to 0 for a "standard transfer"
+                    2000 // minFinalityThreshold can be set to 20000 for a "standard transfer",
+                    // https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/FinalityThresholds.sol#L21
+                );
+            } else {
+                cctpTokenMessenger.depositForBurn(partAmount, recipientCircleDomainId, to, address(usdcToken));
+            }
             remainingAmount -= partAmount;
         }
     }
