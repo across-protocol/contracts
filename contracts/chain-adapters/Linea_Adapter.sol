@@ -71,7 +71,7 @@ contract Linea_Adapter is AdapterInterface, CircleCCTPAdapter {
         }
         // If the l1Token is WETH then unwrap it to ETH then send the ETH directly
         // via the Canoncial Message Service.
-        if (l1Token == address(L1_WETH)) {
+        else if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             L1_MESSAGE_SERVICE.sendMessage{ value: amount }(to, 0, "");
         }
