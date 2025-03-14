@@ -87,6 +87,7 @@ describe("Arbitrum Chain Adapter", function () {
 
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
     adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
+    hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
 
     l1Inbox = await createFake("Inbox");
     l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
@@ -94,6 +95,7 @@ describe("Arbitrum Chain Adapter", function () {
     l1ERC20GatewayRouter.getGateway.returns(gatewayAddress);
 
     const oftFeeCap = toWei("1");
+    const hypXERC20FeeCap = toWei("1");
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
@@ -105,8 +107,8 @@ describe("Arbitrum Chain Adapter", function () {
       cctpMessenger.address,
       arbitrumChainId,
       adapterStore.address,
-      oftFeeCap
-      // todo: hypfeecap
+      oftFeeCap,
+      hypXERC20FeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
@@ -327,19 +329,19 @@ describe("Arbitrum Chain Adapter", function () {
     expect(oftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, hubPool.address);
   });
 
-  // todo: change to adapterStore
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
-    // set hyperlane router in address book
-    await addressBook.connect(owner).setHypXERC20Router(ezETH.address, hypXERC20Router.address);
+    // Set hyperlane router in adapter store
+    hypXERC20Router.wrappedToken.returns(ezETH.address);
+    await adapterStore.connect(owner).setHypXERC20Router(arbitrumChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.hypXERC20Routers.whenCalledWith(arbitrumChainId, ezETH.address).returns(hypXERC20Router.address);
 
-    // construct repayment bundle
+    // Construct repayment bundle
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, arbitrumChainId);
     await hubPool
       .connect(dataWorker)
       .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
-    addressBook.hypXERC20Routers.whenCalledWith(ezETH.address).returns(hypXERC20Router.address);
     hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));
 
     await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
@@ -347,7 +349,7 @@ describe("Arbitrum Chain Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20.
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // source https://github.com/hyperlane-xyz/hyperlane-registry
+    // Source https://github.com/hyperlane-xyz/hyperlane-registry
     const arbitrumDstDomainId = 42161;
 
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params

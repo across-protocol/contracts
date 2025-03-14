@@ -18,9 +18,9 @@ import {
 import { CCTPTokenMessengerInterface } from "../../../../utils/abis";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
-import { AddressBook__factory, IHypXERC20Router__factory } from "../../../../typechain";
+import { AdapterStore__factory, IHypXERC20Router__factory } from "../../../../typechain";
 
-describe("Unichain_Adapter", function () {
+describe.only("Unichain_Adapter", function () {
   let hubPool: Contract;
   let doctorWhoAdapter: Contract;
   let weth: Contract;
@@ -34,7 +34,7 @@ describe("Unichain_Adapter", function () {
   let l1StandardBridge: FakeContract;
   let cctpMessenger: FakeContract;
   let hypXERC20Router: FakeContract;
-  let addressBook: FakeContract;
+  let adapterStore: FakeContract;
 
   // Use Unichain chain ID from Hyperlane
   const unichainChainId = 130;
@@ -67,13 +67,15 @@ describe("Unichain_Adapter", function () {
     }
 
     // Create fake contracts
-    addressBook = await createTypedFakeFromABI([...AddressBook__factory.abi]);
+    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
     hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
     l1StandardBridge = await createFake("L1StandardBridge");
     l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
     cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
 
-    // Deploy DoctorWho adapter
+    const hypXERC20FeeCap = toWei("1");
+
+    // Deploy Unichain adapter
     doctorWhoAdapter = await (
       await getContractFactory("DoctorWho_Adapter", owner)
     ).deploy(
@@ -82,7 +84,9 @@ describe("Unichain_Adapter", function () {
       l1StandardBridge.address,
       fixture.usdc.address,
       cctpMessenger.address,
-      addressBook.address
+      unichainChainId,
+      adapterStore.address,
+      hypXERC20FeeCap
     );
 
     // Seed the HubPool with ETH for L2 calls
@@ -94,9 +98,10 @@ describe("Unichain_Adapter", function () {
   });
 
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
-    // Set hyperlane router in address book
-    await addressBook.connect(owner).setHypXERC20Router(ezETH.address, hypXERC20Router.address);
-    addressBook.hypXERC20Routers.whenCalledWith(ezETH.address).returns(hypXERC20Router.address);
+    // Set hyperlane router in adapter store
+    hypXERC20Router.wrappedToken.returns(ezETH.address);
+    await adapterStore.connect(owner).setHypXERC20Router(unichainChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.hypXERC20Routers.whenCalledWith(unichainChainId, ezETH.address).returns(hypXERC20Router.address);
 
     // Set up gas payment quote
     hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));

@@ -17,7 +17,12 @@ import {
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
-import { AddressBook, AddressBook__factory, IHypXERC20Router, IHypXERC20Router__factory } from "../../../../typechain";
+import {
+  AdapterStore,
+  AdapterStore__factory,
+  IHypXERC20Router,
+  IHypXERC20Router__factory,
+} from "../../../../typechain";
 
 let hubPool: Contract,
   lineaAdapter: Contract,
@@ -32,7 +37,7 @@ let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: 
 let lineaMessageService: FakeContract,
   lineaTokenBridge: FakeContract,
   lineaUsdcBridge: FakeContract,
-  addressBook: FakeContract<AddressBook>,
+  adapterStore: FakeContract<AdapterStore>,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const lineaChainId = 59144;
@@ -127,7 +132,9 @@ describe("Linea Chain Adapter", function () {
     lineaUsdcBridge.usdc.returns(usdc.address);
 
     hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
-    addressBook = await createTypedFakeFromABI([...AddressBook__factory.abi]);
+    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
+
+    const hypXERC20FeeCap = toWei("1");
 
     lineaAdapter = await (
       await getContractFactory("Linea_Adapter", owner)
@@ -136,7 +143,9 @@ describe("Linea Chain Adapter", function () {
       lineaMessageService.address,
       lineaTokenBridge.address,
       lineaUsdcBridge.address,
-      addressBook.address
+      lineaChainId,
+      adapterStore.address,
+      hypXERC20FeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
@@ -198,20 +207,21 @@ describe("Linea Chain Adapter", function () {
     expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(leaves[0].netSendAmounts[0]);
   });
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
-    // set hyperlane router in address book
-    await addressBook.connect(owner).setHypXERC20Router(ezETH.address, hypXERC20Router.address);
+    // Set hyperlane router in adapter store
+    hypXERC20Router.wrappedToken.returns(ezETH.address);
+    await adapterStore.connect(owner).setHypXERC20Router(lineaChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.hypXERC20Routers.whenCalledWith(lineaChainId, ezETH.address).returns(hypXERC20Router.address);
 
     // construct repayment bundle
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, lineaChainId);
     await hubPool.connect(dataWorker).proposeRootBundle([3117], 1, tree.getHexRoot(), mockTreeRoot, mockTreeRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
 
-    addressBook.hypXERC20Routers.whenCalledWith(ezETH.address).returns(hypXERC20Router.address);
     hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));
 
     await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
-    // Adapter should have approved gateway to spend its ERC20.
 
+    // Adapter should have approved gateway to spend its ERC20.
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
     // source https://github.com/hyperlane-xyz/hyperlane-registry

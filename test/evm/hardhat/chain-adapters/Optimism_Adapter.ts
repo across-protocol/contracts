@@ -27,7 +27,12 @@ import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
-import { AddressBook, AddressBook__factory, IHypXERC20Router, IHypXERC20Router__factory } from "../../../../typechain";
+import {
+  AdapterStore,
+  AdapterStore__factory,
+  IHypXERC20Router,
+  IHypXERC20Router__factory,
+} from "../../../../typechain";
 
 let hubPool: Contract,
   optimismAdapter: Contract,
@@ -43,7 +48,7 @@ let l1CrossDomainMessenger: FakeContract,
   l1StandardBridge: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
-  addressBook: FakeContract<AddressBook>,
+  adapterStore: FakeContract<AdapterStore>,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const optimismChainId = 10;
@@ -76,8 +81,10 @@ describe("Optimism Chain Adapter", function () {
     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
-    addressBook = await createTypedFakeFromABI([...AddressBook__factory.abi]);
+    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
     hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
+
+    const hypXERC20FeeCap = toWei("1");
 
     optimismAdapter = await (
       await getContractFactory("Optimism_Adapter", owner)
@@ -87,7 +94,9 @@ describe("Optimism Chain Adapter", function () {
       l1StandardBridge.address,
       usdc.address,
       cctpMessenger.address,
-      addressBook.address
+      optimismChainId,
+      adapterStore.address,
+      hypXERC20FeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
@@ -172,8 +181,10 @@ describe("Optimism Chain Adapter", function () {
   });
 
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
-    // set hyperlane router in address book
-    await addressBook.connect(owner).setHypXERC20Router(ezETH.address, hypXERC20Router.address);
+    // Set hyperlane router in adapter store
+    hypXERC20Router.wrappedToken.returns(ezETH.address);
+    await adapterStore.connect(owner).setHypXERC20Router(optimismChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.hypXERC20Routers.whenCalledWith(optimismChainId, ezETH.address).returns(hypXERC20Router.address);
 
     // construct repayment bundle
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, optimismChainId);
@@ -182,7 +193,6 @@ describe("Optimism Chain Adapter", function () {
       .proposeRootBundle([3117], 1, tree.getHexRoot(), mockRelayerRefundRoot, mockSlowRelayRoot);
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
 
-    addressBook.hypXERC20Routers.whenCalledWith(ezETH.address).returns(hypXERC20Router.address);
     hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));
 
     // Make sure HubPool has enough ETH for the XERC20 transfer
