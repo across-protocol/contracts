@@ -9,7 +9,7 @@ import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfac
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AddressBook } from "../libraries/AddressBook.sol";
+import { AdapterStore } from "../libraries/AdapterStore.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
@@ -24,8 +24,11 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
     ITokenBridge public immutable L1_TOKEN_BRIDGE;
     IUSDCBridge public immutable L1_USDC_BRIDGE;
 
-    // Helper contract to help us map token -> router for XERC20-enabled tokens
-    AddressBook public immutable ADDRESS_BOOK;
+    // Chain id of the chain this adapter helps bridge to.
+    uint256 public immutable DESTINATION_CHAIN_ID;
+
+    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+    AdapterStore public immutable ADAPTER_STORE;
 
     /**
      * @notice Constructs new Adapter.
@@ -33,7 +36,8 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
      * @param _l1MessageService Canonical message service contract on L1.
      * @param _l1TokenBridge Canonical token bridge contract on L1.
      * @param _l1UsdcBridge L1 USDC Bridge to ConsenSys's L2 Linea.
-     * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
+     * @param _dstChainId Chain id of a destination chain for this adapter.
+     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -41,14 +45,16 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
         IUSDCBridge _l1UsdcBridge,
-        AddressBook _addressBook,
+        uint256 _dstChainId,
+        AdapterStore _adapterStore,
         uint256 _hypXERC20FeeCap
     ) HypXERC20Adapter(HyperlaneDomainIds.Linea, _hypXERC20FeeCap) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;
         L1_USDC_BRIDGE = _l1UsdcBridge;
-        ADDRESS_BOOK = _addressBook;
+        DESTINATION_CHAIN_ID = _dstChainId;
+        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -105,6 +111,6 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADDRESS_BOOK.hypXERC20Routers(_token);
+        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
     }
 }

@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AddressBook } from "../libraries/AddressBook.sol";
+import { AdapterStore } from "../libraries/AdapterStore.sol";
 
 interface IL1ERC20Bridge {
     /// @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
@@ -60,8 +60,11 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     IL1ERC20Bridge public immutable L1_BLAST_BRIDGE; // 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115 on mainnet.
     address public immutable L1_DAI; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
 
-    // Helper contract to help us map token -> router for XERC20-enabled tokens
-    AddressBook public immutable ADDRESS_BOOK;
+    // Chain id of the chain this adapter helps bridge to.
+    uint256 public immutable DESTINATION_CHAIN_ID;
+
+    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+    AdapterStore public immutable ADAPTER_STORE;
 
     /**
      * @notice Constructs new Adapter.
@@ -72,7 +75,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param l1BlastBridge Blast-specific bridge for yielding tokens.
      * @param l1Dai DAI address on L1.
      * @param l2GasLimit Gas limit for L2 execution.
-     * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
+     * @param _dstChainId Chain id of a destination chain for this adapter.
+     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -83,7 +87,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
         uint32 l2GasLimit,
-        AddressBook _addressBook,
+        uint256 _dstChainId,
+        AdapterStore _adapterStore,
         uint256 _hypXERC20FeeCap
     )
         CrossDomainEnabled(_crossDomainMessenger)
@@ -96,7 +101,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         L1_BLAST_BRIDGE = l1BlastBridge;
         L1_DAI = l1Dai;
         L2_GAS_LIMIT = l2GasLimit;
-        ADDRESS_BOOK = _addressBook;
+        DESTINATION_CHAIN_ID = _dstChainId;
+        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -150,6 +156,6 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADDRESS_BOOK.hypXERC20Routers(_token);
+        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
     }
 }

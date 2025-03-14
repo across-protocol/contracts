@@ -58,7 +58,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // Helper storage contract to help this Adapter map token => OFT messenger for OFT bridging.
+    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
     AdapterStore public immutable ADAPTER_STORE;
 
     // Chain id of the chain this adapter helps bridge to.
@@ -72,7 +72,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _dstChainId Chain id of a destination chain for this adapter.
-     * @param _adapterStore AdapterStore contract to help identify token => oftMessenger relationship for OFT bridging.
+     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
@@ -210,17 +210,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         return requiredL1CallValue;
     }
 
-    /**
-     * @notice Queries for an OFT messenger from an OFT address book contract
-     * @param _token Token to query the messenger for
-     * @return messenger OFT messenger contract
-     */
     function _getOftMessenger(address _token) internal view returns (address) {
         return ADAPTER_STORE.oftMessengers(DESTINATION_CHAIN_ID, _token);
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        // todo
         return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
     }
 }

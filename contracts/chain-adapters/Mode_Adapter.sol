@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AddressBook } from "../libraries/AddressBook.sol";
+import { AdapterStore } from "../libraries/AdapterStore.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Base adapter
@@ -35,8 +35,11 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
 
     IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
 
-    // Helper contract to help us map token -> router for XERC20-enabled tokens
-    AddressBook public immutable ADDRESS_BOOK;
+    // Chain id of the chain this adapter helps bridge to.
+    uint256 public immutable DESTINATION_CHAIN_ID;
+
+    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+    AdapterStore public immutable ADAPTER_STORE;
 
     /**
      * @notice Constructs new Adapter.
@@ -44,7 +47,8 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
      * @param _crossDomainMessenger XDomainMessenger Mode system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
-     * @param _addressBook AddressBook contract to help identify token -> router relationship for XERC20 bridging.
+     * @param _dstChainId Chain id of a destination chain for this adapter.
+     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -52,7 +56,8 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        AddressBook _addressBook,
+        uint256 _dstChainId,
+        AdapterStore _adapterStore,
         uint256 _hypXERC20FeeCap
     )
         CrossDomainEnabled(_crossDomainMessenger)
@@ -66,7 +71,8 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
-        ADDRESS_BOOK = _addressBook;
+        DESTINATION_CHAIN_ID = _dstChainId;
+        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -116,6 +122,6 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADDRESS_BOOK.hypXERC20Routers(_token);
+        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
     }
 }
