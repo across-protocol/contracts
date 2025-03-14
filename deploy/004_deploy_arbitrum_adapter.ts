@@ -1,4 +1,4 @@
-import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
@@ -12,12 +12,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
   const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
-  // pick correct destination chain id to set based on deployment network
-  const dstChainId = chainId == MAINNET_CHAIN_IDs.MAINNET ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA;
+  // Pick correct destination chain id to set based on deployment network
+  const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA;
 
-  // 1 ether is a good default for oftFeeCap for cross-chain OFT sends
+  // 1 ether is our default OFT fee cap on chains with ETH as gas token
   const oftFeeCap = toWei("1");
-  // same as above, but for XERC20 transfers via hyperlane
+  // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
   const hypXERC20FeeCap = toWei("1");
 
   const args = [
