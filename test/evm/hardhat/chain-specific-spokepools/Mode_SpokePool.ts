@@ -65,21 +65,22 @@ describe("Mode Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, toWei("1")],
       }
     );
 
     await seedContract(modeSpokePool, relayer, [dai, l2EzETH], weth, amountHeldByPool);
+  });
 
+  it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
     // Set up XERC20 router for l2EzETH
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
     await modeSpokePool
       .connect(crossDomainMessenger.wallet)
       .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
     crossDomainMessenger.xDomainMessageSender.reset();
-  });
 
-  it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
     const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
     l2HypXERC20Router.quoteGasPayment.returns(hypXERC20Fee);
 

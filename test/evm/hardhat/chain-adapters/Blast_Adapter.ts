@@ -18,7 +18,7 @@ import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { AdapterStore__factory, IHypXERC20Router__factory } from "../../../../typechain";
 
-describe.only("Blast_Adapter", function () {
+describe("Blast_Adapter", function () {
   let hubPool: Contract;
   let blastAdapter: Contract;
   let weth: Contract;

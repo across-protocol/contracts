@@ -72,11 +72,14 @@ describe("Polygon zkEVM Spoke Pool", function () {
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
-    const implementation = await hre.upgrades.deployImplementation(await getContractFactory("Linea_SpokePool", owner), {
-      kind: "uups",
-      unsafeAllow: ["delegatecall"],
-      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60],
-    });
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("PolygonZkEVM_SpokePool", owner),
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60],
+      }
+    );
 
     const upgradeData = polygonZkEvmSpokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
 

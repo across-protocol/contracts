@@ -20,7 +20,7 @@ import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { AdapterStore__factory, IHypXERC20Router__factory } from "../../../../typechain";
 
-describe.only("Unichain_Adapter", function () {
+describe("Unichain_Adapter", function () {
   let hubPool: Contract;
   let doctorWhoAdapter: Contract;
   let weth: Contract;

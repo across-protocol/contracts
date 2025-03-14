@@ -137,24 +137,17 @@ describe("Linea Spoke Pool", function () {
         owner.address,
         hubPool.address,
       ],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, toWei("1")] }
     );
 
     await seedContract(lineaSpokePool, relayer, [dai, usdc, l2EzETH], weth, amountHeldByPool);
-
-    // Set up XERC20 router for l2EzETH
-    lineaMessageService.sender.returns(owner.address);
-    await lineaSpokePool
-      .connect(lineaMessageService.wallet)
-      .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
-    lineaMessageService.sender.reset();
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
     const implementation = await hre.upgrades.deployImplementation(await getContractFactory("Linea_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
-      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60],
+      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, toWei("1")],
     });
 
     // upgradeTo fails unless called by cross domain admin
@@ -264,6 +257,14 @@ describe("Linea Spoke Pool", function () {
     expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(amountToReturn.add(fee));
   });
   it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
+    // Set up XERC20 router for l2EzETH
+    lineaMessageService.sender.returns(owner.address);
+    l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
+    await lineaSpokePool
+      .connect(lineaMessageService.wallet)
+      .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
+    lineaMessageService.sender.reset();
+
     const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
     l2HypXERC20Router.quoteGasPayment.returns(hypXERC20Fee);
 

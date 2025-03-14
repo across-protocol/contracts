@@ -31,7 +31,7 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         ITokenMessenger _cctpTokenMessenger,
         // _oftFeeCap can be set to 1 ether for Arbitrum, but has to be custom-set for other chains that might inherit this adapter, like AlephZero
         uint256 _oftFeeCap,
-        // same as above
+        // Same as above
         uint256 _hypXERC20FeeCap
     )
         SpokePool(

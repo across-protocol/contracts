@@ -58,6 +58,8 @@ describe("Unichain Spoke Pool", function () {
     });
     await owner.sendTransaction({ to: crossDomainMessenger.address, value: toWei("1") });
 
+    const hypXERC20FeeCap = toWei("1");
+
     // Deploy DoctorWho_SpokePool
     unichainSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("DoctorWho_SpokePool", owner),
@@ -65,7 +67,7 @@ describe("Unichain Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, hypXERC20FeeCap],
       }
     );
 

@@ -91,8 +91,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger,
-        uint256 _hypXERC20FeeCap
+        ITokenMessenger _cctpTokenMessenger
     )
         SpokePool(
             _wrappedNativeTokenAddress,

@@ -81,10 +81,6 @@ describe("Arbitrum Spoke Pool", function () {
     // todo: we give l1 dai to
     await seedContract(arbitrumSpokePool, relayer, [dai, l2EzETH], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
-
-    // todo: check this
-    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
-    await arbitrumSpokePool.connect(crossDomainAlias).setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
@@ -175,6 +171,9 @@ describe("Arbitrum Spoke Pool", function () {
     l2OftMessenger.token.returns(l2UsdtContract.address);
     await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
 
+    l2OftMessenger.token.returns(l2UsdtContract.address);
+    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
+
     const l2UsdtSendAmount = BigNumber.from("1234567");
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2UsdtContract.address,
@@ -229,6 +228,9 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
+    l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
+    await arbitrumSpokePool.connect(crossDomainAlias).setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
+
     const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
     l2HypXERC20Router.quoteGasPayment.returns(hypXERC20Fee);
 
