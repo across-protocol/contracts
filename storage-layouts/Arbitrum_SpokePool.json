@@ -158,9 +158,15 @@
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "__gap",
+      "label": "hypXERC20Routers",
       "offset": 0,
       "slot": "2165"
+    },
+    {
+      "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2166"
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
@@ -176,15 +182,9 @@
     },
     {
       "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
-      "label": "hypXERC20Routers",
-      "offset": 0,
-      "slot": "3164"
-    },
-    {
-      "contract": "contracts/Arbitrum_SpokePool.sol:Arbitrum_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "3165"
+      "slot": "3164"
     }
   ]
 }
