@@ -47,7 +47,7 @@ const mnemonic = getMnemonic();
 const LARGE_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 800 },
+    optimizer: isTest ? { enabled: true, runs: 800 } : { enabled: false },
     viaIR: true,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
@@ -55,7 +55,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 1000000 },
+    optimizer: isTest ? { enabled: true, runs: 1000000 } : { enabled: false },
     viaIR: true,
     // Only strip revert strings if not testing or in ci.
     debug: { revertStrings: isTest ? "debug" : "strip" },
@@ -65,7 +65,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
 const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 200 },
+    optimizer: isTest ? { enabled: true, runs: 50 } : { enabled: false },
     viaIR: true,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },

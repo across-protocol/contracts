@@ -16,7 +16,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
   ];
 
-  const hypXERC20FeeCap = toWei("1"); // 1 ether is our default fee cap for XERC20 transfers via hyperlane
+  // 1 ETH fee cap for Hyperlane XERC20 transfers
+  const hypXERC20FeeCap = toWei(1);
+
   const constructorArgs = [
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
