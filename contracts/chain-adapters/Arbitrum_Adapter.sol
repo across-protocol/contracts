@@ -9,6 +9,7 @@ import { IOFT } from "../interfaces/IOFT.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
+import "../libraries/HypXERC20Adapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
 import { AdapterStore } from "../libraries/AdapterStore.sol";
 
@@ -21,7 +22,7 @@ import { AdapterStore } from "../libraries/AdapterStore.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapter {
+contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapter, HypXERC20Adapter {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -57,7 +58,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     // Generic gateway: https://github.com/OffchainLabs/token-bridge-contracts/blob/main/contracts/tokenbridge/ethereum/gateway/L1ArbitrumGateway.sol
     ArbitrumL1ERC20GatewayLike public immutable L1_ERC20_GATEWAY_ROUTER;
 
-    // Helper storage contract to help this Adapter map token => OFT messenger for OFT bridging.
+    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
     AdapterStore public immutable ADAPTER_STORE;
 
     // Chain id of the chain this adapter helps bridge to.
@@ -71,8 +72,9 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
      * @param _dstChainId Chain id of a destination chain for this adapter.
-     * @param _adapterStore AdapterStore contract to help identify token => oftMessenger relationship for OFT bridging.
+     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
+     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -82,10 +84,12 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         ITokenMessenger _cctpTokenMessenger,
         uint256 _dstChainId,
         AdapterStore _adapterStore,
-        uint256 _oftFeeCap
+        uint256 _oftFeeCap,
+        uint256 _hypXERC20FeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
         OFTTransportAdapter(OFTEIds.Arbitrum, _oftFeeCap)
+        HypXERC20Adapter(HyperlaneDomainIds.Arbitrum, _hypXERC20FeeCap)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
@@ -134,12 +138,15 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         address to
     ) external payable override {
         address oftMessenger = _getOftMessenger(l1Token);
+        address hypRouter = _getHypXERC20Router(l1Token);
 
-        // Check if this token is USDC, which requires a custom bridge via CCTP.
+        // Check if the token needs to use any of the custom bridge solutions first
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else if (oftMessenger != address(0)) {
             _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
+        } else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {
@@ -203,12 +210,11 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         return requiredL1CallValue;
     }
 
-    /**
-     * @notice Queries for an OFT messenger from an OFT address book contract
-     * @param _token Token to query the messenger for
-     * @return messenger OFT messenger contract
-     */
     function _getOftMessenger(address _token) internal view returns (address) {
         return ADAPTER_STORE.oftMessengers(DESTINATION_CHAIN_ID, _token);
+    }
+
+    function _getHypXERC20Router(address _token) internal view returns (address) {
+        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
     }
 }

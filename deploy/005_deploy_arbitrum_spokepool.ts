@@ -17,7 +17,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
   ];
 
+  // 1 ETH fee cap for OFT transfers
   const oftFeeCap = toWei(1);
+  // 1 ETH fee cap for Hyperlane XERC20 transfers
+  const hypXERC20FeeCap = toWei(1);
+
   const constructorArgs = [
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
@@ -25,6 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     oftFeeCap,
+    hypXERC20FeeCap,
   ];
   await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs);
 };

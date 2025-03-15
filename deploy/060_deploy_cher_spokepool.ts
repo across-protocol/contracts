@@ -2,6 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, WETH, QUOTE_TIME_BUFFER, ZERO_ADDRESS, USDCe } from "./consts";
+import { toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -12,6 +13,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
+
+  // 1 ETH fee cap for Hyperlane XERC20 transfers
+  const hypXERC20FeeCap = toWei(1);
+
   const constructorArgs = [
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
@@ -24,6 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
+    hypXERC20FeeCap,
   ];
   await deployNewProxy("Cher_SpokePool", constructorArgs, initArgs);
 };

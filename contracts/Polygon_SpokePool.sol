@@ -38,6 +38,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     // Polygon_SpokePool does not use OFT messaging, setting the cap to 0
     uint256 private constant OFT_FEE_CAP = 0;
 
+    // Polygon_SpokePool does not use XERC20 messaging, setting the cap to 0
+    uint256 private constant HYP_XERC20_FEE_CAP = 0;
+
     // Address of FxChild which sends and receives messages to and from L1.
     address public fxChild;
 
@@ -90,7 +93,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP)
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            OFT_FEE_CAP,
+            HYP_XERC20_FEE_CAP
+        )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 

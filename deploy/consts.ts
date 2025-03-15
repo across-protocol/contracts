@@ -59,6 +59,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
     donationBox: "0x74f00724075443Cbbf55129F17CbAB0F77bA0722",
+    adapterStore: "", // to be deployed
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
     polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",

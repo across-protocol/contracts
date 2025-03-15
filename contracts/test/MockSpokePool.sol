@@ -31,7 +31,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
     event PreLeafExecuteHook(bytes32 token);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours, 0) {} // solhint-disable-line no-empty-blocks
+    constructor(address _wrappedNativeTokenAddress) SpokePool(_wrappedNativeTokenAddress, 1 hours, 9 hours, 0, 0) {} // solhint-disable-line no-empty-blocks
 
     function initialize(
         uint32 _initialDepositId,

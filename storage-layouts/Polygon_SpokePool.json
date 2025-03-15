@@ -158,9 +158,15 @@
     },
     {
       "contract": "contracts/Polygon_SpokePool.sol:Polygon_SpokePool",
-      "label": "__gap",
+      "label": "hypXERC20Routers",
       "offset": 0,
       "slot": "2165"
+    },
+    {
+      "contract": "contracts/Polygon_SpokePool.sol:Polygon_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2166"
     },
     {
       "contract": "contracts/Polygon_SpokePool.sol:Polygon_SpokePool",
