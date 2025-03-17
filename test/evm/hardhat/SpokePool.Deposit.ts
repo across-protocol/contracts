@@ -411,7 +411,7 @@ describe("SpokePool Depositor Logic", async function () {
     }
     function getUnsafeDepositArgsFromRelayData(
       _relayData: V3RelayData,
-      _depositId: string,
+      _depositId = "99",
       _destinationChainId = destinationChainId,
       _quoteTimestamp = quoteTimestamp
     ) {
@@ -863,20 +863,23 @@ describe("SpokePool Depositor Logic", async function () {
       ]);
       await expect(spokePool.connect(depositor).callback(functionCalldata)).to.be.reverted;
     });
-    it("unsafe deposit ID", async function () {
-      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, forcedDepositId}.
-      const forcedDepositId = "99";
-      const expectedDepositId = BigNumber.from(
+    function getUnsafeDepositId(depositNonce = "99", msgSender = depositor.address): BigNumber {
+      // new deposit ID should be the uint256 equivalent of the keccak256 hash of packed {msg.sender, depositor, depositNonce}.
+      return BigNumber.from(
         ethers.utils.solidityKeccak256(
           ["address", "bytes32", "uint256"],
-          [depositor.address, addressToBytes(recipient.address), forcedDepositId]
+          [msgSender, addressToBytes(recipient.address), depositNonce]
         )
       );
+    }
+    it("unsafe deposit ID", async function () {
+      const forcedDepositId = "99";
+      const expectedDepositId = getUnsafeDepositId(forcedDepositId, depositor.address);
       expect(
         await spokePool.getUnsafeDepositId(depositor.address, addressToBytes(recipient.address), forcedDepositId)
       ).to.equal(expectedDepositId);
-      // Note: we deliberately set the depositor != msg.sender to test that the hashing algorithm correctly includes
-      // both addresses in the hash.
+      // Note: we deliberately set the depositor different from the msg.sender to test that the hashing
+      // algorithm correctly includes both addresses in the hash.
       await expect(
         spokePool
           .connect(depositor)
@@ -900,6 +903,24 @@ describe("SpokePool Depositor Logic", async function () {
           relayData.exclusiveRelayer,
           relayData.message
         );
+    });
+    it("unsafe deposit doesn't check deposit routes", async function () {
+      await spokePool.setEnableRoute(bytes32ToAddress(relayData.inputToken), destinationChainId, false);
+      expect(await spokePool.enabledDepositRoutes(bytes32ToAddress(relayData.inputToken), destinationChainId)).to.equal(
+        false
+      );
+      const randomDestinationChainId = destinationChainId + 9;
+      expect(
+        await spokePool.enabledDepositRoutes(bytes32ToAddress(relayData.inputToken), randomDestinationChainId)
+      ).to.equal(false);
+
+      await expect(spokePool.connect(depositor).unsafeDeposit(...getUnsafeDepositArgsFromRelayData({ ...relayData })))
+        .to.not.be.reverted;
+      await expect(
+        spokePool
+          .connect(depositor)
+          .unsafeDeposit(...getUnsafeDepositArgsFromRelayData({ ...relayData }, undefined, randomDestinationChainId))
+      ).to.not.be.reverted;
     });
   });
   describe("speed up V3 deposit", function () {

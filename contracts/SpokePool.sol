@@ -656,7 +656,9 @@ abstract contract SpokePool is
      *   avoiding any risk of a relay hash unexpectedly changing due to another deposit front-running this one
      *   and incrementing the global deposit ID counter.
      * - Deposit routes: does not check if the origin token and destination chain ID are enabled for deposits.
-     *   The filler for this deposit must therefore take repayment in the origin token on this chain.
+     *   The filler for this deposit must therefore take repayment in the origin token on this chain. If the
+     *   destination chain ID does not correspond to a SpokePool that Across supports, then this deposit will
+     *   get refunded to the depositor after the fillDeadline.
      *
      * @dev There is no guarantee that the depositId emitted in the resultant FundsDeposited event is
      * unique which means that the corresponding fill might collide with an existing relay hash on the
