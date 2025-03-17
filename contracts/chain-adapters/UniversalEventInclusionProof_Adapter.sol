@@ -6,18 +6,19 @@ import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 
 /**
  * @notice Adapter to be used to relay messages to L2 SpokePools that have light client and verification contracts
- * that can verify event inclusion proofs. This adapter essentially performs a no-op when relayMessage is called,
- * and takes advantage of the fact that an ExecutedRootBundle event will be emitted on the L1 HubPool contract
- * that will contain the data that needs to be relayed to the L2 SpokePool.
+ * that can verify event inclusion proofs.
  */
 contract UniversalEventInclusionProof_Adapter is AdapterInterface {
     error NotImplemented();
 
+    event RelayedMessage(address indexed target, bytes message);
+
     /**
-     * @notice Does nothing, as the ExecutedRootBundle event inclusion can be proven on the L2.
+     * @notice Emits an event containing the message that we can submit to the target spoke pool via
+     * event inclusion proof.
      */
-    function relayMessage(address, bytes calldata) external payable override {
-        // This method is intentionally left as a no-op.
+    function relayMessage(address target, bytes calldata message) external payable override {
+        emit RelayedMessage(target, message);
     }
 
     /**
