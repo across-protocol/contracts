@@ -3,11 +3,11 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { SP1_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/SP1_Adapter.sol";
+import { UniversalStorageProof_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/UniversalStorageProof_Adapter.sol";
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 
-contract SP1AdapterTest is Test {
-    SP1_Adapter adapter;
+contract UniversalStorageProofAdapterTest is Test {
+    UniversalStorageProof_Adapter adapter;
     HubPoolStore store;
     MockHubPool hubPool;
     address spokePoolTarget;
@@ -19,7 +19,7 @@ contract SP1AdapterTest is Test {
         spokePoolTarget = vm.addr(1);
         hubPool = new MockHubPool(address(0));
         store = new HubPoolStore(address(hubPool));
-        adapter = new SP1_Adapter(store);
+        adapter = new UniversalStorageProof_Adapter(store);
         hubPool.changeAdapter(address(adapter));
     }
 

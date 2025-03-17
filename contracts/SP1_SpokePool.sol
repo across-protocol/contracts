@@ -134,7 +134,7 @@ contract SP1_SpokePool is SpokePool {
         }
 
         // Validate state is intended to be sent to this contract. The target could have been set to the zero address
-        // which is used by the SP1_Adapter to denote messages that can be sent to any target.
+        // which is used by the StorageProof_Adapter to denote messages that can be sent to any target.
         (address target, bytes memory message) = abi.decode(publicValues.storageValue, (address, bytes));
         if (target != address(0) && target != address(this)) {
             revert NotTarget();

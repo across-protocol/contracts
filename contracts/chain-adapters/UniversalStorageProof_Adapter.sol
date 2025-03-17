@@ -5,8 +5,8 @@ import "./interfaces/AdapterInterface.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 
 /**
- * @notice Stores data that can be relayed to L2 SpokePool using SP1 + Helios light clients. Only the HubPool
- * can store data.
+ * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
+ * on the L2 where the SpokePool is deployed. Only the HubPool can store data to this contract.
  */
 contract HubPoolStore {
     error NotHubPool();
@@ -61,9 +61,10 @@ contract HubPoolStore {
 }
 
 /**
- * @notice Stores data that can be relayed to L2 SpokePool using SP1 + Helios light clients.
+ * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
+ * on the L2 where the SpokePool is deployed.
  */
-contract SP1_Adapter is AdapterInterface {
+contract UniversalStorageProof_Adapter is AdapterInterface {
     HubPoolStore public immutable DATA_STORE;
 
     error NotImplemented();
