@@ -33,7 +33,7 @@
     "build-ts": "rm -rf ./dist && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "copy-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
     "build": "yarn build-evm && yarn build-svm && yarn generate-svm-assets && yarn build-ts && yarn copy-idl",
-    "test-evm": "IS_TEST=true hardhat test",
+    "test-evm": "IS_TEST=true hardhat test && FOUNDRY_PROFILE=local forge test",
     "test-svm": "anchor test -- --features test",
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
