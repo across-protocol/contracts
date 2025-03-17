@@ -83,7 +83,14 @@ abstract contract CircleCCTPAdapter {
         (bool success, bytes memory feeRecipient) = address(cctpTokenMessenger).staticcall(
             abi.encodeWithSignature("feeRecipient()")
         );
-        cctpV2 = (success && address(bytes20(feeRecipient)) != address(0));
+        // In case of a call to nonexistent contract or a call to a contract with a fallback function which
+        // doesn't return any data, feeRecipient can be empty so check its length.
+        // Even with this check, its possible that the contract has implemented a fallback function that returns
+        // 32 bytes of data but its not actually the feeRecipient address. This is extremely low risk but worth
+        // mentioning that the following check is not 100% safe.
+        cctpV2 = (success &&
+            feeRecipient.length == 32 &&
+            address(uint160(uint256(bytes32(feeRecipient)))) != address(0));
     }
 
     /**
