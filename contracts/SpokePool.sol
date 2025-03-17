@@ -169,6 +169,11 @@ abstract contract SpokePool is
     // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
     // exclusivityDeadline in a deposit event will be set to the current time plus this value.
     uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
+
+    // This is a conservative limit equal to ~3x the average gas cost of a transfer() call on an ERC20 token.
+    // This value is used as a cap to protect refund leaf executors from executing any refund leaf that calls
+    // transfer() on a token that attempts to grief the executor by charging them a lot of gas.
+    uint256 public constant MAX_ERC20_TRANSFER_GAS_COST = 300_000;
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -557,6 +562,9 @@ abstract contract SpokePool is
             exclusivityParameter: exclusivityParameter,
             message: message
         });
+        // Check that deposit route is enabled for the input token. There are no checks required for the output token
+        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
+        if (!enabledDepositRoutes[inputToken.toAddress()][destinationChainId]) revert DisabledRoute();
         _depositV3(params);
     }
 
@@ -636,20 +644,23 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice See deposit for details. This function is identical to deposit except that it does not use the
-     * global deposit ID counter as a deposit nonce, instead allowing the caller to pass in a deposit nonce. This
-     * function is designed to be used by anyone who wants to pre-compute their resultant relay data hash, which
-     * could be useful for filling a deposit faster and avoiding any risk of a relay hash unexpectedly changing
-     * due to another deposit front-running this one and incrementing the global deposit ID counter.
-     * @dev This is labeled "unsafe" because there is no guarantee that the depositId emitted in the resultant
-     * FundsDeposited event is unique which means that the
-     * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
-     * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
-     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
-     * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
-     * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
-     * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
-     * deposits with deposit hashes that map exactly to the one emitted by this contract.
+     * @notice See deposit for details. This function is identical to deposit except that it removes a few safety
+     * features for depositors. This is intuitively an "advanced deposit" function that gives the depositor more
+     * degrees of freedom but opens up the risk that their resultant deposit is unfillable. If this deposit
+     * is unfilled, then it will be refunded to the depositor on this chain after the fillDeadline.
+     *
+     * *** Differences from deposit() ***
+     * - Deposit ID's: does not use the global deposit ID counter as a deposit nonce, instead allowing the
+     *   caller to pass in a deposit nonce. This function is designed to be used by anyone who wants to
+     *   pre-compute their resultant relay data hash, which could be useful for filling a deposit faster and
+     *   avoiding any risk of a relay hash unexpectedly changing due to another deposit front-running this one
+     *   and incrementing the global deposit ID counter.
+     * - Deposit routes: does not check if the origin token and destination chain ID are enabled for deposits.
+     *   The filler for this deposit must therefore take repayment in the origin token on this chain.
+     *
+     * @dev There is no guarantee that the depositId emitted in the resultant FundsDeposited event is
+     * unique which means that the corresponding fill might collide with an existing relay hash on the
+     * destination chain SpokePool, which would make this deposit unfillable.
      * @param depositNonce The nonce that uniquely identifies this deposit. This function will combine this parameter
      * with the msg.sender address to create a unique uint256 depositNonce and ensure that the msg.sender cannot
      * use this function to front-run another depositor's unsafe deposit. This function guarantees that the resultant
@@ -1330,10 +1341,6 @@ abstract contract SpokePool is
         // Verify depositor is a valid EVM address.
         params.depositor.checkAddress();
 
-        // Check that deposit route is enabled for the input token. There are no checks required for the output token
-        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[params.inputToken.toAddress()][params.destinationChainId]) revert DisabledRoute();
-
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
@@ -1538,7 +1545,7 @@ abstract contract SpokePool is
         uint256 returnValue;
         bytes memory data = abi.encodeCall(IERC20Upgradeable.transfer, (to, amount));
         assembly {
-            success := call(gas(), token, 0, add(data, 0x20), mload(data), 0, 0x20)
+            success := call(MAX_ERC20_TRANSFER_GAS_COST, token, 0, add(data, 0x20), mload(data), 0, 0x20)
             returnSize := returndatasize()
             returnValue := mload(0)
         }
