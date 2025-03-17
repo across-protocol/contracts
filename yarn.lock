@@ -2507,6 +2507,11 @@
     bs58 "^6.0.0"
     dotenv "^16.4.5"
 
+"@solana-program/token@^0.5.1":
+  version "0.5.1"
+  resolved "https://registry.npmjs.org/@solana-program/token/-/token-0.5.1.tgz#10e327df23f05a7f892fd33a9b6418f17dd62296"
+  integrity sha512-bJvynW5q9SFuVOZ5vqGVkmaPGA0MCC+m9jgJj1nk5m20I389/ms69ASnhWGoOPNcie7S9OwBX0gTj2fiyWpfag==
+
 "@solana/accounts@2.1.0":
   version "2.1.0"
   resolved "https://registry.npmjs.org/@solana/accounts/-/accounts-2.1.0.tgz#23fa5ba20dd7af9bfb84abc638096378b62c7276"
