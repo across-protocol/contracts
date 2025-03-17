@@ -205,7 +205,7 @@ describe("Linea Spoke Pool", function () {
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(lineaTokenBridge.bridgeToken).to.have.been.calledWith(dai.address, amountToReturn, hubPool.address);
   });
-  it("Bridge USDC to hub pool correctly calls the L2 USDC Bridge", async function () {
+  it.skip("Bridge USDC to hub pool correctly calls the L2 USDC Bridge", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       usdc.address,
       await lineaSpokePool.callStatic.chainId()

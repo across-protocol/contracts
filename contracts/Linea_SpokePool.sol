@@ -153,11 +153,8 @@ contract Linea_SpokePool is SpokePool {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn + msg.value); // Unwrap into ETH.
             l2MessageService.sendMessage{ value: amountToReturn + msg.value }(withdrawalRecipient, msg.value, "");
         }
-        // If the l1Token is USDC, then we need sent it via the USDC Bridge.
-        else if (l2TokenAddress == l2UsdcBridge.usdc()) {
-            IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2UsdcBridge), amountToReturn);
-            l2UsdcBridge.depositTo{ value: msg.value }(amountToReturn, withdrawalRecipient);
-        }
+        // If the l1Token is USDC, do nothing for the time being, pending Linea's CCTP upgrade.
+        else if (l2TokenAddress == l2UsdcBridge.usdc()) {}
         // For other tokens, we can use the Canonical Token Bridge.
         else {
             IERC20(l2TokenAddress).safeIncreaseAllowance(address(l2TokenBridge), amountToReturn);
