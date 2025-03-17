@@ -80,7 +80,7 @@ jobs:
         run: yarn build
       - name: Test evm-hardhat
         shell: bash
-        run: yarn test-evm
+        run: yarn test-evm-hardhat
       - name: Test svm-anchor
         shell: bash
         run: yarn test-svm
@@ -114,4 +114,4 @@ jobs:
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
       - name: Test evm-foundry
-        run: forge test --match-path test/evm/foundry/local/**/*.t.sol
+        run: yarn test-evm-foundry
