@@ -135,8 +135,6 @@ contract SpokePoolPeripheryTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner)))
         );
         ethereumSpokePool = Ethereum_SpokePool(payable(spokePoolProxy));
-        ethereumSpokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
-        ethereumSpokePool.setEnableRoute(address(mockERC20), destinationChainId, true);
         spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
         vm.stopPrank();
 

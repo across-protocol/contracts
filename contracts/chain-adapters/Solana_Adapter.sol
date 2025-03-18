@@ -113,7 +113,7 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         }
 
         bytes4 selector = bytes4(message[:4]);
-        if (selector == SpokePoolInterface.setEnableRoute.selector) {
+        if (selector == bytes4(keccak256("setEnableRoute(address,uint256,bool)"))) {
             cctpMessageTransmitter.sendMessage(
                 CircleDomainIds.Solana,
                 SOLANA_SPOKE_POOL_BYTES32,
