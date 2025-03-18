@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Copied from: https://github.com/risc0/risc0-ethereum/blob/v1.4.0/contracts/src/steel/Steel.sol
+
 pragma solidity ^0.8.9;
 
 /// @title Steel Library
