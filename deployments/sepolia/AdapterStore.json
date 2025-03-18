@@ -1,0 +1,374 @@
+{
+  "address": "0x6dd28353f97343EB2cb4E5864bb7Cec4289a1bD0",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "ArrayLengthMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "HypTokenMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OFTTokenMismatch",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "adapterChainId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "l1Token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oftMessenger",
+          "type": "address"
+        }
+      ],
+      "name": "HypXERC20RouterSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "adapterChainId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "l1Token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "oftMessenger",
+          "type": "address"
+        }
+      ],
+      "name": "OFTMessengerSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "adapterChainIds",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "tokens",
+          "type": "address[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "routers",
+          "type": "address[]"
+        }
+      ],
+      "name": "batchSetHypXERC20Routers",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256[]",
+          "name": "adapterChainIds",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "tokens",
+          "type": "address[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "messengers",
+          "type": "address[]"
+        }
+      ],
+      "name": "batchSetOFTMessengers",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "hypXERC20Routers",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "oftMessengers",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "adapterChainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "l1Token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "hypXERC20Router",
+          "type": "address"
+        }
+      ],
+      "name": "setHypXERC20Router",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "adapterChainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "l1Token",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "oftMessenger",
+          "type": "address"
+        }
+      ],
+      "name": "setOFTMessenger",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x3cb3ccfead53e61271d7ef6691c0a0a900ae73d8fb92464951438120d7ac8c5f",
+  "receipt": {
+    "to": null,
+    "from": "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    "contractAddress": "0x6dd28353f97343EB2cb4E5864bb7Cec4289a1bD0",
+    "transactionIndex": 13,
+    "gasUsed": "581497",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000001000000000000000000000000000000000000020000000000000000000800000000000000000000000000040000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000800000000000004000000000000000000000000000000020000001000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x4fee941e2e29d2de83f1352bccd0b96af5691a448865bbc8444957ce85f2c4fa",
+    "transactionHash": "0x3cb3ccfead53e61271d7ef6691c0a0a900ae73d8fb92464951438120d7ac8c5f",
+    "logs": [
+      {
+        "transactionIndex": 13,
+        "blockNumber": 7924969,
+        "transactionHash": "0x3cb3ccfead53e61271d7ef6691c0a0a900ae73d8fb92464951438120d7ac8c5f",
+        "address": "0x6dd28353f97343EB2cb4E5864bb7Cec4289a1bD0",
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x0000000000000000000000009a8f92a830a5cb89a3816e3d267cb7791c16b04d"
+        ],
+        "data": "0x",
+        "logIndex": 24,
+        "blockHash": "0x4fee941e2e29d2de83f1352bccd0b96af5691a448865bbc8444957ce85f2c4fa"
+      }
+    ],
+    "blockNumber": 7924969,
+    "cumulativeGasUsed": "2773344",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "2dc0a95909ca19cdcc5cdfeb0071eaef",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.23+commit.f704f362\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"ArrayLengthMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"HypTokenMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OFTTokenMismatch\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"adapterChainId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"l1Token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"oftMessenger\",\"type\":\"address\"}],\"name\":\"HypXERC20RouterSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"adapterChainId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"l1Token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"oftMessenger\",\"type\":\"address\"}],\"name\":\"OFTMessengerSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"adapterChainIds\",\"type\":\"uint256[]\"},{\"internalType\":\"address[]\",\"name\":\"tokens\",\"type\":\"address[]\"},{\"internalType\":\"address[]\",\"name\":\"routers\",\"type\":\"address[]\"}],\"name\":\"batchSetHypXERC20Routers\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256[]\",\"name\":\"adapterChainIds\",\"type\":\"uint256[]\"},{\"internalType\":\"address[]\",\"name\":\"tokens\",\"type\":\"address[]\"},{\"internalType\":\"address[]\",\"name\":\"messengers\",\"type\":\"address[]\"}],\"name\":\"batchSetOFTMessengers\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"hypXERC20Routers\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"oftMessengers\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"adapterChainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"l1Token\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"hypXERC20Router\",\"type\":\"address\"}],\"name\":\"setHypXERC20Router\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"adapterChainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"l1Token\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"oftMessenger\",\"type\":\"address\"}],\"name\":\"setOFTMessenger\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"A helper contract for chain adapters that support OFT or XERC20 messaging(via Hyperlane) on L1Handles token => messenger/router mapping storage, as adapters are called via delegatecall and don't have relevant storage space\",\"kind\":\"dev\",\"methods\":{\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"renounceOwnership()\":{\"details\":\"Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.\"},\"transferOwnership(address)\":{\"details\":\"Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.\"}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/libraries/AdapterStore.sol\":\"AdapterStore\"},\"debug\":{\"revertStrings\":\"strip\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/access/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/Context.sol\\\";\\n\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * By default, the owner account will be the one that deploys the contract. This\\n * can later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract Ownable is Context {\\n    address private _owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the deployer as the initial owner.\\n     */\\n    constructor() {\\n        _transferOwnership(_msgSender());\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        _checkOwner();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if the sender is not the owner.\\n     */\\n    function _checkOwner() internal view virtual {\\n        require(owner() == _msgSender(), \\\"Ownable: caller is not the owner\\\");\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby disabling any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        _transferOwnership(address(0));\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        require(newOwner != address(0), \\\"Ownable: new owner is the zero address\\\");\\n        _transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual {\\n        address oldOwner = _owner;\\n        _owner = newOwner;\\n        emit OwnershipTransferred(oldOwner, newOwner);\\n    }\\n}\\n\",\"keccak256\":\"0xba43b97fba0d32eb4254f6a5a297b39a19a247082a02d6e69349e071e2946218\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n\\n    function _contextSuffixLength() internal view virtual returns (uint256) {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0xa92e4fa126feb6907daa0513ddd816b2eb91f30a808de54f63c17d0e162c3439\",\"license\":\"MIT\"},\"contracts/interfaces/IHypXERC20Router.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/**\\n * @notice Interface for interfacing with Hyperlane's xERC20 messaging\\n */\\ninterface IHypXERC20Router {\\n    /**\\n     * @notice Retuns the underlying token available for bridging\\n     */\\n    function wrappedToken() external view returns (address);\\n\\n    /**\\n     * @notice Returns the gas payment required to dispatch a message to the given domain's router.\\n     * @param _destinationDomain The domain of the router.\\n     * @return _gasPayment Payment computed by the registered InterchainGasPaymaster.\\n     */\\n    function quoteGasPayment(uint32 _destinationDomain) external view returns (uint256);\\n\\n    /**\\n     * @notice Transfers `_amountOrId` token to `_recipient` on `_destination` domain.\\n     * @dev Delegates transfer logic to `_transferFromSender` implementation.\\n     * @dev Emits `SentTransferRemote` event on the origin chain.\\n     * @param _destination The identifier of the destination chain.\\n     * @param _recipient The address of the recipient on the destination chain.\\n     * @param _amountOrId The amount or identifier of tokens to be sent to the remote recipient.\\n     * @return messageId The identifier of the dispatched message.\\n     */\\n    function transferRemote(\\n        uint32 _destination,\\n        bytes32 _recipient,\\n        uint256 _amountOrId\\n    ) external payable returns (bytes32 messageId);\\n}\\n\",\"keccak256\":\"0x8e7b68cae9385a8594906d4dfd2c8daae78bd863ea30f97ad1bfaf5be6ef4bce\",\"license\":\"BUSL-1.1\"},\"contracts/interfaces/IOFT.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/**\\n * @notice This file contains minimal copies of relevant structs / interfaces for OFT bridging. Source code link:\\n * https://github.com/LayerZero-Labs/LayerZero-v2/blob/9a4049ae3a374e1c0ef01ac9fb53dd83f4257a68/packages/layerzero-v2/evm/oapp/contracts/oft/interfaces/IOFT.sol\\n * It's also published as a part of an npm package: @layerzerolabs/oft-evm. The published code is incompatible with\\n * our compiler version requirements, so we copy it here instead\\n */\\n\\nstruct MessagingReceipt {\\n    bytes32 guid;\\n    uint64 nonce;\\n    MessagingFee fee;\\n}\\n\\nstruct MessagingFee {\\n    uint256 nativeFee;\\n    uint256 lzTokenFee;\\n}\\n\\n/**\\n * @dev Struct representing token parameters for the OFT send() operation.\\n */\\nstruct SendParam {\\n    uint32 dstEid; // Destination endpoint ID.\\n    bytes32 to; // Recipient address.\\n    uint256 amountLD; // Amount to send in local decimals.\\n    uint256 minAmountLD; // Minimum amount to send in local decimals.\\n    bytes extraOptions; // Additional options supplied by the caller to be used in the LayerZero message.\\n    bytes composeMsg; // The composed message for the send() operation.\\n    bytes oftCmd; // The OFT command to be executed, unused in default OFT implementations.\\n}\\n\\n/**\\n * @dev Struct representing OFT receipt information.\\n */\\nstruct OFTReceipt {\\n    uint256 amountSentLD; // Amount of tokens ACTUALLY debited from the sender in local decimals.\\n    // @dev In non-default implementations, the amountReceivedLD COULD differ from this value.\\n    uint256 amountReceivedLD; // Amount of tokens to be received on the remote side.\\n}\\n\\n/**\\n * @title IOFT\\n * @dev Interface for the OftChain (OFT) token.\\n * @dev Does not inherit ERC20 to accommodate usage by OFTAdapter as well.\\n * @dev This specific interface ID is '0x02e49c2c'.\\n */\\ninterface IOFT {\\n    /**\\n     * @notice Retrieves the address of the token associated with the OFT.\\n     * @return token The address of the ERC20 token implementation.\\n     */\\n    function token() external view returns (address);\\n\\n    /**\\n     * @notice Provides a quote for the send() operation.\\n     * @param _sendParam The parameters for the send() operation.\\n     * @param _payInLzToken Flag indicating whether the caller is paying in the LZ token.\\n     * @return fee The calculated LayerZero messaging fee from the send() operation.\\n     *\\n     * @dev MessagingFee: LayerZero msg fee\\n     *  - nativeFee: The native fee.\\n     *  - lzTokenFee: The lzToken fee.\\n     */\\n    function quoteSend(SendParam calldata _sendParam, bool _payInLzToken) external view returns (MessagingFee memory);\\n\\n    /**\\n     * @notice Executes the send() operation.\\n     * @param _sendParam The parameters for the send operation.\\n     * @param _fee The fee information supplied by the caller.\\n     *      - nativeFee: The native fee.\\n     *      - lzTokenFee: The lzToken fee.\\n     * @param _refundAddress The address to receive any excess funds from fees etc. on the src.\\n     * @return receipt The LayerZero messaging receipt from the send() operation.\\n     * @return oftReceipt The OFT receipt information.\\n     *\\n     * @dev MessagingReceipt: LayerZero msg receipt\\n     *  - guid: The unique identifier for the sent message.\\n     *  - nonce: The nonce of the sent message.\\n     *  - fee: The LayerZero fee incurred for the message.\\n     */\\n    function send(\\n        SendParam calldata _sendParam,\\n        MessagingFee calldata _fee,\\n        address _refundAddress\\n    ) external payable returns (MessagingReceipt memory, OFTReceipt memory);\\n}\\n\",\"keccak256\":\"0x9c32621db83fa983cdc964eec1cd8ee07f98f40aca4d799abe953df620cf1994\",\"license\":\"BUSL-1.1\"},\"contracts/libraries/AdapterStore.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\nimport { Ownable } from \\\"@openzeppelin/contracts/access/Ownable.sol\\\";\\nimport { IOFT } from \\\"../interfaces/IOFT.sol\\\";\\nimport { IHypXERC20Router } from \\\"../interfaces/IHypXERC20Router.sol\\\";\\n\\n/**\\n * @dev A helper contract for chain adapters that support OFT or XERC20 messaging(via Hyperlane) on L1\\n * @dev Handles token => messenger/router mapping storage, as adapters are called via delegatecall and don't have relevant storage space\\n */\\ncontract AdapterStore is Ownable {\\n    mapping(uint256 => mapping(address => address)) public oftMessengers;\\n    mapping(uint256 => mapping(address => address)) public hypXERC20Routers;\\n\\n    event OFTMessengerSet(uint256 indexed adapterChainId, address indexed l1Token, address oftMessenger);\\n    event HypXERC20RouterSet(uint256 indexed adapterChainId, address indexed l1Token, address oftMessenger);\\n\\n    error OFTTokenMismatch();\\n    error HypTokenMismatch();\\n    error ArrayLengthMismatch();\\n\\n    function setOFTMessenger(\\n        uint256 adapterChainId,\\n        address l1Token,\\n        address oftMessenger\\n    ) external onlyOwner {\\n        _setOFTMessenger(adapterChainId, l1Token, oftMessenger);\\n    }\\n\\n    function batchSetOFTMessengers(\\n        uint256[] calldata adapterChainIds,\\n        address[] calldata tokens,\\n        address[] calldata messengers\\n    ) external onlyOwner {\\n        if (adapterChainIds.length != tokens.length || adapterChainIds.length != messengers.length) {\\n            revert ArrayLengthMismatch();\\n        }\\n\\n        for (uint256 i = 0; i < adapterChainIds.length; i++) {\\n            _setOFTMessenger(adapterChainIds[i], tokens[i], messengers[i]);\\n        }\\n    }\\n\\n    function setHypXERC20Router(\\n        uint256 adapterChainId,\\n        address l1Token,\\n        address hypXERC20Router\\n    ) external onlyOwner {\\n        _setHypXERC20Router(adapterChainId, l1Token, hypXERC20Router);\\n    }\\n\\n    function batchSetHypXERC20Routers(\\n        uint256[] calldata adapterChainIds,\\n        address[] calldata tokens,\\n        address[] calldata routers\\n    ) external onlyOwner {\\n        if (adapterChainIds.length != tokens.length || adapterChainIds.length != routers.length) {\\n            revert ArrayLengthMismatch();\\n        }\\n\\n        for (uint256 i = 0; i < adapterChainIds.length; i++) {\\n            _setHypXERC20Router(adapterChainIds[i], tokens[i], routers[i]);\\n        }\\n    }\\n\\n    function _setOFTMessenger(\\n        uint256 _adapterChainId,\\n        address _l1Token,\\n        address _oftMessenger\\n    ) internal {\\n        if (IOFT(_oftMessenger).token() != _l1Token) {\\n            revert OFTTokenMismatch();\\n        }\\n        oftMessengers[_adapterChainId][_l1Token] = _oftMessenger;\\n        emit OFTMessengerSet(_adapterChainId, _l1Token, _oftMessenger);\\n    }\\n\\n    function _setHypXERC20Router(\\n        uint256 _adapterChainId,\\n        address _l1Token,\\n        address _hypXERC20Router\\n    ) internal {\\n        if (IHypXERC20Router(_hypXERC20Router).wrappedToken() != _l1Token) {\\n            revert HypTokenMismatch();\\n        }\\n\\n        hypXERC20Routers[_adapterChainId][_l1Token] = _hypXERC20Router;\\n        emit HypXERC20RouterSet(_adapterChainId, _l1Token, _hypXERC20Router);\\n    }\\n}\\n\",\"keccak256\":\"0xe2bdc872cac4f742243b1b86bf2a22cf29135ec3267c34f7ac6acaa1fce1558c\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x6080806040523461005a575f8054336001600160a01b0319821681178355916001600160a01b03909116907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09080a3610927908161005f8239f35b5f80fdfe60406080815260049081361015610014575f80fd5b5f3560e01c908163354aa8a2146104405781635d5afc041461041f5781635d79e603146103b1578163715018a6146103175781638da5cb5b146102c757816393b9c0f1146102595781639502c8fc146101db578163e027c37414610132575063f2fde38b14610081575f80fd5b3461012e5760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e573573ffffffffffffffffffffffffffffffffffffffff80821680920361012e576100d86105f5565b811561012e575f54827fffffffffffffffffffffffff00000000000000000000000000000000000000008216175f55167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e05f80a3005b5f80fd5b90503461012e5761014236610513565b9496909293956101506105f5565b8287148015906101d1575b6101ab5750505f5b85811061016c57005b806101a561017d600193898b610597565b3561019161018c84878a610597565b6105d4565b61019f61018c858b8a610597565b916106af565b01610163565b517fa24a13a6000000000000000000000000000000000000000000000000000000008152fd5b508587141561015b565b90503461012e576101eb36610513565b9496909293956101f96105f5565b82871480159061024f575b6101ab5750505f5b85811061021557005b80610249610226600193898b610597565b3561023561018c84878a610597565b61024361018c858b8a610597565b916107dd565b0161020c565b5085871415610204565b90503461012e57807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e5760209161029461045f565b90355f5260028352815f2073ffffffffffffffffffffffffffffffffffffffff8092165f528352815f2054169051908152f35b3461012e575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e5760209073ffffffffffffffffffffffffffffffffffffffff5f54169051908152f35b3461012e575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e5761034d6105f5565b5f73ffffffffffffffffffffffffffffffffffffffff81547fffffffffffffffffffffffff000000000000000000000000000000000000000081168355167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e08280a3005b90503461012e57807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e576020916103ec61045f565b90355f5260018352815f2073ffffffffffffffffffffffffffffffffffffffff8092165f528352815f2054169051908152f35b3461012e5761043e61043036610482565b916104396105f5565b6107dd565b005b3461012e5761043e61045136610482565b9161045a6105f5565b6106af565b6024359073ffffffffffffffffffffffffffffffffffffffff8216820361012e57565b7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc606091011261012e576004359073ffffffffffffffffffffffffffffffffffffffff90602435828116810361012e5791604435908116810361012e5790565b9181601f8401121561012e5782359167ffffffffffffffff831161012e576020808501948460051b01011161012e57565b9060607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc83011261012e5767ffffffffffffffff60043581811161012e578361055e916004016104e2565b9390939260243583811161012e5782610579916004016104e2565b9390939260443591821161012e57610593916004016104e2565b9091565b91908110156105a75760051b0190565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffd5b3573ffffffffffffffffffffffffffffffffffffffff8116810361012e5790565b73ffffffffffffffffffffffffffffffffffffffff5f5416330361012e57565b90601f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0910116810190811067ffffffffffffffff82111761065657604052565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b9081602091031261012e575173ffffffffffffffffffffffffffffffffffffffff8116810361012e5790565b9073ffffffffffffffffffffffffffffffffffffffff809316604080517f996c6cc30000000000000000000000000000000000000000000000000000000081526020938482600481875afa9182156107d3579087915f936107a4575b5016958691160361077b57907fb1b68a68486e7d2022a50dfc06bc98372a4caa313a0eeb2cef39b4392068ef309291845f5260028352805f20865f528352805f20827fffffffffffffffffffffffff000000000000000000000000000000000000000082541617905551908152a3565b600490517fcbd1e420000000000000000000000000000000000000000000000000000000008152fd5b6107c5919350863d88116107cc575b6107bd8183610615565b810190610683565b915f61070b565b503d6107b3565b83513d5f823e3d90fd5b9073ffffffffffffffffffffffffffffffffffffffff809316604080517ffc0c546a0000000000000000000000000000000000000000000000000000000081526020938482600481875afa9182156107d3579087915f936108d2575b501695869116036108a957907f586deec24810cd04def6b1abe613578c26c50f96f235ee401950b229a6d765589291845f5260018352805f20865f528352805f20827fffffffffffffffffffffffff000000000000000000000000000000000000000082541617905551908152a3565b600490517fa63e8c6b000000000000000000000000000000000000000000000000000000008152fd5b6108ea919350863d88116107cc576107bd8183610615565b915f61083956fea26469706673582212204689231dc65fe9f9549f71ddadc78668c3eaa1fc32f9caa0262701d7972f165064736f6c63430008170033",
+  "deployedBytecode": "0x60406080815260049081361015610014575f80fd5b5f3560e01c908163354aa8a2146104405781635d5afc041461041f5781635d79e603146103b1578163715018a6146103175781638da5cb5b146102c757816393b9c0f1146102595781639502c8fc146101db578163e027c37414610132575063f2fde38b14610081575f80fd5b3461012e5760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e573573ffffffffffffffffffffffffffffffffffffffff80821680920361012e576100d86105f5565b811561012e575f54827fffffffffffffffffffffffff00000000000000000000000000000000000000008216175f55167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e05f80a3005b5f80fd5b90503461012e5761014236610513565b9496909293956101506105f5565b8287148015906101d1575b6101ab5750505f5b85811061016c57005b806101a561017d600193898b610597565b3561019161018c84878a610597565b6105d4565b61019f61018c858b8a610597565b916106af565b01610163565b517fa24a13a6000000000000000000000000000000000000000000000000000000008152fd5b508587141561015b565b90503461012e576101eb36610513565b9496909293956101f96105f5565b82871480159061024f575b6101ab5750505f5b85811061021557005b80610249610226600193898b610597565b3561023561018c84878a610597565b61024361018c858b8a610597565b916107dd565b0161020c565b5085871415610204565b90503461012e57807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e5760209161029461045f565b90355f5260028352815f2073ffffffffffffffffffffffffffffffffffffffff8092165f528352815f2054169051908152f35b3461012e575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e5760209073ffffffffffffffffffffffffffffffffffffffff5f54169051908152f35b3461012e575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e5761034d6105f5565b5f73ffffffffffffffffffffffffffffffffffffffff81547fffffffffffffffffffffffff000000000000000000000000000000000000000081168355167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e08280a3005b90503461012e57807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011261012e576020916103ec61045f565b90355f5260018352815f2073ffffffffffffffffffffffffffffffffffffffff8092165f528352815f2054169051908152f35b3461012e5761043e61043036610482565b916104396105f5565b6107dd565b005b3461012e5761043e61045136610482565b9161045a6105f5565b6106af565b6024359073ffffffffffffffffffffffffffffffffffffffff8216820361012e57565b7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc606091011261012e576004359073ffffffffffffffffffffffffffffffffffffffff90602435828116810361012e5791604435908116810361012e5790565b9181601f8401121561012e5782359167ffffffffffffffff831161012e576020808501948460051b01011161012e57565b9060607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc83011261012e5767ffffffffffffffff60043581811161012e578361055e916004016104e2565b9390939260243583811161012e5782610579916004016104e2565b9390939260443591821161012e57610593916004016104e2565b9091565b91908110156105a75760051b0190565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffd5b3573ffffffffffffffffffffffffffffffffffffffff8116810361012e5790565b73ffffffffffffffffffffffffffffffffffffffff5f5416330361012e57565b90601f7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0910116810190811067ffffffffffffffff82111761065657604052565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b9081602091031261012e575173ffffffffffffffffffffffffffffffffffffffff8116810361012e5790565b9073ffffffffffffffffffffffffffffffffffffffff809316604080517f996c6cc30000000000000000000000000000000000000000000000000000000081526020938482600481875afa9182156107d3579087915f936107a4575b5016958691160361077b57907fb1b68a68486e7d2022a50dfc06bc98372a4caa313a0eeb2cef39b4392068ef309291845f5260028352805f20865f528352805f20827fffffffffffffffffffffffff000000000000000000000000000000000000000082541617905551908152a3565b600490517fcbd1e420000000000000000000000000000000000000000000000000000000008152fd5b6107c5919350863d88116107cc575b6107bd8183610615565b810190610683565b915f61070b565b503d6107b3565b83513d5f823e3d90fd5b9073ffffffffffffffffffffffffffffffffffffffff809316604080517ffc0c546a0000000000000000000000000000000000000000000000000000000081526020938482600481875afa9182156107d3579087915f936108d2575b501695869116036108a957907f586deec24810cd04def6b1abe613578c26c50f96f235ee401950b229a6d765589291845f5260018352805f20865f528352805f20827fffffffffffffffffffffffff000000000000000000000000000000000000000082541617905551908152a3565b600490517fa63e8c6b000000000000000000000000000000000000000000000000000000008152fd5b6108ea919350863d88116107cc576107bd8183610615565b915f61083956fea26469706673582212204689231dc65fe9f9549f71ddadc78668c3eaa1fc32f9caa0262701d7972f165064736f6c63430008170033",
+  "devdoc": {
+    "details": "A helper contract for chain adapters that support OFT or XERC20 messaging(via Hyperlane) on L1Handles token => messenger/router mapping storage, as adapters are called via delegatecall and don't have relevant storage space",
+    "kind": "dev",
+    "methods": {
+      "owner()": {
+        "details": "Returns the address of the current owner."
+      },
+      "renounceOwnership()": {
+        "details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+      },
+      "transferOwnership(address)": {
+        "details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 4146,
+        "contract": "contracts/libraries/AdapterStore.sol:AdapterStore",
+        "label": "_owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 37999,
+        "contract": "contracts/libraries/AdapterStore.sol:AdapterStore",
+        "label": "oftMessengers",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_uint256,t_mapping(t_address,t_address))"
+      },
+      {
+        "astId": 38005,
+        "contract": "contracts/libraries/AdapterStore.sol:AdapterStore",
+        "label": "hypXERC20Routers",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_uint256,t_mapping(t_address,t_address))"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_address)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => address)",
+        "numberOfBytes": "32",
+        "value": "t_address"
+      },
+      "t_mapping(t_uint256,t_mapping(t_address,t_address))": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => mapping(address => address))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_address)"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

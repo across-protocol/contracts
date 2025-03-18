@@ -37,7 +37,6 @@ export async function getSpokePoolDeploymentInfo(
   return { hubPool, hubChainId, spokeChainId };
 }
 
-// todo ihor: is BigNumber OK here? I guess so.
 type FnArgs = number | string | BigNumber;
 export async function deployNewProxy(
   name: string,
