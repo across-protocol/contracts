@@ -562,9 +562,6 @@ abstract contract SpokePool is
             exclusivityParameter: exclusivityParameter,
             message: message
         });
-        // Check that deposit route is enabled for the input token. There are no checks required for the output token
-        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[inputToken.toAddress()][destinationChainId]) revert DisabledRoute();
         _depositV3(params);
     }
 
@@ -644,25 +641,16 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice See deposit for details. This function is identical to deposit except that it removes a few safety
-     * features for depositors. This is intuitively an "advanced deposit" function that gives the depositor more
-     * degrees of freedom but opens up the risk that their resultant deposit is unfillable. If this deposit
-     * is unfilled, then it will be refunded to the depositor on this chain after the fillDeadline.
-     *
-     * *** Differences from deposit() ***
-     * - Deposit ID's: does not use the global deposit ID counter as a deposit nonce, instead allowing the
-     *   caller to pass in a deposit nonce. This function is designed to be used by anyone who wants to
-     *   pre-compute their resultant relay data hash, which could be useful for filling a deposit faster and
-     *   avoiding any risk of a relay hash unexpectedly changing due to another deposit front-running this one
-     *   and incrementing the global deposit ID counter.
-     * - Deposit routes: does not check if the origin token and destination chain ID are enabled for deposits.
-     *   The filler for this deposit must therefore take repayment in the origin token on this chain. If the
-     *   destination chain ID does not correspond to a SpokePool that Across supports, then this deposit will
-     *   get refunded to the depositor after the fillDeadline.
-     *
-     * @dev There is no guarantee that the depositId emitted in the resultant FundsDeposited event is
-     * unique which means that the corresponding fill might collide with an existing relay hash on the
-     * destination chain SpokePool, which would make this deposit unfillable.
+     * @notice See deposit for details. This function is identical to deposit except that it does not use the
+     * global deposit ID counter as a deposit nonce, instead allowing the caller to pass in a deposit nonce. This
+     * function is designed to be used by anyone who wants to pre-compute their resultant relay data hash, which
+     * could be useful for filling a deposit faster and avoiding any risk of a relay hash unexpectedly changing
+     * due to another deposit front-running this one and incrementing the global deposit ID counter.
+     * @dev This is labeled "unsafe" because there is no guarantee that the depositId emitted in the resultant
+     * FundsDeposited event is unique which means that the
+     * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
+     * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
+     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
      * @param depositNonce The nonce that uniquely identifies this deposit. This function will combine this parameter
      * with the msg.sender address to create a unique uint256 depositNonce and ensure that the msg.sender cannot
      * use this function to front-run another depositor's unsafe deposit. This function guarantees that the resultant
