@@ -2,10 +2,24 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import { Steel } from "./libraries/R0Steel.sol";
 
-interface IHelios {
-    function executionStateRoots(uint256) external view returns (bytes32);
+/// @dev This code is inspired by the R0 example here: https://github.com/risc0/risc0-ethereum/blob/main/examples/erc20-counter/contracts/src/Counter.sol.
+///      One important difference is that the reference example shows how to verify a proof of state on the same chain
+///      that the contract exists on. Steel does not currently have suport for verifying a proof of state
+///      on a different chain, using a light client, so this implementation is incomplete.
+
+interface ISteel {
+    /// @notice Represents a commitment to a specific block in the blockchain.
+    /// @dev The `id` combines the version and the actual identifier of the claim, such as the block number.
+    /// @dev The `digest` represents the data being committed to, e.g. the hash of the execution block.
+    /// @dev The `configID` is the cryptographic digest of the network configuration.
+    struct Commitment {
+        uint256 id;
+        bytes32 digest;
+        bytes32 configID;
+    }
+
+    function validateLightClientCommitment(Commitment calldata commitment) external view returns (bool);
 }
 
 /// @notice Verifier interface for RISC Zero receipts of execution.
@@ -34,8 +48,7 @@ contract R0_SpokePool is SpokePool {
     /// @notice Journal that is committed to by the guest. Contains a unique identifier of a
     // UniversalAdapter event: "RelayedMessage(address,bytes)"
     struct Journal {
-        Steel.Commitment commitment;
-        bytes32 stateRoot; // state root associated with this event, checked against L1 light client state.
+        ISteel.Commitment commitment;
         bytes32 eventKey; // hash(eventSignature, eventParams, blockHash, txnHash, logIndex) ?
         address eventParams_target; // param0
         bytes eventParams_message; // param1
@@ -48,9 +61,6 @@ contract R0_SpokePool is SpokePool {
 
     /// @notice The address of the Steel verifier contract.
     address public immutable verifier;
-
-    /// @notice The address of the Helios light client contract.
-    address public immutable helios;
 
     /// @notice The identifier for the guest program that generates event inclusion proofs.
     bytes32 public immutable imageId = bytes32("TODO");
@@ -70,7 +80,6 @@ contract R0_SpokePool is SpokePool {
     error NotHubPoolStore();
     error NotTarget();
     error AdminCallAlreadySet();
-    error StateRootMismatch();
     error AdminCallNotValidated();
     error DelegateCallFailed();
     error AlreadyReceived();
@@ -101,14 +110,12 @@ contract R0_SpokePool is SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _verifier,
-        address _helios,
         address _hubPoolStore,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {
         verifier = _verifier;
-        helios = _helios;
         hubPoolStore = _hubPoolStore;
     }
 
@@ -124,13 +131,8 @@ contract R0_SpokePool is SpokePool {
      * @notice This can be called by an EOA to relay events that the HubPool emits on L1.
      * @param journalData The public data written by the guest program
      * @param seal The encoded cryptographic proof (i.e. SNARK).
-     * @param head Head number related to Journal.stateRoot
      */
-    function receiveL1State(
-        bytes calldata journalData,
-        bytes calldata seal,
-        uint256 head
-    ) external validateInternalCalls {
+    function receiveL1State(bytes calldata journalData, bytes calldata seal) external validateInternalCalls {
         // Decode and validate the journal data
         Journal memory journal = abi.decode(journalData, (Journal));
         if (journal.contractAddress != hubPoolStore) {
@@ -139,19 +141,15 @@ contract R0_SpokePool is SpokePool {
         if (journal.eventParams_target != address(this)) {
             revert NotTarget();
         }
-        if (!Steel.validateCommitment(journal.commitment)) {
+        // @TODO: Steel does not currently support validating the commitment from an external chain, so this is
+        // a placeholder.
+        if (ISteel(verifier).validateLightClientCommitment(journal.commitment)) {
             revert InvalidSteelCommitment();
         }
 
         // Verify the proof
         bytes32 journalHash = sha256(journalData);
         IRiscZeroVerifier(verifier).verify(seal, imageId, journalHash);
-
-        // Verify light client is aware of the state root containing the public values:
-        bytes32 executionStateRoot = IHelios(helios).executionStateRoots(head);
-        if (executionStateRoot != journal.stateRoot) {
-            revert StateRootMismatch();
-        }
 
         // Prevent replay attacks by using storage key which includes a nonce. The only way for someone to re-execute
         // an identical message on this target spoke pool would be to get the HubPool to re-publish the data. This lets
