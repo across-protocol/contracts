@@ -110,7 +110,7 @@
     },
     {
       "contract": "contracts/Redstone_SpokePool.sol:Redstone_SpokePool",
-      "label": "enabledDepositRoutes",
+      "label": "DEPRECATED_enabledDepositRoutes",
       "offset": 0,
       "slot": "2157"
     },
