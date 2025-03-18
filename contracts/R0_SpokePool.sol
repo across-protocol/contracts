@@ -142,7 +142,8 @@ contract R0_SpokePool is SpokePool {
             revert NotTarget();
         }
         // @TODO: Steel does not currently support validating the commitment from an external chain, so this is
-        // a placeholder.
+        // a placeholder. The Commitment should contain some representation of the L1 state root, so the following
+        // line should revert if the light client linked with Steel is unaware of the state root.
         if (ISteel(verifier).validateLightClientCommitment(journal.commitment)) {
             revert InvalidSteelCommitment();
         }
