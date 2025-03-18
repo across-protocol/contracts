@@ -4,7 +4,12 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 
 interface IHelios {
-    function executionStateRoots(uint256) external view returns (bytes32);
+    /// @notice Gets the value of a storage slot at a specific block
+    function getStorageSlot(
+        uint256 blockNumber,
+        address contractAddress,
+        bytes32 slot
+    ) external view returns (bytes32);
 }
 
 interface ISP1Verifier {
@@ -21,10 +26,10 @@ interface ISP1Verifier {
 contract SP1_SpokePool is SpokePool {
     // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
     struct ContractPublicValues {
-        bytes32 stateRoot; // State root containing the storage slot in question.
         address contractAddress; // Address of contract whose storage slot we want to load into this contract.
-        bytes storageKey; // Data used to identify storage slot key.
-        bytes storageValue; // Storage slot value.
+        bytes32 slotKey; // Slot key
+        bytes32 slotValueHash; // Hash of slot value
+        bytes value; // Full slot value
     }
     /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
@@ -54,7 +59,7 @@ contract SP1_SpokePool is SpokePool {
     error NotHubPoolStore();
     error NotTarget();
     error AdminCallAlreadySet();
-    error StateRootMismatch();
+    error SlotValueMismatch();
     error AdminCallNotValidated();
     error DelegateCallFailed();
     error AlreadyReceived();
@@ -127,28 +132,25 @@ contract SP1_SpokePool is SpokePool {
             revert NotHubPoolStore();
         }
 
-        // Verify Helios light client is aware of the state root containing the public values:
-        bytes32 executionStateRoot = IHelios(helios).executionStateRoots(_head);
-        if (executionStateRoot != publicValues.stateRoot) {
-            revert StateRootMismatch();
+        // Verify Helios light client is aware of the storage slot:
+        bytes32 slotValue = IHelios(helios).getStorageSlot(_head, publicValues.contractAddress, publicValues.slotKey);
+        if (publicValues.slotValueHash != slotValue) {
+            revert SlotValueMismatch();
         }
 
         // Validate state is intended to be sent to this contract. The target could have been set to the zero address
         // which is used by the StorageProof_Adapter to denote messages that can be sent to any target.
-        (address target, bytes memory message) = abi.decode(publicValues.storageValue, (address, bytes));
+        (address target, bytes memory message) = abi.decode(publicValues.value, (address, bytes));
         if (target != address(0) && target != address(this)) {
             revert NotTarget();
         }
 
-        // Prevent replay attacks by using storage key which includes a nonce. The only way for someone to re-execute
-        // an identical message on this target spoke pool would be to get the HubPool to re-publish the data. This lets
-        // the HubPool owner re-execute admin actions that have the same calldata.
-        bytes32 dataHash = bytes32(publicValues.storageKey);
-        if (verifiedProofs[dataHash]) {
+        // Prevent replay attacks.
+        if (verifiedProofs[publicValues.slotKey]) {
             revert AlreadyReceived();
         }
-        verifiedProofs[dataHash] = true;
-        emit VerifiedProof(dataHash, msg.sender);
+        verifiedProofs[publicValues.slotKey] = true;
+        emit VerifiedProof(publicValues.slotKey, msg.sender);
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
