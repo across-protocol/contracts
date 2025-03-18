@@ -48,9 +48,7 @@ describe("Arbitrum Spoke Pool", function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, l2Weth, dai, l2Dai, hubPool, l2Usdc, l2UsdtContract } = await hubPoolFixture());
 
-    // create ezETH token for XERC20 testing
-    // const ezETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
-    // await ezETH.addMember(TokenRolesEnum.MINTER, owner.address);
+    // create l2EzETH token for XERC20 testing
     l2EzETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
     await l2EzETH.addMember(TokenRolesEnum.MINTER, owner.address);
 
@@ -78,7 +76,6 @@ describe("Arbitrum Spoke Pool", function () {
       }
     );
 
-    // todo: we give l1 dai to
     await seedContract(arbitrumSpokePool, relayer, [dai, l2EzETH], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
   });
