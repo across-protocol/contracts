@@ -16,9 +16,6 @@ contract Cher_SpokePool is Ovm_SpokePool {
     // Address of the custom L2 USDC bridge.
     address private constant USDC_BRIDGE = 0x8be79275FCfD08A931087ECf70Ba8a99aee3AC59;
 
-    // fee cap to use for XERC20 transfers through Hyperlane. 1 ether is default for ETH gas token chains
-    uint256 private constant HYP_XERC20_FEE_CAP = 1 ether;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,

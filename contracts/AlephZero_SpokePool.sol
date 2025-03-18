@@ -18,9 +18,9 @@ contract AlephZero_SpokePool is Arbitrum_SpokePool {
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        // _oftFeeCap can be set to 0 for AlephZero_SpokePool as AlephZero does not support OFT transfers.
+        // _oftFeeCap can be set to 0 for AlephZero_SpokePool as it does not support OFT transfers.
         uint256 _oftFeeCap,
-        // same as above, but for hyperlane XERC20 transfers
+        // _hypXERC20FeeCap can be set to 0 for AlephZero_SpokePool as it does not support xERC20 transfers.
         uint256 _hypXERC20FeeCap
     )
         Arbitrum_SpokePool(

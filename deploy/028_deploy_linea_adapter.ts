@@ -13,9 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     chainId == CHAIN_IDs.MAINNET,
     "We only support deploying Linea Adapter on Mainnet for now. To deploy on testnet, update consts and configs."
   );
-
-  // Pick correct destination chain id to set based on deployment network
-  const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.LINEA : undefined;
+  const dstChainId = CHAIN_IDs.LINEA;
 
   // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
   const hypXERC20FeeCap = toWei("1");
