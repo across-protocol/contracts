@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IHelios } from "./external/interfaces/ISP1Helios.sol";
+import { IHelios } from "./external/interfaces/IHelios.sol";
 
 import "./SpokePool.sol";
 
