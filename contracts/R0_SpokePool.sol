@@ -6,9 +6,12 @@ import "./SpokePool.sol";
 /// @dev This code is inspired by the R0 example here: https://github.com/risc0/risc0-ethereum/blob/main/examples/erc20-counter/contracts/src/Counter.sol.
 ///      One important difference is that the reference example shows how to verify a proof of state on the same chain
 ///      that the contract exists on. Steel does not currently have suport for verifying a proof of state
-///      on a different chain, using a light client, so this implementation is incomplete.
+///      on a different chain, using a light client, so this implementation is incomplete. We're assuming that
+///      Steel will offer a validateCommitment interface similar to its existing code for the same-chain case.
 
-interface ISteel {
+/// @title HeliosSteelValidator
+/// @notice Validates Steel commitments using the Helios light client
+interface IHeliosSteel {
     /// @notice Represents a commitment to a specific block in the blockchain.
     /// @dev The `id` combines the version and the actual identifier of the claim, such as the block number.
     /// @dev The `digest` represents the data being committed to, e.g. the hash of the execution block.
@@ -19,7 +22,10 @@ interface ISteel {
         bytes32 configID;
     }
 
-    function validateLightClientCommitment(Commitment calldata commitment) external view returns (bool);
+    /// @notice Validates a Steel commitment
+    /// @param commitment The commitment to validate
+    /// @return True if the commitment is valid
+    function validateCommitment(Commitment calldata commitment) external view returns (bool);
 }
 
 /// @notice Verifier interface for RISC Zero receipts of execution.
@@ -48,7 +54,7 @@ contract R0_SpokePool is SpokePool {
     /// @notice Journal that is committed to by the guest. Contains a unique identifier of a
     // UniversalAdapter event: "RelayedMessage(address,bytes)"
     struct Journal {
-        ISteel.Commitment commitment;
+        IHeliosSteel.Commitment commitment;
         bytes32 eventKey; // hash(eventSignature, eventParams, blockHash, txnHash, logIndex) ?
         address eventParams_target; // param0
         bytes eventParams_message; // param1
@@ -141,10 +147,7 @@ contract R0_SpokePool is SpokePool {
         if (journal.eventParams_target != address(this)) {
             revert NotTarget();
         }
-        // @TODO: Steel does not currently support validating the commitment from an external chain, so this is
-        // a placeholder. The Commitment should contain some representation of the L1 state root, so the following
-        // line should revert if the light client linked with Steel is unaware of the state root.
-        if (ISteel(verifier).validateLightClientCommitment(journal.commitment)) {
+        if (IHeliosSteel(verifier).validateCommitment(journal.commitment)) {
             revert InvalidSteelCommitment();
         }
 
