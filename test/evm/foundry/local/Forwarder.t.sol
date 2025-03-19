@@ -18,7 +18,7 @@ import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitru
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
 import { ForwarderInterface } from "../../../../contracts/chain-adapters/interfaces/ForwarderInterface.sol";
-import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
+import { AdapterStore } from "../../../../contracts/libraries/AdapterStore.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -59,7 +59,6 @@ contract ForwarderTest is Test {
         crossDomainMessenger = new MockBedrockCrossDomainMessenger();
         standardBridge = new MockBedrockL1StandardBridge();
 
-        // A placeholder. Not initialized properly as a proxy contract. Not relevant for this test
         adapterStore = new AdapterStore();
 
         optimismAdapter = new Optimism_Adapter(

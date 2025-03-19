@@ -1,10 +1,15 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import "hardhat-deploy";
-import { deployNewProxy } from "../utils/utils.hre";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  await deployNewProxy("AdapterStore", [], []);
+  const { deployer } = await hre.getNamedAccounts();
+
+  await hre.deployments.deploy("AdapterStore", {
+    from: deployer,
+    log: true,
+    skipIfAlreadyDeployed: true,
+  });
 };
 
 module.exports = func;
