@@ -10,6 +10,7 @@ export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
 export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
 export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
+export const WGHO = TOKEN_SYMBOLS_MAP.WGHO.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
@@ -213,6 +214,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
+  },
+  232: {
+    zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",

@@ -95,7 +95,7 @@ const config: HardhatUserConfig = {
     },
   },
   zksolc: {
-    version: "latest",
+    version: "1.5.7",
     settings: {
       optimizer: {
         enabled: true,
@@ -249,6 +249,16 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
+    },
+    lens: {
+      chainId: CHAIN_IDs.LENS,
+      url: "",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+      ethNetwork: "mainnet",
+      verifyURL: "",
+      zksync: true,
     },
     "lens-sepolia": {
       chainId: CHAIN_IDs.LENS_SEPOLIA,
