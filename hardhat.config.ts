@@ -252,12 +252,12 @@ const config: HardhatUserConfig = {
     },
     lens: {
       chainId: CHAIN_IDs.LENS,
-      url: "",
+      url: "https://api.lens.matterhosted.dev",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
       ethNetwork: "mainnet",
-      verifyURL: "",
+      verifyURL: "", // @todo
       zksync: true,
     },
     "lens-sepolia": {
