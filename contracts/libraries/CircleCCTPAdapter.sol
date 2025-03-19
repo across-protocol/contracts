@@ -133,7 +133,7 @@ abstract contract CircleCCTPAdapter {
                     bytes32(0), // destinationCaller is set to bytes32(0) to indicate that anyone can call
                     // receiveMessage on the destination to finalize the transfer
                     0, // maxFee can be set to 0 for a "standard transfer"
-                    2000 // minFinalityThreshold can be set to 20000 for a "standard transfer",
+                    2000 // minFinalityThreshold can be set to 2000 for a "standard transfer",
                     // https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/FinalityThresholds.sol#L21
                 );
             } else {
