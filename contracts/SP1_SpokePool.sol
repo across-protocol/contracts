@@ -1,16 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./SpokePool.sol";
+import { IHelios } from "./external/interfaces/ISP1Helios.sol";
 
-interface IHelios {
-    /// @notice Gets the value of a storage slot at a specific block
-    function getStorageSlot(
-        uint256 blockNumber,
-        address contractAddress,
-        bytes32 slot
-    ) external view returns (bytes32);
-}
+import "./SpokePool.sol";
 
 interface ISP1Verifier {
     function verifyProof(

@@ -6,25 +6,16 @@ import "./SpokePool.sol";
 /// @dev This code is inspired by the R0 example here: https://github.com/risc0/risc0-ethereum/blob/main/examples/erc20-counter/contracts/src/Counter.sol.
 ///      One important difference is that the reference example shows how to verify a proof of state on the same chain
 ///      that the contract exists on. Steel does not currently have suport for verifying a proof of state
-///      on a different chain, using a light client, so this implementation is incomplete. We're assuming that
-///      Steel will offer a validateCommitment interface similar to its existing code for the same-chain case.
+///      on a different chain, using a light client, so we verify te Steel Commitment against the SP1Helios light client
+///      to ensure that the L1 state was included on L1 consensus.
 
-/// @title HeliosSteelValidator
-/// @notice Validates Steel commitments using the Helios light client
-interface IHeliosSteel {
-    /// @notice Represents a commitment to a specific block in the blockchain.
-    /// @dev The `id` combines the version and the actual identifier of the claim, such as the block number.
-    /// @dev The `digest` represents the data being committed to, e.g. the hash of the execution block.
-    /// @dev The `configID` is the cryptographic digest of the network configuration.
+interface IHeliosSteelValidator {
     struct Commitment {
         uint256 id;
         bytes32 digest;
         bytes32 configID;
     }
 
-    /// @notice Validates a Steel commitment
-    /// @param commitment The commitment to validate
-    /// @return True if the commitment is valid
     function validateCommitment(Commitment calldata commitment) external view returns (bool);
 }
 
@@ -54,7 +45,7 @@ contract R0_SpokePool is SpokePool {
     /// @notice Journal that is committed to by the guest. Contains a unique identifier of a
     // UniversalAdapter event: "RelayedMessage(address,bytes)"
     struct Journal {
-        IHeliosSteel.Commitment commitment;
+        IHeliosSteelValidator.Commitment commitment;
         bytes32 eventKey; // hash(eventSignature, eventParams, blockHash, txnHash, logIndex) ?
         address eventParams_target; // param0
         bytes eventParams_message; // param1
@@ -65,8 +56,11 @@ contract R0_SpokePool is SpokePool {
     /// stored by HubPool is relayed.
     address public immutable hubPoolStore;
 
-    /// @notice The address of the Steel verifier contract.
+    /// @notice The address of the R0 verifier contract.
     address public immutable verifier;
+
+    /// @notice The address of the Helios-Steel validator contract.
+    address public immutable steel;
 
     /// @notice The identifier for the guest program that generates event inclusion proofs.
     bytes32 public immutable imageId = bytes32("TODO");
@@ -115,6 +109,7 @@ contract R0_SpokePool is SpokePool {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        address _steel,
         address _verifier,
         address _hubPoolStore,
         address _wrappedNativeTokenAddress,
@@ -122,6 +117,7 @@ contract R0_SpokePool is SpokePool {
         uint32 _fillDeadlineBuffer
     ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {
         verifier = _verifier;
+        steel = _steel;
         hubPoolStore = _hubPoolStore;
     }
 
@@ -147,7 +143,7 @@ contract R0_SpokePool is SpokePool {
         if (journal.eventParams_target != address(this)) {
             revert NotTarget();
         }
-        if (IHeliosSteel(verifier).validateCommitment(journal.commitment)) {
+        if (IHeliosSteelValidator(steel).validateCommitment(journal.commitment)) {
             revert InvalidSteelCommitment();
         }
 
