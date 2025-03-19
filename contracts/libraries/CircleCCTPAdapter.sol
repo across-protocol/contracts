@@ -67,7 +67,7 @@ abstract contract CircleCCTPAdapter {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         IERC20 _usdcToken,
-        /// @dev This should ideally be an address but its kept as an ITokenMessenger to avoid rippling changes to the
+        /// @dev This should ideally be an address but it's kept as an ITokenMessenger to avoid rippling changes to the
         /// constructors for every SpokePool/Adapter.
         ITokenMessenger _cctpTokenMessenger,
         uint32 _recipientCircleDomainId
@@ -120,7 +120,7 @@ abstract contract CircleCCTPAdapter {
     function _transferUsdc(bytes32 to, uint256 amount) internal {
         // Only approve the exact amount to be transferred
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
-        // Submit the amount to be transferred to bridged via the TokenMessenger.
+        // Submit the amount to be transferred to bridge via the TokenMessenger.
         // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
         // @dev We do not care about casting cctpTokenMessenger to ITokenMessengerV2 since both V1 and V2
         // expose a localMinter() view function that returns either a ITokenMinterV1 or ITokenMinterV2. Regardless,
@@ -133,7 +133,7 @@ abstract contract CircleCCTPAdapter {
         while (remainingAmount > 0) {
             uint256 partAmount = remainingAmount > burnLimit ? burnLimit : remainingAmount;
             if (cctpV2) {
-                //  Uses the CCTP V2 "standard transfer" speed and
+                // Uses the CCTP V2 "standard transfer" speed and
                 // therefore pays no additional fee for the transfer to be sped up.
                 ITokenMessengerV2(address(cctpTokenMessenger)).depositForBurn(
                     partAmount,
