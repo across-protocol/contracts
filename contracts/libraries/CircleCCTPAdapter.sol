@@ -115,6 +115,11 @@ abstract contract CircleCCTPAdapter {
         usdcToken.safeIncreaseAllowance(address(cctpTokenMessenger), amount);
         // Submit the amount to be transferred to bridged via the TokenMessenger.
         // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
+        // @dev We do not care about casting cctpTokenMessenger to ITokenMessengerV2 since both V1 and V2
+        // expose a localMinter() view function that returns either a ITokenMinterV1 or ITokenMinterV2. Regardless,
+        // we only care about the burnLimitsPerMessage function which is available in both versions and performs
+        // the same logic, therefore we purposefully do not re-cast the cctpTokenMessenger and cctpMinter
+        // to the specific version.
         ITokenMinter cctpMinter = cctpTokenMessenger.localMinter();
         uint256 burnLimit = cctpMinter.burnLimitsPerMessage(address(usdcToken));
         uint256 remainingAmount = amount;
