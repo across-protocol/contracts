@@ -36,6 +36,11 @@ contract HeliosSteelValidator {
     /// @return True if the commitment is valid
     function validateCommitment(Commitment calldata commitment) external view returns (bool) {
         (uint240 blockID, uint16 version) = Encoding.decodeVersionedID(commitment.id);
+        // Steel supports multiple commitment versions. Version 0 encodes a block number and block hash.
+        // However, since the current IHelios interface only stores the state root and the beacon block root
+        // (and not the execution block hash), I've proposed using Version 1. Version 1 is designed as an
+        // EIP-4788 Beacon commitment, where a timestamp is paired with the beacon block root.
+
         if (version != 1) {
             revert InvalidCommitmentVersion();
         }
