@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore } from "../libraries/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
 
 interface IL1ERC20Bridge {
     /// @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
@@ -156,6 +156,6 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
+        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

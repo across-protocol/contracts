@@ -6,7 +6,7 @@ import "../external/interfaces/WETH9Interface.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore } from "../libraries/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
 
 // @dev Use local modified CrossDomainEnabled contract instead of one exported by eth-optimism because we need
 // this contract's state variables to be `immutable` because of the delegateCall call.
@@ -145,6 +145,6 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
+        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

@@ -11,7 +11,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapter.sol";
 import "../libraries/HypXERC20Adapter.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
-import { AdapterStore } from "../libraries/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Arbitrum.
@@ -211,10 +211,10 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
     }
 
     function _getOftMessenger(address _token) internal view returns (address) {
-        return ADAPTER_STORE.oftMessengers(DESTINATION_CHAIN_ID, _token);
+        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.OFT_MESSENGER, DESTINATION_CHAIN_ID, _token);
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
+        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

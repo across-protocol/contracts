@@ -9,7 +9,7 @@ import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfac
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore } from "../libraries/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
@@ -111,6 +111,6 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
+        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

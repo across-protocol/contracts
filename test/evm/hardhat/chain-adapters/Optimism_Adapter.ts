@@ -183,8 +183,13 @@ describe("Optimism Chain Adapter", function () {
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
     // Set hyperlane router in adapter store
     hypXERC20Router.wrappedToken.returns(ezETH.address);
-    await adapterStore.connect(owner).setHypXERC20Router(optimismChainId, ezETH.address, hypXERC20Router.address);
-    adapterStore.hypXERC20Routers.whenCalledWith(optimismChainId, ezETH.address).returns(hypXERC20Router.address);
+    const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
+    await adapterStore
+      .connect(owner)
+      .setMessenger(hypXERC20MessengerType, optimismChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.crossChainMessengers
+      .whenCalledWith(hypXERC20MessengerType, optimismChainId, ezETH.address)
+      .returns(hypXERC20Router.address);
 
     // construct repayment bundle
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, optimismChainId);

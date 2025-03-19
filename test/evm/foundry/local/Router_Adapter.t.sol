@@ -18,7 +18,7 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { HubPool } from "../../../../contracts/HubPool.sol";
 import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpTokenFactoryInterface.sol";
-import { AdapterStore } from "../../../../contracts/libraries/AdapterStore.sol";
+import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
 
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().

@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore } from "../libraries/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Doctor Who. This is a modified version of the Optimism adapter
@@ -121,6 +121,6 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
     }
 
     function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.hypXERC20Routers(DESTINATION_CHAIN_ID, _token);
+        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

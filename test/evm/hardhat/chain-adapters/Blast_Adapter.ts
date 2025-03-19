@@ -104,8 +104,13 @@ describe("Blast_Adapter", function () {
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
     // Set hyperlane router in adapter store
     hypXERC20Router.wrappedToken.returns(ezETH.address);
-    await adapterStore.connect(owner).setHypXERC20Router(blastChainId, ezETH.address, hypXERC20Router.address);
-    adapterStore.hypXERC20Routers.whenCalledWith(blastChainId, ezETH.address).returns(hypXERC20Router.address);
+    const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
+    await adapterStore
+      .connect(owner)
+      .setMessenger(hypXERC20MessengerType, blastChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.crossChainMessengers
+      .whenCalledWith(hypXERC20MessengerType, blastChainId, ezETH.address)
+      .returns(hypXERC20Router.address);
 
     // Set up gas payment quote
     hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));

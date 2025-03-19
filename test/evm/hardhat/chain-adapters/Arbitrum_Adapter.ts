@@ -278,7 +278,11 @@ describe("Arbitrum Chain Adapter", function () {
     const internalChainId = arbitrumChainId;
 
     oftMessenger.token.returns(usdt.address);
-    await adapterStore.connect(owner).setOFTMessenger(arbitrumChainId, usdt.address, oftMessenger.address);
+
+    const oftMessengerType = ethers.utils.formatBytes32String("OFT_MESSENGER");
+    await adapterStore
+      .connect(owner)
+      .setMessenger(oftMessengerType, arbitrumChainId, usdt.address, oftMessenger.address);
 
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
     await hubPool
@@ -287,7 +291,9 @@ describe("Arbitrum Chain Adapter", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // set up correct messenger to be returned on a proper `oftMessengers` call
-    adapterStore.oftMessengers.whenCalledWith(arbitrumChainId, usdt.address).returns(oftMessenger.address);
+    adapterStore.crossChainMessengers
+      .whenCalledWith(oftMessengerType, arbitrumChainId, usdt.address)
+      .returns(oftMessenger.address);
 
     // set up `quoteSend` return val
     const msgFeeStruct: MessagingFeeStructOutput = [
@@ -332,8 +338,14 @@ describe("Arbitrum Chain Adapter", function () {
   it("Correctly calls Hyperlane XERC20 bridge", async function () {
     // Set hyperlane router in adapter store
     hypXERC20Router.wrappedToken.returns(ezETH.address);
-    await adapterStore.connect(owner).setHypXERC20Router(arbitrumChainId, ezETH.address, hypXERC20Router.address);
-    adapterStore.hypXERC20Routers.whenCalledWith(arbitrumChainId, ezETH.address).returns(hypXERC20Router.address);
+
+    const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
+    await adapterStore
+      .connect(owner)
+      .setMessenger(hypXERC20MessengerType, arbitrumChainId, ezETH.address, hypXERC20Router.address);
+    adapterStore.crossChainMessengers
+      .whenCalledWith(hypXERC20MessengerType, arbitrumChainId, ezETH.address)
+      .returns(hypXERC20Router.address);
 
     // Construct repayment bundle
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, arbitrumChainId);
