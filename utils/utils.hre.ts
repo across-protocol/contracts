@@ -53,8 +53,8 @@ export async function deployNewProxy(
     unsafeAllowArgs.push("state-variable-immutable");
   }
 
-  // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
-  const proxy = getDeployedAddress("SpokePool", chainId, false);
+  // Look for an already deployed proxy with `name` in deployments/deployments.json. If it's found, only deploy an implementation contract.
+  const proxy = getDeployedAddress(name, chainId, false);
   implementationOnly ??= proxy !== undefined;
   if (implementationOnly) {
     console.log(`${name} deployment already detected @ ${proxy}, deploying new implementation.`);

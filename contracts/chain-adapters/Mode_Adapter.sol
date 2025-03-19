@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore } from "../libraries/AdapterStore.sol";
+import { AdapterStore } from "../AdapterStore.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Mode. This is a clone of the Base adapter
