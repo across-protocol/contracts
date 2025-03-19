@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IOFT } from "./interfaces/IOFT.sol";
-import { IHypXERC20Router } from "./interfaces/IHypXERC20Router.sol";
 
 library MessengerTypes {
     bytes32 public constant OFT_MESSENGER = bytes32("OFT_MESSENGER");
