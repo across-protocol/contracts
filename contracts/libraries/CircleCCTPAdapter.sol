@@ -14,9 +14,7 @@ library CircleDomainIds {
     uint32 public constant Base = 6;
     uint32 public constant Polygon = 7;
     uint32 public constant DoctorWho = 10;
-    uint32 public constant Linea = 11; // TODO replace with actual domain once Circle publishes it.
-    // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
-    // assigned a domain ID by Circle.
+    uint32 public constant Linea = 11;
     uint32 public constant UNINITIALIZED = type(uint32).max;
 }
 
