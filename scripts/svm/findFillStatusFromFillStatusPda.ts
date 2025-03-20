@@ -1,7 +1,7 @@
 // This script finds the fillStatus (fillStatus + event) from a provided fillStatusPda.
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
-import { address, createSolanaRpc } from "@solana/web3-v2.js";
+import { address, createSolanaRpc } from "@solana/kit";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { SvmSpokeIdl } from "../../src/svm";
