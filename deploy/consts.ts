@@ -43,7 +43,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
-    adapterStore: "", // to be deployed
+    adapterStore: "", // provisional version deployed in deployments/, but it's not ready to be 'production version'
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -59,7 +59,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
     donationBox: "0x74f00724075443Cbbf55129F17CbAB0F77bA0722",
-    adapterStore: "0x6dd28353f97343EB2cb4E5864bb7Cec4289a1bD0", // provisional version deployed
+    adapterStore: "0xcF340c078e4909f1796b28A78f35db9d60842CfB", // provisional version deployed
 
     // https://github.com/maticnetwork/static/blob/master/network/testnet/amoy/index.json
     polygonRootChainManager: "0x34F5A25B627f50Bb3f5cAb72807c4D4F405a9232",
