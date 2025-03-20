@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@across-protocol/constants@^3.1.37":
-  version "3.1.37"
-  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.37.tgz#7f1da248abe809eb9fb621f1876fbde78ec3509b"
-  integrity sha512-qPRntmeIDxgOwfXhPl90Mf61Fb4k20ecCc0N9Cco+5fSJE9PM4oI6Jq8VYnewyMPglYHZ1kMcdCPWYGebUs0Aw==
+"@across-protocol/constants@^3.1.40":
+  version "3.1.40"
+  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.40.tgz#c24cf81ba530adf64a11de6ee4f271e1104f26c9"
+  integrity sha512-zUljWDsV3iX1zNKPfQzwvtX8SmOxHKwfRkUgYULsUQjSW4QC+vpNMaMJ5gMjr0VInfSu/tOzkKdeC6pRIjZt0w==
 
 "@across-protocol/contracts@^0.1.4":
   version "0.1.4"
@@ -2506,6 +2506,11 @@
     "@solana/web3.js" "^1.95.2"
     bs58 "^6.0.0"
     dotenv "^16.4.5"
+
+"@solana-program/token@^0.5.1":
+  version "0.5.1"
+  resolved "https://registry.npmjs.org/@solana-program/token/-/token-0.5.1.tgz#10e327df23f05a7f892fd33a9b6418f17dd62296"
+  integrity sha512-bJvynW5q9SFuVOZ5vqGVkmaPGA0MCC+m9jgJj1nk5m20I389/ms69ASnhWGoOPNcie7S9OwBX0gTj2fiyWpfag==
 
 "@solana/accounts@2.1.0":
   version "2.1.0"

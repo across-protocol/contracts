@@ -10,6 +10,7 @@ export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
 export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
 export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
 export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
+export const WGHO = TOKEN_SYMBOLS_MAP.WGHO.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
@@ -44,6 +45,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     zkBridgeHub_324: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
+    zkBridgeHub_232: "0x9dA9f5dad070649811D77c40CcDcab479cE3Fa07",
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -212,6 +214,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
+  },
+  232: {
+    zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
