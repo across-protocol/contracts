@@ -10,7 +10,6 @@ import { Contract, ethers } from "ethers";
  * --network [l2_network] --adapter [adapter_address] --spoke-pool [spoke_pool_address] --l2-token [l2_token_address] \
  * --amount-to-return [amount_of_l2_token_to_bridge_to_withdrawal_recipient] --value [eth_to_send]
  * ```
- * yarn hardhat evm-relay-message-withdrawal --network arbitrum --adapter 0xd2f86b7f83c9ca1c0bff60291f5a38f345500849 --spoke-pool 0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5 --l2-token 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9 --amount-to-return 1000000
  * This REQUIRES a spoke pool to be deployed to the specified network AND for the
  * spoke pool to have the adapter as the `crossDomainAdmin`.
  */
