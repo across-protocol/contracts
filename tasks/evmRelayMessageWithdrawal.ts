@@ -7,21 +7,22 @@ import { Contract, ethers } from "ethers";
 /**
  * ```
  * yarn hardhat evm-relay-message-withdrawal \
- * --network [l2_network] --adapter [adapter_address] --spoke [spoke_pool_address] --l2token [l2_token_address] \
- * --amount [amount_of_l2_token_to_bridge_to_withdrawal_recipient] --value [eth_to_send]
+ * --network [l2_network] --adapter [adapter_address] --spoke-pool [spoke_pool_address] --l2-token [l2_token_address] \
+ * --amount-to-return [amount_of_l2_token_to_bridge_to_withdrawal_recipient] --value [eth_to_send]
  * ```
+ * yarn hardhat evm-relay-message-withdrawal --network arbitrum --adapter 0xd2f86b7f83c9ca1c0bff60291f5a38f345500849 --spoke-pool 0x5c7bcd6e7de5423a257d81b442095a1a6ced35c5 --l2-token 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9 --amount-to-return 1000000
  * This REQUIRES a spoke pool to be deployed to the specified network AND for the
  * spoke pool to have the adapter as the `crossDomainAdmin`.
  */
 
 task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a deployed L1 adapter and a L2 spoke pool.")
-  .addParam("spoke", "address of the L2 spoke pool to use.")
+  .addParam("spokePool", "address of the L2 spoke pool to use.")
   .addParam(
     "adapter",
     "address of the adapter to use. This must correspond to the network on which the L2 spoke pool is deployed"
   )
-  .addParam("l2token", "The l2 token address to withdraw from the spoke pool.")
-  .addParam("amount", "amount of token to withdraw from the spoke pool.")
+  .addParam("l2Token", "The l2 token address to withdraw from the spoke pool.")
+  .addParam("amountToReturn", "amount of token to withdraw from the spoke pool.")
   .addOptionalParam(
     "value",
     "amount of ETH to send with transaction (which may be needed to call `relayMessage`, such as with zksync). This should only be used in special cases since improper use could nuke funds."
@@ -29,10 +30,10 @@ task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a dep
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
     const msgValue = ethers.utils.parseEther(taskArguments.value === undefined ? "0" : taskArguments.value);
-    if (!ethers.utils.isAddress(taskArguments.l2token))
+    if (!ethers.utils.isAddress(taskArguments.l2Token))
       throw new Error(`${taskArguments.l2token} is not a valid evm token address`);
-    if (isNaN(taskArguments.amount) || taskArguments.amount < 0)
-      throw new Error(`${taskArguments.amount} is not a valid amount to send`);
+    if (isNaN(taskArguments.amountToReturn) || taskArguments.amountToReturn < 0)
+      throw new Error(`${taskArguments.amountToReturn} is not a valid amount to send`);
 
     /**
      * Setup: Need to obtain all contract addresses involved and instantiate L1/L2 providers and contracts.
@@ -53,7 +54,7 @@ task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a dep
     const l1Signer = ethers.Wallet.fromMnemonic((hre.network.config.accounts as any).mnemonic).connect(l1Provider);
 
     // Construct the contracts
-    const spokePool = new Contract(taskArguments.spoke, minimalSpokePoolInterface, l2Signer);
+    const spokePool = new Contract(taskArguments.spokePool, minimalSpokePoolInterface, l2Signer);
     const adapter = new Contract(taskArguments.adapter, minimalAdapterInterface, l1Signer);
 
     console.log("[+] Successfully constructed all contracts. Determining root bundle Id to use.");
@@ -76,7 +77,7 @@ task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a dep
     // Construct the root bundle
     const encodedRootBundle = ethers.utils.defaultAbiCoder.encode(
       [rootBundleType],
-      [[taskArguments.amount, l2ChainId, [], 0, taskArguments.l2token, []]]
+      [[taskArguments.amountToReturn, l2ChainId, [], 0, taskArguments.l2Token, []]]
     );
     const rootBundleHash = ethers.utils.keccak256(encodedRootBundle);
     // Submit the root bundle to chain.
@@ -123,7 +124,7 @@ task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a dep
 
     const executeRelayerRefundLeaf = await spokePool.executeRelayerRefundLeaf(
       rootBundleId,
-      [taskArguments.amount, l2ChainId, [], 0, taskArguments.l2token, []],
+      [taskArguments.amountToReturn, l2ChainId, [], 0, taskArguments.l2Token, []],
       []
     );
     const l2Txn = await executeRelayerRefundLeaf.wait();
