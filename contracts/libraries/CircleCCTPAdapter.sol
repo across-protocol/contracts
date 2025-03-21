@@ -83,7 +83,7 @@ abstract contract CircleCCTPAdapter {
         );
         // In case of a call to nonexistent contract or a call to a contract with a fallback function which
         // doesn't return any data, feeRecipient can be empty so check its length.
-        // Even with this check, its possible that the contract has implemented a fallback function that returns
+        // Even with this check, it's possible that the contract has implemented a fallback function that returns
         // 32 bytes of data but its not actually the feeRecipient address. This is extremely low risk but worth
         // mentioning that the following check is not 100% safe.
         cctpV2 = (success &&
@@ -121,7 +121,7 @@ abstract contract CircleCCTPAdapter {
         // Submit the amount to be transferred to bridge via the TokenMessenger.
         // If the amount to send exceeds the burn limit per message, then split the message into smaller parts.
         // @dev We do not care about casting cctpTokenMessenger to ITokenMessengerV2 since both V1 and V2
-        // expose a localMinter() view function that returns either a ITokenMinterV1 or ITokenMinterV2. Regardless,
+        // expose a localMinter() view function that returns either an ITokenMinterV1 or ITokenMinterV2. Regardless,
         // we only care about the burnLimitsPerMessage function which is available in both versions and performs
         // the same logic, therefore we purposefully do not re-cast the cctpTokenMessenger and cctpMinter
         // to the specific version.
