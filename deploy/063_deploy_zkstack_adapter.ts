@@ -36,13 +36,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId][`zkBridgeHub_${SPOKE_CHAIN_ID}`],
     WETH[chainId],
     L2_REFUND_ADDRESS,
-    L1_ADDRESS_MAP[chainId].donationBox,
     ZK_L2_GAS_LIMIT,
     ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT,
     ZK_MAX_GASPRICE,
   ];
 
-  const { address: deployment } = await hre.deployments.deploy("ZkStack_CustomGasToken_Adapter", {
+  const { address: deployment } = await hre.deployments.deploy("ZkStack_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
@@ -53,4 +52,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["ZkStackCustomGasTokenAdapter", "mainnet"];
+func.tags = ["ZkStackAdapter", "mainnet"];
