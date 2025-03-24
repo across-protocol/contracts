@@ -6,7 +6,7 @@ import web3, {
   GetTransactionApi,
   RpcTransport,
   Signature,
-} from "@solana/web3-v2.js";
+} from "@solana/kit";
 
 type GetTransactionReturnType = ReturnType<GetTransactionApi["getTransaction"]>;
 

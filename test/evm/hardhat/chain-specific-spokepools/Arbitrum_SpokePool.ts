@@ -74,7 +74,6 @@ describe("Arbitrum Spoke Pool", function () {
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
-    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
@@ -162,6 +161,9 @@ describe("Arbitrum Spoke Pool", function () {
   });
 
   it("Bridge tokens to hub pool correctly using the OFT messaging for L2 USDT token", async function () {
+    l2OftMessenger.token.returns(l2UsdtContract.address);
+    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
+
     const l2UsdtSendAmount = BigNumber.from("1234567");
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2UsdtContract.address,

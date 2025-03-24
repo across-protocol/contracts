@@ -31,7 +31,7 @@ import { IOFT__factory } from "../../../../typechain/factories/contracts/interfa
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
-import { OFTAddressBook, OFTAddressBook__factory } from "../../../../typechain";
+import { AdapterStore, AdapterStore__factory } from "../../../../typechain";
 
 let hubPool: Contract,
   arbitrumAdapter: Contract,
@@ -49,7 +49,7 @@ let l1ERC20GatewayRouter: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
   oftMessenger: FakeContract<IOFT>,
-  oftAddressBook: FakeContract<OFTAddressBook>;
+  adapterStore: FakeContract<AdapterStore>;
 
 const arbitrumChainId = 42161;
 
@@ -73,8 +73,7 @@ describe("Arbitrum Chain Adapter", function () {
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
-    oftAddressBook = await createTypedFakeFromABI([...OFTAddressBook__factory.abi]);
-    await oftAddressBook.connect(owner).setOFTMessenger(usdt.address, oftMessenger.address);
+    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
 
     l1Inbox = await createFake("Inbox");
     l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
@@ -91,7 +90,8 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      oftAddressBook.address,
+      arbitrumChainId,
+      adapterStore.address,
       oftFeeCap
     );
 
@@ -260,6 +260,9 @@ describe("Arbitrum Chain Adapter", function () {
   it("Correctly calls the OFT bridge adapter when attempting to bridge USDT", async function () {
     const internalChainId = arbitrumChainId;
 
+    oftMessenger.token.returns(usdt.address);
+    await adapterStore.connect(owner).setOFTMessenger(arbitrumChainId, usdt.address, oftMessenger.address);
+
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
     await hubPool
       .connect(dataWorker)
@@ -267,7 +270,7 @@ describe("Arbitrum Chain Adapter", function () {
     await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
 
     // set up correct messenger to be returned on a proper `oftMessengers` call
-    oftAddressBook.oftMessengers.whenCalledWith(usdt.address).returns(oftMessenger.address);
+    adapterStore.oftMessengers.whenCalledWith(arbitrumChainId, usdt.address).returns(oftMessenger.address);
 
     // set up `quoteSend` return val
     const msgFeeStruct: MessagingFeeStructOutput = [
