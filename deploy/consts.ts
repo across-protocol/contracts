@@ -44,8 +44,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
-    zkBridgeHub_324: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
-    zkBridgeHub_232: "0x9dA9f5dad070649811D77c40CcDcab479cE3Fa07",
+    zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -68,8 +67,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonERC20Predicate: "0x4258C75b752c812B7Fa586bdeb259f2d4bd17f4F",
     polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
-
-    zkBridgeHub_37111: "0x236D1c3Ff32Bd0Ca26b72Af287E895627c0478cE",
+    zkBridgeHub: "0x236D1c3Ff32Bd0Ca26b72Af287E895627c0478cE",
   },
 };
 
