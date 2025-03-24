@@ -65,7 +65,7 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.DoctorWho)
-        HypXERC20Adapter(HyperlaneDomainIds.Unichain, _hypXERC20FeeCap)
+        HypXERC20Adapter(130, _hypXERC20FeeCap)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

@@ -65,7 +65,7 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base)
-        HypXERC20Adapter(HyperlaneDomainIds.Base, _hypXERC20FeeCap)
+        HypXERC20Adapter(8453, _hypXERC20FeeCap)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

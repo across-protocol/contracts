@@ -85,7 +85,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Optimism)
-        HypXERC20Adapter(HyperlaneDomainIds.Optimism, _hypXERC20FeeCap)
+        HypXERC20Adapter(10, _hypXERC20FeeCap)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

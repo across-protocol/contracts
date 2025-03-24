@@ -48,7 +48,7 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         uint256 _dstChainId,
         AdapterStore _adapterStore,
         uint256 _hypXERC20FeeCap
-    ) HypXERC20Adapter(HyperlaneDomainIds.Linea, _hypXERC20FeeCap) {
+    ) HypXERC20Adapter(59144, _hypXERC20FeeCap) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;

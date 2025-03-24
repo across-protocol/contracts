@@ -7,18 +7,6 @@ import { IOFT, SendParam, MessagingFee, OFTReceipt } from "../interfaces/IOFT.so
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
- * @notice List of OFT endpoint ids for different chains.
- * @dev source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts.
- */
-library OFTEIds {
-    uint32 public constant Ethereum = 30101;
-    uint32 public constant Arbitrum = 30110;
-    // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
-    // assigned a domain ID by OFT messaging protocol.
-    uint32 public constant UNINITIALIZED = type(uint32).max;
-}
-
-/**
  * @notice Facilitate bridging tokens via LayerZero's OFT.
  * @dev This contract is intended to be inherited by other chain-specific adapters and spoke pools.
  * @custom:security-contact bugs@across.to

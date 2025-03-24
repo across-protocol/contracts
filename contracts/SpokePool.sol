@@ -210,6 +210,7 @@ abstract contract SpokePool is
     event SetHypXERC20Router(address indexed token, address indexed router);
 
     error OFTTokenMismatch();
+    error HypXERC20TokenMismatch();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -235,10 +236,7 @@ abstract contract SpokePool is
         uint32 _fillDeadlineBuffer,
         uint256 _oftFeeCap,
         uint256 _hypXERC20FeeCap
-    )
-        OFTTransportAdapter(OFTEIds.Ethereum, _oftFeeCap)
-        HypXERC20Adapter(HyperlaneDomainIds.Ethereum, _hypXERC20FeeCap)
-    {
+    ) OFTTransportAdapter(30101, _oftFeeCap) HypXERC20Adapter(1, _hypXERC20FeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
@@ -398,8 +396,8 @@ abstract contract SpokePool is
      * @param token token address on the current chain.
      * @param router IHypXERC20Router contract that accepts cross-chain transfers.
      */
-    function setXERC20HypRouter(address token, address router) public onlyAdmin nonReentrant {
-        _setXERC20HypRouter(token, router);
+    function setHypXERC20Router(address token, address router) public onlyAdmin nonReentrant {
+        _setHypXERC20Router(token, router);
     }
 
     /**************************************
@@ -1790,7 +1788,10 @@ abstract contract SpokePool is
         return oftMessengers[_token];
     }
 
-    function _setXERC20HypRouter(address _token, address _router) internal {
+    function _setHypXERC20Router(address _token, address _router) internal {
+        if (IHypXERC20Router(_router).wrappedToken() != _token) {
+            revert HypXERC20TokenMismatch();
+        }
         hypXERC20Routers[_token] = _router;
         emit SetHypXERC20Router(_token, _router);
     }

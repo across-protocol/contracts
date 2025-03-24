@@ -88,8 +88,8 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
         uint256 _hypXERC20FeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
-        OFTTransportAdapter(OFTEIds.Arbitrum, _oftFeeCap)
-        HypXERC20Adapter(HyperlaneDomainIds.Arbitrum, _hypXERC20FeeCap)
+        OFTTransportAdapter(30110, _oftFeeCap)
+        HypXERC20Adapter(42161, _hypXERC20FeeCap)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;

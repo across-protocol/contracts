@@ -67,7 +67,7 @@ contract Mode_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
             ITokenMessenger(address(0)),
             CircleDomainIds.UNINITIALIZED
         )
-        HypXERC20Adapter(HyperlaneDomainIds.Mode, _hypXERC20FeeCap)
+        HypXERC20Adapter(34443, _hypXERC20FeeCap)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;

@@ -8,26 +8,6 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @notice List of Hyperlane domain ids for different chains.
- * @dev source https://github.com/hyperlane-xyz/hyperlane-registry
- * @dev they are mostly the same as chain ids, but not always. So double-check in the repo.
- */
-library HyperlaneDomainIds {
-    uint32 public constant Ethereum = 1;
-    uint32 public constant Arbitrum = 42161;
-    uint32 public constant Base = 8453;
-    uint32 public constant Blast = 81457;
-    uint32 public constant Linea = 59144;
-    uint32 public constant Mode = 34443;
-    uint32 public constant Unichain = 130;
-    uint32 public constant Optimism = 10;
-
-    // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
-    // assigned a domain ID by Hyperlane messaging protocol.
-    uint32 public constant UNINITIALIZED = type(uint32).max;
-}
-
-/**
  * @notice Facilitate bridging tokens via Hyperlane's XERC20.
  * @dev This contract is intended to be inherited by other chain-specific adapters and spoke pools.
  * @custom:security-contact bugs@across.to
@@ -45,7 +25,7 @@ contract HypXERC20Adapter {
 
     /**
      * @notice The destination domain id in the Hyperlane messaging protocol.
-     * @dev There's a lib HyperlaneDomainIds for this
+     * @dev source https://github.com/hyperlane-xyz/hyperlane-registry
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable HYP_DST_DOMAIN;
