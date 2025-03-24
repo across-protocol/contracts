@@ -110,7 +110,8 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
      * @notice This can be called by an EOA to relay call data stored on the HubPool on L1 into this contract.
      * @dev Consider making this an onlyOwner function so that only a privileged EOA can relay state. This EOA
      * wouldn't be able to tamper with the _publicValues but we can reduce the chance of replay-attacks this way if
-     * we set the EOA to a trusted actor.
+     * we set the EOA to a trusted actor. Replay attacks are possible if this contract has the same address
+     * on multiple chains.
      * @param _publicValues L1 contract state we want to relay into this contract. Contains a message that will
      * be treated as calldata for a delegatecall into this contract.
      * @param _proofBytes Proof bytes for the public values.
