@@ -65,9 +65,6 @@ contract R0_SpokePool is SpokePool {
     /// @notice The identifier for the guest program that generates event inclusion proofs.
     bytes32 public immutable imageId = bytes32("TODO");
 
-    // This SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
     /// @notice Stores all proofs verified to prevent replay attacks.
     mapping(bytes32 => bool) public verifiedProofs;
 
@@ -114,8 +111,9 @@ contract R0_SpokePool is SpokePool {
         address _hubPoolStore,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {
+        uint32 _fillDeadlineBuffer,
+        uint256 _oftFeeCap
+    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftFeeCap) {
         verifier = _verifier;
         steel = _steel;
         hubPoolStore = _hubPoolStore;
@@ -168,9 +166,13 @@ contract R0_SpokePool is SpokePool {
         }
     }
 
-    function _bridgeTokensToHubPool(uint256, address) internal pure override {
-        //  If the chain intends to include bridging functionality, this must be overriden.
-        revert NotImplemented();
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        address oftMessenger = _getOftMessenger(l2TokenAddress);
+        if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+        } else {
+            revert NotImplemented();
+        }
     }
 
     // Check that the admin call is only triggered by a receiveL1State() call.

@@ -57,7 +57,8 @@ contract SP1SpokePoolTest is Test {
             hubPoolStore,
             address(0),
             7200,
-            7200
+            7200,
+            1e18
         );
     }
 
