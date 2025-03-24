@@ -152,3 +152,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
 | Unichain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://unichain.blockscout.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://unichain.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Lens mainnet (232)
+
+| Contract Name    | Address                                        |
+| ---------------- | ---------------------------------------------- |
+| Lens_SpokePool   | [0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12]() |
+| MulticallHandler | [0xc5939F59b3c9662377DdA53A08D5085b2d52b719]() |
