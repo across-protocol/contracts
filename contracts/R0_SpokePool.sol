@@ -47,7 +47,9 @@ contract R0_SpokePool is SpokePool, CircleCCTPAdapter {
     // UniversalAdapter event: "RelayedMessage(address,bytes)"
     struct Journal {
         IHeliosSteelValidator.Commitment commitment;
-        bytes32 eventKey; // hash(eventSignature, eventParams, blockHash, txnHash, logIndex) ?
+        bytes32 txnHash; // hash of the transaction that emitted the event
+        uint256 logIndex; // index of the event in the transaction
+        bytes32 eventKey; // event signature
         address eventParams_target; // param0
         bytes eventParams_message; // param1
         address contractAddress; // address of emitting contract
@@ -73,7 +75,14 @@ contract R0_SpokePool is SpokePool, CircleCCTPAdapter {
     // private. Leaving it set to true can permanently disable admin calls.
     bool private _adminCallValidated;
 
-    event VerifiedProof(bytes32 indexed dataHash, address caller);
+    event VerifiedProof(
+        bytes32 indexed blockHash,
+        bytes32 txnHash,
+        uint256 logIndex,
+        bytes32 indexed eventKey,
+        address indexed contractAddress,
+        address caller
+    );
 
     error NotHubPoolStore();
     error NotTarget();
@@ -152,16 +161,31 @@ contract R0_SpokePool is SpokePool, CircleCCTPAdapter {
         bytes32 journalHash = sha256(abi.encode(journal));
         IRiscZeroVerifier(verifier).verify(seal, imageId, journalHash);
 
-        // Prevent replay attacks by using event key which includes block information from when the event was
+        // Prevent replay attacks by hashing event key with block information from when the event was
         // emitted. The only way for someone to re-execute an identical message on this target spoke pool would
         // be to get the HubPool to re-publish the data. This lets the HubPool owner re-execute admin actions
         // that have the same calldata.
-        bytes32 dataHash = bytes32(journal.eventKey);
+        bytes32 dataHash = keccak256(
+            abi.encode(
+                journal.eventKey,
+                journal.commitment.digest,
+                journal.txnHash,
+                journal.logIndex,
+                journal.contractAddress
+            )
+        );
         if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
         verifiedProofs[dataHash] = true;
-        emit VerifiedProof(dataHash, msg.sender);
+        emit VerifiedProof(
+            journal.commitment.digest,
+            journal.txnHash,
+            journal.logIndex,
+            journal.eventKey,
+            journal.contractAddress,
+            msg.sender
+        );
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
