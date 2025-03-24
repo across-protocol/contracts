@@ -2,6 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
+
+import "../libraries/OFTTransportAdapter.sol";
+import { AdapterStore } from "../libraries/AdapterStore.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 
 /**
@@ -64,13 +67,27 @@ contract HubPoolStore {
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
  * on the L2 where the SpokePool is deployed.
  */
-contract UniversalStorageProof_Adapter is AdapterInterface {
+contract UniversalStorageProof_Adapter is AdapterInterface, OFTTransportAdapter {
     HubPoolStore public immutable DATA_STORE;
+
+    // Chain id of the chain this adapter helps bridge to.
+    uint256 public immutable DESTINATION_CHAIN_ID;
+
+    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+    AdapterStore public immutable ADAPTER_STORE;
 
     error NotImplemented();
 
-    constructor(HubPoolStore _store) {
+    constructor(
+        HubPoolStore _store,
+        address _adapterStore,
+        uint256 _dstChainId,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
+    ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) {
         DATA_STORE = _store;
+        DESTINATION_CHAIN_ID = _dstChainId;
+        ADAPTER_STORE = AdapterStore(_adapterStore);
     }
 
     /**
@@ -98,16 +115,21 @@ contract UniversalStorageProof_Adapter is AdapterInterface {
         emit MessageRelayed(target, message);
     }
 
-    /**
-     * @notice No-op relay tokens method.
-     */
     function relayTokens(
-        address,
-        address,
-        uint256,
-        address
+        address l1Token,
+        address l2Token,
+        uint256 amount,
+        address to
     ) external payable override {
-        // If the adapter is intended to be able to relay tokens, this method should be overridden.
-        revert NotImplemented();
+        address oftMessenger = _getOftMessenger(l1Token);
+        if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
+        } else {
+            revert NotImplemented();
+        }
+    }
+
+    function _getOftMessenger(address _token) internal view returns (address) {
+        return ADAPTER_STORE.oftMessengers(DESTINATION_CHAIN_ID, _token);
     }
 }

@@ -14,12 +14,13 @@ contract UniversalStorageProofAdapterTest is Test {
 
     uint256 relayRootBundleNonce = 0;
     address relayRootBundleTargetAddress = address(0);
+    address adapterStore = address(0);
 
     function setUp() public {
         spokePoolTarget = vm.addr(1);
         hubPool = new MockHubPool(address(0));
         store = new HubPoolStore(address(hubPool));
-        adapter = new UniversalStorageProof_Adapter(store);
+        adapter = new UniversalStorageProof_Adapter(store, adapterStore, 10, 10, 1e18);
         hubPool.changeAdapter(address(adapter));
     }
 
