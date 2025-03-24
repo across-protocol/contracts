@@ -1,4 +1,4 @@
-import { L1_ADDRESS_MAP, WETH } from "./consts";
+import { L1_ADDRESS_MAP, WETH, USDCe } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -14,7 +14,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       WETH[chainId],
       L1_ADDRESS_MAP[chainId].lineaMessageService,
       L1_ADDRESS_MAP[chainId].lineaTokenBridge,
-      L1_ADDRESS_MAP[chainId].lineaUsdcBridge,
+      // TODO: USDC.e on Linea will be upgraded to USDC so eventually we should add a USDC entry for Linea in consts
+      // and read from there instead of using the L1 USDC.e address.
+      USDCe[chainId],
+      L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
     ],
   });
 };
