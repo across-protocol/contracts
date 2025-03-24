@@ -131,12 +131,10 @@ contract R0_SpokePool is SpokePool {
 
     /**
      * @notice This can be called by an EOA to relay events that the HubPool emits on L1.
-     * @param journalData The public data written by the guest program
+     * @param journal The public data written by the guest program
      * @param seal The encoded cryptographic proof (i.e. SNARK).
      */
-    function receiveL1State(bytes calldata journalData, bytes calldata seal) external validateInternalCalls {
-        // Decode and validate the journal data
-        Journal memory journal = abi.decode(journalData, (Journal));
+    function receiveL1State(Journal calldata journal, bytes calldata seal) external validateInternalCalls {
         if (journal.contractAddress != hubPoolStore) {
             revert NotHubPoolStore();
         }
@@ -148,13 +146,14 @@ contract R0_SpokePool is SpokePool {
         }
 
         // Verify the proof
-        bytes32 journalHash = sha256(journalData);
+        bytes32 journalHash = sha256(abi.encode(journal));
         IRiscZeroVerifier(verifier).verify(seal, imageId, journalHash);
 
-        // Prevent replay attacks by using storage key which includes a nonce. The only way for someone to re-execute
-        // an identical message on this target spoke pool would be to get the HubPool to re-publish the data. This lets
-        // the HubPool owner re-execute admin actions that have the same calldata.
-        bytes32 dataHash = bytes32(journal.eventParams_message);
+        // Prevent replay attacks by using event key which includes block information from when the event was
+        // emitted. The only way for someone to re-execute an identical message on this target spoke pool would
+        // be to get the HubPool to re-publish the data. This lets the HubPool owner re-execute admin actions
+        // that have the same calldata.
+        bytes32 dataHash = bytes32(journal.eventKey);
         if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
