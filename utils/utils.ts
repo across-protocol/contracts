@@ -7,7 +7,7 @@ import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory, BaseContract } from "ethers";
+import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers);
@@ -166,12 +166,8 @@ export async function createFake(contractName: string, targetAddress: string = "
 }
 
 export async function createFakeFromABI(abi: any[], targetAddress: string = "") {
-  return createTypedFakeFromABI(abi, targetAddress);
-}
-
-export async function createTypedFakeFromABI<T extends BaseContract>(abi: any[], targetAddress: string = "") {
   const signer = new ethers.VoidSigner(ethers.constants.AddressZero);
-  return smock.fake<T>(abi, {
+  return smock.fake(abi, {
     address: !targetAddress ? undefined : targetAddress,
     provider: signer.provider,
   });

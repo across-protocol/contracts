@@ -116,7 +116,7 @@ contract R0_SpokePool is SpokePool, CircleCCTPAdapter {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, 0)
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         verifier = _verifier;
