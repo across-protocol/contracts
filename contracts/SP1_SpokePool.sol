@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { IHelios } from "./external/interfaces/IHelios.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 import "./SpokePool.sol";
 
@@ -16,7 +17,7 @@ interface ISP1Verifier {
 /**
  * @notice SP1 Spoke pool capable of receiving data stored in L1 state via SP1 + Helios light clients.
  */
-contract SP1_SpokePool is SpokePool {
+contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
     // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
     struct ContractPublicValues {
         address contractAddress; // Address of contract whose storage slot we want to load into this contract.
@@ -85,8 +86,12 @@ contract SP1_SpokePool is SpokePool {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
-        uint256 _oftFeeCap
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftFeeCap) {
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, 0)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+    {
         verifier = _verifier;
         helios = _helios;
         acrossCallProgramVKey = _acrossCallProgramVKey;
@@ -152,9 +157,8 @@ contract SP1_SpokePool is SpokePool {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        address oftMessenger = _getOftMessenger(l2TokenAddress);
-        if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+        if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         } else {
             revert NotImplemented();
         }

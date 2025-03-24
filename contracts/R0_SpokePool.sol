@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
+import "./libraries/CircleCCTPAdapter.sol";
 
 /// @dev This code is inspired by the R0 example here: https://github.com/risc0/risc0-ethereum/blob/main/examples/erc20-counter/contracts/src/Counter.sol.
 ///      One important difference is that the reference example shows how to verify a proof of state on the same chain
@@ -41,7 +42,7 @@ interface IRiscZeroVerifier {
  * This contract uses RiscZero Steel to verify L1 event inclusion proofs in order to relay messages included
  * in L1 events to this contract.
  */
-contract R0_SpokePool is SpokePool {
+contract R0_SpokePool is SpokePool, CircleCCTPAdapter {
     /// @notice Journal that is committed to by the guest. Contains a unique identifier of a
     // UniversalAdapter event: "RelayedMessage(address,bytes)"
     struct Journal {
@@ -112,8 +113,12 @@ contract R0_SpokePool is SpokePool {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
-        uint256 _oftFeeCap
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftFeeCap) {
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, 0)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+    {
         verifier = _verifier;
         steel = _steel;
         hubPoolStore = _hubPoolStore;
@@ -167,9 +172,8 @@ contract R0_SpokePool is SpokePool {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        address oftMessenger = _getOftMessenger(l2TokenAddress);
-        if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+        if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         } else {
             revert NotImplemented();
         }

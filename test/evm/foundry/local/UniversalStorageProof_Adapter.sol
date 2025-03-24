@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 
 import { UniversalStorageProof_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/UniversalStorageProof_Adapter.sol";
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
+import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 
 contract UniversalStorageProofAdapterTest is Test {
     UniversalStorageProof_Adapter adapter;
@@ -20,7 +21,7 @@ contract UniversalStorageProofAdapterTest is Test {
         spokePoolTarget = vm.addr(1);
         hubPool = new MockHubPool(address(0));
         store = new HubPoolStore(address(hubPool));
-        adapter = new UniversalStorageProof_Adapter(store, adapterStore, 10, 10, 1e18);
+        adapter = new UniversalStorageProof_Adapter(store, IERC20(address(0)), ITokenMessenger(address(0)), 0);
         hubPool.changeAdapter(address(adapter));
     }
 
@@ -28,18 +29,9 @@ contract UniversalStorageProofAdapterTest is Test {
         bytes32 refundRoot = bytes32("test");
         bytes32 slowRelayRoot = bytes32("test2");
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
-        vm.expectCall(
-            address(store),
-            abi.encodeWithSignature(
-                "storeDataForTargetWithNonce(address,bytes,uint256)",
-                relayRootBundleTargetAddress,
-                message,
-                relayRootBundleNonce
-            )
-        );
+        vm.expectCall(address(store), abi.encodeWithSignature("storeRelayRootsCalldata(bytes)", message));
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        bytes32 expectedDataHash = keccak256(abi.encode(relayRootBundleTargetAddress, message, relayRootBundleNonce));
-        assertEq(store.storedData(expectedDataHash), abi.encode(relayRootBundleTargetAddress, message));
+        assertEq(store.latestRelayRootsCalldata(), message);
     }
 
     function testRelayMessage() public {
@@ -53,7 +45,7 @@ contract UniversalStorageProofAdapterTest is Test {
         );
         vm.expectCall(
             address(store),
-            abi.encodeWithSignature("storeDataForTarget(address,bytes)", spokePoolTarget, message)
+            abi.encodeWithSignature("storeRelayAdminFunctionCalldata(address,bytes)", spokePoolTarget, message)
         );
         hubPool.arbitraryMessage(spokePoolTarget, message);
     }
@@ -73,6 +65,6 @@ contract UniversalStorageProofAdapterTest is Test {
         // Test that second call increments nonce of data.
         uint256 expectedNonce = 1;
         bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.storedData(expectedDataHash), abi.encode(spokePoolTarget, message));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
     }
 }
