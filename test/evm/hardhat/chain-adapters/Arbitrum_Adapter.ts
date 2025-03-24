@@ -319,9 +319,9 @@ describe("Arbitrum Chain Adapter", function () {
     expect(await usdt.allowance(hubPool.address, oftMessenger.address)).to.equal(tokensSendToL2);
 
     // source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
-    const arbitrumDstEId = 30110;
+    const arbitrumDstEid = 30110;
     const sendParam: SendParamStruct = {
-      dstEid: arbitrumDstEId,
+      dstEid: arbitrumDstEid,
       to: ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       amountLD: tokensSendToL2,
       minAmountLD: tokensSendToL2,

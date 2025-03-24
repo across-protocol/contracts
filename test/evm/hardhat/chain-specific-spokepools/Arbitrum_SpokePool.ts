@@ -208,9 +208,9 @@ describe("Arbitrum Spoke Pool", function () {
     );
 
     // source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
-    const ethereumMainnetDstEId = 30101;
+    const ethereumMainnetDstEid = 30101;
     const sendParam: SendParamStruct = {
-      dstEid: ethereumMainnetDstEId,
+      dstEid: ethereumMainnetDstEid,
       to: ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       amountLD: l2UsdtSendAmount,
       minAmountLD: l2UsdtSendAmount,
