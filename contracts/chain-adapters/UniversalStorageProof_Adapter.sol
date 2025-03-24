@@ -41,6 +41,11 @@ contract HubPoolStore {
 
     function storeRelayAdminFunctionCalldata(address target, bytes calldata data) external onlyHubPool {
         uint256 nonce = dataUuid++;
+        // Because we do not have the chain ID where the target is deployed, we can only associate this message
+        // with the target address. Therefore we are assuming that target spoke pool addresses are unique across
+        // chains. This technically doesn't prevent replay attacks where two spokes on different chains have
+        // the same address, but one way to prevent that is to deploy this store once per different L2 chain
+        // The L2's storage proof verification would only validate storage slots on this specific contract deployment.
         bytes32 dataHash = keccak256(abi.encode(target, data, nonce));
         if (relayAdminFunctionCalldata[dataHash].length > 0) {
             // Data is already stored, do nothing.
