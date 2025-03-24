@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { SP1_SpokePool, IHelios, ISP1Verifier } from "../../../../contracts/SP1_SpokePool.sol";
+import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 
 contract MockHelios is IHelios {
     bytes32 public constant MOCK_STORAGE_SLOT = bytes32("mockStorageSlot");
@@ -58,7 +59,8 @@ contract SP1SpokePoolTest is Test {
             address(0),
             7200,
             7200,
-            1e18
+            IERC20(address(0)),
+            ITokenMessenger(address(0))
         );
     }
 
