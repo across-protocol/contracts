@@ -17,9 +17,6 @@ import "./libraries/HypXERC20Adapter.sol";
 contract Linea_SpokePool is SpokePool {
     using SafeERC20 for IERC20;
 
-    // Linea_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
     /**
      * @notice Address of Linea's Canonical Message Service contract on L2.
      */
@@ -62,7 +59,7 @@ contract Linea_SpokePool is SpokePool {
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            OFT_FEE_CAP,
+            0, // Linea_SpokePool does not use OFT messaging, setting fee cap to 0
             _hypXERC20FeeCap
         )
     {} // solhint-disable-line no-empty-blocks

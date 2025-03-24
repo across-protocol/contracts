@@ -262,7 +262,7 @@ describe("Linea Spoke Pool", function () {
     l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
     await lineaSpokePool
       .connect(lineaMessageService.wallet)
-      .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
+      .setHypXERC20Router(l2EzETH.address, l2HypXERC20Router.address);
     lineaMessageService.sender.reset();
 
     const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost

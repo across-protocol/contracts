@@ -75,9 +75,10 @@ describe("Unichain Spoke Pool", function () {
 
     // Set up XERC20 router for l2EzETH
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
+    l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
     await unichainSpokePool
       .connect(crossDomainMessenger.wallet)
-      .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
+      .setHypXERC20Router(l2EzETH.address, l2HypXERC20Router.address);
     crossDomainMessenger.xDomainMessageSender.reset();
   });
 

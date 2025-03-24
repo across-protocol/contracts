@@ -32,12 +32,6 @@ interface IBridgeMessageReceiver {
 contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
     using SafeERC20 for IERC20;
 
-    // PolygonZkEVM_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
-    // Polygon_SpokePool does not use XERC20 messaging, setting the cap to 0
-    uint256 private constant HYP_XERC20_FEE_CAP = 0;
-
     // Address of Polygon zkEVM's Canonical Bridge on L2.
     IPolygonZkEVMBridge public l2PolygonZkEVMBridge;
 
@@ -104,8 +98,8 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            OFT_FEE_CAP,
-            HYP_XERC20_FEE_CAP
+            0, // PolygonZkEVM_SpokePool does not use OFT messaging, setting fee cap to 0
+            0 // Polygon_SpokePool does not use Hyperlane xERC20 messaging, setting fee cap to 0
         )
     {} // solhint-disable-line no-empty-blocks
 

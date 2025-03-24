@@ -28,12 +28,6 @@ contract ZkSync_SpokePool is SpokePool {
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
     // are all set by passing in constructor params where possible.
 
-    // ZkSync_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
-    // ZkSync_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant HYP_XERC20_FEE_CAP = 0;
-
     // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
     address public l2Eth;
 
@@ -52,8 +46,8 @@ contract ZkSync_SpokePool is SpokePool {
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            OFT_FEE_CAP,
-            HYP_XERC20_FEE_CAP
+            0, // ZkSync_SpokePool does not use OFT messaging, setting fee cap to 0
+            0 // ZkSync_SpokePool does not use Hyperlane xERC20 messaging, setting fee cap to 0
         )
     {} // solhint-disable-line no-empty-blocks
 

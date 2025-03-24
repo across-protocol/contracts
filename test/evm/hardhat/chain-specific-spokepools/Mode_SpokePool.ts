@@ -78,7 +78,7 @@ describe("Mode Spoke Pool", function () {
     l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
     await modeSpokePool
       .connect(crossDomainMessenger.wallet)
-      .setXERC20HypRouter(l2EzETH.address, l2HypXERC20Router.address);
+      .setHypXERC20Router(l2EzETH.address, l2HypXERC20Router.address);
     crossDomainMessenger.xDomainMessageSender.reset();
 
     const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost

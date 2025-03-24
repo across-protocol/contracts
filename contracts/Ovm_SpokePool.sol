@@ -36,9 +36,6 @@ interface IL2ERC20Bridge {
 contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
-    // Ovm_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
-
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
     uint32 public l1Gas;
@@ -81,7 +78,7 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            OFT_FEE_CAP,
+            0, // Ovm_SpokePool does not use OFT messaging, setting fee cap to 0
             _hypXERC20FeeCap
         )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
