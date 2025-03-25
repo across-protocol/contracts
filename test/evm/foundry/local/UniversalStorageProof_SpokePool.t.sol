@@ -20,20 +20,6 @@ contract MockHelios is IHelios {
     ) external view returns (bytes32) {
         return storageSlots[_key];
     }
-
-    function GENESIS_TIME() external pure returns (uint256) {
-        return 0;
-    }
-
-    /// @notice Seconds per slot in the beacon chain
-    function SECONDS_PER_SLOT() external pure returns (uint256) {
-        return 1;
-    }
-
-    /// @notice Maps from a slot to a beacon block header root
-    function headers(uint256) external pure returns (bytes32) {
-        return bytes32(0);
-    }
 }
 
 contract UniversalStorageProofSpokePoolTest is Test {
