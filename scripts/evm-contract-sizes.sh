@@ -11,22 +11,7 @@ if [ -z "$OPTIMIZER_RUNS" ]; then
     OPTIMIZER_RUNS=$DEFAULT_RUNS
 fi
 
-# Backup the original foundry.toml
-cp foundry.toml foundry.toml.bak
+# Run forge build with specified optimizer runs
+forge build --sizes --skip test --optimizer-runs $OPTIMIZER_RUNS
 
-# Function to restore the original file
-restore_config() {
-    mv foundry.toml.bak foundry.toml
-}
-
-# Set up trap to restore file on script exit (success or failure)
-trap restore_config EXIT
-
-# Modify the optimizer runs in foundry.toml
-sed -i '' "s/optimizer_runs = .*/optimizer_runs = $OPTIMIZER_RUNS/" foundry.toml
-
-# Run forge build
-forge build --sizes --skip test
-
-# Always exit with success
 exit 0
