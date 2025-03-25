@@ -717,9 +717,10 @@ describe("svm_spoke.fill", () => {
         ...formattedAccounts,
       };
 
+      const fillRelayIxData = await SvmSpokeClient.getFillRelayInstructionAsync(fillRelayInput);
       const fillRelayIx = {
-        ...(await SvmSpokeClient.getFillRelayInstructionAsync(fillRelayInput)),
-        accounts: (await SvmSpokeClient.getFillRelayInstructionAsync(fillRelayInput)).accounts.map((account) =>
+        ...fillRelayIxData,
+        accounts: fillRelayIxData.accounts.map((account) =>
           account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
         ),
       };
