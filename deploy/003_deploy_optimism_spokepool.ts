@@ -3,9 +3,10 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WETH } from "./consts";
 import { toWei } from "../utils/utils";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, spokeChainId, hubChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -16,6 +17,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
   ];
 
+  // Set the Hyperlane xERC20 destination domain based on the chain
+  // https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
+  const hypXERC20DstDomain = hubChainId == CHAIN_IDs.MAINNET ? 1 : 11155111;
+
   // 1 ETH fee cap for Hyperlane XERC20 transfers
   const hypXERC20FeeCap = toWei(1);
 
@@ -25,6 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    hypXERC20DstDomain,
     hypXERC20FeeCap,
   ];
   await deployNewProxy("Optimism_SpokePool", constructorArgs, initArgs);

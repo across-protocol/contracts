@@ -18,9 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
   const hypXERC20DstDomain = parseInt(SPOKE_CHAIN_ID) == CHAIN_IDs.UNICHAIN ? 130 : 1301;
-
-  // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
-  const hypXERC20FeeCap = toWei("1");
+  const hypXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   const args = [
     WETH[chainId],
@@ -28,7 +26,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     opStack.L1StandardBridge,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    SPOKE_CHAIN_ID,
     L1_ADDRESS_MAP[chainId].adapterStore,
     hypXERC20DstDomain,
     hypXERC20FeeCap,

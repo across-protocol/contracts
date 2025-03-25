@@ -12,13 +12,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
   const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
-  // Pick correct destination chain id to set based on deployment network
-  const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA;
+  // Source https://docs.layerzero.network/v2/deployments/deployed-contracts
+  const oftArbitrumEid = chainId == CHAIN_IDs.MAINNET ? 30110 : 40231;
+  const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
 
-  // 1 ether is our default OFT fee cap on chains with ETH as gas token
-  const oftFeeCap = toWei("1");
-  // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
-  const hypXERC20FeeCap = toWei("1");
+  // Source https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
+  const hypXERC20ArbitrumDomain = chainId == CHAIN_IDs.MAINNET ? 42161 : 421614;
+  const hypXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
@@ -26,9 +26,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     l2RefundAddress,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    dstChainId,
     L1_ADDRESS_MAP[chainId].adapterStore,
+    oftArbitrumEid,
     oftFeeCap,
+    hypXERC20ArbitrumDomain,
     hypXERC20FeeCap,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
@@ -41,9 +42,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      dstChainId,
       L1_ADDRESS_MAP[chainId].adapterStore,
+      oftArbitrumEid,
       oftFeeCap,
+      hypXERC20ArbitrumDomain,
       hypXERC20FeeCap,
     ],
   });

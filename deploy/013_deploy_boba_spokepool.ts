@@ -3,9 +3,14 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, QUOTE_TIME_BUFFER } from "./consts";
 import { toWei } from "../utils/utils";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, hubChainId } = await getSpokePoolDeploymentInfo(hre);
+
+  // Set the Hyperlane xERC20 destination domain based on the chain
+  // https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
+  const hypXERC20DstDomain = hubChainId == CHAIN_IDs.MAINNET ? 1 : 11155111;
 
   // 1 ETH fee cap for Hyperlane XERC20 transfers
   const hypXERC20FeeCap = toWei(1);
@@ -19,6 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
+    hypXERC20DstDomain,
     hypXERC20FeeCap,
   ];
   await deployNewProxy("Boba_SpokePool", constructorArgs, initArgs);

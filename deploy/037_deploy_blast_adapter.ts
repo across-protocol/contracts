@@ -12,14 +12,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const chainId = parseInt(await hre.getChainId());
   const opStack = OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID];
 
-  // Pick correct destination chain id to set based on deployment network
-  const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.BLAST : CHAIN_IDs.BLAST_SEPOLIA;
-
   // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
   const hypXERC20DstDomain = chainId == CHAIN_IDs.MAINNET ? 81457 : 168587773;
-
-  // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
-  const hypXERC20FeeCap = toWei("1");
+  const hypXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   await hre.deployments.deploy("Blast_Adapter", {
     from: deployer,
@@ -33,7 +28,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       opStack.L1BlastBridge,
       USDB[chainId],
       "200_000",
-      dstChainId,
       L1_ADDRESS_MAP[chainId].adapterStore,
       hypXERC20DstDomain,
       hypXERC20FeeCap,

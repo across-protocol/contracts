@@ -14,14 +14,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "We only support deploying Linea Adapter on Mainnet for now. To deploy on testnet, update consts and configs."
   );
 
-  // Pick correct destination chain id to set based on deployment network
-  const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.LINEA : undefined;
-
   // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
   const hypXERC20DstDomain = chainId == CHAIN_IDs.MAINNET ? 59144 : undefined;
-
-  // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
-  const hypXERC20FeeCap = toWei("1");
+  const hypXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   await hre.deployments.deploy("Linea_Adapter", {
     from: deployer,
@@ -32,7 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].lineaMessageService,
       L1_ADDRESS_MAP[chainId].lineaTokenBridge,
       L1_ADDRESS_MAP[chainId].lineaUsdcBridge,
-      dstChainId,
       L1_ADDRESS_MAP[chainId].adapterStore,
       hypXERC20DstDomain,
       hypXERC20FeeCap,

@@ -61,17 +61,6 @@ contract ForwarderTest is Test {
 
         adapterStore = new AdapterStore();
 
-        //     constructor(
-        //     WETH9Interface _l1Weth,
-        //     address _crossDomainMessenger,
-        //     IL1StandardBridge _l1StandardBridge,
-        //     IERC20 _l1Usdc,
-        //     ITokenMessenger _cctpTokenMessenger,
-        //     address _adapterStore,
-        //     uint32 _hypXERC20DstDomain,
-        //     uint256 _hypXERC20FeeCap
-        // )
-
         optimismAdapter = new Optimism_Adapter(
             WETH9Interface(address(l2Weth)),
             address(crossDomainMessenger),

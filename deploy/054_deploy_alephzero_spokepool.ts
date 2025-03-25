@@ -26,8 +26,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS, // _cctpTokenMessenger
-    // not using oft and hyperlane xerc20. Set fee caps to zero
+    // not using oft and hyperlane xerc20
+    0, // _oftDstEid
     _bnZero, // _oftFeeCap
+    0, // _hypXERC20DstDomain
     _bnZero, // _hypXERC20FeeCap
   ];
   await deployNewProxy("AlephZero_SpokePool", constructorArgs, initArgs);
