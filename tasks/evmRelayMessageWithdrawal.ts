@@ -1,16 +1,17 @@
-import { getNodeUrl, EMPTY_MERKLE_ROOT } from "@uma/common";
-import { TOKEN_SYMBOLS_MAP, CHAIN_IDs } from "@across-protocol/constants";
+import { EMPTY_MERKLE_ROOT } from "@uma/common";
+import { CHAIN_IDs } from "@across-protocol/constants";
 import { task } from "hardhat/config";
 import { minimalSpokePoolInterface, minimalAdapterInterface } from "./utils";
-import { Event, Wallet, providers, Contract, ethers, bnZero } from "ethers";
+import { Contract, ethers } from "ethers";
 
 /**
  * ```
  * yarn hardhat evm-relay-message-withdrawal \
- * --network [l2_network] --adapter [adapter_address] --spokePool [spoke_pool_address] --value [eth_to_send]
+ * --network [l2_network] --adapter [adapter_address] --spoke-pool [spoke_pool_address] --l2-token [l2_token_address] \
+ * --amount-to-return [amount_of_l2_token_to_bridge_to_withdrawal_recipient] --value [eth_to_send]
  * ```
  * This REQUIRES a spoke pool to be deployed to the specified network AND for the
- * spoke pool to have the signer as the `crossDomainAdmin`.
+ * spoke pool to have the adapter as the `crossDomainAdmin`.
  */
 
 task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a deployed L1 adapter and a L2 spoke pool.")
@@ -27,7 +28,7 @@ task("evm-relay-message-withdrawal", "Test L1 <-> L2 communication between a dep
   )
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
-    const msgValue = ethers.utils.parseEther(taskArguments.value === undefined ? "0" : value);
+    const msgValue = ethers.utils.parseEther(taskArguments.value === undefined ? "0" : taskArguments.value);
     if (!ethers.utils.isAddress(taskArguments.l2Token))
       throw new Error(`${taskArguments.l2token} is not a valid evm token address`);
     if (isNaN(taskArguments.amountToReturn) || taskArguments.amountToReturn < 0)
