@@ -72,6 +72,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
     }
 
     function testReplayProtection() public {
+        // Should not be able to receive same L1 state twice, even if block number changes.
         bytes memory message = abi.encodeWithSignature(
             "relayRootBundle(bytes32,bytes32)",
             bytes32("test"),
@@ -82,7 +83,22 @@ contract UniversalStorageProofSpokePoolTest is Test {
         helios.updateStorageSlot(slotKey, keccak256(value));
         spokePool.receiveL1State(slotKey, value, 100);
         vm.expectRevert(UniversalStorageProof_SpokePool.AlreadyReceived.selector);
+        spokePool.receiveL1State(slotKey, value, 101); // block number changes doesn't impact replay protection
+    }
+
+    function testVerifiedProofs() public {
+        // Checks replay protection mapping is updated as expected.
+        bytes memory message = abi.encodeWithSignature(
+            "relayRootBundle(bytes32,bytes32)",
+            bytes32("test"),
+            bytes32("test2")
+        );
+        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(slotKey, keccak256(value));
+        assertFalse(spokePool.verifiedProofs(slotKey));
         spokePool.receiveL1State(slotKey, value, 100);
+        assertTrue(spokePool.verifiedProofs(slotKey));
     }
 
     function testVerifyProof() public {

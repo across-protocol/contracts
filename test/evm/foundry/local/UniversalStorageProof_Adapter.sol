@@ -70,8 +70,12 @@ contract UniversalStorageProofAdapterTest is Test {
         uint32 newChallengePeriodTimestamp = 123;
         hubPool.setChallengePeriodTimestamp(newChallengePeriodTimestamp);
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        expectedDataHash = keccak256(abi.encode(address(0), message, newChallengePeriodTimestamp));
+        bytes32 expectedDataHash_2 = keccak256(abi.encode(address(0), message, newChallengePeriodTimestamp));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash_2), abi.encode(address(0), message));
+
+        // Old data hash is unaffected.
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(address(0), message));
+        assertNotEq(expectedDataHash, expectedDataHash_2);
     }
 
     function testRelayMessage() public {
