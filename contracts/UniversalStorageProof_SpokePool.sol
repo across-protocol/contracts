@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 import { IHelios } from "./external/interfaces/IHelios.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 
@@ -8,8 +10,11 @@ import "./SpokePool.sol";
 
 /**
  * @notice Spoke pool capable of receiving data stored in L1 state via storage proof + Helios light client.
+ * @dev This contract has one onlyOwner function to be used as an emergency fallback to relay a message to
+ * this SpokePool in the case where the light-client is not functioning correctly. The owner is designed to be set
+ * to a multisig on this chain with a timelock.
  */
-contract UniversalStorageProof_SpokePool is SpokePool, CircleCCTPAdapter {
+contract UniversalStorageProof_SpokePool is Ownable, SpokePool, CircleCCTPAdapter {
     /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
     address public immutable hubPoolStore;
@@ -118,7 +123,18 @@ contract UniversalStorageProof_SpokePool is SpokePool, CircleCCTPAdapter {
         verifiedProofs[dataHash] = true;
         emit VerifiedProof(dataHash, msg.sender);
 
-        // Execute the calldata:
+        _executeMessage(message);
+    }
+
+    /**
+     * @notice This function is only callable by the owner and is used as an emergency fallback to relay
+     * a message to this SpokePool in the case where the light-client is not functioning correctly.
+     */
+    function adminReceiveL1State(bytes memory message) external onlyOwner validateInternalCalls {
+        _executeMessage(message);
+    }
+
+    function _executeMessage(bytes memory message) internal {
         /// @custom:oz-upgrades-unsafe-allow delegatecall
         (bool success, ) = address(this).delegatecall(message);
         if (!success) {

@@ -103,6 +103,20 @@ contract UniversalStorageProofSpokePoolTest is Test {
         // Reverts if the target in publicValues is not the zero address or this contract
     }
 
+    function testAdminReceiveL1State() public {
+        // Relay message normally to contract:
+        bytes memory message = abi.encodeWithSignature(
+            "relayRootBundle(bytes32,bytes32)",
+            bytes32("test"),
+            bytes32("test2")
+        );
+        vm.expectCall(
+            address(spokePool),
+            abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", bytes32("test"), bytes32("test2"))
+        );
+        spokePool.adminReceiveL1State(message);
+    }
+
     function testDelegateCall() public {
         // Can call other functions on the contract
         address originToken = makeAddr("origin");
