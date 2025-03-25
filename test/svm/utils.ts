@@ -197,7 +197,7 @@ export const createDefaultSolanaClient = () => {
   return { rpc, rpcSubscriptions };
 };
 
-type RpcClient = {
+export type RpcClient = {
   rpc: Rpc<SolanaRpcApiFromTransport<RpcTransport>>;
   rpcSubscriptions: RpcSubscriptions<SignatureNotificationsApi & SlotNotificationsApi>;
 };
