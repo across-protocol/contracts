@@ -5,6 +5,11 @@ import "./interfaces/AdapterInterface.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
+import { HubPoolInterface } from "../interfaces/HubPoolInterface.sol";
+
+interface IHubPool {
+    function rootBundleProposal() external view returns (HubPoolInterface.RootBundle memory);
+}
 
 /**
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
@@ -16,9 +21,6 @@ contract HubPoolStore {
     // Maps unique calldata hashes to calldata.
     mapping(bytes32 => bytes) public relayAdminFunctionCalldata;
 
-    // Stores latest relayRoots calldata.
-    bytes public latestRelayRootsCalldata;
-
     // Counter to ensure that each stored data is unique.
     uint256 private dataUuid;
 
@@ -26,7 +28,6 @@ contract HubPoolStore {
     address public immutable hubPool;
 
     event StoredAdminFunctionData(bytes32 dataHash, address indexed target, bytes data, uint256 uuid, bytes slotValue);
-    event StoredRootBundleData(bytes data, bytes slotValue);
 
     modifier onlyHubPool() {
         if (msg.sender != hubPool) {
@@ -46,6 +47,21 @@ contract HubPoolStore {
         // chains. This technically doesn't prevent replay attacks where two spokes on different chains have
         // the same address, but one way to prevent that is to deploy this store once per different L2 chain
         // The L2's storage proof verification would only validate storage slots on this specific contract deployment.
+        _storeData(target, nonce, data);
+    }
+
+    function storeRelayRootsCalldata(bytes calldata data) external onlyHubPool {
+        // Use pending root bundle challenge period timestamp as the unique nonce, so we only store this slot once
+        // per root bundle execution. We also hardcode the target address to be 0.
+        uint256 nonce = IHubPool(hubPool).rootBundleProposal().challengePeriodEndTimestamp;
+        _storeData(address(0), nonce, data);
+    }
+
+    function _storeData(
+        address target,
+        uint256 nonce,
+        bytes calldata data
+    ) internal {
         bytes32 dataHash = keccak256(abi.encode(target, data, nonce));
         if (relayAdminFunctionCalldata[dataHash].length > 0) {
             // Data is already stored, do nothing.
@@ -54,17 +70,6 @@ contract HubPoolStore {
         bytes memory callDataToStore = abi.encode(target, data);
         relayAdminFunctionCalldata[dataHash] = abi.encode(target, data);
         emit StoredAdminFunctionData(dataHash, target, data, nonce, callDataToStore);
-    }
-
-    function storeRelayRootsCalldata(bytes calldata data) external onlyHubPool {
-        // calldata should always be the same length so we can't optimize by checking length first.
-        bytes memory callDataToStore = abi.encode(address(0), data);
-        if (keccak256(callDataToStore) == keccak256(latestRelayRootsCalldata)) {
-            // Data is already stored, do nothing.
-            return;
-        }
-        latestRelayRootsCalldata = callDataToStore;
-        emit StoredRootBundleData(data, callDataToStore);
     }
 }
 

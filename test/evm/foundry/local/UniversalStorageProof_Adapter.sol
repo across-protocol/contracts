@@ -31,7 +31,9 @@ contract UniversalStorageProofAdapterTest is Test {
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
         vm.expectCall(address(store), abi.encodeWithSignature("storeRelayRootsCalldata(bytes)", message));
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        assertEq(store.latestRelayRootsCalldata(), abi.encode(address(0), message));
+        uint256 challengePeriodTimestamp = hubPool.rootBundleProposal().challengePeriodEndTimestamp;
+        bytes32 expectedDataHash = keccak256(abi.encode(address(0), message, challengePeriodTimestamp));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(address(0), message));
     }
 
     function testRelayMessage_relayRootBundle_duplicate() public {
@@ -41,14 +43,35 @@ contract UniversalStorageProofAdapterTest is Test {
         vm.recordLogs();
         hubPool.arbitraryMessage(spokePoolTarget, message);
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        assertEq(store.latestRelayRootsCalldata(), abi.encode(address(0), message));
+        uint256 challengePeriodTimestamp = hubPool.rootBundleProposal().challengePeriodEndTimestamp;
+        bytes32 expectedDataHash = keccak256(abi.encode(address(0), message, challengePeriodTimestamp));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(address(0), message));
         // Each arbitraryMessage call should emit one MessageRelayed event, but only
         // the first one should emit a `StoredRootBundleData` event.
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 3);
-        assertEq(logs[0].topics[0], keccak256("StoredRootBundleData(bytes,bytes)"));
+        assertEq(logs[0].topics[0], keccak256("StoredAdminFunctionData(bytes32,address,bytes,uint256,bytes)"));
         assertEq(logs[1].topics[0], keccak256("MessageRelayed(address,bytes)"));
         assertEq(logs[2].topics[0], keccak256("MessageRelayed(address,bytes)"));
+    }
+
+    function testRelayMessage_relayRootBundle_differentNonce() public {
+        bytes32 refundRoot = bytes32("test");
+        bytes32 slowRelayRoot = bytes32("test2");
+        bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
+        vm.recordLogs();
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        uint256 challengePeriodTimestamp = hubPool.rootBundleProposal().challengePeriodEndTimestamp;
+        bytes32 expectedDataHash = keccak256(abi.encode(address(0), message, challengePeriodTimestamp));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(address(0), message));
+
+        // Change the challenge period timestamp.
+        uint32 newChallengePeriodTimestamp = 123;
+        hubPool.setChallengePeriodTimestamp(newChallengePeriodTimestamp);
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        expectedDataHash = keccak256(abi.encode(address(0), message, newChallengePeriodTimestamp));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(address(0), message));
     }
 
     function testRelayMessage() public {
