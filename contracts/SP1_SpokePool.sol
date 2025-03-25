@@ -17,9 +17,6 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
     /// @notice The address of the Helios light client contract.
     address public immutable helios;
 
-    /// @notice The verification key for the acrossCall program.
-    bytes32 public immutable acrossCallProgramVKey;
-
     /// @notice Stores all proofs verified to prevent replay attacks.
     mapping(bytes32 => bool) public verifiedProofs;
 
@@ -61,7 +58,6 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _helios,
-        bytes32 _acrossCallProgramVKey,
         address _hubPoolStore,
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
@@ -73,7 +69,6 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         helios = _helios;
-        acrossCallProgramVKey = _acrossCallProgramVKey;
         hubPoolStore = _hubPoolStore;
     }
 
