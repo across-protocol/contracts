@@ -14,8 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
-import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
+import "../libraries/HypXERC20AdapterWithStore.sol";
+import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Base. This is a modified version of the Optimism adapter
@@ -28,19 +28,13 @@ import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20Adapter {
+contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20AdapterWithStore {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
     WETH9Interface public immutable L1_WETH;
 
     IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
-
-    // Chain id of the chain this adapter helps bridge to.
-    uint256 public immutable DESTINATION_CHAIN_ID;
-
-    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
-    AdapterStore public immutable ADAPTER_STORE;
 
     /**
      * @notice Constructs new Adapter.
@@ -49,8 +43,8 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _dstChainId Chain id of a destination chain for this adapter.
      * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -59,18 +53,16 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        uint256 _dstChainId,
-        AdapterStore _adapterStore,
+        address _adapterStore,
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Base)
-        HypXERC20Adapter(8453, _hypXERC20FeeCap)
+        HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
-        DESTINATION_CHAIN_ID = _dstChainId;
-        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -117,9 +109,5 @@ contract Base_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
-    }
-
-    function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

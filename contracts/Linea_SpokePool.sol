@@ -46,6 +46,7 @@ contract Linea_SpokePool is SpokePool {
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
+     * @param _hypXERC20DstDomain Destination domain id for Hyperlane XERC20 transfers.
      * @param _hypXERC20FeeCap Fee cap for Hyperlane XERC20 transfers.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -53,13 +54,17 @@ contract Linea_SpokePool is SpokePool {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
     )
         SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            0, // Linea_SpokePool does not use OFT messaging, setting fee cap to 0
+            // Linea_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0,
+            _hypXERC20DstDomain,
             _hypXERC20FeeCap
         )
     {} // solhint-disable-line no-empty-blocks

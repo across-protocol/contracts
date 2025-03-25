@@ -16,6 +16,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Pick correct destination chain id to set based on deployment network
   const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.OPTIMISM : CHAIN_IDs.OPTIMISM_SEPOLIA;
 
+  // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
+  const hypXERC20DstDomain = chainId == CHAIN_IDs.MAINNET ? 10 : 11155420;
+
   const args = [
     WETH[chainId],
     opStack.L1CrossDomainMessenger,
@@ -24,6 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     dstChainId,
     L1_ADDRESS_MAP[chainId].adapterStore,
+    hypXERC20DstDomain,
     hypXERC20FeeCap,
   ];
   const instance = await hre.deployments.deploy("Optimism_Adapter", {

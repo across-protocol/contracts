@@ -14,8 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
-import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
+import "../libraries/HypXERC20AdapterWithStore.sol";
+import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 
 interface IL1ERC20Bridge {
     /// @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
@@ -48,7 +48,7 @@ interface IL1ERC20Bridge {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20Adapter {
+contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20AdapterWithStore {
     using SafeERC20 for IERC20;
     uint32 public immutable L2_GAS_LIMIT; // 200,000 is a reasonable default.
 
@@ -60,12 +60,6 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     IL1ERC20Bridge public immutable L1_BLAST_BRIDGE; // 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115 on mainnet.
     address public immutable L1_DAI; // 0x6B175474E89094C44Da98b954EedeAC495271d0F on mainnet.
 
-    // Chain id of the chain this adapter helps bridge to.
-    uint256 public immutable DESTINATION_CHAIN_ID;
-
-    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
-    AdapterStore public immutable ADAPTER_STORE;
-
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
@@ -75,8 +69,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param l1BlastBridge Blast-specific bridge for yielding tokens.
      * @param l1Dai DAI address on L1.
      * @param l2GasLimit Gas limit for L2 execution.
-     * @param _dstChainId Chain id of a destination chain for this adapter.
      * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -87,22 +81,20 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
         uint32 l2GasLimit,
-        uint256 _dstChainId,
-        AdapterStore _adapterStore,
+        address _adapterStore,
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
     )
         CrossDomainEnabled(_crossDomainMessenger)
         // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
         CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINITIALIZED)
-        HypXERC20Adapter(81457, _hypXERC20FeeCap)
+        HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
         L1_BLAST_BRIDGE = l1BlastBridge;
         L1_DAI = l1Dai;
         L2_GAS_LIMIT = l2GasLimit;
-        DESTINATION_CHAIN_ID = _dstChainId;
-        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -153,9 +145,5 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
             _l1StandardBridge.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
         }
         emit TokensRelayed(l1Token, l2Token, amount, to);
-    }
-
-    function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

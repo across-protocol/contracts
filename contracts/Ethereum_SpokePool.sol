@@ -21,8 +21,12 @@ contract Ethereum_SpokePool is SpokePool, OwnableUpgradeable {
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            0, // Ethereum_SpokePool does not use OFT messaging, setting fee cap to 0
-            0 // Ethereum_SpokePool does not use Hyperlane xERC20 messaging, setting fee cap to 0
+            // Ethereum_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0,
+            // Ethereum_SpokePool does not use Hyperlane xERC20 messaging; setting destination eid and fee cap to 0
+            0,
+            0
         )
     {} // solhint-disable-line no-empty-blocks
 

@@ -53,8 +53,12 @@ contract Scroll_SpokePool is SpokePool {
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            0, // Scroll_SpokePool does not use OFT messaging, setting fee cap to 0
-            0 // Scroll_SpokePool does not use Hyperlane xERC20 messaging, setting fee cap to 0
+            // Scroll_SpokePool does not use OFT messaging, setting destination id and fee cap to 0
+            0,
+            0,
+            // Scroll_SpokePool does not use Hyperlane xERC20 messaging, setting destination id and fee cap to 0
+            0,
+            0
         )
     {} // solhint-disable-line no-empty-blocks
 

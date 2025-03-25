@@ -14,6 +14,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // Pick correct destination chain id to set based on deployment network
   const dstChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.MODE : CHAIN_IDs.MODE_SEPOLIA;
 
+  // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
+  const hypXERC20DstDomain = chainId == CHAIN_IDs.MAINNET ? 34443 : 919;
+
   // 1 ether is our default Hyperlane xERC20 fee cap on chains with ETH as gas token
   const hypXERC20FeeCap = toWei("1");
 
@@ -28,6 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       USDC[chainId],
       dstChainId,
       L1_ADDRESS_MAP[chainId].adapterStore,
+      hypXERC20DstDomain,
       hypXERC20FeeCap,
     ],
   });

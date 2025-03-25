@@ -8,15 +8,15 @@ import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfac
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../libraries/HypXERC20Adapter.sol";
-import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
+import "../libraries/HypXERC20AdapterWithStore.sol";
+import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
  * @custom:security-contact bugs@across.to
  */
 // solhint-disable-next-line contract-name-camelcase
-contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
+contract Linea_Adapter is AdapterInterface, HypXERC20AdapterWithStore {
     using SafeERC20 for IERC20;
 
     WETH9Interface public immutable L1_WETH;
@@ -24,20 +24,14 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
     ITokenBridge public immutable L1_TOKEN_BRIDGE;
     IUSDCBridge public immutable L1_USDC_BRIDGE;
 
-    // Chain id of the chain this adapter helps bridge to.
-    uint256 public immutable DESTINATION_CHAIN_ID;
-
-    // Helper storage contract to support bridging via differnt token standards: OFT, XERC20
-    AdapterStore public immutable ADAPTER_STORE;
-
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
      * @param _l1MessageService Canonical message service contract on L1.
      * @param _l1TokenBridge Canonical token bridge contract on L1.
      * @param _l1UsdcBridge L1 USDC Bridge to ConsenSys's L2 Linea.
-     * @param _dstChainId Chain id of a destination chain for this adapter.
      * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
@@ -45,16 +39,14 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
         IUSDCBridge _l1UsdcBridge,
-        uint256 _dstChainId,
-        AdapterStore _adapterStore,
+        address _adapterStore,
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
-    ) HypXERC20Adapter(59144, _hypXERC20FeeCap) {
+    ) HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;
         L1_USDC_BRIDGE = _l1UsdcBridge;
-        DESTINATION_CHAIN_ID = _dstChainId;
-        ADAPTER_STORE = _adapterStore;
     }
 
     /**
@@ -108,9 +100,5 @@ contract Linea_Adapter is AdapterInterface, HypXERC20Adapter {
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
-    }
-
-    function _getHypXERC20Router(address _token) internal view returns (address) {
-        return ADAPTER_STORE.crossChainMessengers(MessengerTypes.HYP_XERC20_ROUTER, DESTINATION_CHAIN_ID, _token);
     }
 }

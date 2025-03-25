@@ -72,13 +72,17 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
     )
         SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            0, // Ovm_SpokePool does not use OFT messaging, setting fee cap to 0
+            // Ovm_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0,
+            _hypXERC20DstDomain,
             _hypXERC20FeeCap
         )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)

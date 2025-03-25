@@ -226,17 +226,21 @@ abstract contract SpokePool is
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
+     * @param _oftDstEid destination endpoint id for OFT messaging
      * @param _oftFeeCap fee cap in native token when paying for cross-chain OFT transfers
-     * @param _hypXERC20FeeCap fee cap in native token when paying for cross-chain XERC20 transfers via Hyperlane
+     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
+     * @param _hypXERC20FeeCap fee cap in native token when paying for cross-chain xERC20 transfers via Hyperlane
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
+        uint32 _oftDstEid,
         uint256 _oftFeeCap,
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
-    ) OFTTransportAdapter(30101, _oftFeeCap) HypXERC20Adapter(1, _hypXERC20FeeCap) {
+    ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) HypXERC20Adapter(_hypXERC20DstDomain, _hypXERC20FeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;

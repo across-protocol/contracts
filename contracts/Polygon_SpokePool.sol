@@ -91,8 +91,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
-            0, // Polygon_SpokePool does not use OFT messaging, setting fee cap to 0
-            0 // Polygon_SpokePool does not use Hyperlane xERC20 messaging, setting fee cap to 0
+            // Polygon_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0,
+            // Polygon_SpokePool does not use Hyperlane xERC20 messaging; setting destination eid and fee cap to 0
+            0,
+            0
         )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks

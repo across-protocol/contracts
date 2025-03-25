@@ -29,16 +29,18 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        // _oftFeeCap can be set to 1 ether for Arbitrum, a good default for chains using ETH for gas.
+        uint32 _oftDstEid,
         uint256 _oftFeeCap,
-        // _hypXERC20FeeCap can be set to 1 ether for Arbitrum, a good default for chains using ETH for gas.
+        uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap
     )
         SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
+            _oftDstEid,
             _oftFeeCap,
+            _hypXERC20DstDomain,
             _hypXERC20FeeCap
         )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
