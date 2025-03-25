@@ -5,7 +5,7 @@ import "./interfaces/AdapterInterface.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
-import { HubPoolStore } from "../HubPoolStore.sol";
+import { HubPoolStore } from "./utilities/HubPoolStore.sol";
 
 /**
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts

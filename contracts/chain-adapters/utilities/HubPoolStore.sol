@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { HubPoolInterface } from "./interfaces/HubPoolInterface.sol";
+import { HubPoolInterface } from "../../interfaces/HubPoolInterface.sol";
 
 interface IHubPool {
     function rootBundleProposal() external view returns (HubPoolInterface.RootBundle memory);
