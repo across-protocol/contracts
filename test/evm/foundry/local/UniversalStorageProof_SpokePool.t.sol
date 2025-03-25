@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { SP1_SpokePool, IHelios } from "../../../../contracts/SP1_SpokePool.sol";
+import { UniversalStorageProof_SpokePool, IHelios } from "../../../../contracts/UniversalStorageProof_SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 
 contract MockHelios is IHelios {
@@ -36,8 +36,8 @@ contract MockHelios is IHelios {
     }
 }
 
-contract SP1SpokePoolTest is Test {
-    SP1_SpokePool spokePool;
+contract UniversalStorageProofSpokePoolTest is Test {
+    UniversalStorageProof_SpokePool spokePool;
     MockHelios helios;
 
     address hubPoolStore;
@@ -45,9 +45,8 @@ contract SP1SpokePoolTest is Test {
 
     function setUp() public {
         helios = new MockHelios();
-        spokePool = new SP1_SpokePool(
+        spokePool = new UniversalStorageProof_SpokePool(
             address(helios),
-            bytes32(0),
             hubPoolStore,
             address(0),
             7200,
@@ -82,7 +81,7 @@ contract SP1SpokePoolTest is Test {
         bytes memory value = abi.encode(address(spokePool), message);
         helios.updateStorageSlot(slotKey, keccak256(value));
         spokePool.receiveL1State(slotKey, value, 100);
-        vm.expectRevert(SP1_SpokePool.AlreadyReceived.selector);
+        vm.expectRevert(UniversalStorageProof_SpokePool.AlreadyReceived.selector);
         spokePool.receiveL1State(slotKey, value, 100);
     }
 

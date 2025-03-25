@@ -7,9 +7,9 @@ import "./libraries/CircleCCTPAdapter.sol";
 import "./SpokePool.sol";
 
 /**
- * @notice SP1 Spoke pool capable of receiving data stored in L1 state via SP1 + Helios light clients.
+ * @notice Spoke pool capable of receiving data stored in L1 state via storage proof + Helios light client.
  */
-contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
+contract UniversalStorageProof_SpokePool is SpokePool, CircleCCTPAdapter {
     /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
     address public immutable hubPoolStore;
