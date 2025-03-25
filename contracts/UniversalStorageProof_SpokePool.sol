@@ -111,7 +111,7 @@ contract UniversalStorageProof_SpokePool is SpokePool, CircleCCTPAdapter {
         }
 
         // Prevent replay attacks.
-        bytes32 dataHash = keccak256(abi.encode(_slotKey, _blockNumber));
+        bytes32 dataHash = keccak256(abi.encode(_slotKey));
         if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
