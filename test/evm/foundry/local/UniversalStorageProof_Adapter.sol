@@ -46,7 +46,7 @@ contract UniversalStorageProofAdapterTest is Test {
         // the first one should emit a `StoredRootBundleData` event.
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 3);
-        assertEq(logs[0].topics[0], keccak256("StoredRootBundleData(bytes)"));
+        assertEq(logs[0].topics[0], keccak256("StoredRootBundleData(bytes,bytes)"));
         assertEq(logs[1].topics[0], keccak256("MessageRelayed(address,bytes)"));
         assertEq(logs[2].topics[0], keccak256("MessageRelayed(address,bytes)"));
     }

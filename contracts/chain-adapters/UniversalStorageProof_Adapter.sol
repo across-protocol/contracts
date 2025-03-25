@@ -25,8 +25,8 @@ contract HubPoolStore {
     // Address of the HubPool contract, the only contract that can store data to this contract.
     address public immutable hubPool;
 
-    event StoredAdminFunctionData(bytes32 dataHash, address indexed target, bytes data, uint256 uuid);
-    event StoredRootBundleData(bytes data);
+    event StoredAdminFunctionData(bytes32 dataHash, address indexed target, bytes data, uint256 uuid, bytes slotValue);
+    event StoredRootBundleData(bytes data, bytes slotValue);
 
     modifier onlyHubPool() {
         if (msg.sender != hubPool) {
@@ -51,8 +51,9 @@ contract HubPoolStore {
             // Data is already stored, do nothing.
             return;
         }
+        bytes memory callDataToStore = abi.encode(target, data);
         relayAdminFunctionCalldata[dataHash] = abi.encode(target, data);
-        emit StoredAdminFunctionData(dataHash, target, data, nonce);
+        emit StoredAdminFunctionData(dataHash, target, data, nonce, callDataToStore);
     }
 
     function storeRelayRootsCalldata(bytes calldata data) external onlyHubPool {
@@ -63,7 +64,7 @@ contract HubPoolStore {
             return;
         }
         latestRelayRootsCalldata = callDataToStore;
-        emit StoredRootBundleData(data);
+        emit StoredRootBundleData(data, callDataToStore);
     }
 }
 
