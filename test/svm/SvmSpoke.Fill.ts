@@ -681,7 +681,6 @@ describe("svm_spoke.fill", () => {
         program: address(program.programId.toString()),
         eventAuthority,
         signer,
-        remainingAccounts: fillRemainingAccounts,
       };
 
       const formattedRelayData = {
