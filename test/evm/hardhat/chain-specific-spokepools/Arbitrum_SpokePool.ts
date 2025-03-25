@@ -11,19 +11,16 @@ import {
   seedContract,
   avmL1ToL2Alias,
   createFakeFromABI,
-  addressToBytes,
   createTypedFakeFromABI,
   BigNumber,
   randomBytes32,
   toWeiWithDecimals,
-  toBN,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import {
-  IOFT,
   MessagingFeeStructOutput,
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
@@ -31,7 +28,6 @@ import {
 } from "../../../../typechain/contracts/interfaces/IOFT";
 import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
 import { IHypXERC20Router__factory } from "../../../../typechain";
-import { randomAddress } from "../../../svm/utils";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract, l2UsdtContract: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string, l2EzETH: Contract, crossDomainAliasAddress;
@@ -42,6 +38,11 @@ let l2GatewayRouter: FakeContract,
   cctpTokenMinter: FakeContract,
   l2OftMessenger: FakeContract,
   l2HypXERC20Router: FakeContract;
+
+// Source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
+const oftHubEid = 30101;
+// HubPool chain domain id in Hyperlane messaging protocol
+const hypXERC20HubChainDomain = 1;
 
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
@@ -72,7 +73,17 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, toWei("1"), toWei("1")],
+        constructorArgs: [
+          l2Weth,
+          60 * 60,
+          9 * 60 * 60,
+          l2Usdc,
+          l2CctpTokenMessenger.address,
+          oftHubEid,
+          toWei("1"),
+          hypXERC20HubChainDomain,
+          toWei("1"),
+        ],
       }
     );
 
@@ -87,7 +98,17 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, toWei("1"), toWei("1")],
+        constructorArgs: [
+          l2Weth,
+          60 * 60,
+          9 * 60 * 60,
+          l2Usdc,
+          l2CctpTokenMessenger.address,
+          oftHubEid,
+          toWei("1"),
+          hypXERC20HubChainDomain,
+          toWei("1"),
+        ],
       }
     );
 
@@ -207,10 +228,8 @@ describe("Arbitrum Spoke Pool", function () {
       l2UsdtSendAmount
     );
 
-    // source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
-    const ethereumMainnetDstEid = 30101;
     const sendParam: SendParamStruct = {
-      dstEid: ethereumMainnetDstEid,
+      dstEid: oftHubEid,
       to: ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       amountLD: l2UsdtSendAmount,
       minAmountLD: l2UsdtSendAmount,
@@ -245,10 +264,9 @@ describe("Arbitrum Spoke Pool", function () {
     // Adapter should have approved l2HypXERC20Router to spend its ERC20.
     expect(await l2EzETH.allowance(arbitrumSpokePool.address, l2HypXERC20Router.address)).to.equal(ezETHSendAmount);
 
-    const hubPoolHypDomainId = 1;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hubPoolHypDomainId,
+      hypXERC20HubChainDomain,
       ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       ezETHSendAmount
     );

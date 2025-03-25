@@ -59,6 +59,10 @@ let l1ERC20GatewayRouter: FakeContract,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const arbitrumChainId = 42161;
+// source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
+const oftArbitrumEid = 30110;
+// source  https://github.com/hyperlane-xyz/hyperlane-registry
+const hypXERC20ArbitrumDomain = 42161;
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
@@ -105,9 +109,10 @@ describe("Arbitrum Chain Adapter", function () {
       refundAddress.address,
       usdc.address,
       cctpMessenger.address,
-      arbitrumChainId,
       adapterStore.address,
+      oftArbitrumEid,
       oftFeeCap,
+      hypXERC20ArbitrumDomain,
       hypXERC20FeeCap
     );
 
@@ -282,7 +287,7 @@ describe("Arbitrum Chain Adapter", function () {
     const oftMessengerType = ethers.utils.formatBytes32String("OFT_MESSENGER");
     await adapterStore
       .connect(owner)
-      .setMessenger(oftMessengerType, arbitrumChainId, usdt.address, oftMessenger.address);
+      .setMessenger(oftMessengerType, oftArbitrumEid, usdt.address, oftMessenger.address);
 
     const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
     await hubPool
@@ -292,7 +297,7 @@ describe("Arbitrum Chain Adapter", function () {
 
     // set up correct messenger to be returned on a proper `oftMessengers` call
     adapterStore.crossChainMessengers
-      .whenCalledWith(oftMessengerType, arbitrumChainId, usdt.address)
+      .whenCalledWith(oftMessengerType, oftArbitrumEid, usdt.address)
       .returns(oftMessenger.address);
 
     // set up `quoteSend` return val
@@ -318,10 +323,8 @@ describe("Arbitrum Chain Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20.
     expect(await usdt.allowance(hubPool.address, oftMessenger.address)).to.equal(tokensSendToL2);
 
-    // source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
-    const arbitrumDstEid = 30110;
     const sendParam: SendParamStruct = {
-      dstEid: arbitrumDstEid,
+      dstEid: oftArbitrumEid,
       to: ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       amountLD: tokensSendToL2,
       minAmountLD: tokensSendToL2,
@@ -342,9 +345,9 @@ describe("Arbitrum Chain Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, arbitrumChainId, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hypXERC20ArbitrumDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, arbitrumChainId, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hypXERC20ArbitrumDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // Construct repayment bundle
@@ -361,17 +364,14 @@ describe("Arbitrum Chain Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20.
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // Source https://github.com/hyperlane-xyz/hyperlane-registry
-    const arbitrumDstDomainId = 42161;
-
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(arbitrumDstDomainId);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20ArbitrumDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      arbitrumDstDomainId,
+      hypXERC20ArbitrumDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

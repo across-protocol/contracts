@@ -33,6 +33,9 @@ let crossDomainMessenger: FakeContract,
 
 const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
 
+// HubPool chain domain id in Hyperlane messaging protocol
+const hypXERC20HubChainDomain = 1;
+
 describe("Unichain Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
@@ -67,7 +70,15 @@ describe("Unichain Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, hypXERC20FeeCap],
+        constructorArgs: [
+          weth.address,
+          60 * 60,
+          9 * 60 * 60,
+          l2Usdc,
+          l2CctpTokenMessenger.address,
+          hypXERC20HubChainDomain,
+          hypXERC20FeeCap,
+        ],
       }
     );
 
@@ -105,10 +116,9 @@ describe("Unichain Spoke Pool", function () {
     // Adapter should have approved l2HypXERC20Router to spend its ERC20
     expect(await l2EzETH.allowance(unichainSpokePool.address, l2HypXERC20Router.address)).to.equal(ezETHSendAmount);
 
-    const hubPoolHypDomainId = 1;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hubPoolHypDomainId,
+      hypXERC20HubChainDomain,
       ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       ezETHSendAmount
     );

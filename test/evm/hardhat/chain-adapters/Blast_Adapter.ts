@@ -35,10 +35,11 @@ describe("Blast_Adapter", function () {
   let hypXERC20Router: FakeContract;
   let adapterStore: FakeContract;
 
-  // Use Blast chain ID from Hyperlane
   const blastChainId = 81457;
   // Gas limit for L2 execution
   const l2GasLimit = 200000;
+  // source https://github.com/hyperlane-xyz/hyperlane-registry
+  const hypXERC20BlastDomain = 81457;
 
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -88,8 +89,8 @@ describe("Blast_Adapter", function () {
       l1BlastBridge.address,
       dai.address,
       l2GasLimit,
-      blastChainId,
       adapterStore.address,
+      hypXERC20BlastDomain,
       hypXERC20FeeCap
     );
 
@@ -107,9 +108,9 @@ describe("Blast_Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, blastChainId, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hypXERC20BlastDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, blastChainId, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hypXERC20BlastDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // Set up gas payment quote
@@ -130,17 +131,14 @@ describe("Blast_Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // Blast's domain ID for Hyperlane
-    const blastDstDomainId = 81457;
-
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(blastDstDomainId);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20BlastDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      blastDstDomainId,
+      hypXERC20BlastDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

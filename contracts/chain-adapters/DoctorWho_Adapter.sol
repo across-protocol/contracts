@@ -43,7 +43,6 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _dstChainId Chain id of a destination chain for this adapter.
      * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
      * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
@@ -54,7 +53,6 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        uint256 _dstChainId,
         address _adapterStore,
         uint32 _hypXERC20DstDomain,
         uint256 _hypXERC20FeeCap

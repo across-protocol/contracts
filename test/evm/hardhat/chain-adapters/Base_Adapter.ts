@@ -36,8 +36,9 @@ describe("Base_Adapter", function () {
   let hypXERC20Router: FakeContract;
   let adapterStore: FakeContract;
 
-  // Use Base chain ID from Hyperlane
   const baseChainId = 8453;
+  // source https://github.com/hyperlane-xyz/hyperlane-registry
+  const hypXERC20BaseDomain = 8453;
 
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -84,8 +85,8 @@ describe("Base_Adapter", function () {
       l1StandardBridge.address,
       fixture.usdc.address,
       cctpMessenger.address,
-      baseChainId,
       adapterStore.address,
+      hypXERC20BaseDomain,
       hypXERC20FeeCap
     );
 
@@ -126,17 +127,14 @@ describe("Base_Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // Base's domain ID for Hyperlane - using Base's chain ID
-    const baseDstDomainId = 8453;
-
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(baseDstDomainId);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20BaseDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      baseDstDomainId,
+      hypXERC20BaseDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

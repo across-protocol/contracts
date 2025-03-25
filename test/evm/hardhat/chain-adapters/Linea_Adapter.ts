@@ -41,6 +41,8 @@ let lineaMessageService: FakeContract,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const lineaChainId = 59144;
+// source https://github.com/hyperlane-xyz/hyperlane-registry
+const hypXERC20LineaDomain = 59144;
 
 const lineaMessageServiceAbi = [
   {
@@ -143,8 +145,8 @@ describe("Linea Chain Adapter", function () {
       lineaMessageService.address,
       lineaTokenBridge.address,
       lineaUsdcBridge.address,
-      lineaChainId,
       adapterStore.address,
+      hypXERC20LineaDomain,
       hypXERC20FeeCap
     );
 
@@ -212,9 +214,9 @@ describe("Linea Chain Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, lineaChainId, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hypXERC20LineaDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, lineaChainId, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hypXERC20LineaDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // construct repayment bundle
@@ -229,16 +231,13 @@ describe("Linea Chain Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20.
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // source https://github.com/hyperlane-xyz/hyperlane-registry
-    const lineaDstDomainId = 59144;
-
     // We should have called send on the oftMessenger once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(lineaDstDomainId);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20LineaDomain);
 
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      lineaDstDomainId,
+      hypXERC20LineaDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

@@ -14,8 +14,8 @@ contract MockOptimism_SpokePool is Ovm_SpokePool {
             9 hours,
             IERC20(address(0)),
             ITokenMessenger(address(0)),
-            0,
-            0
+            1,
+            1 ether
         )
     {} // solhint-disable-line no-empty-blocks
 

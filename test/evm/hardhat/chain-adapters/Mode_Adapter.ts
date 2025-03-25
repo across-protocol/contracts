@@ -33,8 +33,9 @@ describe("Mode_Adapter", function () {
   let hypXERC20Router: FakeContract;
   let adapterStore: FakeContract;
 
-  // Use Mode chain ID from Hyperlane
   const modeChainId = 34443;
+  // source https://github.com/hyperlane-xyz/hyperlane-registry
+  const hypXERC20ModeDomain = 34443;
 
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -79,8 +80,8 @@ describe("Mode_Adapter", function () {
       l1CrossDomainMessenger.address,
       l1StandardBridge.address,
       fixture.usdc.address,
-      modeChainId,
       adapterStore.address,
+      hypXERC20ModeDomain,
       hypXERC20FeeCap
     );
 
@@ -98,9 +99,9 @@ describe("Mode_Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, modeChainId, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hypXERC20ModeDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, modeChainId, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hypXERC20ModeDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // Set up gas payment quote
@@ -121,17 +122,14 @@ describe("Mode_Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // Mode's domain ID for Hyperlane - using Mode's chain ID
-    const modeDstDomainId = 34443;
-
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(modeDstDomainId);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20ModeDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      modeDstDomainId,
+      hypXERC20ModeDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

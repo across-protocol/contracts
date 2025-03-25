@@ -27,6 +27,9 @@ let lineaMessageService: FakeContract,
   lineaUsdcBridge: FakeContract,
   l2HypXERC20Router: FakeContract;
 
+// HubPool chain domain id in Hyperlane messaging protocol
+const hypXERC20HubChainDomain = 1;
+
 const lineaMessageServiceAbi = [
   {
     inputs: [
@@ -137,7 +140,11 @@ describe("Linea Spoke Pool", function () {
         owner.address,
         hubPool.address,
       ],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, toWei("1")] }
+      {
+        kind: "uups",
+        unsafeAllow: ["delegatecall"],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, hypXERC20HubChainDomain, toWei("1")],
+      }
     );
 
     await seedContract(lineaSpokePool, relayer, [dai, usdc, l2EzETH], weth, amountHeldByPool);
@@ -147,7 +154,7 @@ describe("Linea Spoke Pool", function () {
     const implementation = await hre.upgrades.deployImplementation(await getContractFactory("Linea_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
-      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, toWei("1")],
+      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, hypXERC20HubChainDomain, toWei("1")],
     });
 
     // upgradeTo fails unless called by cross domain admin
@@ -284,10 +291,9 @@ describe("Linea Spoke Pool", function () {
     // Adapter should have approved l2HypXERC20Router to spend its ERC20
     expect(await l2EzETH.allowance(lineaSpokePool.address, l2HypXERC20Router.address)).to.equal(ezETHSendAmount);
 
-    const hubPoolHypDomainId = 1;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hubPoolHypDomainId,
+      hypXERC20HubChainDomain,
       ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       ezETHSendAmount
     );

@@ -52,6 +52,8 @@ let l1CrossDomainMessenger: FakeContract,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
 const optimismChainId = 10;
+// source https://github.com/hyperlane-xyz/hyperlane-registry
+const hypXERC20OptimismDomain = 10;
 const l2Gas = 200000;
 
 describe("Optimism Chain Adapter", function () {
@@ -94,8 +96,8 @@ describe("Optimism Chain Adapter", function () {
       l1StandardBridge.address,
       usdc.address,
       cctpMessenger.address,
-      optimismChainId,
       adapterStore.address,
+      hypXERC20OptimismDomain,
       hypXERC20FeeCap
     );
 
@@ -186,9 +188,9 @@ describe("Optimism Chain Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, optimismChainId, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hypXERC20OptimismDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, optimismChainId, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hypXERC20OptimismDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // construct repayment bundle
@@ -211,17 +213,14 @@ describe("Optimism Chain Adapter", function () {
     // Adapter should have approved gateway to spend its ERC20.
     expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
 
-    // source https://github.com/hyperlane-xyz/hyperlane-registry
-    const optimismDstDomainId = 10;
-
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(optimismDstDomainId);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20OptimismDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      optimismDstDomainId,
+      hypXERC20OptimismDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );
