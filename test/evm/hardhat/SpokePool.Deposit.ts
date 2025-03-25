@@ -13,7 +13,6 @@ import {
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
-  enableRoutes,
   getDepositParams,
   V3RelayData,
   getUpdatedV3DepositSignature,
