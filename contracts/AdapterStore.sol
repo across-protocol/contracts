@@ -9,53 +9,54 @@ library MessengerTypes {
 }
 
 /**
- * @dev A helper contract for chain adapters that support OFT or XERC20 messaging(via Hyperlane) on L1
- * @dev Handles token => messenger/router mapping storage, as adapters are called via delegatecall and don't have relevant storage space
+ * @dev A helper contract for chain adapters on the hub chain that support OFT or xERC20(via Hyperlane) messaging.
+ * @dev Handles token => messenger/router mapping storage. Adapters can't store this themselves as they're called
+ * @dev via `delegateCall` and their storage is not part of available context.
  */
 contract AdapterStore is Ownable {
-    // (messengerType, l2ChainId, l1Token) => messenger address
+    // (messengerType, dstDomainId, srcChainToken) => messenger address
     mapping(bytes32 => mapping(uint256 => mapping(address => address))) public crossChainMessengers;
 
     event MessengerSet(
         bytes32 indexed messengerType,
-        uint256 indexed l2ChainId,
-        address indexed l1Token,
-        address messenger
+        uint256 indexed dstDomainId,
+        address indexed srcChainToken,
+        address srcChainMessenger
     );
 
     error ArrayLengthMismatch();
 
     function setMessenger(
         bytes32 messengerType,
-        uint256 l2ChainId,
-        address l1Token,
-        address messenger
+        uint256 dstDomainId,
+        address srcChainToken,
+        address srcChainMessenger
     ) external onlyOwner {
-        _setMessenger(messengerType, l2ChainId, l1Token, messenger);
+        _setMessenger(messengerType, dstDomainId, srcChainToken, srcChainMessenger);
     }
 
     function batchSetMessengers(
         bytes32 messengerType,
-        uint256[] calldata l2ChainIds,
-        address[] calldata l1Tokens,
-        address[] calldata messengers
+        uint256[] calldata dstDomainIds,
+        address[] calldata srcChainTokens,
+        address[] calldata srcChainMessengers
     ) external onlyOwner {
-        if (l2ChainIds.length != l1Tokens.length || l2ChainIds.length != messengers.length) {
+        if (dstDomainIds.length != srcChainTokens.length || dstDomainIds.length != srcChainMessengers.length) {
             revert ArrayLengthMismatch();
         }
 
-        for (uint256 i = 0; i < l2ChainIds.length; i++) {
-            _setMessenger(messengerType, l2ChainIds[i], l1Tokens[i], messengers[i]);
+        for (uint256 i = 0; i < dstDomainIds.length; i++) {
+            _setMessenger(messengerType, dstDomainIds[i], srcChainTokens[i], srcChainMessengers[i]);
         }
     }
 
     function _setMessenger(
         bytes32 _messengerType,
-        uint256 _l2ChainId,
-        address _l1Token,
-        address _messenger
+        uint256 _dstDomainId,
+        address _srcChainToken,
+        address _srcChainMessenger
     ) internal {
-        crossChainMessengers[_messengerType][_l2ChainId][_l1Token] = _messenger;
-        emit MessengerSet(_messengerType, _l2ChainId, _l1Token, _messenger);
+        crossChainMessengers[_messengerType][_dstDomainId][_srcChainToken] = _srcChainMessenger;
+        emit MessengerSet(_messengerType, _dstDomainId, _srcChainToken, _srcChainMessenger);
     }
 }
