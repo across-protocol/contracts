@@ -57,11 +57,12 @@ contract HubPoolStore {
 
     function storeRelayRootsCalldata(bytes calldata data) external onlyHubPool {
         // calldata should always be the same length so we can't optimize by checking length first.
-        if (keccak256(data) == keccak256(latestRelayRootsCalldata)) {
+        bytes memory callDataToStore = abi.encode(address(0), data);
+        if (keccak256(callDataToStore) == keccak256(latestRelayRootsCalldata)) {
             // Data is already stored, do nothing.
             return;
         }
-        latestRelayRootsCalldata = data;
+        latestRelayRootsCalldata = callDataToStore;
         emit StoredRootBundleData(data);
     }
 }

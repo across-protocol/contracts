@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-
+import { Vm } from "forge-std/Vm.sol";
 import { UniversalStorageProof_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/UniversalStorageProof_Adapter.sol";
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
@@ -31,7 +31,24 @@ contract UniversalStorageProofAdapterTest is Test {
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
         vm.expectCall(address(store), abi.encodeWithSignature("storeRelayRootsCalldata(bytes)", message));
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        assertEq(store.latestRelayRootsCalldata(), message);
+        assertEq(store.latestRelayRootsCalldata(), abi.encode(address(0), message));
+    }
+
+    function testRelayMessage_relayRootBundle_duplicate() public {
+        bytes32 refundRoot = bytes32("test");
+        bytes32 slowRelayRoot = bytes32("test2");
+        bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
+        vm.recordLogs();
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        assertEq(store.latestRelayRootsCalldata(), abi.encode(address(0), message));
+        // Each arbitraryMessage call should emit one MessageRelayed event, but only
+        // the first one should emit a `StoredRootBundleData` event.
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        assertEq(logs.length, 3);
+        assertEq(logs[0].topics[0], keccak256("StoredRootBundleData(bytes)"));
+        assertEq(logs[1].topics[0], keccak256("MessageRelayed(address,bytes)"));
+        assertEq(logs[2].topics[0], keccak256("MessageRelayed(address,bytes)"));
     }
 
     function testRelayMessage() public {

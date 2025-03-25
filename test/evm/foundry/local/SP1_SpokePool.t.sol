@@ -3,18 +3,22 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { SP1_SpokePool, IHelios, ISP1Verifier } from "../../../../contracts/SP1_SpokePool.sol";
+import { SP1_SpokePool, IHelios } from "../../../../contracts/SP1_SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 
 contract MockHelios is IHelios {
-    bytes32 public constant MOCK_STORAGE_SLOT = bytes32("mockStorageSlot");
+    mapping(bytes32 => bytes32) public storageSlots;
+
+    function updateStorageSlot(bytes32 key, bytes32 valueHash) external {
+        storageSlots[key] = valueHash;
+    }
 
     function getStorageSlot(
         uint256,
         address,
-        bytes32
-    ) external pure returns (bytes32) {
-        return MOCK_STORAGE_SLOT;
+        bytes32 _key
+    ) external view returns (bytes32) {
+        return storageSlots[_key];
     }
 
     function GENESIS_TIME() external pure returns (uint256) {
@@ -32,27 +36,16 @@ contract MockHelios is IHelios {
     }
 }
 
-contract MockSP1Verifier is ISP1Verifier {
-    function verifyProof(
-        bytes32,
-        bytes calldata,
-        bytes calldata
-    ) external pure override {}
-}
-
 contract SP1SpokePoolTest is Test {
     SP1_SpokePool spokePool;
     MockHelios helios;
-    MockSP1Verifier verifier;
 
     address hubPoolStore;
     uint256 nonce = 0;
 
     function setUp() public {
         helios = new MockHelios();
-        verifier = new MockSP1Verifier();
         spokePool = new SP1_SpokePool(
-            address(verifier),
             address(helios),
             bytes32(0),
             hubPoolStore,
@@ -69,17 +62,14 @@ contract SP1SpokePoolTest is Test {
         bytes32 refundRoot = bytes32("test");
         bytes32 slowRelayRoot = bytes32("test2");
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
-        SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
-            contractAddress: hubPoolStore,
-            slotKey: keccak256(abi.encode(address(spokePool), message, nonce)),
-            value: abi.encode(address(spokePool), message),
-            slotValueHash: helios.MOCK_STORAGE_SLOT()
-        });
+        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(slotKey, keccak256(value));
         vm.expectCall(
             address(spokePool),
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot)
         );
-        spokePool.receiveL1State(abi.encode(publicValues), "", 100);
+        spokePool.receiveL1State(slotKey, value, 100);
     }
 
     function testReplayProtection() public {
@@ -88,15 +78,12 @@ contract SP1SpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
-            contractAddress: hubPoolStore,
-            slotKey: keccak256(abi.encode(address(spokePool), message, nonce)),
-            value: abi.encode(address(spokePool), message),
-            slotValueHash: helios.MOCK_STORAGE_SLOT()
-        });
-        spokePool.receiveL1State(abi.encode(publicValues), "", 100);
+        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(slotKey, keccak256(value));
+        spokePool.receiveL1State(slotKey, value, 100);
         vm.expectRevert(SP1_SpokePool.AlreadyReceived.selector);
-        spokePool.receiveL1State(abi.encode(publicValues), "", 100);
+        spokePool.receiveL1State(slotKey, value, 100);
     }
 
     function testVerifyProof() public {
@@ -125,16 +112,13 @@ contract SP1SpokePoolTest is Test {
             destinationChainId,
             true
         );
-        SP1_SpokePool.ContractPublicValues memory publicValues = SP1_SpokePool.ContractPublicValues({
-            contractAddress: hubPoolStore,
-            slotKey: keccak256(abi.encode(address(spokePool), message, nonce)),
-            value: abi.encode(address(spokePool), message),
-            slotValueHash: helios.MOCK_STORAGE_SLOT()
-        });
+        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(slotKey, keccak256(value));
         vm.expectCall(
             address(spokePool),
             abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
-        spokePool.receiveL1State(abi.encode(publicValues), "", 100);
+        spokePool.receiveL1State(slotKey, value, 100);
     }
 }

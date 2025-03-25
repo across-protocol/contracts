@@ -6,31 +6,13 @@ import "./libraries/CircleCCTPAdapter.sol";
 
 import "./SpokePool.sol";
 
-interface ISP1Verifier {
-    function verifyProof(
-        bytes32 programVKey,
-        bytes calldata publicValues,
-        bytes calldata proofBytes
-    ) external view;
-}
-
 /**
  * @notice SP1 Spoke pool capable of receiving data stored in L1 state via SP1 + Helios light clients.
  */
 contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
-    // The public values stored on L1 that can be relayed into this contract when accompanied with an SP1 proof.
-    struct ContractPublicValues {
-        address contractAddress; // Address of contract whose storage slot we want to load into this contract.
-        bytes32 slotKey; // Slot key
-        bytes32 slotValueHash; // Hash of slot value
-        bytes value; // Full slot value
-    }
     /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
     address public immutable hubPoolStore;
-
-    /// @notice The address of the SP1 verifier contract.
-    address public immutable verifier;
 
     /// @notice The address of the Helios light client contract.
     address public immutable helios;
@@ -47,7 +29,6 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
 
     event VerifiedProof(bytes32 indexed dataHash, address caller);
 
-    error NotHubPoolStore();
     error NotTarget();
     error AdminCallAlreadySet();
     error SlotValueMismatch();
@@ -79,7 +60,6 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
-        address _verifier,
         address _helios,
         bytes32 _acrossCallProgramVKey,
         address _hubPoolStore,
@@ -92,7 +72,6 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
-        verifier = _verifier;
         helios = _helios;
         acrossCallProgramVKey = _acrossCallProgramVKey;
         hubPoolStore = _hubPoolStore;
@@ -112,42 +91,37 @@ contract SP1_SpokePool is SpokePool, CircleCCTPAdapter {
      * wouldn't be able to tamper with the _publicValues but we can reduce the chance of replay-attacks this way if
      * we set the EOA to a trusted actor. Replay attacks are possible if this contract has the same address
      * on multiple chains.
-     * @param _publicValues L1 contract state we want to relay into this contract. Contains a message that will
-     * be treated as calldata for a delegatecall into this contract.
-     * @param _proofBytes Proof bytes for the public values.
-     * @param _head Head number related to _publicValues.
+     * @param _slotKey Slot storage hash
+     * @param _value Slot storage value
+     * @param _blockNumber Block number in light client we want to check slot value of slot key
      */
     function receiveL1State(
-        bytes calldata _publicValues,
-        bytes calldata _proofBytes,
-        uint256 _head
+        bytes32 _slotKey,
+        bytes calldata _value,
+        uint256 _blockNumber
     ) external validateInternalCalls {
-        // Verify proof and public values match:
-        ISP1Verifier(verifier).verifyProof(acrossCallProgramVKey, _publicValues, _proofBytes);
-        ContractPublicValues memory publicValues = abi.decode(_publicValues, (ContractPublicValues));
-        if (publicValues.contractAddress != hubPoolStore) {
-            revert NotHubPoolStore();
-        }
+        bytes32 expectedSlotValueHash = keccak256(_value);
 
         // Verify Helios light client is aware of the storage slot:
-        bytes32 slotValue = IHelios(helios).getStorageSlot(_head, publicValues.contractAddress, publicValues.slotKey);
-        if (publicValues.slotValueHash != slotValue) {
+        bytes32 slotValueHash = IHelios(helios).getStorageSlot(_blockNumber, hubPoolStore, _slotKey);
+        if (expectedSlotValueHash != slotValueHash) {
             revert SlotValueMismatch();
         }
 
         // Validate state is intended to be sent to this contract. The target could have been set to the zero address
         // which is used by the StorageProof_Adapter to denote messages that can be sent to any target.
-        (address target, bytes memory message) = abi.decode(publicValues.value, (address, bytes));
+        (address target, bytes memory message) = abi.decode(_value, (address, bytes));
         if (target != address(0) && target != address(this)) {
             revert NotTarget();
         }
 
         // Prevent replay attacks.
-        if (verifiedProofs[publicValues.slotKey]) {
+        bytes32 dataHash = keccak256(abi.encode(_slotKey, _blockNumber));
+        if (verifiedProofs[dataHash]) {
             revert AlreadyReceived();
         }
-        verifiedProofs[publicValues.slotKey] = true;
-        emit VerifiedProof(publicValues.slotKey, msg.sender);
+        verifiedProofs[dataHash] = true;
+        emit VerifiedProof(dataHash, msg.sender);
 
         // Execute the calldata:
         /// @custom:oz-upgrades-unsafe-allow delegatecall
