@@ -110,7 +110,7 @@
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
-      "label": "DEPRECATED_enabledDepositRoutes",
+      "label": "enabledDepositRoutes",
       "offset": 0,
       "slot": "2157"
     },
@@ -152,15 +152,9 @@
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
-      "label": "oftMessengers",
-      "offset": 0,
-      "slot": "2164"
-    },
-    {
-      "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2165"
+      "slot": "2164"
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
