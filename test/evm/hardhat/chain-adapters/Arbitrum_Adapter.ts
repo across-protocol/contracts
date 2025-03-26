@@ -99,7 +99,7 @@ describe("Arbitrum Chain Adapter", function () {
     l1ERC20GatewayRouter.getGateway.returns(gatewayAddress);
 
     const oftFeeCap = toWei("1");
-    const hypXERC20FeeCap = toWei("1");
+    const hyperlaneXERC20FeeCap = toWei("1");
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)
@@ -113,7 +113,7 @@ describe("Arbitrum Chain Adapter", function () {
       oftArbitrumEid,
       oftFeeCap,
       hypXERC20ArbitrumDomain,
-      hypXERC20FeeCap
+      hyperlaneXERC20FeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.

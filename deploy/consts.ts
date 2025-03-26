@@ -260,3 +260,18 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
 export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
   Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
 );
+
+const createChainMap = <T>(selector: (network: any) => T) =>
+  new Map(Object.entries(PUBLIC_NETWORKS).map(([id, network]) => [Number(id), selector(network)]));
+
+/**
+ * Mapping chainId => oft endpoint id
+ * @link https://docs.layerzero.network/v2/deployments/deployed-contracts
+ */
+export const OFT_EIDs = createChainMap<number>((network) => network.oftEid);
+
+/**
+ * Mapping chainId => Hyperlane domain id
+ * @link https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
+ */
+export const HYPERLANE_DOMAIN_IDs = createChainMap<number>((network) => network.hypDomainId);

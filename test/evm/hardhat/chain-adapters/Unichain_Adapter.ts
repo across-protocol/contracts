@@ -74,7 +74,7 @@ describe("Unichain_Adapter", function () {
     l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
     cctpMessenger = await createFakeFromABI(CCTPTokenMessengerInterface);
 
-    const hypXERC20FeeCap = toWei("1");
+    const hyperlaneXERC20FeeCap = toWei("1");
 
     // Deploy Unichain adapter
     doctorWhoAdapter = await (
@@ -87,7 +87,7 @@ describe("Unichain_Adapter", function () {
       cctpMessenger.address,
       adapterStore.address,
       hypXERC20UnichainDomain,
-      hypXERC20FeeCap
+      hyperlaneXERC20FeeCap
     );
 
     // Seed the HubPool with ETH for L2 calls

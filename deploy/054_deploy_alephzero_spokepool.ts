@@ -30,7 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     0, // _oftDstEid
     _bnZero, // _oftFeeCap
     0, // _hypXERC20DstDomain
-    _bnZero, // _hypXERC20FeeCap
+    _bnZero, // _hyperlaneXERC20FeeCap
   ];
   await deployNewProxy("AlephZero_SpokePool", constructorArgs, initArgs);
 };

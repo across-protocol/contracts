@@ -86,7 +86,7 @@ describe("Optimism Chain Adapter", function () {
     adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
     hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
 
-    const hypXERC20FeeCap = toWei("1");
+    const hyperlaneXERC20FeeCap = toWei("1");
 
     optimismAdapter = await (
       await getContractFactory("Optimism_Adapter", owner)
@@ -98,7 +98,7 @@ describe("Optimism Chain Adapter", function () {
       cctpMessenger.address,
       adapterStore.address,
       hypXERC20OptimismDomain,
-      hypXERC20FeeCap
+      hyperlaneXERC20FeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.

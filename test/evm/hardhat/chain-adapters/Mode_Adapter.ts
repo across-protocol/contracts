@@ -70,7 +70,7 @@ describe("Mode_Adapter", function () {
     l1StandardBridge = await createFake("L1StandardBridge");
     l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
 
-    const hypXERC20FeeCap = toWei("1");
+    const hyperlaneXERC20FeeCap = toWei("1");
 
     // Deploy Mode adapter
     modeAdapter = await (
@@ -82,7 +82,7 @@ describe("Mode_Adapter", function () {
       fixture.usdc.address,
       adapterStore.address,
       hypXERC20ModeDomain,
-      hypXERC20FeeCap
+      hyperlaneXERC20FeeCap
     );
 
     // Seed the HubPool with ETH for L2 calls

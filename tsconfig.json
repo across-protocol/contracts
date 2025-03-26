@@ -18,7 +18,8 @@
     "./test-utils.ts",
     "tasks/enableL1TokenAcrossEcosystem.ts",
     "utils/utils.ts",
-    "src/types"
+    "src/types",
+    "deploy"
   ],
   "files": ["./hardhat.config.ts"]
 }

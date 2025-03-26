@@ -3,7 +3,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CHAIN_IDs } from "../utils";
 import assert from "assert";
-import { toWei } from "../utils/utils";
+import { getHyperlaneDomainId, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -14,9 +14,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     "We only support deploying Linea Adapter on Mainnet for now. To deploy on testnet, update consts and configs."
   );
 
-  // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
-  const hypXERC20DstDomain = chainId == CHAIN_IDs.MAINNET ? 59144 : undefined;
-  const hypXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
+  const spokeChainId = CHAIN_IDs.LINEA;
+  const hyperlaneDstDomain = getHyperlaneDomainId(spokeChainId);
+  const hyperlaneXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   await hre.deployments.deploy("Linea_Adapter", {
     from: deployer,
@@ -28,8 +28,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].lineaTokenBridge,
       L1_ADDRESS_MAP[chainId].lineaUsdcBridge,
       L1_ADDRESS_MAP[chainId].adapterStore,
-      hypXERC20DstDomain,
-      hypXERC20FeeCap,
+      hyperlaneDstDomain,
+      hyperlaneXERC20FeeCap,
     ],
   });
 };

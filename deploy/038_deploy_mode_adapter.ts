@@ -2,18 +2,16 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import { CHAIN_IDs } from "../utils";
 import { L1_ADDRESS_MAP, OP_STACK_ADDRESS_MAP, USDC, WETH } from "./consts";
-import { toWei } from "../utils/utils";
-
-const SPOKE_CHAIN_ID = CHAIN_IDs.BOBA;
+import { getHyperlaneDomainId, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
-  const opStack = OP_STACK_ADDRESS_MAP[chainId][SPOKE_CHAIN_ID];
+  const spokeChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.MODE : CHAIN_IDs.MODE_SEPOLIA;
+  const opStack = OP_STACK_ADDRESS_MAP[chainId][spokeChainId];
 
-  // Set the Hyperlane xERC20 destination domain based on the chain https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
-  const hypXERC20DstDomain = chainId == CHAIN_IDs.MAINNET ? 34443 : 919;
-  const hypXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
+  const hyperlaneDstDomain = getHyperlaneDomainId(spokeChainId);
+  const hyperlaneXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   await hre.deployments.deploy("Mode_Adapter", {
     from: deployer,
@@ -25,8 +23,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       opStack.L1StandardBridge,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].adapterStore,
-      hypXERC20DstDomain,
-      hypXERC20FeeCap,
+      hyperlaneDstDomain,
+      hyperlaneXERC20FeeCap,
     ],
   });
 };

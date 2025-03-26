@@ -2,8 +2,7 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH } from "./consts";
-import { toWei } from "../utils/utils";
-import { CHAIN_IDs } from "@across-protocol/constants";
+import { getHyperlaneDomainId, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, hubChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -21,14 +20,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
   ];
 
-  // Set the Hyperlane xERC20 destination domain based on the chain
-  // https://github.com/hyperlane-xyz/hyperlane-registry/tree/main/chains
-  const hypXERC20DstDomain = hubChainId == CHAIN_IDs.MAINNET ? 1 : 11155111;
+  const hyperlaneDstDomainId = getHyperlaneDomainId(hubChainId);
+  const hyperlaneXERC20FeeCap = toWei(1); // 1 eth fee cap
 
-  // 1 ETH fee cap for Hyperlane XERC20 transfers
-  const hypXERC20FeeCap = toWei(1);
-
-  const constructorArgs = [WETH[chainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER, hypXERC20DstDomain, hypXERC20FeeCap];
+  const constructorArgs = [
+    WETH[chainId],
+    QUOTE_TIME_BUFFER,
+    FILL_DEADLINE_BUFFER,
+    hyperlaneDstDomainId,
+    hyperlaneXERC20FeeCap,
+  ];
 
   await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs);
 };

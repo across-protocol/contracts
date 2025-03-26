@@ -76,7 +76,7 @@ describe("Blast_Adapter", function () {
     l1CrossDomainMessenger = await createFake("L1CrossDomainMessenger");
     l1BlastBridge = await createFake("IL1ERC20Bridge");
 
-    const hypXERC20FeeCap = toWei("1");
+    const hyperlaneXERC20FeeCap = toWei("1");
 
     // Deploy Blast adapter
     blastAdapter = await (
@@ -91,7 +91,7 @@ describe("Blast_Adapter", function () {
       l2GasLimit,
       adapterStore.address,
       hypXERC20BlastDomain,
-      hypXERC20FeeCap
+      hyperlaneXERC20FeeCap
     );
 
     // Seed the HubPool with ETH for L2 calls
