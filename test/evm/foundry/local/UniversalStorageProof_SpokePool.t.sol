@@ -87,20 +87,13 @@ contract UniversalStorageProofSpokePoolTest is Test {
         assertTrue(spokePool.verifiedProofs(slotKey));
     }
 
-    function testVerifyProof() public {
-        // Reverts if sp1 verifyProof fails
-    }
-
-    function testIncorrectContractAddress() public {
-        // Reverts if the contract address in publicValues is not the hubPoolStore
-    }
-
-    function testHeliosProof() public {
-        // Reverts if helios light client state doesn't match with publicValues
+    function testHeliosMissingState() public {
+        // Reverts if helios light client state for hubPoolStore, blockNumber, and slot key isn't
+        // equal to passed in slot value.
     }
 
     function testIncorrectTarget() public {
-        // Reverts if the target in publicValues is not the zero address or this contract
+        // Reverts if the target is not the zero address or the spoke pool contract
     }
 
     function testAdminReceiveL1State() public {
@@ -135,5 +128,17 @@ contract UniversalStorageProofSpokePoolTest is Test {
             abi.encodeWithSignature("setEnableRoute(address,uint256,bool)", originToken, destinationChainId, true)
         );
         spokePool.receiveL1State(slotKey, value, 100);
+    }
+
+    function testBridgeTokensToHubPool_cctp() public {
+        // Uses CCTP to send USDC
+    }
+
+    function testBridgeTokensToHubPool_default() public {
+        // Should revert
+    }
+
+    function testRequireAdminSender() public {
+        // Calling onlyCrossDomainAdmin functions directly should revert
     }
 }
