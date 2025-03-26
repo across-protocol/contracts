@@ -14,11 +14,13 @@ import {
   randomAddress,
   createFakeFromABI,
   createTypedFakeFromABI,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface } from "../../../../utils/abis";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { AdapterStore__factory, IHypXERC20Router__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 describe("Base_Adapter", function () {
   let hubPool: Contract;
@@ -36,9 +38,8 @@ describe("Base_Adapter", function () {
   let hypXERC20Router: FakeContract;
   let adapterStore: FakeContract;
 
-  const baseChainId = 8453;
-  // source https://github.com/hyperlane-xyz/hyperlane-registry
-  const hypXERC20BaseDomain = 8453;
+  const baseChainId = CHAIN_IDs.BASE;
+  const hyperlaneDstDomain = getHyperlaneDomainId(baseChainId);
 
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -86,7 +87,7 @@ describe("Base_Adapter", function () {
       fixture.usdc.address,
       cctpMessenger.address,
       adapterStore.address,
-      hypXERC20BaseDomain,
+      hyperlaneDstDomain,
       hyperlaneXERC20FeeCap
     );
 
@@ -129,12 +130,12 @@ describe("Base_Adapter", function () {
 
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20BaseDomain);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hyperlaneDstDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20BaseDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

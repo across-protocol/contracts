@@ -14,6 +14,7 @@ import {
   createTypedFakeFromABI,
   BigNumber,
   toWeiWithDecimals,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import { hre } from "../../../../utils/utils.hre";
@@ -21,9 +22,9 @@ import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { IHypXERC20Router__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
-// HubPool chain domain id in Hyperlane messaging protocol
-const hypXERC20HubChainDomain = 1;
+const hyperlaneDstDomain = getHyperlaneDomainId(CHAIN_IDs.MAINNET);
 
 let hubPool: Contract, baseSpokePool: Contract, dai: Contract, weth: Contract, l2EzETH: Contract;
 let l2Dai: string, l2Usdc: string;
@@ -74,7 +75,7 @@ describe("Base Spoke Pool", function () {
           9 * 60 * 60,
           l2Usdc,
           l2CctpTokenMessenger.address,
-          hypXERC20HubChainDomain,
+          hyperlaneDstDomain,
           toWei("1"),
         ],
       }
@@ -117,7 +118,7 @@ describe("Base Spoke Pool", function () {
 
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20HubChainDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       ezETHSendAmount
     );

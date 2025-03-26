@@ -13,6 +13,7 @@ import {
   createTypedFakeFromABI,
   fromWei,
   toBN,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
@@ -23,6 +24,7 @@ import {
   IHypXERC20Router,
   IHypXERC20Router__factory,
 } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract,
   lineaAdapter: Contract,
@@ -40,9 +42,8 @@ let lineaMessageService: FakeContract,
   adapterStore: FakeContract<AdapterStore>,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
-const lineaChainId = 59144;
-// source https://github.com/hyperlane-xyz/hyperlane-registry
-const hypXERC20LineaDomain = 59144;
+const lineaChainId = CHAIN_IDs.LINEA;
+const hyperlaneDstDomain = getHyperlaneDomainId(lineaChainId);
 
 const lineaMessageServiceAbi = [
   {
@@ -146,7 +147,7 @@ describe("Linea Chain Adapter", function () {
       lineaTokenBridge.address,
       lineaUsdcBridge.address,
       adapterStore.address,
-      hypXERC20LineaDomain,
+      hyperlaneDstDomain,
       hyperlaneXERC20FeeCap
     );
 
@@ -214,9 +215,9 @@ describe("Linea Chain Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, hypXERC20LineaDomain, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hyperlaneDstDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, hypXERC20LineaDomain, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hyperlaneDstDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // construct repayment bundle
@@ -233,11 +234,11 @@ describe("Linea Chain Adapter", function () {
 
     // We should have called send on the oftMessenger once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20LineaDomain);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hyperlaneDstDomain);
 
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20LineaDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

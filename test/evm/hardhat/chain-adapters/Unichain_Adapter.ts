@@ -14,11 +14,13 @@ import {
   randomAddress,
   createFakeFromABI,
   createTypedFakeFromABI,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface } from "../../../../utils/abis";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { AdapterStore__factory, IHypXERC20Router__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 describe("Unichain_Adapter", function () {
   let hubPool: Contract;
@@ -36,9 +38,8 @@ describe("Unichain_Adapter", function () {
   let hypXERC20Router: FakeContract;
   let adapterStore: FakeContract;
 
-  const unichainChainId = 130;
-  // Unichain's domain ID for Hyperlane
-  const hypXERC20UnichainDomain = 130;
+  const unichainChainId = CHAIN_IDs.UNICHAIN;
+  const hyperlaneDstDomain = getHyperlaneDomainId(unichainChainId);
 
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -86,7 +87,7 @@ describe("Unichain_Adapter", function () {
       fixture.usdc.address,
       cctpMessenger.address,
       adapterStore.address,
-      hypXERC20UnichainDomain,
+      hyperlaneDstDomain,
       hyperlaneXERC20FeeCap
     );
 
@@ -104,9 +105,9 @@ describe("Unichain_Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, hypXERC20UnichainDomain, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hyperlaneDstDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, hypXERC20UnichainDomain, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hyperlaneDstDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // Set up gas payment quote
@@ -129,12 +130,12 @@ describe("Unichain_Adapter", function () {
 
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20UnichainDomain);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hyperlaneDstDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20UnichainDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

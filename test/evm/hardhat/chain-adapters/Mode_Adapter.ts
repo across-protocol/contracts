@@ -13,10 +13,12 @@ import {
   seedWallet,
   randomAddress,
   createTypedFakeFromABI,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { AdapterStore__factory, IHypXERC20Router__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 describe("Mode_Adapter", function () {
   let hubPool: Contract;
@@ -33,9 +35,8 @@ describe("Mode_Adapter", function () {
   let hypXERC20Router: FakeContract;
   let adapterStore: FakeContract;
 
-  const modeChainId = 34443;
-  // source https://github.com/hyperlane-xyz/hyperlane-registry
-  const hypXERC20ModeDomain = 34443;
+  const modeChainId = CHAIN_IDs.MODE;
+  const hyperlaneDstDomain = getHyperlaneDomainId(modeChainId);
 
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
@@ -81,7 +82,7 @@ describe("Mode_Adapter", function () {
       l1StandardBridge.address,
       fixture.usdc.address,
       adapterStore.address,
-      hypXERC20ModeDomain,
+      hyperlaneDstDomain,
       hyperlaneXERC20FeeCap
     );
 
@@ -99,9 +100,9 @@ describe("Mode_Adapter", function () {
     const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
     await adapterStore
       .connect(owner)
-      .setMessenger(hypXERC20MessengerType, hypXERC20ModeDomain, ezETH.address, hypXERC20Router.address);
+      .setMessenger(hypXERC20MessengerType, hyperlaneDstDomain, ezETH.address, hypXERC20Router.address);
     adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, hypXERC20ModeDomain, ezETH.address)
+      .whenCalledWith(hypXERC20MessengerType, hyperlaneDstDomain, ezETH.address)
       .returns(hypXERC20Router.address);
 
     // Set up gas payment quote
@@ -124,12 +125,12 @@ describe("Mode_Adapter", function () {
 
     // We should have called quoteGasPayment on the hypXERC20Router once with correct params
     expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20ModeDomain);
+    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hyperlaneDstDomain);
 
     // We should have called transferRemote on the hypXERC20Router once with correct params
     expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20ModeDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       tokensSendToL2
     );

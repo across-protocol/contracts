@@ -12,6 +12,7 @@ import {
   BigNumber,
   randomBytes32,
   createTypedFakeFromABI,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 
@@ -19,6 +20,7 @@ import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
 import { IHypXERC20Router__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract, lineaSpokePool: Contract, dai: Contract, weth: Contract, usdc: Contract, l2EzETH: Contract;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -27,8 +29,7 @@ let lineaMessageService: FakeContract,
   lineaUsdcBridge: FakeContract,
   l2HypXERC20Router: FakeContract;
 
-// HubPool chain domain id in Hyperlane messaging protocol
-const hypXERC20HubChainDomain = 1;
+const hyperlaneDstDomain = getHyperlaneDomainId(CHAIN_IDs.MAINNET);
 
 const lineaMessageServiceAbi = [
   {
@@ -143,7 +144,7 @@ describe("Linea Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, hypXERC20HubChainDomain, toWei("1")],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, hyperlaneDstDomain, toWei("1")],
       }
     );
 
@@ -154,7 +155,7 @@ describe("Linea Spoke Pool", function () {
     const implementation = await hre.upgrades.deployImplementation(await getContractFactory("Linea_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
-      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, hypXERC20HubChainDomain, toWei("1")],
+      constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, hyperlaneDstDomain, toWei("1")],
     });
 
     // upgradeTo fails unless called by cross domain admin
@@ -293,7 +294,7 @@ describe("Linea Spoke Pool", function () {
 
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20HubChainDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       ezETHSendAmount
     );

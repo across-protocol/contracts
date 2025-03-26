@@ -15,6 +15,8 @@ import {
   BigNumber,
   randomBytes32,
   toWeiWithDecimals,
+  getOftEid,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -28,6 +30,7 @@ import {
 } from "../../../../typechain/contracts/interfaces/IOFT";
 import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
 import { IHypXERC20Router__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract, l2UsdtContract: Contract;
 let l2Weth: string, l2Dai: string, l2Usdc: string, l2EzETH: Contract, crossDomainAliasAddress;
@@ -39,10 +42,8 @@ let l2GatewayRouter: FakeContract,
   l2OftMessenger: FakeContract,
   l2HypXERC20Router: FakeContract;
 
-// Source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
-const oftHubEid = 30101;
-// HubPool chain domain id in Hyperlane messaging protocol
-const hypXERC20HubChainDomain = 1;
+const oftHubEid = getOftEid(CHAIN_IDs.MAINNET);
+const hyperlaneDstDomain = getHyperlaneDomainId(CHAIN_IDs.MAINNET);
 
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
@@ -81,7 +82,7 @@ describe("Arbitrum Spoke Pool", function () {
           l2CctpTokenMessenger.address,
           oftHubEid,
           toWei("1"),
-          hypXERC20HubChainDomain,
+          hyperlaneDstDomain,
           toWei("1"),
         ],
       }
@@ -106,7 +107,7 @@ describe("Arbitrum Spoke Pool", function () {
           l2CctpTokenMessenger.address,
           oftHubEid,
           toWei("1"),
-          hypXERC20HubChainDomain,
+          hyperlaneDstDomain,
           toWei("1"),
         ],
       }
@@ -266,7 +267,7 @@ describe("Arbitrum Spoke Pool", function () {
 
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
     expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20HubChainDomain,
+      hyperlaneDstDomain,
       ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
       ezETHSendAmount
     );

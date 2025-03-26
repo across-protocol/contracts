@@ -18,6 +18,8 @@ import {
   BigNumber,
   randomBytes32,
   toWeiWithDecimals,
+  getOftEid,
+  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import {
@@ -37,6 +39,7 @@ import {
   IHypXERC20Router,
   IHypXERC20Router__factory,
 } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract,
   arbitrumAdapter: Contract,
@@ -58,11 +61,9 @@ let l1ERC20GatewayRouter: FakeContract,
   adapterStore: FakeContract<AdapterStore>,
   hypXERC20Router: FakeContract<IHypXERC20Router>;
 
-const arbitrumChainId = 42161;
-// source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
-const oftArbitrumEid = 30110;
-// source  https://github.com/hyperlane-xyz/hyperlane-registry
-const hypXERC20ArbitrumDomain = 42161;
+const arbitrumChainId = CHAIN_IDs.ARBITRUM;
+const oftArbitrumEid = getOftEid(arbitrumChainId);
+const hypXERC20ArbitrumDomain = getHyperlaneDomainId(arbitrumChainId);
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
