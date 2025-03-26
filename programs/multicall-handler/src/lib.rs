@@ -1,10 +1,4 @@
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        instruction::Instruction,
-        program::{invoke, invoke_signed},
-    },
-};
+use anchor_lang::{ prelude::*, solana_program::{ instruction::Instruction, program::{ invoke, invoke_signed } } };
 
 #[cfg(not(feature = "no-entrypoint"))]
 use ::solana_security_txt::security_txt;
@@ -22,7 +16,7 @@ security_txt! {
 
 // If changing the program ID, make sure to check that the resulting handler_signer PDA has the highest bump of 255 so
 // to minimize the compute cost when finding the PDA.
-declare_id!("27dua7HMuaZrAc6PRfxmvshHChypFLzZVSpKKaDAPjsq");
+declare_id!("Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h");
 
 #[program]
 pub mod multicall_handler {
@@ -43,17 +37,13 @@ pub mod multicall_handler {
             let mut accounts = Vec::with_capacity(compiled_ix.account_key_indexes.len());
             let mut account_infos = Vec::with_capacity(compiled_ix.account_key_indexes.len());
 
-            let target_program = ctx
-                .remaining_accounts
+            let target_program = ctx.remaining_accounts
                 .get(compiled_ix.program_id_index as usize)
                 .ok_or(ErrorCode::AccountNotEnoughKeys)?;
 
             // Resolve CPI accounts from indexed references to the remaining accounts.
             for index in compiled_ix.account_key_indexes {
-                let account_info = ctx
-                    .remaining_accounts
-                    .get(index as usize)
-                    .ok_or(ErrorCode::AccountNotEnoughKeys)?;
+                let account_info = ctx.remaining_accounts.get(index as usize).ok_or(ErrorCode::AccountNotEnoughKeys)?;
                 let is_handler_signer = account_info.key() == handler_signer;
                 use_handler_signer |= is_handler_signer;
 

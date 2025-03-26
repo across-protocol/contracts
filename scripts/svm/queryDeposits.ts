@@ -39,7 +39,7 @@ async function queryDeposits(): Promise<void> {
 
   try {
     const events = await readProgramEvents(provider.connection, program);
-    const depositEvents = events.filter((event) => event.name === "v3FundsDeposited");
+    const depositEvents = events.filter((event) => event.name === "fundsDeposited");
 
     if (depositEvents.length === 0) {
       console.log("No deposit events found for the given seed.");

@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.0.2",
+  "version": "4.0.4",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -30,7 +30,7 @@
     "generate-svm-clients": "yarn ts-node ./scripts/svm/utils/generate-svm-clients.ts && yarn ts-node ./scripts/svm/utils/rename-clients-imports.ts",
     "build-evm": "hardhat compile",
     "build-svm": "echo 'Generating IDLs...' && anchor build > /dev/null 2>&1 || true && anchor run generateExternalTypes && anchor build",
-    "build-ts": "tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
+    "build-ts": "rm -rf ./dist && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/",
     "copy-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
     "build": "yarn build-evm && yarn build-svm && yarn generate-svm-assets && yarn build-ts && yarn copy-idl",
     "test-evm": "IS_TEST=true hardhat test",
@@ -42,7 +42,7 @@
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.37",
+    "@across-protocol/constants": "^3.1.40",
     "@coral-xyz/anchor": "^0.30.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
@@ -53,8 +53,9 @@
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@scroll-tech/contracts": "^0.1.0",
     "@solana-developers/helpers": "^2.4.0",
+    "@solana-program/token": "^0.5.1",
+    "@solana/kit": "^2.1.0",
     "@solana/spl-token": "^0.4.6",
-    "@solana/web3-v2.js": "npm:@solana/web3.js@2",
     "@solana/web3.js": "^1.31.0",
     "@types/yargs": "^17.0.33",
     "@uma/common": "^2.37.3",

@@ -1,7 +1,7 @@
 import { task, types } from "hardhat/config";
 import assert from "assert";
 import { toBN } from "../utils/utils";
-import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
 import { TokenSymbol } from "./types";
 
@@ -26,6 +26,7 @@ const getChainsFromList = (taskArgInput: string): number[] =>
 
 task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
+  .addFlag("disableRoutes", "Set to disable deposit routes for the specified chains")
   .addParam("token", "Symbol of token to enable")
   .addOptionalParam("chains", "Comma-delimited list of chains to enable the token on. Defaults to all supported chains")
   .addOptionalParam("lpAmount", "Amount of LP token to burn when enabling a new token", 1, types.int)
@@ -37,6 +38,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
     const { chains, token: symbol } = taskArguments;
+    const enableRoute = !taskArguments.disableRoutes;
 
     const hubChainId = parseInt(await hre.getChainId());
     if (hubChainId === 31337) {
@@ -160,7 +162,9 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         ) {
           const n = (++i).toString().padStart(2, " ");
           console.log(`\t${n} Added route for ${inputToken} from ${formattedFromId} -> ${formatChainId(toId)}.`);
-          callData.push(hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, true]));
+          callData.push(
+            hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, enableRoute])
+          );
         } else {
           skipped[fromId].push(toId);
         }
