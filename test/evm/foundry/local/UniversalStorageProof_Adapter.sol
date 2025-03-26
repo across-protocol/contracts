@@ -149,32 +149,6 @@ contract UniversalStorageProofAdapterTest is Test {
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
     }
 
-    function testRelayMessage_relayAdminFunction_relayAdminBundle_zeroChallengeEndTimestamp() public {
-        // Set challenge period timestamp to 0 to simulate relaying an admin bundle in between bundles. The global
-        // nonce should be used.
-        hubPool.setPendingRootBundle(
-            HubPoolInterface.RootBundle({
-                challengePeriodEndTimestamp: 0,
-                poolRebalanceRoot: pendingRootBundle.poolRebalanceRoot,
-                relayerRefundRoot: pendingRootBundle.relayerRefundRoot,
-                slowRelayRoot: pendingRootBundle.slowRelayRoot,
-                claimedBitMap: pendingRootBundle.claimedBitMap,
-                proposer: pendingRootBundle.proposer,
-                unclaimedPoolRebalanceLeafCount: pendingRootBundle.unclaimedPoolRebalanceLeafCount
-            })
-        );
-
-        bytes32 refundRoot = pendingRootBundle.relayerRefundRoot;
-        bytes32 slowRelayRoot = pendingRootBundle.slowRelayRoot;
-        bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
-        hubPool.arbitraryMessage(spokePoolTarget, message);
-        uint256 expectedNonce = 0;
-
-        // Calling relayRootBundle when challenge period is 0 uses the actual target in the data hash.
-        bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
-    }
-
     function testRelayMessage_relayAdminFunction_relayAdminBundle_differentPendingRoots() public {
         bytes32 refundRoot = pendingRootBundle.relayerRefundRoot;
         bytes32 slowRelayRoot = pendingRootBundle.slowRelayRoot;
@@ -195,6 +169,7 @@ contract UniversalStorageProofAdapterTest is Test {
         );
         hubPool.arbitraryMessage(spokePoolTarget, message);
         uint256 expectedNonce = 0;
+        // Relaying an admin root bundle uses the actual target in the data hash.
         bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
 
@@ -210,6 +185,7 @@ contract UniversalStorageProofAdapterTest is Test {
             })
         );
         hubPool.arbitraryMessage(spokePoolTarget, message);
+        // Relaying an admin root bundle uses the global nonce.
         expectedNonce++;
         expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));

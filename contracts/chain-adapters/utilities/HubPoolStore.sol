@@ -79,15 +79,13 @@ contract HubPoolStore {
         // extremely unlikely so we're going to ignore it. If this does happen, the adapter can be redeployed to point
         // to a new HubPoolStore, and the corresponding spoke pool should also be redeployed to point to the new
         // HubPoolStore.
-        bool isAdminRootBundle = pendingRootBundle.challengePeriodEndTimestamp == 0 ||
-            keccak256(
-                abi.encodeWithSignature(
-                    "relayRootBundle(bytes32,bytes32)",
-                    pendingRootBundle.relayerRefundRoot,
-                    pendingRootBundle.slowRelayRoot
-                )
-            ) !=
-            keccak256(data);
+        bool isAdminRootBundle = keccak256(
+            abi.encodeWithSignature(
+                "relayRootBundle(bytes32,bytes32)",
+                pendingRootBundle.relayerRefundRoot,
+                pendingRootBundle.slowRelayRoot
+            )
+        ) != keccak256(data);
         if (isAdminRootBundle) {
             uint256 nonce = dataUuid++;
             _storeData(target, nonce, data);
