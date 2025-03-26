@@ -8,6 +8,7 @@ import "./SpokePool.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./libraries/HypXERC20Adapter.sol";
 
 /**
  * @notice Linea specific SpokePool.
@@ -15,9 +16,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  */
 contract Linea_SpokePool is SpokePool {
     using SafeERC20 for IERC20;
-
-    // Linea_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
 
     /**
      * @notice Address of Linea's Canonical Message Service contract on L2.
@@ -48,13 +46,28 @@ contract Linea_SpokePool is SpokePool {
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
+     * @param _hypXERC20DstDomain Destination domain id for Hyperlane XERC20 transfers.
+     * @param _hypXERC20FeeCap Fee cap for Hyperlane XERC20 transfers.
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP) {} // solhint-disable-line no-empty-blocks
+        uint32 _fillDeadlineBuffer,
+        uint32 _hypXERC20DstDomain,
+        uint256 _hypXERC20FeeCap
+    )
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            // Linea_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0,
+            _hypXERC20DstDomain,
+            _hypXERC20FeeCap
+        )
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Initialize Linea-specific SpokePool.
@@ -140,6 +153,19 @@ contract Linea_SpokePool is SpokePool {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        // Check if this token has a Hyperlane XERC20 router set. If so, use it
+        address hypRouter = _getXERC20HypRouter(l2TokenAddress);
+        if (address(hypRouter) != address(0)) {
+            _transferXERC20ViaHyperlane(
+                IERC20(l2TokenAddress),
+                IHypXERC20Router(hypRouter),
+                withdrawalRecipient,
+                amountToReturn
+            );
+            // Early return here saves us from nested if branches
+            return;
+        }
+
         // Linea's L2 Canonical Message Service, requires a minimum fee to be set.
         uint256 minFee = minimumFeeInWei();
         // We require that the caller pass in the fees as msg.value instead of pulling ETH out of this contract's balance.

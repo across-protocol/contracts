@@ -7,18 +7,6 @@ import { IOFT, SendParam, MessagingFee, OFTReceipt } from "../interfaces/IOFT.so
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
- * @notice List of OFT endpoint ids for different chains.
- * @dev source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts.
- */
-library OFTEIds {
-    uint32 public constant Ethereum = 30101;
-    uint32 public constant Arbitrum = 30110;
-    // Use this value for placeholder purposes only for adapters that extend this adapter but haven't yet been
-    // assigned a domain ID by OFT messaging protocol.
-    uint32 public constant UNINITIALIZED = type(uint32).max;
-}
-
-/**
  * @notice Facilitate bridging tokens via LayerZero's OFT.
  * @dev This contract is intended to be inherited by other chain-specific adapters and spoke pools.
  * @custom:security-contact bugs@across.to
@@ -34,15 +22,14 @@ contract OFTTransportAdapter {
      * @dev this cap should be pretty conservative (high) to not interfere with operations under normal conditions.
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    uint256 public immutable FEE_CAP;
+    uint256 public immutable OFT_FEE_CAP;
 
     /**
      * @notice The destination endpoint id in the OFT messaging protocol.
      * @dev Source https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts.
-     * @dev Can also be found on target chain OFTAdapter -> endpoint() -> eid().
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    uint32 public immutable DST_EID;
+    uint32 public immutable OFT_DST_EID;
 
     error OftFeeCapExceeded();
     error OftInsufficientBalanceForFee();
@@ -55,12 +42,12 @@ contract OFTTransportAdapter {
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(uint32 _oftDstEid, uint256 _feeCap) {
-        DST_EID = _oftDstEid;
-        FEE_CAP = _feeCap;
+        OFT_DST_EID = _oftDstEid;
+        OFT_FEE_CAP = _feeCap;
     }
 
     /**
-     * @notice transfer token to the other dstEId (e.g. chain) via OFT messaging protocol
+     * @notice transfer token to the other dstEid (e.g. chain) via OFT messaging protocol
      * @dev the caller has to provide both _token and _messenger. The caller is responsible for knowing the correct _messenger
      * @param _token token we're sending on current chain.
      * @param _messenger corresponding OFT messenger on current chain.
@@ -76,7 +63,7 @@ contract OFTTransportAdapter {
         bytes32 to = _to.toBytes32();
 
         SendParam memory sendParam = SendParam(
-            DST_EID,
+            OFT_DST_EID,
             to,
             /**
              * _amount, _amount here specify `amountLD` and `minAmountLD`. Setting `minAmountLD` equal to `amountLD` protects us
@@ -98,7 +85,7 @@ contract OFTTransportAdapter {
         MessagingFee memory fee = _messenger.quoteSend(sendParam, false);
         // Create a stack variable to optimize gas usage on subsequent reads
         uint256 nativeFee = fee.nativeFee;
-        if (nativeFee > FEE_CAP) revert OftFeeCapExceeded();
+        if (nativeFee > OFT_FEE_CAP) revert OftFeeCapExceeded();
         if (nativeFee > address(this).balance) revert OftInsufficientBalanceForFee();
 
         // Approve the exact _amount for `_messenger` to spend. Fee will be paid in native token

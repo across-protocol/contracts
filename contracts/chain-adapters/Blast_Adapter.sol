@@ -14,6 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
+import "../libraries/HypXERC20AdapterWithStore.sol";
+import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 
 interface IL1ERC20Bridge {
     /// @notice Sends ERC20 tokens to a receiver's address on the other chain. Note that if the
@@ -46,7 +48,7 @@ interface IL1ERC20Bridge {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
+contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20AdapterWithStore {
     using SafeERC20 for IERC20;
     uint32 public immutable L2_GAS_LIMIT; // 200,000 is a reasonable default.
 
@@ -64,6 +66,12 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param _crossDomainMessenger XDomainMessenger Blast system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
+     * @param l1BlastBridge Blast-specific bridge for yielding tokens.
+     * @param l1Dai DAI address on L1.
+     * @param l2GasLimit Gas limit for L2 execution.
+     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
+     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         WETH9Interface _l1Weth,
@@ -72,11 +80,15 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         IERC20 _l1Usdc,
         IL1ERC20Bridge l1BlastBridge,
         address l1Dai,
-        uint32 l2GasLimit
+        uint32 l2GasLimit,
+        address _adapterStore,
+        uint32 _hypXERC20DstDomain,
+        uint256 _hypXERC20FeeCap
     )
         CrossDomainEnabled(_crossDomainMessenger)
         // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
         CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINITIALIZED)
+        HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
@@ -109,7 +121,8 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         address to
     ) external payable override {
         // If token can be bridged into yield-ing version of ERC20 on L2 side, then use Blast Bridge, otherwise
-        // use standard bridge.
+        // use standard bridge or Hyperlane router, if available
+        address hypRouter = _getHypXERC20Router(l1Token);
 
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
@@ -121,6 +134,10 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
         else if (l1Token == L1_DAI) {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_BLAST_BRIDGE), amount);
             L1_BLAST_BRIDGE.bridgeERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
+        }
+        // Check if this token has a Hyperlane XERC20 router set. If so, use it
+        else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 

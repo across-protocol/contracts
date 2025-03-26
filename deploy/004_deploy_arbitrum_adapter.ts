@@ -1,5 +1,5 @@
-import { CHAIN_IDs, MAINNET_CHAIN_IDs } from "@across-protocol/constants";
-import { toWei } from "../utils/utils";
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { getHyperlaneDomainId, getOftEid, toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -12,11 +12,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // set to the Risk Labs relayer address. The deployer should change this if necessary.
   const l2RefundAddress = "0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67";
 
-  // pick correct destination chain id to set based on deployment network
-  const dstChainId = chainId == MAINNET_CHAIN_IDs.MAINNET ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA;
+  const spokeChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.ARBITRUM : CHAIN_IDs.ARBITRUM_SEPOLIA;
 
-  // 1 ether is a good default for oftFeeCap for cross-chain OFT sends
-  const oftFeeCap = toWei("1");
+  const oftDstEid = getOftEid(spokeChainId);
+  const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
+
+  const hyperlaneDstDomain = getHyperlaneDomainId(spokeChainId);
+  const hyperlaneXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
 
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
@@ -24,9 +26,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     l2RefundAddress,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    dstChainId,
     L1_ADDRESS_MAP[chainId].adapterStore,
+    oftDstEid,
     oftFeeCap,
+    hyperlaneDstDomain,
+    hyperlaneXERC20FeeCap,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
@@ -38,9 +42,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       l2RefundAddress,
       USDC[chainId],
       L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      dstChainId,
       L1_ADDRESS_MAP[chainId].adapterStore,
+      oftDstEid,
       oftFeeCap,
+      hyperlaneDstDomain,
+      hyperlaneXERC20FeeCap,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });

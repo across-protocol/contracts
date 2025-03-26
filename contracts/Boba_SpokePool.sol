@@ -11,14 +11,18 @@ contract Boba_SpokePool is Ovm_SpokePool {
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
+        uint32 _fillDeadlineBuffer,
+        uint32 _hypXERC20DstDomain,
+        uint256 _hypXERC20FeeCap
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             IERC20(address(0)),
-            ITokenMessenger(address(0))
+            ITokenMessenger(address(0)),
+            _hypXERC20DstDomain,
+            _hypXERC20FeeCap
         )
     {} // solhint-disable-line no-empty-blocks
 

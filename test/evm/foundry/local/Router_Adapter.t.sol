@@ -18,6 +18,7 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { HubPool } from "../../../../contracts/HubPool.sol";
 import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpTokenFactoryInterface.sol";
+import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
 
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
@@ -56,6 +57,7 @@ contract RouterAdapterTest is Test {
     MockBedrockCrossDomainMessenger crossDomainMessenger;
     MockBedrockL1StandardBridge standardBridge;
     HubPool hubPool;
+    AdapterStore adapterStore;
 
     address l2Target;
     address owner;
@@ -94,12 +96,17 @@ contract RouterAdapterTest is Test {
         crossDomainMessenger = new MockBedrockCrossDomainMessenger();
         standardBridge = new MockBedrockL1StandardBridge();
 
+        adapterStore = new AdapterStore();
+
         optimismAdapter = new Optimism_Adapter(
             WETH9Interface(address(l1Weth)),
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
             IERC20(address(0)),
-            ITokenMessenger(address(0))
+            ITokenMessenger(address(0)),
+            address(adapterStore),
+            0,
+            0
         );
         routerAdapter = new Mock_Router_Adapter(address(optimismAdapter), l2Target, L2_CHAIN_ID, L3_CHAIN_ID, hubPool);
     }

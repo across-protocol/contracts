@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
+import "./libraries/HypXERC20Adapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
@@ -34,9 +35,6 @@ interface IL2ERC20Bridge {
  */
 contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
-
-    // Ovm_SpokePool does not use OFT messaging, setting the cap to 0
-    uint256 private constant OFT_FEE_CAP = 0;
 
     // "l1Gas" parameter used in call to bridge tokens from this contract back to L1 via IL2ERC20Bridge. Currently
     // unused by bridge but included for future compatibility.
@@ -73,9 +71,20 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _hypXERC20DstDomain,
+        uint256 _hypXERC20FeeCap
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, OFT_FEE_CAP)
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            // Ovm_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0,
+            _hypXERC20DstDomain,
+            _hypXERC20FeeCap
+        )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
@@ -151,6 +160,8 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
+        address hypRouter = _getXERC20HypRouter(l2TokenAddress);
+
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the
         // canonical bridge. On Optimism, this is address 0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000.
         if (l2TokenAddress == address(wrappedNativeToken)) {
@@ -167,6 +178,15 @@ contract Ovm_SpokePool is SpokePool, CircleCCTPAdapter {
         // If the token is USDC && CCTP bridge is enabled, then bridge USDC via CCTP.
         else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
+        }
+        // If the token has a Hyperlane XERC20 router, use it for bridging
+        else if (hypRouter != address(0)) {
+            _transferXERC20ViaHyperlane(
+                IERC20(l2TokenAddress),
+                IHypXERC20Router(hypRouter),
+                withdrawalRecipient,
+                amountToReturn
+            );
         }
         // Note we'll default to withdrawTo instead of bridgeERC20To unless the remoteL1Tokens mapping is set for
         // the l2TokenAddress. withdrawTo should be used to bridge back non-native L2 tokens
