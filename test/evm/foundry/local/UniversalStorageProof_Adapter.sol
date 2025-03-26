@@ -17,9 +17,10 @@ contract UniversalStorageProofAdapterTest is Test {
     uint256 relayRootBundleNonce = 0;
     address relayRootBundleTargetAddress = address(0);
     address adapterStore = address(0);
+    // Set challengePeriodEndTimestamp to current time to simulate when a root bundle is executed.
     HubPoolInterface.RootBundle pendingRootBundle =
         HubPoolInterface.RootBundle({
-            challengePeriodEndTimestamp: 123,
+            challengePeriodEndTimestamp: uint32(block.timestamp),
             poolRebalanceRoot: bytes32("poolRoot"),
             relayerRefundRoot: bytes32("refundRoot"),
             slowRelayRoot: bytes32("slowRoot"),
@@ -87,8 +88,11 @@ contract UniversalStorageProofAdapterTest is Test {
         );
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(relayRootBundleTargetAddress, message));
 
-        // Change the challenge period timestamp.
+        // Change the challenge period timestamp. Remember to warp block.time >= challengePeriodTimestamp to make
+        // HubPoolStore treat this call as a normal relayRootBundle call.
+        // We need block.timestamp >= challengePeriodTimestamp.
         uint32 newChallengePeriodTimestamp = challengePeriodTimestamp + 1;
+        vm.warp(newChallengePeriodTimestamp);
         pendingRootBundle.challengePeriodEndTimestamp = newChallengePeriodTimestamp;
         hubPool.setPendingRootBundle(
             HubPoolInterface.RootBundle({
@@ -149,18 +153,37 @@ contract UniversalStorageProofAdapterTest is Test {
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
     }
 
-    function testRelayMessage_relayAdminFunction_relayAdminBundle_differentPendingRoots() public {
+    function testRelayMessage_relayAdminFunction_relayAdminBundle() public {
+        // Set challenge period timestamp to 0 to simulate relaying an admin bundle in between bundles. The global
+        // nonce should be used.
+        hubPool.setPendingRootBundle(
+            HubPoolInterface.RootBundle({
+                challengePeriodEndTimestamp: 0,
+                poolRebalanceRoot: pendingRootBundle.poolRebalanceRoot,
+                relayerRefundRoot: pendingRootBundle.relayerRefundRoot,
+                slowRelayRoot: pendingRootBundle.slowRelayRoot,
+                claimedBitMap: pendingRootBundle.claimedBitMap,
+                proposer: pendingRootBundle.proposer,
+                unclaimedPoolRebalanceLeafCount: pendingRootBundle.unclaimedPoolRebalanceLeafCount
+            })
+        );
+
         bytes32 refundRoot = pendingRootBundle.relayerRefundRoot;
         bytes32 slowRelayRoot = pendingRootBundle.slowRelayRoot;
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        uint256 expectedNonce = 0;
 
-        // When the admin root bundle's roots disagree with the pending roots,
-        // stores an admin relay root bundle calldata
+        // Relaying an admin root bundle uses the actual target in the data hash.
+        bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+
+        // Now try to relay an admin bundle when the challenge period timestamp is > block.timestamp
         hubPool.setPendingRootBundle(
             HubPoolInterface.RootBundle({
-                challengePeriodEndTimestamp: pendingRootBundle.challengePeriodEndTimestamp,
+                challengePeriodEndTimestamp: uint32(block.timestamp + 100),
                 poolRebalanceRoot: pendingRootBundle.poolRebalanceRoot,
-                relayerRefundRoot: bytes32("differentRefundRoot"),
+                relayerRefundRoot: pendingRootBundle.relayerRefundRoot,
                 slowRelayRoot: pendingRootBundle.slowRelayRoot,
                 claimedBitMap: pendingRootBundle.claimedBitMap,
                 proposer: pendingRootBundle.proposer,
@@ -168,14 +191,16 @@ contract UniversalStorageProofAdapterTest is Test {
             })
         );
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        uint256 expectedNonce = 0;
-        // Relaying an admin root bundle uses the actual target in the data hash.
-        bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
+        // Relaying an admin root bundle uses the global nonce, which will increment now:
+        expectedNonce++;
+        expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
 
+        // Last way to send an admin root bundle is when the challenge period timestamp is <= block.timestamp and the
+        // root bundle data is different from the pending root bundle data.
         hubPool.setPendingRootBundle(
             HubPoolInterface.RootBundle({
-                challengePeriodEndTimestamp: pendingRootBundle.challengePeriodEndTimestamp,
+                challengePeriodEndTimestamp: uint32(block.timestamp),
                 poolRebalanceRoot: pendingRootBundle.poolRebalanceRoot,
                 relayerRefundRoot: pendingRootBundle.relayerRefundRoot,
                 slowRelayRoot: bytes32("differentSlowRelayRoot"),
@@ -185,9 +210,32 @@ contract UniversalStorageProofAdapterTest is Test {
             })
         );
         hubPool.arbitraryMessage(spokePoolTarget, message);
-        // Relaying an admin root bundle uses the global nonce.
         expectedNonce++;
         expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
         assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+
+        hubPool.setPendingRootBundle(
+            HubPoolInterface.RootBundle({
+                challengePeriodEndTimestamp: uint32(block.timestamp),
+                poolRebalanceRoot: pendingRootBundle.poolRebalanceRoot,
+                relayerRefundRoot: bytes32("differentRefundRoot"),
+                slowRelayRoot: pendingRootBundle.slowRelayRoot,
+                claimedBitMap: pendingRootBundle.claimedBitMap,
+                proposer: pendingRootBundle.proposer,
+                unclaimedPoolRebalanceLeafCount: pendingRootBundle.unclaimedPoolRebalanceLeafCount
+            })
+        );
+        hubPool.arbitraryMessage(spokePoolTarget, message);
+        expectedNonce++;
+        expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+    }
+
+    function testRelayTokens_cctp() public {
+        // Uses CCTP to send USDC
+    }
+
+    function testRelayTokens_default() public {
+        // Reverts
     }
 }
