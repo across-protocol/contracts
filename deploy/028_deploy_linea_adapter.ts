@@ -9,9 +9,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
 
+  // TODO: If you remove this assert, also update `const spokeChainId` below
   assert(
     chainId == CHAIN_IDs.MAINNET,
-    "We only support deploying Linea Adapter on Mainnet for now. To deploy on testnet, update consts and configs."
+    "We only support deploying Linea Adapter on Mainnet for now. To deploy on testnet, set CHAIN_IDs.LINEA_SEPOLIA."
   );
 
   const spokeChainId = CHAIN_IDs.LINEA;

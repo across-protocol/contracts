@@ -36,17 +36,21 @@ contract AdapterStore is Ownable {
     }
 
     function batchSetMessengers(
-        bytes32 messengerType,
+        bytes32[] calldata messengerTypes,
         uint256[] calldata dstDomainIds,
         address[] calldata srcChainTokens,
         address[] calldata srcChainMessengers
     ) external onlyOwner {
-        if (dstDomainIds.length != srcChainTokens.length || dstDomainIds.length != srcChainMessengers.length) {
+        if (
+            messengerTypes.length != dstDomainIds.length ||
+            messengerTypes.length != srcChainTokens.length ||
+            messengerTypes.length != srcChainMessengers.length
+        ) {
             revert ArrayLengthMismatch();
         }
 
         for (uint256 i = 0; i < dstDomainIds.length; i++) {
-            _setMessenger(messengerType, dstDomainIds[i], srcChainTokens[i], srcChainMessengers[i]);
+            _setMessenger(messengerTypes[i], dstDomainIds[i], srcChainTokens[i], srcChainMessengers[i]);
         }
     }
 
