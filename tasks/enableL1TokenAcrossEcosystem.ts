@@ -1,4 +1,4 @@
-import { task } from "hardhat/config";
+import { task, types } from "hardhat/config";
 import assert from "assert";
 import { toBN } from "../utils/utils";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
@@ -28,7 +28,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
   .addParam("token", "Symbol of token to enable")
   .addOptionalParam("chains", "Comma-delimited list of chains to enable the token on. Defaults to all supported chains")
-  .addOptionalParam("lpAmount", "Amount of LP token to burn when enabling a new token", "1")
+  .addOptionalParam("lpAmount", "Amount of LP token to burn when enabling a new token", 1, types.int)
   .addOptionalParam(
     "customoptimismbridge",
     "Custom token bridge to set for optimism, for example used with SNX and DAI"
