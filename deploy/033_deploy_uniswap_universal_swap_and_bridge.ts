@@ -1,14 +1,11 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
-import { L1_ADDRESS_MAP, L2_ADDRESS_MAP, WETH, WMATIC } from "./consts";
+import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const chainId = parseInt(await hre.getChainId());
-  const nativeToken = PUBLIC_NETWORKS[chainId].nativeToken;
-  const wrappedNativeToken = TOKEN_SYMBOLS_MAP[`W${nativeToken}`].addresses[chainId];
 
   await hre.deployments.deploy("UniswapV3_UniversalSwapAndBridge", {
     contract: "UniversalSwapAndBridge",
@@ -18,7 +15,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deterministicDeployment: "0x123456789abc", // Salt for the create2 call.
     args: [
       getDeployedAddress("SpokePool", chainId),
-      wrappedNativeToken,
       chainId === 1 ? L1_ADDRESS_MAP[chainId].uniswapV3SwapRouter02 : L2_ADDRESS_MAP[chainId].uniswapV3SwapRouter02,
       // Allows function selectors in Uniswap V3 SwapRouter02:
       // - exactInputSingle
