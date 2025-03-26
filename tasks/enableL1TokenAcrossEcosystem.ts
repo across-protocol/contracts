@@ -1,6 +1,7 @@
 import { task } from "hardhat/config";
 import assert from "assert";
-import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { toBN } from "../utils/utils";
+import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
 import { TokenSymbol } from "./types";
 
@@ -27,6 +28,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
   .addParam("token", "Symbol of token to enable")
   .addOptionalParam("chains", "Comma-delimited list of chains to enable the token on. Defaults to all supported chains")
+  .addOptionalParam("lpAmount", "Amount of LP token to burn when enabling a new token", "1")
   .addOptionalParam(
     "customoptimismbridge",
     "Custom token bridge to set for optimism, for example used with SNX and DAI"
@@ -45,8 +47,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     assert(isTokenSymbol(_matchedSymbol));
     const matchedSymbol = _matchedSymbol as TokenSymbol;
 
-    const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubChainId];
-    assert(l1Token !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
+    const l1TokenAddr = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubChainId];
+    assert(l1TokenAddr !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
 
     // If deposit routes chains are provided then we'll only add routes involving these chains. This is used to add new
     // deposit routes to a new chain for an existing L1 token, so we also won't add a new LP token if this is defined.
@@ -60,7 +62,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     );
     if (!hasSetConfigStore) process.exit(0);
 
-    console.log(`\nRunning task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1Token}`);
+    console.log(`\nRunning task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1TokenAddr}`);
     const { deployments, ethers } = hre;
     const { AddressZero: ZERO_ADDRESS } = ethers.constants;
     const [signer] = await hre.ethers.getSigners();
@@ -110,25 +112,29 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const callData = [];
 
     // If the l1 token is not yet enabled for LP, enable it.
-    let { lpToken } = await hubPool.pooledTokens(l1Token);
+    let { lpToken } = await hubPool.pooledTokens(l1TokenAddr);
     if (lpToken === ZERO_ADDRESS) {
       const [lpFactoryAddr, { abi: lpFactoryABI }] = await Promise.all([
         hubPool.lpTokenFactory(),
         deployments.get("LpTokenFactory"),
       ]);
       const lpTokenFactory = new ethers.Contract(lpFactoryAddr, lpFactoryABI, signer);
-      lpToken = await lpTokenFactory.callStatic.createLpToken(l1Token);
-      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token} (LP token ${lpToken})`);
+      lpToken = await lpTokenFactory.callStatic.createLpToken(l1TokenAddr);
+      console.log(`\nAdding calldata to enable liquidity provision on ${l1TokenAddr} (LP token ${lpToken})`);
 
-      callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
+      callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1TokenAddr]));
+
+      const l1Token = (await ethers.getContractFactory("ExpandedERC20")).attach(l1TokenAddr);
+      const decimals = await l1Token.symbol();
+      const depositAmount = toBN(taskArguments.lpAmount).mul(toBN(10).pow(decimals));
 
       // Ensure to always seed the LP with at least 1 unit of the LP token.
       console.log(
         `\nAdding calldata to enable ensure atomic deposit of L1 token for LP token ${lpToken}` +
-          "\n\n\tNOTE: ENSURE TO BURN AT LEAST 1 UNIT OF THE LP TOKEN AFTER EXECUTING."
+          "\n\n\tNOTE: ENSURE TO BURN ${depositAmount} UNITS OF THE LP TOKEN AFTER EXECUTING."
       );
-      const minDeposit = "1";
-      callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, minDeposit]));
+
+      callData.push(hubPool.interface.encodeFunctionData("addLiquidity", [l1Token, depositAmount]));
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
