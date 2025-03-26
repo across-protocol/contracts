@@ -1,6 +1,5 @@
 import { task, types } from "hardhat/config";
 import assert from "assert";
-import { toBN } from "../utils/utils";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
 import { TokenSymbol } from "./types";
@@ -68,6 +67,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const { deployments, ethers } = hre;
     const { AddressZero: ZERO_ADDRESS } = ethers.constants;
     const [signer] = await hre.ethers.getSigners();
+    const { BigNumber } = ethers;
 
     // Remove chainIds that are in the ignore list.
     const _enabledChainIds = enabledChainIds(hubChainId);
@@ -128,7 +128,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
 
       const l1Token = (await ethers.getContractFactory("ExpandedERC20")).attach(l1TokenAddr);
       const decimals = await l1Token.symbol();
-      const depositAmount = toBN(taskArguments.lpAmount).mul(toBN(10).pow(decimals));
+      const depositAmount = BigNumber.from(taskArguments.lpAmount).mul(BigNumber.from(10).pow(decimals));
 
       // Ensure to always seed the LP with at least 1 unit of the LP token.
       console.log(
