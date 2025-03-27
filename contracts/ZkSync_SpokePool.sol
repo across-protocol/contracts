@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
+import { CircleCCTPAdapter } from "./libraries/CircleCCTPAdapter";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
@@ -22,7 +23,7 @@ interface IL2ETH {
  * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
  * @custom:security-contact bugs@across.to
  */
-contract ZkSync_SpokePool is SpokePool {
+contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost
     // upon contract deployment. On zkSync the opposite is true: deploying the same bytecode for contracts,
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
@@ -33,15 +34,22 @@ contract ZkSync_SpokePool is SpokePool {
 
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
+    ZkBridgeLike public immutable zkUSDCBridge;
+    address public immutable usdcAddress;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
+        IERC20 _l2Usdc,
+        ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the ZkSync SpokePool.
@@ -109,6 +117,12 @@ contract ZkSync_SpokePool is SpokePool {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
             IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
+        } else if (l2TokenAddress == usdcAddress) {
+            if (_isCCTPEnabled()) {
+                _transferUsdc(withdrawalRecipient, amountToReturn);
+            } else {
+                zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            }
         } else {
             zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
         }

@@ -9,25 +9,20 @@ import "./ZkSync_SpokePool.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Lens_SpokePool is ZkSync_SpokePool {
-    address public immutable usdcAddress;
-    ZkBridgeLike public immutable zkUSDCBridge;
-
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         address _l2USDCAddress,
         ZkBridgeLike _zkUSDCBridge,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) ZkSync_SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {
-        usdcAddress = _l2USDCAddress;
-        zkUSDCBridge = _zkUSDCBridge;
-    }
-
-    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-        if (l2TokenAddress == usdcAddress) {
-            zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
-        } else {
-            super._bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
-        }
-    }
+    )
+        ZkSync_SpokePool(
+            _wrappedNativeTokenAddress,
+            _l2USDCAddress,
+            _zkUSDCBridge,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer
+        )
+    {}
 }

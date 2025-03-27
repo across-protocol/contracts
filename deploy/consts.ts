@@ -189,6 +189,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.ZK_SYNC]: {
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    cctpTokenMessenger: ZERO_ADDRESS,
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
   },
   [CHAIN_IDs.OPTIMISM]: {
@@ -216,6 +217,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.LENS]: {
     zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
     zkUSDCBridge: "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81",
+    cctpTokenMessenger: ZERO_ADDRESS,
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
