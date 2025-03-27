@@ -71,18 +71,6 @@ const initializeState = async (
   return { state, seed: actualSeed };
 };
 
-const createRoutePda = (originToken: PublicKey, seed: BN, routeChainId: BN) => {
-  return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("route"),
-      originToken.toBytes(),
-      seed.toArrayLike(Buffer, "le", 8),
-      routeChainId.toArrayLike(Buffer, "le", 8),
-    ],
-    program.programId
-  )[0];
-};
-
 const getVaultAta = async (tokenMint: PublicKey, state: PublicKey) => {
   const tokenMintAccount = await provider.connection.getAccountInfo(tokenMint);
   if (tokenMintAccount === null) throw new Error("Token Mint account not found");
@@ -129,7 +117,6 @@ export const common = {
   depositQuoteTimeBuffer,
   fillDeadlineBuffer,
   initializeState,
-  createRoutePda,
   getVaultAta,
   setCurrentTime,
   getCurrentTime,
