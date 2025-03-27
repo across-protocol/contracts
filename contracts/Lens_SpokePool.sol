@@ -9,8 +9,8 @@ import "./ZkSync_SpokePool.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Lens_SpokePool is ZkSync_SpokePool {
-    address public usdcAddress;
-    ZkBridgeLike public zkUSDCBridge;
+    address public immutable usdcAddress;
+    ZkBridgeLike public immutable zkUSDCBridge;
 
     constructor(
         address _wrappedNativeTokenAddress,
