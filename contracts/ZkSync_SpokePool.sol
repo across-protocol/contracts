@@ -41,7 +41,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     /**
      * @notice Constructor.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param _l2Usdc USDC address on the SpokePool.
+     * @param _l2Usdc USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
      * @param _zkERC20Bridge Elastic chain custom bridge address (if deployed, or address(0) to disable).
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
@@ -133,12 +133,9 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
             if (_isCCTPEnabled()) {
                 // Circle native USDC via CCTP.
                 _transferUsdc(withdrawalRecipient, amountToReturn);
-            } else if (address(zkUSDCBridge) != address(0)) {
+            } else {
                 // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
                 zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
-            } else {
-                // Fall back to the regular ERC20 bridge.
-                zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
             }
         } else {
             zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
