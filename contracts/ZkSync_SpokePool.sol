@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import { CircleCCTPAdapter } from "./libraries/CircleCCTPAdapter";
+import { CircleCCTPAdapter } from "./libraries/CircleCCTPAdapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
