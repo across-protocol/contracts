@@ -14,6 +14,7 @@ import { ZkStack_CustomGasToken_Adapter, FunderInterface } from "../../../../con
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { MockBridgeHub, BridgeHubInterface } from "../../../../contracts/test/MockZkStackBridgeHub.sol";
+import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // The Hub Pool normally delegatecalls these adapters, and the Hub Pool has a receive() function. Since we are testing these adapters by calling to them
 // directly, we need to give them receive() functionality.
@@ -21,8 +22,10 @@ contract MockZkStack_Adapter is ZkStack_Adapter {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
-        address _l1Usdc,
+        IERC20 _l1Usdc,
         address _usdcSharedBridge,
+        ITokenMessenger _usdcTokenMessenger,
+        uint32 _recipientCircleDomainId,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         uint256 _l2GasLimit,
@@ -33,6 +36,8 @@ contract MockZkStack_Adapter is ZkStack_Adapter {
             _bridgeHub,
             _l1Usdc,
             _usdcSharedBridge,
+            _usdcTokenMessenger,
+            _recipientCircleDomainId,
             _l1Weth,
             _l2RefundAddress,
             _l2GasLimit,
@@ -48,8 +53,10 @@ contract MockZkStack_CustomGasToken_Adapter is ZkStack_CustomGasToken_Adapter {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
-        address _l1Usdc,
+        IERC20 _l1Usdc,
         address _usdcSharedBridge,
+        ITokenMessenger _usdcTokenMessenger,
+        uint32 _recipientCircleDomainId,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         FunderInterface _customGasTokenFunder,
@@ -61,6 +68,8 @@ contract MockZkStack_CustomGasToken_Adapter is ZkStack_CustomGasToken_Adapter {
             _bridgeHub,
             _l1Usdc,
             _usdcSharedBridge,
+            _usdcTokenMessenger,
+            _recipientCircleDomainId,
             _l1Weth,
             _l2RefundAddress,
             _customGasTokenFunder,
@@ -139,8 +148,10 @@ contract ZkStackAdapterTest is Test {
         zksAdapter = new MockZkStack_Adapter(
             ZK_CHAIN_ID,
             bridgeHub,
-            address(l1Usdc),
+            IERC20(address(l1Usdc)),
             usdcSharedBridge,
+            ITokenMessenger(address(0)),
+            type(uint32).max,
             WETH9Interface(address(l1Weth)),
             owner,
             L2_GAS_LIMIT,
@@ -150,8 +161,10 @@ contract ZkStackAdapterTest is Test {
         zksCustomGasAdapter = new MockZkStack_CustomGasToken_Adapter(
             ZK_ALT_CHAIN_ID,
             bridgeHub,
-            address(l1Usdc),
+            IERC20(address(l1Usdc)),
             usdcSharedBridge,
+            ITokenMessenger(address(0)),
+            type(uint32).max,
             WETH9Interface(address(l1Weth)),
             owner,
             funder,

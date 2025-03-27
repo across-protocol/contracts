@@ -7,6 +7,8 @@ import "../external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
+import { CircleCCTPAdapter } from "../libraries/CircleCCTPAdapter.sol";
+import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 
 /**
  * @notice Interface for funder contract that this contract pulls from to pay for relayMessage()/relayTokens()
@@ -33,7 +35,7 @@ interface FunderInterface {
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
+contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     // The ZkSync bridgehub contract treats address(1) to represent ETH.
@@ -64,9 +66,6 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable L1_WETH;
 
-    // Set l1Usdc at construction time to help determine which shared bridge to use.
-    address public immutable L1_USDC;
-
     // SharedBridge address, which is read from the BridgeHub at construction.
     address public immutable SHARED_BRIDGE;
 
@@ -91,6 +90,10 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
      * @notice Constructs new Adapter.
      * @param _chainId The target ZkStack network's chain ID.
      * @param _bridgeHub The bridge hub contract address for the ZkStack network.
+     * @param _l1Usdc USDC address on L1.
+     * @param _usdcSharedBridge Address of the second bridge contract for USDC corresponding to the configured ZkStack network.
+     * @param _cctpTokenMessenger address of the CCTP token messenger contract for the configured network.
+     * @param _recipientCircleDomainId Circle domain ID for the destination network.
      * @param _l1Weth WETH address on L1.
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
      * @param _customGasTokenFunder Contract on L1 which funds bridge fees with amounts in the custom gas token.
@@ -101,19 +104,20 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
-        address _l1Usdc,
+        IERC20 _l1Usdc,
         address _usdcSharedBridge,
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _recipientCircleDomainId,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         FunderInterface _customGasTokenFunder,
         uint256 _l2GasLimit,
         uint256 _l1GasToL2GasPerPubDataLimit,
         uint256 _maxTxGasprice
-    ) {
+    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _recipientCircleDomainId) {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
         L1_WETH = _l1Weth;
-        L1_USDC = _l1Usdc;
         L2_REFUND_ADDRESS = _l2RefundAddress;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
         L2_GAS_LIMIT = _l2GasLimit;
@@ -211,11 +215,30 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     refundRecipient: L2_REFUND_ADDRESS
                 })
             );
+        } else if (l1Token == address(usdcToken)) {
+            if (_isCCTPEnabled()) {
+                _transferUsdc(to, amount);
+            } else {
+                IERC20(CUSTOM_GAS_TOKEN).forceApprove(USDC_SHARED_BRIDGE, txBaseCost);
+                IERC20(l1Token).forceApprove(USDC_SHARED_BRIDGE, amount);
+                txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
+                    BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
+                        chainId: CHAIN_ID,
+                        mintValue: txBaseCost,
+                        l2Value: 0,
+                        l2GasLimit: L2_GAS_LIMIT,
+                        l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
+                        refundRecipient: L2_REFUND_ADDRESS,
+                        secondBridgeAddress: USDC_SHARED_BRIDGE,
+                        secondBridgeValue: 0,
+                        secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
+                    })
+                );
+            }
         } else {
-            // An ERC20 that is not WETH and not the custom gas token. If bridging USDC, use the alternate USDC shared bridge as the second bridge address.
-            address sharedBridge = l1Token == L1_USDC ? USDC_SHARED_BRIDGE : SHARED_BRIDGE;
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
-            IERC20(l1Token).forceApprove(sharedBridge, amount);
+            // An ERC20 that is not WETH, USDC, nor the custom gas token.
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
+            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -224,7 +247,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: sharedBridge,
+                    secondBridgeAddress: SHARED_BRIDGE,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })

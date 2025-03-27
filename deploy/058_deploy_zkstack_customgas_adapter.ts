@@ -8,6 +8,8 @@ import {
   ZK_L2_GAS_LIMIT,
   ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT,
   ZK_MAX_GASPRICE,
+  ZERO_ADDRESS,
+  CIRCLE_UNINITIALIZED_DOMAIN_ID,
 } from "./consts";
 
 /**
@@ -37,6 +39,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].zkBridgeHub,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId][`zkUsdcSharedBridge_${SPOKE_CHAIN_ID}`],
+    ZERO_ADDRESS,
+    CIRCLE_UNINITIALIZED_DOMAIN_ID,
     WETH[chainId],
     L2_REFUND_ADDRESS,
     L1_ADDRESS_MAP[chainId].donationBox,
