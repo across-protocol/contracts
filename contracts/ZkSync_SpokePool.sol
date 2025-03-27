@@ -122,7 +122,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         if (address(this).balance > 0) wrappedNativeToken.deposit{ value: address(this).balance }();
     }
 
-    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual override {
+    function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         // SpokePool is expected to receive ETH from the L1 HubPool and currently, withdrawing ETH directly
         // over the ERC20 Bridge is blocked at the contract level. Therefore, we need to unwrap it before withdrawing.
         if (l2TokenAddress == address(wrappedNativeToken)) {
