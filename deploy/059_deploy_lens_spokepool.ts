@@ -4,7 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WGRASS, WGHO } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WGRASS, WGHO } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "Lens_SpokePool";
@@ -24,7 +24,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-  const constructorArgs = [WGHO[spokeChainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
+  const l2USDCBridge = "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81";
+  const constructorArgs = [
+    WGHO[spokeChainId],
+    USDC[spokeChainId],
+    l2USDCBridge,
+    QUOTE_TIME_BUFFER,
+    FILL_DEADLINE_BUFFER,
+  ];
 
   let newAddress: string;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
