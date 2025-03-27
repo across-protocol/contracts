@@ -34,6 +34,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     ZkBridgeLike public immutable zkUSDCBridge;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
@@ -49,6 +50,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
      */
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         IERC20 _l2Usdc,
