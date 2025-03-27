@@ -4,7 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WGHO } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WGHO, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "Lens_SpokePool";
@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const artifact = await deployer.loadArtifact(contractName);
 
-  const { zkErc20Bridge, zkUSDCBridge } = L2_ADDRESS_MAP[spokeChainId];
+  const { zkErc20Bridge, zkUSDCBridge = ZERO_ADDRESS, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
     zkErc20Bridge,
@@ -29,7 +29,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const constructorArgs = [
     WGHO[spokeChainId],
     USDC[spokeChainId],
-    zkUSDCBridge, // Alteratively cctpTokenMessenger when CCTP is live.
+    zkUSDCBridge,
+    cctpTokenMessenger,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
   ];
