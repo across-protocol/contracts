@@ -9,7 +9,8 @@ interface IHubPool {
 
 /**
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
- * on the L2 where the SpokePool is deployed. Only the HubPool can store data to this contract.
+ * on the L2 where the SpokePool is deployed. Only the HubPool can store data to this contract. Each data to be
+ * relayed is written to a unique slot key and that slot key's value can never be changed or deleted.
  * @dev Designed to be used with UniversalStorageProof_Adapter and UniversalStorageProof_SpokePool.
  * @dev This contract DOES NOT prevent replay attacks of storage proofs on the L2 spoke pool if the
  * UniversalStorageProof_Adapters using this contract are mapped to spokepools with the same address on different
