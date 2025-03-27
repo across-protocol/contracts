@@ -12,7 +12,7 @@ contract Lens_SpokePool is ZkSync_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
-        address _l2USDCAddress,
+        IERC20 _l2USDCAddress,
         ZkBridgeLike _zkUSDCBridge,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
