@@ -7,16 +7,48 @@ import { UniversalStorageProof_Adapter, HubPoolStore } from "../../../../contrac
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract MockCCTPMinter is ITokenMinter {
+    function burnLimitsPerMessage(address) external pure returns (uint256) {
+        return type(uint256).max;
+    }
+}
+
+contract MockCCTPMessenger is ITokenMessenger {
+    ITokenMinter private minter;
+
+    constructor(ITokenMinter _minter) {
+        minter = _minter;
+    }
+
+    function depositForBurn(
+        uint256,
+        uint32,
+        bytes32,
+        address
+    ) external pure returns (uint64 _nonce) {
+        return 0;
+    }
+
+    function localMinter() external view returns (ITokenMinter) {
+        return minter;
+    }
+}
 
 contract UniversalStorageProofAdapterTest is Test {
     UniversalStorageProof_Adapter adapter;
     HubPoolStore store;
     MockHubPool hubPool;
     address spokePoolTarget;
-
     uint256 relayRootBundleNonce = 0;
     address relayRootBundleTargetAddress = address(0);
     address adapterStore = address(0);
+    ERC20 usdc;
+    uint256 usdcMintAmount = 100e6;
+    MockCCTPMessenger cctpMessenger;
+    uint32 cctpDestinationDomainId = 7;
+
     // Set challengePeriodEndTimestamp to current time to simulate when a root bundle is executed.
     HubPoolInterface.RootBundle pendingRootBundle =
         HubPoolInterface.RootBundle({
@@ -32,11 +64,22 @@ contract UniversalStorageProofAdapterTest is Test {
 
     function setUp() public {
         spokePoolTarget = vm.addr(1);
-        hubPool = new MockHubPool(address(0));
+        hubPool = new MockHubPool(address(0)); // Initialize adapter to address 0 and we'll overwrite
+        // it after we use this hub pool to initialize the hub pool store which is used to initialize
+        // the adapter.
         store = new HubPoolStore(address(hubPool));
-        adapter = new UniversalStorageProof_Adapter(store, IERC20(address(0)), ITokenMessenger(address(0)), 0);
+        usdc = new ERC20("USDC", "USDC");
+        MockCCTPMinter minter = new MockCCTPMinter();
+        cctpMessenger = new MockCCTPMessenger(ITokenMinter(minter));
+        adapter = new UniversalStorageProof_Adapter(
+            store,
+            IERC20(address(usdc)),
+            ITokenMessenger(address(cctpMessenger)),
+            cctpDestinationDomainId
+        );
         hubPool.changeAdapter(address(adapter));
         hubPool.setPendingRootBundle(pendingRootBundle);
+        deal(address(usdc), address(hubPool), usdcMintAmount, true);
     }
 
     function testRelayMessage_relayRootBundle() public {
@@ -120,14 +163,7 @@ contract UniversalStorageProofAdapterTest is Test {
     }
 
     function testRelayMessage_relayAdminFunction() public {
-        address originToken = makeAddr("origin");
-        uint256 destinationChainId = 111;
-        bytes memory message = abi.encodeWithSignature(
-            "setEnableRoute(address,uint256,bool)",
-            originToken,
-            destinationChainId,
-            true
-        );
+        bytes memory message = abi.encodeWithSignature("setCrossDomainAdmin(address)", makeAddr("crossDomainAdmin"));
         vm.expectCall(
             address(store),
             abi.encodeWithSignature("storeRelayAdminFunctionCalldata(address,bytes)", spokePoolTarget, message)
@@ -136,14 +172,7 @@ contract UniversalStorageProofAdapterTest is Test {
     }
 
     function testRelayMessage_relayAdminFunction_incrementsNonce() public {
-        address originToken = makeAddr("origin");
-        uint256 destinationChainId = 111;
-        bytes memory message = abi.encodeWithSignature(
-            "setEnableRoute(address,uint256,bool)",
-            originToken,
-            destinationChainId,
-            true
-        );
+        bytes memory message = abi.encodeWithSignature("setCrossDomainAdmin(address)", makeAddr("crossDomainAdmin"));
         hubPool.arbitraryMessage(spokePoolTarget, message);
         hubPool.arbitraryMessage(spokePoolTarget, message);
 
@@ -233,9 +262,21 @@ contract UniversalStorageProofAdapterTest is Test {
 
     function testRelayTokens_cctp() public {
         // Uses CCTP to send USDC
+        vm.expectCall(
+            address(cctpMessenger),
+            abi.encodeWithSignature(
+                "depositForBurn(uint256,uint32,bytes32,address)",
+                usdcMintAmount,
+                cctpDestinationDomainId,
+                spokePoolTarget,
+                address(usdc)
+            )
+        );
+        hubPool.relayTokens(address(usdc), makeAddr("l2Usdc"), usdcMintAmount, spokePoolTarget);
     }
 
     function testRelayTokens_default() public {
-        // Reverts
+        vm.expectRevert();
+        hubPool.relayTokens(makeAddr("erc20"), makeAddr("l2Erc20"), usdcMintAmount, spokePoolTarget);
     }
 }

@@ -53,7 +53,7 @@ contract UniversalStorageProof_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @dev This function only uses the CircleCCTPAdapter to relay USDC tokens to CCTP enabled L2 chains.
      * Relaying other tokens will cause this function to revert.
      * @param l1Token Address of the token on L1.
-     * @param l2Token Address of the token on L2.
+     * @param l2Token Address of the token on L2. Unused
      * @param amount Amount of tokens to relay.
      * @param to Address to receive the tokens on L2. Should be SpokePool address.
      */
