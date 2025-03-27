@@ -17,18 +17,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const wallet = zk.Wallet.fromMnemonic(mnemonic);
   const deployer = new zkDeployer(hre, wallet);
 
+  const { zkErc20Bridge, zkUSDCBridge } = L2_ADDRESS_MAP[spokeChainId];
+
   const artifact = await deployer.loadArtifact(contractName);
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
-    L2_ADDRESS_MAP[spokeChainId].zkErc20Bridge,
+    zkErc20Bridge,
     hubPool.address,
     hubPool.address,
   ];
-  const l2USDCBridge = "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81";
   const constructorArgs = [
     WGHO[spokeChainId],
     USDC[spokeChainId],
-    l2USDCBridge,
+    zkUSDCBridge,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
   ];
