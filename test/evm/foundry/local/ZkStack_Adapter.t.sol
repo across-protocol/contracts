@@ -21,6 +21,8 @@ contract MockZkStack_Adapter is ZkStack_Adapter {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
+        address _l1Usdc,
+        address _usdcSharedBridge,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         uint256 _l2GasLimit,
@@ -29,6 +31,8 @@ contract MockZkStack_Adapter is ZkStack_Adapter {
         ZkStack_Adapter(
             _chainId,
             _bridgeHub,
+            _l1Usdc,
+            _usdcSharedBridge,
             _l1Weth,
             _l2RefundAddress,
             _l2GasLimit,
@@ -44,6 +48,8 @@ contract MockZkStack_CustomGasToken_Adapter is ZkStack_CustomGasToken_Adapter {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
+        address _l1Usdc,
+        address _usdcSharedBridge,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         FunderInterface _customGasTokenFunder,
@@ -53,6 +59,8 @@ contract MockZkStack_CustomGasToken_Adapter is ZkStack_CustomGasToken_Adapter {
         ZkStack_CustomGasToken_Adapter(
             _chainId,
             _bridgeHub,
+            _l1Usdc,
+            _usdcSharedBridge,
             _l1Weth,
             _l2RefundAddress,
             _customGasTokenFunder,
@@ -89,6 +97,8 @@ contract ZkStackAdapterTest is Test {
 
     Token_ERC20 l1Token;
     Token_ERC20 l2Token;
+    Token_ERC20 l1Usdc;
+    Token_ERC20 l2Usdc;
     Token_ERC20 l1CustomGasToken;
     Token_ERC20 l2CustomGasToken;
     WETH9 l1Weth;
@@ -98,6 +108,7 @@ contract ZkStackAdapterTest is Test {
 
     address owner;
     address sharedBridge;
+    address usdcSharedBridge;
     uint256 baseCost;
 
     uint256 constant ZK_CHAIN_ID = 324;
@@ -108,9 +119,12 @@ contract ZkStackAdapterTest is Test {
     function setUp() public {
         owner = makeAddr("owner");
         sharedBridge = makeAddr("sharedBridge");
+        usdcSharedBridge = makeAddr("sharedBridge");
 
         l1Token = new Token_ERC20("l1Token", "l1Token");
         l2Token = new Token_ERC20("l2Token", "l2Token");
+        l1Usdc = new Token_ERC20("l1Usdc", "l1Usdc");
+        l2Usdc = new Token_ERC20("l2Usdc", "l2Usdc");
         l1CustomGasToken = new Token_ERC20("l1CustomGasToken", "l1CustomGasToken");
         l2CustomGasToken = new Token_ERC20("l2CustomGasToken", "l2CustomGasToken");
         l1Weth = new WETH9();
@@ -125,6 +139,8 @@ contract ZkStackAdapterTest is Test {
         zksAdapter = new MockZkStack_Adapter(
             ZK_CHAIN_ID,
             bridgeHub,
+            address(l1Usdc),
+            usdcSharedBridge,
             WETH9Interface(address(l1Weth)),
             owner,
             L2_GAS_LIMIT,
@@ -134,6 +150,8 @@ contract ZkStackAdapterTest is Test {
         zksCustomGasAdapter = new MockZkStack_CustomGasToken_Adapter(
             ZK_ALT_CHAIN_ID,
             bridgeHub,
+            address(l1Usdc),
+            usdcSharedBridge,
             WETH9Interface(address(l1Weth)),
             owner,
             funder,
@@ -200,6 +218,31 @@ contract ZkStackAdapterTest is Test {
         emit ZkStack_Adapter.ZkStackMessageRelayed(expectedTxnHash);
         zksAdapter.relayTokens{ value: baseCost }(address(l1Weth), address(l2Weth), amountToSend, random);
         vm.stopPrank();
+    }
+
+    // Sending USDC should construct a L2TransactionTwoBridges struct with the shared bridge as the USDC shared bridge.
+    function testRelayUsdc(uint256 amountToSend, address random) public {
+        amountToSend = uint256(bound(amountToSend, 1, type(uint256).max));
+        l1Usdc.mint(address(zksAdapter), amountToSend);
+        bytes32 expectedTxnHash = keccak256(
+            abi.encode(
+                BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
+                    chainId: ZK_CHAIN_ID,
+                    mintValue: baseCost,
+                    l2Value: 0,
+                    l2GasLimit: L2_GAS_LIMIT,
+                    l2GasPerPubdataByteLimit: L2_GAS_PER_PUBDATA_LIMIT,
+                    refundRecipient: owner,
+                    secondBridgeAddress: usdcSharedBridge,
+                    secondBridgeValue: 0,
+                    secondBridgeCalldata: abi.encode(address(l1Usdc), amountToSend, random)
+                })
+            )
+        );
+
+        vm.expectEmit(address(zksAdapter));
+        emit ZkStack_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        zksAdapter.relayTokens{ value: baseCost }(address(l1Usdc), address(l2Usdc), amountToSend, random);
     }
 
     // Sending any random token should construct a L2TransactionTwoBridges struct.
@@ -286,6 +329,33 @@ contract ZkStackAdapterTest is Test {
         vm.stopPrank();
         // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.
         assertEq(l1CustomGasToken.allowance(address(zksCustomGasAdapter), sharedBridge), baseCost);
+    }
+
+    // There should be a hash from L2TransactionTwoBridges with the USDC shared bridge as the second bridge address, an approval for the fee amount from the
+    // custom gas token, and an approval for the amount to transfer in the l1 token contract.
+    function testRelayUsdcCustomGas(uint256 amountToSend, address random) public {
+        bytes32 expectedTxnHash = keccak256(
+            abi.encode(
+                BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
+                    chainId: ZK_ALT_CHAIN_ID,
+                    mintValue: baseCost,
+                    l2Value: 0,
+                    l2GasLimit: L2_GAS_LIMIT,
+                    l2GasPerPubdataByteLimit: L2_GAS_PER_PUBDATA_LIMIT,
+                    refundRecipient: owner,
+                    secondBridgeAddress: usdcSharedBridge,
+                    secondBridgeValue: 0,
+                    secondBridgeCalldata: abi.encode(address(l1Usdc), amountToSend, random)
+                })
+            )
+        );
+
+        vm.expectEmit(address(zksCustomGasAdapter));
+        emit ZkStack_CustomGasToken_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        zksCustomGasAdapter.relayTokens(address(l1Usdc), address(l2Usdc), amountToSend, random);
+        // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.
+        assertEq(l1CustomGasToken.allowance(address(zksCustomGasAdapter), usdcSharedBridge), baseCost);
+        assertEq(l1Usdc.allowance(address(zksCustomGasAdapter), usdcSharedBridge), amountToSend);
     }
 
     // There should be a hash from L2TransactionTwoBridges, an approval for the fee amount in custom gas token, and an approval for the amount to transfer in

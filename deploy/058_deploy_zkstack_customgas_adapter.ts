@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
 import {
   L1_ADDRESS_MAP,
+  USDC,
   WETH,
   ZK_L2_GAS_LIMIT,
   ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT,
@@ -34,6 +35,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const constructorArguments = [
     SPOKE_CHAIN_ID,
     L1_ADDRESS_MAP[chainId].zkBridgeHub,
+    USDC[chainId],
+    L1_ADDRESS_MAP[chainId].zkUsdcSharedBridge,
     WETH[chainId],
     L2_REFUND_ADDRESS,
     L1_ADDRESS_MAP[chainId].donationBox,

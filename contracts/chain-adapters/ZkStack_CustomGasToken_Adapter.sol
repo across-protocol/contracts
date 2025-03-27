@@ -64,8 +64,14 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable L1_WETH;
 
+    // Set l1Usdc at construction time to help determine which shared bridge to use.
+    address public immutable L1_USDC;
+
     // SharedBridge address, which is read from the BridgeHub at construction.
     address public immutable SHARED_BRIDGE;
+
+    // USDC SharedBridge address, which is passed in on construction and used as the second bridge contract for USDC transfers.
+    address public immutable USDC_SHARED_BRIDGE;
 
     // Custom gas token address, which is read from the BridgeHub at construction.
     address public immutable CUSTOM_GAS_TOKEN;
@@ -95,6 +101,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
+        address _l1Usdc,
+        address _usdcSharedBridge,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         FunderInterface _customGasTokenFunder,
@@ -105,12 +113,14 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
         L1_WETH = _l1Weth;
+        L1_USDC = _l1Usdc;
         L2_REFUND_ADDRESS = _l2RefundAddress;
         CUSTOM_GAS_TOKEN_FUNDER = _customGasTokenFunder;
         L2_GAS_LIMIT = _l2GasLimit;
         MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
+        USDC_SHARED_BRIDGE = _usdcSharedBridge;
         CUSTOM_GAS_TOKEN = BRIDGE_HUB.baseToken(CHAIN_ID);
         if (CUSTOM_GAS_TOKEN == ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenNotAllowed();
@@ -202,9 +212,10 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                 })
             );
         } else {
-            // An ERC20 that is not WETH and not the custom gas token.
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
-            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
+            // An ERC20 that is not WETH and not the custom gas token. If bridging USDC, use the alternate USDC shared bridge as the second bridge address.
+            address sharedBridge = l1Token == L1_USDC ? USDC_SHARED_BRIDGE : SHARED_BRIDGE;
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
+            IERC20(l1Token).forceApprove(sharedBridge, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -213,7 +224,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: SHARED_BRIDGE,
+                    secondBridgeAddress: sharedBridge,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
