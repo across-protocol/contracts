@@ -19,7 +19,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const artifact = await deployer.loadArtifact(contractName);
 
-  const { zkErc20Bridge, zkUSDCBridge = ZERO_ADDRESS } = L2_ADDRESS_MAP[spokeChainId];
+  const { zkErc20Bridge, zkUSDCBridge = ZERO_ADDRESS, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
     zkErc20Bridge,
@@ -30,6 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WETH[spokeChainId],
     ZERO_ADDRESS, // USDC.e, but force use of the standard zkSync ERC20 bridge.
     zkUSDCBridge, // Alteratively cctpTokenMessenger when CCTP is live.
+    cctpTokenMessenger,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
   ];

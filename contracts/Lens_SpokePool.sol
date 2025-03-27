@@ -14,6 +14,7 @@ contract Lens_SpokePool is ZkSync_SpokePool {
         address _wrappedNativeTokenAddress,
         address _l2USDCAddress,
         ZkBridgeLike _zkUSDCBridge,
+        ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     )
@@ -21,6 +22,7 @@ contract Lens_SpokePool is ZkSync_SpokePool {
             _wrappedNativeTokenAddress,
             _l2USDCAddress,
             _zkUSDCBridge,
+            _cctpTokenMessenger,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer
         )

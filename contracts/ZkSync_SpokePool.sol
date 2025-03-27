@@ -35,7 +35,6 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
     ZkBridgeLike public immutable zkUSDCBridge;
-    address public immutable usdcAddress;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
@@ -49,7 +48,9 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
-    {} // solhint-disable-line no-empty-blocks
+    {
+        zkERC20Bridge = _zkERC20Bridge;
+    }
 
     /**
      * @notice Construct the ZkSync SpokePool.
@@ -117,7 +118,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
             IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
-        } else if (l2TokenAddress == usdcAddress) {
+        } else if (l2TokenAddress == address(usdcToken)) {
             if (_isCCTPEnabled()) {
                 _transferUsdc(withdrawalRecipient, amountToReturn);
             } else {
