@@ -38,10 +38,21 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
+    /**
+     * @notice Constructor.
+     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
+     * @param _l2Usdc USDC address on the SpokePool.
+     * @param _zkERC20Bridge Elastic chain custom bridge address (if deployed, or (address)0x0).
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
+     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * into the past from the block time of the deposit.
+     * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
+     * into the future from the block time of the deposit.
+     */
     constructor(
         address _wrappedNativeTokenAddress,
         IERC20 _l2Usdc,
+        ZkBridgeLike _zkERC20Bridge,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
@@ -53,7 +64,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Construct the ZkSync SpokePool.
+     * @notice Initialize the ZkSync SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
@@ -120,9 +131,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
             IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
         } else if (l2TokenAddress == address(usdcToken)) {
             if (_isCCTPEnabled()) {
+                // Circle native USDC via CCTP.
                 _transferUsdc(withdrawalRecipient, amountToReturn);
-            } else {
+            } else if (address(zkUSDCBridge) != address(0)) {
+                // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
                 zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            } else {
+                // Fall back to the regular ERC20 bridge.
+                zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
             }
         } else {
             zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
