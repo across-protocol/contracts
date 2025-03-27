@@ -36,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     SPOKE_CHAIN_ID,
     L1_ADDRESS_MAP[chainId].zkBridgeHub,
     USDC[chainId],
-    L1_ADDRESS_MAP[chainId].zkUsdcSharedBridge,
+    L1_ADDRESS_MAP[chainId][`zkUsdcSharedBridge_${SPOKE_CHAIN_ID}`],
     WETH[chainId],
     L2_REFUND_ADDRESS,
     L1_ADDRESS_MAP[chainId].donationBox,
