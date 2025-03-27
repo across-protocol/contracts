@@ -28,8 +28,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   ];
   const constructorArgs = [
     WETH[spokeChainId],
-    ZERO_ADDRESS, // USDC.e, but force use of the standard zkSync ERC20 bridge.
-    zkUSDCBridge, // Alteratively cctpTokenMessenger when CCTP is live.
+    ZERO_ADDRESS,
+    zkUSDCBridge,
     cctpTokenMessenger,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
