@@ -7,6 +7,10 @@ import "../libraries/CircleCCTPAdapter.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 import { HubPoolStore } from "./utilities/HubPoolStore.sol";
 
+interface IOwnable {
+    function owner() external view returns (address);
+}
+
 /**
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
  * on the L2 where the SpokePool is deployed.
@@ -31,20 +35,22 @@ contract UniversalStorageProof_Adapter is AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Saves root bundle data in a simple storage contract that can be proven and relayed to L2.
-     * @dev Uses gas optimized function to write relayRootBundle calldata to be relayed to all L2 spoke pools
-     * following successful execution of a proposed root bundle after the challenge period.
+     * @notice Saves root bundle data in a simple storage contract whose state can be proven and relayed to L2.
      * @param target Contract on the destination that will receive the message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
-        bytes4 selector = bytes4(message[:4]);
-        if (selector == SpokePoolInterface.relayRootBundle.selector) {
-            DATA_STORE.storeRelayRootsCalldata(target, message);
-        } else {
-            DATA_STORE.storeRelayAdminFunctionCalldata(target, message);
-        }
-
+        // Admin messages are stored differently in the data store than non-admin messages, because admin
+        // messages must only be sent to a single target on a specific L2 chain. Non-admin messages are sent
+        // to any target on any L2 chain. Therefore, non-admin messages are stored optimally in the data store
+        // by only storing the message once and allowing any target to read it via storage proofs.
+        // We assume that the HubPool is delegatecall-ing into this function, therefore address(this) is the HubPool's
+        // address. As a result, we can determine whether this message is an admin function based on the msg.sender.
+        // If an admin sends a message that could have been relayed as a non-admin message (e.g. the admin
+        // calls executeRootBundle()), then the message won't be stored optimally in the data store, but the
+        // message can still be delivered to the target.
+        bool isAdminSender = msg.sender == IOwnable(address(this)).owner();
+        DATA_STORE.storeRelayMessageCalldata(target, message, isAdminSender);
         emit MessageRelayed(target, message);
     }
 
