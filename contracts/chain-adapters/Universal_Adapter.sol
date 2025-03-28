@@ -17,10 +17,10 @@ interface IOwnable {
  * messages to multiple SpokePools on different chains.
  * @dev This contract should NOT be reused to send messages to SpokePools that have the same address on different L2s.
  * @dev This contract can be redeployed to point to a new HubPoolStore if the data store gets corrupted and new data
- * can't get written to the store for some reason. The corresponding UniversalStorageProof_SpokePool contract will
+ * can't get written to the store for some reason. The corresponding Universal_SpokePool contract will
  * also need to be redeployed to point to the new HubPoolStore.
  */
-contract UniversalStorageProof_Adapter is AdapterInterface, CircleCCTPAdapter {
+contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter {
     /// @notice Contract that stores calldata to be relayed to L2 via storage proofs.
     HubPoolStore public immutable DATA_STORE;
 

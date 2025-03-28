@@ -4,13 +4,13 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { UniversalStorageProof_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/UniversalStorageProof_Adapter.sol";
+import { Universal_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/Universal_Adapter.sol";
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import "../../../../contracts/test/MockCCTP.sol";
 
-contract UniversalStorageProofAdapterTest is Test {
-    UniversalStorageProof_Adapter adapter;
+contract UniversalAdapterTest is Test {
+    Universal_Adapter adapter;
     HubPoolStore store;
     MockHubPool hubPool;
     address spokePoolTarget;
@@ -47,7 +47,7 @@ contract UniversalStorageProofAdapterTest is Test {
         usdc = new ERC20("USDC", "USDC");
         MockCCTPMinter minter = new MockCCTPMinter();
         cctpMessenger = new MockCCTPMessenger(ITokenMinter(minter));
-        adapter = new UniversalStorageProof_Adapter(
+        adapter = new Universal_Adapter(
             store,
             IERC20(address(usdc)),
             ITokenMessenger(address(cctpMessenger)),

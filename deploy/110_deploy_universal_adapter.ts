@@ -26,7 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     CIRCLE_DOMAIN_IDs[SPOKE_CHAIN_ID],
   ];
-  const instance = await deployments.deploy("UniversalStorageProof_Adapter", {
+  const instance = await deployments.deploy("Universal_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
@@ -36,4 +36,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 module.exports = func;
-func.tags = ["UniversalStorageProofAdapter", "universalStorageProof"];
+func.tags = ["UniversalStorageProofAdapter"];

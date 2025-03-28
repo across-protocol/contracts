@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { HubPoolStore } from "../../../../contracts/chain-adapters/UniversalStorageProof_Adapter.sol";
+import { HubPoolStore } from "../../../../contracts/chain-adapters/Universal_Adapter.sol";
 
-contract UniversalStorageProofHubPoolStoreTest is Test {
+contract HubPoolStoreTest is Test {
     HubPoolStore store;
 
     address hubPool;

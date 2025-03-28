@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // target address of the spoke pool. This is because the HubPool does not pass in the chainId when calling
   // relayMessage() on the Adapter. Therefore, if Universal SpokePools share the same address,
   // then a message designed to be sent to one chain could be sent to another's SpokePool.
-  await deployNewProxy("UniversalStorageProof_SpokePool", constructorArgs, initArgs);
+  await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
 };
 module.exports = func;
 func.tags = ["UniversalSpokePool"];

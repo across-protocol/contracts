@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { UniversalStorageProof_SpokePool, IHelios } from "../../../../contracts/UniversalStorageProof_SpokePool.sol";
+import { Universal_SpokePool, IHelios } from "../../../../contracts/Universal_SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import "../../../../contracts/test/MockCCTP.sol";
 
@@ -31,7 +31,7 @@ contract MockHelios is IHelios {
     }
 }
 
-contract MockUniversalStorageProofSpokePool is UniversalStorageProof_SpokePool {
+contract MockUniversalSpokePool is Universal_SpokePool {
     constructor(
         uint256 _adminUpdateBuffer,
         address _helios,
@@ -42,7 +42,7 @@ contract MockUniversalStorageProofSpokePool is UniversalStorageProof_SpokePool {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger
     )
-        UniversalStorageProof_SpokePool(
+        Universal_SpokePool(
             _adminUpdateBuffer,
             _helios,
             _hubPoolStore,
@@ -59,8 +59,8 @@ contract MockUniversalStorageProofSpokePool is UniversalStorageProof_SpokePool {
     }
 }
 
-contract UniversalStorageProofSpokePoolTest is Test {
-    MockUniversalStorageProofSpokePool spokePool;
+contract UniversalSpokePoolTest is Test {
+    MockUniversalSpokePool spokePool;
     MockHelios helios;
 
     address hubPoolStore;
@@ -82,7 +82,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
         hubPool = makeAddr("hubPool");
         owner = vm.addr(1);
         rando = vm.addr(2);
-        spokePool = new MockUniversalStorageProofSpokePool(
+        spokePool = new MockUniversalSpokePool(
             adminUpdateBuffer,
             address(helios),
             hubPoolStore,
@@ -94,12 +94,9 @@ contract UniversalStorageProofSpokePoolTest is Test {
         );
         vm.prank(owner);
         address proxy = address(
-            new ERC1967Proxy(
-                address(spokePool),
-                abi.encodeCall(UniversalStorageProof_SpokePool.initialize, (0, hubPool, hubPool))
-            )
+            new ERC1967Proxy(address(spokePool), abi.encodeCall(Universal_SpokePool.initialize, (0, hubPool, hubPool)))
         );
-        spokePool = MockUniversalStorageProofSpokePool(payable(proxy));
+        spokePool = MockUniversalSpokePool(payable(proxy));
         deal(address(usdc), address(spokePool), usdcMintAmount, true);
     }
 
@@ -141,7 +138,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
         bytes memory value = abi.encode(address(spokePool), message);
         helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
         spokePool.executeMessage(nonce, value, 100);
-        vm.expectRevert(UniversalStorageProof_SpokePool.AlreadyExecuted.selector);
+        vm.expectRevert(Universal_SpokePool.AlreadyExecuted.selector);
         spokePool.executeMessage(nonce, value, 101); // block number changes doesn't impact replay protection
     }
 
@@ -169,7 +166,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
         );
         bytes memory value = abi.encode(address(spokePool), message);
         // We don't update the helios state client in this test:
-        vm.expectRevert(UniversalStorageProof_SpokePool.SlotValueMismatch.selector);
+        vm.expectRevert(Universal_SpokePool.SlotValueMismatch.selector);
         spokePool.executeMessage(nonce, value, 100);
     }
 
@@ -183,7 +180,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
         // Change target in the slot value:
         bytes memory value = abi.encode(makeAddr("randomTarget"), message);
         helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
-        vm.expectRevert(UniversalStorageProof_SpokePool.NotTarget.selector);
+        vm.expectRevert(Universal_SpokePool.NotTarget.selector);
         spokePool.executeMessage(nonce, value, 100);
     }
 
@@ -220,7 +217,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        vm.expectRevert(UniversalStorageProof_SpokePool.AdminUpdateTooCloseToLastHeliosUpdate.selector);
+        vm.expectRevert(Universal_SpokePool.AdminUpdateTooCloseToLastHeliosUpdate.selector);
         spokePool.adminExecuteMessage(message);
         vm.stopPrank();
     }
@@ -276,7 +273,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
         // Even if we mock the cross domain admin, it won't work as all admin calls must go through
         // some function that has the validateInternalCalls() modifier.
         vm.startPrank(spokePool.crossDomainAdmin());
-        vm.expectRevert(UniversalStorageProof_SpokePool.AdminCallNotValidated.selector);
+        vm.expectRevert(Universal_SpokePool.AdminCallNotValidated.selector);
         spokePool.setCrossDomainAdmin(makeAddr("randomAdmin"));
         vm.stopPrank();
     }

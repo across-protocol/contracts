@@ -14,7 +14,7 @@ import "./SpokePool.sol";
  * this SpokePool in the case where the light-client is not functioning correctly. The owner is designed to be set
  * to a multisig contract on this chain.
  */
-contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter {
+contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter {
     /// @notice The data store contract that only the HubPool can write to. This spoke pool can only act on
     /// data that has been written to this store.
     address public immutable hubPoolStore;
