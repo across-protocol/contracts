@@ -165,10 +165,6 @@ abstract contract SpokePool is
     // exclusivityDeadline in a deposit event will be set to the current time plus this value.
     uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
 
-    // This is a conservative limit equal to ~3x the average gas cost of a transfer() call on an ERC20 token.
-    // This value is used as a cap to protect refund leaf executors from executing any refund leaf that calls
-    // transfer() on a token that attempts to grief the executor by charging them a lot of gas.
-    uint256 public constant MAX_ERC20_TRANSFER_GAS_COST = 300_000;
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -1498,7 +1494,7 @@ abstract contract SpokePool is
         uint256 returnValue;
         bytes memory data = abi.encodeCall(IERC20Upgradeable.transfer, (to, amount));
         assembly {
-            success := call(MAX_ERC20_TRANSFER_GAS_COST, token, 0, add(data, 0x20), mload(data), 0, 0x20)
+            success := call(gas(), token, 0, add(data, 0x20), mload(data), 0, 0x20)
             returnSize := returndatasize()
             returnValue := mload(0)
         }
