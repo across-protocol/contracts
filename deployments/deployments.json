@@ -190,6 +190,9 @@
     "SpokePool": { "address": "0x6999526e507Cc3b03b180BbE05E1Ff938259A874", "blockNumber": 12593713 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 12594561 }
   },
+  "129399": {
+    "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 2929205 }
+  },
   "133268194659241": {
     "SvmSpoke": {
       "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
