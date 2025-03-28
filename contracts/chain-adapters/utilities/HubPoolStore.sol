@@ -19,8 +19,8 @@ interface IHubPool {
 contract HubPoolStore {
     error NotHubPool();
 
-    // Maps unique calldata hashes to calldata.
-    mapping(bytes32 => bytes) public relayAdminFunctionCalldata;
+    // Maps unique calldata hashes to hash of calldata.
+    mapping(bytes32 => bytes32) public relayAdminFunctionCalldata;
 
     // Counter to ensure that each relay admin function calldata is unique.
     uint256 private dataUuid;
@@ -28,7 +28,7 @@ contract HubPoolStore {
     // Address of the HubPool contract, the only contract that can store data to this contract.
     address public immutable hubPool;
 
-    event StoredAdminFunctionData(bytes32 dataHash, address indexed target, bytes data, uint256 uuid, bytes slotValue);
+    event StoredAdminFunctionData(bytes32 dataHash, address indexed target, bytes data, uint256 uuid);
 
     modifier onlyHubPool() {
         if (msg.sender != hubPool) {
@@ -118,12 +118,11 @@ contract HubPoolStore {
         bytes calldata data
     ) internal {
         bytes32 dataHash = keccak256(abi.encode(target, data, nonce));
-        if (relayAdminFunctionCalldata[dataHash].length > 0) {
+        if (relayAdminFunctionCalldata[dataHash] != bytes32(0)) {
             // Data is already stored, do nothing.
             return;
         }
-        bytes memory callDataToStore = abi.encode(target, data);
-        relayAdminFunctionCalldata[dataHash] = abi.encode(target, data);
-        emit StoredAdminFunctionData(dataHash, target, data, nonce, callDataToStore);
+        relayAdminFunctionCalldata[dataHash] = keccak256(abi.encode(target, data));
+        emit StoredAdminFunctionData(dataHash, target, data, nonce);
     }
 }

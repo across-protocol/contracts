@@ -96,7 +96,10 @@ contract UniversalStorageProofAdapterTest is Test {
         bytes32 expectedDataHash = keccak256(
             abi.encode(relayRootBundleTargetAddress, message, challengePeriodTimestamp)
         );
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(relayRootBundleTargetAddress, message));
+        assertEq(
+            store.relayAdminFunctionCalldata(expectedDataHash),
+            keccak256(abi.encode(relayRootBundleTargetAddress, message))
+        );
     }
 
     function testRelayMessage_relayRootBundle_duplicate() public {
@@ -109,12 +112,15 @@ contract UniversalStorageProofAdapterTest is Test {
         bytes32 expectedDataHash = keccak256(
             abi.encode(relayRootBundleTargetAddress, message, challengePeriodTimestamp)
         );
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(relayRootBundleTargetAddress, message));
+        assertEq(
+            store.relayAdminFunctionCalldata(expectedDataHash),
+            keccak256(abi.encode(relayRootBundleTargetAddress, message))
+        );
         // Each arbitraryMessage call should emit one MessageRelayed event, but only
         // the first one should emit a `StoredRootBundleData` event.
         Vm.Log[] memory logs = vm.getRecordedLogs();
         assertEq(logs.length, 3);
-        assertEq(logs[0].topics[0], keccak256("StoredAdminFunctionData(bytes32,address,bytes,uint256,bytes)"));
+        assertEq(logs[0].topics[0], keccak256("StoredAdminFunctionData(bytes32,address,bytes,uint256)"));
         assertEq(logs[1].topics[0], keccak256("MessageRelayed(address,bytes)"));
         assertEq(logs[2].topics[0], keccak256("MessageRelayed(address,bytes)"));
     }
@@ -129,7 +135,10 @@ contract UniversalStorageProofAdapterTest is Test {
         bytes32 expectedDataHash = keccak256(
             abi.encode(relayRootBundleTargetAddress, message, challengePeriodTimestamp)
         );
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(relayRootBundleTargetAddress, message));
+        assertEq(
+            store.relayAdminFunctionCalldata(expectedDataHash),
+            keccak256(abi.encode(relayRootBundleTargetAddress, message))
+        );
 
         // Change the challenge period timestamp. Remember to warp block.time >= challengePeriodTimestamp to make
         // HubPoolStore treat this call as a normal relayRootBundle call.
@@ -154,11 +163,14 @@ contract UniversalStorageProofAdapterTest is Test {
         );
         assertEq(
             store.relayAdminFunctionCalldata(expectedDataHash_2),
-            abi.encode(relayRootBundleTargetAddress, message)
+            keccak256(abi.encode(relayRootBundleTargetAddress, message))
         );
 
         // Old data hash is unaffected.
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(relayRootBundleTargetAddress, message));
+        assertEq(
+            store.relayAdminFunctionCalldata(expectedDataHash),
+            keccak256(abi.encode(relayRootBundleTargetAddress, message))
+        );
         assertNotEq(expectedDataHash, expectedDataHash_2);
     }
 
@@ -179,7 +191,7 @@ contract UniversalStorageProofAdapterTest is Test {
         // Test that second call increments nonce of data.
         uint256 expectedNonce = 1;
         bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), keccak256(abi.encode(spokePoolTarget, message)));
     }
 
     function testRelayMessage_relayAdminFunction_relayAdminBundle() public {
@@ -205,7 +217,7 @@ contract UniversalStorageProofAdapterTest is Test {
 
         // Relaying an admin root bundle uses the actual target in the data hash.
         bytes32 expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), keccak256(abi.encode(spokePoolTarget, message)));
 
         // Now try to relay an admin bundle when the challenge period timestamp is > block.timestamp
         hubPool.setPendingRootBundle(
@@ -223,7 +235,7 @@ contract UniversalStorageProofAdapterTest is Test {
         // Relaying an admin root bundle uses the global nonce, which will increment now:
         expectedNonce++;
         expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), keccak256(abi.encode(spokePoolTarget, message)));
 
         // Last way to send an admin root bundle is when the challenge period timestamp is <= block.timestamp and the
         // root bundle data is different from the pending root bundle data.
@@ -241,7 +253,7 @@ contract UniversalStorageProofAdapterTest is Test {
         hubPool.arbitraryMessage(spokePoolTarget, message);
         expectedNonce++;
         expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), keccak256(abi.encode(spokePoolTarget, message)));
 
         hubPool.setPendingRootBundle(
             HubPoolInterface.RootBundle({
@@ -257,7 +269,7 @@ contract UniversalStorageProofAdapterTest is Test {
         hubPool.arbitraryMessage(spokePoolTarget, message);
         expectedNonce++;
         expectedDataHash = keccak256(abi.encode(spokePoolTarget, message, expectedNonce));
-        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), abi.encode(spokePoolTarget, message));
+        assertEq(store.relayAdminFunctionCalldata(expectedDataHash), keccak256(abi.encode(spokePoolTarget, message)));
     }
 
     function testRelayTokens_cctp() public {
