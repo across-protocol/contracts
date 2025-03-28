@@ -123,24 +123,6 @@ pub mod svm_spoke {
         instructions::transfer_ownership(ctx, new_owner)
     }
 
-    /// Creates vault token account for selected origin token if it doesn't exist.
-    ///
-    /// This helper function is permissionless and can be called by anyone. It facilitates adding support for a given
-    /// origin token as the vault token account is used to store the assets for the spoke pool.
-    ///
-    /// ### Required Accounts:
-    /// - signer (Signer): The account that authorizes the creation of vault token account.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed] where `seed` is 0 on mainnet.
-    /// - vault (Writable): ATA to hold the origin token. Created on the first call. Authority must be set as the state,
-    ///   and mint must be the origin_token_mint.
-    /// - origin_token_mint: The mint account for the origin token.
-    /// - token_program: The token program.
-    /// - associated_token_program: The associated token program.
-    /// - system_program: The system program required for account creation.
-    pub fn create_vault(_ctx: Context<CreateVault>) -> Result<()> {
-        Ok(())
-    }
-
     /// Sets the cross-domain admin for the Spoke Pool. Only callable by owner. Used if Hubpool upgrades.
     ///
     /// ### Required Accounts:

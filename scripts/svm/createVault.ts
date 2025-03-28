@@ -2,8 +2,8 @@
 
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getSpokePoolProgram } from "../../src/svm/web3-v1";
@@ -11,6 +11,7 @@ import { getSpokePoolProgram } from "../../src/svm/web3-v1";
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
+const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
 const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 console.log("SVM-Spoke Program ID:", programId.toString());
@@ -44,27 +45,21 @@ async function createVault(): Promise<void> {
   ]);
 
   // Create ATA for the origin token to be stored by state (vault).
-  const vault = getAssociatedTokenAddressSync(
+  const vault = await getOrCreateAssociatedTokenAccount(
+    provider.connection,
+    payer,
     originToken,
     statePda,
     true,
+    "confirmed",
+    {
+      commitment: "confirmed",
+    },
     TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  const tx = await (program.methods.createVault() as any)
-    .accounts({
-      signer: signer,
-      state: statePda,
-      vault: vault,
-      originTokenMint: originToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId,
-    })
-    .rpc();
-
-  console.log("Transaction signature:", tx);
+  console.log("Created vault:", vault.address.toString());
 }
 
 // Run the createVault function

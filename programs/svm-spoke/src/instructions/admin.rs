@@ -1,8 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenAccount, TokenInterface},
-};
 
 use crate::{
     constants::DISCRIMINATOR_SIZE,
@@ -134,31 +130,6 @@ pub fn set_cross_domain_admin(ctx: Context<SetCrossDomainAdmin>, cross_domain_ad
     emit_cpi!(SetXDomainAdmin { new_admin: cross_domain_admin });
 
     Ok(())
-}
-
-#[derive(Accounts)]
-pub struct CreateVault<'info> {
-    #[account(mut)]
-    pub signer: Signer<'info>,
-
-    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
-    pub state: Account<'info, State>,
-
-    #[account(
-        init_if_needed,
-        payer = signer,
-        associated_token::mint = origin_token_mint,
-        associated_token::authority = state,
-        associated_token::token_program = token_program
-    )]
-    pub vault: InterfaceAccount<'info, TokenAccount>, // ATA, owned by the state, to store the origin token for spoke.
-
-    #[account(mint::token_program = token_program)]
-    pub origin_token_mint: InterfaceAccount<'info, Mint>,
-
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
-    pub system_program: Program<'info, System>,
 }
 
 #[event_cpi]

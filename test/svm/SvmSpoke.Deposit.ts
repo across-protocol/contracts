@@ -34,7 +34,7 @@ import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
 const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
-const { getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } = common;
+const { getOrCreateVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } = common;
 
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
 
@@ -59,8 +59,6 @@ describe("svm_spoke.deposit", () => {
   };
   let depositAccounts: DepositAccounts;
 
-  let createVaultAccounts: any; // Common variable for createVault accounts
-
   const setupInputToken = async () => {
     inputToken = await createMint(connection, payer, owner, owner, tokenDecimals, undefined, undefined, tokenProgram);
 
@@ -80,19 +78,7 @@ describe("svm_spoke.deposit", () => {
   };
 
   const createVault = async () => {
-    vault = await getVaultAta(inputToken, state);
-
-    createVaultAccounts = {
-      signer: owner,
-      state,
-      vault,
-      originTokenMint: inputToken, // Note the Sol expects this to be named originTokenMint.
-      tokenProgram: tokenProgram ?? TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    };
-
-    await program.methods.createVault().accounts(createVaultAccounts).rpc();
+    vault = await getOrCreateVaultAta(payer, inputToken, state);
 
     // Set known fields in the depositData.
     depositData.depositor = depositor.publicKey;
