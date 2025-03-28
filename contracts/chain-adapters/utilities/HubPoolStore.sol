@@ -10,7 +10,7 @@ interface IHubPool {
 /**
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
  * on the L2 where the SpokePool is deployed. Only the HubPool can store data to this contract. Each data to be
- * relayed is written to a unique slot key and that slot key's value can never be changed or deleted.
+ * relayed is written to a unique slot key and that slot key's value can never be modified.
  * @dev Designed to be used with UniversalStorageProof_Adapter and UniversalStorageProof_SpokePool.
  * @dev This contract DOES NOT prevent replay attacks of storage proofs on the L2 spoke pool if the
  * UniversalStorageProof_Adapters using this contract are mapped to spokepools with the same address on different
@@ -19,13 +19,13 @@ interface IHubPool {
 contract HubPoolStore {
     error NotHubPool();
 
-    // Maps nonce to hash of calldata.
+    /// @notice Maps nonce to hash of calldata.
     mapping(uint256 => bytes32) public relayMessageCallData;
 
-    // Counter to ensure that each relay admin function calldata is unique.
+    /// @notice Counter to ensure that each relay admin function calldata is unique.
     uint256 private dataUuid;
 
-    // Address of the HubPool contract, the only contract that can store data to this contract.
+    /// @notice Address of the HubPool contract, the only contract that can store data to this contract.
     address public immutable hubPool;
 
     event StoredCallData(address indexed target, bytes data, uint256 indexed uuid);
@@ -37,16 +37,12 @@ contract HubPoolStore {
         _;
     }
 
-    /**
-     * @notice Constructor.
-     * @param _hubPool Address of the HubPool contract.
-     */
     constructor(address _hubPool) {
         hubPool = _hubPool;
     }
 
     /**
-     * @notice To be called by HubPool to store calldata for that will be relayed
+     * @notice To be called by HubPool to store calldata that will be relayed
      * to the UniversalStorageProof_SpokePool via storage proofs.
      * @dev Only callable by the HubPool contract.
      * @param target Address of the contract on the destination that will receive the message. Unused if the

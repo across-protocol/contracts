@@ -18,6 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const initArgs = [1, hubPool.address, hubPool.address];
   // @todo replace the ?? ZERO_ADDRESS below before using this script.
   const constructorArgs = [
+    24 * 60 * 60, // 1 day; Helios latest head timestamp must be 1 day old before an admin can force execute a message.
     L2_ADDRESS_MAP[spokeChainId]?.helios ?? ZERO_ADDRESS,
     L1_ADDRESS_MAP[CHAIN_IDs.MAINNET]?.hubPoolStore ?? ZERO_ADDRESS,
     WETH[spokeChainId],

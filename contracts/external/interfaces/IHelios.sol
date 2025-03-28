@@ -11,4 +11,6 @@ interface IHelios {
         address contractAddress,
         bytes32 slot
     ) external view returns (bytes32);
+
+    function headTimestamp() external view returns (uint256);
 }

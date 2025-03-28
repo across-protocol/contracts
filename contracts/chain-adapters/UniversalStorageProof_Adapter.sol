@@ -13,14 +13,15 @@ interface IOwnable {
 
 /**
  * @notice Stores data that can be relayed to L2 SpokePool using storage proof verification and light client contracts
- * on the L2 where the SpokePool is deployed.
+ * on the L2 where the SpokePool is deployed. Designed to be used as a singleton contract that can be used to relay
+ * messages to multiple SpokePools on different chains.
  * @dev This contract should NOT be reused to send messages to SpokePools that have the same address on different L2s.
  * @dev This contract can be redeployed to point to a new HubPoolStore if the data store gets corrupted and new data
  * can't get written to the store for some reason. The corresponding UniversalStorageProof_SpokePool contract will
  * also need to be redeployed to point to the new HubPoolStore.
  */
 contract UniversalStorageProof_Adapter is AdapterInterface, CircleCCTPAdapter {
-    // Contract on which to write calldata to be relayed to L2 via storage proofs.
+    /// @notice Contract that stores calldata to be relayed to L2 via storage proofs.
     HubPoolStore public immutable DATA_STORE;
 
     error NotImplemented();
@@ -35,15 +36,19 @@ contract UniversalStorageProof_Adapter is AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Saves root bundle data in a simple storage contract whose state can be proven and relayed to L2.
-     * @param target Contract on the destination that will receive the message.
+     * @notice Saves calldata in a simple storage contract whose state can be proven and relayed to L2.
+     * @param target Contract on the destination that will receive the message. Unused if the message is created
+     * by the HubPool admin.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
         // Admin messages are stored differently in the data store than non-admin messages, because admin
         // messages must only be sent to a single target on a specific L2 chain. Non-admin messages are sent
-        // to any target on any L2 chain. Therefore, non-admin messages are stored optimally in the data store
-        // by only storing the message once and allowing any target to read it via storage proofs.
+        // to any target on any L2 chain because the only type of an non-admin message is the result of a
+        // HubPool.executeRootBundle() call which attempts to relay a relayRootBundle() call to all SpokePools using
+        // this adapter. Therefore, non-admin messages are stored optimally in the data store
+        // by only storing the message once and allowing any SpokePool target to read it via storage proofs.
+
         // We assume that the HubPool is delegatecall-ing into this function, therefore address(this) is the HubPool's
         // address. As a result, we can determine whether this message is an admin function based on the msg.sender.
         // If an admin sends a message that could have been relayed as a non-admin message (e.g. the admin

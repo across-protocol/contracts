@@ -12,15 +12,19 @@ import "./SpokePool.sol";
  * @notice Spoke pool capable of receiving data stored in L1 state via storage proof + Helios light client.
  * @dev This contract has one onlyOwner function to be used as an emergency fallback to relay a message to
  * this SpokePool in the case where the light-client is not functioning correctly. The owner is designed to be set
- * to a multisig on this chain with a timelock.
+ * to a multisig contract on this chain.
  */
 contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter {
-    /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
-    /// stored by HubPool is relayed.
+    /// @notice The data store contract that only the HubPool can write to. This spoke pool can only act on
+    /// data that has been written to this store.
     address public immutable hubPoolStore;
 
-    /// @notice The address of the Helios light client contract.
+    /// @notice The address of the Helios L1 light client contract.
     address public immutable helios;
+
+    /// @notice The owner of this contract must wait until this amount of seconds have passed since the latest
+    /// helios light client update to admin execute a message.
+    uint256 public immutable ADMIN_UPDATE_BUFFER;
 
     /// @notice Stores all proofs verified to prevent replay attacks.
     mapping(bytes32 => bool) public verifiedProofs;
@@ -38,6 +42,7 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
     error DelegateCallFailed();
     error AlreadyReceived();
     error NotImplemented();
+    error AdminUpdateTooCloseToLastHeliosUpdate();
 
     // All calls that have admin privileges must be fired from within the receiveL1State method that validates that
     // the input data was published on L1 by the HubPool. This input data is then executed on this contract.
@@ -62,6 +67,7 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
+        uint256 _adminUpdateBufferSeconds,
         address _helios,
         address _hubPoolStore,
         address _wrappedNativeTokenAddress,
@@ -73,6 +79,7 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
+        ADMIN_UPDATE_BUFFER = _adminUpdateBufferSeconds;
         helios = _helios;
         hubPoolStore = _hubPoolStore;
     }
@@ -87,10 +94,17 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
     }
 
     /**
-     * @notice This can be called by an EOA to relay call data stored on the HubPool on L1 into this contract.
+     * @notice Relays calldata stored by the HubPool on L1 into this contract.
      * @dev Replay attacks are possible with this _message if this contract has the same address on another chain.
-     * @param _slotKey Slot storage hash
-     * @param _value Slot storage value
+     * @dev Any slot key's value on the HubPoolStore can be treated as a message to be executed on this contract, but
+     * there is no way to update the HubPoolStore's storage to be a valid message has outside of the
+     * expected use case (i.e. calling HubPoolStore.storeRelayMessageCalldata()). If we wanted to prevent this, we
+     * could hardcode the slot index of the HubPoolStore's relayMessageCallData mapping and make the user pass in
+     * the nonce used to store the _value in the HubPoolStore. But this is an unneccessary friction for the caller
+     * since we don't think there is a way to exploit this.
+     * @param _slotKey Slot storage hash.
+     * @param _value Slot storage value, unhashed. Compared against hashed value in light client for slot key and
+     * block number.
      * @param _blockNumber Block number in light client we want to check slot value of slot key
      */
     function receiveL1State(
@@ -100,7 +114,7 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
     ) external validateInternalCalls {
         bytes32 expectedSlotValueHash = keccak256(_value);
 
-        // Verify Helios light client is aware of the storage slot:
+        // Verify Helios light client has expected slot value.
         bytes32 slotValueHash = IHelios(helios).getStorageSlot(_blockNumber, hubPoolStore, _slotKey);
         if (expectedSlotValueHash != slotValueHash) {
             revert SlotValueMismatch();
@@ -121,20 +135,26 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
         verifiedProofs[_slotKey] = true;
         emit VerifiedProof(_slotKey, msg.sender);
 
-        _executeMessage(message);
+        _executeCalldata(message);
     }
 
     /**
-     * @notice This function is only callable by the owner and is used as an emergency fallback to relay
-     * a message to this SpokePool in the case where the light-client is not functioning correctly.
+     * @notice This function is only callable by the owner and is used as an emergency fallback to execute
+     * calldata to this SpokePool in the case where the light-client is not functioning correctly.
+     * @dev This function will revert if the last Helios update was less than ADMIN_UPDATE_BUFFER seconds ago.
+     * @param message The calldata to execute on this contract.
      */
-    function adminReceiveL1State(bytes memory message) external onlyOwner validateInternalCalls {
-        _executeMessage(message);
+    function adminRelayMessage(bytes memory message) external onlyOwner validateInternalCalls {
+        uint256 heliosHeadTimestamp = IHelios(helios).headTimestamp();
+        if (heliosHeadTimestamp > block.timestamp || block.timestamp - heliosHeadTimestamp < ADMIN_UPDATE_BUFFER) {
+            revert AdminUpdateTooCloseToLastHeliosUpdate();
+        }
+        _executeCalldata(message);
     }
 
-    function _executeMessage(bytes memory message) internal {
+    function _executeCalldata(bytes memory _calldata) internal {
         /// @custom:oz-upgrades-unsafe-allow delegatecall
-        (bool success, ) = address(this).delegatecall(message);
+        (bool success, ) = address(this).delegatecall(_calldata);
         if (!success) {
             revert DelegateCallFailed();
         }

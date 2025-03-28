@@ -12,8 +12,14 @@ import "../../../../contracts/test/MockCCTP.sol";
 contract MockHelios is IHelios {
     mapping(bytes32 => bytes32) public storageSlots;
 
+    uint256 public headTimestamp;
+
     function updateStorageSlot(bytes32 key, bytes32 valueHash) external {
         storageSlots[key] = valueHash;
+    }
+
+    function updateHeadTimestamp(uint256 _timestamp) external {
+        headTimestamp = _timestamp;
     }
 
     function getStorageSlot(
@@ -27,6 +33,7 @@ contract MockHelios is IHelios {
 
 contract MockUniversalStorageProofSpokePool is UniversalStorageProof_SpokePool {
     constructor(
+        uint256 _adminUpdateBuffer,
         address _helios,
         address _hubPoolStore,
         address _wrappedNativeTokenAddress,
@@ -36,6 +43,7 @@ contract MockUniversalStorageProofSpokePool is UniversalStorageProof_SpokePool {
         ITokenMessenger _cctpTokenMessenger
     )
         UniversalStorageProof_SpokePool(
+            _adminUpdateBuffer,
             _helios,
             _hubPoolStore,
             _wrappedNativeTokenAddress,
@@ -60,6 +68,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
     uint256 nonce = 0;
     address owner;
     address rando;
+    uint256 adminUpdateBuffer = 1 days;
 
     ERC20 usdc;
     uint256 usdcMintAmount = 100e6;
@@ -74,6 +83,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
         owner = vm.addr(1);
         rando = vm.addr(2);
         spokePool = new MockUniversalStorageProofSpokePool(
+            adminUpdateBuffer,
             address(helios),
             hubPoolStore,
             address(0),
@@ -183,7 +193,11 @@ contract UniversalStorageProofSpokePoolTest is Test {
         spokePool.receiveL1State(slotKey, value, 100);
     }
 
-    function testAdminReceiveL1State() public {
+    function testAdminRelayMessage() public {
+        uint256 latestTimestamp = 100 * adminUpdateBuffer; // Make this much larger than spokePool.ADMIN_UPDATE_BUFFER() otherwise
+        // the admin message will be too close to the "latest" helios head timestamp.
+        vm.warp(latestTimestamp);
+
         vm.startPrank(owner);
         // Relay message normally to contract:
         bytes memory message = abi.encodeWithSignature(
@@ -195,11 +209,32 @@ contract UniversalStorageProofSpokePoolTest is Test {
             address(spokePool),
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", bytes32("test"), bytes32("test2"))
         );
-        spokePool.adminReceiveL1State(message);
+        spokePool.adminRelayMessage(message);
         vm.stopPrank();
     }
 
-    function testAdminReceiveL1State_notOwner() public {
+    function testAdminRelayMessage_latestUpdateTooRecent() public {
+        uint256 latestTimestamp = 100 * adminUpdateBuffer; // See comment in test above about how to set this.
+        vm.warp(latestTimestamp);
+
+        // Update the helios head so its very close or equal to the current latest timestamp.
+        helios.updateHeadTimestamp(latestTimestamp);
+
+        vm.startPrank(owner);
+        bytes memory message = abi.encodeWithSignature(
+            "relayRootBundle(bytes32,bytes32)",
+            bytes32("test"),
+            bytes32("test2")
+        );
+        vm.expectRevert(UniversalStorageProof_SpokePool.AdminUpdateTooCloseToLastHeliosUpdate.selector);
+        spokePool.adminRelayMessage(message);
+        vm.stopPrank();
+    }
+
+    function testAdminRelayMessage_notOwner() public {
+        uint256 latestTimestamp = 100 * adminUpdateBuffer; // See comment in test above about how to set this.
+        vm.warp(latestTimestamp);
+
         vm.startPrank(rando);
         bytes memory message = abi.encodeWithSignature(
             "relayRootBundle(bytes32,bytes32)",
@@ -207,7 +242,7 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test2")
         );
         vm.expectRevert();
-        spokePool.adminReceiveL1State(message);
+        spokePool.adminRelayMessage(message);
         vm.stopPrank();
     }
 
