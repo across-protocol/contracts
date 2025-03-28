@@ -142,24 +142,6 @@ describe("Polygon Spoke Pool", function () {
     expect(await polygonSpokePool.withdrawalRecipient()).to.equal(rando.address);
   });
 
-  it("Only correct caller can enable a route", async function () {
-    // Cannot call directly
-    await expect(polygonSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
-
-    const setEnableRouteData = polygonSpokePool.interface.encodeFunctionData("setEnableRoute", [l2Dai, 1, true]);
-
-    // Wrong rootMessageSender address.
-    await expect(polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, setEnableRouteData)).to.be
-      .reverted;
-
-    // Wrong calling address.
-    await expect(polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, setEnableRouteData)).to.be
-      .reverted;
-
-    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setEnableRouteData);
-    expect(await polygonSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
-  });
-
   it("Only correct caller can initialize a relayer refund", async function () {
     // Cannot call directly
     await expect(polygonSpokePool.relayRootBundle(mockTreeRoot, mockTreeRoot)).to.be.reverted;

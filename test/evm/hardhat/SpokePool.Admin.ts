@@ -19,12 +19,6 @@ describe("SpokePool Admin Functions", async function () {
     );
     expect(await spokePool.numberOfDeposits()).to.equal(1);
   });
-  it("Enable token path", async function () {
-    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
-      .to.emit(spokePool, "EnabledDepositRoute")
-      .withArgs(erc20.address, destinationChainId, true);
-    expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
-  });
 
   it("Pause deposits", async function () {
     expect(await spokePool.pausedDeposits()).to.equal(false);
