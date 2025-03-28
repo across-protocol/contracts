@@ -3,38 +3,11 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { UniversalStorageProof_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/UniversalStorageProof_Adapter.sol";
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
-import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
-contract MockCCTPMinter is ITokenMinter {
-    function burnLimitsPerMessage(address) external pure returns (uint256) {
-        return type(uint256).max;
-    }
-}
-
-contract MockCCTPMessenger is ITokenMessenger {
-    ITokenMinter private minter;
-
-    constructor(ITokenMinter _minter) {
-        minter = _minter;
-    }
-
-    function depositForBurn(
-        uint256,
-        uint32,
-        bytes32,
-        address
-    ) external pure returns (uint64 _nonce) {
-        return 0;
-    }
-
-    function localMinter() external view returns (ITokenMinter) {
-        return minter;
-    }
-}
+import "../../../../contracts/test/MockCCTP.sol";
 
 contract UniversalStorageProofAdapterTest is Test {
     UniversalStorageProof_Adapter adapter;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import { IHelios } from "./external/interfaces/IHelios.sol";
 import "./libraries/CircleCCTPAdapter.sol";
@@ -14,7 +14,7 @@ import "./SpokePool.sol";
  * this SpokePool in the case where the light-client is not functioning correctly. The owner is designed to be set
  * to a multisig on this chain with a timelock.
  */
-contract UniversalStorageProof_SpokePool is Ownable, SpokePool, CircleCCTPAdapter {
+contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter {
     /// @notice The address store that only the HubPool can write to. Checked against public values to ensure only state
     /// stored by HubPool is relayed.
     address public immutable hubPoolStore;
@@ -82,6 +82,7 @@ contract UniversalStorageProof_SpokePool is Ownable, SpokePool, CircleCCTPAdapte
         address _crossDomainAdmin,
         address _withdrawalRecipient
     ) public initializer {
+        __Ownable_init();
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
     }
 
