@@ -88,10 +88,7 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
 
     /**
      * @notice This can be called by an EOA to relay call data stored on the HubPool on L1 into this contract.
-     * @dev Consider making this an onlyOwner function so that only a privileged EOA can relay state. This EOA
-     * wouldn't be able to tamper with the _publicValues but we can reduce the chance of replay-attacks this way if
-     * we set the EOA to a trusted actor. Replay attacks are possible if this contract has the same address
-     * on multiple chains.
+     * @dev Replay attacks are possible with this _message if this contract has the same address on another chain.
      * @param _slotKey Slot storage hash
      * @param _value Slot storage value
      * @param _blockNumber Block number in light client we want to check slot value of slot key
@@ -116,13 +113,13 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
             revert NotTarget();
         }
 
-        // Prevent replay attacks.
-        bytes32 dataHash = _slotKey;
-        if (verifiedProofs[dataHash]) {
+        // Prevent replay attacks. The slot key should be a hash of the nonce associated with this calldata in the
+        // HubPoolStore, which maps the nonce to the _value.
+        if (verifiedProofs[_slotKey]) {
             revert AlreadyReceived();
         }
-        verifiedProofs[dataHash] = true;
-        emit VerifiedProof(dataHash, msg.sender);
+        verifiedProofs[_slotKey] = true;
+        emit VerifiedProof(_slotKey, msg.sender);
 
         _executeMessage(message);
     }
