@@ -54,6 +54,8 @@ const abiData = {
 
 describe("ZkSync Spoke Pool", function () {
   const { AddressZero: ZERO_ADDRESS } = ethers.constants;
+  const cctpTokenMessenger = ZERO_ADDRESS; // Not currently supported.
+
   let hubPool: Contract, zkSyncSpokePool: Contract, dai: Contract, usdc: Contract, weth: Contract;
   let l2Usdc: string, l2Dai: string, crossDomainAliasAddress, crossDomainAlias: SignerWithAddress;
   let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
@@ -73,7 +75,6 @@ describe("ZkSync Spoke Pool", function () {
     zkErc20Bridge = await smock.fake(abiData.erc20DefaultBridge.abi, { address: ERC20_BRIDGE });
     zkUSDCBridge = zkErc20Bridge;
     l2Eth = await smock.fake(abiData.eth.abi, { address: abiData.eth.address });
-    const cctpTokenMessenger = ZERO_ADDRESS; // Not currently supported.
     constructorArgs = [
       weth.address,
       usdc.address, // l2Usdc is just an address, not deployed.
@@ -122,6 +123,24 @@ describe("ZkSync Spoke Pool", function () {
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(zkErc20Bridge.withdraw).to.have.been.calledOnce;
     expect(zkErc20Bridge.withdraw).to.have.been.calledWith(hubPool.address, l2Dai, amountToReturn);
+  });
+  it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for zkSync Bridged USDC.e", async function () {
+    // Redeploy the SpokePool with usdc address -> 0x0
+    const usdcAddress = ZERO_ADDRESS;
+    const constructorArgs = [weth.address, usdcAddress, zkUSDCBridge.address, cctpTokenMessenger, 60 * 60, 9 * 60 * 60];
+    const implementation = await hre.upgrades.deployImplementation(
+      await getContractFactory("ZkSync_SpokePool", owner),
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs }
+    );
+    await zkSyncSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
+
+    const { leaves, tree } = await constructSingleRelayerRefundTree(l2Usdc, await zkSyncSpokePool.callStatic.chainId());
+    await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+
+    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
+    expect(zkErc20Bridge.withdraw).to.have.been.calledOnce;
+    expect(zkErc20Bridge.withdraw).to.have.been.calledWith(hubPool.address, l2Usdc, amountToReturn);
   });
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for Circle Bridged USDC", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(l2Usdc, await zkSyncSpokePool.callStatic.chainId());
