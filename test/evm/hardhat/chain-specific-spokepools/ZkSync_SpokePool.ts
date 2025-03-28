@@ -142,7 +142,7 @@ describe("ZkSync Spoke Pool", function () {
     expect(zkErc20Bridge.withdraw).to.have.been.calledOnce;
     expect(zkErc20Bridge.withdraw).to.have.been.calledWith(hubPool.address, l2Usdc, amountToReturn);
   });
-  it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for Circle Bridged USDC", async function () {
+  it("Bridge tokens to hub pool correctly calls the custom USDC L2 Bridge for Circle Bridged USDC", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(l2Usdc, await zkSyncSpokePool.callStatic.chainId());
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
