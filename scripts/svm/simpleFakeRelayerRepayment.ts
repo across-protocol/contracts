@@ -55,13 +55,6 @@ async function testBundleLogic(): Promise<void> {
     programId
   );
 
-  // This assumes that the destination chain Id 11155111 has been enabled. This is the sepolia chain ID.
-  // I.e this test assumes that enableRoute has been called with destinationChainId 11155111 and inputToken.
-  const [routePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), inputToken.toBytes(), statePda.toBytes(), new BN(11155111).toArrayLike(Buffer, "le", 8)], // Assuming destinationChainId is 1
-    programId
-  );
-
   const vault = getAssociatedTokenAddressSync(
     inputToken,
     statePda,
@@ -76,7 +69,6 @@ async function testBundleLogic(): Promise<void> {
     { property: "inputToken", value: inputToken.toString() },
     { property: "signer", value: signer.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
-    { property: "routePda", value: routePda.toString() },
     { property: "vault", value: vault.toString() },
   ]);
 
@@ -107,7 +99,7 @@ async function testBundleLogic(): Promise<void> {
       inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
       inputAmount,
       new BN(0),
-      new BN(11155111), // destinationChainId. assumed to be enabled, as with routePDA
+      new BN(11155111), // destinationChainId.
       PublicKey.default, // exclusiveRelayer
       Math.floor(Date.now() / 1000) - 1, // quoteTimestamp
       Math.floor(Date.now() / 1000) + 3600, // fillDeadline
@@ -117,7 +109,6 @@ async function testBundleLogic(): Promise<void> {
   )
     .accounts({
       state: statePda,
-      route: routePda,
       signer: signer.publicKey,
       userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer.publicKey),
       vault: vault,
@@ -178,7 +169,6 @@ async function testBundleLogic(): Promise<void> {
 
   console.table([
     { property: "State PDA", value: statePda.toString() },
-    { property: "Route PDA", value: routePda.toString() },
     { property: "Root Bundle PDA", value: rootBundle.toString() },
     { property: "Signer", value: signer.publicKey.toString() },
   ]);
