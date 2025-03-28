@@ -26,7 +26,9 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
     address public immutable helios;
 
     /// @notice The owner of this contract must wait until this amount of seconds have passed since the latest
-    /// helios light client update to admin execute a message.
+    /// helios light client update to emergency execute a message. This prevents the owner from executing a message
+    /// in the happy case where the light client is being regularly updated. Therefore, this value should be
+    /// set to a very high value, like 24 hours.
     uint256 public immutable ADMIN_UPDATE_BUFFER;
 
     /// @notice Stores all proofs verified to prevent replay attacks.
@@ -140,7 +142,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
 
     /**
      * @notice This function is only callable by the owner and is used as an emergency fallback to execute
-     * calldata to this SpokePool in the case where the light-client is not functioning correctly.
+     * calldata to this SpokePool in the case where the light-client is not able to be updated.
      * @dev This function will revert if the last Helios update was less than ADMIN_UPDATE_BUFFER seconds ago.
      * @param _message The calldata to execute on this contract.
      */
