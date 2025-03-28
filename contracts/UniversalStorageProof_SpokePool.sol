@@ -9,8 +9,8 @@ import "./libraries/CircleCCTPAdapter.sol";
 import "./SpokePool.sol";
 
 /**
- * @notice Spoke pool capable of receiving data stored in L1 state via storage proof + Helios light client.
- * @dev This contract has one onlyOwner function to be used as an emergency fallback to relay a message to
+ * @notice Spoke pool capable of executing calldata stored in L1 state via storage proof + Helios light client.
+ * @dev This contract has one onlyOwner function to be used as an emergency fallback to execute a message to
  * this SpokePool in the case where the light-client is not functioning correctly. The owner is designed to be set
  * to a multisig contract on this chain.
  */
@@ -18,6 +18,9 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
     /// @notice The data store contract that only the HubPool can write to. This spoke pool can only act on
     /// data that has been written to this store.
     address public immutable hubPoolStore;
+
+    /// @notice Slot index of the HubPoolStore's relayMessageCallData mapping.
+    uint256 public constant HUB_POOL_STORE_CALLDATA_MAPPING_SLOT_INDEX = 0;
 
     /// @notice The address of the Helios L1 light client contract.
     address public immutable helios;
@@ -27,20 +30,22 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
     uint256 public immutable ADMIN_UPDATE_BUFFER;
 
     /// @notice Stores all proofs verified to prevent replay attacks.
-    mapping(bytes32 => bool) public verifiedProofs;
+    mapping(uint256 => bool) public verifiedProofs;
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
     // private. Leaving it set to true can permanently disable admin calls.
     bool private _adminCallValidated;
 
-    event VerifiedProof(bytes32 indexed dataHash, address caller);
+    /// @notice Event emitted after off-chain agent sees HubPoolStore's emitted StoredCallData event and calls
+    /// executeMessage() on this contract to relay the stored calldata.
+    event RelayedCallData(uint256 indexed nonce, address caller);
 
     error NotTarget();
     error AdminCallAlreadySet();
     error SlotValueMismatch();
     error AdminCallNotValidated();
     error DelegateCallFailed();
-    error AlreadyReceived();
+    error AlreadyExecuted();
     error NotImplemented();
     error AdminUpdateTooCloseToLastHeliosUpdate();
 
@@ -96,44 +101,39 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
     /**
      * @notice Relays calldata stored by the HubPool on L1 into this contract.
      * @dev Replay attacks are possible with this _message if this contract has the same address on another chain.
-     * @dev Any slot key's value on the HubPoolStore can be treated as a message to be executed on this contract, but
-     * there is no way to update the HubPoolStore's storage to be a valid message has outside of the
-     * expected use case (i.e. calling HubPoolStore.storeRelayMessageCalldata()). If we wanted to prevent this, we
-     * could hardcode the slot index of the HubPoolStore's relayMessageCallData mapping and make the user pass in
-     * the nonce used to store the _value in the HubPoolStore. But this is an unneccessary friction for the caller
-     * since we don't think there is a way to exploit this.
-     * @param _slotKey Slot storage hash.
-     * @param _value Slot storage value, unhashed. Compared against hashed value in light client for slot key and
-     * block number.
-     * @param _blockNumber Block number in light client we want to check slot value of slot key
+     * @param _messageNonce Nonce of message stored in HubPoolStore.
+     * @param _message Message stored in HubPoolStore. Compared against hashed value in light client for slot key
+     * corresponding to _messageNonce at block number.
+     * @param _blockNumber Block number in light client we use to check slot value of slot key
      */
-    function receiveL1State(
-        bytes32 _slotKey,
-        bytes calldata _value,
+    function executeMessage(
+        uint256 _messageNonce,
+        bytes calldata _message,
         uint256 _blockNumber
     ) external validateInternalCalls {
-        bytes32 expectedSlotValueHash = keccak256(_value);
+        bytes32 slotKey = getSlotKey(_messageNonce);
+        bytes32 expectedSlotValueHash = keccak256(_message);
 
         // Verify Helios light client has expected slot value.
-        bytes32 slotValueHash = IHelios(helios).getStorageSlot(_blockNumber, hubPoolStore, _slotKey);
+        bytes32 slotValueHash = IHelios(helios).getStorageSlot(_blockNumber, hubPoolStore, slotKey);
         if (expectedSlotValueHash != slotValueHash) {
             revert SlotValueMismatch();
         }
 
         // Validate state is intended to be sent to this contract. The target could have been set to the zero address
         // which is used by the StorageProof_Adapter to denote messages that can be sent to any target.
-        (address target, bytes memory message) = abi.decode(_value, (address, bytes));
+        (address target, bytes memory message) = abi.decode(_message, (address, bytes));
         if (target != address(0) && target != address(this)) {
             revert NotTarget();
         }
 
         // Prevent replay attacks. The slot key should be a hash of the nonce associated with this calldata in the
         // HubPoolStore, which maps the nonce to the _value.
-        if (verifiedProofs[_slotKey]) {
-            revert AlreadyReceived();
+        if (verifiedProofs[_messageNonce]) {
+            revert AlreadyExecuted();
         }
-        verifiedProofs[_slotKey] = true;
-        emit VerifiedProof(_slotKey, msg.sender);
+        verifiedProofs[_messageNonce] = true;
+        emit RelayedCallData(_messageNonce, msg.sender);
 
         _executeCalldata(message);
     }
@@ -142,14 +142,25 @@ contract UniversalStorageProof_SpokePool is OwnableUpgradeable, SpokePool, Circl
      * @notice This function is only callable by the owner and is used as an emergency fallback to execute
      * calldata to this SpokePool in the case where the light-client is not functioning correctly.
      * @dev This function will revert if the last Helios update was less than ADMIN_UPDATE_BUFFER seconds ago.
-     * @param message The calldata to execute on this contract.
+     * @param _message The calldata to execute on this contract.
      */
-    function adminRelayMessage(bytes memory message) external onlyOwner validateInternalCalls {
+    function adminExecuteMessage(bytes memory _message) external onlyOwner validateInternalCalls {
         uint256 heliosHeadTimestamp = IHelios(helios).headTimestamp();
         if (heliosHeadTimestamp > block.timestamp || block.timestamp - heliosHeadTimestamp < ADMIN_UPDATE_BUFFER) {
             revert AdminUpdateTooCloseToLastHeliosUpdate();
         }
-        _executeCalldata(message);
+        _executeCalldata(_message);
+    }
+
+    /**
+     * @notice Computes the EVM storage slot key for a message nonce using the formula keccak256(key, slotIndex)
+     * to find the storage slot for a value within a mapping(key=>value) at a slot index. We already know the
+     * slot index of the relayMessageCallData mapping in the HubPoolStore.
+     * @param _nonce The nonce associated with the message.
+     * @return The computed storage slot key.
+     */
+    function getSlotKey(uint256 _nonce) public pure returns (bytes32) {
+        return keccak256(abi.encode(_nonce, HUB_POOL_STORE_CALLDATA_MAPPING_SLOT_INDEX));
     }
 
     function _executeCalldata(bytes memory _calldata) internal {

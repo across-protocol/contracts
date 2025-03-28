@@ -28,7 +28,8 @@ contract HubPoolStore {
     /// @notice Address of the HubPool contract, the only contract that can store data to this contract.
     address public immutable hubPool;
 
-    event StoredCallData(address indexed target, bytes data, uint256 indexed uuid);
+    /// @notice Event designed to be queried off chain and relayed to Universal SpokePool.
+    event StoredCallData(address indexed target, bytes data, uint256 indexed nonce);
 
     modifier onlyHubPool() {
         if (msg.sender != hubPool) {

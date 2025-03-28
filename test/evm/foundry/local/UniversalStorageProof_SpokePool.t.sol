@@ -103,34 +103,32 @@ contract UniversalStorageProofSpokePoolTest is Test {
         deal(address(usdc), address(spokePool), usdcMintAmount, true);
     }
 
-    function testReceiveL1State() public {
+    function testExecuteMessage() public {
         // Should be able to call relayRootBundle
         bytes32 refundRoot = bytes32("test");
         bytes32 slowRelayRoot = bytes32("test2");
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         bytes memory value = abi.encode(address(spokePool), message);
-        helios.updateStorageSlot(slotKey, keccak256(value));
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
         vm.expectCall(
             address(spokePool),
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot)
         );
-        spokePool.receiveL1State(slotKey, value, 100);
+        spokePool.executeMessage(nonce, value, 100);
     }
 
-    function testReceiveL1State_addressZeroTarget() public {
+    function testExecuteMessage_addressZeroTarget() public {
         // Should be able to call relayRootBundle with slot value target set to zero address
         bytes32 refundRoot = bytes32("test");
         bytes32 slowRelayRoot = bytes32("test2");
         bytes memory message = abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot);
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         bytes memory value = abi.encode(address(0), message);
-        helios.updateStorageSlot(slotKey, keccak256(value));
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
         vm.expectCall(
             address(spokePool),
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", refundRoot, slowRelayRoot)
         );
-        spokePool.receiveL1State(slotKey, value, 100);
+        spokePool.executeMessage(nonce, value, 100);
     }
 
     function testReplayProtection() public {
@@ -140,12 +138,11 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         bytes memory value = abi.encode(address(spokePool), message);
-        helios.updateStorageSlot(slotKey, keccak256(value));
-        spokePool.receiveL1State(slotKey, value, 100);
-        vm.expectRevert(UniversalStorageProof_SpokePool.AlreadyReceived.selector);
-        spokePool.receiveL1State(slotKey, value, 101); // block number changes doesn't impact replay protection
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        vm.expectRevert(UniversalStorageProof_SpokePool.AlreadyExecuted.selector);
+        spokePool.executeMessage(nonce, value, 101); // block number changes doesn't impact replay protection
     }
 
     function testVerifiedProofs() public {
@@ -155,12 +152,11 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         bytes memory value = abi.encode(address(spokePool), message);
-        helios.updateStorageSlot(slotKey, keccak256(value));
-        assertFalse(spokePool.verifiedProofs(slotKey));
-        spokePool.receiveL1State(slotKey, value, 100);
-        assertTrue(spokePool.verifiedProofs(slotKey));
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        assertFalse(spokePool.verifiedProofs(nonce));
+        spokePool.executeMessage(nonce, value, 100);
+        assertTrue(spokePool.verifiedProofs(nonce));
     }
 
     function testHeliosMissingState() public {
@@ -171,11 +167,10 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         bytes memory value = abi.encode(address(spokePool), message);
         // We don't update the helios state client in this test:
         vm.expectRevert(UniversalStorageProof_SpokePool.SlotValueMismatch.selector);
-        spokePool.receiveL1State(slotKey, value, 100);
+        spokePool.executeMessage(nonce, value, 100);
     }
 
     function testIncorrectTarget() public {
@@ -185,15 +180,14 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test"),
             bytes32("test2")
         );
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         // Change target in the slot value:
         bytes memory value = abi.encode(makeAddr("randomTarget"), message);
-        helios.updateStorageSlot(slotKey, keccak256(value));
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
         vm.expectRevert(UniversalStorageProof_SpokePool.NotTarget.selector);
-        spokePool.receiveL1State(slotKey, value, 100);
+        spokePool.executeMessage(nonce, value, 100);
     }
 
-    function testAdminRelayMessage() public {
+    function testAdminExecuteMessage() public {
         uint256 latestTimestamp = 100 * adminUpdateBuffer; // Make this much larger than spokePool.ADMIN_UPDATE_BUFFER() otherwise
         // the admin message will be too close to the "latest" helios head timestamp.
         vm.warp(latestTimestamp);
@@ -209,11 +203,11 @@ contract UniversalStorageProofSpokePoolTest is Test {
             address(spokePool),
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", bytes32("test"), bytes32("test2"))
         );
-        spokePool.adminRelayMessage(message);
+        spokePool.adminExecuteMessage(message);
         vm.stopPrank();
     }
 
-    function testAdminRelayMessage_latestUpdateTooRecent() public {
+    function testAdminExecuteMessage_latestUpdateTooRecent() public {
         uint256 latestTimestamp = 100 * adminUpdateBuffer; // See comment in test above about how to set this.
         vm.warp(latestTimestamp);
 
@@ -227,11 +221,11 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test2")
         );
         vm.expectRevert(UniversalStorageProof_SpokePool.AdminUpdateTooCloseToLastHeliosUpdate.selector);
-        spokePool.adminRelayMessage(message);
+        spokePool.adminExecuteMessage(message);
         vm.stopPrank();
     }
 
-    function testAdminRelayMessage_notOwner() public {
+    function testAdminExecuteMessage_notOwner() public {
         uint256 latestTimestamp = 100 * adminUpdateBuffer; // See comment in test above about how to set this.
         vm.warp(latestTimestamp);
 
@@ -242,18 +236,17 @@ contract UniversalStorageProofSpokePoolTest is Test {
             bytes32("test2")
         );
         vm.expectRevert();
-        spokePool.adminRelayMessage(message);
+        spokePool.adminExecuteMessage(message);
         vm.stopPrank();
     }
 
     function testDelegateCall() public {
         // Can call other functions on the contract
         bytes memory message = abi.encodeWithSignature("setCrossDomainAdmin(address)", address(hubPool));
-        bytes32 slotKey = keccak256(abi.encode(address(spokePool), message, nonce));
         bytes memory value = abi.encode(address(spokePool), message);
-        helios.updateStorageSlot(slotKey, keccak256(value));
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
         vm.expectCall(address(spokePool), abi.encodeWithSignature("setCrossDomainAdmin(address)", address(hubPool)));
-        spokePool.receiveL1State(slotKey, value, 100);
+        spokePool.executeMessage(nonce, value, 100);
     }
 
     function testBridgeTokensToHubPool_cctp() public {
