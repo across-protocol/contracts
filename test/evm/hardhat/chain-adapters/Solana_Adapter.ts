@@ -117,24 +117,4 @@ describe("Solana Chain Adapter", function () {
       usdc.address
     );
   });
-
-  it("Correctly translates setEnableRoute calls to the spoke pool", async function () {
-    // Enable deposits for USDC on Solana.
-    const destinationChainId = 1;
-    const depositsEnabled = true;
-    await hubPool.setDepositRoute(solanaChainId, destinationChainId, solanaUsdcAddress, depositsEnabled);
-
-    // Solana spoke pool expects to receive full bytes32 token address and uint64 for chainId.
-    const solanaInterface = new ethers.utils.Interface(["function setEnableRoute(bytes32, uint64, bool)"]);
-    const solanaMessage = solanaInterface.encodeFunctionData("setEnableRoute", [
-      solanaUsdcBytes32,
-      destinationChainId,
-      depositsEnabled,
-    ]);
-    expect(cctpMessageTransmitter.sendMessage).to.have.been.calledWith(
-      solanaDomainId,
-      solanaSpokePoolBytes32,
-      solanaMessage
-    );
-  });
 });

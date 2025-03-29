@@ -13,7 +13,6 @@ import {
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
-  enableRoutes,
   getDepositParams,
   V3RelayData,
   getUpdatedV3DepositSignature,
@@ -50,9 +49,6 @@ describe("SpokePool Depositor Logic", async function () {
     // Approve spokepool to spend tokens
     await erc20.connect(depositor).approve(spokePool.address, amountToDeposit.mul(10));
     await weth.connect(depositor).approve(spokePool.address, amountToDeposit.mul(10));
-
-    // Whitelist origin token => destination chain ID routes:
-    await enableRoutes(spokePool, [{ originToken: erc20.address }, { originToken: weth.address }]);
 
     quoteTimestamp = (await spokePool.getCurrentTime()).toNumber();
   });
@@ -212,65 +208,6 @@ describe("SpokePool Depositor Logic", async function () {
       )
     ).to.be.reverted;
 
-    await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
-    await expect(
-      spokePool.connect(depositor).depositDeprecated_5947912356(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-        })
-      )
-    ).to.emit(spokePool, "FundsDeposited");
-  });
-
-  it("Deposit route is disabled", async function () {
-    const revertReason = "DisabledRoute";
-
-    // Verify that routes are disabled by default.
-    await expect(
-      spokePool.connect(depositor).depositDeprecated_5947912356(
-        ...getDepositParams({
-          originToken: unwhitelistedErc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-        })
-      )
-    ).to.be.revertedWith(revertReason);
-
-    // Verify that the route is enabled.
-    await expect(
-      spokePool.connect(depositor).depositDeprecated_5947912356(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-        })
-      )
-    ).to.emit(spokePool, "FundsDeposited");
-
-    // Disable the route.
-    await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, false);
-    await expect(
-      spokePool.connect(depositor).depositDeprecated_5947912356(
-        ...getDepositParams({
-          originToken: erc20.address,
-          amount,
-          destinationChainId,
-          relayerFeePct,
-          quoteTimestamp,
-        })
-      )
-    ).to.be.revertedWith(revertReason);
-
-    // Re-enable the route and verify that it works again.
-    await spokePool.connect(depositor).setEnableRoute(erc20.address, destinationChainId, true);
     await erc20.connect(depositor).approve(spokePool.address, amountToDeposit);
     await expect(
       spokePool.connect(depositor).depositDeprecated_5947912356(
@@ -455,15 +392,6 @@ describe("SpokePool Depositor Logic", async function () {
       await spokePool
         .connect(depositor)
         .depositV3(...getDepositArgsFromRelayData(relayData, destinationChainId, quoteTimestamp, true));
-    });
-    it("route disabled", async function () {
-      // Verify that routes are disabled by default for a new route
-      const _depositArgs = getDepositArgsFromRelayData(relayData, 999);
-      await expect(spokePool.connect(depositor).deposit(..._depositArgs)).to.be.revertedWith("DisabledRoute");
-
-      // Enable the route:
-      await spokePool.connect(depositor).setEnableRoute(erc20.address, 999, true);
-      await expect(spokePool.connect(depositor).deposit(..._depositArgs)).to.not.be.reverted;
     });
     it("invalid quoteTimestamp", async function () {
       const quoteTimeBuffer = await spokePool.depositQuoteTimeBuffer();
