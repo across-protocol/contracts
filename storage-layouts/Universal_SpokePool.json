@@ -128,7 +128,7 @@
     },
     {
       "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
-      "label": "enabledDepositRoutes",
+      "label": "DEPRECATED_enabledDepositRoutes",
       "offset": 0,
       "slot": "2257"
     },
