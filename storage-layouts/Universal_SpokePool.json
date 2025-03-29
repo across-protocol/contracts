@@ -1,0 +1,190 @@
+{
+  "storage": [
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_initialized",
+      "offset": 0,
+      "slot": "0"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_initializing",
+      "offset": 1,
+      "slot": "0"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "1"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_owner",
+      "offset": 0,
+      "slot": "51"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "52"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "101"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "151"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_status",
+      "offset": 0,
+      "slot": "201"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "202"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "251"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_HASHED_NAME",
+      "offset": 0,
+      "slot": "1251"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_HASHED_VERSION",
+      "offset": 0,
+      "slot": "1252"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "1253"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "crossDomainAdmin",
+      "offset": 0,
+      "slot": "2253"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "withdrawalRecipient",
+      "offset": 0,
+      "slot": "2254"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_wrappedNativeToken",
+      "offset": 0,
+      "slot": "2255"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_depositQuoteTimeBuffer",
+      "offset": 20,
+      "slot": "2255"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "numberOfDeposits",
+      "offset": 24,
+      "slot": "2255"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "pausedFills",
+      "offset": 28,
+      "slot": "2255"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "pausedDeposits",
+      "offset": 29,
+      "slot": "2255"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "rootBundles",
+      "offset": 0,
+      "slot": "2256"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_enabledDepositRoutes",
+      "offset": 0,
+      "slot": "2257"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_relayFills",
+      "offset": 0,
+      "slot": "2258"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_fillCounter",
+      "offset": 0,
+      "slot": "2259"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_depositCounter",
+      "offset": 0,
+      "slot": "2260"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "DEPRECATED_refundsRequested",
+      "offset": 0,
+      "slot": "2261"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "fillStatuses",
+      "offset": 0,
+      "slot": "2262"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "relayerRefund",
+      "offset": 0,
+      "slot": "2263"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "__gap",
+      "offset": 0,
+      "slot": "2264"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "verifiedProofs",
+      "offset": 0,
+      "slot": "3262"
+    },
+    {
+      "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
+      "label": "_adminCallValidated",
+      "offset": 0,
+      "slot": "3263"
+    }
+  ]
+}
