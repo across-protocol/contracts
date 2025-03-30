@@ -43,7 +43,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      * @notice Constructor.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _l2Usdc USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
-     * @param _zkErc20Bridge Elastic chain custom bridge address (if deployed, or address(0) to disable).
+     * @param _zkUSDCBridge Elastic chain custom bridge address for USDC (if deployed, or address(0) to disable).
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
      * into the past from the block time of the deposit.
@@ -54,7 +54,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     constructor(
         address _wrappedNativeTokenAddress,
         IERC20 _l2Usdc,
-        ZkBridgeLike _zkErc20Bridge,
+        ZkBridgeLike _zkUSDCBridge,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
@@ -62,7 +62,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
-        zkErc20Bridge = _zkErc20Bridge;
+        zkUSDCBridge = _zkUSDCBridge;
     }
 
     /**
