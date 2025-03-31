@@ -193,7 +193,7 @@
   "129399": {
     "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 2929205 },
     "SpokePoolVerifier": { "address": "0x630b76C7cA96164a5aCbC1105f8BA8B739C82570", "blockNumber": 3160019 },
-    "MulticallHandler": { "address": "0x5991E7f6317b9D5e0044d5331FB8Fa6B33731EFA", "blockNumber": 3160355 }
+    "MulticallHandler": { "address": "0xAC537C12fE8f544D712d71ED4376a502EEa944d7", "blockNumber": 3179705 }
   },
   "133268194659241": {
     "SvmSpoke": {

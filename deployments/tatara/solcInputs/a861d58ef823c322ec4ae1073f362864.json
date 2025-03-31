@@ -599,7 +599,6 @@
     "debug": {
       "revertStrings": "strip"
     },
-    "evmVersion": "paris",
     "outputSelection": {
       "*": {
         "*": [
