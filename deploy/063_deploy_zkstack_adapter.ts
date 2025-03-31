@@ -33,7 +33,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const constructorArguments = [
     SPOKE_CHAIN_ID,
-    L1_ADDRESS_MAP[chainId][`zkBridgeHub_${SPOKE_CHAIN_ID}`],
+    L1_ADDRESS_MAP[chainId].zkBridgeHub,
     WETH[chainId],
     L2_REFUND_ADDRESS,
     ZK_L2_GAS_LIMIT,
