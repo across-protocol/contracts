@@ -82,6 +82,10 @@
     "UniswapV3_UniversalSwapAndBridge": {
       "address": "0x793Ff9Cd09819C537500dFcEB6F61861c1B80dCD",
       "blockNumber": 207164
+    },
+    "Wgho_UniversalSwapAndBridge": {
+      "address": "0xDFD7f7AC8F2331C4E83A43E73aB7579e736AC1Bf",
+      "blockNumber": 207164
     }
   },
   "288": { "SpokePool": { "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58", "blockNumber": 619993 } },

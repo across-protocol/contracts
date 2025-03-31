@@ -100,6 +100,7 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
       },
+      suppressedErrors: ["sendtransfer"],
     },
   },
   networks: {
