@@ -1,4 +1,6 @@
-// This script is used by a chain admin to create a vault for a token on the Solana Spoke Pool.
+// This script is used by a chain admin to create a vault for a token on the Solana Spoke Pool. Note that this is a
+// permissionless operation, only requiring the caller to spend rent-exempt deposit to create the vault account that is
+// not recoverable. Similar to other chains, this enables one to deposit and fill non-whitelisted tokens.
 
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
