@@ -46,6 +46,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
+    multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
