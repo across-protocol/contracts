@@ -39,6 +39,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
+    error InvalidBridgeConfig();
+
     /**
      * @notice Constructor.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
@@ -62,6 +64,13 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
+        address zero = address(0);
+        if (address(_l2Usdc) != zero) {
+            if (address(_zkUSDCBridge) == zero && address(_cctpTokenMessenger) == zero) {
+                revert InvalidBridgeConfig();
+            }
+        }
+
         zkUSDCBridge = _zkUSDCBridge;
     }
 

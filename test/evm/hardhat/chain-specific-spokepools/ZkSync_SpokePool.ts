@@ -109,6 +109,30 @@ describe("ZkSync Spoke Pool", function () {
     await zkSyncSpokePool.connect(crossDomainAlias).setZkBridge(rando.address);
     expect(await zkSyncSpokePool.zkErc20Bridge()).to.equal(rando.address);
   });
+  it("Invalid USDC bridge configuration is rejected", async function () {
+    let _constructorArgs = [...constructorArgs];
+    expect(_constructorArgs[1]).to.equal(usdc.address);
+    expect(_constructorArgs[2]).to.equal(zkUSDCBridge.address);
+    expect(_constructorArgs[3]).to.equal(cctpTokenMessenger);
+
+    // Verify successful deployment.
+    let implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
+      kind: "uups",
+      unsafeAllow: ["delegatecall"],
+      constructorArgs: _constructorArgs,
+    });
+    await expect(implementation).to.not.be.reverted;
+
+    _constructorArgs[2] = ZERO_ADDRESS;
+    _constructorArgs[3] = ZERO_ADDRESS;
+
+    implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
+      kind: "uups",
+      unsafeAllow: ["delegatecall"],
+      constructorArgs: _constructorArgs,
+    });
+    await expect(implementation).to.be.reverted;
+  });
   it("Only cross domain owner can relay admin root bundles", async function () {
     const { tree } = await constructSingleRelayerRefundTree(l2Dai, await zkSyncSpokePool.callStatic.chainId());
     await expect(zkSyncSpokePool.relayRootBundle(tree.getHexRoot(), mockTreeRoot)).to.be.revertedWith(
