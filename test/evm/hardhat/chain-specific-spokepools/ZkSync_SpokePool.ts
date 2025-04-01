@@ -58,14 +58,14 @@ describe("ZkSync Spoke Pool", function () {
   const cctpTokenMessenger = ZERO_ADDRESS; // Not currently supported.
 
   let hubPool: Contract, zkSyncSpokePool: Contract, dai: Contract, usdc: Contract, weth: Contract;
-  let l2Usdc: string, l2Dai: string, crossDomainAliasAddress, crossDomainAlias: SignerWithAddress;
+  let l2Dai: string, crossDomainAliasAddress, crossDomainAlias: SignerWithAddress;
   let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
   let zkErc20Bridge: FakeContract, zkUSDCBridge: FakeContract, l2Eth: FakeContract;
   let constructorArgs: unknown[];
 
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
-    ({ weth, dai, usdc, l2Usdc, l2Dai, hubPool } = await hubPoolFixture());
+    ({ weth, dai, usdc, l2Dai, hubPool } = await hubPoolFixture());
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
     crossDomainAliasAddress = avmL1ToL2Alias(owner.address); // @dev Uses same aliasing algorithm as Arbitrum
@@ -76,14 +76,7 @@ describe("ZkSync Spoke Pool", function () {
     zkErc20Bridge = await smock.fake(abiData.erc20DefaultBridge.abi, { address: ERC20_BRIDGE });
     zkUSDCBridge = await smock.fake(abiData.erc20DefaultBridge.abi, { address: USDC_BRIDGE });
     l2Eth = await smock.fake(abiData.eth.abi, { address: abiData.eth.address });
-    constructorArgs = [
-      weth.address,
-      usdc.address, // l2Usdc is just an address, not deployed.
-      zkUSDCBridge.address,
-      cctpTokenMessenger,
-      60 * 60,
-      9 * 60 * 60,
-    ];
+    constructorArgs = [weth.address, usdc.address, zkUSDCBridge.address, cctpTokenMessenger, 60 * 60, 9 * 60 * 60];
 
     zkSyncSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("ZkSync_SpokePool", owner),
@@ -192,22 +185,28 @@ describe("ZkSync Spoke Pool", function () {
     );
     await zkSyncSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
 
-    const { leaves, tree } = await constructSingleRelayerRefundTree(l2Usdc, await zkSyncSpokePool.callStatic.chainId());
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      usdc.address,
+      await zkSyncSpokePool.callStatic.chainId()
+    );
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(zkErc20Bridge.withdraw).to.have.been.calledOnce;
-    expect(zkErc20Bridge.withdraw).to.have.been.calledWith(hubPool.address, l2Usdc, amountToReturn);
+    expect(zkErc20Bridge.withdraw).to.have.been.calledWith(hubPool.address, usdc.address, amountToReturn);
   });
   it("Bridge tokens to hub pool correctly calls the custom USDC L2 Bridge for Circle Bridged USDC", async function () {
-    const { leaves, tree } = await constructSingleRelayerRefundTree(l2Usdc, await zkSyncSpokePool.callStatic.chainId());
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      usdc.address,
+      await zkSyncSpokePool.callStatic.chainId()
+    );
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(zkUSDCBridge.withdraw).to.have.been.calledOnce;
-    expect(zkUSDCBridge.withdraw).to.have.been.calledWith(hubPool.address, l2Usdc, amountToReturn);
+    expect(zkUSDCBridge.withdraw).to.have.been.calledWith(hubPool.address, usdc.address, amountToReturn);
   });
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
