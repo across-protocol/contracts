@@ -57,7 +57,7 @@ async function deposit(): Promise<void> {
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  // Find ATA for the input token to be stored by state (vault). This should have been created with the createVault instruction.
+  // Find ATA for the input token to be stored by state (vault). This should have been created before the deposit is attempted.
   const vault = getAssociatedTokenAddressSync(
     inputToken,
     statePda,
