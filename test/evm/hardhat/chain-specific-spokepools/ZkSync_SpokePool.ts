@@ -7,6 +7,7 @@ import {
   SignerWithAddress,
   toWei,
   getContractFactory,
+  randomAddress,
   seedContract,
   avmL1ToL2Alias,
 } from "../../../../utils/utils";
@@ -73,7 +74,7 @@ describe("ZkSync Spoke Pool", function () {
     await owner.sendTransaction({ to: crossDomainAliasAddress, value: toWei("1") });
 
     zkErc20Bridge = await smock.fake(abiData.erc20DefaultBridge.abi, { address: ERC20_BRIDGE });
-    zkUSDCBridge = zkErc20Bridge;
+    zkUSDCBridge = await smock.fake(abiData.erc20DefaultBridge.abi, { address: USDC_BRIDGE });
     l2Eth = await smock.fake(abiData.eth.abi, { address: abiData.eth.address });
     constructorArgs = [
       weth.address,
@@ -123,9 +124,42 @@ describe("ZkSync Spoke Pool", function () {
     });
     await expect(implementation).to.not.be.reverted;
 
+    // Configure cctp
+    _constructorArgs = [...constructorArgs];
+    _constructorArgs[2] = ZERO_ADDRESS;
+    _constructorArgs[3] = randomAddress();
+    implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
+      kind: "uups",
+      unsafeAllow: ["delegatecall"],
+      constructorArgs: _constructorArgs,
+    });
+    await expect(implementation).to.not.be.reverted;
+
+    // Configure bridged USDC
+    _constructorArgs = [...constructorArgs];
+    _constructorArgs[3] = ZERO_ADDRESS;
+    implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
+      kind: "uups",
+      unsafeAllow: ["delegatecall"],
+      constructorArgs: _constructorArgs,
+    });
+    await expect(implementation).to.not.be.reverted;
+
+    // Configure none (misconfigured)
+    _constructorArgs = [...constructorArgs];
     _constructorArgs[2] = ZERO_ADDRESS;
     _constructorArgs[3] = ZERO_ADDRESS;
+    implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
+      kind: "uups",
+      unsafeAllow: ["delegatecall"],
+      constructorArgs: _constructorArgs,
+    });
+    await expect(implementation).to.be.reverted;
 
+    // Configure both (misconfigured)
+    _constructorArgs = [...constructorArgs];
+    _constructorArgs[2] = zkUSDCBridge.address;
+    _constructorArgs[3] = randomAddress();
     implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
