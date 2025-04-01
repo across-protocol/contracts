@@ -236,7 +236,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
                 );
             }
         } else {
-            // An ERC20 that is not WETH, USDC, nor the custom gas token.
+            // An ERC20 that is not WETH nor Circle Bridged/Native USDC on the L2.
             IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
             IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(

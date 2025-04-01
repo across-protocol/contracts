@@ -193,7 +193,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
                 );
             }
         } else {
-            // An ERC20 that is not WETH nor USDC.
+            // An ERC20 that is not WETH nor Circle Bridged/Native USDC on the L2.
             IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
