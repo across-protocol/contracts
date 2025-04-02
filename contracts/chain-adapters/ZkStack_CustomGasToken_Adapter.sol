@@ -127,12 +127,10 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address zero = address(0);
         if (address(_l1Usdc) != zero) {
-            if (_usdcSharedBridge == zero && address(_cctpTokenMessenger) == zero) {
-                revert InvalidBridgeConfig();
-            }
-
+            bool zkUSDCBridgeDisabled = _usdcSharedBridge == zero;
+            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
             // Bridged and Native USDC are mutually exclusive.
-            if (_usdcSharedBridge != zero && address(_cctpTokenMessenger) != zero) {
+            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
                 revert InvalidBridgeConfig();
             }
         }
