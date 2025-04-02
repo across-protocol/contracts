@@ -22,8 +22,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const { zkErc20Bridge, zkUSDCBridge, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
   if (USDC[spokeChainId] !== ZERO_ADDRESS) {
+    zkErc20Bridge !== ZERO_ADDRESS
     assert(
-      zkErc20Bridge !== ZERO_ADDRESS && zkUSDCBridge !== ZERO_ADDRESS,
+      zkErc20Bridge === ZERO_ADDRESS && zkUSDCBridge === ZERO_ADDRESS,
       "One of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address"
     );
     assert(
