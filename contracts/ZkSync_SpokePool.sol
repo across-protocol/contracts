@@ -44,7 +44,9 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     /**
      * @notice Constructor.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-     * @param _l2Usdc USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
+     * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
+     * If not set to zero, then either the zkUSDCBridge or cctpTokenMessenger must be set and will be used to
+     * bridge this token.
      * @param _zkUSDCBridge Elastic chain custom bridge address for USDC (if deployed, or address(0) to disable).
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
@@ -55,17 +57,17 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
-        IERC20 _l2Usdc,
+        IERC20 _circleUSDC,
         ZkBridgeLike _zkUSDCBridge,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     )
         SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
-        CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+        CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         address zero = address(0);
-        if (address(_l2Usdc) != zero) {
+        if (address(_circleUSDC) != zero) {
             bool zkUSDCBridgeDisabled = address(_zkUSDCBridge) == zero;
             bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
             // Bridged and Native USDC are mutually exclusive.

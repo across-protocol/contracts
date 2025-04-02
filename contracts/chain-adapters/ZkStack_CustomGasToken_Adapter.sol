@@ -91,7 +91,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @notice Constructs new Adapter.
      * @param _chainId The target ZkStack network's chain ID.
      * @param _bridgeHub The bridge hub contract address for the ZkStack network.
-     * @param _l1Usdc USDC address on L1.
+     * @param _circleUSDC Circle USDC address on L1. If not set to address(0), then either the USDCSharedBridge
+     * or CCTP token messenger must be set and will be used to bridge this token.
      * @param _usdcSharedBridge Address of the second bridge contract for USDC corresponding to the configured ZkStack network.
      * @param _cctpTokenMessenger address of the CCTP token messenger contract for the configured network.
      * @param _recipientCircleDomainId Circle domain ID for the destination network.
@@ -105,7 +106,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
-        IERC20 _l1Usdc,
+        IERC20 _circleUSDC,
         address _usdcSharedBridge,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _recipientCircleDomainId,
@@ -115,7 +116,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 _l2GasLimit,
         uint256 _l1GasToL2GasPerPubDataLimit,
         uint256 _maxTxGasprice
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _recipientCircleDomainId) {
+    ) CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, _recipientCircleDomainId) {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
         L1_WETH = _l1Weth;
@@ -126,7 +127,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address zero = address(0);
-        if (address(_l1Usdc) != zero) {
+        if (address(_circleUSDC) != zero) {
             bool zkUSDCBridgeDisabled = _usdcSharedBridge == zero;
             bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
             // Bridged and Native USDC are mutually exclusive.
