@@ -4,7 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH, ZERO_ADDRESS } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WETH, ZERO_ADDRESS } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "ZkSync_SpokePool";
@@ -29,7 +29,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // Set USDC address to 0x0 to bypass special handling for USDC and revert to standard zkSync ERC20 bridge.
   // When CCTP is available, set the new addresses for cctpTokenMessenger and USDC to enable.
-  const usdcAddress = ZERO_ADDRESS;
+  const usdcAddress =
+    zkUSDCBridge === ZERO_ADDRESS && cctpTokenMessenger === ZERO_ADDRESS ? ZERO_ADDRESS : USDC[spokeChainId];
   const constructorArgs = [
     WETH[spokeChainId],
     usdcAddress,
