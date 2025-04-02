@@ -85,6 +85,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
     event ZkStackMessageRelayed(bytes32 indexed canonicalTxHash);
     error ETHGasTokenNotAllowed();
     error TransactionFeeTooHigh();
+    error InvalidBridgeConfig();
 
     /**
      * @notice Constructs new Adapter.
@@ -124,6 +125,17 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
+        address zero = address(0);
+        if (address(_l1Usdc) != zero) {
+            if (_usdcSharedBridge == zero && address(_cctpTokenMessenger) == zero) {
+                revert InvalidBridgeConfig();
+            }
+
+            // Bridged and Native USDC are mutually exclusive.
+            if (_usdcSharedBridge != zero && address(_cctpTokenMessenger) != zero) {
+                revert InvalidBridgeConfig();
+            }
+        }
         USDC_SHARED_BRIDGE = _usdcSharedBridge;
         CUSTOM_GAS_TOKEN = BRIDGE_HUB.baseToken(CHAIN_ID);
         if (CUSTOM_GAS_TOKEN == ETH_TOKEN_ADDRESS) {
