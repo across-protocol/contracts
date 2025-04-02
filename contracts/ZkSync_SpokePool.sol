@@ -65,13 +65,11 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         address zero = address(0);
-        if (address(_l2Usdc) != zero) {
-            bool zkUSDCBridgeDisabled = address(_zkUSDCBridge) == zero;
-            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
-            // Bridged and Native USDC are mutually exclusive.
-            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
-                revert InvalidBridgeConfig();
-            }
+        bool zkUSDCBridgeDisabled = address(_zkUSDCBridge) == zero;
+        bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
+        // Bridged and Native USDC are mutually exclusive.
+        if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
+            revert InvalidBridgeConfig();
         }
 
         zkUSDCBridge = _zkUSDCBridge;
