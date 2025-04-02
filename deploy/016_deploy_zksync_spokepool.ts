@@ -5,6 +5,7 @@ import { DeployFunction, DeploymentSubmission } from "hardhat-deploy/types";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WETH, ZERO_ADDRESS } from "./consts";
+import assert from "assert";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "ZkSync_SpokePool";
@@ -31,6 +32,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // When CCTP is available, set the new addresses for cctpTokenMessenger and USDC to enable.
   const usdcAddress =
     zkUSDCBridge === ZERO_ADDRESS && cctpTokenMessenger === ZERO_ADDRESS ? ZERO_ADDRESS : USDC[spokeChainId];
+  if (usdcAddress !== ZERO_ADDRESS) {
+    const cctpTokenMessengerDefined = cctpTokenMessenger !== ZERO_ADDRESS;
+    const zkUSDCBridgeDefined = zkUSDCBridge !== ZERO_ADDRESS;
+    assert(
+      cctpTokenMessengerDefined || zkUSDCBridgeDefined,
+      "Only one of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address"
+    );
+  }
   const constructorArgs = [
     WETH[spokeChainId],
     usdcAddress,

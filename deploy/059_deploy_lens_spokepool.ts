@@ -21,17 +21,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const artifact = await deployer.loadArtifact(contractName);
 
   const { zkErc20Bridge, zkUSDCBridge, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
-  if (USDC[spokeChainId] !== ZERO_ADDRESS) {
-    zkErc20Bridge !== ZERO_ADDRESS
-    assert(
-      zkErc20Bridge === ZERO_ADDRESS && zkUSDCBridge === ZERO_ADDRESS,
-      "One of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address"
-    );
-    assert(
-      zkErc20Bridge !== ZERO_ADDRESS || zkUSDCBridge !== ZERO_ADDRESS,
-      "Only one of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address"
-    );
-  }
 
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
@@ -42,6 +31,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const usdcAddress =
     zkUSDCBridge === ZERO_ADDRESS && cctpTokenMessenger === ZERO_ADDRESS ? ZERO_ADDRESS : USDC[spokeChainId];
+  if (usdcAddress !== ZERO_ADDRESS) {
+    const cctpTokenMessengerDefined = cctpTokenMessenger !== ZERO_ADDRESS;
+    const zkUSDCBridgeDefined = zkUSDCBridge !== ZERO_ADDRESS;
+    assert(
+      cctpTokenMessengerDefined || zkUSDCBridgeDefined,
+      "Only one of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address"
+    );
+  }
+
   const constructorArgs = [
     WGHO[spokeChainId],
     usdcAddress,
