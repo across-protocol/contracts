@@ -38,9 +38,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
+
+  const usdcAddress =
+    zkUSDCBridge === ZERO_ADDRESS && cctpTokenMessenger === ZERO_ADDRESS ? ZERO_ADDRESS : USDC[spokeChainId];
   const constructorArgs = [
     WGHO[spokeChainId],
-    USDC[spokeChainId],
+    usdcAddress,
     zkUSDCBridge,
     cctpTokenMessenger,
     QUOTE_TIME_BUFFER,
