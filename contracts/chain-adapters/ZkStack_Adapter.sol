@@ -103,11 +103,13 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
         SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address zero = address(0);
-        bool zkUSDCBridgeDisabled = _usdcSharedBridge == zero;
-        bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
-        // Bridged and Native USDC are mutually exclusive.
-        if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
-            revert InvalidBridgeConfig();
+        if (address(_l1Usdc) != zero) {
+            bool zkUSDCBridgeDisabled = _usdcSharedBridge == zero;
+            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
+            // Bridged and Native USDC are mutually exclusive.
+            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
+                revert InvalidBridgeConfig();
+            }
         }
         USDC_SHARED_BRIDGE = _usdcSharedBridge;
         address gasToken = BRIDGE_HUB.baseToken(CHAIN_ID);
