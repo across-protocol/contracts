@@ -1,6 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@coral-xyz/anchor";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
@@ -10,7 +9,7 @@ import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";
 
-const { createRoutePda, getVaultAta, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
+const { initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
 describe("svm_spoke.handle_receive_message", () => {
   anchor.setProvider(AnchorProvider.env());
@@ -37,7 +36,6 @@ describe("svm_spoke.handle_receive_message", () => {
     "function pauseDeposits(bool pause)",
     "function pauseFills(bool pause)",
     "function setCrossDomainAdmin(address newCrossDomainAdmin)",
-    "function setEnableRoute(bytes32 originToken, uint64 destinationChainId, bool enabled)",
     "function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)",
     "function emergencyDeleteRootBundle(uint256 rootBundleId)",
   ]);
@@ -304,121 +302,6 @@ describe("svm_spoke.handle_receive_message", () => {
     );
   });
 
-  it("Enables and disables route remotely", async () => {
-    // Enable the route.
-    const originToken = await createMint(provider.connection, (provider.wallet as any).payer, owner, owner, 6);
-    const routeChainId = 1;
-    let calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, true]);
-    let messageBody = Buffer.from(calldata.slice(2), "hex");
-    let message = encodeMessageHeader({
-      version: cctpMessageversion,
-      sourceDomain: remoteDomain.toNumber(),
-      destinationDomain: localDomain,
-      nonce: BigInt(nonce),
-      sender: crossDomainAdmin,
-      recipient: program.programId,
-      destinationCaller,
-      messageBody,
-    });
-
-    // Remaining accounts specific to SetEnableRoute.
-    const routePda = createRoutePda(originToken, seed, new BN(routeChainId));
-    const vault = await getVaultAta(originToken, state);
-    // Same 3 remaining accounts passed for HandleReceiveMessage context.
-    const enableRouteRemainingAccounts = remainingAccounts.slice(0, 3);
-    // payer in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: true,
-      isWritable: true,
-      pubkey: provider.wallet.publicKey,
-    });
-    // state in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: state,
-    });
-    // route in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: true,
-      pubkey: routePda,
-    });
-    // vault in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: true,
-      pubkey: vault,
-    });
-    // origin_token_mint in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: originToken,
-    });
-    // token_program in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: TOKEN_PROGRAM_ID,
-    });
-    // associated_token_program in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,
-    });
-    // system_program in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: web3.SystemProgram.programId,
-    });
-    // event_authority in self-invoked SetEnableRoute (appended by Anchor with event_cpi macro).
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: eventAuthority,
-    });
-    // program in self-invoked SetEnableRoute (appended by Anchor with event_cpi macro).
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: program.programId,
-    });
-    await messageTransmitterProgram.methods
-      .receiveMessage({ message, attestation })
-      .accounts(receiveMessageAccounts)
-      .remainingAccounts(enableRouteRemainingAccounts)
-      .rpc();
-
-    let routeAccount = await program.account.route.fetch(routePda);
-    assert.isTrue(routeAccount.enabled, "Route should be enabled");
-
-    // Disable the route.
-    nonce += 1;
-    calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, false]);
-    messageBody = Buffer.from(calldata.slice(2), "hex");
-    message = encodeMessageHeader({
-      version: cctpMessageversion,
-      sourceDomain: remoteDomain.toNumber(),
-      destinationDomain: localDomain,
-      nonce: BigInt(nonce),
-      sender: crossDomainAdmin,
-      recipient: program.programId,
-      destinationCaller,
-      messageBody,
-    });
-    await messageTransmitterProgram.methods
-      .receiveMessage({ message, attestation })
-      .accounts(receiveMessageAccounts)
-      .remainingAccounts(enableRouteRemainingAccounts)
-      .rpc();
-
-    routeAccount = await program.account.route.fetch(routePda);
-    assert.isFalse(routeAccount.enabled, "Route should be disabled");
-  });
-
   it("Relays root bundle remotely", async () => {
     // Encode relayRootBundle message.
     const relayerRefundRoot = crypto.randomBytes(32);
@@ -444,7 +327,7 @@ describe("svm_spoke.handle_receive_message", () => {
     const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const relayRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
-    // payer in self-invoked SetEnableRoute.
+    // payer in self-invoked RelayRootBundle.
     relayRootBundleRemainingAccounts.push({
       isSigner: true,
       isWritable: true,
