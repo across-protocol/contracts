@@ -196,7 +196,7 @@
     "MulticallHandler": { "address": "0xAC537C12fE8f544D712d71ED4376a502EEa944d7", "blockNumber": 3179705 }
   },
   "133268194659241": {
-    "SvmSpoke": {
+    "SpokePool": {
       "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
       "blockNumber": 356313770
     },
@@ -214,7 +214,7 @@
     }
   },
   "34268394551451": {
-    "SvmSpoke": {
+    "SpokePool": {
       "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
       "blockNumber": 317101505
     },
