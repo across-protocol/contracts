@@ -3,8 +3,6 @@ use anchor_lang::prelude::*;
 // Common Errors with EVM SpokePool.
 #[error_code]
 pub enum CommonError {
-    #[msg("The route is not enabled!")]
-    DisabledRoute,
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
     #[msg("Ivalid fill deadline!")]
