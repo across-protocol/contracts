@@ -62,17 +62,6 @@ async function nativeDeposit(): Promise<void> {
     programId
   );
 
-  // Define the route account PDA
-  const [routePda] = PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("route"),
-      inputToken.toBytes(),
-      seed.toArrayLike(Buffer, "le", 8),
-      destinationChainId.toArrayLike(Buffer, "le", 8),
-    ],
-    programId
-  );
-
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
@@ -106,7 +95,6 @@ async function nativeDeposit(): Promise<void> {
     { property: "programId", value: programId.toString() },
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
-    { property: "routePda", value: routePda.toString() },
     { property: "vault", value: vault.toString() },
     { property: "userTokenAccount", value: userTokenAccount.toString() },
     { property: "existingTokenAccount", value: existingTokenAccount },
@@ -167,7 +155,6 @@ async function nativeDeposit(): Promise<void> {
   )
     .accounts({
       state: statePda,
-      route: routePda,
       signer: signer.publicKey,
       userTokenAccount,
       vault: vault,

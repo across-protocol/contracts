@@ -12,7 +12,6 @@ import {
   pipe,
 } from "@solana/kit";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   ExtensionType,
   NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
@@ -593,7 +592,7 @@ describe("svm_spoke.deposit", () => {
     inputToken = NATIVE_MINT;
     const nativeDecimals = 9;
     depositorTA = getAssociatedTokenAddressSync(inputToken, depositor.publicKey);
-    await enableRoute();
+    await createVault();
 
     // Will need to add rent exemption to the deposit amount, will recover it at the end of the transaction.
     const rentExempt = await getMinimumBalanceForRentExemptAccount(connection);
@@ -653,7 +652,7 @@ describe("svm_spoke.deposit", () => {
     inputToken = NATIVE_MINT;
     const nativeDecimals = 9;
     depositorTA = (await getOrCreateAssociatedTokenAccount(connection, payer, inputToken, depositor.publicKey)).address;
-    await enableRoute();
+    await createVault();
 
     // Transfer SOL to the user token account.
     const transferIx = SystemProgram.transfer({
