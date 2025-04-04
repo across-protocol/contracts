@@ -1,7 +1,7 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH, USDCe } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH, USDC } from "./consts";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool } = await getSpokePoolDeploymentInfo(hre);
@@ -21,9 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WETH[chainId],
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
-    // TODO: USDC.e on Linea will be upgraded to USDC so eventually we should add a USDC entry for Linea in consts
-    // and read from there instead of using the L1 USDC.e address.
-    USDCe[chainId],
+    USDC[chainId],
     L2_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
   ];
 
