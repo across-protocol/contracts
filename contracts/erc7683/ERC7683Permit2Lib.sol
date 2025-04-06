@@ -106,6 +106,7 @@ library ERC7683Permit2Lib {
                     orderData.destinationChainId,
                     orderData.recipient,
                     orderData.exclusiveRelayer,
+                    orderData.depositNonce,
                     orderData.exclusivityPeriod,
                     keccak256(orderData.message)
                 )

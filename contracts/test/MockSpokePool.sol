@@ -125,7 +125,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
                 updatedRecipient.toBytes32(),
                 updatedMessage,
                 depositorSignature,
-                UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH
+                UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
             );
     }
 

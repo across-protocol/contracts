@@ -141,12 +141,6 @@ abstract contract SpokePool is
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
-
-    bytes32 public constant UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH =
-        keccak256(
-            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
-        );
-
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
@@ -894,7 +888,7 @@ abstract contract SpokePool is
             updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature,
-            UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH
+            UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
