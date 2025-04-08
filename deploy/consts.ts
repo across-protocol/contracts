@@ -220,7 +220,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2TokenMessenger: "0xunknown", // No official address from Circle yet.
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
   },
   [CHAIN_IDs.SCROLL_SEPOLIA]: {
