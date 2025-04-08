@@ -102,7 +102,6 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
         L2_GAS_LIMIT = _l2GasLimit;
         MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
-        SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address zero = address(0);
         if (address(_circleUSDC) != zero) {
             bool zkUSDCBridgeDisabled = _usdcSharedBridge == zero;
@@ -204,8 +203,9 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
                 );
             }
         } else {
-            // An ERC20 that is not WETH nor Circle Bridged/Native USDC on the L2.
-            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
+            // An ERC20 that is not WETH.
+            address sharedBridge = BRIDGE_HUB.sharedBridge();
+            IERC20(l1Token).forceApprove(sharedBridge, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -214,7 +214,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: SHARED_BRIDGE,
+                    secondBridgeAddress: sharedBridge,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
