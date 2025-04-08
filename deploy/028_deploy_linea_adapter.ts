@@ -1,4 +1,4 @@
-import { L1_ADDRESS_MAP, WETH } from "./consts";
+import { L1_ADDRESS_MAP, WETH, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -14,11 +14,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       WETH[chainId],
       L1_ADDRESS_MAP[chainId].lineaMessageService,
       L1_ADDRESS_MAP[chainId].lineaTokenBridge,
-      L1_ADDRESS_MAP[chainId].lineaUsdcBridge,
+      USDC[chainId],
+      L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
     ],
   });
 };
 
 module.exports = func;
-func.dependencies = ["HubPool"];
 func.tags = ["LineaAdapter", "mainnet"];
