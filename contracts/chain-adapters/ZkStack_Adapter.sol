@@ -51,9 +51,6 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable L1_WETH;
 
-    // SharedBridge address, which is read from the BridgeHub at construction.
-    address public immutable SHARED_BRIDGE;
-
     // USDC SharedBridge address, which is passed in on construction and used as the second bridge contract for USDC transfers.
     address public immutable USDC_SHARED_BRIDGE;
 
