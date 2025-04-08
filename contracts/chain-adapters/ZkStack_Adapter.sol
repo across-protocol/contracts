@@ -135,7 +135,6 @@ contract ZkStack_Adapter is AdapterInterface {
         // A bypass proxy seems to no longer be needed to avoid deposit limits. The tracking of these limits seems to be deprecated.
         // See: https://github.com/matter-labs/era-contracts/blob/bce4b2d0f34bd87f1aaadd291772935afb1c3bd6/l1-contracts/contracts/bridge/L1ERC20Bridge.sol#L54-L55
         uint256 txBaseCost = _computeETHTxCost(L2_GAS_LIMIT);
-        address sharedBridge = BRIDGE_HUB.sharedBridge();
 
         bytes32 txHash;
         if (l1Token == address(L1_WETH)) {
@@ -157,6 +156,7 @@ contract ZkStack_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH.
+            address sharedBridge = BRIDGE_HUB.sharedBridge();
             IERC20(l1Token).forceApprove(sharedBridge, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
