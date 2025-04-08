@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
+import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "./libraries/CircleCCTPAdapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
@@ -22,7 +23,7 @@ interface IL2ETH {
  * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
  * @custom:security-contact bugs@across.to
  */
-contract ZkSync_SpokePool is SpokePool {
+contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost
     // upon contract deployment. On zkSync the opposite is true: deploying the same bytecode for contracts,
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
@@ -33,18 +34,53 @@ contract ZkSync_SpokePool is SpokePool {
 
     // Bridge used to withdraw ERC20's to L1
     ZkBridgeLike public zkErc20Bridge;
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    ZkBridgeLike public immutable zkUSDCBridge;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
+    error InvalidBridgeConfig();
+
+    /**
+     * @notice Constructor.
+     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
+     * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
+     * If not set to zero, then either the zkUSDCBridge or cctpTokenMessenger must be set and will be used to
+     * bridge this token.
+     * @param _zkUSDCBridge Elastic chain custom bridge address for USDC (if deployed, or address(0) to disable).
+     * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
+     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * into the past from the block time of the deposit.
+     * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
+     * into the future from the block time of the deposit.
+     */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
+        IERC20 _circleUSDC,
+        ZkBridgeLike _zkUSDCBridge,
+        ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+    )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+    {
+        address zero = address(0);
+        if (address(_circleUSDC) != zero) {
+            bool zkUSDCBridgeDisabled = address(_zkUSDCBridge) == zero;
+            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
+            // Bridged and Native USDC are mutually exclusive.
+            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
+                revert InvalidBridgeConfig();
+            }
+        }
+
+        zkUSDCBridge = _zkUSDCBridge;
+    }
 
     /**
-     * @notice Construct the ZkSync SpokePool.
+     * @notice Initialize the ZkSync SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
      * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
@@ -109,6 +145,14 @@ contract ZkSync_SpokePool is SpokePool {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
             IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
+        } else if (l2TokenAddress == address(usdcToken)) {
+            if (_isCCTPEnabled()) {
+                // Circle native USDC via CCTP.
+                _transferUsdc(withdrawalRecipient, amountToReturn);
+            } else {
+                // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
+                zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            }
         } else {
             zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
         }
@@ -121,4 +165,9 @@ contract ZkSync_SpokePool is SpokePool {
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
+
+    // Reserve storage slots for future versions of this base contract to add state variables without
+    // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
+    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    uint256[999] private __gap;
 }

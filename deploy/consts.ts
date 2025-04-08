@@ -16,6 +16,7 @@ export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
 export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
 export const AZERO_GAS_PRICE = "240000000000";
+export const CIRCLE_UNINITIALIZED_DOMAIN_ID = 4294967295; // 2^32 - 1
 
 export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
 export const ZK_L2_GAS_LIMIT = 2000000;
@@ -45,6 +46,8 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
+    zkUsdcSharedBridge_232: "0xf553E6D903AA43420ED7e3bc2313bE9286A8F987",
+    zkUsdcSharedBridge_324: "0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB", // This is the standard shared bridge contract.
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -188,6 +191,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.ZK_SYNC]: {
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
+    cctpTokenMessenger: ZERO_ADDRESS, // CCTP not available on zkSync.
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
   },
   [CHAIN_IDs.OPTIMISM]: {
@@ -212,8 +216,10 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
   },
-  232: {
+  [CHAIN_IDs.LENS]: {
     zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
+    zkUSDCBridge: "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81",
+    cctpTokenMessenger: ZERO_ADDRESS, // Not available on Lens.
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",

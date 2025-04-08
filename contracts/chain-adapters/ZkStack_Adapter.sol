@@ -7,6 +7,8 @@ import "../external/interfaces/WETH9Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
+import { CircleCCTPAdapter } from "../libraries/CircleCCTPAdapter.sol";
+import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to ZkStack with ETH as the gas token.
@@ -18,7 +20,7 @@ import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract ZkStack_Adapter is AdapterInterface {
+contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
 
     // The ZkSync bridgehub contract treats address(1) to represent ETH.
@@ -49,6 +51,9 @@ contract ZkStack_Adapter is AdapterInterface {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable L1_WETH;
 
+    // USDC SharedBridge address, which is passed in on construction and used as the second bridge contract for USDC transfers.
+    address public immutable USDC_SHARED_BRIDGE;
+
     // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
     // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
     uint256 private immutable MAX_TX_GASPRICE;
@@ -57,11 +62,17 @@ contract ZkStack_Adapter is AdapterInterface {
 
     error ETHGasTokenRequired();
     error TransactionFeeTooHigh();
+    error InvalidBridgeConfig();
 
     /**
      * @notice Constructs new Adapter.
      * @param _chainId The target ZkStack network's chain ID.
      * @param _bridgeHub The bridge hub contract address for the ZkStack network.
+     * @param _circleUSDC Circle USDC address on L1. If not set to address(0), then either the USDCSharedBridge
+     * or CCTP token messenger must be set and will be used to bridge this token.
+     * @param _usdcSharedBridge Address of the second bridge contract for USDC corresponding to the configured ZkStack network.
+     * @param _cctpTokenMessenger address of the CCTP token messenger contract for the configured network.
+     * @param _recipientCircleDomainId Circle domain ID for the destination network.
      * @param _l1Weth WETH address on L1.
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
      * @param _l2GasLimit The maximum amount of gas this contract is willing to pay to execute a transaction on L2.
@@ -71,12 +82,16 @@ contract ZkStack_Adapter is AdapterInterface {
     constructor(
         uint256 _chainId,
         BridgeHubInterface _bridgeHub,
+        IERC20 _circleUSDC,
+        address _usdcSharedBridge,
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _recipientCircleDomainId,
         WETH9Interface _l1Weth,
         address _l2RefundAddress,
         uint256 _l2GasLimit,
         uint256 _l1GasToL2GasPerPubDataLimit,
         uint256 _maxTxGasprice
-    ) {
+    ) CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, _recipientCircleDomainId) {
         CHAIN_ID = _chainId;
         BRIDGE_HUB = _bridgeHub;
         L1_WETH = _l1Weth;
@@ -84,6 +99,16 @@ contract ZkStack_Adapter is AdapterInterface {
         L2_GAS_LIMIT = _l2GasLimit;
         MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
+        address zero = address(0);
+        if (address(_circleUSDC) != zero) {
+            bool zkUSDCBridgeDisabled = _usdcSharedBridge == zero;
+            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
+            // Bridged and Native USDC are mutually exclusive.
+            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
+                revert InvalidBridgeConfig();
+            }
+        }
+        USDC_SHARED_BRIDGE = _usdcSharedBridge;
         address gasToken = BRIDGE_HUB.baseToken(CHAIN_ID);
         if (gasToken != ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenRequired();
@@ -154,6 +179,26 @@ contract ZkStack_Adapter is AdapterInterface {
                     refundRecipient: L2_REFUND_ADDRESS
                 })
             );
+        } else if (l1Token == address(usdcToken)) {
+            // Either use CCTP or the custom shared bridge when bridging USDC.
+            if (_isCCTPEnabled()) {
+                _transferUsdc(to, amount);
+            } else {
+                IERC20(l1Token).forceApprove(USDC_SHARED_BRIDGE, amount);
+                txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
+                    BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
+                        chainId: CHAIN_ID,
+                        mintValue: txBaseCost,
+                        l2Value: 0,
+                        l2GasLimit: L2_GAS_LIMIT,
+                        l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
+                        refundRecipient: L2_REFUND_ADDRESS,
+                        secondBridgeAddress: USDC_SHARED_BRIDGE,
+                        secondBridgeValue: 0,
+                        secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
+                    })
+                );
+            }
         } else {
             // An ERC20 that is not WETH.
             address sharedBridge = BRIDGE_HUB.sharedBridge();
