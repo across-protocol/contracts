@@ -49,9 +49,6 @@ contract ZkStack_Adapter is AdapterInterface {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable L1_WETH;
 
-    // SharedBridge address, which is read from the BridgeHub at construction.
-    address public immutable SHARED_BRIDGE;
-
     // The maximum gas price a transaction sent to this adapter may have. This is set to prevent a block producer from setting an artificially high priority fee
     // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
     uint256 private immutable MAX_TX_GASPRICE;
@@ -87,7 +84,6 @@ contract ZkStack_Adapter is AdapterInterface {
         L2_GAS_LIMIT = _l2GasLimit;
         MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
-        SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         address gasToken = BRIDGE_HUB.baseToken(CHAIN_ID);
         if (gasToken != ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenRequired();
@@ -160,7 +156,8 @@ contract ZkStack_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH.
-            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
+            address sharedBridge = BRIDGE_HUB.sharedBridge();
+            IERC20(l1Token).forceApprove(sharedBridge, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -169,7 +166,7 @@ contract ZkStack_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: SHARED_BRIDGE,
+                    secondBridgeAddress: sharedBridge,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })

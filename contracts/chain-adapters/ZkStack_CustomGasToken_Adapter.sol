@@ -64,9 +64,6 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
     // Set l1Weth at construction time to make testing easier.
     WETH9Interface public immutable L1_WETH;
 
-    // SharedBridge address, which is read from the BridgeHub at construction.
-    address public immutable SHARED_BRIDGE;
-
     // Custom gas token address, which is read from the BridgeHub at construction.
     address public immutable CUSTOM_GAS_TOKEN;
 
@@ -110,7 +107,6 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         L2_GAS_LIMIT = _l2GasLimit;
         MAX_TX_GASPRICE = _maxTxGasprice;
         L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT = _l1GasToL2GasPerPubDataLimit;
-        SHARED_BRIDGE = BRIDGE_HUB.sharedBridge();
         CUSTOM_GAS_TOKEN = BRIDGE_HUB.baseToken(CHAIN_ID);
         if (CUSTOM_GAS_TOKEN == ETH_TOKEN_ADDRESS) {
             revert ETHGasTokenNotAllowed();
@@ -125,7 +121,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
      */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
-        IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
+        IERC20(CUSTOM_GAS_TOKEN).forceApprove(BRIDGE_HUB.sharedBridge(), txBaseCost);
 
         // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
         bytes32 canonicalTxHash = BRIDGE_HUB.requestL2TransactionDirect(
@@ -163,13 +159,14 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
         // A bypass proxy seems to no longer be needed to avoid deposit limits. The tracking of these limits seems to be deprecated.
         // See: https://github.com/matter-labs/era-contracts/blob/bce4b2d0f34bd87f1aaadd291772935afb1c3bd6/l1-contracts/contracts/bridge/L1ERC20Bridge.sol#L54-L55
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
+        address sharedBridge = BRIDGE_HUB.sharedBridge();
 
         bytes32 txHash;
         if (l1Token == address(L1_WETH)) {
             // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
             // cost of custom gas tokens.
             L1_WETH.withdraw(amount);
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
             // Note: When bridging ETH with `L2TransactionRequestTwoBridgesOuter`, the second bridge must be 0 for the shared bridge call to not revert.
             // https://github.com/matter-labs/era-contracts/blob/aafee035db892689df3f7afe4b89fd6467a39313/l1-contracts/contracts/bridge/L1SharedBridge.sol#L328
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: amount }(
@@ -180,14 +177,14 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: SHARED_BRIDGE,
+                    secondBridgeAddress: sharedBridge,
                     secondBridgeValue: amount,
                     secondBridgeCalldata: _secondBridgeCalldata(to, ETH_TOKEN_ADDRESS, 0)
                 })
             );
         } else if (l1Token == CUSTOM_GAS_TOKEN) {
             // The chain's custom gas token.
-            IERC20(l1Token).forceApprove(SHARED_BRIDGE, txBaseCost + amount);
+            IERC20(l1Token).forceApprove(sharedBridge, txBaseCost + amount);
             txHash = BRIDGE_HUB.requestL2TransactionDirect(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: CHAIN_ID,
@@ -203,8 +200,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
             );
         } else {
             // An ERC20 that is not WETH and not the custom gas token.
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(SHARED_BRIDGE, txBaseCost);
-            IERC20(l1Token).forceApprove(SHARED_BRIDGE, amount);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
+            IERC20(l1Token).forceApprove(sharedBridge, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -213,7 +210,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: SHARED_BRIDGE,
+                    secondBridgeAddress: sharedBridge,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })
