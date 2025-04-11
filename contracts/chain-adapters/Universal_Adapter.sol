@@ -19,6 +19,7 @@ interface IOwnable {
  * @dev This contract can be redeployed to point to a new HubPoolStore if the data store gets corrupted and new data
  * can't get written to the store for some reason. The corresponding Universal_SpokePool contract will
  * also need to be redeployed to point to the new HubPoolStore.
+ * @custom:security-contact bugs@across.to
  */
 contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter {
     /// @notice Contract that stores calldata to be relayed to L2 via storage proofs.

@@ -13,6 +13,7 @@ import "./SpokePool.sol";
  * @dev This contract has one onlyOwner function to be used as an emergency fallback to execute a message to
  * this SpokePool in the case where the light-client is not functioning correctly. The owner is designed to be set
  * to a multisig contract on this chain.
+ * @custom:security-contact bugs@across.to
  */
 contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter {
     /// @notice The data store contract that only the HubPool can write to. This spoke pool can only act on

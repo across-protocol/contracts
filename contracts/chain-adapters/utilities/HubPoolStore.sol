@@ -15,6 +15,7 @@ interface IHubPool {
  * @dev This contract DOES NOT prevent replay attacks of storage proofs on the L2 spoke pool if the
  * UniversalStorageProof_Adapters using this contract are mapped to spokepools with the same address on different
  * L2 chains. See comment in storeRelayAdminFunctionCalldata() for more details.
+ * @custom:security-contact bugs@across.to
  */
 contract HubPoolStore {
     error NotHubPool();
