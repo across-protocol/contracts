@@ -31,7 +31,8 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
     /// set to a very high value, like 24 hours.
     uint256 public immutable ADMIN_UPDATE_BUFFER;
 
-    /// @notice Stores all proofs verified to prevent replay attacks.
+    /// @notice Maps nonce of calldata stored in HubPoolStore to hash of calldata. The nonces of executed calldata
+    /// are stored here to prevent replay attacks.
     mapping(uint256 => bool) public verifiedProofs;
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
@@ -51,7 +52,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
     error NotImplemented();
     error AdminUpdateTooCloseToLastHeliosUpdate();
 
-    // All calls that have admin privileges must be fired from within the receiveL1State method that validates that
+    // All calls that have admin privileges must be fired from within the executeMessage method that validates that
     // the input data was published on L1 by the HubPool. This input data is then executed on this contract.
     // This modifier sets the adminCallValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {
@@ -181,7 +182,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         }
     }
 
-    // Check that the admin call is only triggered by a receiveL1State() call.
+    // Check that the admin call is only triggered by a executeMessage() call.
     function _requireAdminSender() internal view override {
         if (!_adminCallValidated) {
             revert AdminCallNotValidated();
