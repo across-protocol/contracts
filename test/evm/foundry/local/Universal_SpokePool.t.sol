@@ -142,7 +142,7 @@ contract UniversalSpokePoolTest is Test {
         spokePool.executeMessage(nonce, value, 101); // block number changes doesn't impact replay protection
     }
 
-    function testVerifiedProofs() public {
+    function testExecutedMessages() public {
         // Checks replay protection mapping is updated as expected.
         bytes memory message = abi.encodeWithSignature(
             "relayRootBundle(bytes32,bytes32)",
@@ -151,9 +151,9 @@ contract UniversalSpokePoolTest is Test {
         );
         bytes memory value = abi.encode(address(spokePool), message);
         helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
-        assertFalse(spokePool.verifiedProofs(nonce));
+        assertFalse(spokePool.executedMessages(nonce));
         spokePool.executeMessage(nonce, value, 100);
-        assertTrue(spokePool.verifiedProofs(nonce));
+        assertTrue(spokePool.executedMessages(nonce));
     }
 
     function testHeliosMissingState() public {

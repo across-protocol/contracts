@@ -176,7 +176,7 @@
     },
     {
       "contract": "contracts/Universal_SpokePool.sol:Universal_SpokePool",
-      "label": "verifiedProofs",
+      "label": "executedMessages",
       "offset": 0,
       "slot": "3262"
     },
