@@ -353,7 +353,7 @@ export async function modifyRelayHelper(
 
 export async function getUpdatedV3DepositSignature(
   depositor: SignerWithAddress,
-  depositId: BigNumber,
+  relayHash: string,
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
@@ -362,8 +362,7 @@ export async function getUpdatedV3DepositSignature(
   const typedData = {
     types: {
       UpdateDepositDetails: [
-        { name: "depositId", type: "uint256" },
-        { name: "originChainId", type: "uint256" },
+        { name: "relayHash", type: "bytes32" },
         { name: "updatedOutputAmount", type: "uint256" },
         { name: "updatedRecipient", type: "bytes32" },
         { name: "updatedMessage", type: "bytes" },
@@ -375,8 +374,7 @@ export async function getUpdatedV3DepositSignature(
       chainId: originChainId,
     },
     message: {
-      depositId,
-      originChainId,
+      relayHash,
       updatedOutputAmount,
       updatedRecipient,
       updatedMessage,

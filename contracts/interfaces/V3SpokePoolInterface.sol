@@ -148,7 +148,7 @@ interface V3SpokePoolInterface {
 
     event RequestedSpeedUpDeposit(
         uint256 updatedOutputAmount,
-        uint256 indexed depositId,
+        bytes32 relayHash,
         bytes32 indexed depositor,
         bytes32 updatedRecipient,
         bytes updatedMessage,
@@ -275,7 +275,7 @@ interface V3SpokePoolInterface {
 
     function speedUpDeposit(
         bytes32 depositor,
-        uint256 depositId,
+        bytes32 relayHash,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
         bytes calldata updatedMessage,
@@ -284,7 +284,7 @@ interface V3SpokePoolInterface {
 
     function speedUpV3Deposit(
         address depositor,
-        uint256 depositId,
+        bytes32 relayHash,
         uint256 updatedOutputAmount,
         address updatedRecipient,
         bytes calldata updatedMessage,

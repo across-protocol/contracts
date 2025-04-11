@@ -461,7 +461,7 @@ describe("SpokePool Relayer Logic", async function () {
         await destErc20.connect(relayer).approve(spokePool.address, updatedOutputAmount);
         signature = await getUpdatedV3DepositSignature(
           depositor,
-          relayData.depositId,
+          getV3RelayHash(relayData, destinationChainId),
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -487,7 +487,7 @@ describe("SpokePool Relayer Logic", async function () {
           .connect(depositor)
           .speedUpV3Deposit(
             depositor.address,
-            relayData.depositId,
+            getV3RelayHash(relayData, destinationChainId),
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
@@ -497,7 +497,7 @@ describe("SpokePool Relayer Logic", async function () {
           .connect(depositor)
           .speedUpDeposit(
             addressToBytes(depositor.address),
-            relayData.depositId,
+            getV3RelayHash(relayData, destinationChainId),
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
@@ -507,17 +507,26 @@ describe("SpokePool Relayer Logic", async function () {
       it("in absence of exclusivity", async function () {
         // Clock drift between spokes can mean exclusivityDeadline is in future even when no exclusivity was applied.
         await spokePool.setCurrentTime(relayData.exclusivityDeadline - 1);
+        const newRelayData = { ...relayData, exclusivityDeadline: 0 };
+        const newRelaySignature = await getUpdatedV3DepositSignature(
+          depositor,
+          getV3RelayHash(newRelayData, destinationChainId),
+          newRelayData.originChainId,
+          updatedOutputAmount,
+          addressToBytes(updatedRecipient),
+          updatedMessage
+        );
         await expect(
           spokePool
             .connect(relayer)
             .fillRelayWithUpdatedDeposit(
-              { ...relayData, exclusivityDeadline: 0 },
+              newRelayData,
               repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature
+              newRelaySignature
             )
         ).to.emit(spokePool, "FilledRelay");
       });
@@ -528,6 +537,14 @@ describe("SpokePool Relayer Logic", async function () {
           exclusiveRelayer: addressToBytes(recipient.address),
           exclusivityDeadline: relayData.fillDeadline,
         };
+        const newRelaySignature = await getUpdatedV3DepositSignature(
+          depositor,
+          getV3RelayHash(_relayData, destinationChainId),
+          _relayData.originChainId,
+          updatedOutputAmount,
+          addressToBytes(updatedRecipient),
+          updatedMessage
+        );
         await expect(
           spokePool
             .connect(relayer)
@@ -538,24 +555,35 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature
+              newRelaySignature
             )
         ).to.be.revertedWith("NotExclusiveRelayer");
 
         // Even if not exclusive relayer, can send it after exclusivity deadline
+        const relayData2 = {
+          ..._relayData,
+          exclusivityDeadline: 0,
+        };
+        const newRelaySignature2 = await getUpdatedV3DepositSignature(
+          depositor,
+          getV3RelayHash(relayData2, destinationChainId),
+          _relayData.originChainId,
+          updatedOutputAmount,
+          addressToBytes(updatedRecipient),
+          updatedMessage
+        );
         await expect(
-          spokePool.connect(relayer).fillRelayWithUpdatedDeposit(
-            {
-              ..._relayData,
-              exclusivityDeadline: 0,
-            },
-            repaymentChainId,
-            addressToBytes(relayer.address),
-            updatedOutputAmount,
-            addressToBytes(updatedRecipient),
-            updatedMessage,
-            signature
-          )
+          spokePool
+            .connect(relayer)
+            .fillRelayWithUpdatedDeposit(
+              relayData2,
+              repaymentChainId,
+              addressToBytes(relayer.address),
+              updatedOutputAmount,
+              addressToBytes(updatedRecipient),
+              updatedMessage,
+              newRelaySignature2
+            )
         ).to.not.be.reverted;
 
         // @dev: However note that if the relayer modifies the relay data in production such that it doesn't match a
@@ -626,7 +654,7 @@ describe("SpokePool Relayer Logic", async function () {
         // Incorrect signature for new deposit ID
         const otherSignature = await getUpdatedV3DepositSignature(
           depositor,
-          relayData.depositId.add(toBN(1)),
+          createRandomBytes32(),
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -726,7 +754,7 @@ describe("SpokePool Relayer Logic", async function () {
         // owner, so using the depositor's signature should succeed and using someone else's signature should fail.
         const incorrectSignature = await getUpdatedV3DepositSignature(
           relayer, // not depositor
-          relayData.depositId,
+          getV3RelayHash(relayData, destinationChainId),
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -745,17 +773,26 @@ describe("SpokePool Relayer Logic", async function () {
               incorrectSignature
             )
         ).to.be.revertedWith("InvalidDepositorSignature");
+        const newRelayData = { ...relayData, depositor: addressToBytes(erc1271.address) };
+        const newSignature = await getUpdatedV3DepositSignature(
+          depositor,
+          getV3RelayHash(newRelayData, destinationChainId),
+          relayData.originChainId,
+          updatedOutputAmount,
+          addressToBytes(updatedRecipient),
+          updatedMessage
+        );
         await expect(
           spokePool
             .connect(relayer)
             .fillRelayWithUpdatedDeposit(
-              { ...relayData, depositor: addressToBytes(erc1271.address) },
+              newRelayData,
               repaymentChainId,
               addressToBytes(relayer.address),
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature
+              newSignature
             )
         ).to.not.be.reverted;
       });

@@ -60,7 +60,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function _verifyUpdateDepositMessage(
         address depositor,
-        uint256 depositId,
+        bytes32 relayHash,
         uint256 originChainId,
         int64 updatedRelayerFeePct,
         bytes32 updatedRecipient,
@@ -72,8 +72,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
             keccak256(
                 abi.encode(
                     UPDATE_DEPOSIT_DETAILS_HASH,
-                    depositId,
-                    originChainId,
+                    relayHash,
                     updatedRelayerFeePct,
                     updatedRecipient,
                     keccak256(updatedMessage)
@@ -87,7 +86,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function verifyUpdateV3DepositMessageBytes32(
         bytes32 depositor,
-        uint256 depositId,
+        bytes32 relayHash,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         bytes32 updatedRecipient,
@@ -97,7 +96,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         return
             _verifyUpdateV3DepositMessage(
                 depositor.toAddress(),
-                depositId,
+                relayHash,
                 originChainId,
                 updatedOutputAmount,
                 updatedRecipient,
@@ -109,7 +108,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
 
     function verifyUpdateV3DepositMessage(
         address depositor,
-        uint256 depositId,
+        bytes32 relayHash,
         uint256 originChainId,
         uint256 updatedOutputAmount,
         address updatedRecipient,
@@ -119,7 +118,7 @@ contract MockSpokePool is SpokePool, MockV2SpokePoolInterface, OwnableUpgradeabl
         return
             _verifyUpdateV3DepositMessage(
                 depositor,
-                depositId,
+                relayHash,
                 originChainId,
                 updatedOutputAmount,
                 updatedRecipient.toBytes32(),

@@ -10,6 +10,7 @@ import {
   BigNumber,
   addressToBytes,
   bytes32ToAddress,
+  createRandomBytes32,
 } from "../../../utils/utils";
 import {
   spokePoolFixture,
@@ -906,11 +907,11 @@ describe("SpokePool Depositor Logic", async function () {
     const updatedOutputAmount = amountToDeposit.add(1);
     const updatedRecipient = randomAddress();
     const updatedMessage = "0x1234";
-    const depositId = toBN(100);
+    const relayHash = createRandomBytes32();
     it("_verifyUpdateV3DepositMessage", async function () {
       const signature = await getUpdatedV3DepositSignature(
         depositor,
-        depositId,
+        relayHash,
         originChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -918,7 +919,7 @@ describe("SpokePool Depositor Logic", async function () {
       );
       await spokePool.verifyUpdateV3DepositMessageBytes32(
         addressToBytes(depositor.address),
-        depositId,
+        relayHash,
         originChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -930,7 +931,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.verifyUpdateV3DepositMessageBytes32(
           addressToBytes(updatedRecipient),
-          depositId,
+          relayHash,
           originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -940,9 +941,10 @@ describe("SpokePool Depositor Logic", async function () {
       ).to.be.revertedWith("InvalidDepositorSignature");
 
       // @dev Creates an invalid signature using different params
+      const invalidHash = createRandomBytes32();
       const invalidSignature = await getUpdatedV3DepositSignature(
         depositor,
-        depositId.add(toBN(1)),
+        invalidHash,
         originChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -951,7 +953,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.verifyUpdateV3DepositMessageBytes32(
           addressToBytes(depositor.address),
-          depositId,
+          relayHash,
           originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -963,9 +965,10 @@ describe("SpokePool Depositor Logic", async function () {
     it("passes spoke pool's chainId() as origin chainId", async function () {
       const spokePoolChainId = await spokePool.chainId();
 
+      const relayHash = createRandomBytes32();
       const expectedSignature = await getUpdatedV3DepositSignature(
         depositor,
-        depositId,
+        relayHash,
         spokePoolChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -976,7 +979,7 @@ describe("SpokePool Depositor Logic", async function () {
           .connect(depositor)
           .speedUpDeposit(
             addressToBytes(depositor.address),
-            depositId,
+            relayHash,
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
@@ -986,7 +989,7 @@ describe("SpokePool Depositor Logic", async function () {
         .to.emit(spokePool, "RequestedSpeedUpDeposit")
         .withArgs(
           updatedOutputAmount,
-          depositId,
+          relayHash,
           addressToBytes(depositor.address),
           addressToBytes(updatedRecipient),
           updatedMessage,
@@ -997,7 +1000,7 @@ describe("SpokePool Depositor Logic", async function () {
       const otherChainId = spokePoolChainId.add(1);
       const invalidSignatureForChain = await getUpdatedV3DepositSignature(
         depositor,
-        depositId,
+        relayHash,
         otherChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -1006,7 +1009,7 @@ describe("SpokePool Depositor Logic", async function () {
       await expect(
         spokePool.verifyUpdateV3DepositMessageBytes32(
           addressToBytes(depositor.address),
-          depositId,
+          relayHash,
           otherChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
@@ -1019,7 +1022,7 @@ describe("SpokePool Depositor Logic", async function () {
           .connect(depositor)
           .speedUpDeposit(
             addressToBytes(depositor.address),
-            depositId,
+            relayHash,
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
@@ -1033,10 +1036,11 @@ describe("SpokePool Depositor Logic", async function () {
       const updatedMessage = "0x1234";
       const depositId = toBN(100);
       const spokePoolChainId = await spokePool.chainId();
+      const relayHash = createRandomBytes32();
 
       const signature = await getUpdatedV3DepositSignature(
         depositor,
-        depositId,
+        relayHash,
         spokePoolChainId,
         updatedOutputAmount,
         addressToBytes(updatedRecipient),
@@ -1045,7 +1049,7 @@ describe("SpokePool Depositor Logic", async function () {
 
       await spokePool.verifyUpdateV3DepositMessage(
         depositor.address,
-        depositId,
+        relayHash,
         spokePoolChainId,
         updatedOutputAmount,
         updatedRecipient,
@@ -1058,7 +1062,7 @@ describe("SpokePool Depositor Logic", async function () {
           .connect(depositor)
           .speedUpV3Deposit(
             depositor.address,
-            depositId,
+            relayHash,
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
@@ -1068,7 +1072,7 @@ describe("SpokePool Depositor Logic", async function () {
         .to.emit(spokePool, "RequestedSpeedUpDeposit")
         .withArgs(
           updatedOutputAmount,
-          depositId,
+          relayHash,
           addressToBytes(depositor.address),
           addressToBytes(updatedRecipient),
           updatedMessage,
