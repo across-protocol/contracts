@@ -620,7 +620,9 @@ abstract contract SpokePool is
      * FundsDeposited event is unique which means that the
      * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
      * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
-     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
+     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline. Re-using a depositNonce is very
+     * dangerous when combined with `speedUpDeposit`, as a speed up signature can be re-used for any deposits
+     * with the same deposit ID.
      * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
      * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
      * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
@@ -802,7 +804,9 @@ abstract contract SpokePool is
 
     /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
-     * and/or message.
+     * and/or message. The speed up signature uniquely identifies the speed up based only on
+     * depositor, deposit ID and origin chain, so using this function in conjunction with unsafeDeposit is risky
+     * due to the chance of repeating a deposit ID.
      * @dev the depositor and depositId must match the params in a FundsDeposited event that the depositor
      * wants to speed up. The relayer has the option but not the obligation to use this updated information
      * when filling the deposit via fillRelayWithUpdatedDeposit().
