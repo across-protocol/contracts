@@ -13,6 +13,9 @@ struct AcrossOrderData {
     uint256 destinationChainId;
     bytes32 recipient;
     address exclusiveRelayer;
+    /// @notice User needs to be careful not to re-use a deposit nonce when depositing into Across otherwise the the
+    /// user risks their deposit being unfillable. See @across/contracts/SpokePool.sol#unsafeDeposit() for
+    /// more details on this situation.
     uint256 depositNonce;
     uint32 exclusivityPeriod;
     bytes message;
