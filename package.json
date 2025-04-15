@@ -68,8 +68,9 @@
     "zksync-web3": "^0.14.3"
   },
   "devDependencies": {
-    "@codama/nodes-from-anchor": "^1.1.0",
-    "@codama/renderers-js": "^1.1.1",
+    "@codama/nodes-from-anchor": "^1.1.11",
+    "@codama/renderers-js": "^1.2.10",
+    "@codama/visitors": "^1.2.11",
     "@consensys/linea-sdk": "^0.1.6",
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
     "@matterlabs/hardhat-zksync-solc": "^1.1.4",
@@ -90,7 +91,7 @@
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.3.7",
-    "codama": "^1.2.0",
+    "codama": "^1.2.11",
     "dotenv": "^10.0.0",
     "eslint": "^7.29.0",
     "eslint-config-prettier": "^8.3.0",

@@ -694,7 +694,7 @@ describe("svm_spoke.fill", () => {
           inputAmount: relayData.inputAmount.toNumber(),
           outputAmount: relayData.outputAmount.toNumber(),
           originChainId: relayData.originChainId.toNumber(),
-          depositId: new Uint8Array(relayData.depositId),
+          depositId: relayData.depositId.reduce((acc, byte) => (acc << 8n) | BigInt(byte), 0n),
           fillDeadline: relayData.fillDeadline,
           exclusivityDeadline: relayData.exclusivityDeadline,
           message: relayData.message,
