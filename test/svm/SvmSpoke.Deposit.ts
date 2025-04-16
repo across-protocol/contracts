@@ -14,18 +14,23 @@ import {
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   ExtensionType,
+  NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createApproveCheckedInstruction,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createCloseAccountInstruction,
   createEnableCpiGuardInstruction,
   createMint,
   createReallocateInstruction,
+  createSyncNativeInstruction,
   getAccount,
   getAssociatedTokenAddressSync,
+  getMinimumBalanceForRentExemptAccount,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
-import { Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
 import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
@@ -581,6 +586,118 @@ describe("svm_spoke.deposit", () => {
     } catch (err: any) {
       assert.include(err.toString(), "owner does not match");
     }
+  });
+
+  it("Deposit native token, new token account", async () => {
+    // Fund depositor account with SOL.
+    const nativeAmount = 1_000_000_000; // 1 SOL
+    await connection.requestAirdrop(depositor.publicKey, nativeAmount * 2); // Add buffer for transaction fees.
+
+    // Setup wSOL as the input token.
+    inputToken = NATIVE_MINT;
+    const nativeDecimals = 9;
+    depositorTA = getAssociatedTokenAddressSync(inputToken, depositor.publicKey);
+    await createVault();
+
+    // Will need to add rent exemption to the deposit amount, will recover it at the end of the transaction.
+    const rentExempt = await getMinimumBalanceForRentExemptAccount(connection);
+    const transferIx = SystemProgram.transfer({
+      fromPubkey: depositor.publicKey,
+      toPubkey: depositorTA,
+      lamports: BigInt(nativeAmount) + BigInt(rentExempt),
+    });
+
+    // Create wSOL user account.
+    const createIx = createAssociatedTokenAccountIdempotentInstruction(
+      depositor.publicKey,
+      depositorTA,
+      depositor.publicKey,
+      inputToken
+    );
+
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(nativeAmount),
+      nativeDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const depositIx = await program.methods
+      .deposit(...depositDataValues)
+      .accounts(depositAccounts)
+      .instruction();
+
+    const closeIx = createCloseAccountInstruction(depositorTA, depositor.publicKey, depositor.publicKey);
+
+    const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+
+    const depositTx = new Transaction().add(transferIx, createIx, approveIx, depositIx, closeIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
+
+    const fVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+    assertSE(
+      fVaultAmount,
+      iVaultAmount + BigInt(nativeAmount),
+      "Vault balance should be increased by the deposited amount"
+    );
+  });
+
+  it("Deposit native token, existing token account", async () => {
+    // Fund depositor account with SOL.
+    const nativeAmount = 1_000_000_000; // 1 SOL
+    await connection.requestAirdrop(depositor.publicKey, nativeAmount * 2); // Add buffer for transaction fees.
+
+    // Setup wSOL as the input token, creating the associated token account for the user.
+    inputToken = NATIVE_MINT;
+    const nativeDecimals = 9;
+    depositorTA = (await getOrCreateAssociatedTokenAccount(connection, payer, inputToken, depositor.publicKey)).address;
+    await createVault();
+
+    // Transfer SOL to the user token account.
+    const transferIx = SystemProgram.transfer({
+      fromPubkey: depositor.publicKey,
+      toPubkey: depositorTA,
+      lamports: nativeAmount,
+    });
+
+    // Sync the user token account with the native balance.
+    const syncIx = createSyncNativeInstruction(depositorTA);
+
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(nativeAmount),
+      nativeDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const depositIx = await program.methods
+      .deposit(...depositDataValues)
+      .accounts(depositAccounts)
+      .instruction();
+
+    const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+
+    const depositTx = new Transaction().add(transferIx, syncIx, approveIx, depositIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
+
+    const fVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+    assertSE(
+      fVaultAmount,
+      iVaultAmount + BigInt(nativeAmount),
+      "Vault balance should be increased by the deposited amount"
+    );
   });
 
   it("Deposits tokens to a new vault", async () => {
