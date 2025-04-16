@@ -32,8 +32,9 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
     /// set to a very high value, like 24 hours.
     uint256 public immutable ADMIN_UPDATE_BUFFER;
 
-    /// @notice Stores all proofs verified to prevent replay attacks.
-    mapping(uint256 => bool) public verifiedProofs;
+    /// @notice Stores nonces of calldata stored in HubPoolStore that gets executed via executeMessage()
+    /// to prevent replay attacks.
+    mapping(uint256 => bool) public executedMessages;
 
     // Warning: this variable should _never_ be touched outside of this contract. It is intentionally set to be
     // private. Leaving it set to true can permanently disable admin calls.
@@ -52,7 +53,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
     error NotImplemented();
     error AdminUpdateTooCloseToLastHeliosUpdate();
 
-    // All calls that have admin privileges must be fired from within the receiveL1State method that validates that
+    // All calls that have admin privileges must be fired from within the executeMessage method that validates that
     // the input data was published on L1 by the HubPool. This input data is then executed on this contract.
     // This modifier sets the adminCallValidated variable so this condition can be checked in _requireAdminSender().
     modifier validateInternalCalls() {
@@ -105,8 +106,8 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
      * @notice Relays calldata stored by the HubPool on L1 into this contract.
      * @dev Replay attacks are possible with this _message if this contract has the same address on another chain.
      * @param _messageNonce Nonce of message stored in HubPoolStore.
-     * @param _message Message stored in HubPoolStore. Compared against hashed value in light client for slot key
-     * corresponding to _messageNonce at block number.
+     * @param _message Message stored in HubPoolStore's relayMessageCallData mapping. Compared against raw value
+     * in Helios light client for slot key corresponding to _messageNonce at block number.
      * @param _blockNumber Block number in light client we use to check slot value of slot key
      */
     function executeMessage(
@@ -115,11 +116,13 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         uint256 _blockNumber
     ) external validateInternalCalls {
         bytes32 slotKey = getSlotKey(_messageNonce);
-        bytes32 expectedSlotValueHash = keccak256(_message);
+        // The expected slot value corresponds to the hash of the L2 calldata and its target,
+        // as originally stored in the HubPoolStore's relayMessageCallData mapping.
+        bytes32 expectedSlotValue = keccak256(_message);
 
         // Verify Helios light client has expected slot value.
-        bytes32 slotValueHash = IHelios(helios).getStorageSlot(_blockNumber, hubPoolStore, slotKey);
-        if (expectedSlotValueHash != slotValueHash) {
+        bytes32 slotValue = IHelios(helios).getStorageSlot(_blockNumber, hubPoolStore, slotKey);
+        if (expectedSlotValue != slotValue) {
             revert SlotValueMismatch();
         }
 
@@ -132,10 +135,10 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
 
         // Prevent replay attacks. The slot key should be a hash of the nonce associated with this calldata in the
         // HubPoolStore, which maps the nonce to the _value.
-        if (verifiedProofs[_messageNonce]) {
+        if (executedMessages[_messageNonce]) {
             revert AlreadyExecuted();
         }
-        verifiedProofs[_messageNonce] = true;
+        executedMessages[_messageNonce] = true;
         emit RelayedCallData(_messageNonce, msg.sender);
 
         _executeCalldata(message);
@@ -182,7 +185,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         }
     }
 
-    // Check that the admin call is only triggered by a receiveL1State() call.
+    // Check that the admin call is only triggered by a executeMessage() call.
     function _requireAdminSender() internal view override {
         if (!_adminCallValidated) {
             revert AdminCallNotValidated();
