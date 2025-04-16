@@ -10,7 +10,7 @@ use crate::{
     constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
     error::{CommonError, SvmError},
     event::FundsDeposited,
-    state::{Route, State},
+    state::{Delegate, Route, State},
     utils::{get_current_time, get_unsafe_deposit_id, transfer_from},
 };
 
@@ -35,6 +35,21 @@ pub struct Deposit<'info> {
         constraint = !state.paused_deposits @ CommonError::DepositsArePaused
     )]
     pub state: Account<'info, State>,
+
+    #[account(
+        mut,
+        seeds = [
+        b"delegate",
+        state.seed.to_le_bytes().as_ref(),
+        input_token.as_ref(),
+        output_token.as_ref(),
+        input_amount.to_le_bytes().as_ref(),
+        output_amount.to_le_bytes().as_ref(),
+        destination_chain_id.to_le_bytes().as_ref()
+        ],
+        bump
+    )]
+    pub delegate: Account<'info, Delegate>,
 
     #[account(
         seeds = [b"route", input_token.as_ref(), state.seed.to_le_bytes().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
@@ -85,13 +100,11 @@ pub fn _deposit(
     message: Vec<u8>,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
-
     let current_time = get_current_time(state)?;
 
     if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
     }
-
     if fill_deadline > current_time + state.fill_deadline_buffer {
         return err!(CommonError::InvalidFillDeadline);
     }
@@ -101,25 +114,46 @@ pub fn _deposit(
         if exclusivity_deadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS {
             exclusivity_deadline += current_time;
         }
-
         if exclusive_relayer == Pubkey::default() {
             return err!(CommonError::InvalidExclusiveRelayer);
         }
     }
 
-    // Depositor must have delegated input_amount to the state PDA.
+    // Reassemble delegate PDA signer seeds
+    let state_seed_bytes = state.seed.to_le_bytes();
+    let input_amount_bytes = input_amount.to_le_bytes();
+    let output_amount_bytes = output_amount.to_be_bytes();
+    let destination_chain_id_bytes = destination_chain_id.to_le_bytes();
+    let base_seeds: &[&[u8]] = &[
+        b"delegate",
+        &state_seed_bytes,
+        input_token.as_ref(),
+        output_token.as_ref(),
+        &input_amount_bytes,
+        &output_amount_bytes,
+        &destination_chain_id_bytes,
+    ];
+    let (_pda, delegate_bump) = Pubkey::find_program_address(base_seeds, ctx.program_id);
+    let bump_slice = [delegate_bump];
+    let full_seeds: Vec<&[u8]> = base_seeds
+        .iter()
+        .copied()
+        .chain(std::iter::once(&bump_slice[..]))
+        .collect();
+
+    // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.depositor_token_account,
         &ctx.accounts.vault,
         input_amount,
-        state,
-        ctx.bumps.state,
+        &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
+        full_seeds.as_slice(),
     )?;
 
     let mut applied_deposit_id = deposit_id;
-    // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
+    // If deposit_id is zero, update state.number_of_deposits.
     if deposit_id == ZERO_DEPOSIT_ID {
         state.number_of_deposits += 1;
         applied_deposit_id[28..].copy_from_slice(&state.number_of_deposits.to_be_bytes());
