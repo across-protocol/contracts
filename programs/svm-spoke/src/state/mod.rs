@@ -1,3 +1,4 @@
+pub mod delegate;
 pub mod fill;
 pub mod instruction_params;
 pub mod refund_account;
@@ -6,6 +7,7 @@ pub mod route;
 pub mod state;
 pub mod transfer_liability;
 
+pub use delegate::*;
 pub use fill::*;
 pub use instruction_params::*;
 pub use refund_account::*;

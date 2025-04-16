@@ -10,8 +10,8 @@ use crate::{
     constraints::is_relay_hash_valid,
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
-    state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
+    state::{Delegate, FillRelayParams, FillStatus, FillStatusAccount, State},
+    utils::{get_current_time, get_relay_hash, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -31,6 +31,13 @@ pub struct FillRelay<'info> {
         constraint = !state.paused_fills @ CommonError::FillsArePaused
     )]
     pub state: Account<'info, State>,
+
+    #[account(
+        mut,
+        seeds = [b"delegate", relay_hash.as_ref()],
+        bump
+    )]
+    pub delegate: Account<'info, Delegate>,
 
     #[account(
         mint::token_program = token_program,
@@ -114,15 +121,25 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    // Relayer must have delegated output_amount to the state PDA
+    // Reassemble delegate PDA signer seeds
+    let base_seeds: &[&[u8]] = &[b"delegate", &get_relay_hash(&relay_data, state.chain_id)];
+    let (_pda, delegate_bump) = Pubkey::find_program_address(base_seeds, ctx.program_id);
+    let bump_slice = [delegate_bump];
+    let full_seeds: Vec<&[u8]> = base_seeds
+        .iter()
+        .copied()
+        .chain(std::iter::once(&bump_slice[..]))
+        .collect();
+
+    // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.relayer_token_account,
         &ctx.accounts.recipient_token_account,
         relay_data.output_amount,
-        state,
-        ctx.bumps.state,
+        &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
+        full_seeds.as_slice(),
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
