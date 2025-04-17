@@ -83,8 +83,6 @@ pub struct Deposit<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     pub token_program: Interface<'info, TokenInterface>,
-
-    pub system_program: Program<'info, System>,
 }
 
 pub fn _deposit(
