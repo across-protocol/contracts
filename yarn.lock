@@ -287,87 +287,140 @@
     "@chainsafe/persistent-merkle-tree" "^0.4.2"
     case "^1.6.3"
 
-"@codama/errors@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@codama/errors/-/errors-1.2.0.tgz#5292fac4f61cde9f98f453f178f647edd8f804a8"
-  integrity sha512-7cLTgu1UpDkvDIx+9WclYaQr4vuFxnRYlZ5GFhZ0vP3QPlhj2FORwDC+crUy+YzboNKL7tGg53CAOpF61HnEpg==
+"@codama/cli@1.0.10":
+  version "1.0.10"
+  resolved "https://registry.npmjs.org/@codama/cli/-/cli-1.0.10.tgz#47876d450a2a74704b15a872987c5c9e25f855cf"
+  integrity sha512-zKfQZYIqu834fno5ra6H/rlqFlNWNJ5tU5spxxVBOwECX3oUZc5+ED9Vu6cOP/FRgs6FI24/d603P6iSz0vuuA==
   dependencies:
-    "@codama/node-types" "1.2.0"
+    "@codama/nodes" "1.2.11"
+    "@codama/nodes-from-anchor" "1.1.11"
+    "@codama/renderers" "1.0.19"
+    "@codama/renderers-js" "1.2.10"
+    "@codama/renderers-js-umi" "1.1.12"
+    "@codama/renderers-rust" "1.0.19"
+    "@codama/visitors" "1.2.11"
+    "@codama/visitors-core" "1.2.11"
+    commander "^13.1.0"
+    picocolors "^1.1.1"
+    prompts "^2.4.2"
+
+"@codama/errors@1.2.11":
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/@codama/errors/-/errors-1.2.11.tgz#0fd4880a185f58b318b808542e12b4b2d703a36c"
+  integrity sha512-npkIj4bqLMENt2HPtxzLitaduwtl/kaQkW1lFJJdJR7Fu1rD0R4jQkiysqvzMggviOFMnR2/ANutXxKy3NaqQA==
+  dependencies:
+    "@codama/node-types" "1.2.11"
     chalk "^5.4.1"
-    commander "^12.1.0"
+    commander "^13.1.0"
 
-"@codama/node-types@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@codama/node-types/-/node-types-1.2.0.tgz#7669e68b43a523cf3ff165129417173046927cc7"
-  integrity sha512-r/gBY8vi2tsrThtT1uKXQvI2c7Zv3hJH/+a35JJS/pkkt2tsAgX45/9TQWMepiGECfak8OhiMmqb+Naf+qDg4w==
+"@codama/node-types@1.2.11":
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/@codama/node-types/-/node-types-1.2.11.tgz#7d0e97a97abf611ee000f57887779a4bb821aeb0"
+  integrity sha512-4yUA2uYwC/VmtyiRZe+89mWJ3BiN9D6mckiYgvpyOHTNtQ0y35CQpPloJzb0hiRcWIuVaOmV+AWqZrZn5wbzkg==
 
-"@codama/nodes-from-anchor@1.1.0", "@codama/nodes-from-anchor@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@codama/nodes-from-anchor/-/nodes-from-anchor-1.1.0.tgz#9ee635921cc206ef8957dca4ec61a54976852e4c"
-  integrity sha512-cEe3tsQMZU8y3YJOi0HOSbsZcTiKP0AxC4XVMFmFJjJe8lKWZW6hghxKG9N4YyryujtZkSGvdpxk+rnmd12Lwg==
+"@codama/nodes-from-anchor@1.1.11", "@codama/nodes-from-anchor@^1.1.11":
+  version "1.1.11"
+  resolved "https://registry.npmjs.org/@codama/nodes-from-anchor/-/nodes-from-anchor-1.1.11.tgz#2bfa7628743d366ecda1200f0d600009c8e65e41"
+  integrity sha512-OpBGlmZnHhbOhHfJ8uKcUP5/ZESjVGV/xyxB5XDRHyBFzUOuxGheAm1/fC9M7K5pNtxEaOk8Ouq9U72cvAK0Xw==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
-    "@codama/visitors" "1.2.0"
-    "@noble/hashes" "^1.6.1"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/visitors" "1.2.11"
+    "@noble/hashes" "^1.7.1"
+    "@solana/codecs" "2.1.0"
 
-"@codama/nodes@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@codama/nodes/-/nodes-1.2.0.tgz#db0911f9295321413781d36d067d79721623d3d2"
-  integrity sha512-3wb449llwUOYpHlIxKAwNFpJpazOTrpC3fhoFd3l0gSVKq77qz1IbYq8M3mVxNLSnXv8bHNrW0BCenyzjO1e2g==
+"@codama/nodes@1.2.11":
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/@codama/nodes/-/nodes-1.2.11.tgz#8813b542978d075b366d30a37282e4dd32e70913"
+  integrity sha512-+cJrFHYcNMwjgfChgY3ujbUNu8dmsokcbq5UGzuS5CCSJ8g7t3SIc07tTj/VJwZnKrClCSiKl12chP7Q0Vc2Rw==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/node-types" "1.2.0"
+    "@codama/errors" "1.2.11"
+    "@codama/node-types" "1.2.11"
 
-"@codama/renderers-core@1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@codama/renderers-core/-/renderers-core-1.0.2.tgz#a670ca5a63a3c72a0fe55026572daeb21e4fb87b"
-  integrity sha512-feDqtNB0PIocgrDIPdG0mdv+l28VEA64gExg1NdR2aiydp0LxpBrU5gnPOqxiZ2et4ARtt9yGU959CYdzqh2Qg==
+"@codama/renderers-core@1.0.13":
+  version "1.0.13"
+  resolved "https://registry.npmjs.org/@codama/renderers-core/-/renderers-core-1.0.13.tgz#0befce270320bd357e214c61b822916725295282"
+  integrity sha512-1/IDgYlsKi1CZCJ6imyiIk/BJDYNKzUnwfD0m/HwLOhzyKZwn0OAbMMQuKkBgcclmzD/izxmHxYHJvAJZSBl+w==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
-    "@codama/visitors-core" "1.2.0"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/visitors-core" "1.2.11"
 
-"@codama/renderers-js@^1.1.1":
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@codama/renderers-js/-/renderers-js-1.1.1.tgz#3b7d35f123e4b355f7595dee8f8fdb64004895cb"
-  integrity sha512-lAsZkFswL7FI59wgzenVRgK2Hcw0u9bkMk+BMupoFQlOs29xZb3xihtL2CBfEsvzLbHdq/XdDSypiVfuD6A3Cg==
+"@codama/renderers-js-umi@1.1.12":
+  version "1.1.12"
+  resolved "https://registry.npmjs.org/@codama/renderers-js-umi/-/renderers-js-umi-1.1.12.tgz#5a93138d8a8c64b627742159410ae166cea0bbe6"
+  integrity sha512-Ne3hdMBPDdfXgXTjFoxeSSoOLP44ecCryG/H0t2okNau3IB6NO3DN13xn4xtC/l3JO6bdjxggyPg8QZEw8lc5g==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
-    "@codama/nodes-from-anchor" "1.1.0"
-    "@codama/renderers-core" "1.0.2"
-    "@codama/visitors-core" "1.2.0"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/renderers-core" "1.0.13"
+    "@codama/validators" "1.2.11"
+    "@codama/visitors-core" "1.2.11"
     "@solana/codecs-strings" rc
     nunjucks "^3.2.4"
-    prettier "^3.4.2"
+    prettier "^3.5.3"
 
-"@codama/validators@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@codama/validators/-/validators-1.2.0.tgz#12b6425f69e7a1fcf718f31f515e982b4565f027"
-  integrity sha512-/HV7aMgzm93vUqPsnWnDYUPx3hz6i1GxmY3CrW0Ivo0hoyR73Es4t48jYcIjYBb4bqQlO2eTfWuXUEAjwTsCAA==
+"@codama/renderers-js@1.2.10", "@codama/renderers-js@^1.2.10":
+  version "1.2.10"
+  resolved "https://registry.npmjs.org/@codama/renderers-js/-/renderers-js-1.2.10.tgz#60e597f5d5dac0015beeffdc410963d4ee2a34ea"
+  integrity sha512-rGlrmP5Rs90taX2IDKjHskDXhfVFMajfnCq1RFNg4/2XoEtWeXPkhQTWVUgn0q9tBAcvQCWyea2IfjGjjk5XMA==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
-    "@codama/visitors-core" "1.2.0"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/nodes-from-anchor" "1.1.11"
+    "@codama/renderers-core" "1.0.13"
+    "@codama/visitors-core" "1.2.11"
+    "@solana/codecs-strings" rc
+    nunjucks "^3.2.4"
+    prettier "^3.5.3"
 
-"@codama/visitors-core@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@codama/visitors-core/-/visitors-core-1.2.0.tgz#f52fb376c705cb3d13a814e13c856c8a2185f599"
-  integrity sha512-sr8+xGx+QPAMedBY0wT5W0HAQJypBWNPGWKPImNg5t3Da1DC5oofrW3JHmqtSUHDdFbDXtagcEZ32DGqJFJ5hA==
+"@codama/renderers-rust@1.0.19":
+  version "1.0.19"
+  resolved "https://registry.npmjs.org/@codama/renderers-rust/-/renderers-rust-1.0.19.tgz#81c97286a520af30327136e1c9870b5376a7917d"
+  integrity sha512-ur2oQsMZ0P/g0DXY4tcw6Hznsq8ax1n968lfUNnxMHNBYr3zdhfJRBvzsF7RtcYkEvengOafQn1N5AlsNv1GBA==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/renderers-core" "1.0.13"
+    "@codama/visitors-core" "1.2.11"
+    "@solana/codecs-strings" rc
+    nunjucks "^3.2.4"
+
+"@codama/renderers@1.0.19":
+  version "1.0.19"
+  resolved "https://registry.npmjs.org/@codama/renderers/-/renderers-1.0.19.tgz#f9df46e025ffb34858529306651a8f041939c432"
+  integrity sha512-gzc+dOVyzIkPjEEZiEcQLAHS+7hJL9hU4x5ZiMJfemLLapk/wIg7fH1s5alw3oDh6HosZouVtnAYp1OOukH88A==
+  dependencies:
+    "@codama/renderers-js" "1.2.10"
+    "@codama/renderers-js-umi" "1.1.12"
+    "@codama/renderers-rust" "1.0.19"
+
+"@codama/validators@1.2.11":
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/@codama/validators/-/validators-1.2.11.tgz#36054f046b47d2fde0641e866a31268c38412cff"
+  integrity sha512-67j+GEIZqq1Qh8eZe63Dnh21zzeVoJQbj56uek8VYLevgt9qfO8hdI9D/XGg7xM+o2fKa9g3NlwO5jOSG+1oLQ==
+  dependencies:
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/visitors-core" "1.2.11"
+
+"@codama/visitors-core@1.2.11":
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/@codama/visitors-core/-/visitors-core-1.2.11.tgz#7db0eb91d6e0c7ed8434b4d1226487e740293467"
+  integrity sha512-+hf5NT7DzxxVus+z3mVVrE53hW60E83ao64Ya3zyVFa+vLCUnAcYgrpL8I6UU391QymgDa0NfYJXedgjqWkfGw==
+  dependencies:
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
     json-stable-stringify "^1.2.1"
 
-"@codama/visitors@1.2.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@codama/visitors/-/visitors-1.2.0.tgz#04d73fada915464338b6426876febe08defa7d7d"
-  integrity sha512-3edQ1aCVdzYK6eNSUSCgs+P4SJ0UyrVpU7s1ykQog1El//ZkjGJNAAjyuCuA4EMuKxDW0sQa9RXkPfIJSxpa6g==
+"@codama/visitors@1.2.11", "@codama/visitors@^1.2.11":
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/@codama/visitors/-/visitors-1.2.11.tgz#aeeb7e03344a50fbc7c0db74be6129800da8b647"
+  integrity sha512-UxqVUcXFJFdCdpkKXiEmHRaLhIJIyAQijmt1hMb1LoWnPe2yavkuVdo5cPuJqZ/lImu4+LDVZz7Tk7l3iZG8uw==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
-    "@codama/visitors-core" "1.2.0"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/visitors-core" "1.2.11"
 
 "@colors/colors@1.5.0":
   version "1.5.0"
@@ -1781,10 +1834,10 @@
   resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.5.0.tgz#abadc5ca20332db2b1b2aa3e496e9af1213570b0"
   integrity sha512-1j6kQFb7QRru7eKN3ZDvRcP13rugwdxZqCjbiAVZfIJwgj2A65UmT4TgARXGlXgnRkORLTDTrO19ZErt7+QXgA==
 
-"@noble/hashes@^1.6.1":
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/@noble/hashes/-/hashes-1.7.0.tgz#5d9e33af2c7d04fee35de1519b80c958b2e35e39"
-  integrity sha512-HXydb0DgzTpDPwbVeDGCG1gIu7X6+AuU6Zl6av/E/KG8LMsvPntvq+w17CHRpKBmN6Ybdrt1eP3k4cj8DJa78w==
+"@noble/hashes@^1.7.1":
+  version "1.7.2"
+  resolved "https://registry.npmjs.org/@noble/hashes/-/hashes-1.7.2.tgz#d53c65a21658fb02f3303e7ee3ba89d6754c64b4"
+  integrity sha512-biZ0NUSxyjLLqo6KxEJ1b+C2NAx0wtDoFvCaXHGgUkeHzf3Xc1xKumFKREuT7f7DARNZ/slvYUwFG6B0f2b6hQ==
 
 "@noble/secp256k1@1.7.1", "@noble/secp256k1@~1.7.0":
   version "1.7.1"
@@ -6239,15 +6292,16 @@ clone@2.1.2, clone@^2.0.0, clone@^2.1.1:
   resolved "https://registry.yarnpkg.com/clone/-/clone-2.1.2.tgz#1b7f4b9f591f1e8f83670401600345a02887435f"
   integrity sha1-G39Ln1kfHo+DZwQBYANFoCiHQ18=
 
-codama@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/codama/-/codama-1.2.0.tgz#4938890145fa557f2e9ce232a43fb39a378be0fe"
-  integrity sha512-cGcaArn/XhAo+hp3wPfFq6Gnirj+cjfQQheOyYBSeHSNQSpstcGKwoaQROPYJAYT32LNn9DdlNPowv7pXVwWcA==
+codama@^1.2.11:
+  version "1.2.11"
+  resolved "https://registry.npmjs.org/codama/-/codama-1.2.11.tgz#539801bf15dfa06ee6404867d3fd76f0e2a5381f"
+  integrity sha512-mb5KYgsc8tH8t+MKy0jQBmCrySgRRxt/eGDbmuidLsORck925f6qZihkM64czARQ47AjY8nJg1URwg0RGdCjsg==
   dependencies:
-    "@codama/errors" "1.2.0"
-    "@codama/nodes" "1.2.0"
-    "@codama/validators" "1.2.0"
-    "@codama/visitors" "1.2.0"
+    "@codama/cli" "1.0.10"
+    "@codama/errors" "1.2.11"
+    "@codama/nodes" "1.2.11"
+    "@codama/validators" "1.2.11"
+    "@codama/visitors" "1.2.11"
 
 code-point-at@^1.0.0:
   version "1.1.0"
@@ -11535,6 +11589,11 @@ klaw@^3.0.0:
   dependencies:
     graceful-fs "^4.1.9"
 
+kleur@^3.0.3:
+  version "3.0.3"
+  resolved "https://registry.npmjs.org/kleur/-/kleur-3.0.3.tgz#a79c9ecc86ee1ce3fa6206d1216c501f147fc07e"
+  integrity sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==
+
 kuler@^2.0.0:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/kuler/-/kuler-2.0.0.tgz#e2c570a3800388fb44407e851531c1d670b061b3"
@@ -13812,6 +13871,11 @@ picocolors@^1.0.0:
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.0.0.tgz#cb5bdc74ff3f51892236eaf79d68bc44564ab81c"
   integrity sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==
 
+picocolors@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.npmjs.org/picocolors/-/picocolors-1.1.1.tgz#3d321af3eab939b083c8f929a1d12cda81c26b6b"
+  integrity sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==
+
 picomatch@^2.0.4, picomatch@^2.2.1, picomatch@^2.2.3, picomatch@^2.3.1:
   version "2.3.1"
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-2.3.1.tgz#3ba3833733646d9d3e4995946c1365a67fb07a42"
@@ -14015,10 +14079,10 @@ prettier@^2.3.2:
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-2.5.1.tgz#fff75fa9d519c54cf0fce328c1017d94546bc56a"
   integrity sha512-vBZcPRUR5MZJwoyi3ZoyQlc1rXeEck8KgeC9AwwOn+exuxLxq5toTRDTSaVrXHxelDMHy9zlicw8u66yxoSUFg==
 
-prettier@^3.4.2:
-  version "3.4.2"
-  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.4.2.tgz#a5ce1fb522a588bf2b78ca44c6e6fe5aa5a2b13f"
-  integrity sha512-e9MewbtFo+Fevyuxn/4rrcDAaq0IYxPGLvObpQjiZBMAzB9IGmzlnG9RZy3FFas+eBMu2vA0CszMeduow5dIuQ==
+prettier@^3.5.3:
+  version "3.5.3"
+  resolved "https://registry.npmjs.org/prettier/-/prettier-3.5.3.tgz#4fc2ce0d657e7a02e602549f053b239cb7dfe1b5"
+  integrity sha512-QQtaxnoDJeAkDvDKWCLiwIXkTgRhwYDEQCghU9Z6q03iyek/rxRh/2lC3HB7P8sWT2xC/y5JDctPLBIGzHKbhw==
 
 pretty-quick@^2.0.1:
   version "2.0.2"
@@ -14071,6 +14135,14 @@ promise@^8.0.0:
   integrity sha512-W04AqnILOL/sPRXziNicCjSNRruLAuIHEOVBazepu0545DDNGYHz7ar9ZgZ1fMU8/MA4mVxp5rkBWRi6OXIy3Q==
   dependencies:
     asap "~2.0.6"
+
+prompts@^2.4.2:
+  version "2.4.2"
+  resolved "https://registry.npmjs.org/prompts/-/prompts-2.4.2.tgz#7b57e73b3a48029ad10ebd44f74b01722a4cb069"
+  integrity sha512-NxNv/kLguCA7p3jE8oL2aEBsrJWgAakBpgmgK6lpPWV+WuOmY6r2/zbAVnP+T8bQlA0nzHXSJSJW0Hq7ylaD2Q==
+  dependencies:
+    kleur "^3.0.3"
+    sisteransi "^1.0.5"
 
 proper-lockfile@^4.1.1, proper-lockfile@^4.1.2:
   version "4.1.2"
@@ -15401,6 +15473,11 @@ sinon@^17.0.1:
     diff "^5.1.0"
     nise "^5.1.5"
     supports-color "^7.2.0"
+
+sisteransi@^1.0.5:
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/sisteransi/-/sisteransi-1.0.5.tgz#134d681297756437cc05ca01370d3a7a571075ed"
+  integrity sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==
 
 slash@^1.0.0:
   version "1.0.0"
