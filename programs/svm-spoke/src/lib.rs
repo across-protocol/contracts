@@ -94,7 +94,7 @@ pub mod svm_spoke {
     /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed], where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
-    /// - pause: `true` to pause the system, `false` to unpause it.
+    /// - pause: `true` to pause the system, `false` to resume it.
     pub fn pause_deposits(ctx: Context<PauseDeposits>, pause: bool) -> Result<()> {
         instructions::pause_deposits(ctx, pause)
     }
@@ -106,7 +106,7 @@ pub mod svm_spoke {
     /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed], where `seed` is 0 on mainnet.
     ///
     /// ### Parameters:
-    /// - pause: `true` to pause the system, `false` to unpause it.
+    /// - pause: `true` to pause the system, `false` to resume it.
     pub fn pause_fills(ctx: Context<PauseFills>, pause: bool) -> Result<()> {
         instructions::pause_fills(ctx, pause)
     }
@@ -509,7 +509,7 @@ pub mod svm_spoke {
     /// refund. In the happy path, (a) should be used. (b) should only be used if there is a relayer within the bundle
     /// who can't receive the transfer for some reason, such as failed token transfers due to blacklisting. Executing
     /// relayer refunds requires the caller to create a LUT and load the execution params into it. This is needed to
-    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Accross
+    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Across
     /// UMIP: https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-179.md
     ///
     /// instruction_params Parameters:
@@ -643,7 +643,7 @@ pub mod svm_spoke {
     /// Initializes a claim account for a relayer refund.
     ///
     /// This function sets up a claim account for a relayer to claim their refund at a later time and should only be
-    /// used in the un-happy path where a bundle cant not be executed due to a recipient in the bundle having a blocked
+    /// used in the un-happy path where a bundle cannot be executed due to a recipient in the bundle having a blocked
     /// or uninitialized claim ATA. The refund address becomes the "owner" of the claim_account.
     ///
     /// ### Required Accounts:
@@ -682,8 +682,8 @@ pub mod svm_spoke {
     /// token via PoolRebalanceRoutes. Slow fills are created by inserting slow fill objects into a Merkle tree that is
     /// included in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool will
     /// relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed, the slow fill can be
-    /// executed by anyone who calls executeSlowRelayLeaf(). Cant request a slow fill if the fill deadline has
-    /// passed. Cant request a slow fill if the relay has already been filled or a slow fill has already been requested.
+    /// executed by anyone who calls executeSlowRelayLeaf(). Can't request a slow fill if the fill deadline has
+    /// passed. Can't request a slow fill if the relay has already been filled or a slow fill has already been requested.
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the slow fill request.
