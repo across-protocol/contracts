@@ -10,8 +10,8 @@ use crate::{
     constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
     error::{CommonError, SvmError},
     event::FundsDeposited,
-    state::{Delegate, Route, State},
-    utils::{get_current_time, get_unsafe_deposit_id, transfer_from},
+    state::{Route, State},
+    utils::{delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
 };
 
 #[event_cpi]
@@ -37,19 +37,21 @@ pub struct Deposit<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        mut,
         seeds = [
-        b"delegate",
-        state.seed.to_le_bytes().as_ref(),
-        input_token.as_ref(),
-        output_token.as_ref(),
-        input_amount.to_le_bytes().as_ref(),
-        output_amount.to_le_bytes().as_ref(),
-        destination_chain_id.to_le_bytes().as_ref()
+            b"delegate",
+            &delegate_seed_hash(
+                state.seed,
+                input_token,
+                output_token,
+                input_amount,
+                output_amount,
+                destination_chain_id
+            ),
         ],
         bump
     )]
-    pub delegate: Account<'info, Delegate>,
+    /// CHECK: PDA derived with seeds ["delegate", hash]; used as a CPI signer. No account data is read or written.
+    pub delegate: UncheckedAccount<'info>,
 
     #[account(
         seeds = [b"route", input_token.as_ref(), state.seed.to_le_bytes().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
@@ -81,6 +83,8 @@ pub struct Deposit<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     pub token_program: Interface<'info, TokenInterface>,
+
+    pub system_program: Program<'info, System>,
 }
 
 pub fn _deposit(
@@ -119,27 +123,10 @@ pub fn _deposit(
         }
     }
 
-    // Reassemble delegate PDA signer seeds
-    let state_seed_bytes = state.seed.to_le_bytes();
-    let input_amount_bytes = input_amount.to_le_bytes();
-    let output_amount_bytes = output_amount.to_be_bytes();
-    let destination_chain_id_bytes = destination_chain_id.to_le_bytes();
-    let base_seeds: &[&[u8]] = &[
-        b"delegate",
-        &state_seed_bytes,
-        input_token.as_ref(),
-        output_token.as_ref(),
-        &input_amount_bytes,
-        &output_amount_bytes,
-        &destination_chain_id_bytes,
-    ];
-    let (_pda, delegate_bump) = Pubkey::find_program_address(base_seeds, ctx.program_id);
-    let bump_slice = [delegate_bump];
-    let full_seeds: Vec<&[u8]> = base_seeds
-        .iter()
-        .copied()
-        .chain(std::iter::once(&bump_slice[..]))
-        .collect();
+    let bump = ctx.bumps.delegate;
+    let delegate_hash =
+        delegate_seed_hash(state.seed, input_token, output_token, input_amount, output_amount, destination_chain_id);
+    let signer_seeds: &[&[u8]] = &[b"delegate", &delegate_hash, &[bump]];
 
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
@@ -149,7 +136,7 @@ pub fn _deposit(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        full_seeds.as_slice(),
+        signer_seeds,
     )?;
 
     let mut applied_deposit_id = deposit_id;
