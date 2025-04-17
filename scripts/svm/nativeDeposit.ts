@@ -65,7 +65,7 @@ async function nativeDeposit(): Promise<void> {
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  // Find ATA for the input token to be stored by state (vault). This was created when the route was enabled.
+  // Find ATA for the input token to be stored by state (vault).
   const vault = getAssociatedTokenAddressSync(
     inputToken,
     statePda,
