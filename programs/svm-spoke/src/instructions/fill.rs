@@ -32,8 +32,8 @@ pub struct FillRelay<'info> {
     )]
     pub state: Account<'info, State>,
 
-    #[account(seeds = [b"delegate", relay_hash.as_ref()], bump)]
-    /// CHECK: PDA derived with seeds ["delegate", hash]; used as a CPI signer. No account data is read or written.
+    #[account(seeds = [b"delegate", state.seed.to_le_bytes().as_ref(), relay_hash.as_ref()], bump)]
+    /// CHECK: PDA derived with seeds ["delegate", state.seed, relay_hash]; used as a CPI signer. No account data is read or written.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -120,7 +120,8 @@ pub fn fill_relay<'info>(
 
     let bump = ctx.bumps.delegate;
     let relay_hash = get_relay_hash(&relay_data, state.chain_id);
-    let signer_seeds: &[&[u8]] = &[b"delegate", &relay_hash, &[bump]];
+    let state_seed_bytes = state.seed.to_le_bytes();
+    let signer_seeds: &[&[u8]] = &[b"delegate", &state_seed_bytes, &relay_hash, &[bump]];
 
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
