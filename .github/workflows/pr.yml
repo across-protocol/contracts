@@ -30,7 +30,7 @@ jobs:
         with:
           toolchain: nightly-2025-04-01
           profile: minimal
-          components: rustc, rustfmt
+          components: rustc
       - name: Install packages
         run: yarn install --frozen-lockfile && rustup component add --toolchain nightly-2025-04-01-x86_64-unknown-linux-gnu rustfmt
       - name: Lint js
