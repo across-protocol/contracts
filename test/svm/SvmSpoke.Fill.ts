@@ -60,13 +60,15 @@ describe("svm_spoke.fill", () => {
     relayerTA: PublicKey,
     recipientTA: PublicKey,
     otherRelayerTA: PublicKey,
-    tokenProgram: PublicKey;
+    tokenProgram: PublicKey,
+    seed: BN;
 
   const relayAmount = 500000;
   let relayData: RelayData; // reused relay data for all tests.
 
   type FillAccounts = {
     state: PublicKey;
+    delegate: PublicKey;
     signer: PublicKey;
     instructionParams: PublicKey;
     mint: PublicKey;
@@ -91,6 +93,7 @@ describe("svm_spoke.fill", () => {
 
     accounts = {
       state,
+      delegate: getDelegatePda(relayHashUint8Array, seed),
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -104,16 +107,24 @@ describe("svm_spoke.fill", () => {
     };
   }
 
+  const getDelegatePda = (relayHash: Uint8Array, stateSeed: BN) => {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from("delegate"), stateSeed.toArrayLike(Buffer, "le", 8), relayHash],
+      program.programId
+    )[0];
+  };
+
   const approvedFillRelay = async (
     fillDataValues: FillDataValues,
     calledFillAccounts: FillAccounts = accounts,
     callingRelayer: Keypair = relayer
   ): Promise<string> => {
     // Delegate state PDA to pull relayer tokens.
+    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
       calledFillAccounts.mint,
-      calledFillAccounts.state,
+      getDelegatePda(relayHash, seed),
       calledFillAccounts.signer,
       BigInt(fillDataValues[1].outputAmount.toString()),
       tokenDecimals,
@@ -149,7 +160,7 @@ describe("svm_spoke.fill", () => {
   });
 
   beforeEach(async () => {
-    ({ state } = await initializeState());
+    ({ state, seed } = await initializeState());
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
 
     const initialRelayData = {
@@ -449,7 +460,8 @@ describe("svm_spoke.fill", () => {
     };
     updateRelayData(newRelayData);
     accounts.recipientTokenAccount = newRecipientATA;
-    const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+    const relayHashUint8Array = calculateRelayHashUint8Array(newRelayData, chainId);
+    const relayHash = Array.from(relayHashUint8Array);
 
     try {
       await approvedFillRelay([relayHash, newRelayData, new BN(1), relayer.publicKey]);
@@ -472,7 +484,7 @@ describe("svm_spoke.fill", () => {
     const approveInstruction = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      accounts.state,
+      getDelegatePda(relayHashUint8Array, seed),
       accounts.signer,
       BigInt(newRelayData.outputAmount.toString()),
       tokenDecimals,
@@ -517,7 +529,7 @@ describe("svm_spoke.fill", () => {
 
     // Build instructions for all fills
     let totalFillAmount = new BN(0);
-    const fillInstructions: TransactionInstruction[] = [];
+    const approveAndfillInstructions: TransactionInstruction[] = [];
     for (let i = 0; i < numberOfFills; i++) {
       const newRelayData = {
         ...relayData,
@@ -527,30 +539,33 @@ describe("svm_spoke.fill", () => {
       totalFillAmount = totalFillAmount.add(newRelayData.outputAmount);
       updateRelayData(newRelayData);
       accounts.recipientTokenAccount = recipientAssociatedTokens[i];
-      const relayHash = Array.from(calculateRelayHashUint8Array(newRelayData, chainId));
+      const relayHashUint8Array = calculateRelayHashUint8Array(newRelayData, chainId);
+      const relayHash = Array.from(relayHashUint8Array);
+
+      const approveInstruction = await createApproveCheckedInstruction(
+        accounts.relayerTokenAccount,
+        accounts.mint,
+        getDelegatePda(relayHashUint8Array, seed),
+        accounts.signer,
+        BigInt(totalFillAmount.toString()),
+        tokenDecimals,
+        undefined,
+        tokenProgram
+      );
+      approveAndfillInstructions.push(approveInstruction);
+
       const fillInstruction = await program.methods
         .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
         .accounts(accounts)
         .remainingAccounts(fillRemainingAccounts)
         .instruction();
-      fillInstructions.push(fillInstruction);
+      approveAndfillInstructions.push(fillInstruction);
     }
-
-    const approveInstruction = await createApproveCheckedInstruction(
-      accounts.relayerTokenAccount,
-      accounts.mint,
-      accounts.state,
-      accounts.signer,
-      BigInt(totalFillAmount.toString()),
-      tokenDecimals,
-      undefined,
-      tokenProgram
-    );
 
     // Fill using the ALT.
     await sendTransactionWithLookupTable(
       connection,
-      [createTokenAccountsInstruction, approveInstruction, ...fillInstructions],
+      [createTokenAccountsInstruction, ...approveAndfillInstructions],
       relayer
     );
 
@@ -666,10 +681,12 @@ describe("svm_spoke.fill", () => {
       let relayerAccount = await getAccount(connection, relayerTA);
       assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
-      const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+      const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+      const relayHash = Array.from(relayHashUint8Array);
 
       const formattedAccounts = {
         state: address(accounts.state.toString()),
+        delegate: address(getDelegatePda(relayHashUint8Array, seed).toString()),
         instructionParams: address(program.programId.toString()),
         mint: address(mint.toString()),
         relayerTokenAccount: address(relayerTA.toString()),
@@ -706,7 +723,7 @@ describe("svm_spoke.fill", () => {
       const approveIx = getApproveCheckedInstruction({
         source: address(accounts.relayerTokenAccount.toString()),
         mint: address(accounts.mint.toString()),
-        delegate: address(accounts.state.toString()),
+        delegate: address(getDelegatePda(relayHashUint8Array, seed).toString()),
         owner: address(accounts.signer.toString()),
         amount: BigInt(relayData.outputAmount.toString()),
         decimals: tokenDecimals,
