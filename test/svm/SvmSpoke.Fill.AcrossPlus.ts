@@ -29,11 +29,11 @@ import {
   sendTransactionWithLookupTable,
   loadFillRelayParams,
   intToU8Array32,
+  getFillRelayDelegatePda,
 } from "../../src/svm/web3-v1";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
-import { getDelegatePdaFillRelay } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance } = common;
 const { initializeState, assertSE } = common;
 
@@ -68,7 +68,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
     accounts = {
       state,
-      delegate: getDelegatePdaFillRelay(relayHashUint8Array, seed, program.programId),
+      delegate: getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -89,7 +89,7 @@ describe("svm_spoke.fill.across_plus", () => {
     const approveIx = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      getDelegatePdaFillRelay(relayHashUint8Array, seed, program.programId),
+      getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       accounts.signer,
       BigInt(relayAmount),
       mintDecimals

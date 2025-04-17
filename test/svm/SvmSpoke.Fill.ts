@@ -75,7 +75,7 @@ describe("svm_spoke.fill", () => {
 
     accounts = {
       state,
-      delegate: getDelegatePdaFillRelay(relayHashUint8Array, seed, program.programId),
+      delegate: getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -99,7 +99,7 @@ describe("svm_spoke.fill", () => {
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
       calledFillAccounts.mint,
-      getDelegatePdaFillRelay(relayHash, seed, program.programId),
+      getFillRelayDelegatePda(relayHash, seed, program.programId),
       calledFillAccounts.signer,
       BigInt(fillDataValues[1].outputAmount.toString()),
       tokenDecimals,
@@ -459,7 +459,7 @@ describe("svm_spoke.fill", () => {
     const approveInstruction = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      getDelegatePdaFillRelay(relayHashUint8Array, seed, program.programId),
+      getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       accounts.signer,
       BigInt(newRelayData.outputAmount.toString()),
       tokenDecimals,
@@ -520,7 +520,7 @@ describe("svm_spoke.fill", () => {
       const approveInstruction = await createApproveCheckedInstruction(
         accounts.relayerTokenAccount,
         accounts.mint,
-        getDelegatePdaFillRelay(relayHashUint8Array, seed, program.programId),
+        getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
         accounts.signer,
         BigInt(totalFillAmount.toString()),
         tokenDecimals,
