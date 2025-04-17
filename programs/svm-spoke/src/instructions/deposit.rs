@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::FundsDeposited,
     state::{Route, State},
-    utils::{delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
+    utils::{derive_delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
 };
 
 #[event_cpi]
@@ -39,7 +39,7 @@ pub struct Deposit<'info> {
     #[account(
         seeds = [
             b"delegate",
-            &delegate_seed_hash(
+            &derive_delegate_seed_hash(
                 state.seed,
                 input_token,
                 output_token,
@@ -50,7 +50,7 @@ pub struct Deposit<'info> {
         ],
         bump
     )]
-    /// CHECK: PDA derived with seeds ["delegate", hash]; used as a CPI signer. No account data is read or written.
+    /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer. No account data is read or written.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -122,8 +122,14 @@ pub fn _deposit(
     }
 
     let bump = ctx.bumps.delegate;
-    let delegate_hash =
-        delegate_seed_hash(state.seed, input_token, output_token, input_amount, output_amount, destination_chain_id);
+    let delegate_hash = derive_delegate_seed_hash(
+        state.seed,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+    );
     let signer_seeds: &[&[u8]] = &[b"delegate", &delegate_hash, &[bump]];
 
     // Relayer must have delegated output_amount to the delegate PDA
@@ -138,7 +144,7 @@ pub fn _deposit(
     )?;
 
     let mut applied_deposit_id = deposit_id;
-    // If deposit_id is zero, update state.number_of_deposits.
+    // If the passed in deposit_id is all zeros, then we use the state's number of deposits as deposit_id.
     if deposit_id == ZERO_DEPOSIT_ID {
         state.number_of_deposits += 1;
         applied_deposit_id[28..].copy_from_slice(&state.number_of_deposits.to_be_bytes());
