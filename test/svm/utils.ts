@@ -211,10 +211,3 @@ export const generateKeyPairSignerWithSol = async (rpcClient: RpcClient, putativ
   });
   return signer;
 };
-
-export const getDelegatePdaFillRelay = (relayHash: Uint8Array, stateSeed: BN, programId: PublicKey) => {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("delegate"), stateSeed.toArrayLike(Buffer, "le", 8), relayHash],
-    programId
-  )[0];
-};
