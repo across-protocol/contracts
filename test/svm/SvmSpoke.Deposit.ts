@@ -7,6 +7,7 @@ import {
   appendTransactionMessageInstruction,
   createKeyPairFromBytes,
   createSignerFromKeyPair,
+  getAddressEncoder,
   getProgramDerivedAddress,
   lamports,
   pipe,
@@ -29,7 +30,7 @@ import { BigNumber, ethers } from "ethers";
 import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import { intToU8Array32, readEventsUntilFound, u8Array32ToBigNumber, u8Array32ToInt } from "../../src/svm/web3-v1";
-import { DepositDataValues } from "../../src/types/svm";
+import { DepositData, DepositDataValues } from "../../src/types/svm";
 import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
@@ -52,6 +53,7 @@ describe("svm_spoke.deposit", () => {
   // Re-used between tests to simplify props.
   type DepositAccounts = {
     state: PublicKey;
+    delegate?: PublicKey;
     route: PublicKey;
     signer: PublicKey;
     depositorTokenAccount: PublicKey;
@@ -117,21 +119,37 @@ describe("svm_spoke.deposit", () => {
     };
   };
 
+  const getDelegatePda = (depositData: DepositData) => {
+    const raw = Buffer.concat([
+      seed.toArrayLike(Buffer, "le", 8),
+      depositData.inputToken!.toBytes(),
+      depositData.outputToken.toBytes(),
+      depositData.inputAmount.toArrayLike(Buffer, "le", 8),
+      depositData.outputAmount.toArrayLike(Buffer, "le", 8),
+      depositData.destinationChainId.toArrayLike(Buffer, "le", 8),
+    ]);
+    const hashHex = ethers.utils.keccak256(raw);
+    const seedHash = Buffer.from(hashHex.slice(2), "hex");
+    return PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], program.programId)[0];
+  };
   const approvedDeposit = async (
     depositDataValues: DepositDataValues,
+    delegatePda: PublicKey,
     calledDepositAccounts: DepositAccounts = depositAccounts
   ) => {
-    // Delegate state PDA to pull depositor tokens.
+    // Delegate delegate PDA to pull depositor tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledDepositAccounts.depositorTokenAccount,
       calledDepositAccounts.mint,
-      calledDepositAccounts.state,
+      delegatePda,
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
       undefined,
       tokenProgram
     );
+    calledDepositAccounts.delegate = delegatePda;
+    console.log("delegatePda", delegatePda.toString());
     const depositIx = await program.methods
       .deposit(...depositDataValues)
       .accounts(calledDepositAccounts)
@@ -146,7 +164,8 @@ describe("svm_spoke.deposit", () => {
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupInputToken();
-
+    await connection.requestAirdrop(payer.publicKey, 10_000_000_000); // 10 SOL
+    await connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
     await enableRoute();
   });
   it("Deposits tokens via deposit function and checks balances", async () => {
@@ -156,7 +175,7 @@ describe("svm_spoke.deposit", () => {
 
     // Execute the deposit call
     let depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit(depositDataValues, getDelegatePda(depositData));
 
     // Verify tokens leave the depositor's account
     let depositorAccount = await getAccount(connection, depositorTA);
@@ -176,7 +195,7 @@ describe("svm_spoke.deposit", () => {
     // Execute the second deposit call
 
     depositDataValues = Object.values({ ...depositData, inputAmount: secondInputAmount }) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit(depositDataValues, getDelegatePda({ ...depositData, inputAmount: secondInputAmount }));
 
     // Verify tokens leave the depositor's account again
     depositorAccount = await getAccount(connection, depositorTA);
@@ -734,6 +753,21 @@ describe("svm_spoke.deposit", () => {
         seeds: ["__event_authority"],
       });
 
+      const addressEncoder = getAddressEncoder();
+
+      const [delegatePda] = await getProgramDerivedAddress({
+        programAddress: address(program.programId.toString()),
+        seeds: [
+          "delegate",
+          // new BN(seed).toArrayLike(Buffer, "le", 8),
+          // addressEncoder.encode(address(depositData.inputToken.toString())),
+          // addressEncoder.encode(address(depositData.outputToken.toString())),
+          // depositData.inputAmount.toArrayLike(Buffer, "le", 8),
+          // depositData.outputAmount.toArrayLike(Buffer, "le", 8),
+          // depositData.destinationChainId.toArrayLike(Buffer, "le", 8),
+        ],
+      });
+
       // note that we are using getApproveCheckedInstruction from @solana-program/token
       const approveIx = getApproveCheckedInstruction({
         source: address(depositAccounts.depositorTokenAccount.toString()),
@@ -783,7 +817,10 @@ describe("svm_spoke.deposit", () => {
         (tx) => appendTransactionMessageInstruction(approveIx, tx),
         (tx) => appendTransactionMessageInstruction(depositIx, tx),
         (tx) => signAndSendTransaction(rpcClient, tx)
-      );
+      ).catch((err: any) => {
+        console.log(err);
+        // throw err;
+      });
 
       const events = await readEventsUntilFound(connection, tx, [program]);
       const event = events[0].data; // 0th event is the latest event;

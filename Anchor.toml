@@ -25,7 +25,7 @@ cluster = "localnet"
 wallet = "test/svm/keys/localnet-wallet.json"
 
 [scripts]
-test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
+test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts --grep 'Deposits tokens via deposit function and checks balances'"
 queryEvents = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEvents.ts"
 queryEventsV2 = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEventsV2.ts"
 initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"

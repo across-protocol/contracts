@@ -1,13 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-use crate::state::Delegate;
-
 pub fn transfer_from<'info>(
     from: &InterfaceAccount<'info, TokenAccount>,
     to: &InterfaceAccount<'info, TokenAccount>,
     amount: u64,
-    delegate: &Account<'info, Delegate>,
+    delegate: &UncheckedAccount<'info>,
     mint: &InterfaceAccount<'info, Mint>,
     token_program: &Interface<'info, TokenInterface>,
     signer_seeds: &[&[u8]],
