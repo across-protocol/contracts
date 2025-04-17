@@ -28,7 +28,6 @@ export const isSolanaDevnet = (provider: AnchorProvider): boolean => {
  */
 export const getDepositDelegatePda = (depositData: DepositData, stateSeed: BN, programId: PublicKey) => {
   const raw = Buffer.concat([
-    stateSeed.toArrayLike(Buffer, "le", 8),
     depositData.inputToken!.toBytes(),
     depositData.outputToken.toBytes(),
     depositData.inputAmount.toArrayLike(Buffer, "le", 8),
@@ -37,7 +36,10 @@ export const getDepositDelegatePda = (depositData: DepositData, stateSeed: BN, p
   ]);
   const hashHex = ethers.utils.keccak256(raw);
   const seedHash = Buffer.from(hashHex.slice(2), "hex");
-  return PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId)[0];
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("delegate"), stateSeed.toArrayLike(Buffer, "le", 8), seedHash],
+    programId
+  )[0];
 };
 
 /**

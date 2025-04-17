@@ -114,7 +114,7 @@ describe("svm_spoke.deposit", () => {
 
     depositAccounts = {
       state,
-      delegate: getDepositDelegatePda(depositData, seed),
+      delegate: getDepositDelegatePda(depositData, seed, program.programId),
       route,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,

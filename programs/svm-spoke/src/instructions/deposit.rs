@@ -39,18 +39,12 @@ pub struct Deposit<'info> {
     #[account(
         seeds = [
             b"delegate",
-            &derive_delegate_seed_hash(
-                state.seed,
-                input_token,
-                output_token,
-                input_amount,
-                output_amount,
-                destination_chain_id
-            ),
+            state.seed.to_le_bytes().as_ref(),
+            &derive_delegate_seed_hash(input_token, output_token, input_amount, output_amount, destination_chain_id),
         ],
         bump
     )]
-    /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer. No account data is read or written.
+    /// CHECK: PDA derived with seeds ["delegate", state.seed, delegate_seed_hash]; used as a CPI signer. No account data is read or written.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -122,15 +116,10 @@ pub fn _deposit(
     }
 
     let bump = ctx.bumps.delegate;
-    let delegate_hash = derive_delegate_seed_hash(
-        state.seed,
-        input_token,
-        output_token,
-        input_amount,
-        output_amount,
-        destination_chain_id,
-    );
-    let signer_seeds: &[&[u8]] = &[b"delegate", &delegate_hash, &[bump]];
+    let delegate_hash =
+        derive_delegate_seed_hash(input_token, output_token, input_amount, output_amount, destination_chain_id);
+    let state_seed_bytes = state.seed.to_le_bytes();
+    let signer_seeds: &[&[u8]] = &[b"delegate", &state_seed_bytes, &delegate_hash, &[bump]];
 
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(

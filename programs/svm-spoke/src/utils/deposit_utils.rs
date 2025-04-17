@@ -11,15 +11,13 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
 }
 
 pub fn derive_delegate_seed_hash(
-    state_seed: u64,
     input_token: Pubkey,
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
     destination_chain_id: u64,
 ) -> [u8; 32] {
-    let mut data = Vec::with_capacity(8 + 32 + 32 + 8 + 8 + 8);
-    data.extend_from_slice(&state_seed.to_le_bytes());
+    let mut data = Vec::with_capacity(32 + 32 + 8 + 8 + 8);
     data.extend_from_slice(input_token.as_ref());
     data.extend_from_slice(output_token.as_ref());
     data.extend_from_slice(&input_amount.to_le_bytes());
