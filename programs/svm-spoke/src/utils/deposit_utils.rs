@@ -10,7 +10,7 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
     keccak::hash(&data).to_bytes()
 }
 
-pub fn delegate_seed_hash(
+pub fn derive_delegate_seed_hash(
     state_seed: u64,
     input_token: Pubkey,
     output_token: Pubkey,
