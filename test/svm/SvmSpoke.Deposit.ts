@@ -197,7 +197,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
     assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
 
-    // Execute the second deposit_v3 call
+    // Execute the second deposit call
     const tx2 = await approvedDeposit(depositDataValues);
     events = await readEventsUntilFound(connection, tx2, [program]);
     event = events[0].data; // 0th event is the latest event.
@@ -314,11 +314,11 @@ describe("svm_spoke.deposit", () => {
     }
   });
 
-  it("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
+  it("depositNow behaves as deposit but forces the quote timestamp as expected", async () => {
     // Set up initial deposit data. Note that this method has a slightly different interface to deposit, using
     // fillDeadlineOffset rather than fillDeadline. current chain time is added to fillDeadlineOffset to set the
     // fillDeadline for the deposit. exclusivityPeriod operates the same as in standard deposit.
-    // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
+    // Equally, depositNow does not have `quoteTimestamp`. this is set to the current time from the program.
     const fillDeadlineOffset = 60; // 60 seconds offset
 
     // Delegate state PDA to pull depositor tokens.
@@ -497,7 +497,7 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    // Create the transaction for unsafeDepositV3
+    // Create the transaction for unsafeDeposit
     const unsafeDepositIx = await program.methods
       .unsafeDeposit(
         depositData.depositor!,
