@@ -23,12 +23,7 @@ use crate::{
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
-    exclusivity_parameter: u32,
-    message: Vec<u8>,
+    destination_chain_id: u64
 )]
 pub struct Deposit<'info> {
     #[account(mut)]
@@ -41,24 +36,6 @@ pub struct Deposit<'info> {
     )]
     pub state: Account<'info, State>,
 
-    #[account(
-        seeds = [
-            b"delegate",
-            &derive_delegate_seed_hash(
-                depositor,
-                recipient,
-                input_token,
-                output_token,
-                input_amount,
-                output_amount,
-                destination_chain_id,
-                exclusive_relayer,
-                exclusivity_parameter,
-                message.clone()
-            ),
-        ],
-        bump
-    )]
     /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer. No account data is read or written.
     pub delegate: UncheckedAccount<'info>,
 
@@ -142,6 +119,11 @@ pub fn _deposit(
         exclusivity_parameter,
         message.clone(),
     );
+    let (delegate_pda, delegate_bump) =
+        Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
+    if delegate_pda != ctx.accounts.delegate.key() {
+        return err!(SvmError::InvalidDelegatePda);
+    }
 
     // Depositor must have delegated input_amount to the delegate PDA
     transfer_from(
@@ -152,7 +134,7 @@ pub fn _deposit(
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
         delegate_seed_hash,
-        ctx.bumps.delegate,
+        delegate_bump,
     )?;
 
     let mut applied_deposit_id = deposit_id;

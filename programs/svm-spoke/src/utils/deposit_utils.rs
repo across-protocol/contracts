@@ -36,7 +36,6 @@ pub fn derive_delegate_seed_hash(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> [u8; 32] {
-    // Pack everything into our serializable struct
     let data_struct = DelegateSeedData {
         depositor,
         recipient,
@@ -50,9 +49,7 @@ pub fn derive_delegate_seed_hash(
         message,
     };
 
-    // Serialize via AnchorSerialize
     let serialized = data_struct.try_to_vec().unwrap();
 
-    // Keccak‐hash it
     keccak::hash(&serialized).to_bytes()
 }
