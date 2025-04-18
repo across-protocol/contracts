@@ -74,8 +74,6 @@ pub enum SvmError {
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
-    #[msg("Invalid delegate seed hash!")]
-    InvalidDelegateSeedHash,
 }
 
 // CCTP specific errors.
