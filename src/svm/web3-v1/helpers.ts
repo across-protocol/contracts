@@ -79,11 +79,7 @@ const delegateSeedSchema = new Map([
   ],
 ]);
 
-/**
- * Returns the delegate PDA for a deposit, Borsh‐serializing exactly the same fields
- * and ordering as your Rust `derive_delegate_seed_hash`.
- */
-export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
+export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array {
   // Build the JS object that matches DelegateSeedData
   const ds = new DelegateSeedData({
     depositor: depositData.depositor!.toBuffer(),
@@ -103,6 +99,15 @@ export function getDepositDelegatePda(depositData: DepositData, programId: Publi
   const serialized = serialize(delegateSeedSchema, ds); // Uint8Array
   const hashHex = ethers.utils.keccak256(serialized);
   const seedHash = Buffer.from(hashHex.slice(2), "hex");
+  return seedHash;
+}
+
+/**
+ * Returns the delegate PDA for a deposit, Borsh‐serializing exactly the same fields
+ * and ordering as your Rust `derive_delegate_seed_hash`.
+ */
+export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
+  const seedHash = getDepositDelegateSeedHash(depositData);
 
   // Derive PDA with seeds ["delegate", seedHash]
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);

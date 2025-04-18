@@ -168,7 +168,6 @@ describe("svm_spoke.deposit", () => {
   const approvedDepositNow = async (depositData: DepositData) => {
     const delegatePda = getDepositDelegatePda(depositData, program.programId);
     depositAccounts.delegate = delegatePda;
-
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
