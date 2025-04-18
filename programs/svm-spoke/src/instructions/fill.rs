@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{get_current_time, get_relay_hash, hash_non_empty_message, invoke_handler, transfer_from},
+    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -85,6 +85,7 @@ pub struct FillRelay<'info> {
 
 pub fn fill_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
+    relay_hash: [u8; 32],
     relay_data: Option<RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
@@ -119,7 +120,6 @@ pub fn fill_relay<'info>(
     };
 
     let bump = ctx.bumps.delegate;
-    let relay_hash = get_relay_hash(&relay_data, state.chain_id);
     let state_seed_bytes = state.seed.to_le_bytes();
     let signer_seeds: &[&[u8]] = &[b"delegate", &state_seed_bytes, &relay_hash, &[bump]];
 
