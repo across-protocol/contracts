@@ -24,6 +24,11 @@ use crate::{
     input_amount: u64,
     output_amount: u64,
     destination_chain_id: u64,
+    exclusive_relayer: Pubkey,
+    quote_timestamp: u32,
+    fill_deadline: u32,
+    exclusivity_parameter: u32,
+    message: Vec<u8>,
 )]
 pub struct Deposit<'info> {
     #[account(mut)]
@@ -37,14 +42,27 @@ pub struct Deposit<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        seeds = [
-            b"delegate",
-            state.seed.to_le_bytes().as_ref(),
-            &derive_delegate_seed_hash(input_token, output_token, input_amount, output_amount, destination_chain_id),
-        ],
-        bump
+        constraint = delegate_seed_hash.key().to_bytes()
+            == derive_delegate_seed_hash(
+                depositor,
+                recipient,
+                input_token,
+                output_token,
+                input_amount,
+                output_amount,
+                destination_chain_id,
+                exclusive_relayer,
+                quote_timestamp,
+                fill_deadline,
+                exclusivity_parameter,
+                message.clone(),
+            ) @ SvmError::InvalidDelegateSeedHash
     )]
-    /// CHECK: PDA derived with seeds ["delegate", state.seed, delegate_seed_hash]; used as a CPI signer. No account data is read or written.
+    /// CHECK: Must be the raw 32‑byte delegate seed hash PDA derived off-chain.
+    pub delegate_seed_hash: UncheckedAccount<'info>,
+
+    #[account(seeds = [b"delegate", delegate_seed_hash.key().as_ref()], bump)]
+    /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer. No account data is read or written.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -115,13 +133,7 @@ pub fn _deposit(
         }
     }
 
-    let bump = ctx.bumps.delegate;
-    let delegate_hash =
-        derive_delegate_seed_hash(input_token, output_token, input_amount, output_amount, destination_chain_id);
-    let state_seed_bytes = state.seed.to_le_bytes();
-    let signer_seeds: &[&[u8]] = &[b"delegate", &state_seed_bytes, &delegate_hash, &[bump]];
-
-    // Relayer must have delegated output_amount to the delegate PDA
+    // Depositor must have delegated input_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.depositor_token_account,
         &ctx.accounts.vault,
@@ -129,7 +141,8 @@ pub fn _deposit(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        signer_seeds,
+        ctx.accounts.delegate_seed_hash.key().to_bytes(),
+        ctx.bumps.delegate,
     )?;
 
     let mut applied_deposit_id = deposit_id;

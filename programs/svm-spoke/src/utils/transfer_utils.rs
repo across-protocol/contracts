@@ -8,7 +8,8 @@ pub fn transfer_from<'info>(
     delegate: &UncheckedAccount<'info>,
     mint: &InterfaceAccount<'info, Mint>,
     token_program: &Interface<'info, TokenInterface>,
-    signer_seeds: &[&[u8]],
+    delegate_hash: [u8; 32],
+    bump: u8,
 ) -> Result<()> {
     let transfer_accounts = TransferChecked {
         from: from.to_account_info(),
@@ -16,7 +17,7 @@ pub fn transfer_from<'info>(
         to: to.to_account_info(),
         authority: delegate.to_account_info(),
     };
-
+    let signer_seeds: &[&[u8]] = &[b"delegate", &delegate_hash, &[bump]];
     let signer_seeds_slice = &[signer_seeds];
     let cpi_context =
         CpiContext::new_with_signer(token_program.to_account_info(), transfer_accounts, signer_seeds_slice);
