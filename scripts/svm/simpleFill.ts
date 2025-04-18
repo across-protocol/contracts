@@ -72,7 +72,7 @@ async function fillRelay(): Promise<void> {
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  console.log("Filling V3 Relay...");
+  console.log("Filling Relay...");
 
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
@@ -184,5 +184,5 @@ async function fillRelay(): Promise<void> {
   console.log("Transaction signature:", tx);
 }
 
-// Run the fillV3Relay function
+// Run the fillRelay function
 fillRelay();
