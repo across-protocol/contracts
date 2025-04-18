@@ -30,6 +30,7 @@ import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import {
   getDepositDelegatePda,
+  getDepositDelegateSeedHash,
   intToU8Array32,
   readEventsUntilFound,
   u8Array32ToBigNumber,
@@ -59,6 +60,7 @@ describe("svm_spoke.deposit", () => {
   type DepositAccounts = {
     state: PublicKey;
     delegate: PublicKey;
+    delegateSeedHash: PublicKey;
     route: PublicKey;
     signer: PublicKey;
     depositorTokenAccount: PublicKey;
@@ -114,7 +116,8 @@ describe("svm_spoke.deposit", () => {
 
     depositAccounts = {
       state,
-      delegate: getDepositDelegatePda(depositData, seed, program.programId),
+      delegate: getDepositDelegatePda(depositData, program.programId),
+      delegateSeedHash: new PublicKey(getDepositDelegateSeedHash(depositData)),
       route,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -127,12 +130,11 @@ describe("svm_spoke.deposit", () => {
 
   const approvedDeposit = async (
     depositData: DepositData,
-    calledDepositAccounts: DepositAccounts = depositAccounts,
-    seedOverride?: BN
+    calledDepositAccounts: DepositAccounts = depositAccounts
   ) => {
-    const effectiveSeed = seedOverride ?? seed;
-    const delegatePda = getDepositDelegatePda(depositData, effectiveSeed, program.programId);
+    const delegatePda = getDepositDelegatePda(depositData, program.programId);
     calledDepositAccounts.delegate = delegatePda;
+    calledDepositAccounts.delegateSeedHash = new PublicKey(getDepositDelegateSeedHash(depositData));
     // Delegate delegate PDA to pull depositor tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledDepositAccounts.depositorTokenAccount,
@@ -145,7 +147,20 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
     const depositIx = await program.methods
-      .deposit(...(Object.values(depositData) as DepositDataValues))
+      .deposit(
+        depositData.depositor!,
+        depositData.recipient,
+        depositData.inputToken!,
+        depositData.outputToken,
+        depositData.inputAmount,
+        depositData.outputAmount,
+        depositData.destinationChainId,
+        depositData.exclusiveRelayer,
+        depositData.quoteTimestamp.toNumber(),
+        depositData.fillDeadline.toNumber(),
+        depositData.exclusivityParameter.toNumber(),
+        depositData.message
+      )
       .accounts(calledDepositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
@@ -393,7 +408,8 @@ describe("svm_spoke.deposit", () => {
 
     const fakeDepositAccounts = {
       state: fakeState.state,
-      delegate: getDepositDelegatePda(depositData, fakeState.seed, program.programId),
+      delegate: getDepositDelegatePda(depositData, program.programId),
+      delegateSeedHash: new PublicKey(getDepositDelegateSeedHash(depositData)),
       route: fakeRoutePda,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -416,11 +432,9 @@ describe("svm_spoke.deposit", () => {
             ...depositData,
             destinationChainId: fakeRouteChainId,
           },
-          fakeState.seed,
           program.programId
         ),
-      },
-      fakeState.seed
+      }
     );
 
     let events = await readEventsUntilFound(connection, tx, [program]);
@@ -473,7 +487,7 @@ describe("svm_spoke.deposit", () => {
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      getDepositDelegatePda(depositData, seed, program.programId),
+      getDepositDelegatePda(depositData, program.programId),
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -631,7 +645,7 @@ describe("svm_spoke.deposit", () => {
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      getDepositDelegatePda(depositData, seed, program.programId),
+      getDepositDelegatePda(depositData, program.programId),
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -749,7 +763,7 @@ describe("svm_spoke.deposit", () => {
       const approveIx = getApproveCheckedInstruction({
         source: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),
-        delegate: address(getDepositDelegatePda(depositData, seed, program.programId).toString()),
+        delegate: address(getDepositDelegatePda(depositData, program.programId).toString()),
         owner: address(depositor.publicKey.toString()),
         amount: BigInt(depositData.inputAmount.toString()),
         decimals: tokenDecimals,
@@ -772,7 +786,7 @@ describe("svm_spoke.deposit", () => {
 
       const formattedAccounts = {
         state: address(depositAccounts.state.toString()),
-        delegate: address(getDepositDelegatePda(depositData, seed, program.programId).toString()),
+        delegate: address(getDepositDelegatePda(depositData, program.programId).toString()),
         route: address(depositAccounts.route.toString()),
         depositorTokenAccount: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),

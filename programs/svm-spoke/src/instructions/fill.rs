@@ -120,8 +120,6 @@ pub fn fill_relay<'info>(
     };
 
     let bump = ctx.bumps.delegate;
-    let state_seed_bytes = state.seed.to_le_bytes();
-    let signer_seeds: &[&[u8]] = &[b"delegate", &state_seed_bytes, &relay_hash, &[bump]];
 
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
@@ -131,7 +129,8 @@ pub fn fill_relay<'info>(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        signer_seeds,
+        relay_hash,
+        bump,
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
