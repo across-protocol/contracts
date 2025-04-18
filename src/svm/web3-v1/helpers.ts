@@ -36,8 +36,6 @@ class DelegateSeedData {
   outputAmount!: BN;
   destinationChainId!: BN;
   exclusiveRelayer!: Uint8Array;
-  quoteTimestamp!: BN;
-  fillDeadline!: BN;
   exclusivityParameter!: BN;
   message!: Uint8Array;
 
@@ -50,8 +48,6 @@ class DelegateSeedData {
     outputAmount: BN;
     destinationChainId: BN;
     exclusiveRelayer: Uint8Array;
-    quoteTimestamp: BN;
-    fillDeadline: BN;
     exclusivityParameter: BN;
     message: Uint8Array;
   }) {
@@ -76,8 +72,6 @@ const delegateSeedSchema = new Map([
         ["outputAmount", "u64"],
         ["destinationChainId", "u64"],
         ["exclusiveRelayer", [32]],
-        ["quoteTimestamp", "u32"],
-        ["fillDeadline", "u32"],
         ["exclusivityParameter", "u32"],
         ["message", ["u8"]],
       ],
@@ -85,7 +79,11 @@ const delegateSeedSchema = new Map([
   ],
 ]);
 
-export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array {
+/**
+ * Returns the delegate PDA for a deposit, Borsh‐serializing exactly the same fields
+ * and ordering as your Rust `derive_delegate_seed_hash`.
+ */
+export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
   // Build the JS object that matches DelegateSeedData
   const ds = new DelegateSeedData({
     depositor: depositData.depositor!.toBuffer(),
@@ -96,8 +94,6 @@ export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array
     outputAmount: depositData.outputAmount,
     destinationChainId: depositData.destinationChainId,
     exclusiveRelayer: depositData.exclusiveRelayer.toBuffer(),
-    quoteTimestamp: depositData.quoteTimestamp,
-    fillDeadline: depositData.fillDeadline,
     exclusivityParameter: depositData.exclusivityParameter,
     // Borsh will automatically prefix this with a 4‑byte LE length
     message: Uint8Array.from(depositData.message),
@@ -107,15 +103,6 @@ export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array
   const serialized = serialize(delegateSeedSchema, ds); // Uint8Array
   const hashHex = ethers.utils.keccak256(serialized);
   const seedHash = Buffer.from(hashHex.slice(2), "hex");
-  return seedHash;
-}
-
-/**
- * Returns the delegate PDA for a deposit, Borsh‐serializing exactly the same fields
- * and ordering as your Rust `derive_delegate_seed_hash`.
- */
-export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
-  const seedHash = getDepositDelegateSeedHash(depositData);
 
   // Derive PDA with seeds ["delegate", seedHash]
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);

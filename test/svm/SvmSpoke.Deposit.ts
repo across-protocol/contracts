@@ -30,7 +30,6 @@ import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import {
   getDepositDelegatePda,
-  getDepositDelegateSeedHash,
   intToU8Array32,
   readEventsUntilFound,
   u8Array32ToBigNumber,
@@ -60,7 +59,6 @@ describe("svm_spoke.deposit", () => {
   type DepositAccounts = {
     state: PublicKey;
     delegate: PublicKey;
-    delegateSeedHash: PublicKey;
     route: PublicKey;
     signer: PublicKey;
     depositorTokenAccount: PublicKey;
@@ -117,7 +115,6 @@ describe("svm_spoke.deposit", () => {
     depositAccounts = {
       state,
       delegate: getDepositDelegatePda(depositData, program.programId),
-      delegateSeedHash: new PublicKey(getDepositDelegateSeedHash(depositData)),
       route,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -134,7 +131,7 @@ describe("svm_spoke.deposit", () => {
   ) => {
     const delegatePda = getDepositDelegatePda(depositData, program.programId);
     calledDepositAccounts.delegate = delegatePda;
-    calledDepositAccounts.delegateSeedHash = new PublicKey(getDepositDelegateSeedHash(depositData));
+
     // Delegate delegate PDA to pull depositor tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledDepositAccounts.depositorTokenAccount,
@@ -162,6 +159,42 @@ describe("svm_spoke.deposit", () => {
         depositData.message
       )
       .accounts(calledDepositAccounts)
+      .instruction();
+    const depositTx = new Transaction().add(approveIx, depositIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
+    return tx;
+  };
+
+  const approvedDepositNow = async (depositData: DepositData) => {
+    const delegatePda = getDepositDelegatePda(depositData, program.programId);
+    depositAccounts.delegate = delegatePda;
+
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      delegatePda,
+      depositor.publicKey,
+      BigInt(depositData.inputAmount.toString()),
+      tokenDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    const depositIx = await program.methods
+      .depositNow(
+        depositData.depositor!,
+        depositData.recipient,
+        depositData.inputToken!,
+        depositData.outputToken,
+        depositData.inputAmount,
+        depositData.outputAmount,
+        depositData.destinationChainId,
+        depositData.exclusiveRelayer,
+        depositData.fillDeadline.toNumber(),
+        depositData.exclusivityParameter.toNumber(),
+        depositData.message
+      )
+      .accounts(depositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
     const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
@@ -409,7 +442,6 @@ describe("svm_spoke.deposit", () => {
     const fakeDepositAccounts = {
       state: fakeState.state,
       delegate: getDepositDelegatePda(depositData, program.programId),
-      delegateSeedHash: new PublicKey(getDepositDelegateSeedHash(depositData)),
       route: fakeRoutePda,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -425,16 +457,7 @@ describe("svm_spoke.deposit", () => {
         ...depositData,
         destinationChainId: fakeRouteChainId,
       },
-      {
-        ...fakeDepositAccounts,
-        delegate: getDepositDelegatePda(
-          {
-            ...depositData,
-            destinationChainId: fakeRouteChainId,
-          },
-          program.programId
-        ),
-      }
+      fakeDepositAccounts
     );
 
     let events = await readEventsUntilFound(connection, tx, [program]);

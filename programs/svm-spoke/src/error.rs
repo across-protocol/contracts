@@ -7,7 +7,7 @@ pub enum CommonError {
     DisabledRoute,
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
-    #[msg("Ivalid fill deadline!")]
+    #[msg("Invalid fill deadline!")]
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
