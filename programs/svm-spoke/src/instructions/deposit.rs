@@ -42,8 +42,9 @@ pub struct Deposit<'info> {
     pub state: Account<'info, State>,
 
     #[account(
-        constraint = delegate_seed_hash.key().to_bytes()
-            == derive_delegate_seed_hash(
+        seeds = [
+            b"delegate",
+            &derive_delegate_seed_hash(
                 depositor,
                 recipient,
                 input_token,
@@ -52,16 +53,12 @@ pub struct Deposit<'info> {
                 output_amount,
                 destination_chain_id,
                 exclusive_relayer,
-                quote_timestamp,
-                fill_deadline,
                 exclusivity_parameter,
-                message.clone(),
-            ) @ SvmError::InvalidDelegateSeedHash
+                message.clone()
+            ),
+        ],
+        bump
     )]
-    /// CHECK: Must be the raw 32‑byte delegate seed hash PDA derived off-chain.
-    pub delegate_seed_hash: UncheckedAccount<'info>,
-
-    #[account(seeds = [b"delegate", delegate_seed_hash.key().as_ref()], bump)]
     /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer. No account data is read or written.
     pub delegate: UncheckedAccount<'info>,
 
@@ -133,6 +130,19 @@ pub fn _deposit(
         }
     }
 
+    let delegate_seed_hash = derive_delegate_seed_hash(
+        depositor,
+        recipient,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+        exclusive_relayer,
+        exclusivity_parameter,
+        message.clone(),
+    );
+
     // Depositor must have delegated input_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.depositor_token_account,
@@ -141,7 +151,7 @@ pub fn _deposit(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        ctx.accounts.delegate_seed_hash.key().to_bytes(),
+        delegate_seed_hash,
         ctx.bumps.delegate,
     )?;
 

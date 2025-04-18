@@ -20,8 +20,6 @@ pub struct DelegateSeedData {
     output_amount: u64,
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
     exclusivity_parameter: u32,
     message: Vec<u8>,
 }
@@ -35,8 +33,6 @@ pub fn derive_delegate_seed_hash(
     output_amount: u64,
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
-    quote_timestamp: u32,
-    fill_deadline: u32,
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> [u8; 32] {
@@ -50,8 +46,6 @@ pub fn derive_delegate_seed_hash(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
-        quote_timestamp,
-        fill_deadline,
         exclusivity_parameter,
         message,
     };
