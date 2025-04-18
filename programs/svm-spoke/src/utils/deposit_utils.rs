@@ -10,18 +10,55 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
     keccak::hash(&data).to_bytes()
 }
 
-pub fn derive_delegate_seed_hash(
+#[derive(AnchorSerialize)]
+pub struct DelegateSeedData {
+    depositor: Pubkey,
+    recipient: Pubkey,
     input_token: Pubkey,
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
     destination_chain_id: u64,
+    exclusive_relayer: Pubkey,
+    quote_timestamp: u32,
+    fill_deadline: u32,
+    exclusivity_parameter: u32,
+    message: Vec<u8>,
+}
+
+pub fn derive_delegate_seed_hash(
+    depositor: Pubkey,
+    recipient: Pubkey,
+    input_token: Pubkey,
+    output_token: Pubkey,
+    input_amount: u64,
+    output_amount: u64,
+    destination_chain_id: u64,
+    exclusive_relayer: Pubkey,
+    quote_timestamp: u32,
+    fill_deadline: u32,
+    exclusivity_parameter: u32,
+    message: Vec<u8>,
 ) -> [u8; 32] {
-    let mut data = Vec::with_capacity(32 + 32 + 8 + 8 + 8);
-    data.extend_from_slice(input_token.as_ref());
-    data.extend_from_slice(output_token.as_ref());
-    data.extend_from_slice(&input_amount.to_le_bytes());
-    data.extend_from_slice(&output_amount.to_le_bytes());
-    data.extend_from_slice(&destination_chain_id.to_le_bytes());
-    keccak::hash(&data).to_bytes()
+    // Pack everything into our serializable struct
+    let data_struct = DelegateSeedData {
+        depositor,
+        recipient,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+        exclusive_relayer,
+        quote_timestamp,
+        fill_deadline,
+        exclusivity_parameter,
+        message,
+    };
+
+    // Serialize via AnchorSerialize
+    let serialized = data_struct.try_to_vec().unwrap();
+
+    // Keccak‐hash it
+    keccak::hash(&serialized).to_bytes()
 }
