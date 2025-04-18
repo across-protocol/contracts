@@ -12,6 +12,7 @@ import {
   pipe,
 } from "@solana/kit";
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
   ExtensionType,
   NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
@@ -120,9 +121,13 @@ describe("svm_spoke.deposit", () => {
       .accounts(calledDepositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
-    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
     return tx;
   };
+
+  before(async () => {
+    await connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
+  });
 
   beforeEach(async () => {
     ({ state } = await initializeState());
@@ -693,6 +698,45 @@ describe("svm_spoke.deposit", () => {
       iVaultAmount + BigInt(nativeAmount),
       "Vault balance should be increased by the deposited amount"
     );
+  });
+
+  it("Deposits tokens to a new vault", async () => {
+    // Create new input token without creating a new vault for it.
+    await setupInputToken();
+    const inputTokenAccount = await provider.connection.getAccountInfo(inputToken);
+    if (inputTokenAccount === null) throw new Error("Input mint account not found");
+    vault = getAssociatedTokenAddressSync(
+      inputToken,
+      state,
+      true,
+      inputTokenAccount.owner,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    );
+
+    // Update global variables using the new input token.
+    depositData.inputToken = inputToken;
+    depositAccounts.depositorTokenAccount = depositorTA;
+    depositAccounts.vault = vault;
+    depositAccounts.mint = inputToken;
+
+    // Verify there is no vault account before the deposit.
+    assert.isNull(await provider.connection.getAccountInfo(vault), "Vault should not exist before the deposit");
+
+    // Execute the deposit call
+    const depositDataValues = Object.values(depositData) as DepositDataValues;
+    await approvedDeposit(depositDataValues);
+
+    // Verify tokens leave the depositor's account
+    const depositorAccount = await getAccount(connection, depositorTA);
+    assertSE(
+      depositorAccount.amount,
+      seedBalance - depositData.inputAmount.toNumber(),
+      "Depositor's balance should be reduced by the deposited amount"
+    );
+
+    // Verify tokens are credited into the new vault
+    const vaultAccount = await getAccount(connection, vault);
+    assertSE(vaultAccount.amount, depositData.inputAmount, "Vault balance should equal the deposited amount");
   });
 
   describe("codama client and solana kit", () => {
