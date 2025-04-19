@@ -51,6 +51,7 @@ describe("svm_spoke.fill", () => {
   type FillAccounts = {
     state: PublicKey;
     delegate: PublicKey;
+    delegateHash: PublicKey;
     signer: PublicKey;
     instructionParams: PublicKey;
     mint: PublicKey;
@@ -73,9 +74,17 @@ describe("svm_spoke.fill", () => {
       program.programId
     );
 
+    const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
+      relayHashUint8Array,
+      new BN(1),
+      relayer.publicKey,
+      program.programId
+    );
+
     accounts = {
       state,
-      delegate: getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
+      delegate: delegatePda,
+      delegateHash: new PublicKey(seedHash),
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -94,25 +103,35 @@ describe("svm_spoke.fill", () => {
     calledFillAccounts: FillAccounts = accounts,
     callingRelayer: Keypair = relayer
   ): Promise<string> => {
-    // Delegate state PDA to pull relayer tokens.
-    const relayHash = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Uint8Array.from(fillDataValues[0]);
+    const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
+      relayHash,
+      fillDataValues[2],
+      fillDataValues[3],
+      program.programId
+    );
+
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
       calledFillAccounts.mint,
-      getFillRelayDelegatePda(relayHash, seed, program.programId),
+      delegatePda,
       calledFillAccounts.signer,
       BigInt(fillDataValues[1].outputAmount.toString()),
       tokenDecimals,
       undefined,
       tokenProgram
     );
+
     const fillIx = await program.methods
       .fillRelay(...fillDataValues)
-      .accounts(calledFillAccounts)
+      .accounts({ ...calledFillAccounts, delegateHash: new PublicKey(seedHash), delegate: delegatePda })
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
-    const fillTx = new Transaction().add(approveIx, fillIx);
-    const tx = await sendAndConfirmTransaction(connection, fillTx, [payer, callingRelayer]);
+
+    const tx = await sendAndConfirmTransaction(connection, new Transaction().add(approveIx, fillIx), [
+      payer,
+      callingRelayer,
+    ]);
     return tx;
   };
 
@@ -166,7 +185,7 @@ describe("svm_spoke.fill", () => {
     assertSE(relayerAccount.amount, seedBalance, "Relayer's balance should be equal to seed balance before the fill");
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-    await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
+    await approvedFillRelay([relayHash, relayData, chainId, relayer.publicKey]);
 
     // Verify relayer's balance after the fill
     relayerAccount = await getAccount(connection, relayerTA);
@@ -455,11 +474,18 @@ describe("svm_spoke.fill", () => {
       ])
       .instruction();
 
+    const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
+      relayHashUint8Array,
+      new BN(1),
+      relayer.publicKey,
+      program.programId
+    );
+
     // Fill the deposit in the same transaction
     const approveInstruction = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
+      delegatePda,
       accounts.signer,
       BigInt(newRelayData.outputAmount.toString()),
       tokenDecimals,
@@ -468,7 +494,7 @@ describe("svm_spoke.fill", () => {
     );
     const fillInstruction = await program.methods
       .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
-      .accounts(accounts)
+      .accounts({ ...accounts, delegateHash: new PublicKey(seedHash), delegate: delegatePda })
       .remainingAccounts(fillRemainingAccounts)
       .instruction();
 
@@ -517,10 +543,17 @@ describe("svm_spoke.fill", () => {
       const relayHashUint8Array = calculateRelayHashUint8Array(newRelayData, chainId);
       const relayHash = Array.from(relayHashUint8Array);
 
+      const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
+        relayHashUint8Array,
+        new BN(1),
+        relayer.publicKey,
+        program.programId
+      );
+
       const approveInstruction = await createApproveCheckedInstruction(
         accounts.relayerTokenAccount,
         accounts.mint,
-        getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
+        delegatePda,
         accounts.signer,
         BigInt(totalFillAmount.toString()),
         tokenDecimals,
@@ -531,7 +564,7 @@ describe("svm_spoke.fill", () => {
 
       const fillInstruction = await program.methods
         .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
-        .accounts(accounts)
+        .accounts({ ...accounts, delegateHash: new PublicKey(seedHash), delegate: delegatePda })
         .remainingAccounts(fillRemainingAccounts)
         .instruction();
       approveAndfillInstructions.push(fillInstruction);

@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::FundsDeposited,
     state::{Route, State},
-    utils::{derive_delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
+    utils::{derive_deposit_delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
 };
 
 #[event_cpi]
@@ -107,7 +107,7 @@ pub fn _deposit(
         }
     }
 
-    let delegate_seed_hash = derive_delegate_seed_hash(
+    let delegate_seed_hash = derive_deposit_delegate_seed_hash(
         depositor,
         recipient,
         input_token,
