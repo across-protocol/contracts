@@ -118,16 +118,12 @@ export function getDepositDelegatePda(depositData: DepositData, programId: Publi
  */
 class FillDelegateSeedData {
   relayHash: Uint8Array;
-  repaymentChainIdOption: number;
   repaymentChainId: BN;
-  repaymentAddressOption: number;
   repaymentAddress: Uint8Array;
-  constructor(fields: { relayHash: Uint8Array; repaymentChainId: BN | null; repaymentAddress: Uint8Array | null }) {
+  constructor(fields: { relayHash: Uint8Array; repaymentChainId: BN; repaymentAddress: Uint8Array }) {
     this.relayHash = fields.relayHash;
-    this.repaymentChainIdOption = fields.repaymentChainId !== null ? 1 : 0;
-    this.repaymentChainId = fields.repaymentChainId ?? new BN(0);
-    this.repaymentAddressOption = fields.repaymentAddress !== null ? 1 : 0;
-    this.repaymentAddress = fields.repaymentAddress ?? new Uint8Array(32);
+    this.repaymentChainId = fields.repaymentChainId;
+    this.repaymentAddress = fields.repaymentAddress;
   }
 }
 
@@ -141,9 +137,7 @@ const fillDelegateSeedSchema = new Map<any, any>([
       kind: "struct",
       fields: [
         ["relayHash", [32]],
-        ["repaymentChainIdOption", "u8"],
         ["repaymentChainId", "u64"],
-        ["repaymentAddressOption", "u8"],
         ["repaymentAddress", [32]],
       ],
     },
@@ -157,13 +151,13 @@ const fillDelegateSeedSchema = new Map<any, any>([
 
 export function getFillRelayDelegateSeedHash(
   relayHash: Uint8Array,
-  repaymentChainId: BN | null,
-  repaymentAddress: PublicKey | null
+  repaymentChainId: BN,
+  repaymentAddress: PublicKey
 ): Uint8Array {
   const ds = new FillDelegateSeedData({
     relayHash,
     repaymentChainId,
-    repaymentAddress: repaymentAddress?.toBuffer() ?? null,
+    repaymentAddress: repaymentAddress.toBuffer(),
   });
   const serialized = serialize(fillDelegateSeedSchema, ds);
   return Buffer.from(ethers.utils.keccak256(serialized).slice(2), "hex");

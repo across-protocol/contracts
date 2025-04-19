@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
+    utils::{derive_fill_delegate_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -92,6 +92,7 @@ pub fn fill_relay<'info>(
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
+    msg!("repayment address before unwrap: {:?}", repayment_address);
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
@@ -121,9 +122,14 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    let (_, delegate_bump) =
-        Pubkey::find_program_address(&[b"delegate", ctx.accounts.delegate_hash.key().as_ref()], &ctx.program_id);
+    msg!("fill_relay: _relay_hash: {:?}", _relay_hash);
+    let delegate_seed_hash = derive_fill_delegate_seed_hash(_relay_hash, repayment_chain_id, repayment_address);
+    msg!("calculated delegate_seed_hash: {}", Pubkey::new_from_array(delegate_seed_hash));
 
+    let (calculated_pda, delegate_bump) =
+        Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
+
+    msg!("calculated_pda: {:?}", calculated_pda);
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.relayer_token_account,
@@ -132,7 +138,7 @@ pub fn fill_relay<'info>(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        ctx.accounts.delegate_hash.key().to_bytes(),
+        delegate_seed_hash,
         delegate_bump,
     )?;
 
@@ -181,6 +187,8 @@ fn unwrap_fill_relay_params(
     repayment_address: Option<Pubkey>,
     account: &Option<Account<FillRelayParams>>,
 ) -> FillRelayParams {
+    msg!("unwrap_fill_relay_params: repayment_chain_id: {:?}", repayment_chain_id);
+    msg!("unwrap_fill_relay_params: repayment_address: {:?}", repayment_address);
     match (relay_data, repayment_chain_id, repayment_address) {
         (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
             FillRelayParams { relay_data, repayment_chain_id, repayment_address }
