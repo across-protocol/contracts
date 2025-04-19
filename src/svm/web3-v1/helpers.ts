@@ -27,7 +27,7 @@ export const isSolanaDevnet = (provider: AnchorProvider): boolean => {
 /**
  * Borsh‐serializable struct matching your Rust DelegateSeedData
  */
-class DelegateSeedData {
+class DepositDelegateSeedData {
   depositor!: Uint8Array;
   recipient!: Uint8Array;
   inputToken!: Uint8Array;
@@ -60,7 +60,7 @@ class DelegateSeedData {
  */
 const delegateSeedSchema = new Map([
   [
-    DelegateSeedData,
+    DepositDelegateSeedData,
     {
       kind: "struct",
       fields: [
@@ -80,8 +80,7 @@ const delegateSeedSchema = new Map([
 ]);
 
 export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array {
-  // Build the JS object that matches DelegateSeedData
-  const ds = new DelegateSeedData({
+  const ds = new DepositDelegateSeedData({
     depositor: depositData.depositor!.toBuffer(),
     recipient: depositData.recipient.toBuffer(),
     inputToken: depositData.inputToken!.toBuffer(),
@@ -104,7 +103,7 @@ export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array
 
 /**
  * Returns the delegate PDA for a deposit, Borsh‐serializing exactly the same fields
- * and ordering as your Rust `derive_delegate_seed_hash`.
+ * and ordering as your Rust `derive_deposit_delegate_seed_hash`.
  */
 export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
   const seedHash = getDepositDelegateSeedHash(depositData);
@@ -114,13 +113,73 @@ export function getDepositDelegatePda(depositData: DepositData, programId: Publi
 
   return pda;
 }
+/**
+ * Fill‐delegate seed data for relays
+ */
+class FillDelegateSeedData {
+  relayHash: Uint8Array;
+  repaymentChainIdOption: number;
+  repaymentChainId: BN;
+  repaymentAddressOption: number;
+  repaymentAddress: Uint8Array;
+  constructor(fields: { relayHash: Uint8Array; repaymentChainId: BN | null; repaymentAddress: Uint8Array | null }) {
+    this.relayHash = fields.relayHash;
+    this.repaymentChainIdOption = fields.repaymentChainId !== null ? 1 : 0;
+    this.repaymentChainId = fields.repaymentChainId ?? new BN(0);
+    this.repaymentAddressOption = fields.repaymentAddress !== null ? 1 : 0;
+    this.repaymentAddress = fields.repaymentAddress ?? new Uint8Array(32);
+  }
+}
 
 /**
- * Returns the delegate PDA for a fill relay.
+ * Borsh schema for FillDelegateSeedData
  */
-export const getFillRelayDelegatePda = (relayHash: Uint8Array, stateSeed: BN, programId: PublicKey) => {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("delegate"), stateSeed.toArrayLike(Buffer, "le", 8), relayHash],
-    programId
-  )[0];
-};
+const fillDelegateSeedSchema = new Map<any, any>([
+  [
+    FillDelegateSeedData,
+    {
+      kind: "struct",
+      fields: [
+        ["relayHash", [32]],
+        ["repaymentChainIdOption", "u8"],
+        ["repaymentChainId", "u64"],
+        ["repaymentAddressOption", "u8"],
+        ["repaymentAddress", [32]],
+      ],
+    },
+  ],
+]);
+
+/**
+ * Computes the delegate seed hash for a fill relay operation.
+ * Must match the Rust `derive_fill_delegate_seed_hash` logic exactly.
+ */
+
+export function getFillRelayDelegateSeedHash(
+  relayHash: Uint8Array,
+  repaymentChainId: BN | null,
+  repaymentAddress: PublicKey | null
+): Uint8Array {
+  const ds = new FillDelegateSeedData({
+    relayHash,
+    repaymentChainId,
+    repaymentAddress: repaymentAddress?.toBuffer() ?? null,
+  });
+  const serialized = serialize(fillDelegateSeedSchema, ds);
+  return Buffer.from(ethers.utils.keccak256(serialized).slice(2), "hex");
+}
+
+/**
+ * Derives the program address (PDA) for a fill relay delegate.
+ * Returns only the PDA; bump can be retrieved via `findProgramAddressSync` if needed.
+ */
+export function getFillRelayDelegatePda(
+  relayHash: Uint8Array,
+  repaymentChainId: BN,
+  repaymentAddress: PublicKey,
+  programId: PublicKey
+): { seedHash: Uint8Array; pda: PublicKey } {
+  const seedHash = getFillRelayDelegateSeedHash(relayHash, repaymentChainId, repaymentAddress);
+  const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);
+  return { seedHash, pda };
+}

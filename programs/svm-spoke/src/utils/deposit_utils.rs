@@ -11,7 +11,7 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
 }
 
 #[derive(AnchorSerialize)]
-pub struct DelegateSeedData {
+pub struct DepositDelegateSeedData {
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -24,7 +24,7 @@ pub struct DelegateSeedData {
     message: Vec<u8>,
 }
 
-pub fn derive_delegate_seed_hash(
+pub fn derive_deposit_delegate_seed_hash(
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
@@ -36,7 +36,7 @@ pub fn derive_delegate_seed_hash(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> [u8; 32] {
-    let data_struct = DelegateSeedData {
+    let data_struct = DepositDelegateSeedData {
         depositor,
         recipient,
         input_token,
