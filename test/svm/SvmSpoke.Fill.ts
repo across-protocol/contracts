@@ -104,12 +104,18 @@ describe("svm_spoke.fill", () => {
     callingRelayer: Keypair = relayer
   ): Promise<string> => {
     const relayHash = Uint8Array.from(fillDataValues[0]);
+    console.log("relayHash", relayHash);
+    console.log("repaymentChainId", fillDataValues[2].toString());
+    console.log("repaymentAddress", fillDataValues[3].toString());
     const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
       relayHash,
       fillDataValues[2],
       fillDataValues[3],
       program.programId
     );
+
+    console.log("seedHash", new PublicKey(seedHash).toString());
+    console.log("delegatePda", delegatePda.toString());
 
     const approveIx = await createApproveCheckedInstruction(
       calledFillAccounts.relayerTokenAccount,
