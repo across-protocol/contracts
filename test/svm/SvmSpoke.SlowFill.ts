@@ -15,6 +15,7 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { SlowFillLeaf } from "../../src/types/svm";
 import {
   calculateRelayHashUint8Array,
+  getFillRelayDelegatePda,
   hashNonEmptyMessage,
   intToU8Array32,
   readEventsUntilFound,
@@ -217,13 +218,14 @@ describe("svm_spoke.slow_fill", () => {
   });
 
   it("Fails to request a V3 slow fill if the relay has already been filled", async () => {
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+    const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(relayHashUint8Array);
 
     // Fill the relay first
     const approveIx = await createApproveCheckedInstruction(
       fillAccounts.relayerTokenAccount,
       fillAccounts.mint,
-      fillAccounts.state,
+      getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       fillAccounts.signer,
       BigInt(relayData.outputAmount.toString()),
       tokenDecimals

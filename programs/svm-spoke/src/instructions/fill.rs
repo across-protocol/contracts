@@ -16,7 +16,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
+#[instruction(_relay_hash: [u8; 32], relay_data: Option<RelayData>, repayment_chain_id: Option<u64>, repayment_address: Option<Pubkey>)]
 pub struct FillRelay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -31,6 +31,12 @@ pub struct FillRelay<'info> {
         constraint = !state.paused_fills @ CommonError::FillsArePaused
     )]
     pub state: Account<'info, State>,
+
+    /// CHECK: PDA is the keccak256 hash of the Borsh‑serialized struct { relay_hash, repayment_chain_id, repayment_address }.
+    pub delegate_hash: UncheckedAccount<'info>,
+
+    /// CHECK: PDA derived with seeds ["delegate", delegate_hash]; used as a CPI signer.
+    pub delegate: UncheckedAccount<'info>,
 
     #[account(
         mint::token_program = token_program,
@@ -65,10 +71,10 @@ pub struct FillRelay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", _relay_hash.as_ref()],
         bump,
         constraint = is_relay_hash_valid(
-            &relay_hash,
+            &_relay_hash,
             &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
             &state) @ SvmError::InvalidRelayHash
     )]
@@ -81,6 +87,7 @@ pub struct FillRelay<'info> {
 
 pub fn fill_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
+    _relay_hash: [u8; 32],
     relay_data: Option<RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
@@ -114,15 +121,19 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    // Relayer must have delegated output_amount to the state PDA
+    let (_, delegate_bump) =
+        Pubkey::find_program_address(&[b"delegate", ctx.accounts.delegate_hash.key().as_ref()], &ctx.program_id);
+
+    // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.relayer_token_account,
         &ctx.accounts.recipient_token_account,
         relay_data.output_amount,
-        state,
-        ctx.bumps.state,
+        &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
+        ctx.accounts.delegate_hash.key().to_bytes(),
+        delegate_bump,
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
