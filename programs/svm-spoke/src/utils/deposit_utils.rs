@@ -48,7 +48,6 @@ pub fn derive_deposit_delegate_seed_hash(
         exclusivity_parameter,
         message,
     };
-
     let serialized = data_struct.try_to_vec().unwrap();
 
     keccak::hash(&serialized).to_bytes()

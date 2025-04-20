@@ -182,8 +182,6 @@ fn unwrap_fill_relay_params(
     repayment_address: Option<Pubkey>,
     account: &Option<Account<FillRelayParams>>,
 ) -> FillRelayParams {
-    msg!("unwrap_fill_relay_params: repayment_chain_id: {:?}", repayment_chain_id);
-    msg!("unwrap_fill_relay_params: repayment_address: {:?}", repayment_address);
     match (relay_data, repayment_chain_id, repayment_address) {
         (Some(relay_data), Some(repayment_chain_id), Some(repayment_address)) => {
             FillRelayParams { relay_data, repayment_chain_id, repayment_address }
