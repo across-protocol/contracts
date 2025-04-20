@@ -793,10 +793,7 @@ describe("svm_spoke.fill", () => {
         (tx) => appendTransactionMessageInstruction(approveIx, tx),
         (tx) => appendTransactionMessageInstruction(fillRelayIx, tx),
         (tx) => signAndSendTransaction(rpcClient, tx)
-      ).catch((err) => {
-        console.log(err);
-        // throw err;
-      });
+      );
 
       const events = await readEventsUntilFound(connection, tx, [program]);
       const event = events.find((event) => event.name === "filledRelay")?.data;
