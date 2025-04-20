@@ -36,7 +36,7 @@ pub struct Deposit<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer.
+    /// CHECK: PDA derived with seeds ["delegate", deposit_delegate_seed_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
