@@ -107,7 +107,8 @@ pub fn _deposit(
         }
     }
 
-    let delegate_seed_hash = derive_deposit_delegate_seed_hash(
+    // Verify delegate PDA
+    let seed_hash = derive_deposit_delegate_seed_hash(
         depositor,
         recipient,
         input_token,
@@ -119,9 +120,8 @@ pub fn _deposit(
         exclusivity_parameter,
         message.clone(),
     );
-    let (delegate_pda, delegate_bump) =
-        Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
-    if delegate_pda != ctx.accounts.delegate.key() {
+    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &seed_hash], &ctx.program_id);
+    if pda != ctx.accounts.delegate.key() {
         return err!(SvmError::InvalidDelegatePda);
     }
 
@@ -133,8 +133,8 @@ pub fn _deposit(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        delegate_seed_hash,
-        delegate_bump,
+        seed_hash,
+        bump,
     )?;
 
     let mut applied_deposit_id = deposit_id;

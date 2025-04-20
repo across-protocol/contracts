@@ -16,7 +16,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>, repayment_chain_id: Option<u64>, repayment_address: Option<Pubkey>)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
 pub struct FillRelay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -25,13 +25,23 @@ pub struct FillRelay<'info> {
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
     pub instruction_params: Option<Account<'info, FillRelayParams>>,
 
-    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(
+        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
+        bump,
+        constraint = !state.paused_fills @ CommonError::FillsArePaused
+    )]
     pub state: Account<'info, State>,
 
     /// CHECK: PDA derived with seeds ["delegate", delegate_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
 
-    #[account(mint::token_program = token_program)]
+    #[account(
+        mint::token_program = token_program,
+        address = relay_data
+            .clone()
+            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
+            .output_token @ SvmError::InvalidMint
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
@@ -59,7 +69,11 @@ pub struct FillRelay<'info> {
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
         seeds = [b"fills", relay_hash.as_ref()],
-        bump
+        bump,
+        constraint = is_relay_hash_valid(
+            &relay_hash,
+            &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
+            &state) @ SvmError::InvalidRelayHash
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
@@ -80,16 +94,6 @@ pub fn fill_relay<'info>(
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
-
-    // Enforce fills not paused
-    if state.paused_fills {
-        return err!(CommonError::FillsArePaused);
-    }
-
-    // Validate mint matches expected output token
-    if ctx.accounts.mint.key() != relay_data.output_token {
-        return err!(SvmError::InvalidMint);
-    }
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
     if relay_data.exclusive_relayer != ctx.accounts.signer.key()
@@ -113,11 +117,6 @@ pub fn fill_relay<'info>(
         FillStatus::RequestedSlowFill => FillType::ReplacedSlowFill,
         _ => FillType::FastFill,
     };
-
-    // Verify relay hash
-    if !is_relay_hash_valid(&relay_hash, &relay_data, &ctx.accounts.state) {
-        return err!(SvmError::InvalidRelayHash);
-    }
 
     // Verify delegate PDA
     let seed_hash = derive_fill_delegate_seed_hash(relay_hash, repayment_chain_id, repayment_address);
