@@ -25,7 +25,7 @@ export const isSolanaDevnet = (provider: AnchorProvider): boolean => {
 };
 
 /**
- * Borsh‐serializable struct matching your Rust DelegateSeedData
+ * Deposit Delegate Seed Data
  */
 class DepositDelegateSeedData {
   depositor!: Uint8Array;
@@ -56,7 +56,7 @@ class DepositDelegateSeedData {
 }
 
 /**
- * Borsh schema for DelegateSeedData
+ * Borsh schema for DepositDelegateSeedData
  */
 const delegateSeedSchema = new Map([
   [
@@ -93,17 +93,14 @@ export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array
     // Borsh will automatically prefix this with a 4‑byte LE length
     message: Uint8Array.from(depositData.message),
   });
-
-  // Serialize with borsh
-  const serialized = serialize(delegateSeedSchema, ds); // Uint8Array
+  const serialized = serialize(delegateSeedSchema, ds);
   const hashHex = ethers.utils.keccak256(serialized);
-  const seedHash = Buffer.from(hashHex.slice(2), "hex");
-  return seedHash;
+
+  return Buffer.from(hashHex.slice(2), "hex");
 }
 
 /**
- * Returns the delegate PDA for a deposit, Borsh‐serializing exactly the same fields
- * and ordering as your Rust `derive_deposit_delegate_seed_hash`.
+ * Returns the delegate PDA for a deposit.
  */
 export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
   const seedHash = getDepositDelegateSeedHash(depositData);
@@ -113,8 +110,9 @@ export function getDepositDelegatePda(depositData: DepositData, programId: Publi
 
   return pda;
 }
+
 /**
- * Fill‐delegate seed data for relays
+ * Fill Delegate Seed Data
  */
 class FillDelegateSeedData {
   relayHash: Uint8Array;
@@ -145,8 +143,7 @@ const fillDelegateSeedSchema = new Map<any, any>([
 ]);
 
 /**
- * Computes the delegate seed hash for a fill relay operation.
- * Must match the Rust `derive_fill_delegate_seed_hash` logic exactly.
+ * Returns the fill delegate seed hash.
  */
 
 export function getFillRelayDelegateSeedHash(
@@ -160,12 +157,12 @@ export function getFillRelayDelegateSeedHash(
     repaymentAddress: repaymentAddress.toBuffer(),
   });
   const serialized = serialize(fillDelegateSeedSchema, ds);
+
   return Buffer.from(ethers.utils.keccak256(serialized).slice(2), "hex");
 }
 
 /**
- * Derives the program address (PDA) for a fill relay delegate.
- * Returns only the PDA; bump can be retrieved via `findProgramAddressSync` if needed.
+ * Returns the fill delegate PDA.
  */
 export function getFillRelayDelegatePda(
   relayHash: Uint8Array,
@@ -175,5 +172,6 @@ export function getFillRelayDelegatePda(
 ): { seedHash: Uint8Array; pda: PublicKey } {
   const seedHash = getFillRelayDelegateSeedHash(relayHash, repaymentChainId, repaymentAddress);
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);
+
   return { seedHash, pda };
 }
