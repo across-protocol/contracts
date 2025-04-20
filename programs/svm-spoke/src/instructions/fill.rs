@@ -16,7 +16,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(_relay_hash: [u8; 32], relay_data: Option<RelayData>, repayment_chain_id: Option<u64>, repayment_address: Option<Pubkey>)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>, repayment_chain_id: Option<u64>, repayment_address: Option<Pubkey>)]
 pub struct FillRelay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -25,26 +25,13 @@ pub struct FillRelay<'info> {
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
     pub instruction_params: Option<Account<'info, FillRelayParams>>,
 
-    #[account(
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
-        bump,
-        constraint = !state.paused_fills @ CommonError::FillsArePaused
-    )]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
-
-    /// CHECK: PDA is the keccak256 hash of the Borsh‑serialized struct { relay_hash, repayment_chain_id, repayment_address }.
-    pub delegate_hash: UncheckedAccount<'info>,
 
     /// CHECK: PDA derived with seeds ["delegate", delegate_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
 
-    #[account(
-        mint::token_program = token_program,
-        address = relay_data
-            .clone()
-            .unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone())
-            .output_token @ SvmError::InvalidMint
-    )]
+    #[account(mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
@@ -71,12 +58,8 @@ pub struct FillRelay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", _relay_hash.as_ref()],
-        bump,
-        constraint = is_relay_hash_valid(
-            &_relay_hash,
-            &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
-            &state) @ SvmError::InvalidRelayHash
+        seeds = [b"fills", relay_hash.as_ref()],
+        bump
     )]
     pub fill_status: Account<'info, FillStatusAccount>,
 
@@ -87,17 +70,26 @@ pub struct FillRelay<'info> {
 
 pub fn fill_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
-    _relay_hash: [u8; 32],
+    relay_hash: [u8; 32],
     relay_data: Option<RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
-    msg!("repayment address before unwrap: {:?}", repayment_address);
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
     let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
+
+    // Enforce fills not paused
+    if state.paused_fills {
+        return err!(CommonError::FillsArePaused);
+    }
+
+    // Validate mint matches expected output token
+    if ctx.accounts.mint.key() != relay_data.output_token {
+        return err!(SvmError::InvalidMint);
+    }
 
     // Check if the exclusivity deadline has passed or if the caller is the exclusive relayer
     if relay_data.exclusive_relayer != ctx.accounts.signer.key()
@@ -122,14 +114,18 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    msg!("fill_relay: _relay_hash: {:?}", _relay_hash);
-    let delegate_seed_hash = derive_fill_delegate_seed_hash(_relay_hash, repayment_chain_id, repayment_address);
-    msg!("calculated delegate_seed_hash: {}", Pubkey::new_from_array(delegate_seed_hash));
+    // Verify relay hash
+    if !is_relay_hash_valid(&relay_hash, &relay_data, &ctx.accounts.state) {
+        return err!(SvmError::InvalidRelayHash);
+    }
 
-    let (calculated_pda, delegate_bump) =
-        Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
+    // Verify delegate PDA
+    let seed_hash = derive_fill_delegate_seed_hash(relay_hash, repayment_chain_id, repayment_address);
+    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &seed_hash], &ctx.program_id);
+    if ctx.accounts.delegate.key() != pda {
+        return err!(SvmError::InvalidDelegatePda);
+    }
 
-    msg!("calculated_pda: {:?}", calculated_pda);
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.relayer_token_account,
@@ -138,8 +134,8 @@ pub fn fill_relay<'info>(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        delegate_seed_hash,
-        delegate_bump,
+        seed_hash,
+        bump,
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
