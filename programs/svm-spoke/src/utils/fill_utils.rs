@@ -1,7 +1,7 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 
 #[derive(AnchorSerialize)]
-pub struct FillDelegateSeedData {
+struct FillDelegateSeedData {
     relay_hash: [u8; 32],
     repayment_chain_id: u64,
     repayment_address: Pubkey,

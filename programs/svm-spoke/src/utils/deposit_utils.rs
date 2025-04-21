@@ -11,7 +11,7 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
 }
 
 #[derive(AnchorSerialize)]
-pub struct DepositDelegateSeedData {
+struct DepositDelegateSeedData {
     depositor: Pubkey,
     recipient: Pubkey,
     input_token: Pubkey,
