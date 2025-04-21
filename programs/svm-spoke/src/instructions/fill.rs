@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{derive_fill_delegate_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
+    utils::{derive_fill_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
 };
 
 #[event_cpi]
@@ -32,7 +32,7 @@ pub struct FillRelay<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// CHECK: PDA derived with seeds ["delegate", fill_delegate_seed_hash]; used as a CPI signer.
+    /// CHECK: PDA derived with seeds ["delegate", fill_seed_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -119,7 +119,7 @@ pub fn fill_relay<'info>(
     };
 
     // Verify delegate PDA
-    let seed_hash = derive_fill_delegate_seed_hash(relay_hash, repayment_chain_id, repayment_address);
+    let seed_hash = derive_fill_seed_hash(relay_hash, repayment_chain_id, repayment_address);
     let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &seed_hash], &ctx.program_id);
     if ctx.accounts.delegate.key() != pda {
         return err!(SvmError::InvalidDelegatePda);

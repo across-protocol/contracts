@@ -12,8 +12,8 @@ use crate::{
     event::FundsDeposited,
     state::{Route, State},
     utils::{
-        derive_deposit_now_seed_hash, derive_deposit_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from,
-        DepositNowSeedData, DepositSeedData,
+        derive_deposit_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DepositNowSeedData,
+        DepositSeedData,
     },
 };
 
@@ -223,7 +223,7 @@ pub fn deposit_now(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
-    let seed_hash = derive_deposit_now_seed_hash(
+    let seed_hash = derive_deposit_seed_hash(
         &(DepositNowSeedData {
             depositor,
             recipient,
