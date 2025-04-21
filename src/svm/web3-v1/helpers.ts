@@ -281,9 +281,8 @@ export function getFillRelayDelegateSeedHash(
     repaymentChainId,
     repaymentAddress: repaymentAddress.toBuffer(),
   });
-  const serialized = serialize(fillDelegateSeedSchema, ds);
 
-  return Buffer.from(ethers.utils.keccak256(serialized).slice(2), "hex");
+  return deriveSeedHash(fillDelegateSeedSchema, ds);
 }
 
 /**
