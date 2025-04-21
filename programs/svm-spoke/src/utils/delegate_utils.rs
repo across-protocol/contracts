@@ -1,9 +1,9 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 
 pub fn derive_seed_hash<T: AnchorSerialize>(seed: &T) -> [u8; 32] {
-    let mut buf = Vec::with_capacity(128);
-    seed.serialize(&mut buf).unwrap();
-    keccak::hash(&buf).to_bytes()
+    let mut data = Vec::new();
+    AnchorSerialize::serialize(seed, &mut data).unwrap();
+    keccak::hash(&data).to_bytes()
 }
 
 #[derive(AnchorSerialize)]
