@@ -12,8 +12,7 @@ use crate::{
     event::FundsDeposited,
     state::{Route, State},
     utils::{
-        derive_deposit_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DepositNowSeedData,
-        DepositSeedData,
+        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DepositNowSeedData, DepositSeedData,
     },
 };
 
@@ -39,7 +38,7 @@ pub struct Deposit<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// CHECK: PDA derived with seeds ["delegate", deposit_seed_hash]; used as a CPI signer.
+    /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -170,7 +169,7 @@ pub fn deposit(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> Result<()> {
-    let seed_hash = derive_deposit_seed_hash(
+    let seed_hash = derive_seed_hash(
         &(DepositSeedData {
             depositor,
             recipient,
@@ -223,7 +222,7 @@ pub fn deposit_now(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
-    let seed_hash = derive_deposit_seed_hash(
+    let seed_hash = derive_seed_hash(
         &(DepositNowSeedData {
             depositor,
             recipient,
@@ -277,7 +276,7 @@ pub fn unsafe_deposit(
 ) -> Result<()> {
     // Calculate the unsafe deposit ID as a [u8; 32]
     let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
-    let seed_hash = derive_deposit_seed_hash(
+    let seed_hash = derive_seed_hash(
         &(DepositSeedData {
             depositor,
             recipient,
