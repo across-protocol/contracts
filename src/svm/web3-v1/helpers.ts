@@ -4,6 +4,7 @@ import { ethers } from "ethers";
 import { DepositData } from "../../types/svm";
 import { PublicKey } from "@solana/web3.js";
 import { serialize } from "borsh";
+import { keccak256 } from "ethers/lib/utils";
 
 /**
  * Returns the chainId for a given solana cluster.
@@ -25,9 +26,18 @@ export const isSolanaDevnet = (provider: AnchorProvider): boolean => {
 };
 
 /**
- * Deposit Delegate Seed Data
+ * Generic helper: serialize + keccak256 → 32‑byte Uint8Array
  */
-class DepositDelegateSeedData {
+function deriveSeedHash<T>(schema: Map<any, any>, seedObj: T): Uint8Array {
+  const serialized = serialize(schema, seedObj);
+  const hashHex = keccak256(serialized);
+  return Buffer.from(hashHex.slice(2), "hex");
+}
+
+/**
+ * “Absolute‐deadline” deposit data
+ */
+export class DepositSeedData {
   depositor!: Uint8Array;
   recipient!: Uint8Array;
   inputToken!: Uint8Array;
@@ -36,6 +46,8 @@ class DepositDelegateSeedData {
   outputAmount!: BN;
   destinationChainId!: BN;
   exclusiveRelayer!: Uint8Array;
+  quoteTimestamp!: BN;
+  fillDeadline!: BN;
   exclusivityParameter!: BN;
   message!: Uint8Array;
 
@@ -48,6 +60,8 @@ class DepositDelegateSeedData {
     outputAmount: BN;
     destinationChainId: BN;
     exclusiveRelayer: Uint8Array;
+    quoteTimestamp: BN;
+    fillDeadline: BN;
     exclusivityParameter: BN;
     message: Uint8Array;
   }) {
@@ -55,12 +69,9 @@ class DepositDelegateSeedData {
   }
 }
 
-/**
- * Borsh schema for DepositDelegateSeedData
- */
-const delegateSeedSchema = new Map([
+const depositSeedSchema = new Map([
   [
-    DepositDelegateSeedData,
+    DepositSeedData,
     {
       kind: "struct",
       fields: [
@@ -72,6 +83,8 @@ const delegateSeedSchema = new Map([
         ["outputAmount", "u64"],
         ["destinationChainId", "u64"],
         ["exclusiveRelayer", [32]],
+        ["quoteTimestamp", "u32"],
+        ["fillDeadline", "u32"],
         ["exclusivityParameter", "u32"],
         ["message", ["u8"]],
       ],
@@ -79,35 +92,147 @@ const delegateSeedSchema = new Map([
   ],
 ]);
 
-export function getDepositDelegateSeedHash(depositData: DepositData): Uint8Array {
-  const ds = new DepositDelegateSeedData({
-    depositor: depositData.depositor!.toBuffer(),
+/**
+ * Hash for the standard `deposit(...)` flow
+ */
+export function getDepositSeedHash(depositData: {
+  depositor: PublicKey;
+  recipient: PublicKey;
+  inputToken: PublicKey;
+  outputToken: PublicKey;
+  inputAmount: BN;
+  outputAmount: BN;
+  destinationChainId: BN;
+  exclusiveRelayer: PublicKey;
+  quoteTimestamp: BN;
+  fillDeadline: BN;
+  exclusivityParameter: BN;
+  message: Uint8Array;
+}): Uint8Array {
+  const ds = new DepositSeedData({
+    depositor: depositData.depositor.toBuffer(),
     recipient: depositData.recipient.toBuffer(),
-    inputToken: depositData.inputToken!.toBuffer(),
+    inputToken: depositData.inputToken.toBuffer(),
     outputToken: depositData.outputToken.toBuffer(),
     inputAmount: depositData.inputAmount,
     outputAmount: depositData.outputAmount,
     destinationChainId: depositData.destinationChainId,
     exclusiveRelayer: depositData.exclusiveRelayer.toBuffer(),
+    quoteTimestamp: depositData.quoteTimestamp,
+    fillDeadline: depositData.fillDeadline,
     exclusivityParameter: depositData.exclusivityParameter,
-    // Borsh will automatically prefix this with a 4‑byte LE length
-    message: Uint8Array.from(depositData.message),
+    message: depositData.message,
   });
-  const serialized = serialize(delegateSeedSchema, ds);
-  const hashHex = ethers.utils.keccak256(serialized);
 
-  return Buffer.from(hashHex.slice(2), "hex");
+  return deriveSeedHash(depositSeedSchema, ds);
 }
 
 /**
- * Returns the delegate PDA for a deposit.
+ * Returns the delegate PDA for `deposit(...)`
  */
-export function getDepositDelegatePda(depositData: DepositData, programId: PublicKey): PublicKey {
-  const seedHash = getDepositDelegateSeedHash(depositData);
-
-  // Derive PDA with seeds ["delegate", seedHash]
+export function getDepositPda(depositData: Parameters<typeof getDepositSeedHash>[0], programId: PublicKey): PublicKey {
+  const seedHash = getDepositSeedHash(depositData);
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);
+  return pda;
+}
 
+/**
+ * “Offset/now” deposit data
+ */
+export class DepositNowSeedData {
+  depositor!: Uint8Array;
+  recipient!: Uint8Array;
+  inputToken!: Uint8Array;
+  outputToken!: Uint8Array;
+  inputAmount!: BN;
+  outputAmount!: BN;
+  destinationChainId!: BN;
+  exclusiveRelayer!: Uint8Array;
+  fillDeadlineOffset!: BN;
+  exclusivityPeriod!: BN;
+  message!: Uint8Array;
+
+  constructor(fields: {
+    depositor: Uint8Array;
+    recipient: Uint8Array;
+    inputToken: Uint8Array;
+    outputToken: Uint8Array;
+    inputAmount: BN;
+    outputAmount: BN;
+    destinationChainId: BN;
+    exclusiveRelayer: Uint8Array;
+    fillDeadlineOffset: BN;
+    exclusivityPeriod: BN;
+    message: Uint8Array;
+  }) {
+    Object.assign(this, fields);
+  }
+}
+
+const depositNowSeedSchema = new Map([
+  [
+    DepositNowSeedData,
+    {
+      kind: "struct",
+      fields: [
+        ["depositor", [32]],
+        ["recipient", [32]],
+        ["inputToken", [32]],
+        ["outputToken", [32]],
+        ["inputAmount", "u64"],
+        ["outputAmount", "u64"],
+        ["destinationChainId", "u64"],
+        ["exclusiveRelayer", [32]],
+        ["fillDeadlineOffset", "u32"],
+        ["exclusivityPeriod", "u32"],
+        ["message", ["u8"]],
+      ],
+    },
+  ],
+]);
+
+/**
+ * Hash for the `deposit_now(...)` flow
+ */
+export function getDepositNowSeedHash(depositData: {
+  depositor: PublicKey;
+  recipient: PublicKey;
+  inputToken: PublicKey;
+  outputToken: PublicKey;
+  inputAmount: BN;
+  outputAmount: BN;
+  destinationChainId: BN;
+  exclusiveRelayer: PublicKey;
+  fillDeadlineOffset: BN;
+  exclusivityPeriod: BN;
+  message: Uint8Array;
+}): Uint8Array {
+  const dns = new DepositNowSeedData({
+    depositor: depositData.depositor.toBuffer(),
+    recipient: depositData.recipient.toBuffer(),
+    inputToken: depositData.inputToken.toBuffer(),
+    outputToken: depositData.outputToken.toBuffer(),
+    inputAmount: depositData.inputAmount,
+    outputAmount: depositData.outputAmount,
+    destinationChainId: depositData.destinationChainId,
+    exclusiveRelayer: depositData.exclusiveRelayer.toBuffer(),
+    fillDeadlineOffset: depositData.fillDeadlineOffset,
+    exclusivityPeriod: depositData.exclusivityPeriod,
+    message: depositData.message,
+  });
+
+  return deriveSeedHash(depositNowSeedSchema, dns);
+}
+
+/**
+ * Returns the delegate PDA for `deposit_now(...)`
+ */
+export function getDepositNowPda(
+  depositData: Parameters<typeof getDepositNowSeedHash>[0],
+  programId: PublicKey
+): PublicKey {
+  const seedHash = getDepositNowSeedHash(depositData);
+  const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);
   return pda;
 }
 
