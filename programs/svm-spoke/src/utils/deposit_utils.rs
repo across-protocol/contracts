@@ -11,44 +11,46 @@ pub fn get_unsafe_deposit_id(msg_sender: Pubkey, depositor: Pubkey, deposit_nonc
 }
 
 #[derive(AnchorSerialize)]
-struct DepositDelegateSeedData {
-    depositor: Pubkey,
-    recipient: Pubkey,
-    input_token: Pubkey,
-    output_token: Pubkey,
-    input_amount: u64,
-    output_amount: u64,
-    destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    exclusivity_parameter: u32,
-    message: Vec<u8>,
+pub struct DepositSeedData {
+    pub depositor: Pubkey,
+    pub recipient: Pubkey,
+    pub input_token: Pubkey,
+    pub output_token: Pubkey,
+    pub input_amount: u64,
+    pub output_amount: u64,
+    pub destination_chain_id: u64,
+    pub exclusive_relayer: Pubkey,
+    pub quote_timestamp: u32,
+    pub fill_deadline: u32,
+    pub exclusivity_parameter: u32,
+    pub message: Vec<u8>,
 }
 
-pub fn derive_deposit_delegate_seed_hash(
-    depositor: Pubkey,
-    recipient: Pubkey,
-    input_token: Pubkey,
-    output_token: Pubkey,
-    input_amount: u64,
-    output_amount: u64,
-    destination_chain_id: u64,
-    exclusive_relayer: Pubkey,
-    exclusivity_parameter: u32,
-    message: Vec<u8>,
-) -> [u8; 32] {
-    let data_struct = DepositDelegateSeedData {
-        depositor,
-        recipient,
-        input_token,
-        output_token,
-        input_amount,
-        output_amount,
-        destination_chain_id,
-        exclusive_relayer,
-        exclusivity_parameter,
-        message,
-    };
-    let serialized = data_struct.try_to_vec().unwrap();
+#[derive(AnchorSerialize)]
+pub struct DepositNowSeedData {
+    pub depositor: Pubkey,
+    pub recipient: Pubkey,
+    pub input_token: Pubkey,
+    pub output_token: Pubkey,
+    pub input_amount: u64,
+    pub output_amount: u64,
+    pub destination_chain_id: u64,
+    pub exclusive_relayer: Pubkey,
+    pub fill_deadline_offset: u32,
+    pub exclusivity_period: u32,
+    pub message: Vec<u8>,
+}
 
-    keccak::hash(&serialized).to_bytes()
+pub fn derive_seed_hash<T: AnchorSerialize>(seed: &T) -> [u8; 32] {
+    let mut buf = Vec::with_capacity(128);
+    seed.serialize(&mut buf).unwrap();
+    keccak::hash(&buf).to_bytes()
+}
+
+pub fn derive_deposit_seed_hash(args: &DepositSeedData) -> [u8; 32] {
+    derive_seed_hash(args)
+}
+
+pub fn derive_deposit_now_seed_hash(args: &DepositNowSeedData) -> [u8; 32] {
+    derive_seed_hash(args)
 }

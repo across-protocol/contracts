@@ -11,7 +11,10 @@ use crate::{
     error::{CommonError, SvmError},
     event::FundsDeposited,
     state::{Route, State},
-    utils::{derive_deposit_delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
+    utils::{
+        derive_deposit_now_seed_hash, derive_deposit_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from,
+        DepositNowSeedData, DepositSeedData,
+    },
 };
 
 #[event_cpi]
@@ -36,7 +39,7 @@ pub struct Deposit<'info> {
     )]
     pub state: Account<'info, State>,
 
-    /// CHECK: PDA derived with seeds ["delegate", deposit_delegate_seed_hash]; used as a CPI signer.
+    /// CHECK: PDA derived with seeds ["delegate", deposit_seed_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
 
     #[account(
@@ -86,6 +89,7 @@ pub fn _deposit(
     fill_deadline: u32,
     exclusivity_parameter: u32,
     message: Vec<u8>,
+    delegate_seed_hash: [u8; 32],
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
@@ -108,19 +112,7 @@ pub fn _deposit(
     }
 
     // Verify delegate PDA
-    let seed_hash = derive_deposit_delegate_seed_hash(
-        depositor,
-        recipient,
-        input_token,
-        output_token,
-        input_amount,
-        output_amount,
-        destination_chain_id,
-        exclusive_relayer,
-        exclusivity_parameter,
-        message.clone(),
-    );
-    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &seed_hash], &ctx.program_id);
+    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
     if pda != ctx.accounts.delegate.key() {
         return err!(SvmError::InvalidDelegatePda);
     }
@@ -133,7 +125,7 @@ pub fn _deposit(
         &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
-        seed_hash,
+        delegate_seed_hash,
         bump,
     )?;
 
@@ -178,6 +170,22 @@ pub fn deposit(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> Result<()> {
+    let seed_hash = derive_deposit_seed_hash(
+        &(DepositSeedData {
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            quote_timestamp,
+            fill_deadline,
+            exclusivity_parameter,
+            message: message.clone(),
+        }),
+    );
     _deposit(
         ctx,
         depositor,
@@ -193,6 +201,7 @@ pub fn deposit(
         fill_deadline,
         exclusivity_parameter,
         message,
+        seed_hash,
     )?;
 
     Ok(())
@@ -214,7 +223,22 @@ pub fn deposit_now(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
-    deposit(
+    let seed_hash = derive_deposit_now_seed_hash(
+        &(DepositNowSeedData {
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            fill_deadline_offset,
+            exclusivity_period,
+            message: message.clone(),
+        }),
+    );
+    _deposit(
         ctx,
         depositor,
         recipient,
@@ -224,10 +248,12 @@ pub fn deposit_now(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
+        ZERO_DEPOSIT_ID, // ZERO_DEPOSIT_ID informs internal function to use state.number_of_deposits as id.
         current_time,
         current_time + fill_deadline_offset,
         exclusivity_period,
         message,
+        seed_hash,
     )?;
 
     Ok(())
@@ -251,6 +277,22 @@ pub fn unsafe_deposit(
 ) -> Result<()> {
     // Calculate the unsafe deposit ID as a [u8; 32]
     let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
+    let seed_hash = derive_deposit_seed_hash(
+        &(DepositSeedData {
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            quote_timestamp,
+            fill_deadline,
+            exclusivity_parameter,
+            message: message.clone(),
+        }),
+    );
     _deposit(
         ctx,
         depositor,
@@ -266,6 +308,7 @@ pub fn unsafe_deposit(
         fill_deadline,
         exclusivity_parameter,
         message,
+        seed_hash,
     )?;
 
     Ok(())

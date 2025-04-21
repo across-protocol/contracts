@@ -29,7 +29,10 @@ import { BigNumber, ethers } from "ethers";
 import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import {
-  getDepositDelegatePda,
+  getDepositNowPda,
+  getDepositNowSeedHash,
+  getDepositPda,
+  getDepositSeedHash,
   intToU8Array32,
   readEventsUntilFound,
   u8Array32ToBigNumber,
@@ -39,17 +42,33 @@ import { DepositData, DepositDataValues } from "../../src/types/svm";
 import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
-const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
-const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
-  common;
+const {
+  createRoutePda,
+  getVaultAta,
+  assertSE,
+  assert,
+  getCurrentTime,
+  depositQuoteTimeBuffer,
+  fillDeadlineBuffer,
+  provider,
+  connection,
+  program,
+  owner,
+  seedBalance,
+  initializeState,
+  depositData,
+} = common;
 
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
+
+type DepositDataSeed = Parameters<typeof getDepositSeedHash>[0];
+type DepositNowDataSeed = Parameters<typeof getDepositNowSeedHash>[0];
 
 describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const tokenDecimals = 6;
 
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey, tokenProgram: PublicKey;
@@ -114,7 +133,7 @@ describe("svm_spoke.deposit", () => {
 
     depositAccounts = {
       state,
-      delegate: getDepositDelegatePda(depositData, program.programId),
+      delegate: getDepositPda(depositData as DepositDataSeed, program.programId),
       route,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -129,7 +148,7 @@ describe("svm_spoke.deposit", () => {
     depositData: DepositData,
     calledDepositAccounts: DepositAccounts = depositAccounts
   ) => {
-    const delegatePda = getDepositDelegatePda(depositData, program.programId);
+    const delegatePda = getDepositPda(depositData as DepositDataSeed, program.programId);
     calledDepositAccounts.delegate = delegatePda;
 
     // Delegate delegate PDA to pull depositor tokens.
@@ -161,43 +180,7 @@ describe("svm_spoke.deposit", () => {
       .accounts(calledDepositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
-    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
-    return tx;
-  };
-
-  const approvedDepositNow = async (depositData: DepositData) => {
-    const delegatePda = getDepositDelegatePda(depositData, program.programId);
-    depositAccounts.delegate = delegatePda;
-    const approveIx = await createApproveCheckedInstruction(
-      depositAccounts.depositorTokenAccount,
-      depositAccounts.mint,
-      delegatePda,
-      depositor.publicKey,
-      BigInt(depositData.inputAmount.toString()),
-      tokenDecimals,
-      undefined,
-      tokenProgram
-    );
-
-    const depositIx = await program.methods
-      .depositNow(
-        depositData.depositor!,
-        depositData.recipient,
-        depositData.inputToken!,
-        depositData.outputToken,
-        depositData.inputAmount,
-        depositData.outputAmount,
-        depositData.destinationChainId,
-        depositData.exclusiveRelayer,
-        depositData.fillDeadline.toNumber(),
-        depositData.exclusivityParameter.toNumber(),
-        depositData.message
-      )
-      .accounts(depositAccounts)
-      .instruction();
-    const depositTx = new Transaction().add(approveIx, depositIx);
-    const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
-    return tx;
+    return sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
   };
 
   beforeEach(async () => {
@@ -440,7 +423,7 @@ describe("svm_spoke.deposit", () => {
 
     const fakeDepositAccounts = {
       state: fakeState.state,
-      delegate: getDepositDelegatePda(depositData, program.programId),
+      delegate: getDepositPda(depositData as DepositDataSeed, program.programId),
       route: fakeRoutePda,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
@@ -505,11 +488,18 @@ describe("svm_spoke.deposit", () => {
     // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
     const fillDeadlineOffset = 60; // 60 seconds offset
 
+    const depositNowData = {
+      ...depositData,
+      fillDeadlineOffset: new BN(fillDeadlineOffset),
+      exclusivityPeriod: new BN(0),
+    };
+
+    const delegatePda = getDepositNowPda(depositNowData as DepositNowDataSeed, program.programId);
     // Delegate state PDA to pull depositor tokens.
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      getDepositDelegatePda(depositData, program.programId),
+      delegatePda,
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -520,19 +510,19 @@ describe("svm_spoke.deposit", () => {
     // Execute the deposit_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
     const depositIx = await program.methods
       .depositNow(
-        depositData.depositor!,
-        depositData.recipient!,
-        depositData.inputToken!,
-        depositData.outputToken!,
-        depositData.inputAmount,
-        depositData.outputAmount,
-        depositData.destinationChainId,
-        depositData.exclusiveRelayer!,
+        depositNowData.depositor!,
+        depositNowData.recipient!,
+        depositNowData.inputToken!,
+        depositNowData.outputToken!,
+        depositNowData.inputAmount,
+        depositNowData.outputAmount,
+        depositNowData.destinationChainId,
+        depositNowData.exclusiveRelayer!,
         fillDeadlineOffset,
         0,
-        depositData.message
+        depositNowData.message
       )
-      .accounts(depositAccounts)
+      .accounts({ ...depositAccounts, delegate: delegatePda })
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
     const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
@@ -667,7 +657,7 @@ describe("svm_spoke.deposit", () => {
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      getDepositDelegatePda(depositData, program.programId),
+      getDepositPda(depositData as DepositDataSeed, program.programId),
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -785,7 +775,7 @@ describe("svm_spoke.deposit", () => {
       const approveIx = getApproveCheckedInstruction({
         source: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),
-        delegate: address(getDepositDelegatePda(depositData, program.programId).toString()),
+        delegate: address(getDepositPda(depositData as DepositDataSeed, program.programId).toString()),
         owner: address(depositor.publicKey.toString()),
         amount: BigInt(depositData.inputAmount.toString()),
         decimals: tokenDecimals,
@@ -808,7 +798,7 @@ describe("svm_spoke.deposit", () => {
 
       const formattedAccounts = {
         state: address(depositAccounts.state.toString()),
-        delegate: address(getDepositDelegatePda(depositData, program.programId).toString()),
+        delegate: address(getDepositPda(depositData as DepositDataSeed, program.programId).toString()),
         route: address(depositAccounts.route.toString()),
         depositorTokenAccount: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),
