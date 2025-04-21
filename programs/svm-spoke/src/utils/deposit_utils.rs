@@ -41,16 +41,8 @@ pub struct DepositNowSeedData {
     pub message: Vec<u8>,
 }
 
-pub fn derive_seed_hash<T: AnchorSerialize>(seed: &T) -> [u8; 32] {
+pub fn derive_deposit_seed_hash<T: AnchorSerialize>(seed: &T) -> [u8; 32] {
     let mut buf = Vec::with_capacity(128);
     seed.serialize(&mut buf).unwrap();
     keccak::hash(&buf).to_bytes()
-}
-
-pub fn derive_deposit_seed_hash(args: &DepositSeedData) -> [u8; 32] {
-    derive_seed_hash(args)
-}
-
-pub fn derive_deposit_now_seed_hash(args: &DepositNowSeedData) -> [u8; 32] {
-    derive_seed_hash(args)
 }
