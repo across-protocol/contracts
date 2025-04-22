@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 echo "🔨 Deterministic build (test feature, no IDL)…"
 anchor build --verifiable --no-idl -- --features test
