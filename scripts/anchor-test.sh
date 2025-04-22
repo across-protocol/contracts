@@ -4,8 +4,7 @@ set -euo pipefail
 echo "🔨 Deterministic build (test feature, no IDL)…"
 anchor build --verifiable --no-idl -- --features test
 
-echo "📦 Generating IDLs (using nightly)..."
-
+echo "📦 Generating IDLs (using nightly)…"
 for program in programs/*; do
   [ -d "$program" ] || continue
 
@@ -20,5 +19,5 @@ for program in programs/*; do
       -t "target/types/$program_name.ts"
 done
 
-echo "🧪 Running deterministic tests (test feature, no IDL)…"
-anchor test --verifiable --no-idl -- --features test
+echo "🧪 Running tests (reuse build, no IDL)…"
+anchor test --skip-build

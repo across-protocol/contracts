@@ -89,8 +89,8 @@ jobs:
                 -t "target/types/$nm.ts"
           done
       - name: Anchor tests
-        run: anchor test --verifiable --no-idl -- --features test
-      - name: Test EVM (Hardhat)
+        run: anchor test --skip-build
+      - name: Test evm-hardhat
         run: yarn test-evm
       - name: Test svm-anchor
         shell: bash
