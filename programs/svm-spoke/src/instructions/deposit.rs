@@ -119,7 +119,6 @@ pub fn _deposit(
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
         delegate_seed_hash,
-        &ctx.program_id,
     )?;
 
     let mut applied_deposit_id = deposit_id;

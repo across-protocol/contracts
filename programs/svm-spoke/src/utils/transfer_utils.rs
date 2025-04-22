@@ -1,4 +1,4 @@
-use crate::error::SvmError;
+use crate::{error::SvmError, program::SvmSpoke};
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked};
 
@@ -10,9 +10,8 @@ pub fn transfer_from<'info>(
     mint: &InterfaceAccount<'info, Mint>,
     token_program: &Interface<'info, TokenInterface>,
     delegate_seed_hash: [u8; 32],
-    program_id: &Pubkey,
 ) -> Result<()> {
-    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], program_id);
+    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &SvmSpoke::id());
     if pda != delegate.key() {
         return err!(SvmError::InvalidDelegatePda);
     }
