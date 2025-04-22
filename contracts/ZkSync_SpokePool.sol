@@ -151,6 +151,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
                 _transferUsdc(withdrawalRecipient, amountToReturn);
             } else {
                 // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
+                IERC20(l2TokenAddress).approve(address(zkUSDCBridge), amountToReturn);
                 zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
             }
         } else {
