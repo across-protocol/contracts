@@ -118,12 +118,7 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    // Verify delegate PDA
     let seed_hash = derive_seed_hash(&(FillSeedData { relay_hash, repayment_chain_id, repayment_address }));
-    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &seed_hash], &ctx.program_id);
-    if ctx.accounts.delegate.key() != pda {
-        return err!(SvmError::InvalidDelegatePda);
-    }
 
     // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
@@ -134,7 +129,7 @@ pub fn fill_relay<'info>(
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
         seed_hash,
-        bump,
+        &ctx.program_id,
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline

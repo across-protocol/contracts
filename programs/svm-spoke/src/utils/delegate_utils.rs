@@ -7,7 +7,7 @@ pub fn derive_seed_hash<T: AnchorSerialize>(seed: &T) -> [u8; 32] {
 }
 
 #[derive(AnchorSerialize)]
-pub struct DepositSeedData {
+pub struct DepositSeedData<'a> {
     pub depositor: Pubkey,
     pub recipient: Pubkey,
     pub input_token: Pubkey,
@@ -19,11 +19,11 @@ pub struct DepositSeedData {
     pub quote_timestamp: u32,
     pub fill_deadline: u32,
     pub exclusivity_parameter: u32,
-    pub message: Vec<u8>,
+    pub message: &'a Vec<u8>,
 }
 
 #[derive(AnchorSerialize)]
-pub struct DepositNowSeedData {
+pub struct DepositNowSeedData<'a> {
     pub depositor: Pubkey,
     pub recipient: Pubkey,
     pub input_token: Pubkey,
@@ -34,7 +34,7 @@ pub struct DepositNowSeedData {
     pub exclusive_relayer: Pubkey,
     pub fill_deadline_offset: u32,
     pub exclusivity_period: u32,
-    pub message: Vec<u8>,
+    pub message: &'a Vec<u8>,
 }
 
 #[derive(AnchorSerialize)]
