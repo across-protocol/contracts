@@ -110,12 +110,6 @@ pub fn _deposit(
         }
     }
 
-    // Verify delegate PDA
-    let (pda, bump) = Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
-    if pda != ctx.accounts.delegate.key() {
-        return err!(SvmError::InvalidDelegatePda);
-    }
-
     // Depositor must have delegated input_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.depositor_token_account,
@@ -125,7 +119,7 @@ pub fn _deposit(
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
         delegate_seed_hash,
-        bump,
+        &ctx.program_id,
     )?;
 
     let mut applied_deposit_id = deposit_id;
@@ -182,7 +176,7 @@ pub fn deposit(
             quote_timestamp,
             fill_deadline,
             exclusivity_parameter,
-            message: message.clone(),
+            message: &message,
         }),
     );
     _deposit(
@@ -234,7 +228,7 @@ pub fn deposit_now(
             exclusive_relayer,
             fill_deadline_offset,
             exclusivity_period,
-            message: message.clone(),
+            message: &message,
         }),
     );
     _deposit(
@@ -289,7 +283,7 @@ pub fn unsafe_deposit(
             quote_timestamp,
             fill_deadline,
             exclusivity_parameter,
-            message: message.clone(),
+            message: &message,
         }),
     );
     _deposit(
