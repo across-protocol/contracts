@@ -202,9 +202,16 @@ describe("ZkSync Spoke Pool", function () {
       await zkSyncSpokePool.callStatic.chainId()
     );
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    let allowance = await usdc.allowance(zkSyncSpokePool.address, zkUSDCBridge.address);
+    expect(allowance.isZero()).to.be.true;
+
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
-    // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
+    // This should have called withdraw() to pull tokens back to L1. Check the correct methods on the gateway are correctly called.
+    // zkUSDCBridge is a mocked contract, so the tokens are not actually moved and the approval is intact.
+    allowance = await usdc.allowance(zkSyncSpokePool.address, zkUSDCBridge.address);
+    expect(allowance.eq(amountToReturn)).to.be.true;
+
     expect(zkUSDCBridge.withdraw).to.have.been.calledOnce;
     expect(zkUSDCBridge.withdraw).to.have.been.calledWith(hubPool.address, usdc.address, amountToReturn);
   });
