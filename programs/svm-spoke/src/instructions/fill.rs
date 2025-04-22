@@ -129,7 +129,6 @@ pub fn fill_relay<'info>(
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
         seed_hash,
-        &ctx.program_id,
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
