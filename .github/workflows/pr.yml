@@ -76,21 +76,10 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile
-      - name: Deterministic Anchor build
-        run: anchor build --verifiable --no-idl -- --features test
-      - name: Generate IDLs
-        run: |
-          for dir in programs/*; do
-            [ -d "$dir" ] || continue
-            nm=$(basename "$dir" | tr '-' '_')
-            RUSTUP_TOOLCHAIN="nightly-2025-04-01" \
-              anchor idl build -p "$nm" \
-                -o "target/idl/$nm.json" \
-                -t "target/types/$nm.ts"
-          done
-      - name: Anchor tests
-        run: anchor test --skip-build
+      - name: Build
+        run: yarn build
       - name: Test evm-hardhat
+        shell: bash
         run: yarn test-evm
       - name: Test svm-anchor
         shell: bash
