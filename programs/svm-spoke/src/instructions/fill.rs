@@ -25,11 +25,7 @@ pub struct FillRelay<'info> {
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
     pub instruction_params: Option<Account<'info, FillRelayParams>>,
 
-    #[account(
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
-        bump,
-        constraint = !state.paused_fills @ CommonError::FillsArePaused
-    )]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
@@ -89,6 +85,10 @@ pub fn fill_relay<'info>(
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
+    // This type of constraint normally would be checked in the context, but had to move it here in the handler to avoid
+    // exceeding maximum stack offset.
+    require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
+
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
