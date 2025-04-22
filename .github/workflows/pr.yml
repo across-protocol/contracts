@@ -19,7 +19,7 @@ jobs:
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
-          anchor-version: 0.30.1
+          anchor-version: 0.31.1
           solana-cli-version: 1.18.21
           node-version: 20
       - name: Create keypair
@@ -60,7 +60,7 @@ jobs:
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
-          anchor-version: 0.30.1
+          anchor-version: 0.31.1
           solana-cli-version: 1.18.21
           node-version: 20
       - name: Create keypair
@@ -102,7 +102,7 @@ jobs:
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
-          anchor-version: 0.30.1
+          anchor-version: 0.31.1
           solana-cli-version: 1.18.21
           node-version: 20
       - name: Install packages
