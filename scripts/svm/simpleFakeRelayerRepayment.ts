@@ -76,7 +76,7 @@ async function testBundleLogic(): Promise<void> {
 
   const tokenDecimals = (await getMint(provider.connection, inputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
 
-  // Use program.methods.depositV3 to send tokens to the spoke. note this is NOT a valid deposit, we just want to
+  // Use program.methods.deposit to send tokens to the spoke. note this is NOT a valid deposit, we just want to
   // seed tokens into the spoke to test repayment.
 
   // Delegate state PDA to pull depositor tokens.

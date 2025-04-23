@@ -1,4 +1,4 @@
-// Note: The `svm-spoke` does not support `speedUpV3Deposit` and `fillV3RelayWithUpdatedDeposit` due to cryptographic
+// Note: The `svm-spoke` does not support `speedUpDeposit` and `fillRelayWithUpdatedDeposit` due to cryptographic
 // incompatibilities between Solana (Ed25519) and Ethereum (ECDSA secp256k1). Specifically, Solana wallets cannot
 // generate ECDSA signatures required for Ethereum verification. As a result, speed-up functionality on Solana is not
 // implemented. For more details, refer to the documentation: https://docs.across.to
@@ -14,7 +14,9 @@ use crate::{
     error::{CommonError, SvmError},
     event::FundsDeposited,
     state::State,
-    utils::{get_current_time, get_unsafe_deposit_id, transfer_from},
+    utils::{
+        derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DepositNowSeedData, DepositSeedData,
+    },
 };
 
 #[event_cpi]
@@ -26,7 +28,7 @@ use crate::{
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64,
+    destination_chain_id: u64
 )]
 pub struct Deposit<'info> {
     #[account(mut)]
@@ -39,6 +41,9 @@ pub struct Deposit<'info> {
         constraint = !state.paused_deposits @ CommonError::DepositsArePaused
     )]
     pub state: Account<'info, State>,
+
+    /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
+    pub delegate: UncheckedAccount<'info>,
 
     #[account(
         mut,
@@ -85,15 +90,14 @@ pub fn _deposit(
     fill_deadline: u32,
     exclusivity_parameter: u32,
     message: Vec<u8>,
+    delegate_seed_hash: [u8; 32],
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
-
     let current_time = get_current_time(state)?;
 
     if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
     }
-
     if fill_deadline > current_time + state.fill_deadline_buffer {
         return err!(CommonError::InvalidFillDeadline);
     }
@@ -103,21 +107,20 @@ pub fn _deposit(
         if exclusivity_deadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS {
             exclusivity_deadline += current_time;
         }
-
         if exclusive_relayer == Pubkey::default() {
             return err!(CommonError::InvalidExclusiveRelayer);
         }
     }
 
-    // Depositor must have delegated input_amount to the state PDA.
+    // Depositor must have delegated input_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.depositor_token_account,
         &ctx.accounts.vault,
         input_amount,
-        state,
-        ctx.bumps.state,
+        &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
+        delegate_seed_hash,
     )?;
 
     let mut applied_deposit_id = deposit_id;
@@ -161,6 +164,22 @@ pub fn deposit(
     exclusivity_parameter: u32,
     message: Vec<u8>,
 ) -> Result<()> {
+    let seed_hash = derive_seed_hash(
+        &(DepositSeedData {
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            quote_timestamp,
+            fill_deadline,
+            exclusivity_parameter,
+            message: &message,
+        }),
+    );
     _deposit(
         ctx,
         depositor,
@@ -176,6 +195,7 @@ pub fn deposit(
         fill_deadline,
         exclusivity_parameter,
         message,
+        seed_hash,
     )?;
 
     Ok(())
@@ -197,7 +217,22 @@ pub fn deposit_now(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
-    deposit(
+    let seed_hash = derive_seed_hash(
+        &(DepositNowSeedData {
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            fill_deadline_offset,
+            exclusivity_period,
+            message: &message,
+        }),
+    );
+    _deposit(
         ctx,
         depositor,
         recipient,
@@ -207,10 +242,12 @@ pub fn deposit_now(
         output_amount,
         destination_chain_id,
         exclusive_relayer,
+        ZERO_DEPOSIT_ID, // ZERO_DEPOSIT_ID informs internal function to use state.number_of_deposits as id.
         current_time,
         current_time + fill_deadline_offset,
         exclusivity_period,
         message,
+        seed_hash,
     )?;
 
     Ok(())
@@ -234,6 +271,22 @@ pub fn unsafe_deposit(
 ) -> Result<()> {
     // Calculate the unsafe deposit ID as a [u8; 32]
     let deposit_id = get_unsafe_deposit_id(ctx.accounts.signer.key(), depositor, deposit_nonce);
+    let seed_hash = derive_seed_hash(
+        &(DepositSeedData {
+            depositor,
+            recipient,
+            input_token,
+            output_token,
+            input_amount,
+            output_amount,
+            destination_chain_id,
+            exclusive_relayer,
+            quote_timestamp,
+            fill_deadline,
+            exclusivity_parameter,
+            message: &message,
+        }),
+    );
     _deposit(
         ctx,
         depositor,
@@ -249,6 +302,7 @@ pub fn unsafe_deposit(
         fill_deadline,
         exclusivity_parameter,
         message,
+        seed_hash,
     )?;
 
     Ok(())

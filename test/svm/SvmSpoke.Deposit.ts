@@ -34,28 +34,54 @@ import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransacti
 import { BigNumber, ethers } from "ethers";
 import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
-import { intToU8Array32, readEventsUntilFound, u8Array32ToBigNumber, u8Array32ToInt } from "../../src/svm/web3-v1";
-import { DepositDataValues } from "../../src/types/svm";
+import {
+  getDepositNowPda,
+  getDepositNowSeedHash,
+  getDepositPda,
+  getDepositSeedHash,
+  intToU8Array32,
+  readEventsUntilFound,
+  u8Array32ToBigNumber,
+  u8Array32ToInt,
+} from "../../src/svm/web3-v1";
+import { DepositData, DepositDataValues } from "../../src/types/svm";
 import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
-const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
-const { getOrCreateVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } = common;
-
+const {
+  getOrCreateVaultAta,
+  assertSE,
+  assert,
+  getCurrentTime,
+  depositQuoteTimeBuffer,
+  fillDeadlineBuffer,
+  provider,
+  connection,
+  program,
+  owner,
+  seedBalance,
+  initializeState,
+  depositData,
+} = common;
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
+
+type DepositDataSeed = Parameters<typeof getDepositSeedHash>[0];
+type DepositNowDataSeed = Parameters<typeof getDepositNowSeedHash>[0];
 
 describe("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const tokenDecimals = 6;
 
   let state: PublicKey, inputToken: PublicKey, depositorTA: PublicKey, vault: PublicKey, tokenProgram: PublicKey;
+  let seed: BN;
 
   // Re-used between tests to simplify props.
   type DepositAccounts = {
     state: PublicKey;
+    delegate: PublicKey;
     signer: PublicKey;
     depositorTokenAccount: PublicKey;
     vault: PublicKey;
@@ -92,6 +118,7 @@ describe("svm_spoke.deposit", () => {
 
     depositAccounts = {
       state,
+      delegate: getDepositPda(depositData as DepositDataSeed, program.programId),
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
       vault,
@@ -102,14 +129,17 @@ describe("svm_spoke.deposit", () => {
   };
 
   const approvedDeposit = async (
-    depositDataValues: DepositDataValues,
+    depositData: DepositData,
     calledDepositAccounts: DepositAccounts = depositAccounts
   ) => {
-    // Delegate state PDA to pull depositor tokens.
+    const delegatePda = getDepositPda(depositData as DepositDataSeed, program.programId);
+    calledDepositAccounts.delegate = delegatePda;
+
+    // Delegate delegate PDA to pull depositor tokens.
     const approveIx = await createApproveCheckedInstruction(
       calledDepositAccounts.depositorTokenAccount,
       calledDepositAccounts.mint,
-      calledDepositAccounts.state,
+      delegatePda,
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -117,12 +147,24 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
     const depositIx = await program.methods
-      .deposit(...depositDataValues)
+      .deposit(
+        depositData.depositor!,
+        depositData.recipient,
+        depositData.inputToken!,
+        depositData.outputToken,
+        depositData.inputAmount,
+        depositData.outputAmount,
+        depositData.destinationChainId,
+        depositData.exclusiveRelayer,
+        depositData.quoteTimestamp.toNumber(),
+        depositData.fillDeadline.toNumber(),
+        depositData.exclusivityParameter.toNumber(),
+        depositData.message
+      )
       .accounts(calledDepositAccounts)
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
-    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
-    return tx;
+    return sendAndConfirmTransaction(connection, depositTx, [depositor]);
   };
 
   before(async () => {
@@ -130,21 +172,21 @@ describe("svm_spoke.deposit", () => {
   });
 
   beforeEach(async () => {
-    ({ state } = await initializeState());
+    ({ state, seed } = await initializeState());
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupInputToken();
 
     await createVault();
   });
+
   it("Deposits tokens via deposit function and checks balances", async () => {
     // Verify vault balance is zero before the deposit
     let vaultAccount = await getAccount(connection, vault);
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
 
     // Execute the deposit call
-    let depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit(depositData);
 
     // Verify tokens leave the depositor's account
     let depositorAccount = await getAccount(connection, depositorTA);
@@ -162,9 +204,7 @@ describe("svm_spoke.deposit", () => {
     const secondInputAmount = new BN(300000);
 
     // Execute the second deposit call
-
-    depositDataValues = Object.values({ ...depositData, inputAmount: secondInputAmount }) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit({ ...depositData, inputAmount: secondInputAmount });
 
     // Verify tokens leave the depositor's account again
     depositorAccount = await getAccount(connection, depositorTA);
@@ -187,8 +227,7 @@ describe("svm_spoke.deposit", () => {
     depositData.inputAmount = depositData.inputAmount.add(new BN(69));
 
     // Execute the first deposit call
-    let depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDeposit(depositDataValues);
+    const tx = await approvedDeposit(depositData);
 
     let events = await readEventsUntilFound(connection, tx, [program]);
     let event = events[0].data; // 0th event is the latest event
@@ -202,8 +241,8 @@ describe("svm_spoke.deposit", () => {
     assertSE(u8Array32ToInt(event.depositId), 1, `depositId should recover to 1`);
     assertSE(u8Array32ToBigNumber(event.depositId), BigNumber.from(1), `depositId should recover to 1`);
 
-    // Execute the second deposit_v3 call
-    const tx2 = await approvedDeposit(depositDataValues);
+    // Execute the second deposit call
+    const tx2 = await approvedDeposit(depositData);
     events = await readEventsUntilFound(connection, tx2, [program]);
     event = events[0].data; // 0th event is the latest event.
 
@@ -226,8 +265,7 @@ describe("svm_spoke.deposit", () => {
     depositData.fillDeadline = new BN(fillDeadline);
     depositData.quoteTimestamp = new BN(currentTime - 1); // 1 second before current time on the contract to reset.
 
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDeposit(depositDataValues);
+    const tx = await approvedDeposit(depositData);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event.
@@ -244,8 +282,7 @@ describe("svm_spoke.deposit", () => {
 
     // Try to deposit. This should fail because deposits are paused.
     try {
-      const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDeposit(depositDataValues);
+      await approvedDeposit(depositData);
       assert.fail("Should not be able to process deposit when deposits are paused");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: DepositsArePaused", "Expected DepositsArePaused error");
@@ -259,8 +296,7 @@ describe("svm_spoke.deposit", () => {
     depositData.quoteTimestamp = futureQuoteTimestamp;
 
     try {
-      const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDeposit(depositDataValues);
+      await approvedDeposit(depositData);
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
@@ -274,8 +310,7 @@ describe("svm_spoke.deposit", () => {
     depositData.quoteTimestamp = futureQuoteTimestamp;
 
     try {
-      const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDeposit(depositDataValues);
+      await approvedDeposit(depositData);
       assert.fail("Deposit should have failed due to InvalidQuoteTimestamp");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidQuoteTimestamp", "Expected InvalidQuoteTimestamp error");
@@ -291,8 +326,7 @@ describe("svm_spoke.deposit", () => {
     depositData.quoteTimestamp = new BN(currentTime);
 
     try {
-      const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDeposit(depositDataValues);
+      await approvedDeposit(depositData);
       assert.fail("Deposit should have failed due to InvalidFillDeadline (future deadline)");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidFillDeadline", "Expected InvalidFillDeadline error for future deadline");
@@ -311,26 +345,32 @@ describe("svm_spoke.deposit", () => {
     const malformedDepositData = { ...depositData, inputToken: firstInputToken };
     const malformedDepositAccounts = { ...depositAccounts };
     try {
-      const depositDataValues = Object.values(malformedDepositData) as DepositDataValues;
-      await approvedDeposit(depositDataValues, malformedDepositAccounts);
+      await approvedDeposit(malformedDepositData, malformedDepositAccounts);
       assert.fail("Should not be able to process deposit for inconsistent mint");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidMint", "Expected InvalidMint error");
     }
   });
 
-  it("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
+  it("depositNow behaves as deposit but forces the quote timestamp as expected", async () => {
     // Set up initial deposit data. Note that this method has a slightly different interface to deposit, using
     // fillDeadlineOffset rather than fillDeadline. current chain time is added to fillDeadlineOffset to set the
     // fillDeadline for the deposit. exclusivityPeriod operates the same as in standard deposit.
-    // Equally, depositV3Now does not have `quoteTimestamp`. this is set to the current time from the program.
+    // Equally, depositNow does not have `quoteTimestamp`. this is set to the current time from the program.
     const fillDeadlineOffset = 60; // 60 seconds offset
 
+    const depositNowData = {
+      ...depositData,
+      fillDeadlineOffset: new BN(fillDeadlineOffset),
+      exclusivityPeriod: new BN(0),
+    };
+
+    const delegatePda = getDepositNowPda(depositNowData as DepositNowDataSeed, program.programId);
     // Delegate state PDA to pull depositor tokens.
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      depositAccounts.state,
+      delegatePda,
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -341,19 +381,19 @@ describe("svm_spoke.deposit", () => {
     // Execute the deposit_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
     const depositIx = await program.methods
       .depositNow(
-        depositData.depositor!,
-        depositData.recipient!,
-        depositData.inputToken!,
-        depositData.outputToken!,
-        depositData.inputAmount,
-        depositData.outputAmount,
-        depositData.destinationChainId,
-        depositData.exclusiveRelayer!,
+        depositNowData.depositor!,
+        depositNowData.recipient!,
+        depositNowData.inputToken!,
+        depositNowData.outputToken!,
+        depositNowData.inputAmount,
+        depositNowData.outputAmount,
+        depositNowData.destinationChainId,
+        depositNowData.exclusiveRelayer!,
         fillDeadlineOffset,
         0,
-        depositData.message
+        depositNowData.message
       )
-      .accounts(depositAccounts)
+      .accounts({ ...depositAccounts, delegate: delegatePda })
       .instruction();
     const depositTx = new Transaction().add(approveIx, depositIx);
     const tx = await sendAndConfirmTransaction(connection, depositTx, [payer, depositor]);
@@ -383,8 +423,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusiveRelayer = new PublicKey("11111111111111111111111111111111");
     depositData.exclusivityParameter = new BN(1);
     try {
-      const depositDataValues = Object.values(depositData) as DepositDataValues;
-      await approvedDeposit(depositDataValues);
+      await approvedDeposit(depositData);
       assert.fail("Should have failed due to InvalidExclusiveRelayer");
     } catch (err: any) {
       assert.include(err.toString(), "InvalidExclusiveRelayer");
@@ -401,8 +440,7 @@ describe("svm_spoke.deposit", () => {
     for (const exclusivityDeadline of invalidExclusivityDeadlines) {
       depositData.exclusivityParameter = exclusivityDeadline;
       try {
-        const depositDataValues = Object.values(depositData) as DepositDataValues;
-        await approvedDeposit(depositDataValues);
+        await approvedDeposit(depositData);
         assert.fail("Should have failed due to InvalidExclusiveRelayer");
       } catch (err: any) {
         assert.include(err.toString(), "InvalidExclusiveRelayer");
@@ -411,8 +449,7 @@ describe("svm_spoke.deposit", () => {
 
     // Test with exclusivityDeadline set to 0
     depositData.exclusivityParameter = new BN(0);
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit(depositData);
   });
 
   it("Exclusivity param is used as an offset", async () => {
@@ -422,8 +459,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusiveRelayer = depositor.publicKey;
     depositData.exclusivityParameter = maxExclusivityOffsetSeconds;
 
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDeposit(depositDataValues);
+    const tx = await approvedDeposit(depositData);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event
@@ -442,8 +478,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusiveRelayer = depositor.publicKey;
     depositData.exclusivityParameter = exclusivityDeadlineTimestamp;
 
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDeposit(depositDataValues);
+    const tx = await approvedDeposit(depositData);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event;
@@ -459,8 +494,7 @@ describe("svm_spoke.deposit", () => {
     depositData.exclusiveRelayer = depositor.publicKey;
     depositData.exclusivityParameter = zeroExclusivity;
 
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    const tx = await approvedDeposit(depositDataValues);
+    const tx = await approvedDeposit(depositData);
 
     const events = await readEventsUntilFound(connection, tx, [program]);
     const event = events[0].data; // 0th event is the latest event;
@@ -494,7 +528,7 @@ describe("svm_spoke.deposit", () => {
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      depositAccounts.state,
+      getDepositPda(depositData as DepositDataSeed, program.programId),
       depositor.publicKey,
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
@@ -502,7 +536,7 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    // Create the transaction for unsafeDepositV3
+    // Create the transaction for unsafeDeposit
     const unsafeDepositIx = await program.methods
       .unsafeDeposit(
         depositData.depositor!,
@@ -557,8 +591,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(vaultAccount.amount, "0", "Vault balance should be zero before the deposit");
 
     // Execute the deposit call
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit(depositData);
 
     // Verify tokens leave the depositor's account
     const depositorAccount = await getAccount(connection, depositorTA, undefined, tokenProgram);
@@ -615,10 +648,13 @@ describe("svm_spoke.deposit", () => {
       inputToken
     );
 
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const delegate = getDepositPda(nativeDepositData as DepositDataSeed, program.programId);
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      depositAccounts.state,
+      delegate,
       depositor.publicKey,
       BigInt(nativeAmount),
       nativeDecimals,
@@ -626,11 +662,9 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
-    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
     const depositIx = await program.methods
       .deposit(...depositDataValues)
-      .accounts(depositAccounts)
+      .accounts({ ...depositAccounts, delegate })
       .instruction();
 
     const closeIx = createCloseAccountInstruction(depositorTA, depositor.publicKey, depositor.publicKey);
@@ -669,10 +703,13 @@ describe("svm_spoke.deposit", () => {
     // Sync the user token account with the native balance.
     const syncIx = createSyncNativeInstruction(depositorTA);
 
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const delegate = getDepositPda(nativeDepositData as DepositDataSeed, program.programId);
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      depositAccounts.state,
+      delegate,
       depositor.publicKey,
       BigInt(nativeAmount),
       nativeDecimals,
@@ -680,11 +717,9 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
-    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
     const depositIx = await program.methods
       .deposit(...depositDataValues)
-      .accounts(depositAccounts)
+      .accounts({ ...depositAccounts, delegate })
       .instruction();
 
     const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
@@ -723,8 +758,7 @@ describe("svm_spoke.deposit", () => {
     assert.isNull(await provider.connection.getAccountInfo(vault), "Vault should not exist before the deposit");
 
     // Execute the deposit call
-    const depositDataValues = Object.values(depositData) as DepositDataValues;
-    await approvedDeposit(depositDataValues);
+    await approvedDeposit(depositData);
 
     // Verify tokens leave the depositor's account
     const depositorAccount = await getAccount(connection, depositorTA);
@@ -764,7 +798,7 @@ describe("svm_spoke.deposit", () => {
       const approveIx = getApproveCheckedInstruction({
         source: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),
-        delegate: address(depositAccounts.state.toString()),
+        delegate: address(getDepositPda(depositData as DepositDataSeed, program.programId).toString()),
         owner: address(depositor.publicKey.toString()),
         amount: BigInt(depositData.inputAmount.toString()),
         decimals: tokenDecimals,
@@ -787,6 +821,7 @@ describe("svm_spoke.deposit", () => {
 
       const formattedAccounts = {
         state: address(depositAccounts.state.toString()),
+        delegate: address(getDepositPda(depositData as DepositDataSeed, program.programId).toString()),
         depositorTokenAccount: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),
         tokenProgram: address(tokenProgram.toString()),
