@@ -24,7 +24,7 @@ jobs:
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
       # Setup Anchor to enable compilation and export of Solana programs
       - name: Setup Anchor & Build
-        uses: metadaoproject/setup-anchor@v2
+        uses: metadaoproject/setup-anchor@v3.1
         with:
           anchor-version: "0.31.1"
           solana-cli-version: "2.1.21"
