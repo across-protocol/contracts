@@ -12,19 +12,24 @@ import {
   pipe,
 } from "@solana/kit";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
   ExtensionType,
+  NATIVE_MINT,
   TOKEN_2022_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
   createApproveCheckedInstruction,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createCloseAccountInstruction,
   createEnableCpiGuardInstruction,
   createMint,
   createReallocateInstruction,
+  createSyncNativeInstruction,
   getAccount,
+  getAssociatedTokenAddressSync,
+  getMinimumBalanceForRentExemptAccount,
   getOrCreateAssociatedTokenAccount,
   mintTo,
 } from "@solana/spl-token";
-import { Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
 import { SvmSpokeClient } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
@@ -43,8 +48,7 @@ import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
 const {
-  createRoutePda,
-  getVaultAta,
+  getOrCreateVaultAta,
   assertSE,
   assert,
   getCurrentTime,
@@ -58,7 +62,6 @@ const {
   initializeState,
   depositData,
 } = common;
-
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
 
 type DepositDataSeed = Parameters<typeof getDepositSeedHash>[0];
@@ -78,7 +81,6 @@ describe("svm_spoke.deposit", () => {
   type DepositAccounts = {
     state: PublicKey;
     delegate: PublicKey;
-    route: PublicKey;
     signer: PublicKey;
     depositorTokenAccount: PublicKey;
     vault: PublicKey;
@@ -87,8 +89,6 @@ describe("svm_spoke.deposit", () => {
     program: PublicKey;
   };
   let depositAccounts: DepositAccounts;
-
-  let setEnableRouteAccounts: any; // Common variable for setEnableRoute accounts
 
   const setupInputToken = async () => {
     inputToken = await createMint(connection, payer, owner, owner, tokenDecimals, undefined, undefined, tokenProgram);
@@ -108,24 +108,8 @@ describe("svm_spoke.deposit", () => {
     await mintTo(connection, payer, inputToken, depositorTA, owner, seedBalance, undefined, undefined, tokenProgram);
   };
 
-  const enableRoute = async () => {
-    const routeChainId = new BN(1);
-    const route = createRoutePda(inputToken, seed, routeChainId);
-    vault = await getVaultAta(inputToken, state);
-
-    setEnableRouteAccounts = {
-      signer: owner,
-      payer: owner,
-      state,
-      route,
-      vault,
-      originTokenMint: inputToken, // Note the Sol expects this to be named originTokenMint.
-      tokenProgram: tokenProgram ?? TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: anchor.web3.SystemProgram.programId,
-    };
-
-    await program.methods.setEnableRoute(inputToken, routeChainId, true).accounts(setEnableRouteAccounts).rpc();
+  const createVault = async () => {
+    vault = await getOrCreateVaultAta(payer, inputToken, state);
 
     // Set known fields in the depositData.
     depositData.depositor = depositor.publicKey;
@@ -134,7 +118,6 @@ describe("svm_spoke.deposit", () => {
     depositAccounts = {
       state,
       delegate: getDepositPda(depositData as DepositDataSeed, program.programId),
-      route,
       signer: depositor.publicKey,
       depositorTokenAccount: depositorTA,
       vault,
@@ -188,8 +171,10 @@ describe("svm_spoke.deposit", () => {
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupInputToken();
-    await enableRoute();
+
+    await createVault();
   });
+
   it("Deposits tokens via deposit function and checks balances", async () => {
     // Verify vault balance is zero before the deposit
     let vaultAccount = await getAccount(connection, vault);
@@ -283,40 +268,6 @@ describe("svm_spoke.deposit", () => {
     assertSE(event.fillDeadline, fillDeadline, "Fill deadline should match");
   });
 
-  it("Fails to deposit tokens to a route that is uninitalized", async () => {
-    const differentChainId = new BN(2); // Different chain ID
-    if (!depositData.inputToken) {
-      throw new Error("Input token is null");
-    }
-    const differentRoutePda = createRoutePda(depositData.inputToken, seed, differentChainId);
-    depositAccounts.route = differentRoutePda;
-
-    try {
-      await approvedDeposit({
-        ...depositData,
-        destinationChainId: differentChainId,
-      });
-      assert.fail("Deposit should have failed for a route that is not initialized");
-    } catch (err: any) {
-      assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
-    }
-  });
-
-  it("Fails to deposit tokens to a route that is explicitly disabled", async () => {
-    // Disable the route
-    await program.methods
-      .setEnableRoute(depositData.inputToken!, depositData.destinationChainId, false)
-      .accounts(setEnableRouteAccounts)
-      .rpc();
-
-    try {
-      await approvedDeposit(depositData);
-      assert.fail("Deposit should have failed for a route that is explicitly disabled");
-    } catch (err: any) {
-      assert.include(err.toString(), "DisabledRoute", "Expected DisabledRoute error");
-    }
-  });
-
   it("Fails to process deposit when deposits are paused", async () => {
     // Pause deposits
     const pauseDepositsAccounts = { state, signer: owner, program: program.programId };
@@ -377,108 +328,23 @@ describe("svm_spoke.deposit", () => {
     }
   });
   it("Fails to process deposit for mint inconsistent input_token", async () => {
-    // Save the correct data and accounts from global scope before changing it when creating a new input token.
+    // Save the correct data from global scope before changing it when creating a new input token.
     const firstInputToken = inputToken;
-    const firstDepositAccounts = depositAccounts;
 
-    // Create a new input token and enable the route (this updates global scope variables).
+    // Create a new input token and the vault.
     await setupInputToken();
-    await enableRoute();
+    await createVault();
 
-    // Try to execute the deposit call with malformed inputs where the first input token and its derived route is
-    // passed combined with mint, vault and user token account from the second input token.
+    // Try to execute the deposit call with malformed inputs where the first input token is passed combined with mint,
+    // vault and user token account from the second input token.
     const malformedDepositData = { ...depositData, inputToken: firstInputToken };
-    const malformedDepositAccounts = { ...depositAccounts, route: firstDepositAccounts.route };
+    const malformedDepositAccounts = { ...depositAccounts };
     try {
       await approvedDeposit(malformedDepositData, malformedDepositAccounts);
       assert.fail("Should not be able to process deposit for inconsistent mint");
     } catch (err: any) {
       assert.include(err.toString(), "Error Code: InvalidMint", "Expected InvalidMint error");
     }
-  });
-
-  it("Tests deposit with a fake route PDA", async () => {
-    // Create fake program state
-    const fakeState = await initializeState();
-    const fakeVault = await getVaultAta(inputToken, fakeState.state);
-
-    const fakeRouteChainId = new BN(3);
-    const fakeRoutePda = createRoutePda(inputToken, fakeState.seed, fakeRouteChainId);
-
-    // A seeds constraint was violated.
-    const fakeSetEnableRouteAccounts = {
-      signer: owner,
-      payer: owner,
-      state: fakeState.state,
-      route: fakeRoutePda,
-      vault: fakeVault,
-      originTokenMint: inputToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: anchor.web3.SystemProgram.programId,
-      program: program.programId,
-    };
-
-    await program.methods.setEnableRoute(inputToken, fakeRouteChainId, true).accounts(fakeSetEnableRouteAccounts).rpc();
-
-    const fakeDepositAccounts = {
-      state: fakeState.state,
-      delegate: getDepositPda(depositData as DepositDataSeed, program.programId),
-      route: fakeRoutePda,
-      signer: depositor.publicKey,
-      depositorTokenAccount: depositorTA,
-      vault: fakeVault,
-      mint: inputToken,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      program: program.programId,
-    };
-
-    // Deposit with the fake state and route PDA should succeed.
-    const tx = await approvedDeposit(
-      {
-        ...depositData,
-        destinationChainId: fakeRouteChainId,
-      },
-      fakeDepositAccounts
-    );
-
-    let events = await readEventsUntilFound(connection, tx, [program]);
-    let event = events[0].data; // 0th event is the latest event.
-    const expectedValues = {
-      ...{ ...depositData, destinationChainId: fakeRouteChainId },
-      depositId: intToU8Array32(1),
-    }; // Verify the event props emitted match the depositData.
-    for (let [key, value] of Object.entries(expectedValues)) {
-      if (key === "exclusivityParameter") key = "exclusivityDeadline"; // the prop and the event names differ on this key.
-      assertSE(event[key], value, `${key} should match`);
-    }
-
-    // Check fake vault acount balance
-    const fakeVaultAccount = await getAccount(connection, fakeVault);
-    assertSE(
-      fakeVaultAccount.amount,
-      depositData.inputAmount.toNumber(),
-      "Fake vault balance should be increased by the deposited amount"
-    );
-
-    // Deposit with the fake route in the original program state should fail.
-    try {
-      await approvedDeposit(
-        {
-          ...{ ...depositData, destinationChainId: fakeRouteChainId },
-        },
-        {
-          ...depositAccounts,
-          route: fakeRoutePda,
-        }
-      );
-      assert.fail("Deposit should have failed for a fake route PDA");
-    } catch (err: any) {
-      assert.include(err.toString(), "A seeds constraint was violated");
-    }
-
-    const vaultAccount = await getAccount(connection, vault);
-    assertSE(vaultAccount.amount, 0, "Vault balance should not be changed by the fake route deposit");
   });
 
   it("depositV3Now behaves as deposit but forces the quote timestamp as expected", async () => {
@@ -706,7 +572,7 @@ describe("svm_spoke.deposit", () => {
     // CPI-guard is available only for the 2022 token program.
     tokenProgram = TOKEN_2022_PROGRAM_ID;
     await setupInputToken();
-    await enableRoute();
+    await createVault();
 
     // Enable CPI-guard for the depositor (requires TA reallocation).
     const enableCpiGuardTx = new Transaction().add(
@@ -748,6 +614,118 @@ describe("svm_spoke.deposit", () => {
     } catch (err: any) {
       assert.include(err.toString(), "owner does not match");
     }
+  });
+
+  it("Deposit native token, new token account", async () => {
+    // Fund depositor account with SOL.
+    const nativeAmount = 1_000_000_000; // 1 SOL
+    await connection.requestAirdrop(depositor.publicKey, nativeAmount * 2); // Add buffer for transaction fees.
+
+    // Setup wSOL as the input token.
+    inputToken = NATIVE_MINT;
+    const nativeDecimals = 9;
+    depositorTA = getAssociatedTokenAddressSync(inputToken, depositor.publicKey);
+    await createVault();
+
+    // Will need to add rent exemption to the deposit amount, will recover it at the end of the transaction.
+    const rentExempt = await getMinimumBalanceForRentExemptAccount(connection);
+    const transferIx = SystemProgram.transfer({
+      fromPubkey: depositor.publicKey,
+      toPubkey: depositorTA,
+      lamports: BigInt(nativeAmount) + BigInt(rentExempt),
+    });
+
+    // Create wSOL user account.
+    const createIx = createAssociatedTokenAccountIdempotentInstruction(
+      depositor.publicKey,
+      depositorTA,
+      depositor.publicKey,
+      inputToken
+    );
+
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(nativeAmount),
+      nativeDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const depositIx = await program.methods
+      .deposit(...depositDataValues)
+      .accounts(depositAccounts)
+      .instruction();
+
+    const closeIx = createCloseAccountInstruction(depositorTA, depositor.publicKey, depositor.publicKey);
+
+    const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+
+    const depositTx = new Transaction().add(transferIx, createIx, approveIx, depositIx, closeIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
+
+    const fVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+    assertSE(
+      fVaultAmount,
+      iVaultAmount + BigInt(nativeAmount),
+      "Vault balance should be increased by the deposited amount"
+    );
+  });
+
+  it("Deposit native token, existing token account", async () => {
+    // Fund depositor account with SOL.
+    const nativeAmount = 1_000_000_000; // 1 SOL
+    await connection.requestAirdrop(depositor.publicKey, nativeAmount * 2); // Add buffer for transaction fees.
+
+    // Setup wSOL as the input token, creating the associated token account for the user.
+    inputToken = NATIVE_MINT;
+    const nativeDecimals = 9;
+    depositorTA = (await getOrCreateAssociatedTokenAccount(connection, payer, inputToken, depositor.publicKey)).address;
+    await createVault();
+
+    // Transfer SOL to the user token account.
+    const transferIx = SystemProgram.transfer({
+      fromPubkey: depositor.publicKey,
+      toPubkey: depositorTA,
+      lamports: nativeAmount,
+    });
+
+    // Sync the user token account with the native balance.
+    const syncIx = createSyncNativeInstruction(depositorTA);
+
+    const approveIx = await createApproveCheckedInstruction(
+      depositAccounts.depositorTokenAccount,
+      depositAccounts.mint,
+      depositAccounts.state,
+      depositor.publicKey,
+      BigInt(nativeAmount),
+      nativeDecimals,
+      undefined,
+      tokenProgram
+    );
+
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const depositIx = await program.methods
+      .deposit(...depositDataValues)
+      .accounts(depositAccounts)
+      .instruction();
+
+    const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+
+    const depositTx = new Transaction().add(transferIx, syncIx, approveIx, depositIx);
+    const tx = await sendAndConfirmTransaction(connection, depositTx, [depositor]);
+
+    const fVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
+    assertSE(
+      fVaultAmount,
+      iVaultAmount + BigInt(nativeAmount),
+      "Vault balance should be increased by the deposited amount"
+    );
   });
 
   describe("codama client and solana kit", () => {
@@ -799,7 +777,6 @@ describe("svm_spoke.deposit", () => {
       const formattedAccounts = {
         state: address(depositAccounts.state.toString()),
         delegate: address(getDepositPda(depositData as DepositDataSeed, program.programId).toString()),
-        route: address(depositAccounts.route.toString()),
         depositorTokenAccount: address(depositAccounts.depositorTokenAccount.toString()),
         mint: address(depositAccounts.mint.toString()),
         tokenProgram: address(tokenProgram.toString()),

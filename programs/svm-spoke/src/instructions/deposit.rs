@@ -10,7 +10,7 @@ use crate::{
     constants::{MAX_EXCLUSIVITY_PERIOD_SECONDS, ZERO_DEPOSIT_ID},
     error::{CommonError, SvmError},
     event::FundsDeposited,
-    state::{Route, State},
+    state::State,
     utils::{
         derive_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from, DepositNowSeedData, DepositSeedData,
     },
@@ -40,13 +40,6 @@ pub struct Deposit<'info> {
 
     /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
     pub delegate: UncheckedAccount<'info>,
-
-    #[account(
-        seeds = [b"route", input_token.as_ref(), state.seed.to_le_bytes().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
-        bump,
-        constraint = route.enabled @ CommonError::DisabledRoute
-    )]
-    pub route: Account<'info, Route>,
 
     #[account(
         mut,
