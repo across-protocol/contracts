@@ -5,7 +5,7 @@ use anchor_lang::prelude::*;
 pub enum CommonError {
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
-    #[msg("Ivalid fill deadline!")]
+    #[msg("Invalid fill deadline!")]
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
@@ -72,6 +72,8 @@ pub enum SvmError {
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
+    #[msg("Invalid delegate PDA!")]
+    InvalidDelegatePda,
 }
 
 // CCTP specific errors.
