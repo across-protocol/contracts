@@ -16,7 +16,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(_relay_hash: [u8; 32], relay_data: Option<RelayData>)]
+#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
 pub struct FillRelay<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -64,10 +64,10 @@ pub struct FillRelay<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", _relay_hash.as_ref()],
+        seeds = [b"fills", relay_hash.as_ref()],
         bump,
         constraint = is_relay_hash_valid(
-            &_relay_hash,
+            &relay_hash,
             &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
             &state) @ SvmError::InvalidRelayHash
     )]
