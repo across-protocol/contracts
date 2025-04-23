@@ -29,16 +29,16 @@ import {
   sendTransactionWithLookupTable,
   loadFillRelayParams,
   intToU8Array32,
+  getFillRelayDelegatePda,
 } from "../../src/svm/web3-v1";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
-const { provider, connection, program, owner, chainId, seedBalance } = common;
-const { initializeState, assertSE } = common;
+const { provider, connection, program, owner, chainId, seedBalance, initializeState, assertSE } = common;
 
 describe("svm_spoke.fill.across_plus", () => {
   anchor.setProvider(provider);
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const relayer = Keypair.generate();
 
   const handlerProgram = anchor.workspace.MulticallHandler as Program<MulticallHandler>;
@@ -49,14 +49,15 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipientATA: PublicKey,
     state: PublicKey,
     mint: PublicKey,
-    relayerATA: PublicKey;
+    relayerATA: PublicKey,
+    seed: BN;
 
   const relayAmount = 500000;
   const mintDecimals = 6;
   let relayData: any; // reused relay data for all tests.
   let accounts: any; // Store accounts to simplify contract interactions.
 
-  function updateRelayData(newRelayData: any) {
+  const updateRelayData = (newRelayData: any) => {
     relayData = newRelayData;
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
@@ -66,6 +67,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
     accounts = {
       state,
+      delegate: getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -76,14 +78,17 @@ describe("svm_spoke.fill.across_plus", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
-  }
+  };
 
-  async function createApproveAndFillIx(multicallHandlerCoder: MulticallHandlerCoder, bufferParams = false) {
+  const createApproveAndFillIx = async (multicallHandlerCoder: MulticallHandlerCoder, bufferParams = false) => {
+    const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(relayHashUint8Array);
+
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      accounts.state,
+      getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       accounts.signer,
       BigInt(relayAmount),
       mintDecimals
@@ -93,8 +98,6 @@ describe("svm_spoke.fill.across_plus", () => {
       { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
       ...multicallHandlerCoder.compiledKeyMetas,
     ];
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Prepare fill instruction.
     const fillRelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
@@ -113,7 +116,7 @@ describe("svm_spoke.fill.across_plus", () => {
       .instruction();
 
     return { approveIx, fillIx };
-  }
+  };
 
   before("Creates token mint and associated token accounts", async () => {
     mint = await createMint(connection, payer, owner, owner, mintDecimals);
@@ -131,7 +134,7 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipient = Keypair.generate().publicKey;
     finalRecipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, finalRecipient)).address;
 
-    ({ state } = await initializeState());
+    ({ state, seed } = await initializeState());
 
     const initialRelayData = {
       depositor: finalRecipient,

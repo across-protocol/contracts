@@ -205,6 +205,7 @@ pub mod svm_spoke {
     ///   Authority must be the state.
     /// - mint (Account): The mint account for the input token.
     /// - token_program (Interface): The token program.
+    /// - delegate (Account): The account used to delegate the input amount of the input token.
     ///
     /// ### Parameters
     /// - depositor: The account credited with the deposit. Can be different from the signer.
@@ -377,9 +378,10 @@ pub mod svm_spoke {
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Interface): The associated token program.
     /// - system_program (Interface): The system program.
+    /// - delegate (Account): The account used to delegate the output amount of the output token.
     ///
     /// ### Parameters:
-    /// - _relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
+    /// - relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit to be filled. Should match
     ///   all the same-named parameters emitted in the origin chain FundsDeposited event.
@@ -406,12 +408,12 @@ pub mod svm_spoke {
     /// is passed, the caller must load them via the instruction_params account.
     pub fn fill_relay<'info>(
         ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
-        _relay_hash: [u8; 32],
+        relay_hash: [u8; 32],
         relay_data: Option<RelayData>,
         repayment_chain_id: Option<u64>,
         repayment_address: Option<Pubkey>,
     ) -> Result<()> {
-        instructions::fill_relay(ctx, relay_data, repayment_chain_id, repayment_address)
+        instructions::fill_relay(ctx, relay_hash, relay_data, repayment_chain_id, repayment_address)
     }
 
     /// Closes the FillStatusAccount PDA to reclaim relayer rent.
