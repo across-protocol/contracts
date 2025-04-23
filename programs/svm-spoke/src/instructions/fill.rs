@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::{FillType, FilledRelay, RelayExecutionEventInfo},
     state::{FillRelayParams, FillStatus, FillStatusAccount, State},
-    utils::{get_current_time, hash_non_empty_message, invoke_handler, transfer_from},
+    utils::{derive_seed_hash, get_current_time, hash_non_empty_message, invoke_handler, transfer_from, FillSeedData},
 };
 
 #[event_cpi]
@@ -25,12 +25,11 @@ pub struct FillRelay<'info> {
     #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
     pub instruction_params: Option<Account<'info, FillRelayParams>>,
 
-    #[account(
-        seeds = [b"state", state.seed.to_le_bytes().as_ref()],
-        bump,
-        constraint = !state.paused_fills @ CommonError::FillsArePaused
-    )]
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
+
+    /// CHECK: PDA derived with seeds ["delegate", seed_hash]; used as a CPI signer.
+    pub delegate: UncheckedAccount<'info>,
 
     #[account(
         mint::token_program = token_program,
@@ -81,10 +80,15 @@ pub struct FillRelay<'info> {
 
 pub fn fill_relay<'info>(
     ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
+    relay_hash: [u8; 32],
     relay_data: Option<RelayData>,
     repayment_chain_id: Option<u64>,
     repayment_address: Option<Pubkey>,
 ) -> Result<()> {
+    // This type of constraint normally would be checked in the context, but had to move it here in the handler to avoid
+    // exceeding maximum stack offset.
+    require!(!ctx.accounts.state.paused_fills, CommonError::FillsArePaused);
+
     let FillRelayParams { relay_data, repayment_chain_id, repayment_address } =
         unwrap_fill_relay_params(relay_data, repayment_chain_id, repayment_address, &ctx.accounts.instruction_params);
 
@@ -114,15 +118,17 @@ pub fn fill_relay<'info>(
         _ => FillType::FastFill,
     };
 
-    // Relayer must have delegated output_amount to the state PDA
+    let seed_hash = derive_seed_hash(&(FillSeedData { relay_hash, repayment_chain_id, repayment_address }));
+
+    // Relayer must have delegated output_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.relayer_token_account,
         &ctx.accounts.recipient_token_account,
         relay_data.output_amount,
-        state,
-        ctx.bumps.state,
+        &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
+        seed_hash,
     )?;
 
     // Update the fill status to Filled, set the relayer and fill deadline
