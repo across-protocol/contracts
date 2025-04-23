@@ -19,8 +19,8 @@ jobs:
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
-          anchor-version: 0.30.1
-          solana-cli-version: 1.18.21
+          anchor-version: 0.31.1
+          solana-cli-version: 2.1.21
           node-version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
@@ -28,11 +28,11 @@ jobs:
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2025-04-01
+          toolchain: nightly
           profile: minimal
-          components: rustc
+          components: rustc, rustfmt
       - name: Install packages
-        run: yarn install --frozen-lockfile && rustup component add --toolchain nightly-2025-04-01-x86_64-unknown-linux-gnu rustfmt
+        run: yarn install --frozen-lockfile
       - name: Lint js
         shell: bash
         run: yarn lint-js
@@ -60,8 +60,8 @@ jobs:
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
-          anchor-version: 0.30.1
-          solana-cli-version: 1.18.21
+          anchor-version: 0.31.1
+          solana-cli-version: 2.1.21
           node-version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
@@ -69,7 +69,7 @@ jobs:
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2025-04-01
+          toolchain: stable
           profile: minimal
           components: rustc
       - name: Cache Cargo dependencies
@@ -102,8 +102,8 @@ jobs:
       - name: Setup Anchor & Build
         uses: metadaoproject/setup-anchor@v2
         with:
-          anchor-version: 0.30.1
-          solana-cli-version: 1.18.21
+          anchor-version: 0.31.1
+          solana-cli-version: 2.1.21
           node-version: 20
       - name: Install packages
         run: yarn install --frozen-lockfile
