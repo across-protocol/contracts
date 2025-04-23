@@ -643,10 +643,13 @@ describe("svm_spoke.deposit", () => {
       inputToken
     );
 
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const delegate = getDepositPda(nativeDepositData as DepositDataSeed, program.programId);
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      depositAccounts.state,
+      delegate,
       depositor.publicKey,
       BigInt(nativeAmount),
       nativeDecimals,
@@ -654,11 +657,9 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
-    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
     const depositIx = await program.methods
       .deposit(...depositDataValues)
-      .accounts(depositAccounts)
+      .accounts({ ...depositAccounts, delegate })
       .instruction();
 
     const closeIx = createCloseAccountInstruction(depositorTA, depositor.publicKey, depositor.publicKey);
@@ -697,10 +698,13 @@ describe("svm_spoke.deposit", () => {
     // Sync the user token account with the native balance.
     const syncIx = createSyncNativeInstruction(depositorTA);
 
+    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
+    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
+    const delegate = getDepositPda(nativeDepositData as DepositDataSeed, program.programId);
     const approveIx = await createApproveCheckedInstruction(
       depositAccounts.depositorTokenAccount,
       depositAccounts.mint,
-      depositAccounts.state,
+      delegate,
       depositor.publicKey,
       BigInt(nativeAmount),
       nativeDecimals,
@@ -708,11 +712,9 @@ describe("svm_spoke.deposit", () => {
       tokenProgram
     );
 
-    const nativeDepositData = { ...depositData, inputAmount: new BN(nativeAmount), outputAmount: new BN(nativeAmount) };
-    const depositDataValues = Object.values(nativeDepositData) as DepositDataValues;
     const depositIx = await program.methods
       .deposit(...depositDataValues)
-      .accounts(depositAccounts)
+      .accounts({ ...depositAccounts, delegate })
       .instruction();
 
     const iVaultAmount = (await getAccount(connection, vault, undefined, tokenProgram)).amount;
