@@ -15,7 +15,6 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { SlowFillLeaf } from "../../src/types/svm";
 import {
   calculateRelayHashUint8Array,
-  getFillRelayDelegatePda,
   hashNonEmptyMessage,
   intToU8Array32,
   readEventsUntilFound,
@@ -23,23 +22,12 @@ import {
 } from "../../src/svm/web3-v1";
 import { testAcrossPlusMessage } from "./utils";
 
-const {
-  provider,
-  connection,
-  program,
-  owner,
-  chainId,
-  seedBalance,
-  initializeState,
-  recipient,
-  setCurrentTime,
-  assertSE,
-  assert,
-} = common;
+const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
+const { recipient, setCurrentTime, assertSE, assert } = common;
 
 describe("svm_spoke.slow_fill", () => {
   anchor.setProvider(provider);
-  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
+  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
   const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
@@ -61,7 +49,7 @@ describe("svm_spoke.slow_fill", () => {
 
   const initialMintAmount = 10_000_000_000;
 
-  const updateRelayData = async (newRelayData: SlowFillLeaf["relayData"]) => {
+  async function updateRelayData(newRelayData: SlowFillLeaf["relayData"]) {
     relayData = newRelayData;
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     [fillStatus] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHashUint8Array], program.programId);
@@ -80,7 +68,6 @@ describe("svm_spoke.slow_fill", () => {
     };
     fillAccounts = {
       state,
-      delegate: getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -91,7 +78,7 @@ describe("svm_spoke.slow_fill", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
-  };
+  }
 
   const relaySlowFillRootBundle = async (
     slowRelayLeafRecipient = recipient,
@@ -130,7 +117,7 @@ describe("svm_spoke.slow_fill", () => {
     const leaf = slowRelayLeafs[0];
 
     let stateAccountData = await program.account.state.fetch(state);
-    const { rootBundleId } = stateAccountData;
+    const rootBundleId = stateAccountData.rootBundleId;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
@@ -225,21 +212,18 @@ describe("svm_spoke.slow_fill", () => {
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
         assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
-      } else {
-        assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
-      }
+      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
     });
   });
 
   it("Fails to request a V3 slow fill if the relay has already been filled", async () => {
-    const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
-    const relayHash = Array.from(relayHashUint8Array);
+    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Fill the relay first
     const approveIx = await createApproveCheckedInstruction(
       fillAccounts.relayerTokenAccount,
       fillAccounts.mint,
-      getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
+      fillAccounts.state,
       fillAccounts.signer,
       BigInt(relayData.outputAmount.toString()),
       tokenDecimals
@@ -400,9 +384,7 @@ describe("svm_spoke.slow_fill", () => {
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
         assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
-      } else {
-        assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
-      }
+      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
     });
     // RelayExecutionInfo should match.
     assertSE(event.relayExecutionInfo.updatedRecipient, relayData.recipient, "UpdatedRecipient should match");

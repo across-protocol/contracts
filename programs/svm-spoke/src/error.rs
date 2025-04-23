@@ -7,7 +7,7 @@ pub enum CommonError {
     DisabledRoute,
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
-    #[msg("Invalid fill deadline!")]
+    #[msg("Ivalid fill deadline!")]
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
@@ -74,8 +74,6 @@ pub enum SvmError {
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
-    #[msg("Invalid delegate PDA!")]
-    InvalidDelegatePda,
 }
 
 // CCTP specific errors.
