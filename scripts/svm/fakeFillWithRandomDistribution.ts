@@ -18,7 +18,6 @@ import {
   AcrossPlusMessageCoder,
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
-  getFillRelayDelegatePda,
   getSpokePoolProgram,
   loadFillRelayParams,
   sendTransactionWithLookupTable,
@@ -199,7 +198,6 @@ async function fillV3RelayToRandom(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
-    delegate: getFillRelayDelegatePda(relayHashUint8Array, repaymentChain, repaymentAddress, program.programId).pda,
     instructionParams,
     mint: outputToken,
     relayerTokenAccount,
