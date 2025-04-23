@@ -66,7 +66,7 @@ async function deposit(): Promise<void> {
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  console.log("Depositing V3...");
+  console.log("Depositing...");
   console.table([
     { property: "seed", value: seed.toString() },
     { property: "recipient", value: recipient.toString() },
@@ -144,5 +144,5 @@ async function deposit(): Promise<void> {
   console.log("Transaction signature:", tx);
 }
 
-// Run the depositV3 function
+// Run the deposit function
 deposit();

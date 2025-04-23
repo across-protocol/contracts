@@ -170,7 +170,7 @@ describe("svm_spoke.fill", () => {
     updateRelayData(initialRelayData);
   });
 
-  it("Fills a V3 relay and verifies balances", async () => {
+  it("Fills a relay and verifies balances", async () => {
     // Verify recipient's balance before the fill
     let recipientAccount = await getAccount(connection, recipientTA);
     assertSE(recipientAccount.amount, "0", "Recipient's balance should be 0 before the fill");
@@ -226,7 +226,7 @@ describe("svm_spoke.fill", () => {
     assertSE(event.relayer, otherRelayer.publicKey, "Repayment address should match");
   });
 
-  it("Fails to fill a V3 relay after the fill deadline", async () => {
+  it("Fails to fill a relay after the fill deadline", async () => {
     updateRelayData({ ...relayData, fillDeadline: Math.floor(Date.now() / 1000) - 69 }); // 69 seconds ago
 
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
@@ -238,7 +238,7 @@ describe("svm_spoke.fill", () => {
     }
   });
 
-  it("Fails to fill a V3 relay by non-exclusive relayer before exclusivity deadline", async () => {
+  it("Fails to fill a relay by non-exclusive relayer before exclusivity deadline", async () => {
     accounts.signer = otherRelayer.publicKey;
     accounts.relayerTokenAccount = otherRelayerTA;
 
@@ -280,7 +280,7 @@ describe("svm_spoke.fill", () => {
     );
   });
 
-  it("Fails to fill a V3 relay with the same deposit data multiple times", async () => {
+  it("Fails to fill a relay with the same deposit data multiple times", async () => {
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // First fill attempt
@@ -305,7 +305,7 @@ describe("svm_spoke.fill", () => {
       systemProgram: anchor.web3.SystemProgram.programId,
     };
 
-    // Execute the fill_v3_relay call
+    // Execute the fill_relay call
     await approvedFillRelay([relayHash, relayData, new BN(1), relayer.publicKey]);
 
     // Verify the fill PDA exists before closing
@@ -335,20 +335,20 @@ describe("svm_spoke.fill", () => {
     assert.isNull(fillStatusAccountAfter, "Fill PDA should be closed after closing");
   });
 
-  it("Fetches FillStatusAccount before and after fillV3Relay", async () => {
+  it("Fetches FillStatusAccount before and after fillRelay", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHash], program.programId);
 
-    // Fetch FillStatusAccount before fillV3Relay
+    // Fetch FillStatusAccount before fillRelay
     let fillStatusAccount = await program.account.fillStatusAccount.fetchNullable(fillStatusPDA);
-    assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before fillV3Relay");
+    assert.isNull(fillStatusAccount, "FillStatusAccount should be uninitialized before fillRelay");
 
     // Fill the relay
     await approvedFillRelay([Array.from(relayHash), relayData, new BN(1), relayer.publicKey]);
 
-    // Fetch FillStatusAccount after fillV3Relay
+    // Fetch FillStatusAccount after fillRelay
     fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
-    assert.isNotNull(fillStatusAccount, "FillStatusAccount should be initialized after fillV3Relay");
+    assert.isNotNull(fillStatusAccount, "FillStatusAccount should be initialized after fillRelay");
     assert.equal(JSON.stringify(fillStatusAccount.status), `{\"filled\":{}}`, "FillStatus should be Filled");
     assert.equal(fillStatusAccount.relayer.toString(), relayer.publicKey.toString(), "Caller should be set as relayer");
   });
@@ -413,7 +413,7 @@ describe("svm_spoke.fill", () => {
     }
   });
 
-  it("Fills a V3 relay from custom relayer token account", async () => {
+  it("Fills a relay from custom relayer token account", async () => {
     // Create and mint to custom relayer token account
     const customKeypair = Keypair.generate();
     const customRelayerTA = await createAccount(connection, payer, mint, relayer.publicKey, customKeypair);

@@ -78,7 +78,7 @@ async function nativeDeposit(): Promise<void> {
   const userTokenAccountInfo = await provider.connection.getAccountInfo(userTokenAccount);
   const existingTokenAccount = userTokenAccountInfo !== null && userTokenAccountInfo.owner.equals(TOKEN_PROGRAM_ID);
 
-  console.log("Depositing V3...");
+  console.log("Depositing...");
   console.table([
     { property: "seed", value: seed.toString() },
     { property: "recipient", value: recipient.toString() },
