@@ -14,12 +14,7 @@ import {
 import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import {
-  calculateRelayHashUint8Array,
-  getFillRelayDelegatePda,
-  getSpokePoolProgram,
-  intToU8Array32,
-} from "../../src/svm/web3-v1";
+import { calculateRelayHashUint8Array, getSpokePoolProgram, intToU8Array32 } from "../../src/svm/web3-v1";
 import { FillDataValues } from "../../src/types/svm";
 
 // Set up the provider
@@ -166,7 +161,6 @@ async function fillRelay(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
-    delegate: getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda,
     instructionParams: program.programId,
     mint: outputToken,
     relayerTokenAccount: relayerTokenAccount,
