@@ -20,7 +20,7 @@ jobs:
         uses: solana-developers/github-actions/setup-all@v0.2.5
         with:
           anchor_version: 0.31.1
-          solana_version: 2.1.21
+          solana_version: 2.1.20
           node_version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
