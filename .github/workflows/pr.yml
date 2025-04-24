@@ -25,9 +25,6 @@ jobs:
           anchor_version: ${{ steps.versions.outputs.anchor_version }}
           solana_version: ${{ steps.versions.outputs.solana_version }}
           node_version: 20
-      - name: Create keypair
-        run: solana-keygen new --no-bip39-passphrase
-        shell: bash
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
