@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./SpokePool.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "./libraries/CircleCCTPAdapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
+import "./SpokePool.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
@@ -24,6 +25,8 @@ interface IL2ETH {
  * @custom:security-contact bugs@across.to
  */
 contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
+    using SafeERC20 for IERC20;
+
     // On Ethereum, avoiding constructor parameters and putting them into constants reduces some of the gas cost
     // upon contract deployment. On zkSync the opposite is true: deploying the same bytecode for contracts,
     // while changing only constructor parameters can lead to substantial fee savings. So, the following params
@@ -151,7 +154,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
                 _transferUsdc(withdrawalRecipient, amountToReturn);
             } else {
                 // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
-                IERC20(l2TokenAddress).approve(address(zkUSDCBridge), amountToReturn);
+                IERC20(l2TokenAddress).forceApprove(address(zkUSDCBridge), amountToReturn);
                 zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
             }
         } else {
