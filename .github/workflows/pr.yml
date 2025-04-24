@@ -16,8 +16,8 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-      - name: Setup Anchor & Build
-        uses: metadaoproject/setup-anchor@v3.1
+      - name: Setup Anchor & Solana
+        uses: solana-developers/github-actions/setup-all@v0.2.5
         with:
           anchor-version: 0.31.1
           solana-cli-version: 2.1.21
