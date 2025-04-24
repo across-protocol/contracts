@@ -19,9 +19,9 @@ jobs:
       - name: Setup Anchor & Solana
         uses: solana-developers/github-actions/setup-all@v0.2.5
         with:
-          anchor-version: 0.31.1
-          solana-cli-version: 2.1.21
-          node-version: 20
+          anchor_version: 0.31.1
+          solana_cli_version: 2.1.21
+          node_version: 20
       - name: Create keypair
         run: solana-keygen new --no-bip39-passphrase
         shell: bash
