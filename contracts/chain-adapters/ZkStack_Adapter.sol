@@ -66,6 +66,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Constructs new Adapter.
+     * @notice Circle bridged & native USDC are optionally supported via configuration, but are mutually exclusive.
      * @param _chainId The target ZkStack network's chain ID.
      * @param _bridgeHub The bridge hub contract address for the ZkStack network.
      * @param _circleUSDC Circle USDC address on L1. If not set to address(0), then either the USDCSharedBridge
@@ -200,7 +201,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
                 );
             }
         } else {
-            // An ERC20 that is not WETH.
+            // An standard bridged ERC20, separate from WETH and Circle Bridged/Native USDC.
             address sharedBridge = BRIDGE_HUB.sharedBridge();
             IERC20(l1Token).forceApprove(sharedBridge, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
