@@ -11,6 +11,7 @@ import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism
 
 import { ZkStack_Adapter } from "../../../../contracts/chain-adapters/ZkStack_Adapter.sol";
 import { ZkStack_CustomGasToken_Adapter, FunderInterface } from "../../../../contracts/chain-adapters/ZkStack_CustomGasToken_Adapter.sol";
+import { AdapterInterface } from "../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { MockBridgeHub, BridgeHubInterface } from "../../../../contracts/test/MockZkStackBridgeHub.sol";
@@ -197,7 +198,7 @@ contract ZkStackAdapterTest is Test {
             )
         );
         vm.expectEmit(address(zksAdapter));
-        emit ZkStack_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.MessageRelayed(target, message);
         zksAdapter.relayMessage{ value: baseCost }(target, message);
     }
 
@@ -228,7 +229,7 @@ contract ZkStackAdapterTest is Test {
         );
 
         vm.expectEmit(address(zksAdapter));
-        emit ZkStack_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1Weth), address(l2Weth), amountToSend, random);
         zksAdapter.relayTokens{ value: baseCost }(address(l1Weth), address(l2Weth), amountToSend, random);
         vm.stopPrank();
     }
@@ -254,7 +255,7 @@ contract ZkStackAdapterTest is Test {
         );
 
         vm.expectEmit(address(zksAdapter));
-        emit ZkStack_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1Usdc), address(l2Usdc), amountToSend, random);
         zksAdapter.relayTokens{ value: baseCost }(address(l1Usdc), address(l2Usdc), amountToSend, random);
     }
 
@@ -279,7 +280,7 @@ contract ZkStackAdapterTest is Test {
         );
 
         vm.expectEmit(address(zksAdapter));
-        emit ZkStack_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1Token), address(l2Token), amountToSend, random);
         zksAdapter.relayTokens{ value: baseCost }(address(l1Token), address(l2Token), amountToSend, random);
     }
 
@@ -305,7 +306,7 @@ contract ZkStackAdapterTest is Test {
             )
         );
         vm.expectEmit(address(zksCustomGasAdapter));
-        emit ZkStack_CustomGasToken_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.MessageRelayed(target, message);
         zksCustomGasAdapter.relayMessage(target, message);
         // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.
         assertEq(l1CustomGasToken.allowance(address(zksCustomGasAdapter), sharedBridge), baseCost);
@@ -337,7 +338,7 @@ contract ZkStackAdapterTest is Test {
         );
 
         vm.expectEmit(address(zksCustomGasAdapter));
-        emit ZkStack_CustomGasToken_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1Weth), address(l2Weth), amountToSend, random);
         zksCustomGasAdapter.relayTokens(address(l1Weth), address(l2Weth), amountToSend, random);
         vm.stopPrank();
         // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.
@@ -364,7 +365,7 @@ contract ZkStackAdapterTest is Test {
         );
 
         vm.expectEmit(address(zksCustomGasAdapter));
-        emit ZkStack_CustomGasToken_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1Usdc), address(l2Usdc), amountToSend, random);
         zksCustomGasAdapter.relayTokens(address(l1Usdc), address(l2Usdc), amountToSend, random);
         // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.
         assertEq(l1CustomGasToken.allowance(address(zksCustomGasAdapter), usdcSharedBridge), baseCost);
@@ -391,7 +392,7 @@ contract ZkStackAdapterTest is Test {
         );
 
         vm.expectEmit(address(zksCustomGasAdapter));
-        emit ZkStack_CustomGasToken_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1Token), address(l2Token), amountToSend, random);
         zksCustomGasAdapter.relayTokens(address(l1Token), address(l2Token), amountToSend, random);
         // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.
         assertEq(l1CustomGasToken.allowance(address(zksCustomGasAdapter), sharedBridge), baseCost);
@@ -417,7 +418,7 @@ contract ZkStackAdapterTest is Test {
             )
         );
         vm.expectEmit(address(zksCustomGasAdapter));
-        emit ZkStack_CustomGasToken_Adapter.ZkStackMessageRelayed(expectedTxnHash);
+        emit AdapterInterface.TokensRelayed(address(l1CustomGasToken), address(l2CustomGasToken), amountToSend, random);
         zksCustomGasAdapter.relayTokens(address(l1CustomGasToken), address(l2CustomGasToken), amountToSend, random);
 
         // Approve only the amount of the fee of the custom gas token. Since we don't actually transferFrom, the approval should stand.

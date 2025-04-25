@@ -79,7 +79,6 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
     // when calling a hub pool message relay, which would otherwise cause a large amount of the custom gas token to be sent to L2.
     uint256 private immutable MAX_TX_GASPRICE;
 
-    event ZkStackMessageRelayed(bytes32 indexed canonicalTxHash);
     error ETHGasTokenNotAllowed();
     error TransactionFeeTooHigh();
     error InvalidBridgeConfig();
@@ -164,7 +163,6 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         );
 
         emit MessageRelayed(target, message);
-        emit ZkStackMessageRelayed(canonicalTxHash);
     }
 
     /**
@@ -263,7 +261,6 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
-        emit ZkStackMessageRelayed(txHash);
     }
 
     /**
