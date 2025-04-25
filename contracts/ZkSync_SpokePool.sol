@@ -43,6 +43,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     /**
      * @notice Constructor.
+     * @dev Circle bridged & native USDC are optionally supported via configuration, but are mutually exclusive.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
      * If not set to zero, then either the zkUSDCBridge or cctpTokenMessenger must be set and will be used to
