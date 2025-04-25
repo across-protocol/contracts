@@ -170,7 +170,7 @@
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
-      "label": "l2UsdcBridge",
+      "label": "DEPRECATED_l2UsdcBridge",
       "offset": 0,
       "slot": "3164"
     }
