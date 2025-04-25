@@ -2494,17 +2494,6 @@
   resolved "https://registry.yarnpkg.com/@sinonjs/text-encoding/-/text-encoding-0.7.2.tgz#5981a8db18b56ba38ef0efb7d995b12aa7b51918"
   integrity sha512-sXXKG+uL9IrKqViTtao2Ws6dy0znu9sOaP1di/jKGW1M6VssO8vlpXCQcpZ+jisQ1tTFAC5Jo/EOzFbggBagFQ==
 
-"@solana-developers/helpers@^2.4.0":
-  version "2.5.5"
-  resolved "https://registry.yarnpkg.com/@solana-developers/helpers/-/helpers-2.5.5.tgz#ecbdf0201faccc7116cc0b6c9ec96f5c8a1ef1ce"
-  integrity sha512-V+O/VSOPUMiuaoaxO+8h6cfmsgVUQZFJCiyMt/0GPH+Wq4QVsiRMXat/KTKnWZO1T7exENS9vmQg1LN562Z2ZQ==
-  dependencies:
-    "@solana/spl-token" "^0.4.8"
-    "@solana/spl-token-metadata" "^0.1.4"
-    "@solana/web3.js" "^1.95.2"
-    bs58 "^6.0.0"
-    dotenv "^16.4.5"
-
 "@solana-program/token@^0.5.1":
   version "0.5.1"
   resolved "https://registry.npmjs.org/@solana-program/token/-/token-0.5.1.tgz#10e327df23f05a7f892fd33a9b6418f17dd62296"
@@ -2994,7 +2983,7 @@
     "@solana/codecs" "2.0.0-preview.4"
     "@solana/spl-type-length-value" "0.1.0"
 
-"@solana/spl-token-metadata@^0.1.3", "@solana/spl-token-metadata@^0.1.4":
+"@solana/spl-token-metadata@^0.1.3":
   version "0.1.5"
   resolved "https://registry.yarnpkg.com/@solana/spl-token-metadata/-/spl-token-metadata-0.1.5.tgz#91616470d6862ec6b762e6cfcf882b8a8a24b1e8"
   integrity sha512-DSBlo7vjuLe/xvNn75OKKndDBkFxlqjLdWlq6rf40StnrhRn7TDntHGLZpry1cf3uzQFShqeLROGNPAJwvkPnA==
@@ -3002,7 +2991,7 @@
     "@solana/codecs" "2.0.0-rc.1"
     "@solana/spl-type-length-value" "0.1.0"
 
-"@solana/spl-token@^0.4.6", "@solana/spl-token@^0.4.8":
+"@solana/spl-token@^0.4.6":
   version "0.4.8"
   resolved "https://registry.yarnpkg.com/@solana/spl-token/-/spl-token-0.4.8.tgz#a84e4131af957fa9fbd2727e5fc45dfbf9083586"
   integrity sha512-RO0JD9vPRi4LsAbMUdNbDJ5/cv2z11MGhtAvFeRzT4+hAGE/FUzRi0tkkWtuCfSIU3twC6CtmAihRp/+XXjWsA==
@@ -3105,7 +3094,7 @@
     rpc-websockets "^9.0.2"
     superstruct "^2.0.2"
 
-"@solana/web3.js@^1.32.0", "@solana/web3.js@^1.95.2":
+"@solana/web3.js@^1.32.0":
   version "1.95.3"
   resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.95.3.tgz#70b5f4d76823f56b5af6403da51125fffeb65ff3"
   integrity sha512-O6rPUN0w2fkNqx/Z3QJMB9L225Ex10PRDH8bTaIUPZXMPV0QP8ZpPvjQnXK+upUczlRgzHzd6SjKIha1p+I6og==
@@ -7209,11 +7198,6 @@ dotenv@^16.0.3, dotenv@^16.1.4:
   version "16.3.1"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.3.1.tgz#369034de7d7e5b120972693352a3bf112172cc3e"
   integrity sha512-IPzF4w4/Rd94bA9imS68tZBaYyBWSCE47V1RGuMrB94iyTOIEwRmVL2x/4An+6mETpLrKJ5hQkB8W4kFAadeIQ==
-
-dotenv@^16.4.5:
-  version "16.4.5"
-  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.4.5.tgz#cdd3b3b604cb327e286b4762e13502f717cb099f"
-  integrity sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==
 
 dotenv@^9.0.0:
   version "9.0.2"
