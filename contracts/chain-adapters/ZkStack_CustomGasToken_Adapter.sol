@@ -86,6 +86,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     /**
      * @notice Constructs new Adapter.
+     * @notice Circle bridged & native USDC are optionally supported via configuration, but are mutually exclusive.
      * @param _chainId The target ZkStack network's chain ID.
      * @param _bridgeHub The bridge hub contract address for the ZkStack network.
      * @param _circleUSDC Circle USDC address on L1. If not set to address(0), then either the USDCSharedBridge
