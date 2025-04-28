@@ -2507,6 +2507,11 @@
     bs58 "^6.0.0"
     dotenv "^16.4.5"
 
+"@solana-program/address-lookup-table@^0.7.0":
+  version "0.7.0"
+  resolved "https://registry.yarnpkg.com/@solana-program/address-lookup-table/-/address-lookup-table-0.7.0.tgz#6651657308547fefb59ce2e20b1871270e93d48d"
+  integrity sha512-dzCeIO5LtiK3bIg0AwO+TPeGURjSG2BKt0c4FRx7105AgLy7uzTktpUzUj6NXAK9SzbirI8HyvHUvw1uvL8O9A==
+
 "@solana-program/token@^0.5.1":
   version "0.5.1"
   resolved "https://registry.npmjs.org/@solana-program/token/-/token-0.5.1.tgz#10e327df23f05a7f892fd33a9b6418f17dd62296"
