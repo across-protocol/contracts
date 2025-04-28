@@ -251,7 +251,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
-    "tatara": {
+    tatara: {
       chainId: CHAIN_IDs.TATARA,
       url: "https://rpc.tatara.katanarpc.com/<apikey>",
       saveDeployments: true,
@@ -266,7 +266,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
       ethNetwork: "mainnet",
-      verifyURL: "", // @todo
+      verifyURL: "https://api-explorer-verify.lens.matterhosted.dev/contract_verification",
       zksync: true,
     },
     "lens-sepolia": {
@@ -377,7 +377,7 @@ const config: HardhatUserConfig = {
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
-      "tatara": "blockscout",
+      tatara: "blockscout",
       lisk: "blockscout",
       "lisk-sepolia": "blockscout",
       redstone: "blockscout",
