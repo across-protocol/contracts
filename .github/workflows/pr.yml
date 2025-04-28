@@ -24,6 +24,7 @@ jobs:
         with:
           anchor_version: ${{ steps.versions.outputs.anchor_version }}
           solana_version: ${{ steps.versions.outputs.solana_version }}
+          verify_version: 0.4.3
           node_version: 20
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
