@@ -141,12 +141,6 @@ abstract contract SpokePool is
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
-
-    bytes32 public constant UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH =
-        keccak256(
-            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
-        );
-
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
@@ -611,7 +605,13 @@ abstract contract SpokePool is
      * FundsDeposited event is unique which means that the
      * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
      * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
-     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
+     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline. Re-using a depositNonce is very
+     * dangerous when combined with `speedUpDeposit`, as a speed up signature can be re-used for any deposits
+     * with the same deposit ID.
+     * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
+     * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
+     * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
+     * deposits with deposit hashes that map exactly to the one emitted by this contract.
      * @param depositNonce The nonce that uniquely identifies this deposit. This function will combine this parameter
      * with the msg.sender address to create a unique uint256 depositNonce and ensure that the msg.sender cannot
      * use this function to front-run another depositor's unsafe deposit. This function guarantees that the resultant
@@ -789,7 +789,9 @@ abstract contract SpokePool is
 
     /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
-     * and/or message.
+     * and/or message. The speed up signature uniquely identifies the speed up based only on
+     * depositor, deposit ID and origin chain, so using this function in conjunction with unsafeDeposit is risky
+     * due to the chance of repeating a deposit ID.
      * @dev the depositor and depositId must match the params in a FundsDeposited event that the depositor
      * wants to speed up. The relayer has the option but not the obligation to use this updated information
      * when filling the deposit via fillRelayWithUpdatedDeposit().
@@ -875,7 +877,7 @@ abstract contract SpokePool is
             updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature,
-            UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH
+            UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information

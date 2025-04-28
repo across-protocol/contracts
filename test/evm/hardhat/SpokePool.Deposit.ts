@@ -967,9 +967,8 @@ describe("SpokePool Depositor Logic", async function () {
         depositId,
         spokePoolChainId,
         updatedOutputAmount,
-        updatedRecipient,
-        updatedMessage,
-        true
+        addressToBytes(updatedRecipient),
+        updatedMessage
       );
 
       await spokePool.verifyUpdateV3DepositMessage(
