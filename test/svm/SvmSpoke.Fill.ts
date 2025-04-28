@@ -652,7 +652,7 @@ describe("svm_spoke.fill", () => {
     assertSE(event.relayExecutionInfo.updatedMessageHash, new Uint8Array(32), `UpdatedMessageHash should be zeroed`);
   });
 
-  describe.only("codama client and solana kit", () => {
+  describe("codama client and solana kit", () => {
     describe("codama client and solana kit", () => {
       it("Fills a V3 relay and verifies balances with codama client and solana kit", async () => {
         const rpcClient = createDefaultSolanaClient();
