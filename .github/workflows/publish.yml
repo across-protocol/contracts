@@ -23,12 +23,15 @@ jobs:
         id: release
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
       # Setup Anchor to enable compilation and export of Solana programs
-      - name: Setup Anchor & Build
-        uses: metadaoproject/setup-anchor@v2
+      - name: Extract Solana versions
+        uses: solana-developers/github-actions/extract-versions@v0.2.5
+        id: versions
+      - name: Setup Anchor & Solana
+        uses: solana-developers/github-actions/setup-all@v0.2.5
         with:
-          anchor-version: "0.30.1"
-          solana-cli-version: "1.18.21"
-          node-version: "20.17.0"
+          anchor_version: ${{ steps.versions.outputs.anchor_version }}
+          solana_version: ${{ steps.versions.outputs.solana_version }}
+          node_version: 20
       # - run: anchor build
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v3

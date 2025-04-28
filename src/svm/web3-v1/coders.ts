@@ -21,7 +21,8 @@ import { AcrossPlusMessage } from "../../types/svm";
 export class LargeAccountsCoder<A extends string = string> extends BorshAccountsCoder<A> {
   // Getter to access the private accountLayouts property from base class.
   private getAccountLayouts() {
-    return (this as any).accountLayouts as Map<A, Layout>;
+    // Base class has `Map<A, { discriminator: IdlDiscriminator; layout: Layout }`, but we only use layout here.
+    return (this as any).accountLayouts as Map<A, { layout: Layout }>;
   }
 
   public async encode<T = any>(accountName: A, account: T): Promise<Buffer> {
@@ -30,7 +31,7 @@ export class LargeAccountsCoder<A extends string = string> extends BorshAccounts
     if (!layout) {
       throw new Error(`Unknown account: ${accountName}`);
     }
-    const len = layout.encode(account, buffer);
+    const len = layout.layout.encode(account, buffer);
     const accountData = buffer.slice(0, len);
     const discriminator = this.accountDiscriminator(accountName);
     return Buffer.concat([discriminator, accountData]);
