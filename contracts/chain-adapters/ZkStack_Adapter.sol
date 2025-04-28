@@ -58,8 +58,6 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
     // when calling a hub pool message relay, which would otherwise cause a large amount of ETH to be sent to L2.
     uint256 private immutable MAX_TX_GASPRICE;
 
-    event ZkStackMessageRelayed(bytes32 indexed canonicalTxHash);
-
     error ETHGasTokenRequired();
     error TransactionFeeTooHigh();
     error InvalidBridgeConfig();
@@ -141,7 +139,6 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
         );
 
         emit MessageRelayed(target, message);
-        emit ZkStackMessageRelayed(canonicalTxHash);
     }
 
     /**
@@ -220,7 +217,6 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
         }
 
         emit TokensRelayed(l1Token, l2Token, amount, to);
-        emit ZkStackMessageRelayed(txHash);
     }
 
     /**
