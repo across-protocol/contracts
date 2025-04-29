@@ -115,6 +115,8 @@ jobs:
           toolchain: stable
           profile: minimal
           components: rustc
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
       - name: Test verified build
         run: yarn test-solana-verify
       - name: Cache Cargo dependencies
