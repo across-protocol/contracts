@@ -20,7 +20,7 @@ for program in programs/*; do
   echo "Running verified build for $program_name"
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
 
-- #Fix target/ permissions after Docker build
+  echo "Fix target/ permissions after Docker build"
   sudo chown -R "$USER_ID:$GROUP_ID" target
 
   echo "Building IDL for $program_name"
