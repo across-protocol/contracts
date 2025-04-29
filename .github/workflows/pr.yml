@@ -115,8 +115,8 @@ jobs:
           toolchain: stable
           profile: minimal
           components: rustc
-      - name: Build Verified
-        run: ~/.cargo/bin/solana-verify build --library-name svm_spoke
+      - name: Test verified build
+        run: yarn test-solana-verify
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
   forge:
