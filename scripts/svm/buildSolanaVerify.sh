@@ -17,7 +17,7 @@ for program in programs/*; do
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
 
   echo "Building IDL for $program_name"
-  anchor idl build -p "$dir_name" -o "target/idl/$program_name.json" -t "target/types/$program_name.ts" -- $CARGO_OPTIONS
+  ANCHOR_LOG=true anchor idl build -p "$dir_name" -o "target/idl/$program_name.json" -t "target/types/$program_name.ts" -- $CARGO_OPTIONS
 done
 
 echo "Generating external program types"
