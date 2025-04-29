@@ -23,7 +23,7 @@ const getChainsFromList = (taskArgInput: string): number[] =>
     ?.split(",")
     ?.map((chainId: string) => Number(chainId)) || [];
 
-task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
+task("enableToken", "Enable a provided token across the entire ecosystem of supported chains")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
   .addFlag("disableRoutes", "Set to disable deposit routes for the specified chains")
   .addParam("token", "Symbol of token to enable")
@@ -195,7 +195,9 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         console.log(
           `\t${n} Setting rebalance route for chain ${symbol} ${hubChainId} -> ${destinationToken} on ${toId}.`
         );
-        callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, destinationToken]));
+        callData.push(
+          hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1TokenAddr, destinationToken])
+        );
       } else {
         rebalanceRoutesSkipped.push(toId);
       }
@@ -210,7 +212,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     if (depositRouteChains.includes(ARBITRUM)) {
       const arbitrumToken = tokens[ARBITRUM].address;
       console.log(
-        `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1Token} on Arbitrum.` +
+        `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1TokenAddr} on Arbitrum.` +
           " This is only needed on this chain."
       );
 
@@ -218,7 +220,10 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
       // Find the address of the Arbitrum representation of this token. Construct whitelistToken call to send to the
       // Arbitrum spoke pool via the relaySpokeAdminFunction call.
-      const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
+      const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [
+        arbitrumToken,
+        l1TokenAddr,
+      ]);
       callData.push(
         hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [ARBITRUM, whitelistTokenCallData])
       );
