@@ -92,6 +92,7 @@ const config: HardhatUserConfig = {
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -162,7 +163,7 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
-      url: getNodeUrl("polygon-mainnet", true, CHAIN_IDs.POLYGON),
+      url: "https://polygon-rpc.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -249,6 +250,14 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
+    },
+    tatara: {
+      chainId: CHAIN_IDs.TATARA,
+      url: "https://rpc.tatara.katanarpc.com/<apikey>",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+      ethNetwork: "sepolia",
     },
     lens: {
       chainId: CHAIN_IDs.LENS,
@@ -368,6 +377,7 @@ const config: HardhatUserConfig = {
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
+      tatara: "blockscout",
       lisk: "blockscout",
       "lisk-sepolia": "blockscout",
       redstone: "blockscout",
@@ -508,6 +518,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.mode.network/api",
           browserURL: "https://explorer.mode.network/",
+        },
+      },
+      {
+        network: "tatara",
+        chainId: CHAIN_IDs.TATARA,
+        urls: {
+          apiURL: "https://explorer.tatara.katana.network/api",
+          browserURL: "https://explorer.tatara.katana.network",
         },
       },
       {
