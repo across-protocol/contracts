@@ -23,6 +23,8 @@ for program in programs/*; do
   echo "Fix target/ permissions after Docker build"
   sudo chown -R "$USER_ID:$GROUP_ID" target
 
+  cargo test --no-run --locked --verbose
+
   echo "Building IDL for $program_name"
   anchor idl build -p "$dir_name" -o "target/idl/$program_name.json" -t "target/types/$program_name.ts" -- $CARGO_OPTIONS
 done
