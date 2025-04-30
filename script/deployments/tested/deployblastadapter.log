@@ -1,0 +1,34 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Deploying Blast Adapter on chain 1
+  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  WETH: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+  USDC: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+  DAI: 0x6B175474E89094C44Da98b954EedeAC495271d0F
+  Cross Domain Messenger: 0xdE7355C971A5B733fe2133753Abd7e5441d441Ec
+  L1 Standard Bridge: 0x697402166Fbf2F22E970df8a6486Ef171dbfc524
+  L1 Blast Bridge: 0x3a05E5d33d7Ab3864D53aaEc93c8301C1Fa49115
+  Blast_Adapter deployed at: 0x4728aF32823cf144586DaB95632156cC81BB0203
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 1
+
+Estimated gas price: 3.788209526 gwei
+
+Estimated total gas used for script: 914587
+
+Estimated amount required: 0.003464647185755762 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/matt/git/contracts-v2/broadcast/DeployBlastAdapter.s.sol/1/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/matt/git/contracts-v2/cache/DeployBlastAdapter.s.sol/1/dry-run/run-latest.json
+

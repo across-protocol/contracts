@@ -1,0 +1,33 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Deploying Optimism Adapter on hub chain 1 for spoke chain 10
+  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  WETH: 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+  L1CrossDomainMessenger: 0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1
+  L1StandardBridge: 0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1
+  USDC: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+  CCTP Token Messenger: 0xBd3fa81B58Ba92a82136038B25aDec7066af3155
+  Optimism_Adapter deployed at: 0x4728aF32823cf144586DaB95632156cC81BB0203
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 1
+
+Estimated gas price: 3.657473566 gwei
+
+Estimated total gas used for script: 1144890
+
+Estimated amount required: 0.00418740491097774 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/matt/git/contracts-v2/broadcast/DeployOptimismAdapter.s.sol/1/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/matt/git/contracts-v2/cache/DeployOptimismAdapter.s.sol/1/dry-run/run-latest.json
+

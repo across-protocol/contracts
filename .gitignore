@@ -17,6 +17,9 @@ artifacts
 cache-zk
 artifacts-zk
 
+# Foundry files
+broadcast/
+
 # Upgradeability files
 .openzeppelin
 

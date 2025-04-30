@@ -1,0 +1,8 @@
+Compiling 1 files with Solc 0.8.23
+Solc 0.8.23 finished in 512.48ms
+Error: Compiler run failed:
+Error (6160): Wrong argument count for function call: 8 arguments given but expected 5.
+  --> script/deployments/DeployOptimismSpokePool.s.sol:48:40:
+   |
+48 |         Optimism_SpokePool spokePool = new Optimism_SpokePool(
+   |                                        ^ (Relevant source part starts here and spans across multiple lines).

@@ -1,0 +1,42 @@
+Compiling 1 files with Solc 0.8.23
+Solc 0.8.23 finished in 15.78s
+Compiler run successful!
+Script ran successfully.
+
+== Logs ==
+  Deploying Blast_SpokePool on chain 81457
+  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Hub Pool: 0xc186fA914353c44b2E33eBE05f21846F1048bEda
+  Wrapped Native Token: 0x4300000000000000000000000000000000000004
+  USDC: 0x4300000000000000000000000000000000000003
+  CCTP Token Messenger: 0x0000000000000000000000000000000000000000
+  USDB: 0x4300000000000000000000000000000000000003
+  L1 USDB (DAI): 0x6B175474E89094C44Da98b954EedeAC495271d0F
+  Yield Recipient: 0x0000000000000000000000000000000000000001
+  Blast Retriever: 0xc186fA914353c44b2E33eBE05f21846F1048bEda
+  Blast_SpokePool implementation deployed at: 0x9E545E3C0baAB3E08CdfD552C960A1050f373042
+  ProxyAdmin deployed at: 0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9
+  Running in TESTING_MODE - skipping initialization
+  Blast_SpokePool proxy deployed at: 0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8
+  ProxyAdmin ownership transferred to deployer
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 81457
+
+Estimated gas price: 0.001952129 gwei
+
+Estimated total gas used for script: 8011761
+
+Estimated amount required: 0.000015639990989169 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/matt/git/contracts-v2/broadcast/DeployBlastSpokePool.s.sol/81457/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/matt/git/contracts-v2/cache/DeployBlastSpokePool.s.sol/81457/dry-run/run-latest.json
+

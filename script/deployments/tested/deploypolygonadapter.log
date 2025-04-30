@@ -1,0 +1,20 @@
+Compiling 1 files with Solc 0.8.23
+Solc 0.8.23 finished in 177.56ms
+Error: Compiler run failed:
+Error (2904): Declaration "IRootChainManager" not found in "contracts/chain-adapters/interfaces/AdapterInterface.sol" (referenced as "../../contracts/chain-adapters/interfaces/AdapterInterface.sol").
+  --> script/deployments/DeployPolygonAdapter.s.sol:11:1:
+   |
+11 | import { IRootChainManager, IFxStateSender, DepositManager } from "../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (2904): Declaration "IFxStateSender" not found in "contracts/chain-adapters/interfaces/AdapterInterface.sol" (referenced as "../../contracts/chain-adapters/interfaces/AdapterInterface.sol").
+  --> script/deployments/DeployPolygonAdapter.s.sol:11:1:
+   |
+11 | import { IRootChainManager, IFxStateSender, DepositManager } from "../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Error (2904): Declaration "DepositManager" not found in "contracts/chain-adapters/interfaces/AdapterInterface.sol" (referenced as "../../contracts/chain-adapters/interfaces/AdapterInterface.sol").
+  --> script/deployments/DeployPolygonAdapter.s.sol:11:1:
+   |
+11 | import { IRootChainManager, IFxStateSender, DepositManager } from "../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,35 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Deploying Base_SpokePool on chain 8453
+  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Hub Pool: 0xc186fA914353c44b2E33eBE05f21846F1048bEda
+  WETH: 0x4200000000000000000000000000000000000006
+  USDC: 0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA
+  CCTP Token Messenger: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962
+  Base_SpokePool implementation deployed at: 0x5147c5C1Cb5b5D3f56186C37a4bcFBb3Cd0bD5A7
+  ProxyAdmin deployed at: 0xF2cb3cfA36Bfb95E0FD855C1b41Ab19c517FcDB9
+  Base_SpokePool proxy deployed at: 0xC3549920b94a795D75E6C003944943D552C46F97
+  ProxyAdmin ownership transferred to: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 8453
+
+Estimated gas price: 0.0023145 gwei
+
+Estimated total gas used for script: 7746590
+
+Estimated amount required: 0.000017929482555 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/matt/git/contracts-v2/broadcast/DeployBaseSpokePool.s.sol/8453/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/matt/git/contracts-v2/cache/DeployBaseSpokePool.s.sol/8453/dry-run/run-latest.json
+

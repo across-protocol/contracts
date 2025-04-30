@@ -1,0 +1,35 @@
+No files changed, compilation skipped
+Script ran successfully.
+
+== Logs ==
+  Deploying Optimism_SpokePool on chain 10
+  Deployer: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+  Hub Pool: 0xc186fA914353c44b2E33eBE05f21846F1048bEda
+  CrossDomainMessenger: 0x4200000000000000000000000000000000000007
+  L2StandardBridge: 0x4200000000000000000000000000000000000010
+  Token: 0x4200000000000000000000000000000000000006
+  Optimism_SpokePool implementation deployed at: 0x70E5370b8981Abc6e14C91F4AcE823954EFC8eA3
+  ProxyAdmin deployed at: 0x4000F8820522AC96C4221b299876e3e53bCc8525
+  Optimism_SpokePool proxy deployed at: 0x9338CA7d556248055f5751d85cDA7aD6eF254433
+  ProxyAdmin ownership transferred to: 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 10
+
+Estimated gas price: 0.00684872 gwei
+
+Estimated total gas used for script: 7785927
+
+Estimated amount required: 0.00005332363396344 ETH
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: /Users/matt/git/contracts-v2/broadcast/DeployOptimismSpokePool.s.sol/10/dry-run/run-latest.json
+
+Sensitive values saved to: /Users/matt/git/contracts-v2/cache/DeployOptimismSpokePool.s.sol/10/dry-run/run-latest.json
+
