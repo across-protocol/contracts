@@ -19,6 +19,7 @@ artifacts-zk
 
 # Foundry files
 broadcast/
+script/deployments/tested/
 
 # Upgradeability files
 .openzeppelin
