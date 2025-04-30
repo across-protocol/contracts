@@ -123,8 +123,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _computeETHTxCost(L2_GAS_LIMIT);
 
-        // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
-        bytes32 canonicalTxHash = BRIDGE_HUB.requestL2TransactionDirect{ value: txBaseCost }(
+        BRIDGE_HUB.requestL2TransactionDirect{ value: txBaseCost }(
             BridgeHubInterface.L2TransactionRequestDirect({
                 chainId: CHAIN_ID,
                 mintValue: txBaseCost,
