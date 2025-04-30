@@ -230,7 +230,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
             );
         } else if (l1Token == address(usdcToken)) {
             // Since we already checked if we are bridging USDC via CCTP, if this conditional is hit, then we must be bridging USDC via the `USDC_SHARED_BRIDGE`.
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(USDC_SHARED_BRIDGE, txBaseCost);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
             IERC20(l1Token).forceApprove(USDC_SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
