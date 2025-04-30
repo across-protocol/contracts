@@ -28,7 +28,7 @@ jobs:
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2025-04-01
+          toolchain: nightly
           profile: minimal
           components: rustc, rustfmt
       - name: Install packages
@@ -69,7 +69,7 @@ jobs:
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly-2025-04-01
+          toolchain: stable
           profile: minimal
           components: rustc
       - name: Cache Cargo dependencies
