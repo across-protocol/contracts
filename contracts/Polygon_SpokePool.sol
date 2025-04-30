@@ -178,9 +178,12 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
 
     /**
      * @notice Override multicall so that it cannot include executeRelayerRefundLeaf
-     * as one of the calls combined with other public function calls.
+     * as one of the calls combined with other public function calls and blocks nested multicalls in general, which
+     * don't have any practical use case. We also block nested multicalls which could be used to bypass
+     * this check and there are no practical use cases for nested multicalls.
      * @dev Multicalling a single transaction will always succeed.
      * @dev Multicalling execute functions without combining other public function calls will succeed.
+     * @dev Nested multicalls will always fail.
      * @dev Multicalling public function calls without combining execute functions will succeed.
      */
     function _validateMulticallData(bytes[] calldata data) internal pure override {
@@ -188,7 +191,9 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         bool hasExecutedLeafCall = false;
         for (uint256 i = 0; i < data.length; i++) {
             bytes4 selector = bytes4(data[i][:4]);
-            if (selector == SpokePoolInterface.executeRelayerRefundLeaf.selector) {
+            if (selector == MultiCallerUpgradeable.multicall.selector) {
+                revert MulticallExecuteLeaf();
+            } else if (selector == SpokePoolInterface.executeRelayerRefundLeaf.selector) {
                 if (hasOtherPublicFunctionCall) revert MulticallExecuteLeaf();
                 hasExecutedLeafCall = true;
             } else {
@@ -211,9 +216,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     ) public payable override {
         // AddressLibUpgradeable.isContract isn't a sufficient check because it checks the contract code size of
         // msg.sender which is 0 if called from a constructor function on msg.sender. This is why we check if
-        // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode.
+        // msg.sender is equal to tx.origin which is fine as long as Polygon supports the tx.origin opcode. We also
+        // check if the msg.sender has delegated their code to a contract via EIP7702.
         // solhint-disable-next-line avoid-tx-origin
-        if (relayerRefundLeaf.amountToReturn > 0 && msg.sender != tx.origin) revert NotEOA();
+        if (relayerRefundLeaf.amountToReturn > 0 && (msg.sender != tx.origin || msg.sender.code.length > 0))
+            revert NotEOA();
         super.executeRelayerRefundLeaf(rootBundleId, relayerRefundLeaf, proof);
     }
 
@@ -238,6 +245,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        // WARNING: Withdrawing MATIC can result in the L1 PolygonTokenBridger.startExitWithBurntTokens() failing
+        // due to a MAX_LOGS constraint imposed by the ERC20Predicate, so if this SpokePool will be used to withdraw
+        // MATIC then additional constraints need to be imposed to limit the # of logs produed by the L2 withdrawal
+        // transaction. Currently, MATIC is not a supported token in Across for this SpokePool.
+
         // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);

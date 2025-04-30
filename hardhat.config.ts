@@ -163,7 +163,7 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
-      url: getNodeUrl("polygon-mainnet", true, CHAIN_IDs.POLYGON),
+      url: "https://polygon-rpc.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
