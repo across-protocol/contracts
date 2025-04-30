@@ -399,8 +399,8 @@ describe("svm_spoke.fill.across_plus", () => {
     );
   });
 
-  describe.only("codama client and solana kit", () => {
-    it.only("Forwards tokens to the final recipient within invoked message call using codama client", async () => {
+  describe("codama client and solana kit", () => {
+    it("Forwards tokens to the final recipient within invoked message call using codama client", async () => {
       const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
 
       // Construct ix to transfer all tokens from handler to the final recipient.
