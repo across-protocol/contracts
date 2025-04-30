@@ -148,8 +148,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
         IERC20(CUSTOM_GAS_TOKEN).forceApprove(BRIDGE_HUB.sharedBridge(), txBaseCost);
 
-        // Returns the hash of the requested L2 transaction. This hash can be used to follow the transaction status.
-        bytes32 canonicalTxHash = BRIDGE_HUB.requestL2TransactionDirect(
+        BRIDGE_HUB.requestL2TransactionDirect(
             BridgeHubInterface.L2TransactionRequestDirect({
                 chainId: CHAIN_ID,
                 mintValue: txBaseCost,
