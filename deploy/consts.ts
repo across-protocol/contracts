@@ -39,7 +39,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
-    scrollGasPriceOracle: "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
+    scrollGasPriceOracle: "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
     blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
     blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",

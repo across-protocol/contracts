@@ -455,6 +455,9 @@ describe("SpokePool Relayer Logic", async function () {
         updatedOutputAmount = relayData.outputAmount.add(1);
         updatedRecipient = randomAddress();
         updatedMessage = createRandomBytes32();
+        relayData.originChainId = await spokePool.chainId(); // Use spoke pool chain ID so that
+        // we can call speedUpDeposit and fillRelayWithUpdatedDeposit on the same
+        // spoke pool and verify the same signature.
         await destErc20.connect(relayer).approve(spokePool.address, updatedOutputAmount);
         signature = await getUpdatedV3DepositSignature(
           depositor,
@@ -464,6 +467,42 @@ describe("SpokePool Relayer Logic", async function () {
           addressToBytes(updatedRecipient),
           updatedMessage
         );
+      });
+      it("Verifies same signature as speedUpDeposit", async function () {
+        // Both fillRelayWithUpdatedDeposit and speedUpDeposit use the same signature, meaning that they both
+        // verify the signature using the same internal logic. None of the following
+        // calls should revert
+        await spokePool
+          .connect(relayer)
+          .fillRelayWithUpdatedDeposit(
+            relayData,
+            repaymentChainId,
+            addressToBytes(relayer.address),
+            updatedOutputAmount,
+            addressToBytes(updatedRecipient),
+            updatedMessage,
+            signature
+          );
+        await spokePool
+          .connect(depositor)
+          .speedUpV3Deposit(
+            depositor.address,
+            relayData.depositId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+          );
+        await spokePool
+          .connect(depositor)
+          .speedUpDeposit(
+            addressToBytes(depositor.address),
+            relayData.depositId,
+            updatedOutputAmount,
+            addressToBytes(updatedRecipient),
+            updatedMessage,
+            signature
+          );
       });
       it("in absence of exclusivity", async function () {
         // Clock drift between spokes can mean exclusivityDeadline is in future even when no exclusivity was applied.
