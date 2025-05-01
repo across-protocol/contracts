@@ -37,11 +37,6 @@ type GetSignaturesForAddressConfig = Parameters<GetSignaturesForAddressApi["getS
 
 type GetSignaturesForAddressTransaction = ReturnType<GetSignaturesForAddressApi["getSignaturesForAddress"]>[number];
 
-export type RpcClient = {
-  rpc: Rpc<SolanaRpcApiFromTransport<RpcTransport>>;
-  rpcSubscriptions: RpcSubscriptions<SignatureNotificationsApi & SlotNotificationsApi>;
-};
-
 /**
  * Reads all events for a specific program.
  */
@@ -227,7 +222,7 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function sendTransactionWithAlt(
+export async function sendTransactionWithLookupTable(
   client: RpcClient,
   payer: KeyPairSigner,
   instructions: IInstruction[],
