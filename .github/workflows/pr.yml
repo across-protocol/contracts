@@ -115,6 +115,8 @@ jobs:
       matrix:
         node:
           - 20
+    env:
+      CARGO_TARGET_DIR: target # 👈 force a consistent target dir
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -143,6 +145,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Regular Anchor build
         run: anchor build -- --features test
+      - name: Check contents of target/deploy
+        run: ls -lh target/deploy
       # - name: Install packages
       #   run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Test verified build
