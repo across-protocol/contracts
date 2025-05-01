@@ -24,7 +24,7 @@ jobs:
         with:
           anchor_version: ${{ steps.versions.outputs.anchor_version }}
           solana_version: ${{ steps.versions.outputs.solana_version }}
-          node_version: 20
+          node_version: ${{ matrix.node }}
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -67,7 +67,7 @@ jobs:
         with:
           anchor_version: ${{ steps.versions.outputs.anchor_version }}
           solana_version: ${{ steps.versions.outputs.solana_version }}
-          node_version: 20
+          node_version: ${{ matrix.node }}
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -110,7 +110,7 @@ jobs:
           anchor_version: ${{ steps.versions.outputs.anchor_version }}
           solana_version: ${{ steps.versions.outputs.solana_version }}
           verify_version: 0.4.3
-          node_version: 20
+          node_version: ${{ matrix.node }}
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
