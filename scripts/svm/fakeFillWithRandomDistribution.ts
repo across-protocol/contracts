@@ -20,7 +20,7 @@ import {
   calculateRelayHashUint8Array,
   getSpokePoolProgram,
   loadFillRelayParams,
-  sendTransactionWithLookupTableV1,
+  sendTransactionWithLookupTable,
 } from "../../src/svm/web3-v1";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
 
@@ -219,7 +219,7 @@ async function fillV3RelayToRandom(): Promise<void> {
     .instruction();
 
   // Fill using the ALT.
-  const { txSignature } = await sendTransactionWithLookupTableV1(
+  const { txSignature } = await sendTransactionWithLookupTable(
     provider.connection,
     [approveInstruction, fillInstruction],
     signer

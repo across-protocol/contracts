@@ -41,7 +41,7 @@ import {
   intToU8Array32,
   loadFillRelayParams,
   MulticallHandlerCoder,
-  sendTransactionWithLookupTableV1,
+  sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
 } from "../../src/svm/web3-v1";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";

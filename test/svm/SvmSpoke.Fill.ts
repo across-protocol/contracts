@@ -43,7 +43,7 @@ import {
   hashNonEmptyMessage,
   intToU8Array32,
   readEventsUntilFound,
-  sendTransactionWithLookupTableV1,
+  sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
 } from "../../src/svm/web3-v1";
 import { FillDataValues, RelayData } from "../../src/types/svm";
 import { common } from "./SvmSpoke.common";

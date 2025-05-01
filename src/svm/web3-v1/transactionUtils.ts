@@ -12,7 +12,7 @@ import {
 /**
  * Sends a transaction using an Address Lookup Table for large numbers of accounts.
  */
-export async function sendTransactionWithLookupTableV1(
+export async function sendTransactionWithLookupTable(
   connection: Connection,
   instructions: TransactionInstruction[],
   sender: Keypair
