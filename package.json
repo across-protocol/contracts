@@ -43,7 +43,7 @@
     "anchor-build": "sh ./scripts/anchor-build.sh"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.46",
+    "@across-protocol/constants": "^3.1.63",
     "@coral-xyz/anchor": "^0.30.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
