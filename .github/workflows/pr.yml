@@ -139,6 +139,8 @@ jobs:
           toolchain: stable
           profile: minimal
           components: rustc
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
       - name: Test verified build
