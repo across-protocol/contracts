@@ -1,0 +1,63 @@
+name: Checks
+on: [push, pull_request]
+jobs:
+  install:
+    name: Install dependencies
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+        cargo:
+          - stable
+          - nightly
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install Cargo toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.cargo }}
+          profile: minimal
+          components: rustc, rustfmt
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Install node packages
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Upload node_modules for reuse
+        uses: actions/upload-artifact@v3
+        with:
+          name: node_modules-${{ matrix.node }}-${{ matrix.cargo }}
+          path: node_modules
+  lint:
+    name: Lint
+    needs: install
+    strategy:
+      matrix:
+        node:
+          - 20
+        cargo:
+          - stable
+          - nightly
+    if: matrix.cargo == 'nightly'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reuse node_modules from install
+        uses: actions/upload-artifact@v3
+        with:
+          name: node_modules-${{ matrix.node }}-${{ matrix.cargo }}
+          path: node_modules
+      - name: Lint js
+        shell: bash
+        run: yarn lint-js
+      - name: Lint solidity
+        shell: bash
+        run: yarn lint-solidity
+      - name: Lint rust
+        shell: bash
+        run: yarn lint-rust
