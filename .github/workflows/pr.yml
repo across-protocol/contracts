@@ -141,14 +141,10 @@ jobs:
           components: rustc
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Regular Anchor build
-        run: anchor build
+      - name: Prime cargo metadata
+        run: cargo metadata --locked --no-deps
       - name: Test Anchor build
         run: anchor build -- --features test
-      - name: "Debug 1: Where am I?"
-        run: pwd
-      - name: "Debug 2: Confirm Anchor.toml is in cwd"
-        run: ls -l Anchor.toml
       - name: Search for .so files anywhere
         run: find . -name '*.so' || echo "No .so files found"
       # - name: Debug 3: List all target output files
