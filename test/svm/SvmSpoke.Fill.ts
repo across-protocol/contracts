@@ -766,7 +766,7 @@ describe("svm_spoke.fill", () => {
       recipientAccount = await getAccount(connection, recipientTA);
       assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
     });
-    it.only("Fills a V3 relay with ALT", async () => {
+    it("Fills a V3 relay with ALT", async () => {
       const rpcClient = createDefaultSolanaClient();
       const signer = await createSignerFromKeyPair(await createKeyPairFromBytes(relayer.secretKey));
 
