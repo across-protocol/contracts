@@ -75,7 +75,7 @@ abstract contract SpokePool is
     RootBundle[] public rootBundles;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    mapping(address => mapping(uint256 => bool)) public DEPRECATED_enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) private DEPRECATED_enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
