@@ -145,10 +145,14 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Regular Anchor build
         run: anchor build -- --features test
-      - name: Check contents of target/deploy
-        run: ls -lh target/deploy
-      - name: Check target size
-        run: du -sh target
+      - name: "Debug 1: Where am I?"
+        run: pwd
+      - name: "Debug 2: Confirm Anchor.toml is in cwd"
+        run: ls -l Anchor.toml
+      # - name: Debug 3: List all target output files
+      #   run: find target -type f | sort
+      # - name: Debug 4: Check for .so files anywhere
+      #   run: find target -name '*.so' || echo "No .so files"
       # - name: Install packages
       #   run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Test verified build
