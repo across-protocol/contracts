@@ -147,8 +147,8 @@ jobs:
         run: anchor build -- --features test
       - name: Search for .so files anywhere
         run: find . -name '*.so' || echo "No .so files found"
-      # - name: Install packages
-      #   run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Test verified build
       #   run: yarn test-solana-verify
   forge:
