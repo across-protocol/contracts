@@ -147,6 +147,8 @@ jobs:
         run: anchor build -- --features test
       - name: Check contents of target/deploy
         run: ls -lh target/deploy
+      - name: Check target size
+        run: du -sh target
       # - name: Install packages
       #   run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Test verified build
