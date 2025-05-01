@@ -175,6 +175,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
+  56: {
+    helios: "0x6999526e507Cc3b03b180BbE05E1Ff938259A874",
+  },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
     cctpTokenMessenger: "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",

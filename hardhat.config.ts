@@ -169,6 +169,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    bsc: {
+      chainId: 56,
+      url: "https://binance.llamarpc.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     boba: {
       chainId: CHAIN_IDs.BOBA,
       url: getNodeUrl("boba", true, CHAIN_IDs.BOBA),
@@ -376,6 +383,7 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
+      bsc: process.env.BNB_ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
       tatara: "blockscout",
