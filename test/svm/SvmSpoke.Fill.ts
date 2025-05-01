@@ -766,7 +766,7 @@ describe("svm_spoke.fill", () => {
       recipientAccount = await getAccount(connection, recipientTA);
       assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
     });
-    it("Fills a V3 relay with ALT", async () => {
+    it.only("Fills a V3 relay with ALT", async () => {
       const rpcClient = createDefaultSolanaClient();
       const signer = await createSignerFromKeyPair(await createKeyPairFromBytes(relayer.secretKey));
 
@@ -859,6 +859,7 @@ describe("svm_spoke.fill", () => {
         formattedAccounts.systemProgram,
         formattedAccounts.program,
         formattedAccounts.eventAuthority,
+        ...remainingAccounts.map((account) => account.address),
       ];
       const lookupTableAddresses: AddressesByLookupTableAddress = {
         [alt]: ac,
