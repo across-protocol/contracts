@@ -27,6 +27,9 @@ import {
 } from "@solana-program/address-lookup-table";
 import { RpcClient } from "./types";
 
+/**
+ * Signs and sends a transaction.
+ */
 export const signAndSendTransaction = async (
   rpcClient: RpcClient,
   transactionMessage: CompilableTransactionMessage & TransactionMessageWithBlockhashLifetime,
@@ -48,6 +51,10 @@ export const createDefaultTransaction = async (rpcClient: RpcClient, signer: Tra
     (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx)
   );
 };
+
+/**
+ * Sends a transaction with an Address Lookup Table.
+ */
 export async function sendTransactionWithLookupTable(
   client: RpcClient,
   payer: KeyPairSigner,
@@ -70,6 +77,9 @@ export async function sendTransactionWithLookupTable(
   );
 }
 
+/**
+ * Creates an Address Lookup Table.
+ */
 export async function createLookupTable(client: RpcClient, authority: KeyPairSigner): Promise<Address> {
   const recentSlot = await client.rpc.getSlot({ commitment: "finalized" }).send();
 
@@ -92,6 +102,9 @@ export async function createLookupTable(client: RpcClient, authority: KeyPairSig
   return alt;
 }
 
+/**
+ * Extends an Address Lookup Table.
+ */
 export async function extendLookupTable(
   client: RpcClient,
   authority: KeyPairSigner,
