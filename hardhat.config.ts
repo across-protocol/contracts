@@ -79,6 +79,7 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -164,6 +165,13 @@ const config: HardhatUserConfig = {
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
       url: "https://polygon-rpc.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    bsc: {
+      chainId: 56,
+      url: "https://binance.llamarpc.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -375,6 +383,7 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
+      bsc: process.env.BNB_ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
       tatara: "blockscout",

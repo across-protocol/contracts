@@ -41,9 +41,6 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
     // Solana spoke pool address, mapped to its EVM address representation.
     address public immutable SOLANA_SPOKE_POOL_ADDRESS;
 
-    // USDC mint address on Solana, decoded from Base58 to bytes32.
-    bytes32 public immutable SOLANA_USDC_BYTES32;
-
     // USDC mint address on Solana, mapped to its EVM address representation.
     address public immutable SOLANA_USDC_ADDRESS;
 
@@ -56,8 +53,6 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
 
     // Custom errors for relayMessage validation.
     error InvalidRelayMessageTarget(address target);
-    error InvalidOriginToken(address originToken);
-    error InvalidDestinationChainId(uint256 destinationChainId);
 
     // Custom errors for relayTokens validation.
     error InvalidL1Token(address l1Token);
@@ -95,7 +90,6 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         SOLANA_SPOKE_POOL_BYTES32 = solanaSpokePool;
         SOLANA_SPOKE_POOL_ADDRESS = solanaSpokePool.toAddressUnchecked();
 
-        SOLANA_USDC_BYTES32 = solanaUsdc;
         SOLANA_USDC_ADDRESS = solanaUsdc.toAddressUnchecked();
 
         SOLANA_SPOKE_POOL_USDC_VAULT = solanaSpokePoolUsdcVault;
@@ -111,17 +105,7 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
         if (target != SOLANA_SPOKE_POOL_ADDRESS) {
             revert InvalidRelayMessageTarget(target);
         }
-
-        bytes4 selector = bytes4(message[:4]);
-        if (selector == SpokePoolInterface.setEnableRoute.selector) {
-            cctpMessageTransmitter.sendMessage(
-                CircleDomainIds.Solana,
-                SOLANA_SPOKE_POOL_BYTES32,
-                _translateSetEnableRoute(message)
-            );
-        } else {
-            cctpMessageTransmitter.sendMessage(CircleDomainIds.Solana, SOLANA_SPOKE_POOL_BYTES32, message);
-        }
+        cctpMessageTransmitter.sendMessage(CircleDomainIds.Solana, SOLANA_SPOKE_POOL_BYTES32, message);
 
         // TODO: consider if we need also to emit the translated message.
         emit MessageRelayed(target, message);
@@ -158,33 +142,5 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
 
         // TODO: consider if we need also to emit the translated addresses.
         emit TokensRelayed(l1Token, l2Token, amount, to);
-    }
-
-    /**
-     * @notice Translates a message to enable/disable a route on Solana spoke pool.
-     * @param message Message to translate, expecting setEnableRoute(address,uint256,bool).
-     * @return Translated message, using setEnableRoute(bytes32,uint64,bool).
-     */
-    function _translateSetEnableRoute(bytes calldata message) internal view returns (bytes memory) {
-        (address originToken, uint256 destinationChainId, bool enable) = abi.decode(
-            message[4:],
-            (address, uint256, bool)
-        );
-
-        if (originToken != SOLANA_USDC_ADDRESS) {
-            revert InvalidOriginToken(originToken);
-        }
-
-        if (destinationChainId > type(uint64).max) {
-            revert InvalidDestinationChainId(destinationChainId);
-        }
-
-        return
-            abi.encodeWithSignature(
-                "setEnableRoute(bytes32,uint64,bool)",
-                SOLANA_USDC_BYTES32,
-                uint64(destinationChainId),
-                enable
-            );
     }
 }
