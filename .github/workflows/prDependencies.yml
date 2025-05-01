@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Reuse node_modules from install
-        uses: actions/upload-artifact@v3
+        uses: actions/download-artifact@v3
         with:
           name: node_modules-${{ matrix.node }}-${{ matrix.cargo }}
           path: node_modules
