@@ -1,35 +1,6 @@
 import { BorshEventCoder, Idl, utils } from "@coral-xyz/anchor";
-import web3, {
-  Address,
-  AddressesByLookupTableAddress,
-  appendTransactionMessageInstruction,
-  appendTransactionMessageInstructions,
-  Commitment,
-  compressTransactionMessageUsingAddressLookupTables as compressTxWithAlt,
-  getSignatureFromTransaction,
-  GetSignaturesForAddressApi,
-  GetTransactionApi,
-  IInstruction,
-  KeyPairSigner,
-  pipe,
-  Rpc,
-  RpcSubscriptions,
-  RpcTransport,
-  sendAndConfirmTransactionFactory,
-  Signature,
-  SignatureNotificationsApi,
-  signTransactionMessageWithSigners,
-  SlotNotificationsApi,
-  SolanaRpcApiFromTransport,
-} from "@solana/kit";
-
-import {
-  fetchAddressLookupTable,
-  findAddressLookupTablePda,
-  getCreateLookupTableInstructionAsync,
-  getExtendLookupTableInstruction,
-} from "@solana-program/address-lookup-table";
-import { createDefaultTransaction, signAndSendTransaction } from "../../../test/svm/utils";
+import web3, { Address, Commitment, GetSignaturesForAddressApi, GetTransactionApi, Signature } from "@solana/kit";
+import { RpcClient } from "./types";
 
 type GetTransactionReturnType = ReturnType<GetTransactionApi["getTransaction"]>;
 
@@ -169,77 +140,4 @@ export async function readFillEventFromFillStatusPda(
   // will therefore be either spam or PDA closure signatures and can be ignored when looking for the fill event.
   const events = await readEvents(client, signatures[signatures.length - 1].signature, programId, programIdl);
   return { event: events[0], slot: Number(signatures[signatures.length - 1].slot) };
-}
-
-export async function createAlt(client: RpcClient, authority: KeyPairSigner): Promise<Address> {
-  const recentSlot = await client.rpc.getSlot({ commitment: "finalized" }).send();
-
-  const [alt] = await findAddressLookupTablePda({
-    authority: authority.address,
-    recentSlot,
-  });
-
-  const createAltIx = await getCreateLookupTableInstructionAsync({
-    authority,
-    recentSlot,
-  });
-
-  await pipe(
-    await createDefaultTransaction(client, authority),
-    (tx) => appendTransactionMessageInstruction(createAltIx, tx),
-    (tx) => signAndSendTransaction(client, tx)
-  );
-
-  return alt;
-}
-
-export async function extendAlt(client: RpcClient, authority: KeyPairSigner, alt: Address, addresses: Address[]) {
-  const extendAltIx = getExtendLookupTableInstruction({
-    address: alt,
-    authority,
-    payer: authority,
-    addresses,
-  });
-
-  await pipe(
-    await createDefaultTransaction(client, authority),
-    (tx) => appendTransactionMessageInstruction(extendAltIx, tx),
-    (tx) => signAndSendTransaction(client, tx)
-  );
-
-  const altAccount = await fetchAddressLookupTable(client.rpc, alt);
-
-  const addressesByLookupTableAddress: AddressesByLookupTableAddress = {};
-  addressesByLookupTableAddress[alt] = altAccount.data.addresses;
-
-  // Delay a second here to let lookup table warm up
-  await sleep(1000);
-
-  return addressesByLookupTableAddress;
-}
-
-async function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-export async function sendTransactionWithLookupTable(
-  client: RpcClient,
-  payer: KeyPairSigner,
-  instructions: IInstruction[],
-  addressesByLookupTableAddress: AddressesByLookupTableAddress
-) {
-  return pipe(
-    await createDefaultTransaction(client, payer),
-    (tx) => appendTransactionMessageInstructions(instructions, tx),
-    (tx) => compressTxWithAlt(tx, addressesByLookupTableAddress),
-    (tx) => signTransactionMessageWithSigners(tx),
-    async (tx) => {
-      const signedTx = await tx;
-      await sendAndConfirmTransactionFactory(client)(signedTx, {
-        commitment: "confirmed",
-        skipPreflight: false,
-      });
-      return getSignatureFromTransaction(signedTx);
-    }
-  );
 }

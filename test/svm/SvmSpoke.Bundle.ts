@@ -15,7 +15,7 @@ import {
   loadExecuteRelayerRefundLeafParams,
   readEventsUntilFound,
   relayerRefundHashFn,
-  sendTransactionWithLookupTable,
+  sendTransactionWithLookupTableV1,
 } from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 import { MerkleTree } from "../../utils";
@@ -1130,7 +1130,7 @@ describe("svm_spoke.bundle", () => {
       instructions.push(executeInstruction);
 
       // Execute using ALT.
-      await sendTransactionWithLookupTable(
+      await sendTransactionWithLookupTableV1(
         connection,
         instructions,
         (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
@@ -1864,7 +1864,7 @@ describe("svm_spoke.bundle", () => {
       if (!testConfig.separatePhases) {
         // Pack all instructions in one transaction.
         if (testConfig.useAddressLookup)
-          await sendTransactionWithLookupTable(
+          await sendTransactionWithLookupTableV1(
             connection,
             instructions,
             (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
@@ -1881,17 +1881,17 @@ describe("svm_spoke.bundle", () => {
       } else {
         // Send claim account initialization, execution and claim in separate transactions.
         if (testConfig.useAddressLookup) {
-          await sendTransactionWithLookupTable(
+          await sendTransactionWithLookupTableV1(
             connection,
             initializeInstructions,
             (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
           );
-          await sendTransactionWithLookupTable(
+          await sendTransactionWithLookupTableV1(
             connection,
             [executeInstruction],
             (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
           );
-          await sendTransactionWithLookupTable(
+          await sendTransactionWithLookupTableV1(
             connection,
             claimInstructions,
             (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer

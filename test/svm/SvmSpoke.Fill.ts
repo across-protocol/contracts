@@ -29,25 +29,38 @@ import {
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { Keypair, PublicKey, sendAndConfirmTransaction, Transaction, TransactionInstruction } from "@solana/web3.js";
-import { createAlt, extendAlt, sendTransactionWithAlt, SvmSpokeClient } from "../../src/svm";
+import {
+  createLookupTable,
+  createDefaultTransaction,
+  extendLookupTable,
+  sendTransactionWithLookupTable,
+  signAndSendTransaction,
+  SvmSpokeClient,
+} from "../../src/svm";
 import { FillRelayAsyncInput } from "../../src/svm/clients/SvmSpoke";
 import {
   calculateRelayHashUint8Array,
   hashNonEmptyMessage,
   intToU8Array32,
   readEventsUntilFound,
-  sendTransactionWithLookupTable,
+  sendTransactionWithLookupTableV1,
 } from "../../src/svm/web3-v1";
 import { FillDataValues, RelayData } from "../../src/types/svm";
 import { common } from "./SvmSpoke.common";
-import {
-  createDefaultSolanaClient,
-  createDefaultTransaction,
-  signAndSendTransaction,
-  testAcrossPlusMessage,
-} from "./utils";
-const { provider, connection, program, owner, chainId, seedBalance } = common;
-const { recipient, initializeState, setCurrentTime, assertSE, assert } = common;
+import { createDefaultSolanaClient, testAcrossPlusMessage } from "./utils";
+const {
+  provider,
+  connection,
+  program,
+  owner,
+  chainId,
+  seedBalance,
+  recipient,
+  initializeState,
+  setCurrentTime,
+  assertSE,
+  assert,
+} = common;
 
 describe("svm_spoke.fill", () => {
   anchor.setProvider(provider);
@@ -550,7 +563,7 @@ describe("svm_spoke.fill", () => {
     );
 
     // Fill using the ALT.
-    await sendTransactionWithLookupTable(
+    await sendTransactionWithLookupTableV1(
       connection,
       [createTokenAccountsInstruction, approveInstruction, ...fillInstructions],
       relayer
@@ -832,7 +845,7 @@ describe("svm_spoke.fill", () => {
       }));
       (fillRelayIx.accounts as IAccountMeta<string>[]).push(...remainingAccounts);
 
-      const alt = await createAlt(rpcClient, signer);
+      const alt = await createLookupTable(rpcClient, signer);
 
       const ac: Address[] = [
         formattedAccounts.state,
@@ -850,9 +863,14 @@ describe("svm_spoke.fill", () => {
       const lookupTableAddresses: AddressesByLookupTableAddress = {
         [alt]: ac,
       };
-      await extendAlt(rpcClient, signer, alt, ac);
+      await extendLookupTable(rpcClient, signer, alt, ac);
 
-      const tx = await sendTransactionWithAlt(rpcClient, signer, [approveIx, fillRelayIx], lookupTableAddresses);
+      const tx = await sendTransactionWithLookupTable(
+        rpcClient,
+        signer,
+        [approveIx, fillRelayIx],
+        lookupTableAddresses
+      );
 
       const events = await readEventsUntilFound(connection, tx, [program]);
       const event = events.find((event) => event.name === "filledRelay")?.data;

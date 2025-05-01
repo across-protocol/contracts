@@ -23,7 +23,7 @@ import {
   calculateRelayHashUint8Array,
   MulticallHandlerCoder,
   AcrossPlusMessageCoder,
-  sendTransactionWithLookupTable,
+  sendTransactionWithLookupTableV1,
   readEventsUntilFound,
   calculateRelayEventHashUint8Array,
   slowFillHashFn,
@@ -350,7 +350,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
           );
         }
       }
-      await sendTransactionWithLookupTable(connection, [computeBudgetIx, requestIx], relayer);
+      await sendTransactionWithLookupTableV1(connection, [computeBudgetIx, requestIx], relayer);
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure request tx gets processed.
       if (bufferParams) {
         for (let i = 0; i < loadExecuteParamsInstructions.length; i += 1) {
@@ -361,7 +361,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
           );
         }
       }
-      await sendTransactionWithLookupTable(connection, [computeBudgetIx, executeIx], relayer);
+      await sendTransactionWithLookupTableV1(connection, [computeBudgetIx, executeIx], relayer);
 
       // Verify vault's balance after the fill
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure token transfers get processed.
@@ -439,7 +439,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         [relayer]
       );
     }
-    await sendTransactionWithLookupTable(connection, [requestIx], relayer);
+    await sendTransactionWithLookupTableV1(connection, [requestIx], relayer);
     await new Promise((resolve) => setTimeout(resolve, 1000)); // Make sure request tx gets processed.
     for (let i = 0; i < loadExecuteParamsInstructions.length; i += 1) {
       await sendAndConfirmTransaction(
@@ -448,7 +448,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         [relayer]
       );
     }
-    const { txSignature } = await sendTransactionWithLookupTable(connection, [executeIx], relayer);
+    const { txSignature } = await sendTransactionWithLookupTableV1(connection, [executeIx], relayer);
     await connection.confirmTransaction(txSignature, "confirmed");
     await connection.getTransaction(txSignature, {
       commitment: "confirmed",
