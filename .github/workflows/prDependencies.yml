@@ -38,13 +38,9 @@ jobs:
     name: Lint
     needs: install
     strategy:
-      matrix:
-        node:
-          - 20
-        cargo:
-          - stable
-          - nightly
-    if: matrix.cargo == 'nightly'
+    include:
+      - node: 20
+        cargo: nightly
     runs-on: ubuntu-latest
     steps:
       - name: Reuse node_modules from install
