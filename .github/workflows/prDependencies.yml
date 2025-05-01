@@ -1,4 +1,4 @@
-name: Checks
+name: Checks with dependencies
 on: [push, pull_request]
 jobs:
   install:
