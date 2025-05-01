@@ -143,6 +143,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Regular Anchor build
         run: anchor build
+      - name: Test Anchor build
+        run: anchor build -- --features test
       - name: "Debug 1: Where am I?"
         run: pwd
       - name: "Debug 2: Confirm Anchor.toml is in cwd"
