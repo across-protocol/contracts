@@ -147,10 +147,6 @@ jobs:
         run: anchor build -- --features test
       - name: Search for .so files anywhere
         run: find . -name '*.so' || echo "No .so files found"
-      # - name: Debug 3: List all target output files
-      #   run: find target -type f | sort
-      # - name: Debug 4: Check for .so files anywhere
-      #   run: find target -name '*.so' || echo "No .so files"
       # - name: Install packages
       #   run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Test verified build
