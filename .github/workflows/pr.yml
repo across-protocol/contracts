@@ -115,8 +115,6 @@ jobs:
       matrix:
         node:
           - 20
-    env:
-      CARGO_TARGET_DIR: target # 👈 force a consistent target dir
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -144,15 +142,13 @@ jobs:
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
       - name: Regular Anchor build
-        run: anchor build -- --features test
+        run: anchor build
       - name: "Debug 1: Where am I?"
         run: pwd
       - name: "Debug 2: Confirm Anchor.toml is in cwd"
         run: ls -l Anchor.toml
       - name: Search for .so files anywhere
         run: find . -name '*.so' || echo "No .so files found"
-      - name: Print Anchor.toml
-        run: cat Anchor.toml
       # - name: Debug 3: List all target output files
       #   run: find target -type f | sort
       # - name: Debug 4: Check for .so files anywhere
