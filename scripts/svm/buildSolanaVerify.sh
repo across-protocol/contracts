@@ -20,11 +20,19 @@ for program in programs/*; do
   mkdir -p target/idl
   mkdir -p target/types
   mkdir -p target/deploy
+  echo "target/idl/ before"
+  ls -la target/idl
+  echo "target/types/ before"
+  ls -la target/types
   anchor idl build \
     --program-name "$program_name" \
     --out "target/idl/$program_name.json" \
     --out-ts "target/types/$program_name.ts" \
     -- $CARGO_OPTIONS
+  echo "target/idl/ after"
+  ls -la target/idl
+  echo "target/types/ after"
+  ls -la target/types
 
   echo "Running verified build for $program_name"
   echo "target/deploy/ before"
