@@ -19,7 +19,7 @@ pub fn is_relay_hash_valid(relay_hash: &[u8; 32], relay_data: &RelayData, state:
 }
 
 // Implements the same underlying logic as in Anchor's associated_token constraint macro, except for token_program_check
-// as that would duplicate Anchor's token constraint macro that the caller already  uses.
+// as that would duplicate Anchor's token constraint macro that the caller already uses.
 // https://github.com/coral-xyz/anchor/blob/e6d7dafe12da661a36ad1b4f3b5970e8986e5321/lang/syn/src/codegen/accounts/constraints.rs#L1132
 pub fn is_valid_associated_token_account(
     token_account: &InterfaceAccount<TokenAccount>,
