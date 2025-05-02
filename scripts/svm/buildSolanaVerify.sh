@@ -40,6 +40,10 @@ for program in programs/*; do
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
   echo "target/deploy/ after"
   ls -la target/deploy
+
+  echo "Removing target/deploy/$program_name-keypair.json"
+  sudo rm -f "target/deploy/$program_name-keypair.json"
+
 done
 
 echo "Generating external program types"
