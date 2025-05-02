@@ -19,6 +19,7 @@ for program in programs/*; do
   echo "Generating IDL for $program_name"
   mkdir -p target/idl
   mkdir -p target/types
+  mkdir -p target/deploy
   anchor idl build \
     --program-name "$program_name" \
     --out "target/idl/$program_name.json" \
@@ -26,8 +27,10 @@ for program in programs/*; do
     -- $CARGO_OPTIONS
 
   echo "Running verified build for $program_name"
+  echo "target/deploy/ before"
   ls -la target/deploy
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
+  echo "target/deploy/ after"
   ls -la target/deploy
 done
 
