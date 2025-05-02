@@ -163,8 +163,8 @@ jobs:
         env:
           IS_TEST: true
         run: yarn build-solana-verify
-      - name: Fix permissions of target/deploy
-        run: sudo chown -R $(whoami) target/deploy
+      # - name: Fix permissions of target/deploy
+      #   run: sudo chown -R $(whoami) target/deploy
       - name: Search for .so files anywhere
         run: find . -name '*.so' || echo "No .so files found"
       - name: Generate SVM assets
