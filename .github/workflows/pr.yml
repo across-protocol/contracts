@@ -151,7 +151,10 @@ jobs:
         id: verified-test-build-cache
         uses: actions/cache@v4
         with:
-          path: target/deploy
+          path: |
+            target/deploy
+            target/idl
+            target/types
           key: verified-test-build-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
       - name: Check cached contents
         run: find target/deploy/ || echo "no target/deploy found"
