@@ -166,7 +166,7 @@ jobs:
         run: find . -name '*.so' || echo "No .so files found"
       - name: Generate SVM assets
         run: yarn generate-svm-assets
-      # - name: Test Anchor build
+      # - name: Anchor test
       #   run: anchor test --skip-build
   forge:
     name: Forge
