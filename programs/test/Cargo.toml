@@ -22,3 +22,4 @@ test = []
 anchor-lang = { version = "0.31.1", features = ["init-if-needed","event-cpi"]}
 anchor-spl = "0.31.1"
 svm-spoke = { path = "../svm-spoke", features = ["no-entrypoint"] }
+
