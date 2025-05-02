@@ -40,9 +40,6 @@ for program in programs/*; do
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
   echo "target/deploy/ after"
   ls -la target/deploy
-  echo "Keypair address"
-  sudo chown "$(whoami)" "target/deploy/$program_name-keypair.json"
-  solana-keygen pubkey "target/deploy/$program_name-keypair.json"
 done
 
 echo "Generating external program types"

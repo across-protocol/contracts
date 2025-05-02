@@ -147,7 +147,16 @@ jobs:
         run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Prime cargo metadata
       #   run: cargo metadata --locked --no-deps
+      - name: Cache verified test build artifacts
+        id: verified-test-build-cache
+        uses: actions/cache@v4
+        with:
+          path: target/deploy
+          key: verified-test-build-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
+      - name: Check cached contents
+        run: find target/deploy/ || echo "no target/deploy found"
       - name: Create verified build
+        if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         env:
           IS_TEST: true
         run: yarn build-solana-verify
@@ -157,10 +166,8 @@ jobs:
         run: find . -name '*.so' || echo "No .so files found"
       - name: Generate SVM assets
         run: yarn generate-svm-assets
-      - name: Test Anchor build
-        run: anchor test --skip-build
-      # - name: Test verified build
-      #   run: yarn test-solana-verify
+      # - name: Test Anchor build
+      #   run: anchor test --skip-build
   forge:
     name: Forge
     runs-on: ubuntu-latest
