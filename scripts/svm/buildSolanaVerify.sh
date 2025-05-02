@@ -41,6 +41,7 @@ for program in programs/*; do
   echo "target/deploy/ after"
   ls -la target/deploy
 
+  # We don't need keypair files from the verified build and they cause permission issues on CI
   echo "Removing target/deploy/$program_name-keypair.json"
   sudo rm -f "target/deploy/$program_name-keypair.json"
 
