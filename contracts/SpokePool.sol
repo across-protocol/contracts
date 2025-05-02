@@ -75,7 +75,7 @@ abstract contract SpokePool is
     RootBundle[] public rootBundles;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) private DEPRECATED_enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -307,21 +307,6 @@ abstract contract SpokePool is
      */
     function setWithdrawalRecipient(address newWithdrawalRecipient) public override onlyAdmin nonReentrant {
         _setWithdrawalRecipient(newWithdrawalRecipient);
-    }
-
-    /**
-     * @notice Enable/Disable an origin token => destination chain ID route for deposits. Callable by admin only.
-     * @param originToken Token that depositor can deposit to this contract.
-     * @param destinationChainId Chain ID for where depositor wants to receive funds.
-     * @param enabled True to enable deposits, False otherwise.
-     */
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enabled
-    ) public override onlyAdmin nonReentrant {
-        enabledDepositRoutes[originToken][destinationChainId] = enabled;
-        emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
     /**
@@ -1309,10 +1294,6 @@ abstract contract SpokePool is
         // Verify depositor is a valid EVM address.
         params.depositor.checkAddress();
 
-        // Check that deposit route is enabled for the input token. There are no checks required for the output token
-        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[params.inputToken.toAddress()][params.destinationChainId]) revert DisabledRoute();
-
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
@@ -1398,9 +1379,6 @@ abstract contract SpokePool is
         uint32 quoteTimestamp,
         bytes memory message
     ) internal {
-        // Check that deposit route is enabled.
-        if (!enabledDepositRoutes[originToken][destinationChainId]) revert DisabledRoute();
-
         // We limit the relay fees to prevent the user spending all their funds on fees.
         if (SignedMath.abs(relayerFeePct) >= 0.5e18) revert InvalidRelayerFeePct();
         if (amount > MAX_TRANSFER_SIZE) revert MaxTransferSizeExceeded();

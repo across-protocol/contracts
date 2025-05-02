@@ -9,6 +9,7 @@
     "Ethereum_Adapter": { "address": "0x527E872a5c3f0C7c24Fe33F2593cFB890a285084", "blockNumber": 14704381 },
     "SpokePool": { "address": "0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5", "blockNumber": 17117454 },
     "HubPool": { "address": "0xc186fA914353c44b2E33eBE05f21846F1048bEda", "blockNumber": 14819537 },
+    "HubPoolStore": { "address": "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61", "blockNumber": 22368469 },
     "LpTokenFactory": { "address": "0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d", "blockNumber": 14704307 },
     "Optimism_Adapter": { "address": "0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b", "blockNumber": 19915034 },
     "PolygonTokenBridger": { "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57", "blockNumber": 14819539 },
@@ -21,6 +22,7 @@
     "Mode_Adapter": { "address": "0xf1B59868697f3925b72889ede818B9E7ba0316d0", "blockNumber": 19914094 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 20277013 },
     "Lisk_Adapter": { "address": "0x8229E812f20537caA1e8Fb41749b4887B8a75C3B", "blockNumber": 20184545 },
+    "Universal_Adapter": { "address": "0x22001f37B586792F25Ef9d19d99537C6446e0833", "blockNumber": 22368546 },
     "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 },
     "Scroll_Adapter": { "address": "0x2DA799c2223c6ffB595e578903AE6b95839160d8", "blockNumber": 22325451 },
     "Blast_DaiRetriever": { "address": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB", "blockNumber": 20378862 },
@@ -45,6 +47,11 @@
   "11155420": {
     "SpokePool": { "address": "0x4e8E101924eDE233C13e2D8622DC8aED2872d505", "blockNumber": 7762656 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 14411096 }
+  },
+  "56": {
+    "SpokePool": { "address": "0x4e8E101924eDE233C13e2D8622DC8aED2872d505", "blockNumber": 48762335 },
+    "SpokePoolVerifier": { "address": "0x630b76C7cA96164a5aCbC1105f8BA8B739C82570", "blockNumber": 48762558 },
+    "MulticallHandler": { "address": "0xAC537C12fE8f544D712d71ED4376a502EEa944d7", "blockNumber": 48762440 }
   },
   "137": {
     "MintableERC1155": { "address": "0xA15a90E7936A2F8B70E181E955760860D133e56B", "blockNumber": 40600414 },

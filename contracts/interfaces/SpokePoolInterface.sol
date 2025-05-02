@@ -38,12 +38,6 @@ interface SpokePoolInterface {
 
     function setWithdrawalRecipient(address newWithdrawalRecipient) external;
 
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enable
-    ) external;
-
     function pauseDeposits(bool pause) external;
 
     function pauseFills(bool pause) external;
