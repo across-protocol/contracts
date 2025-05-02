@@ -790,7 +790,7 @@ pub mod svm_spoke {
         instructions::handle_receive_message(ctx, params)
     }
 
-    /// Sets the current time for the SVM Spoke Pool when running in test mode. Disabled on Mainnet.
+    /// Sets the current time for the SVM Spoke Pool when running in test mode. Disabled on  Mainnet.
     pub fn set_current_time(ctx: Context<SetCurrentTime>, new_time: u32) -> Result<()> {
         utils::set_current_time(ctx, new_time)
     }
