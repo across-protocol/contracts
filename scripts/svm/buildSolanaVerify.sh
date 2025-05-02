@@ -41,7 +41,7 @@ for program in programs/*; do
   echo "target/deploy/ after"
   ls -la target/deploy
   echo "Keypair address"
-  solana-keygen pubkey "target/deploy/$program_name-keypair.json"
+  sudo solana-keygen pubkey "target/deploy/$program_name-keypair.json"
 done
 
 echo "Generating external program types"
