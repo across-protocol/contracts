@@ -17,6 +17,8 @@ for program in programs/*; do
   # echo "Building program $program_name"
   # anchor build -p "$dir_name" -- $CARGO_OPTIONS
   echo "Generating IDL for $program_name"
+  mkdir -p target/idl
+  mkdir -p target/types
   anchor idl build \
     --program-name "$program_name" \
     --out "target/idl/$program_name.json" \
