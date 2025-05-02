@@ -174,7 +174,7 @@ pub struct SetEnableRoute<'info> {
 
     #[account(
         mint::token_program = token_program,
-        // IDL build fails when requiring address = origin_token for mint, thus using a custom  constraint.
+        // IDL build fails when requiring address = origin_token for mint, thus using a custom constraint.
         constraint = origin_token_mint.key() == origin_token @ SvmError::InvalidMint
     )]
     pub origin_token_mint: InterfaceAccount<'info, Mint>,
