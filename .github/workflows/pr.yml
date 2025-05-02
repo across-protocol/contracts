@@ -143,8 +143,8 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Prime cargo metadata
-        run: cargo metadata --locked --no-deps
+      # - name: Prime cargo metadata
+      #   run: cargo metadata --locked --no-deps
       - name: Create verified build
         env:
           IS_TEST: true
