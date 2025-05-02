@@ -141,6 +141,8 @@ jobs:
           components: rustc
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
+      - name: Search for cached .so files anywhere
+        run: find . -name '*.so' || echo "No .so files found"
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
       # - name: Prime cargo metadata
@@ -149,6 +151,8 @@ jobs:
         env:
           IS_TEST: true
         run: yarn build-solana-verify
+      - name: Fix permissions of target/deploy
+        run: sudo chown -R $(whoami) target/deploy
       - name: Search for .so files anywhere
         run: find . -name '*.so' || echo "No .so files found"
       - name: Generate SVM assets

@@ -26,7 +26,9 @@ for program in programs/*; do
     -- $CARGO_OPTIONS
 
   echo "Running verified build for $program_name"
+  ls -la target/deploy
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
+  ls -la target/deploy
 done
 
 echo "Generating external program types"
