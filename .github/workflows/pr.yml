@@ -141,14 +141,20 @@ jobs:
           components: rustc
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Prime cargo metadata
-        run: cargo metadata --locked --no-deps
-      - name: Test Anchor build
-        run: anchor build -- --features test
-      - name: Search for .so files anywhere
-        run: find . -name '*.so' || echo "No .so files found"
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
+      # - name: Prime cargo metadata
+      #   run: cargo metadata --locked --no-deps
+      - name: Create verified build
+        env:
+          IS_TEST: true
+        run: yarn build-solana-verify
+      - name: Search for .so files anywhere
+        run: find . -name '*.so' || echo "No .so files found"
+      - name: Generate SVM assets
+        run: yarn generate-svm-assets
+      - name: Test Anchor build
+        run: anchor test --skip-build
       # - name: Test verified build
       #   run: yarn test-solana-verify
   forge:

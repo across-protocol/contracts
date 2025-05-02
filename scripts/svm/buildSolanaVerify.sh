@@ -14,8 +14,14 @@ for program in programs/*; do
   program_name=${dir_name//-/_}
 
   # Regular build first so that it generates required IDL and types for the tests
-  echo "Building program $program_name"
-  anchor build -p "$dir_name" -- $CARGO_OPTIONS
+  # echo "Building program $program_name"
+  # anchor build -p "$dir_name" -- $CARGO_OPTIONS
+  echo "Generating IDL for $program_name"
+  anchor idl build \
+    --program-name "$program_name" \
+    --out "target/idl/$program_name.json" \
+    --out-ts "target/types/$program_name.ts" \
+    -- $CARGO_OPTIONS
 
   echo "Running verified build for $program_name"
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
