@@ -179,7 +179,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
   56: {
-    helios: "0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F",
+    helios: "0x3bed21dae767e4df894b31b14ad32369ce4bad8b",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
