@@ -143,8 +143,6 @@ jobs:
         uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      # - name: Prime cargo metadata
-      #   run: cargo metadata --locked --no-deps
       # Above cargo cache only applies to dependencies that are not reused in the verified docker build, hence we need
       # to manually cache the verified build artifacts if the program source code has not changed.
       - name: Cache verified test build artifacts
