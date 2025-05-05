@@ -125,7 +125,18 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Cache SVM assets
+        id: verified-test-assets-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            target/idl
+            target/types
+            src/svm/assets
+            src/svm/clients
+          key: v0-verified-test-assets-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
       - name: XXX
+        if: steps.verified-test-assets-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-svm-assets
         with:
           verify_version: 0.4.3
