@@ -37,4 +37,5 @@ runs:
     - name: Cache Cargo dependencies
       uses: Swatinem/rust-cache@v2
     - name: Build SVM assets
+      shell: bash
       run: bash ./scripts/svm/buildSvmAssets.sh
