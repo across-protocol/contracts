@@ -26,7 +26,7 @@
     "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo +nightly fmt  --all && cargo clippy",
     "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
-    "generate-svm-assets": "sh ./scripts/svm/buildIdl.sh && sh ./scripts/generate-svm-assets.sh && yarn generate-svm-clients",
+    "generate-svm-assets": "bash ./scripts/svm/buildIdl.sh && sh ./scripts/generate-svm-assets.sh && yarn generate-svm-clients",
     "generate-svm-clients": "yarn ts-node ./scripts/svm/utils/generate-svm-clients.ts && yarn ts-node ./scripts/svm/utils/rename-clients-imports.ts",
     "build-evm": "hardhat compile",
     "build-svm": "bash ./scripts/svm/buildSvm.sh && yarn generate-svm-assets",
