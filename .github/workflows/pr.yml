@@ -135,22 +135,6 @@ jobs:
       - name: Generate SVM assets
         shell: bash
         run: yarn generate-svm-assets
-      - name: Cache SVM assets
-        id: verified-test-assets-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            target/idl
-            target/types
-            src/svm/assets
-            src/svm/clients
-          key: v0-verified-test-assets-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
-      - name: XXX
-        if: steps.verified-test-assets-cache.outputs.cache-hit != 'true'
-        uses: ./.github/actions/generate-svm-assets
-        with:
-          verify_version: 0.4.3
-          node_version: ${{ matrix.node }}
       # Above cargo cache only applies to dependencies that are not reused in the verified docker build, hence we need
       # to manually cache the verified build artifacts if the program source code has not changed.
       - name: Cache verified test build artifacts
