@@ -1,4 +1,7 @@
 name: Cache SVM Assets
+outputs:
+  cache-hit:
+    description: "Whether the cache was hit"
 runs:
   using: "composite"
   steps:
