@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0; // Bumped version
 
+import "@openzeppelin/contracts/access/Ownable.sol";
+
 /**
  * This is a simple fork of Multicall3 (the version found in this repo) that makes the contract Ownable
  * and adds a whitelist of addresses that are allowed to call the contract's external functions.
@@ -18,7 +20,10 @@ pragma solidity ^0.8.0; // Bumped version
 /// @author Nick Johnson <arachnid@notdot.net>
 /// @author Andreas Bigger <andreas@nascent.xyz>
 /// @author Matt Solomon <matt@mattsolomon.dev>
-contract PermissionedMulticall3 {
+contract PermissionedMulticall3 is Ownable {
+    /// @notice Callers who can call state changing public functions.
+    mapping(address => bool) public whitelistedSenders;
+
     struct Call {
         address target;
         bytes callData;
@@ -42,11 +47,28 @@ contract PermissionedMulticall3 {
         bytes returnData;
     }
 
+    modifier onlyWhitelisted() {
+        require(whitelistedSenders[msg.sender], "sender not whitelisted");
+        _;
+    }
+
+    function whitelist(address[] calldata senders, bool[] calldata value) external onlyOwner {
+        require(senders.length == value.length, "senders and values length mismatch");
+        for (uint256 i = 0; i < senders.length; i++) {
+            whitelistedSenders[senders[i]] = value[i];
+        }
+    }
+
     /// @notice Backwards-compatible call aggregation with Multicall
     /// @param calls An array of Call structs
     /// @return blockNumber The block number where the calls were executed
     /// @return returnData An array of bytes containing the responses
-    function aggregate(Call[] calldata calls) public payable returns (uint256 blockNumber, bytes[] memory returnData) {
+    function aggregate(Call[] calldata calls)
+        public
+        payable
+        onlyWhitelisted
+        returns (uint256 blockNumber, bytes[] memory returnData)
+    {
         blockNumber = block.number;
         uint256 length = calls.length;
         returnData = new bytes[](length);
@@ -70,6 +92,7 @@ contract PermissionedMulticall3 {
     function tryAggregate(bool requireSuccess, Call[] calldata calls)
         public
         payable
+        onlyWhitelisted
         returns (Result[] memory returnData)
     {
         uint256 length = calls.length;
@@ -95,6 +118,7 @@ contract PermissionedMulticall3 {
     function tryBlockAndAggregate(bool requireSuccess, Call[] calldata calls)
         public
         payable
+        onlyWhitelisted
         returns (
             uint256 blockNumber,
             bytes32 blockHash,
@@ -115,6 +139,7 @@ contract PermissionedMulticall3 {
     function blockAndAggregate(Call[] calldata calls)
         public
         payable
+        onlyWhitelisted
         returns (
             uint256 blockNumber,
             bytes32 blockHash,
@@ -127,7 +152,7 @@ contract PermissionedMulticall3 {
     /// @notice Aggregate calls, ensuring each returns success if required
     /// @param calls An array of Call3 structs
     /// @return returnData An array of Result structs
-    function aggregate3(Call3[] calldata calls) public payable returns (Result[] memory returnData) {
+    function aggregate3(Call3[] calldata calls) public payable onlyWhitelisted returns (Result[] memory returnData) {
         uint256 length = calls.length;
         returnData = new Result[](length);
         Call3 calldata calli;
@@ -160,7 +185,12 @@ contract PermissionedMulticall3 {
     /// @notice Reverts if msg.value is less than the sum of the call values
     /// @param calls An array of Call3Value structs
     /// @return returnData An array of Result structs
-    function aggregate3Value(Call3Value[] calldata calls) public payable returns (Result[] memory returnData) {
+    function aggregate3Value(Call3Value[] calldata calls)
+        public
+        payable
+        onlyWhitelisted
+        returns (Result[] memory returnData)
+    {
         uint256 valAccumulator;
         uint256 length = calls.length;
         returnData = new Result[](length);
