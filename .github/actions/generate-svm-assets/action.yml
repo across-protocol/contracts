@@ -40,7 +40,7 @@ runs:
         key: debug
     - name: Build SVM assets
       shell: bash
-      run: bash ./scripts/svm/buildSvmAssets.sh
+      run: bash ./scripts/svm/buildIdl.sh
     - name: Generate SVM assets
       shell: bash
       run: yarn generate-svm-assets
