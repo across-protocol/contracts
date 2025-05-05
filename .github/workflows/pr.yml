@@ -125,6 +125,17 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ matrix.node }}
+      - name: Build SVM assets
+        shell: bash
+        run: bash ./scripts/svm/buildSvmAssets.sh
+      - name: Generate SVM assets
+        shell: bash
+        run: yarn generate-svm-assets
       - name: Cache SVM assets
         id: verified-test-assets-cache
         uses: actions/cache@v4
