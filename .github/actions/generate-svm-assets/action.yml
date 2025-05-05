@@ -36,6 +36,8 @@ runs:
         components: ${{ inputs.cargo_components }}
     - name: Cache Cargo dependencies
       uses: Swatinem/rust-cache@v2
+      with:
+        key: debug
     - name: Build SVM assets
       shell: bash
       run: bash ./scripts/svm/buildSvmAssets.sh
