@@ -156,6 +156,7 @@ jobs:
             target/idl
             target/types
             src/svm/assets
+            src/svm/clients
           key: v0-verified-test-build-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
       - name: Create verified build
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
