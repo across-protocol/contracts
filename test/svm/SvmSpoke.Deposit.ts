@@ -39,7 +39,7 @@ const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQu
 
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
 
-describe("svm_spoke.deposit", () => {
+describe.only("svm_spoke.deposit", () => {
   anchor.setProvider(provider);
 
   const depositor = Keypair.generate();
@@ -714,7 +714,7 @@ describe("svm_spoke.deposit", () => {
   });
 
   describe("codama client and solana kit", () => {
-    it.only("Deposit with with solana kit and codama client", async () => {
+    it("Deposit with with solana kit and codama client", async () => {
       // typescript is not happy with the depositData object
       if (!depositData.inputToken || !depositData.depositor) {
         throw new Error("Input token or depositor is null");

@@ -153,6 +153,8 @@ jobs:
         with:
           path: |
             target/deploy
+            target/idl
+            target/types
             src/svm/assets
           key: v0-verified-test-build-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
       - name: Create verified build
