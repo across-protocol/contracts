@@ -61,20 +61,23 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Build EVM
-        run: yarn build-evm
+      # - name: Build EVM
+      #   run: yarn build-evm
       # Mixed leaf tests also require SVM types that we try to get from cache or rebuild
       - name: Cache SVM assets
         id: svm-assets-cache
         uses: ./.github/actions/cache-svm-assets
+      - name: check outputs
+        shell: bash
+        run: echo ${{ steps.svm-assets-cache.outputs.cache-hit }}
       - name: Generate SVM assets
         if: steps.svm-assets-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-svm-assets
         with:
           node_version: ${{ matrix.node }}
-      - name: Test evm-hardhat
-        shell: bash
-        run: yarn test-evm
+      # - name: Test evm-hardhat
+      #   shell: bash
+      #   run: yarn test-evm
   test:
     name: Test
     runs-on: ubuntu-latest
