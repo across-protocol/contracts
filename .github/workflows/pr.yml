@@ -123,24 +123,11 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-      - name: Extract Solana versions
-        uses: solana-developers/github-actions/extract-versions@v0.2.5
-        id: versions
-      - name: Setup Anchor & Solana
-        uses: solana-developers/github-actions/setup-all@v0.2.5
+      - name: XXX
+        uses: ./.github/actions/generate-svm-assets
         with:
-          anchor_version: ${{ steps.versions.outputs.anchor_version }}
-          solana_version: ${{ steps.versions.outputs.solana_version }}
           verify_version: 0.4.3
           node_version: ${{ matrix.node }}
-      - name: Install Cargo toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustc
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
       # Above cargo cache only applies to dependencies that are not reused in the verified docker build, hence we need
