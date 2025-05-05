@@ -47,6 +47,7 @@ contract SpokePoolVerifier {
         bytes32 recipient,
         bytes32 inputToken,
         uint256 inputAmount,
+        bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
         bytes32 exclusiveRelayer,
