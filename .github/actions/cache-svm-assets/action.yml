@@ -13,4 +13,5 @@ runs:
           src/svm/clients
         key: v0-svm-assets-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
     - name: Export cache hit status
+      shell: bash
       run: echo "cache-hit=${{ steps.svm-assets-cache.outputs.cache-hit }}" >> $GITHUB_OUTPUT
