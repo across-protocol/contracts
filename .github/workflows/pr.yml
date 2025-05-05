@@ -33,7 +33,8 @@ jobs:
           components: rustc, rustfmt
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
-        key: debug
+        with:
+          key: debug
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
       - name: Lint js
