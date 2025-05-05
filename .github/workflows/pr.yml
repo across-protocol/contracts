@@ -61,6 +61,14 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Cache SVM assets
+        id: svm-assets-cache
+        uses: ./.github/actions/cache-svm-assets
+      - name: Generate SVM assets
+        if: steps.svm-assets-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-svm-assets
+        with:
+          node_version: ${{ matrix.node }}
       - name: Build EVM
         run: yarn build-evm
       - name: Test evm-hardhat
