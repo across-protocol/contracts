@@ -123,13 +123,13 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
       - name: XXX
         uses: ./.github/actions/generate-svm-assets
         with:
           verify_version: 0.4.3
           node_version: ${{ matrix.node }}
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-scripts
       # Above cargo cache only applies to dependencies that are not reused in the verified docker build, hence we need
       # to manually cache the verified build artifacts if the program source code has not changed.
       - name: Cache verified test build artifacts
