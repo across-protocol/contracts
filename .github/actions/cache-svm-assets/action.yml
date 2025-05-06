@@ -1,4 +1,12 @@
+# Reusable action to cache SVM assets if the source code has not changed.
 name: Cache SVM Assets
+inputs:
+  name:
+    description: "Name of the assets, used in cache key"
+    required: true
+  path:
+    description: "Cache path to use"
+    required: true
 outputs:
   cache-hit:
     description: "Whether the cache was hit"
@@ -10,9 +18,5 @@ runs:
       id: svm-assets-cache
       uses: actions/cache@v4
       with:
-        path: |
-          target/idl
-          target/types
-          src/svm/assets
-          src/svm/clients
-        key: v0-debug-svm-assets-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
+        path: ${{ inputs.path }}
+        key: svm-assets-${{ inputs.name }}-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}

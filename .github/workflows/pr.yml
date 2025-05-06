@@ -173,10 +173,10 @@ jobs:
       # manually cache the verified build binaries if the program source code has not changed.
       - name: Cache verified test build binaries
         id: verified-test-build-cache
-        uses: actions/cache@v4
+        uses: ./.github/actions/cache-svm-assets
         with:
+          name: verified-test-binaries
           path: target/deploy
-          key: v0-verified-test-build-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
       - name: Create verified build
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         env:
