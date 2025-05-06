@@ -18,6 +18,7 @@ runs:
     - name: Cache Cargo dependencies
       uses: Swatinem/rust-cache@v2
     - name: Install packages
+      shell: bash
       run: yarn install --frozen-lockfile --ignore-scripts
     - name: Generate SVM IDL artifacts
       shell: bash
