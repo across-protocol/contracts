@@ -85,7 +85,6 @@ describe("Arbitrum Chain Adapter", function () {
     l1ERC20GatewayRouter.getGateway.returns(gatewayAddress);
 
     const oftFeeCap = toWei("1");
-    const hyperlaneXERC20FeeCap = toWei("1");
 
     arbitrumAdapter = await (
       await getContractFactory("Arbitrum_Adapter", owner)

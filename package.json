@@ -35,7 +35,7 @@
     "build": "yarn build-evm && yarn build-svm && yarn generate-svm-assets && yarn build-ts && yarn copy-idl",
     "test-evm": "yarn test-evm-hardhat && yarn test-evm-foundry",
     "test-evm-hardhat": "IS_TEST=true hardhat test",
-    "test-evm-foundry": "FOUNDRY_PROFILE=local forge test",
+    "test-evm-foundry": "FOUNDRY_PROFILE=local forge test --match-path test/evm/foundry/local/**/*.t.sol",
     "test-svm": "anchor test -- --features test",
     "test": "yarn test-evm && yarn test-svm",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
