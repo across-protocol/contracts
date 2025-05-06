@@ -158,15 +158,9 @@
     },
     {
       "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",
-      "label": "hypXERC20Routers",
-      "offset": 0,
-      "slot": "2165"
-    },
-    {
-      "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",
       "label": "__gap",
       "offset": 0,
-      "slot": "2166"
+      "slot": "2165"
     },
     {
       "contract": "contracts/WorldChain_SpokePool.sol:WorldChain_SpokePool",
