@@ -157,6 +157,10 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Build EVM contracts
+        run: yarn build-evm
+      - name: Build TS
+        run: yarn build-ts
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
@@ -179,6 +183,9 @@ jobs:
         env:
           IS_TEST: true
         run: yarn build-solana-verify
+      - name: Test evm-hardhat
+        shell: bash
+        run: yarn test-evm
       - name: Test verified SVM build
         run: anchor test --skip-build
   build-svm-verified:
