@@ -1,6 +1,43 @@
 name: Checks
 on: [push, pull_request]
 jobs:
+  # Multiple jobs depend on having SVM assets available, so we build them first in a separate job.
+  build-svm-assets:
+    name: Build SVM assets
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          node_version: ${{ matrix.node }}
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+      - name: Generate SVM assets
+        shell: bash
+        run: yarn generate-svm-assets
+      - name: Upload SVM assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: svm-assets-node-${{ matrix.node }}
+          path: |
+            target/idl
+            target/types
+            src/svm/assets
+            src/svm/clients
+          if-no-files-found: error
   lint:
     name: Lint
     runs-on: ubuntu-latest
