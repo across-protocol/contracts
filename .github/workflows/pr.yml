@@ -165,8 +165,6 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ matrix.node }}
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
       - name: Download SVM assets
         uses: actions/download-artifact@v4
         with:
