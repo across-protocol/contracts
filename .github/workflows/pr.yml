@@ -171,9 +171,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: svm-assets-node-${{ matrix.node }}
-      # Above cargo cache only applies to dependencies that are not reused in the verified docker build, hence we need
-      # to manually cache the verified build artifacts if the program source code has not changed.
-      - name: Cache verified test build artifacts
+      # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
+      # manually cache the verified build binaries if the program source code has not changed.
+      - name: Cache verified test build binaries
         id: verified-test-build-cache
         uses: actions/cache@v4
         with:
