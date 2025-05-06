@@ -50,7 +50,9 @@ contract MockUniversalSpokePool is Universal_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            0,
+            0
         )
     {}
 

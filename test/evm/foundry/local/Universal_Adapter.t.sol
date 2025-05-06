@@ -51,7 +51,10 @@ contract UniversalAdapterTest is Test {
             store,
             IERC20(address(usdc)),
             ITokenMessenger(address(cctpMessenger)),
-            cctpDestinationDomainId
+            cctpDestinationDomainId,
+            address(0),
+            0,
+            0
         );
         hubPool.changeAdapter(address(adapter));
         hubPool.setPendingRootBundle(pendingRootBundle);
