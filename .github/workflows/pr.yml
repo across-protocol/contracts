@@ -74,6 +74,8 @@ jobs:
         run: yarn lint-rust
   test-evm:
     name: Test EVM
+    # Mixed leaf tests also require SVM types from assets that have been uploaded in the artifacts.
+    needs: build-svm-assets
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -89,15 +91,10 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      # Mixed leaf tests also require SVM types that we try to get from cache or rebuild
-      - name: Cache SVM assets
-        id: svm-assets-cache
-        uses: ./.github/actions/cache-svm-assets
-      - name: Generate SVM assets
-        # if: steps.svm-assets-cache.outputs.cache-hit != 'true'
-        uses: ./.github/actions/generate-svm-assets
+      - name: Download SVM assets
+        uses: actions/download-artifact@v4
         with:
-          node_version: ${{ matrix.node }}
+          name: svm-assets-node-${{ matrix.node }}
       - name: Build EVM
         run: yarn build-evm
       - name: Test evm-hardhat
@@ -147,6 +144,7 @@ jobs:
         run: yarn test-svm
   test-svm-verified:
     name: Test verified SVM build
+    needs: build-svm-assets
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -169,21 +167,17 @@ jobs:
           node_version: ${{ matrix.node }}
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Generate SVM assets
-        shell: bash
-        run: yarn generate-svm-assets
+      - name: Download SVM assets
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-assets-node-${{ matrix.node }}
       # Above cargo cache only applies to dependencies that are not reused in the verified docker build, hence we need
       # to manually cache the verified build artifacts if the program source code has not changed.
       - name: Cache verified test build artifacts
         id: verified-test-build-cache
         uses: actions/cache@v4
         with:
-          path: |
-            target/deploy
-            target/idl
-            target/types
-            src/svm/assets
-            src/svm/clients
+          path: target/deploy
           key: v0-verified-test-build-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
       - name: Create verified build
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
