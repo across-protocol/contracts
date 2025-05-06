@@ -22,18 +22,14 @@ contract WorldChain_SpokePool is Ovm_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger,
-        uint32 _hypXERC20DstDomain,
-        uint256 _hypXERC20FeeCap
+        ITokenMessenger _cctpTokenMessenger
     )
         Ovm_SpokePool(
             _wrappedNativeTokenAddress,
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger,
-            _hypXERC20DstDomain,
-            _hypXERC20FeeCap
+            _cctpTokenMessenger
         )
     {} // solhint-disable-line no-empty-blocks
 

@@ -12,7 +12,7 @@ const l1ChainId = 45;
 
 describe("Succinct Spoke Pool", function () {
   beforeEach(async function () {
-    [owner, hubPool, succinctTargetAmb, rando] = await ethers.getSigners();
+    [hubPool, succinctTargetAmb, rando] = await ethers.getSigners();
     ({ weth } = await hubPoolFixture());
 
     succinctSpokePool = await hre.upgrades.deployProxy(

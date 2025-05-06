@@ -6,11 +6,9 @@ import "./interfaces/AdapterInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IOFT } from "../interfaces/IOFT.sol";
-import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import "../libraries/OFTTransportAdapterWithStore.sol";
-import "../libraries/HypXERC20AdapterWithStore.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
 
 /**
@@ -22,12 +20,7 @@ import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } 
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is
-    AdapterInterface,
-    CircleCCTPAdapter,
-    OFTTransportAdapterWithStore,
-    HypXERC20AdapterWithStore
-{
+contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapterWithStore {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -73,8 +66,6 @@ contract Arbitrum_Adapter is
      * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
      * @param _oftDstEid destination endpoint id for OFT messaging
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
-     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
-     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
@@ -84,13 +75,10 @@ contract Arbitrum_Adapter is
         ITokenMessenger _cctpTokenMessenger,
         address _adapterStore,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap,
-        uint32 _hypXERC20DstDomain,
-        uint256 _hypXERC20FeeCap
+        uint256 _oftFeeCap
     )
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
         OFTTransportAdapterWithStore(_oftDstEid, _oftFeeCap, _adapterStore)
-        HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore)
     {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
@@ -137,15 +125,12 @@ contract Arbitrum_Adapter is
         address to
     ) external payable override {
         address oftMessenger = _getOftMessenger(l1Token);
-        address hypRouter = _getHypXERC20Router(l1Token);
 
         // Check if the token needs to use any of the custom bridge solutions first
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
         } else if (oftMessenger != address(0)) {
             _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
-        } else if (hypRouter != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {

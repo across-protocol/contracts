@@ -17,9 +17,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const oftDstEid = getOftEid(spokeChainId);
   const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
 
-  const hyperlaneDstDomain = getHyperlaneDomainId(spokeChainId);
-  const hyperlaneXERC20FeeCap = toWei("1"); // 1 eth transfer fee cap
-
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
     L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
@@ -29,8 +26,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].adapterStore,
     oftDstEid,
     oftFeeCap,
-    hyperlaneDstDomain,
-    hyperlaneXERC20FeeCap,
   ];
   const instance = await hre.deployments.deploy("Arbitrum_Adapter", {
     from: deployer,
@@ -45,8 +40,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
       L1_ADDRESS_MAP[chainId].adapterStore,
       oftDstEid,
       oftFeeCap,
-      hyperlaneDstDomain,
-      hyperlaneXERC20FeeCap,
     ],
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });

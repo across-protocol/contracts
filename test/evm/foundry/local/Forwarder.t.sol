@@ -66,10 +66,7 @@ contract ForwarderTest is Test {
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
             IERC20(address(0)),
-            ITokenMessenger(address(0)),
-            address(adapterStore),
-            0,
-            0
+            ITokenMessenger(address(0))
         );
 
         arbitrumForwarder = new Arbitrum_Forwarder(WETH9Interface(address(l2Weth)));

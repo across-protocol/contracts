@@ -48,9 +48,6 @@ contract ZkSync_SpokePool is SpokePool {
             _fillDeadlineBuffer,
             // ZkSync_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
             0,
-            0,
-            // ZkSync_SpokePool does not use Hyperlane xERC20 messaging; setting destination eid and fee cap to 0
-            0,
             0
         )
     {} // solhint-disable-line no-empty-blocks

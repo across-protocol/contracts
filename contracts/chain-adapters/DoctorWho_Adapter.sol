@@ -14,8 +14,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
-import "../libraries/HypXERC20AdapterWithStore.sol";
-import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Doctor Who. This is a modified version of the Optimism adapter
@@ -28,7 +26,7 @@ import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, HypXERC20AdapterWithStore {
+contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
@@ -43,23 +41,16 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
-     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
-     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         WETH9Interface _l1Weth,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger,
-        address _adapterStore,
-        uint32 _hypXERC20DstDomain,
-        uint256 _hypXERC20FeeCap
+        ITokenMessenger _cctpTokenMessenger
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.DoctorWho)
-        HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
@@ -88,9 +79,6 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         uint256 amount,
         address to
     ) external payable override {
-        // Get the Hyperlane XERC20 router for this token, if any
-        address hypRouter = _getHypXERC20Router(l1Token);
-
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
@@ -99,10 +87,6 @@ contract DoctorWho_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAd
         // Check if this token is USDC, which requires a custom bridge via CCTP.
         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
-        }
-        // Check if this token has a Hyperlane XERC20 router set. If so, use it
-        else if (hypRouter != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         } else {
             IL1StandardBridge _l1StandardBridge = L1_STANDARD_BRIDGE;
 
