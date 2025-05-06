@@ -21,6 +21,3 @@ for program in programs/*; do
   sudo rm -f "target/deploy/$program_name-keypair.json"
 
 done
-
-echo "Generating external program types"
-anchor run generateExternalTypes
