@@ -93,9 +93,6 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
             _fillDeadlineBuffer,
             // Polygon_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
             0,
-            0,
-            // Polygon_SpokePool does not use Hyperlane xERC20 messaging; setting destination eid and fee cap to 0
-            0,
             0
         )
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)

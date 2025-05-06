@@ -103,10 +103,7 @@ contract RouterAdapterTest is Test {
             address(crossDomainMessenger),
             IL1StandardBridge(address(standardBridge)),
             IERC20(address(0)),
-            ITokenMessenger(address(0)),
-            address(adapterStore),
-            0,
-            0
+            ITokenMessenger(address(0))
         );
         routerAdapter = new Mock_Router_Adapter(address(optimismAdapter), l2Target, L2_CHAIN_ID, L3_CHAIN_ID, hubPool);
     }

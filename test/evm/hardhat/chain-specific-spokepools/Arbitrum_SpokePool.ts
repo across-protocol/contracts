@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress, TokenRolesEnum } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
 import {
   ethers,
   expect,
@@ -16,7 +16,6 @@ import {
   randomBytes32,
   toWeiWithDecimals,
   getOftEid,
-  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -29,30 +28,23 @@ import {
   SendParamStruct,
 } from "../../../../typechain/contracts/interfaces/IOFT";
 import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
-import { IHypXERC20Router__factory } from "../../../../typechain";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract, l2UsdtContract: Contract;
-let l2Weth: string, l2Dai: string, l2Usdc: string, l2EzETH: Contract, crossDomainAliasAddress;
+let l2Weth: string, l2Dai: string, l2Usdc: string, crossDomainAliasAddress;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, crossDomainAlias: SignerWithAddress;
 let l2GatewayRouter: FakeContract,
   l2CctpTokenMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
-  l2OftMessenger: FakeContract,
-  l2HypXERC20Router: FakeContract;
+  l2OftMessenger: FakeContract;
 
 const oftHubEid = getOftEid(CHAIN_IDs.MAINNET);
-const hyperlaneDstDomain = getHyperlaneDomainId(CHAIN_IDs.MAINNET);
 
 describe("Arbitrum Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, l2Weth, dai, l2Dai, hubPool, l2Usdc, l2UsdtContract } = await hubPoolFixture());
-
-    // create l2EzETH token for XERC20 testing
-    l2EzETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
-    await l2EzETH.addMember(TokenRolesEnum.MINTER, owner.address);
 
     // Create an alias for the Owner. Impersonate the account. Crate a signer for it and send it ETH.
     crossDomainAliasAddress = avmL1ToL2Alias(owner.address);
@@ -66,7 +58,6 @@ describe("Arbitrum Spoke Pool", function () {
     l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
     l2OftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
-    l2HypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
 
     arbitrumSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Arbitrum_SpokePool", owner),
@@ -74,21 +65,11 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [
-          l2Weth,
-          60 * 60,
-          9 * 60 * 60,
-          l2Usdc,
-          l2CctpTokenMessenger.address,
-          oftHubEid,
-          toWei("1"),
-          hyperlaneDstDomain,
-          toWei("1"),
-        ],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, oftHubEid, toWei("1")],
       }
     );
 
-    await seedContract(arbitrumSpokePool, relayer, [dai, l2EzETH], weth, amountHeldByPool);
+    await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
   });
 
@@ -99,17 +80,7 @@ describe("Arbitrum Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [
-          l2Weth,
-          60 * 60,
-          9 * 60 * 60,
-          l2Usdc,
-          l2CctpTokenMessenger.address,
-          oftHubEid,
-          toWei("1"),
-          hyperlaneDstDomain,
-          toWei("1"),
-        ],
+        constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, oftHubEid, toWei("1")],
       }
     );
 
@@ -242,34 +213,5 @@ describe("Arbitrum Spoke Pool", function () {
     // We should have called send on the l2OftMessenger once with correct params
     expect(l2OftMessenger.send).to.have.been.calledOnce;
     expect(l2OftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, arbitrumSpokePool.address);
-  });
-
-  it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
-    l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
-    await arbitrumSpokePool.connect(crossDomainAlias).setHypXERC20Router(l2EzETH.address, l2HypXERC20Router.address);
-
-    const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
-    l2HypXERC20Router.quoteGasPayment.returns(hypXERC20Fee);
-
-    const ezETHSendAmount = BigNumber.from("1234567000000000000");
-    const { leaves, tree } = await constructSingleRelayerRefundTree(
-      l2EzETH.address,
-      await arbitrumSpokePool.callStatic.chainId(),
-      ezETHSendAmount
-    );
-    await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-
-    await arbitrumSpokePool
-      .connect(relayer)
-      .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: hypXERC20Fee });
-    // Adapter should have approved l2HypXERC20Router to spend its ERC20.
-    expect(await l2EzETH.allowance(arbitrumSpokePool.address, l2HypXERC20Router.address)).to.equal(ezETHSendAmount);
-
-    expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
-    expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hyperlaneDstDomain,
-      ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
-      ezETHSendAmount
-    );
   });
 });

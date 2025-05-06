@@ -2,10 +2,9 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, WETH } from "./consts";
-import { getHyperlaneDomainId, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, hubChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool } = await getSpokePoolDeploymentInfo(hre);
   const chainId = parseInt(await hre.getChainId());
 
   // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -19,17 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
     hubPool.address,
   ];
-
-  const hyperlaneDstDomainId = getHyperlaneDomainId(hubChainId);
-  const hyperlaneXERC20FeeCap = toWei(1); // 1 eth fee cap
-
-  const constructorArgs = [
-    WETH[chainId],
-    QUOTE_TIME_BUFFER,
-    FILL_DEADLINE_BUFFER,
-    hyperlaneDstDomainId,
-    hyperlaneXERC20FeeCap,
-  ];
+  const constructorArgs = [WETH[chainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER];
 
   await deployNewProxy("Linea_SpokePool", constructorArgs, initArgs);
 };

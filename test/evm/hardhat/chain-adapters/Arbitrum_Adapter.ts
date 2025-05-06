@@ -19,7 +19,6 @@ import {
   randomBytes32,
   toWeiWithDecimals,
   getOftEid,
-  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import {
@@ -33,12 +32,7 @@ import { IOFT__factory } from "../../../../typechain/factories/contracts/interfa
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
-import {
-  AdapterStore,
-  AdapterStore__factory,
-  IHypXERC20Router,
-  IHypXERC20Router__factory,
-} from "../../../../typechain";
+import { AdapterStore, AdapterStore__factory } from "../../../../typechain";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract,
@@ -58,28 +52,20 @@ let l1ERC20GatewayRouter: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
   oftMessenger: FakeContract<IOFT>,
-  adapterStore: FakeContract<AdapterStore>,
-  hypXERC20Router: FakeContract<IHypXERC20Router>;
-
+  adapterStore: FakeContract<AdapterStore>;
 const arbitrumChainId = CHAIN_IDs.ARBITRUM;
 const oftArbitrumEid = getOftEid(arbitrumChainId);
-const hypXERC20ArbitrumDomain = getHyperlaneDomainId(arbitrumChainId);
 
 describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider, refundAddress] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, usdc, l2Usdc, usdt, l2Usdt } = await hubPoolFixture());
 
-    // Create ezETH token for XERC20 testing
-    ezETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
-    await ezETH.addMember(consts.TokenRolesEnum.MINTER, owner.address);
-    const l2EzETH = randomAddress();
+    await seedWallet(dataWorker, [dai, usdc, usdt], weth, consts.amountToLp);
+    await seedWallet(liquidityProvider, [dai, usdc, usdt], weth, consts.amountToLp.mul(10));
 
-    await seedWallet(dataWorker, [dai, usdc, usdt, ezETH], weth, consts.amountToLp);
-    await seedWallet(liquidityProvider, [dai, usdc, usdt, ezETH], weth, consts.amountToLp.mul(10));
-
-    await enableTokensForLP(owner, hubPool, weth, [weth, dai, usdc, usdt, ezETH]);
-    for (const token of [weth, dai, usdc, usdt, ezETH]) {
+    await enableTokensForLP(owner, hubPool, weth, [weth, dai, usdc, usdt]);
+    for (const token of [weth, dai, usdc, usdt]) {
       await token.connect(liquidityProvider).approve(hubPool.address, consts.amountToLp);
       await hubPool.connect(liquidityProvider).addLiquidity(token.address, consts.amountToLp);
       await token.connect(dataWorker).approve(hubPool.address, consts.bondAmount.mul(10));
@@ -92,7 +78,6 @@ describe("Arbitrum Chain Adapter", function () {
 
     oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
     adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
-    hypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
 
     l1Inbox = await createFake("Inbox");
     l1ERC20GatewayRouter = await createFake("ArbitrumMockErc20GatewayRouter");
@@ -112,9 +97,7 @@ describe("Arbitrum Chain Adapter", function () {
       cctpMessenger.address,
       adapterStore.address,
       oftArbitrumEid,
-      oftFeeCap,
-      hypXERC20ArbitrumDomain,
-      hyperlaneXERC20FeeCap
+      oftFeeCap
     );
 
     // Seed the HubPool some funds so it can send L1->L2 messages.
@@ -126,7 +109,6 @@ describe("Arbitrum Chain Adapter", function () {
     await hubPool.setPoolRebalanceRoute(arbitrumChainId, weth.address, l2Weth);
     await hubPool.setPoolRebalanceRoute(arbitrumChainId, usdc.address, l2Usdc);
     await hubPool.setPoolRebalanceRoute(arbitrumChainId, usdt.address, l2Usdt);
-    await hubPool.setPoolRebalanceRoute(arbitrumChainId, ezETH.address, l2EzETH);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -337,44 +319,5 @@ describe("Arbitrum Chain Adapter", function () {
     // We should have called send on the oftMessenger once with correct params
     expect(oftMessenger.send).to.have.been.calledOnce;
     expect(oftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, hubPool.address);
-  });
-
-  it("Correctly calls Hyperlane XERC20 bridge", async function () {
-    // Set hyperlane router in adapter store
-    hypXERC20Router.wrappedToken.returns(ezETH.address);
-
-    const hypXERC20MessengerType = ethers.utils.formatBytes32String("HYP_XERC20_ROUTER");
-    await adapterStore
-      .connect(owner)
-      .setMessenger(hypXERC20MessengerType, hypXERC20ArbitrumDomain, ezETH.address, hypXERC20Router.address);
-    adapterStore.crossChainMessengers
-      .whenCalledWith(hypXERC20MessengerType, hypXERC20ArbitrumDomain, ezETH.address)
-      .returns(hypXERC20Router.address);
-
-    // Construct repayment bundle
-    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(ezETH.address, 1, arbitrumChainId);
-    await hubPool
-      .connect(dataWorker)
-      .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
-    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
-
-    hypXERC20Router.quoteGasPayment.returns(toBN(1e9).mul(200_000));
-
-    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
-
-    // Adapter should have approved gateway to spend its ERC20.
-    expect(await ezETH.allowance(hubPool.address, hypXERC20Router.address)).to.equal(tokensSendToL2);
-
-    // We should have called quoteGasPayment on the hypXERC20Router once with correct params
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledOnce;
-    expect(hypXERC20Router.quoteGasPayment).to.have.been.calledWith(hypXERC20ArbitrumDomain);
-
-    // We should have called transferRemote on the hypXERC20Router once with correct params
-    expect(hypXERC20Router.transferRemote).to.have.been.calledOnce;
-    expect(hypXERC20Router.transferRemote).to.have.been.calledWith(
-      hypXERC20ArbitrumDomain,
-      ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
-      tokensSendToL2
-    );
   });
 });

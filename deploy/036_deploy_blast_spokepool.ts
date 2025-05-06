@@ -3,7 +3,6 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L1_ADDRESS_MAP, WETH, QUOTE_TIME_BUFFER, ZERO_ADDRESS } from "./consts";
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
-import { getHyperlaneDomainId, toWei } from "../utils/utils";
 
 const USDB = TOKEN_SYMBOLS_MAP.USDB.addresses;
 
@@ -19,9 +18,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     hubPool.address,
   ];
 
-  const hyperlaneDstDomainId = getHyperlaneDomainId(hubChainId);
-  const hyperlaneXERC20FeeCap = toWei(1); // 1 eth fee cap
-
   const constructorArgs = [
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
@@ -35,8 +31,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDB[hubChainId],
     "0x8bA929bE3462a809AFB3Bf9e100Ee110D2CFE531",
     L1_ADDRESS_MAP[hubChainId].blastDaiRetriever, // Address of mainnet retriever contract to facilitate USDB finalizations.
-    hyperlaneDstDomainId,
-    hyperlaneXERC20FeeCap,
   ];
   await deployNewProxy("Blast_SpokePool", constructorArgs, initArgs);
 };

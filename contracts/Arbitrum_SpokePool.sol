@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
-import "./libraries/HypXERC20Adapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import { ArbitrumL2ERC20GatewayLike } from "./interfaces/ArbitrumBridge.sol";
 
@@ -30,19 +29,9 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
         IERC20 _l2Usdc,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _oftDstEid,
-        uint256 _oftFeeCap,
-        uint32 _hypXERC20DstDomain,
-        uint256 _hypXERC20FeeCap
+        uint256 _oftFeeCap
     )
-        SpokePool(
-            _wrappedNativeTokenAddress,
-            _depositQuoteTimeBuffer,
-            _fillDeadlineBuffer,
-            _oftDstEid,
-            _oftFeeCap,
-            _hypXERC20DstDomain,
-            _hypXERC20FeeCap
-        )
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftDstEid, _oftFeeCap)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
@@ -97,20 +86,12 @@ contract Arbitrum_SpokePool is SpokePool, CircleCCTPAdapter {
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
         address oftMessenger = _getOftMessenger(l2TokenAddress);
-        address hypRouter = _getXERC20HypRouter(l2TokenAddress);
 
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         } else if (oftMessenger != address(0)) {
             _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
-        } else if (hypRouter != address(0)) {
-            _transferXERC20ViaHyperlane(
-                IERC20(l2TokenAddress),
-                IHypXERC20Router(hypRouter),
-                withdrawalRecipient,
-                amountToReturn
-            );
         } else {
             // Check that the Ethereum counterpart of the L2 token is stored on this contract.
             address ethereumTokenToBridge = whitelistedTokens[l2TokenAddress];

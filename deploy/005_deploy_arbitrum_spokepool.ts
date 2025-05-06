@@ -5,7 +5,7 @@ import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WETH } f
 import { getHyperlaneDomainId, getOftEid, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId, hubChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -19,10 +19,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const oftEid = getOftEid(hubChainId);
   const oftFeeCap = toWei(1); // 1 eth fee cap
-
-  const hyperlaneDstDomainId = getHyperlaneDomainId(hubChainId);
-  const hyperlaneXERC20FeeCap = toWei(1); // 1 eth fee cap
-
   const constructorArgs = [
     WETH[spokeChainId],
     QUOTE_TIME_BUFFER,
@@ -31,8 +27,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
     oftEid,
     oftFeeCap,
-    hyperlaneDstDomainId,
-    hyperlaneXERC20FeeCap,
   ];
   await deployNewProxy("Arbitrum_SpokePool", constructorArgs, initArgs);
 };

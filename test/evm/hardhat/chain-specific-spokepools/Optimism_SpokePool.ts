@@ -1,4 +1,4 @@
-import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress, TokenRolesEnum } from "../constants";
+import { mockTreeRoot, amountToReturn, amountHeldByPool, zeroAddress } from "../constants";
 import {
   ethers,
   expect,
@@ -11,40 +11,27 @@ import {
   seedContract,
   createFakeFromABI,
   addressToBytes,
-  createTypedFakeFromABI,
-  BigNumber,
-  toWeiWithDecimals,
-  getHyperlaneDomainId,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import { hre } from "../../../../utils/utils.hre";
 
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
-import { IHypXERC20Router__factory } from "../../../../typechain";
-import { CHAIN_IDs } from "@across-protocol/constants";
 
-let hubPool: Contract, optimismSpokePool: Contract, dai: Contract, weth: Contract, l2EzETH: Contract;
+let hubPool: Contract, optimismSpokePool: Contract, dai: Contract, weth: Contract;
 let l2Dai: string, l2Usdc: string;
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress;
 let crossDomainMessenger: FakeContract,
   l2StandardBridge: FakeContract,
   l2CctpTokenMessenger: FakeContract,
-  cctpTokenMinter: FakeContract,
-  l2HypXERC20Router: FakeContract;
+  cctpTokenMinter: FakeContract;
 
 const l2Eth = "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000";
-
-const hyperlaneDstDomain = getHyperlaneDomainId(CHAIN_IDs.MAINNET);
 
 describe("Optimism Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, rando] = await ethers.getSigners();
     ({ weth, dai, l2Dai, hubPool, l2Usdc } = await hubPoolFixture());
-
-    // Create ezETH token for XERC20 testing
-    l2EzETH = await (await getContractFactory("ExpandedERC20", owner)).deploy("ezETH XERC20 coin.", "ezETH", 18);
-    await l2EzETH.addMember(TokenRolesEnum.MINTER, owner.address);
 
     // Create the fake at the optimism cross domain messenger and l2StandardBridge pre-deployment addresses.
     crossDomainMessenger = await createFake("L2CrossDomainMessenger", "0x4200000000000000000000000000000000000007");
@@ -53,7 +40,6 @@ describe("Optimism Spoke Pool", function () {
     cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
     l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
-    l2HypXERC20Router = await createTypedFakeFromABI([...IHypXERC20Router__factory.abi]);
 
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
@@ -67,7 +53,7 @@ describe("Optimism Spoke Pool", function () {
       { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
     );
 
-    await seedContract(optimismSpokePool, relayer, [dai, l2EzETH], weth, amountHeldByPool);
+    await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
@@ -77,15 +63,7 @@ describe("Optimism Spoke Pool", function () {
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [
-          weth.address,
-          60 * 60,
-          9 * 60 * 60,
-          l2Usdc,
-          l2CctpTokenMessenger.address,
-          hyperlaneDstDomain,
-          toWei("1"),
-        ],
+        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
       }
     );
 
@@ -234,44 +212,5 @@ describe("Optimism Spoke Pool", function () {
 
     expect(l2StandardBridge.withdrawTo).to.have.been.calledOnce;
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWith(l2Eth, hubPool.address, amountToReturn, 5000000, "0x");
-  });
-
-  it("Bridge tokens to hub pool correctly using the Hyperlane XERC20 messaging for ezETH token", async function () {
-    // Set up XERC20 router for l2EzETH
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    l2HypXERC20Router.wrappedToken.returns(l2EzETH.address);
-    await optimismSpokePool
-      .connect(crossDomainMessenger.wallet)
-      .setHypXERC20Router(l2EzETH.address, l2HypXERC20Router.address);
-    crossDomainMessenger.xDomainMessageSender.reset();
-
-    const hypXERC20Fee = toWeiWithDecimals("1", 9).mul(200_000); // 1 GWEI gas price * 200,000 gas cost
-    l2HypXERC20Router.quoteGasPayment.returns(hypXERC20Fee);
-
-    const ezETHSendAmount = BigNumber.from("1234567000000000000");
-    const { leaves, tree } = await constructSingleRelayerRefundTree(
-      l2EzETH.address,
-      await optimismSpokePool.callStatic.chainId(),
-      ezETHSendAmount
-    );
-
-    // Set up admin permission to relay root bundle
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
-    crossDomainMessenger.xDomainMessageSender.reset();
-
-    await optimismSpokePool
-      .connect(relayer)
-      .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: hypXERC20Fee });
-
-    // Adapter should have approved l2HypXERC20Router to spend its ERC20
-    expect(await l2EzETH.allowance(optimismSpokePool.address, l2HypXERC20Router.address)).to.equal(ezETHSendAmount);
-
-    expect(l2HypXERC20Router.transferRemote).to.have.been.calledOnce;
-    expect(l2HypXERC20Router.transferRemote).to.have.been.calledWith(
-      hyperlaneDstDomain,
-      ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
-      ezETHSendAmount
-    );
   });
 });

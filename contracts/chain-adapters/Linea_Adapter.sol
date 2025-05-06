@@ -8,15 +8,13 @@ import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfac
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "../libraries/HypXERC20AdapterWithStore.sol";
-import { IHypXERC20Router } from "../interfaces/IHypXERC20Router.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
  * @custom:security-contact bugs@across.to
  */
 // solhint-disable-next-line contract-name-camelcase
-contract Linea_Adapter is AdapterInterface, HypXERC20AdapterWithStore {
+contract Linea_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
     WETH9Interface public immutable L1_WETH;
@@ -30,19 +28,13 @@ contract Linea_Adapter is AdapterInterface, HypXERC20AdapterWithStore {
      * @param _l1MessageService Canonical message service contract on L1.
      * @param _l1TokenBridge Canonical token bridge contract on L1.
      * @param _l1UsdcBridge L1 USDC Bridge to ConsenSys's L2 Linea.
-     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
-     * @param _hypXERC20DstDomain destination domain for Hyperlane xERC20 messaging
-     * @param _hypXERC20FeeCap A fee cap we apply to Hyperlane XERC20 bridge native payment. A good default is 1 ether
      */
     constructor(
         WETH9Interface _l1Weth,
         IMessageService _l1MessageService,
         ITokenBridge _l1TokenBridge,
-        IUSDCBridge _l1UsdcBridge,
-        address _adapterStore,
-        uint32 _hypXERC20DstDomain,
-        uint256 _hypXERC20FeeCap
-    ) HypXERC20AdapterWithStore(_hypXERC20DstDomain, _hypXERC20FeeCap, _adapterStore) {
+        IUSDCBridge _l1UsdcBridge
+    ) {
         L1_WETH = _l1Weth;
         L1_MESSAGE_SERVICE = _l1MessageService;
         L1_TOKEN_BRIDGE = _l1TokenBridge;
@@ -75,9 +67,6 @@ contract Linea_Adapter is AdapterInterface, HypXERC20AdapterWithStore {
         uint256 amount,
         address to
     ) external payable override {
-        // Get the Hyperlane XERC20 router for this token, if any
-        address hypRouter = _getHypXERC20Router(l1Token);
-
         // If the l1Token is WETH then unwrap it to ETH then send the ETH directly
         // via the Canoncial Message Service.
         if (l1Token == address(L1_WETH)) {
@@ -88,10 +77,6 @@ contract Linea_Adapter is AdapterInterface, HypXERC20AdapterWithStore {
         else if (l1Token == L1_USDC_BRIDGE.usdc()) {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_USDC_BRIDGE), amount);
             L1_USDC_BRIDGE.depositTo(amount, to);
-        }
-        // Check if this token has a Hyperlane XERC20 router set. If so, use it
-        else if (hypRouter != address(0)) {
-            _transferXERC20ViaHyperlane(IERC20(l1Token), IHypXERC20Router(hypRouter), to, amount);
         }
         // For other tokens, we can use the Canonical Token Bridge.
         else {

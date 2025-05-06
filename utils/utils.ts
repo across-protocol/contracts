@@ -8,7 +8,7 @@ import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory, BaseContract } from "ethers";
-import { HYPERLANE_DOMAIN_IDs, OFT_EIDs } from "../deploy/consts";
+import { OFT_EIDs } from "../deploy/consts";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 chai.use(smock.matchers);
@@ -210,14 +210,6 @@ export function hashNonEmptyMessage(message: string) {
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
 export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
-
-export function getHyperlaneDomainId(chainId: number): number {
-  const value = HYPERLANE_DOMAIN_IDs.get(chainId);
-  if (value === undefined) {
-    throw new Error(`Chain id ${chainId} not present in HYPERLANE_DOMAIN_IDs`);
-  }
-  return value;
-}
 
 export function getOftEid(chainId: number): number {
   const value = OFT_EIDs.get(chainId);
