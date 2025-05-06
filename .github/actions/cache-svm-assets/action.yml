@@ -19,4 +19,4 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}
-        key: svm-assets-${{ inputs.name }}-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
+        key: svm-${{ inputs.name }}-${{ runner.os }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
