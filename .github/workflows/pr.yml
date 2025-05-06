@@ -88,7 +88,7 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Download SVM assets
+      - name: Download SVM IDL artifacts
         uses: actions/download-artifact@v4
         with:
           name: svm-idl-artifacts-node-${{ matrix.node }}
@@ -162,7 +162,7 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ matrix.node }}
-      - name: Download SVM assets
+      - name: Download SVM IDL artifacts
         uses: actions/download-artifact@v4
         with:
           name: svm-idl-artifacts-node-${{ matrix.node }}
