@@ -1,10 +1,16 @@
 name: Checks
 on: [push, pull_request]
 jobs:
-  # Multiple jobs depend on having SVM assets available, so we build them first in a separate job.
-  build-svm-assets:
-    name: Build SVM assets
+  # Multiple jobs depend on having SVM artifacts available, so we upload them first in a separate job.
+  upload-svm-idl-artifacts:
+    name: Upload SVM IDL artifacts
     runs-on: ubuntu-latest
+    env:
+      ARTIFACTS_PATHS: |
+        target/idl
+        target/types
+        src/svm/assets
+        src/svm/clients
     strategy:
       matrix:
         node:
@@ -19,24 +25,22 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Setup Anchor & Solana
-        uses: ./.github/actions/setup-solana-anchor
+      - name: Cache SVM IDL artifacts
+        id: svm-idl-artifacts-cache
+        uses: ./.github/actions/cache-svm-assets
+        with:
+          name: idl-artifacts
+          path: ${{ env.ARTIFACTS_PATHS }}
+      - name: Generate SVM IDL artifacts
+        if: steps.svm-idl-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-svm-idl-artifacts
         with:
           node_version: ${{ matrix.node }}
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
-      - name: Generate SVM assets
-        shell: bash
-        run: yarn generate-svm-assets
-      - name: Upload SVM assets
+      - name: Upload SVM IDL artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: svm-assets-node-${{ matrix.node }}
-          path: |
-            target/idl
-            target/types
-            src/svm/assets
-            src/svm/clients
+          name: svm-idl-artifacts-node-${{ matrix.node }}
+          path: ${{ env.ARTIFACTS_PATHS }}
           if-no-files-found: error
   lint:
     name: Lint
@@ -75,7 +79,7 @@ jobs:
   test-evm:
     name: Test EVM
     # Mixed leaf tests also require SVM types from assets that have been uploaded in the artifacts.
-    needs: build-svm-assets
+    needs: upload-svm-idl-artifacts
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -94,7 +98,7 @@ jobs:
       - name: Download SVM assets
         uses: actions/download-artifact@v4
         with:
-          name: svm-assets-node-${{ matrix.node }}
+          name: svm-idl-artifacts-node-${{ matrix.node }}
       - name: Build EVM
         run: yarn build-evm
       - name: Test evm-hardhat
@@ -144,7 +148,7 @@ jobs:
         run: yarn test-svm
   test-svm-verified:
     name: Test verified SVM build
-    needs: build-svm-assets
+    needs: upload-svm-idl-artifacts
     runs-on: ubuntu-latest
     strategy:
       matrix:

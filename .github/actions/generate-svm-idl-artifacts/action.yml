@@ -1,0 +1,17 @@
+name: Generate SVM IDL artifacts
+inputs:
+  node_version:
+    description: "Node version to use"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Anchor & Solana
+      uses: ./.github/actions/setup-solana-anchor
+      with:
+        node_version: ${{ inputs.node_version }}
+    - name: Cache Cargo dependencies
+      uses: Swatinem/rust-cache@v2
+    - name: Generate SVM IDL artifacts
+      shell: bash
+      run: yarn generate-svm-assets
