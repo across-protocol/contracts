@@ -165,7 +165,7 @@ jobs:
       - name: Download SVM assets
         uses: actions/download-artifact@v4
         with:
-          name: svm-assets-node-${{ matrix.node }}
+          name: svm-idl-artifacts-node-${{ matrix.node }}
       # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
       # manually cache the verified build binaries if the program source code has not changed.
       - name: Cache verified test build binaries
