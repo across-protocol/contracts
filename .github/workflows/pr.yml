@@ -181,6 +181,46 @@ jobs:
         run: yarn build-solana-verify
       - name: Test verified SVM build
         run: anchor test --skip-build
+  build-svm-verified:
+    name: SVM verified production build
+    needs: upload-svm-idl-artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ matrix.node }}
+      - name: Download SVM IDL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-idl-artifacts-node-${{ matrix.node }}
+      # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
+      # manually cache the verified build binaries if the program source code has not changed.
+      - name: Cache verified production build binaries
+        id: verified-production-build-cache
+        uses: ./.github/actions/cache-svm-assets
+        with:
+          name: verified-production-binaries
+          path: target/deploy
+      - name: Create verified build
+        if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
+        run: yarn build-solana-verify
+      # - name: Test verified SVM build
+      #   run: anchor test --skip-build
   forge:
     name: Forge
     runs-on: ubuntu-latest
