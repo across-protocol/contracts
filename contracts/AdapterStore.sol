@@ -5,7 +5,6 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 library MessengerTypes {
     bytes32 public constant OFT_MESSENGER = bytes32("OFT_MESSENGER");
-    bytes32 public constant HYP_XERC20_ROUTER = bytes32("HYP_XERC20_ROUTER");
 }
 
 /**
