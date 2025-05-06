@@ -42,6 +42,66 @@ export const CCTPTokenMessengerInterface = [
   },
 ];
 
+export const CCTPTokenV2MessengerInterface = [
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "amount",
+        type: "uint256",
+      },
+      {
+        internalType: "uint32",
+        name: "destinationDomain",
+        type: "uint32",
+      },
+      {
+        internalType: "bytes32",
+        name: "mintRecipient",
+        type: "bytes32",
+      },
+      {
+        internalType: "address",
+        name: "burnToken",
+        type: "address",
+      },
+      {
+        internalType: "bytes32",
+        name: "destinationCaller",
+        type: "bytes32",
+      },
+      {
+        internalType: "uint256",
+        name: "maxFee",
+        type: "uint256",
+      },
+      {
+        internalType: "uint32",
+        name: "minFinalityThreshold",
+        type: "uint32",
+      },
+    ],
+    name: "depositForBurn",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "localMinter",
+    outputs: [{ internalType: "contract ITokenMinterV2", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "feeRecipient",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
+    stateMutability: "view",
+    type: "function",
+  },
+];
+
 export const CCTPTokenMinterInterface = [
   {
     inputs: [{ internalType: "address", name: "", type: "address" }],

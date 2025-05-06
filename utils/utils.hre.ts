@@ -49,7 +49,7 @@ export async function deployNewProxy(
 
   let instance: string;
   let unsafeAllowArgs = ["delegatecall"]; // Remove after upgrading openzeppelin-contracts-upgradeable post v4.9.3.
-  if ([CHAIN_IDs.BLAST, CHAIN_IDs.BLAST_SEPOLIA].includes(chainId)) {
+  if ([CHAIN_IDs.BLAST, CHAIN_IDs.BLAST_SEPOLIA].includes(chainId) || ["Universal_SpokePool"].includes(name)) {
     unsafeAllowArgs.push("state-variable-immutable");
   }
 

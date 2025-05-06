@@ -70,11 +70,7 @@ describe("HubPool Admin functions", function () {
     ).to.be.reverted;
   });
   it("Only owner can relay spoke pool admin message", async function () {
-    const functionData = mockSpoke.interface.encodeFunctionData("setEnableRoute", [
-      weth.address,
-      destinationChainId,
-      false,
-    ]);
+    const functionData = mockSpoke.interface.encodeFunctionData("pauseDeposits", [true]);
     await expect(hubPool.connect(other).relaySpokePoolAdminFunction(destinationChainId, functionData)).to.be.reverted;
 
     // Cannot relay admin function if spoke pool is set to zero address or adapter is set to non contract..
@@ -90,44 +86,6 @@ describe("HubPool Admin functions", function () {
     await expect(hubPool.relaySpokePoolAdminFunction(destinationChainId, functionData))
       .to.emit(hubPool, "SpokePoolAdminFunctionTriggered")
       .withArgs(destinationChainId, functionData);
-  });
-  it("Only owner can whitelist route for deposits and rebalances", async function () {
-    await hubPool.setCrossChainContracts(destinationChainId, mockAdapter.address, mockSpoke.address);
-    await expect(hubPool.connect(other).setPoolRebalanceRoute(destinationChainId, weth.address, usdc.address)).to.be
-      .reverted;
-    await expect(hubPool.setPoolRebalanceRoute(destinationChainId, weth.address, usdc.address))
-      .to.emit(hubPool, "SetPoolRebalanceRoute")
-      .withArgs(destinationChainId, weth.address, usdc.address);
-
-    // Relay deposit route to spoke pool. Check content of messages sent to mock spoke pool.
-    await expect(hubPool.connect(other).setDepositRoute(originChainId, destinationChainId, weth.address, true)).to.be
-      .reverted;
-    await expect(hubPool.setDepositRoute(originChainId, destinationChainId, weth.address, true))
-      .to.emit(hubPool, "SetEnableDepositRoute")
-      .withArgs(originChainId, destinationChainId, weth.address, true);
-
-    // Disable deposit route on SpokePool right after:
-    await hubPool.setDepositRoute(originChainId, destinationChainId, weth.address, false);
-
-    // Since the mock adapter is delegatecalled, when querying, its address should be the hubPool address.
-    const mockAdapterAtHubPool = mockAdapter.attach(hubPool.address);
-    const relayMessageEvents = await mockAdapterAtHubPool.queryFilter(
-      mockAdapterAtHubPool.filters.RelayMessageCalled()
-    );
-    expect(relayMessageEvents[relayMessageEvents.length - 1].args?.message).to.equal(
-      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
-        weth.address,
-        destinationChainId,
-        false, // Latest call disabled the route
-      ])
-    );
-    expect(relayMessageEvents[relayMessageEvents.length - 2].args?.message).to.equal(
-      mockSpoke.interface.encodeFunctionData("setEnableRoute", [
-        weth.address,
-        destinationChainId,
-        true, // Second to last call enabled the route
-      ])
-    );
   });
 
   it("Can change the bond token and amount", async function () {

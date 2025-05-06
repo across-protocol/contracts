@@ -110,7 +110,7 @@
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
-      "label": "enabledDepositRoutes",
+      "label": "DEPRECATED_enabledDepositRoutes",
       "offset": 0,
       "slot": "2157"
     },
@@ -176,7 +176,7 @@
     },
     {
       "contract": "contracts/Linea_SpokePool.sol:Linea_SpokePool",
-      "label": "l2UsdcBridge",
+      "label": "DEPRECATED_l2UsdcBridge",
       "offset": 0,
       "slot": "3164"
     }

@@ -88,6 +88,7 @@ const config: HardhatUserConfig = {
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
       },
+      "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -101,10 +102,11 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
-    version: "latest",
+    version: "1.5.7",
     settings: {
       optimizer: {
         enabled: true,
@@ -171,7 +173,14 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
-      url: getNodeUrl("polygon-mainnet", true, CHAIN_IDs.POLYGON),
+      url: "https://polygon-rpc.com",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    bsc: {
+      chainId: 56,
+      url: "https://binance.llamarpc.com",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -258,6 +267,24 @@ const config: HardhatUserConfig = {
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
+    },
+    tatara: {
+      chainId: CHAIN_IDs.TATARA,
+      url: "https://rpc.tatara.katanarpc.com/<apikey>",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+      ethNetwork: "sepolia",
+    },
+    lens: {
+      chainId: CHAIN_IDs.LENS,
+      url: "https://api.lens.matterhosted.dev",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+      ethNetwork: "mainnet",
+      verifyURL: "", // @todo
+      zksync: true,
     },
     "lens-sepolia": {
       chainId: CHAIN_IDs.LENS_SEPOLIA,
@@ -365,8 +392,10 @@ const config: HardhatUserConfig = {
       "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
+      bsc: process.env.BNB_ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
+      tatara: "blockscout",
       lisk: "blockscout",
       "lisk-sepolia": "blockscout",
       redstone: "blockscout",
@@ -507,6 +536,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.mode.network/api",
           browserURL: "https://explorer.mode.network/",
+        },
+      },
+      {
+        network: "tatara",
+        chainId: CHAIN_IDs.TATARA,
+        urls: {
+          apiURL: "https://explorer.tatara.katana.network/api",
+          browserURL: "https://explorer.tatara.katana.network",
         },
       },
       {

@@ -110,7 +110,7 @@
     },
     {
       "contract": "contracts/Blast_SpokePool.sol:Blast_SpokePool",
-      "label": "enabledDepositRoutes",
+      "label": "DEPRECATED_enabledDepositRoutes",
       "offset": 0,
       "slot": "2157"
     },
