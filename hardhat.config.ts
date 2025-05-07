@@ -274,7 +274,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
       ethNetwork: "mainnet",
-      verifyURL: "", // @todo
+      verifyURL: "https://api-explorer-verify.lens.matterhosted.dev/contract_verification",
       zksync: true,
     },
     "lens-sepolia": {
