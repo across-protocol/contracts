@@ -68,21 +68,6 @@ export async function deploySpokePool(
   };
 }
 
-export interface DepositRoute {
-  originToken: string;
-  destinationChainId?: number;
-  enabled?: boolean;
-}
-export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) {
-  for (const route of routes) {
-    await spokePool.setEnableRoute(
-      route.originToken,
-      route.destinationChainId ?? consts.destinationChainId,
-      route.enabled ?? true
-    );
-  }
-}
-
 export interface RelayData {
   depositor: string;
   recipient: string;
@@ -357,8 +342,7 @@ export async function getUpdatedV3DepositSignature(
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
-  updatedMessage: string,
-  isAddressOverload: boolean = false
+  updatedMessage: string
 ): Promise<string> {
   const typedData = {
     types: {
@@ -366,7 +350,7 @@ export async function getUpdatedV3DepositSignature(
         { name: "depositId", type: "uint256" },
         { name: "originChainId", type: "uint256" },
         { name: "updatedOutputAmount", type: "uint256" },
-        { name: "updatedRecipient", type: isAddressOverload ? "address" : "bytes32" },
+        { name: "updatedRecipient", type: "bytes32" },
         { name: "updatedMessage", type: "bytes" },
       ],
     },

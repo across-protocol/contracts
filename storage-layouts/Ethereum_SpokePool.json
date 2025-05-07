@@ -110,7 +110,7 @@
     },
     {
       "contract": "contracts/Ethereum_SpokePool.sol:Ethereum_SpokePool",
-      "label": "enabledDepositRoutes",
+      "label": "DEPRECATED_enabledDepositRoutes",
       "offset": 0,
       "slot": "2157"
     },
