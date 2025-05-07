@@ -2,6 +2,7 @@
 set -euo pipefail
 
 if [[ "${IS_TEST:-}" == "true" ]]; then
+  echo "Using test feature build"
   CARGO_OPTIONS="--features test"
 else
   CARGO_OPTIONS=""

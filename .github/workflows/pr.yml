@@ -182,7 +182,7 @@ jobs:
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         env:
           IS_TEST: true
-        run: yarn build-solana-verify
+        run: yarn build-svm-solana-verify
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
@@ -225,7 +225,7 @@ jobs:
           path: target/deploy
       - name: Create verified build
         if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
-        run: yarn build-solana-verify
+        run: yarn build-svm-solana-verify
       # - name: Test verified SVM build
       #   run: anchor test --skip-build
   forge:
