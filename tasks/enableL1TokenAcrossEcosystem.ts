@@ -8,12 +8,14 @@ const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
 const NO_SYMBOL = "----";
 const NO_ADDRESS = "------------------------------------------";
 
+const IGNORED_CHAINS = [CHAIN_IDs.BOBA, CHAIN_IDs.BSC, CHAIN_IDs.SOLANA];
+
 // Supported mainnet chain IDs.
 const enabledChainIds = (hubChainId: number) => {
   const chainIds = hubChainId === CHAIN_IDs.MAINNET ? MAINNET_CHAIN_IDs : TESTNET_CHAIN_IDs;
   return Object.values(chainIds)
     .map(Number)
-    .filter((chainId) => chainId !== CHAIN_IDs.BOBA)
+    .filter((chainId) => !IGNORED_CHAINS.includes(chainId))
     .sort((x, y) => x - y);
 };
 
@@ -290,9 +292,8 @@ task("enableToken", "Enable a provided token across the entire ecosystem of supp
       for (const [target, calldata] of Object.entries(callData)) {
         console.log(`\nTransaction ${i++}:`);
         if (target === hubPool.address) {
-          const data = hubPool.interface.encodeFunctionData("multicall", calldata.join());
           console.log("\tmethod: multicall");
-          console.log(`\ttarget: ${target}\n\tdata:\t${data}`);
+          console.log(`\ttarget: ${target}\n\tdata:\t${[calldata]}`);
           continue;
         }
 
