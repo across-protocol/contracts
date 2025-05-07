@@ -48,8 +48,6 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
         );
         spokePool = MockSpokePool(payable(proxy));
 
-        spokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
-
         vm.stopPrank();
 
         deal(depositor, depositAmount * 2);

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { HubPoolInterface } from "../interfaces/HubPoolInterface.sol";
+
 /// @title MockHubPool for Token Relay between Layer 1 and Layer 2
 /// @dev This contract acts as a mock implementation for testing purposes,
 ///      simulating the behavior of a hub pool that can relay tokens and messages
@@ -15,6 +17,8 @@ contract MockHubPool {
     /// @notice The address of the adapter contract responsible for handling
     ///         token relay and message passing to Layer 2.
     address public adapter;
+
+    HubPoolInterface.RootBundle public rootBundleProposal;
 
     /// @notice Creates a new MockHubPool and sets the owner and initial adapter.
     /// @param _adapter The address of the initial adapter contract.
@@ -43,6 +47,10 @@ contract MockHubPool {
         address _oldAdapter = adapter;
         adapter = _adapter;
         emit AdapterChanged(_oldAdapter, _adapter);
+    }
+
+    function setPendingRootBundle(HubPoolInterface.RootBundle memory _rootBundleProposal) external {
+        rootBundleProposal = _rootBundleProposal;
     }
 
     /// @notice Relays tokens from L1 to L2 using the adapter contract.
