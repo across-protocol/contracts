@@ -47,6 +47,7 @@ contract SpokePoolVerifier {
         bytes32 recipient,
         bytes32 inputToken,
         uint256 inputAmount,
+        bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
         bytes32 exclusiveRelayer,
@@ -62,9 +63,7 @@ contract SpokePoolVerifier {
             msg.sender.toBytes32(),
             recipient,
             inputToken,
-            // @dev Setting outputToken to 0x0 to instruct fillers to use the equivalent token
-            // as the originToken on the destination chain.
-            bytes32(0),
+            outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,

@@ -81,6 +81,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
@@ -97,6 +98,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockERC20).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
@@ -119,6 +121,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
@@ -144,7 +147,7 @@ contract SpokePoolVerifierTest is Test {
                     depositor.toBytes32(),
                     depositor.toBytes32(),
                     address(mockWETH).toBytes32(),
-                    bytes32(0),
+                    address(mockWETH).toBytes32(),
                     depositAmount,
                     depositAmount,
                     destinationChainId,
@@ -161,6 +164,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // inputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
