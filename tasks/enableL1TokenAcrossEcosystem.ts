@@ -132,7 +132,7 @@ task("enableToken", "Enable a provided token across the entire ecosystem of supp
       const l1Token = erc20.attach(l1TokenAddr);
       const decimals = await l1Token.decimals();
       const depositAmount = BigNumber.from(burn ?? "1").mul(BigNumber.from(10).pow(decimals));
-      const doBurn = await askYesNoQuestion(`\nBurn ${burn} (${depositAmount}) ${symbol} LP tokens? (RECOMMENDED!)`);
+      const doBurn = await askYesNoQuestion(`\nBurn ${burn} ${symbol} (${depositAmount}) LP tokens? (RECOMMENDED!)`);
 
       if (doBurn) {
         callData[l1Token.address] ??= [];
