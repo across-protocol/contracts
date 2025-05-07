@@ -26,16 +26,29 @@ import {
 } from "@solana/spl-token";
 import { Keypair, PublicKey, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
-import { SvmSpokeClient } from "../../src/svm";
+import { SvmSpokeClient, createDefaultTransaction, signAndSendTransaction } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import { intToU8Array32, readEventsUntilFound, u8Array32ToBigNumber, u8Array32ToInt } from "../../src/svm/web3-v1";
 import { DepositDataValues } from "../../src/types/svm";
 import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
-import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
-const { provider, connection, program, owner, seedBalance, initializeState, depositData } = common;
-const { createRoutePda, getVaultAta, assertSE, assert, getCurrentTime, depositQuoteTimeBuffer, fillDeadlineBuffer } =
-  common;
+import { createDefaultSolanaClient } from "./utils";
+const {
+  provider,
+  connection,
+  program,
+  owner,
+  seedBalance,
+  initializeState,
+  depositData,
+  createRoutePda,
+  getVaultAta,
+  assertSE,
+  assert,
+  getCurrentTime,
+  depositQuoteTimeBuffer,
+  fillDeadlineBuffer,
+} = common;
 
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
 

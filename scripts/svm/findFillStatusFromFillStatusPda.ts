@@ -1,7 +1,7 @@
 // This script finds the fillStatus (fillStatus + event) from a provided fillStatusPda.
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
-import { address, createSolanaRpc } from "@solana/kit";
+import { address, createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { SvmSpokeIdl } from "../../src/svm";
@@ -23,10 +23,14 @@ async function findFillStatusFromFillStatusPda(): Promise<void> {
   const fillStatusPda = address(resolvedArgv.fillStatusPda);
 
   console.log(`Looking for Fill Event for Fill Status PDA: ${fillStatusPda.toString()}`);
+  const { rpcEndpoint } = provider.connection;
+  const rpc = createSolanaRpc(rpcEndpoint);
+  const rpcSubscriptions = createSolanaRpcSubscriptions(
+    rpcEndpoint.replace(/^http(s?):\/\//i, (_m, s) => `ws${s ?? ""}://`)
+  );
 
-  const rpc = createSolanaRpc(provider.connection.rpcEndpoint);
   const { event, slot } = await readFillEventFromFillStatusPda(
-    rpc,
+    { rpc, rpcSubscriptions },
     fillStatusPda,
     address(resolvedArgv.programId),
     SvmSpokeIdl
