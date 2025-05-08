@@ -174,18 +174,11 @@ jobs:
         with:
           name: verified-test-binaries
           path: target/deploy
-      - name: Build EVM contracts
-        run: yarn build-evm
-      - name: Build TS
-        run: yarn build-ts
       - name: Create verified build
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         env:
           IS_TEST: true
         run: yarn build-svm-solana-verify
-      - name: Test evm-hardhat
-        shell: bash
-        run: yarn test-evm
       - name: Test verified SVM build
         run: anchor test --skip-build
   build-svm-verified:
@@ -228,6 +221,32 @@ jobs:
         run: yarn build-svm-solana-verify
       # - name: Test verified SVM build
       #   run: anchor test --skip-build
+  build-ts:
+    name: Build TypeScript
+    needs: upload-svm-idl-artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Download SVM IDL artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-idl-artifacts-node-${{ matrix.node }}
+      - name: Generate EVM assets
+        run: yarn generate-evm-assets
+      - name: Build TypeScript
+        run: yarn build-ts
   forge:
     name: Forge
     runs-on: ubuntu-latest
