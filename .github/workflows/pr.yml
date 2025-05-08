@@ -92,7 +92,9 @@ jobs:
   test-evm:
     name: Test EVM
     # Mixed leaf tests also require SVM types from assets that have been uploaded in the artifacts.
-    needs: upload-svm-idl-artifacts
+    needs:
+      - upload-svm-idl-artifacts
+      - upload-evm-artifacts
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -245,7 +247,9 @@ jobs:
       #   run: anchor test --skip-build
   build-ts:
     name: Build TypeScript
-    needs: upload-svm-idl-artifacts
+    needs:
+      - upload-svm-idl-artifacts
+      - upload-evm-artifacts
     runs-on: ubuntu-latest
     strategy:
       matrix:
