@@ -68,21 +68,6 @@ export async function deploySpokePool(
   };
 }
 
-export interface DepositRoute {
-  originToken: string;
-  destinationChainId?: number;
-  enabled?: boolean;
-}
-export async function enableRoutes(spokePool: Contract, routes: DepositRoute[]) {
-  for (const route of routes) {
-    await spokePool.setEnableRoute(
-      route.originToken,
-      route.destinationChainId ?? consts.destinationChainId,
-      route.enabled ?? true
-    );
-  }
-}
-
 export interface RelayData {
   depositor: string;
   recipient: string;
