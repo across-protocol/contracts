@@ -53,7 +53,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: evm-artifacts-node-${{ matrix.node }}
-          path: artifacts
+          path: ./artifacts
           if-no-files-found: error
   lint:
     name: Lint
@@ -118,7 +118,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: evm-artifacts-node-${{ matrix.node }}
-          path: artifacts
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
@@ -274,9 +273,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: evm-artifacts-node-${{ matrix.node }}
-          path: artifacts
-      - name: Generate EVM assets
-        run: yarn generate-evm-assets
       - name: Build TypeScript
         run: yarn build-ts
   forge:
