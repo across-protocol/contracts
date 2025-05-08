@@ -35,6 +35,26 @@ jobs:
           name: svm-idl-artifacts-node-${{ matrix.node }}
           path: ${{ env.ARTIFACTS_PATHS }}
           if-no-files-found: error
+  upload-evm-artifacts:
+    name: Upload EVM artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-scripts
+      - name: Build EVM
+        run: yarn build-evm
+      - name: Upload EVM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: evm-artifacts-node-${{ matrix.node }}
+          path: artifacts
+          if-no-files-found: error
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -92,8 +112,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: svm-idl-artifacts-node-${{ matrix.node }}
-      - name: Build EVM
-        run: yarn build-evm
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-node-${{ matrix.node }}
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
@@ -243,6 +265,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: svm-idl-artifacts-node-${{ matrix.node }}
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-node-${{ matrix.node }}
       - name: Generate EVM assets
         run: yarn generate-evm-assets
       - name: Build TypeScript
