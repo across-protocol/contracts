@@ -439,10 +439,15 @@ describe("svm_spoke.fill.across_plus", () => {
         programAddress: address(program.programId.toString()),
         seeds: ["__event_authority"],
       });
-      const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
+      const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+      const relayHash = Array.from(relayHashUint8Array);
+      const delegate = address(
+        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString()
+      );
       const formattedAccounts = {
         state: address(accounts.state.toString()),
+        delegate,
         instructionParams: address(program.programId.toString()),
         mint: address(mint.toString()),
         relayerTokenAccount: address(relayerATA.toString()),
@@ -479,7 +484,7 @@ describe("svm_spoke.fill.across_plus", () => {
       const approveIx = getApproveCheckedInstruction({
         source: address(accounts.relayerTokenAccount.toString()),
         mint: address(accounts.mint.toString()),
-        delegate: address(accounts.state.toString()),
+        delegate,
         owner: address(accounts.signer.toString()),
         amount: BigInt(relayData.outputAmount.toString()),
         decimals: mintDecimals,
