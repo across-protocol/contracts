@@ -55,6 +55,7 @@ jobs:
           name: evm-artifacts-node-${{ matrix.node }}
           path: |
             artifacts
+            cache
             typechain
           if-no-files-found: error
   lint:
