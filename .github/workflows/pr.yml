@@ -134,48 +134,6 @@ jobs:
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node:
-          - 20
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-      - name: "Use Node ${{ matrix.node }}"
-        uses: actions/setup-node@v3
-        with:
-          node-version: "${{ matrix.node }}"
-          cache: yarn
-      - name: Extract Solana versions
-        uses: solana-developers/github-actions/extract-versions@v0.2.5
-        id: versions
-      - name: Setup Anchor & Solana
-        uses: solana-developers/github-actions/setup-all@v0.2.5
-        with:
-          anchor_version: ${{ steps.versions.outputs.anchor_version }}
-          solana_version: ${{ steps.versions.outputs.solana_version }}
-          node_version: ${{ matrix.node }}
-      - name: Install Cargo toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          components: rustc
-      - name: Cache Cargo dependencies
-        uses: Swatinem/rust-cache@v2
-      - name: Install packages
-        run: yarn install --frozen-lockfile
-      - name: Build
-        run: yarn build
-      - name: Test evm-hardhat
-        shell: bash
-        run: yarn test-evm
-      - name: Test svm-anchor
-        shell: bash
-        run: yarn test-svm
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts
