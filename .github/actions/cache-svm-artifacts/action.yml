@@ -22,4 +22,4 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}
-        key: svm-${{ inputs.type }}-${{ runner.os }}-node-{{ inputs.node_version }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}
+        key: svm-${{ inputs.type }}-${{ runner.os }}-node-${{ inputs.node_version }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}

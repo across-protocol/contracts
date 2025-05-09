@@ -19,4 +19,4 @@ runs:
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}
-        key: evm-artifacts-${{ runner.os }}-node-{{ inputs.node_version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
+        key: evm-artifacts-${{ runner.os }}-node-${{ inputs.node_version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
