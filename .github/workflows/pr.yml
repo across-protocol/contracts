@@ -278,6 +278,10 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
+      - run: sudo apt-get update
+        shell: bash
+      - run: sudo apt-get install -y libudev-dev
+        shell: bash
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Download SVM artifacts
