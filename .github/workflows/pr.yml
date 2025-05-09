@@ -92,7 +92,7 @@ jobs:
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Lint js
         shell: bash
         run: yarn lint-js
@@ -122,7 +122,7 @@ jobs:
           node-version: "${{ matrix.node }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -193,7 +193,7 @@ jobs:
           node-version: "${{ matrix.node }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
@@ -236,7 +236,7 @@ jobs:
           node-version: "${{ matrix.node }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
@@ -278,12 +278,8 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-      - run: sudo apt-get update
-        shell: bash
-      - run: sudo apt-get install -y libusb-1.0
-        shell: bash
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -310,7 +306,7 @@ jobs:
           node-version: "${{ matrix.node }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
       - name: Install forge dependencies
