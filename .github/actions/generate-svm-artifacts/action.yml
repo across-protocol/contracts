@@ -22,4 +22,4 @@ runs:
       run: yarn install --frozen-lockfile --ignore-optional
     - name: Generate SVM IDL artifacts
       shell: bash
-      run: yarn generate-svm-assets
+      run: yarn generate-svm-artifacts
