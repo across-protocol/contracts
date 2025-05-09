@@ -1,6 +1,73 @@
 name: Checks
 on: [push, pull_request]
 jobs:
+  # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
+  upload-svm-artifacts:
+    name: Upload SVM artifacts
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACTS_PATHS: |
+        target/idl
+        target/types
+        src/svm/assets
+        src/svm/clients
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Cache SVM artifacts
+        id: svm-artifacts-cache
+        uses: ./.github/actions/cache-svm-artifacts
+        with:
+          type: artifacts
+          path: ${{ env.ARTIFACTS_PATHS }}
+          node_version: ${{ matrix.node }}
+      - name: Generate SVM artifacts
+        if: steps.svm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-svm-artifacts
+        with:
+          node_version: ${{ matrix.node }}
+      - name: Upload SVM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+          path: ${{ env.ARTIFACTS_PATHS }}
+          if-no-files-found: error
+  upload-evm-artifacts:
+    name: Upload EVM artifacts
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACTS_PATHS: |
+        artifacts
+        cache
+        typechain
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: Cache EVM artifacts
+        id: evm-artifacts-cache
+        uses: ./.github/actions/cache-evm-artifacts
+        with:
+          path: ${{ env.ARTIFACTS_PATHS }}
+          node_version: ${{ matrix.node }}
+      - name: Generate EVM artifacts
+        if: steps.evm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-evm-artifacts
+        with:
+          node_version: ${{ matrix.node }}
+      - name: Upload EVM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+          path: ${{ env.ARTIFACTS_PATHS }}
+          if-no-files-found: error
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -16,21 +83,14 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-      - name: Extract Solana versions
-        uses: solana-developers/github-actions/extract-versions@v0.2.5
-        id: versions
-      - name: Setup Anchor & Solana
-        uses: solana-developers/github-actions/setup-all@v0.2.5
-        with:
-          anchor_version: ${{ steps.versions.outputs.anchor_version }}
-          solana_version: ${{ steps.versions.outputs.solana_version }}
-          node_version: 20
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
           profile: minimal
           components: rustc, rustfmt
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Lint js
@@ -42,6 +102,38 @@ jobs:
       - name: Lint rust
         shell: bash
         run: yarn lint-rust
+  test-evm:
+    name: Test EVM
+    # Mixed leaf tests also require SVM types from assets that have been uploaded in the artifacts.
+    needs:
+      - upload-svm-artifacts
+      - upload-evm-artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile
+      - name: Download SVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+      - name: Test evm-hardhat
+        shell: bash
+        run: yarn test-evm
   test:
     name: Test
     runs-on: ubuntu-latest
@@ -65,7 +157,7 @@ jobs:
         with:
           anchor_version: ${{ steps.versions.outputs.anchor_version }}
           solana_version: ${{ steps.versions.outputs.solana_version }}
-          node_version: 20
+          node_version: ${{ matrix.node }}
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -84,6 +176,120 @@ jobs:
       - name: Test svm-anchor
         shell: bash
         run: yarn test-svm
+  test-svm-verified:
+    name: Test verified SVM build
+    needs: upload-svm-artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ matrix.node }}
+      - name: Download SVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+      # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
+      # manually cache the verified build binaries if the program source code has not changed.
+      - name: Cache verified test build binaries
+        id: verified-test-build-cache
+        uses: ./.github/actions/cache-svm-artifacts
+        with:
+          type: verified-test-binaries
+          path: target/deploy
+          node_version: ${{ matrix.node }}
+      - name: Create verified build
+        if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
+        env:
+          IS_TEST: true
+        run: yarn build-svm-solana-verify
+      - name: Test verified SVM build
+        run: anchor test --skip-build
+  build-svm-verified:
+    name: SVM verified production build
+    needs: upload-svm-artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ matrix.node }}
+      - name: Download SVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+      # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
+      # manually cache the verified build binaries if the program source code has not changed.
+      - name: Cache verified production build binaries
+        id: verified-production-build-cache
+        uses: ./.github/actions/cache-svm-artifacts
+        with:
+          type: verified-production-binaries
+          path: target/deploy
+          node_version: ${{ matrix.node }}
+      - name: Create verified build
+        if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
+        run: yarn build-svm-solana-verify
+      # - name: Test verified SVM build
+      #   run: anchor test --skip-build
+  build-ts:
+    name: Build TypeScript
+    needs:
+      - upload-svm-artifacts
+      - upload-evm-artifacts
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node:
+          - 20
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ matrix.node }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ matrix.node }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile
+      - name: Download SVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+      - name: Build TypeScript
+        run: yarn build-ts
   forge:
     name: Forge
     runs-on: ubuntu-latest
@@ -99,15 +305,6 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: yarn
-      - name: Extract Solana versions
-        uses: solana-developers/github-actions/extract-versions@v0.2.5
-        id: versions
-      - name: Setup Anchor & Solana
-        uses: solana-developers/github-actions/setup-all@v0.2.5
-        with:
-          anchor_version: ${{ steps.versions.outputs.anchor_version }}
-          solana_version: ${{ steps.versions.outputs.solana_version }}
-          node_version: 20
       - name: Install packages
         run: yarn install --frozen-lockfile
       - name: Install Foundry
