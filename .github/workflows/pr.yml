@@ -280,7 +280,7 @@ jobs:
           cache: yarn
       - run: sudo apt-get update
         shell: bash
-      - run: sudo apt-get install -y libudev
+      - run: sudo apt-get install -y libusb
         shell: bash
       - name: Install packages
         run: yarn install --frozen-lockfile
