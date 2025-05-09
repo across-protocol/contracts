@@ -13,7 +13,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], relay_data: Option<RelayData>)]
+#[instruction(_relay_hash: [u8; 32], relay_data: Option<RelayData>)]
 pub struct RequestSlowFill<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -33,10 +33,10 @@ pub struct RequestSlowFill<'info> {
         init_if_needed,
         payer = signer,
         space = DISCRIMINATOR_SIZE + FillStatusAccount::INIT_SPACE,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", _relay_hash.as_ref()],
         bump,
         constraint = is_relay_hash_valid(
-            &relay_hash,
+            &_relay_hash,
             &relay_data.clone().unwrap_or_else(|| instruction_params.as_ref().unwrap().relay_data.clone()),
             &state) @ SvmError::InvalidRelayHash
     )]
@@ -133,7 +133,7 @@ impl SlowFill {
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(relay_hash: [u8; 32], slow_fill_leaf: Option<SlowFill>, root_bundle_id: Option<u32>)]
+#[instruction(_relay_hash: [u8; 32], slow_fill_leaf: Option<SlowFill>, _root_bundle_id: Option<u32>)]
 pub struct ExecuteSlowRelayLeaf<'info> {
     pub signer: Signer<'info>,
 
@@ -148,7 +148,7 @@ pub struct ExecuteSlowRelayLeaf<'info> {
         seeds = [
             b"root_bundle",
             state.seed.to_le_bytes().as_ref(),
-            root_bundle_id
+            _root_bundle_id
                 .unwrap_or_else(|| instruction_params.as_ref().unwrap().root_bundle_id)
                 .to_le_bytes()
                 .as_ref(),
@@ -159,11 +159,11 @@ pub struct ExecuteSlowRelayLeaf<'info> {
 
     #[account(
         mut,
-        seeds = [b"fills", relay_hash.as_ref()],
+        seeds = [b"fills", _relay_hash.as_ref()],
         bump,
         // Make sure caller provided relay_hash used in PDA seeds is valid.
         constraint = is_relay_hash_valid(
-            &relay_hash,
+            &_relay_hash,
             &slow_fill_leaf
                 .clone()
                 .unwrap_or_else(|| instruction_params.as_ref().unwrap().slow_fill_leaf.clone())
