@@ -12,7 +12,19 @@ contract Lens_SpokePool is ZkSync_SpokePool {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
+        IERC20 _circleUSDC,
+        ZkBridgeLike _zkUSDCBridge,
+        ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) ZkSync_SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+    )
+        ZkSync_SpokePool(
+            _wrappedNativeTokenAddress,
+            _circleUSDC,
+            _zkUSDCBridge,
+            _cctpTokenMessenger,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer
+        )
+    {}
 }
