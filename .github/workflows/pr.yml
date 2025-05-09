@@ -1,9 +1,9 @@
 name: Checks
 on: [push, pull_request]
 jobs:
-  # Multiple jobs depend on having SVM artifacts available, so we upload them first in a separate job.
-  upload-svm-idl-artifacts:
-    name: Upload SVM IDL artifacts
+  # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
+  upload-svm-artifacts:
+    name: Upload SVM artifacts
     runs-on: ubuntu-latest
     env:
       ARTIFACTS_PATHS: |
@@ -18,26 +18,32 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Cache SVM IDL artifacts
-        id: svm-idl-artifacts-cache
-        uses: ./.github/actions/cache-svm-assets
+      - name: Cache SVM artifacts
+        id: svm-artifacts-cache
+        uses: ./.github/actions/cache-svm-artifacts
         with:
-          name: idl-artifacts
+          type: artifacts
           path: ${{ env.ARTIFACTS_PATHS }}
-      - name: Generate SVM IDL artifacts
-        if: steps.svm-idl-artifacts-cache.outputs.cache-hit != 'true'
-        uses: ./.github/actions/generate-svm-idl-artifacts
+          node_version: ${{ matrix.node }}
+      - name: Generate SVM artifacts
+        if: steps.svm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-svm-artifacts
         with:
           node_version: ${{ matrix.node }}
-      - name: Upload SVM IDL artifacts
+      - name: Upload SVM artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: svm-idl-artifacts-node-${{ matrix.node }}
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
           path: ${{ env.ARTIFACTS_PATHS }}
           if-no-files-found: error
   upload-evm-artifacts:
     name: Upload EVM artifacts
     runs-on: ubuntu-latest
+    env:
+      ARTIFACTS_PATHS: |
+        artifacts
+        cache
+        typechain
     strategy:
       matrix:
         node:
@@ -45,18 +51,22 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Build EVM
-        run: yarn build-evm
+      - name: Cache EVM artifacts
+        id: evm-artifacts-cache
+        uses: ./.github/actions/cache-evm-artifacts
+        with:
+          path: ${{ env.ARTIFACTS_PATHS }}
+          node_version: ${{ matrix.node }}
+      - name: Generate EVM artifacts
+        if: steps.evm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-evm-artifacts
+        with:
+          node_version: ${{ matrix.node }}
       - name: Upload EVM artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: evm-artifacts-node-${{ matrix.node }}
-          path: |
-            artifacts
-            cache
-            typechain
+          name: evm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
+          path: ${{ env.ARTIFACTS_PATHS }}
           if-no-files-found: error
   lint:
     name: Lint
@@ -96,7 +106,7 @@ jobs:
     name: Test EVM
     # Mixed leaf tests also require SVM types from assets that have been uploaded in the artifacts.
     needs:
-      - upload-svm-idl-artifacts
+      - upload-svm-artifacts
       - upload-evm-artifacts
     runs-on: ubuntu-latest
     strategy:
@@ -113,14 +123,14 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Download SVM IDL artifacts
+      - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: svm-idl-artifacts-node-${{ matrix.node }}
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
       - name: Download EVM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: evm-artifacts-node-${{ matrix.node }}
+          name: evm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
       - name: Test evm-hardhat
         shell: bash
         run: yarn test-evm
@@ -168,7 +178,7 @@ jobs:
         run: yarn test-svm
   test-svm-verified:
     name: Test verified SVM build
-    needs: upload-svm-idl-artifacts
+    needs: upload-svm-artifacts
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -189,18 +199,19 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ matrix.node }}
-      - name: Download SVM IDL artifacts
+      - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: svm-idl-artifacts-node-${{ matrix.node }}
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
       # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
       # manually cache the verified build binaries if the program source code has not changed.
       - name: Cache verified test build binaries
         id: verified-test-build-cache
-        uses: ./.github/actions/cache-svm-assets
+        uses: ./.github/actions/cache-svm-artifacts
         with:
-          name: verified-test-binaries
+          type: verified-test-binaries
           path: target/deploy
+          node_version: ${{ matrix.node }}
       - name: Create verified build
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         env:
@@ -210,7 +221,7 @@ jobs:
         run: anchor test --skip-build
   build-svm-verified:
     name: SVM verified production build
-    needs: upload-svm-idl-artifacts
+    needs: upload-svm-artifacts
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -231,18 +242,19 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ matrix.node }}
-      - name: Download SVM IDL artifacts
+      - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: svm-idl-artifacts-node-${{ matrix.node }}
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
       # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
       # manually cache the verified build binaries if the program source code has not changed.
       - name: Cache verified production build binaries
         id: verified-production-build-cache
-        uses: ./.github/actions/cache-svm-assets
+        uses: ./.github/actions/cache-svm-artifacts
         with:
-          name: verified-production-binaries
+          type: verified-production-binaries
           path: target/deploy
+          node_version: ${{ matrix.node }}
       - name: Create verified build
         if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
         run: yarn build-svm-solana-verify
@@ -251,7 +263,7 @@ jobs:
   build-ts:
     name: Build TypeScript
     needs:
-      - upload-svm-idl-artifacts
+      - upload-svm-artifacts
       - upload-evm-artifacts
     runs-on: ubuntu-latest
     strategy:
@@ -268,14 +280,14 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-scripts
-      - name: Download SVM IDL artifacts
+      - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: svm-idl-artifacts-node-${{ matrix.node }}
+          name: svm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
       - name: Download EVM artifacts
         uses: actions/download-artifact@v4
         with:
-          name: evm-artifacts-node-${{ matrix.node }}
+          name: evm-artifacts-${{ runner.os }}-node-${{ matrix.node }}
       - name: Build TypeScript
         run: yarn build-ts
   forge:
