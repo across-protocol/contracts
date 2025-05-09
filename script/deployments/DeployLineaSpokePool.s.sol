@@ -45,7 +45,7 @@ contract DeployLineaSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Linea_SpokePool spokePoolImplementationImplementation = new Linea_SpokePool(
+        // Linea_SpokePool spokePoolImplementation = new Linea_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

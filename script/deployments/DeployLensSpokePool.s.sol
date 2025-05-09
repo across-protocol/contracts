@@ -45,7 +45,7 @@ contract DeployLensSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Lens_SpokePool spokePoolImplementationImplementation = new Lens_SpokePool(
+        // Lens_SpokePool spokePoolImplementation = new Lens_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

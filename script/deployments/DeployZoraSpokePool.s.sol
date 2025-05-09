@@ -45,7 +45,7 @@ contract DeployZoraSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Zora_SpokePool spokePoolImplementationImplementation = new Zora_SpokePool(
+        // Zora_SpokePool spokePoolImplementation = new Zora_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

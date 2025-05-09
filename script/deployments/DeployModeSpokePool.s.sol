@@ -45,7 +45,7 @@ contract DeployModeSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Mode_SpokePool spokePoolImplementationImplementation = new Mode_SpokePool(
+        // Mode_SpokePool spokePoolImplementation = new Mode_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

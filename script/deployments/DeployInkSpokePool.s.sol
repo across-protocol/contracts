@@ -45,7 +45,7 @@ contract DeployInkSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Ink_SpokePool spokePoolImplementationImplementation = new Ink_SpokePool(
+        // Ink_SpokePool spokePoolImplementation = new Ink_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

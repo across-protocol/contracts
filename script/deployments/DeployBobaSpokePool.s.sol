@@ -45,7 +45,7 @@ contract DeployBobaSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Boba_SpokePool spokePoolImplementationImplementation = new Boba_SpokePool(
+        // Boba_SpokePool spokePoolImplementation = new Boba_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

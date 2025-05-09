@@ -44,7 +44,7 @@ contract DeployArbitrumSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        Arbitrum_SpokePool spokePoolImplementationImplementation = new Arbitrum_SpokePool(
+        Arbitrum_SpokePool spokePoolImplementation = new Arbitrum_SpokePool(
             weth,
             QUOTE_TIME_BUFFER,
             FILL_DEADLINE_BUFFER,
@@ -74,8 +74,8 @@ contract DeployArbitrumSpokePool is Script, ChainUtils {
         vm.stopBroadcast();
     }
 
-    // Placeholder function for getting L2 addresses - this would be implemented in ChainUtils
-    function getL2Address(uint256 chainId, string memory key) internal pure returns (address) {
+    // Override getL2Address with specific Arbitrum implementation
+    function getL2Address(uint256 chainId, string memory key) public pure override returns (address) {
         if (chainId == ARBITRUM) {
             if (compareStrings(key, "l2GatewayRouter")) return 0x5288c571Fd7aD117beA99bF60FE0846C4E84F933;
             if (compareStrings(key, "cctpTokenMessenger")) return 0x19330d10D9Cc8751218eaf51E8885D058642E08A;

@@ -45,7 +45,7 @@ contract DeployZksyncSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Zksync_SpokePool spokePoolImplementationImplementation = new Zksync_SpokePool(
+        // Zksync_SpokePool spokePoolImplementation = new Zksync_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

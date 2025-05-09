@@ -45,7 +45,7 @@ contract DeployScrollSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Scroll_SpokePool spokePoolImplementationImplementation = new Scroll_SpokePool(
+        // Scroll_SpokePool spokePoolImplementation = new Scroll_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

@@ -45,7 +45,7 @@ contract DeployTataraSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Tatara_SpokePool spokePoolImplementationImplementation = new Tatara_SpokePool(
+        // Tatara_SpokePool spokePoolImplementation = new Tatara_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

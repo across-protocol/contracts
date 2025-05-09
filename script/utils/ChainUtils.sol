@@ -30,12 +30,12 @@ abstract contract ChainUtils is Script {
     uint256 constant BLAST_SEPOLIA = 168587773;
     uint256 constant MODE = 34443;
     uint256 constant MODE_SEPOLIA = 919;
-    uint256 constant LISK = 4249108731;
+    uint256 constant LISK = 232; // Actual ChainID from deployments.json
     uint256 constant LISK_SEPOLIA = 4249108710;
-    uint256 constant REDSTONE = 2619;
+    uint256 constant REDSTONE = 57073; // Actual ChainID from deployments.json
     uint256 constant WORLD_CHAIN = 8888881;
     uint256 constant ZORA = 7777777;
-    uint256 constant ALEPH_ZERO = 643;
+    uint256 constant ALEPH_ZERO = 41455; // Actual ChainID from deployments.json
     uint256 constant INK = 111;
     uint256 constant TATARA = 8082;
     uint256 constant LENS = 1698046797;
@@ -44,6 +44,8 @@ abstract contract ChainUtils is Script {
     uint256 constant SONEIUM = 2718345;
     uint256 constant UNICHAIN = 698888;
     uint256 constant UNICHAIN_SEPOLIA = 699999;
+    // Additional chain IDs
+    uint256 constant BSC = 56;
 
     // Zero address constant
     address constant ZERO_ADDRESS = address(0);
@@ -235,7 +237,7 @@ abstract contract ChainUtils is Script {
     }
 
     // Get WMATIC address for Polygon chains
-    function getWMATIC(uint256 chainId) public pure returns (address) {
+    function getWMATIC(uint256 chainId) public pure virtual returns (address) {
         if (chainId == POLYGON) return 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
         if (chainId == POLYGON_AMOY) return 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889;
         revert(string.concat("No WMATIC address found for chainId ", vm.toString(chainId)));

@@ -45,7 +45,7 @@ contract DeployRedstoneSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Redstone_SpokePool spokePoolImplementationImplementation = new Redstone_SpokePool(
+        // Redstone_SpokePool spokePoolImplementation = new Redstone_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

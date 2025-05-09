@@ -49,7 +49,7 @@ contract DeployPolygonSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        Polygon_SpokePool spokePoolImplementationImplementation = new Polygon_SpokePool(
+        Polygon_SpokePool spokePoolImplementation = new Polygon_SpokePool(
             wmatic,
             QUOTE_TIME_BUFFER,
             FILL_DEADLINE_BUFFER,
@@ -81,15 +81,15 @@ contract DeployPolygonSpokePool is Script, ChainUtils {
         vm.stopBroadcast();
     }
 
-    // Helper function to get WMATIC address
-    function getWMATIC(uint256 chainId) internal pure returns (address) {
+    // Override getWMATIC with specific Polygon implementation
+    function getWMATIC(uint256 chainId) public pure override returns (address) {
         if (chainId == POLYGON) return 0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270;
         if (chainId == POLYGON_AMOY) return 0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889;
         revert(string.concat("No WMATIC address found for chainId ", vm.toString(chainId)));
     }
 
-    // Helper function for getting L2 addresses
-    function getL2Address(uint256 chainId, string memory key) internal pure returns (address) {
+    // Override getL2Address with specific Polygon implementation
+    function getL2Address(uint256 chainId, string memory key) public pure override returns (address) {
         if (chainId == POLYGON) {
             if (compareStrings(key, "fxChild")) return 0x8397259c983751DAf40400790063935a11afa28a;
             if (compareStrings(key, "cctpTokenMessenger")) return 0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE;

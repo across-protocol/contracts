@@ -45,7 +45,7 @@ contract DeployLiskSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Lisk_SpokePool spokePoolImplementationImplementation = new Lisk_SpokePool(
+        // Lisk_SpokePool spokePoolImplementation = new Lisk_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

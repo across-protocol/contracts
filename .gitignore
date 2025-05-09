@@ -38,3 +38,5 @@ test-ledger
 src/svm/assets 
 src/svm/clients/*
 !src/svm/clients/index.ts
+
+**/.claude/settings.local.json

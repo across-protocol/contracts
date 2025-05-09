@@ -45,7 +45,7 @@ contract DeployEvmSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Evm_SpokePool spokePoolImplementationImplementation = new Evm_SpokePool(
+        // Evm_SpokePool spokePoolImplementation = new Evm_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

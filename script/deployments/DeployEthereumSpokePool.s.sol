@@ -36,7 +36,7 @@ contract DeployEthereumSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        Ethereum_SpokePool spokePoolImplementationImplementation = new Ethereum_SpokePool(
+        Ethereum_SpokePool spokePoolImplementation = new Ethereum_SpokePool(
             weth,
             QUOTE_TIME_BUFFER,
             FILL_DEADLINE_BUFFER

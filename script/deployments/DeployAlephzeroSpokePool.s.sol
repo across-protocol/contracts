@@ -45,7 +45,7 @@ contract DeployAlephzeroSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Alephzero_SpokePool spokePoolImplementationImplementation = new Alephzero_SpokePool(
+        // Alephzero_SpokePool spokePoolImplementation = new Alephzero_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

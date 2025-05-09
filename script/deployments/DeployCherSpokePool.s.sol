@@ -45,7 +45,7 @@ contract DeployCherSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Cher_SpokePool spokePoolImplementationImplementation = new Cher_SpokePool(
+        // Cher_SpokePool spokePoolImplementation = new Cher_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

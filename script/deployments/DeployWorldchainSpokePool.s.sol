@@ -45,7 +45,7 @@ contract DeployWorldchainSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Worldchain_SpokePool spokePoolImplementationImplementation = new Worldchain_SpokePool(
+        // Worldchain_SpokePool spokePoolImplementation = new Worldchain_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

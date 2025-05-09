@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { ChainUtils } from "../../script/utils/ChainUtils.sol";
+import { ChainUtils } from "../../../script/utils/ChainUtils.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { ITokenMessenger } from "../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 /**
  * @title DeployGenericSpokePool
@@ -45,7 +45,7 @@ contract DeployGenericSpokePool is Script, ChainUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         // Deploy implementation contract
-        // Generic_SpokePool spokePoolImplementationImplementation = new Generic_SpokePool(
+        // Generic_SpokePool spokePoolImplementation = new Generic_SpokePool(
         //     wrappedNativeToken,
         //     QUOTE_TIME_BUFFER,
         //     FILL_DEADLINE_BUFFER,

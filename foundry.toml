@@ -26,9 +26,9 @@ via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.23"
 revert_strings = "strip"
-
 solc = "0.8.23"
 evm_version = "shanghai"
+fs_permissions = [{ access = "read-write", path = "./"}]
 
 [rpc_endpoints]
 ethereum = "${NODE_URL_1}"
