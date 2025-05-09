@@ -19,7 +19,7 @@ runs:
       uses: Swatinem/rust-cache@v2
     - name: Install packages
       shell: bash
-      run: yarn install --frozen-lockfile --ignore-optional
+      run: yarn install --frozen-lockfile
     - name: Generate SVM IDL artifacts
       shell: bash
       run: yarn generate-svm-assets
