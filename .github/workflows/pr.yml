@@ -1,5 +1,8 @@
 name: Checks
 on: [push, pull_request]
+x-node-matrix: &node-matrix
+  node:
+    - 20
 jobs:
   # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
   upload-svm-artifacts:
@@ -12,9 +15,7 @@ jobs:
         src/svm/assets
         src/svm/clients
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -45,9 +46,7 @@ jobs:
         cache
         typechain
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -72,9 +71,7 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -110,9 +107,7 @@ jobs:
       - upload-evm-artifacts
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -139,9 +134,7 @@ jobs:
     needs: upload-svm-artifacts
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -184,9 +177,7 @@ jobs:
       - upload-evm-artifacts
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -211,9 +202,7 @@ jobs:
     name: Forge
     runs-on: ubuntu-latest
     strategy:
-      matrix:
-        node:
-          - 20
+      matrix: *node-matrix
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
