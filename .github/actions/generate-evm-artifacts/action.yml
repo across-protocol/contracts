@@ -13,7 +13,7 @@ runs:
         cache: yarn
     - name: Install packages
       shell: bash
-      run: yarn install --frozen-lockfile --ignore-scripts
+      run: yarn install --frozen-lockfile
     - name: Build EVM
       shell: bash
       run: yarn build-evm

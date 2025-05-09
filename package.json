@@ -41,7 +41,6 @@
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "generate-evm-assets": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
-    "prepublish": "yarn build",
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
