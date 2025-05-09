@@ -1,0 +1,25 @@
+# Reusable action to cache SVM artifacts if the source code and dependencies have not changed.
+name: Cache SVM Artifacts
+inputs:
+  path:
+    description: "Cache path to use"
+    required: true
+  type:
+    description: "Type of the artifacts, used in cache key"
+    required: true
+  node_version:
+    description: "Node version used to generate the artifacts"
+    required: true
+outputs:
+  cache-hit:
+    description: "Whether the cache was hit"
+    value: ${{ steps.svm-artifacts-cache.outputs.cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Cache SVM artifacts
+      id: svm-artifacts-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.path }}
+        key: svm-${{ inputs.type }}-${{ runner.os }}-node-${{ inputs.node_version }}-${{ hashFiles('Cargo.lock', 'programs/**/Cargo.toml', 'programs/**/Xargo.toml', 'programs/**/*.rs') }}

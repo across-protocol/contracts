@@ -27,13 +27,13 @@ const fetchIdl = async (programName: string, programId: string) => {
   // CCTP programs have missing metadata.address
   idl.metadata = { address: programId };
 
-  const idlDir = path.resolve(__dirname, "../../target/idl");
+  const idlDir = path.resolve(__dirname, "../../../target/idl");
   const outputFilePath = path.join(idlDir, `${programName}.json`);
   fs.writeFileSync(outputFilePath, JSON.stringify(idl, null, 2));
 };
 
 const convertIdl = async (programName: string): Promise<void> => {
-  const idlDir = path.resolve(__dirname, "../../target/idl");
+  const idlDir = path.resolve(__dirname, "../../../target/idl");
   const idlFilePath = path.join(idlDir, `${programName}.json`);
 
   return new Promise((resolve, reject) => {
@@ -51,9 +51,9 @@ const convertIdl = async (programName: string): Promise<void> => {
 };
 
 const generateType = async (programName: string): Promise<void> => {
-  const idlDir = path.resolve(__dirname, "../../target/idl");
+  const idlDir = path.resolve(__dirname, "../../../target/idl");
   const idlFilePath = path.join(idlDir, `${programName}.json`);
-  const typesDir = path.resolve(__dirname, "../../target/types");
+  const typesDir = path.resolve(__dirname, "../../../target/types");
   const typeFilePath = path.join(typesDir, `${programName}.ts`);
 
   return new Promise((resolve, reject) => {
@@ -71,8 +71,8 @@ const generateType = async (programName: string): Promise<void> => {
 };
 
 const copyIdls = async (programName: string): Promise<void> => {
-  const idlDir = path.resolve(__dirname, "../../target/idl");
-  const idlsDir = path.resolve(__dirname, "../../idls");
+  const idlDir = path.resolve(__dirname, "../../../target/idl");
+  const idlsDir = path.resolve(__dirname, "../../../idls");
   const idlFilePath = path.join(idlDir, `${programName}.json`);
   const idlFilePathCopy = path.join(idlsDir, `${programName}.json`);
 
