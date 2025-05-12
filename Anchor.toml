@@ -57,6 +57,9 @@ findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
 
+[test]
+startup_wait = 10000
+
 ### Forked Circle Message Transmitter Program
 [[test.validator.clone]]
 address = "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd"
