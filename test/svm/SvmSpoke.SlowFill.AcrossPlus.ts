@@ -145,11 +145,11 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         program.programId
       );
     }
-    const requestV3SlowFillParams: RequestSlowFillDataParams = bufferParams
+    const requestSlowFillParams: RequestSlowFillDataParams = bufferParams
       ? [requestSlowFillValues[0], null]
       : requestSlowFillValues;
     const requestIx = await program.methods
-      .requestSlowFill(...requestV3SlowFillParams)
+      .requestSlowFill(...requestSlowFillParams)
       .accounts(requestAccounts)
       .instruction();
 

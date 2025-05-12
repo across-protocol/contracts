@@ -79,7 +79,7 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
   const spokePoolIface = new ethers.utils.Interface(["function pauseDeposits(bool pause)"]);
 
-  console.log("Remotely configuring deposit route...");
+  console.log("Remotely pausing deposits...");
   console.table([
     { Property: "seed", Value: seed.toString() },
     { Property: "chainId", Value: (chainId as any).toString() },
@@ -189,7 +189,7 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   console.log("Your transaction signature", receiveMessageTx);
 
   let stateAccount = await svmSpokeProgram.account.state.fetch(statePda);
-  console.log("Updated deposit route state to: pausedDeposits =", stateAccount.pausedDeposits);
+  console.log("Updated deposit state to: pausedDeposits =", stateAccount.pausedDeposits);
 }
 
 remoteHubPoolPauseDeposit()
