@@ -23,6 +23,8 @@ const getChainsFromList = (taskArgInput: string): number[] =>
     ?.split(",")
     ?.map((chainId: string) => Number(chainId)) || [];
 
+const notSolana = (chainId: number | string) => ![CHAIN_IDs.SOLANA, CHAIN_IDs.SOLANA_DEVNET].includes(Number(chainId));
+
 task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
   .addFlag("disableRoutes", "Set to disable deposit routes for the specified chains")
@@ -79,7 +81,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     else if (inputChains.some((chain) => isNaN(chain) || !Number.isInteger(chain) || chain < 0)) {
       throw new Error(`Invalid chains list: ${inputChains}`);
     }
-    const chainIds = _enabledChainIds.filter((chainId) => inputChains.includes(chainId));
+    const chainIds = _enabledChainIds.filter((chainId) => inputChains.includes(chainId) && notSolana(chainId));
 
     console.log("\nLoading L2 companion token address for provided L1 token.");
     const tokens = Object.fromEntries(
