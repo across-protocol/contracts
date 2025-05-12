@@ -29,6 +29,7 @@ import {
   sendTransactionWithLookupTable,
   loadFillRelayParams,
   intToU8Array32,
+  getFillRelayDelegatePda,
 } from "../../src/svm/web3-v1";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
@@ -63,7 +64,8 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipientATA: PublicKey,
     state: PublicKey,
     mint: PublicKey,
-    relayerATA: PublicKey;
+    relayerATA: PublicKey,
+    seed: BN;
 
   const relayAmount = 500000;
   const mintDecimals = 6;
@@ -80,6 +82,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
     accounts = {
       state,
+      delegate: getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -93,11 +96,14 @@ describe("svm_spoke.fill.across_plus", () => {
   }
 
   async function createApproveAndFillIx(multicallHandlerCoder: MulticallHandlerCoder, bufferParams = false) {
+    const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(relayHashUint8Array);
+
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      accounts.state,
+      getFillRelayDelegatePda(relayHashUint8Array, seed, program.programId),
       accounts.signer,
       BigInt(relayAmount),
       mintDecimals
@@ -107,8 +113,6 @@ describe("svm_spoke.fill.across_plus", () => {
       { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
       ...multicallHandlerCoder.compiledKeyMetas,
     ];
-
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
     // Prepare fill instruction.
     const fillV3RelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
@@ -147,7 +151,7 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipient = Keypair.generate().publicKey;
     finalRecipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, finalRecipient)).address;
 
-    ({ state } = await initializeState());
+    ({ state, seed } = await initializeState());
 
     const initialRelayData = {
       depositor: finalRecipient,

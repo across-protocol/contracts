@@ -11,7 +11,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::FundsDeposited,
     state::{Route, State},
-    utils::{get_current_time, get_unsafe_deposit_id, transfer_from},
+    utils::{derive_deposit_delegate_seed_hash, get_current_time, get_unsafe_deposit_id, transfer_from},
 };
 
 #[event_cpi]
@@ -23,7 +23,7 @@ use crate::{
     output_token: Pubkey,
     input_amount: u64,
     output_amount: u64,
-    destination_chain_id: u64,
+    destination_chain_id: u64
 )]
 pub struct Deposit<'info> {
     #[account(mut)]
@@ -35,6 +35,9 @@ pub struct Deposit<'info> {
         constraint = !state.paused_deposits @ CommonError::DepositsArePaused
     )]
     pub state: Account<'info, State>,
+
+    /// CHECK: PDA derived with seeds ["delegate", delegate_seed_hash]; used as a CPI signer. No account data is read or written.
+    pub delegate: UncheckedAccount<'info>,
 
     #[account(
         seeds = [b"route", input_token.as_ref(), state.seed.to_le_bytes().as_ref(), destination_chain_id.to_le_bytes().as_ref()],
@@ -85,13 +88,11 @@ pub fn _deposit(
     message: Vec<u8>,
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
-
     let current_time = get_current_time(state)?;
 
     if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
     }
-
     if fill_deadline > current_time + state.fill_deadline_buffer {
         return err!(CommonError::InvalidFillDeadline);
     }
@@ -101,21 +102,39 @@ pub fn _deposit(
         if exclusivity_deadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS {
             exclusivity_deadline += current_time;
         }
-
         if exclusive_relayer == Pubkey::default() {
             return err!(CommonError::InvalidExclusiveRelayer);
         }
     }
 
-    // Depositor must have delegated input_amount to the state PDA.
+    let delegate_seed_hash = derive_deposit_delegate_seed_hash(
+        depositor,
+        recipient,
+        input_token,
+        output_token,
+        input_amount,
+        output_amount,
+        destination_chain_id,
+        exclusive_relayer,
+        exclusivity_parameter,
+        message.clone(),
+    );
+    let (delegate_pda, delegate_bump) =
+        Pubkey::find_program_address(&[b"delegate", &delegate_seed_hash], &ctx.program_id);
+    if delegate_pda != ctx.accounts.delegate.key() {
+        return err!(SvmError::InvalidDelegatePda);
+    }
+
+    // Depositor must have delegated input_amount to the delegate PDA
     transfer_from(
         &ctx.accounts.depositor_token_account,
         &ctx.accounts.vault,
         input_amount,
-        state,
-        ctx.bumps.state,
+        &ctx.accounts.delegate,
         &ctx.accounts.mint,
         &ctx.accounts.token_program,
+        delegate_seed_hash,
+        delegate_bump,
     )?;
 
     let mut applied_deposit_id = deposit_id;
