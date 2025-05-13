@@ -47,7 +47,7 @@ task("testChainAdapter", "Verify a chain adapter")
     const { amount } = args;
     const scaledAmount = ethers.utils.parseUnits(amount, decimals);
 
-    if (balance.lt(amount)) {
+    if (balance.lt(scaledAmount)) {
       const proceed = await askYesNoQuestion(
         `\t\nWARNING: ${amount} ${tokenSymbol} may be lost.\n` +
           `\t\nProceed to send ${amount} ${tokenSymbol} to chain adapter ${adapterAddress} ?`

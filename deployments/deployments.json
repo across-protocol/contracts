@@ -21,7 +21,7 @@
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 22420136 },
     "Mode_Adapter": { "address": "0xf1B59868697f3925b72889ede818B9E7ba0316d0", "blockNumber": 19914094 },
     "MulticallHandler": { "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569", "blockNumber": 20277013 },
-    "Lisk_Adapter": { "address": "0x8229E812f20537caA1e8Fb41749b4887B8a75C3B", "blockNumber": 20184545 },
+    "Lisk_Adapter": { "address": "0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b", "blockNumber": 22474211 },
     "Universal_Adapter": { "address": "0x22001f37B586792F25Ef9d19d99537C6446e0833", "blockNumber": 22368546 },
     "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 },
     "Scroll_Adapter": { "address": "0x2DA799c2223c6ffB595e578903AE6b95839160d8", "blockNumber": 22325451 },
