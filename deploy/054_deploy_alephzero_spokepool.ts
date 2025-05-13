@@ -23,6 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // For now, we are not using the CCTP bridge and can disable by setting
     // the cctpTokenMessenger to the zero address.
     ZERO_ADDRESS,
+    // For now, we are not using OFT bridge and can disable by setting the
+    // oftMessenger and USDT token to the zero address.
+    ZERO_ADDRESS,
+    ZERO_ADDRESS,
   ];
   await deployNewProxy("AlephZero_SpokePool", constructorArgs, initArgs);
 };
