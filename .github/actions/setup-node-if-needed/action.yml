@@ -1,0 +1,31 @@
+name: Setup Node if needed
+description: "Set up Node.js if it is not already installed and resolve the version."
+inputs:
+  node_version:
+    description: "Node version to use"
+    required: true
+outputs:
+  version:
+    description: "Resolved Node.js version"
+    value: ${{ steps.resolved-node.outputs.version }}
+runs:
+  using: "composite"
+  steps:
+    - name: Check if Node is installed
+      id: check-node
+      shell: bash
+      run: |
+        if command -v node >/dev/null 2>&1; then
+          echo "installed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "installed=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Setup Node.js
+      if: steps.check-node.outputs.installed == 'false'
+      uses: actions/setup-node@v3
+      with:
+        node-version: "${{ inputs.node_version }}"
+    - name: Resolve actual Node version
+      id: resolved-node
+      shell: bash
+      run: echo "version=$(node -v | sed 's/^v//')" >> "$GITHUB_OUTPUT"

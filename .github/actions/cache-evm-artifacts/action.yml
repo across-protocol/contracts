@@ -14,9 +14,14 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - name: Resolve Node version
+      id: resolved-node
+      uses: ./.github/actions/setup-node-if-needed
+      with:
+        node_version: ${{ inputs.node_version }}
     - name: Cache EVM artifacts
       id: evm-artifacts-cache
       uses: actions/cache@v4
       with:
         path: ${{ inputs.path }}
-        key: evm-artifacts-${{ runner.os }}-node-${{ inputs.node_version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
+        key: evm-artifacts-${{ runner.os }}-node-${{ steps.resolved-node.outputs.version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
