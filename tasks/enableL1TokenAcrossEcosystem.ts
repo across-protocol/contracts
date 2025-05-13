@@ -9,6 +9,7 @@ const NO_SYMBOL = "----";
 const NO_ADDRESS = "------------------------------------------";
 
 const IGNORED_CHAINS = [CHAIN_IDs.BOBA, CHAIN_IDs.BSC, CHAIN_IDs.SOLANA];
+const V4_CHAINS = [CHAIN_IDs.BSC, CHAIN_IDs.LISK, CHAIN_IDs.LINEA];
 
 // Supported mainnet chain IDs.
 const enabledChainIds = (hubChainId: number) => {
@@ -171,7 +172,11 @@ task("enableToken", "Enable a provided token across the entire ecosystem of supp
       const { address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
       routeChainIds.forEach((toId) => {
-        if (fromId === toId || [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)) {
+        if (
+          fromId === toId ||
+          V4_CHAINS.includes(fromId) ||
+          [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)
+        ) {
           return;
         }
 
