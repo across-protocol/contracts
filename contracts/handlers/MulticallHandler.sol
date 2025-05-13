@@ -22,6 +22,11 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         uint256 value;
     }
 
+    struct Replacement {
+        address token;
+        uint256 offset;
+    }
+
     struct Instructions {
         //  Calls that will be attempted.
         Call[] calls;
@@ -40,6 +45,9 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
     error InvalidCall(uint256 index, Call[] calls);
+    error ReplacementCallFailed(bytes calldData);
+    error CalldataTooShort(uint256 callDataLength, uint256 offset);
+
 
     modifier onlySelf() {
         _requireSelf();
@@ -110,6 +118,44 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
                 destination.sendValue(amount);
             }
         }
+    }
+
+    function makeCallWithBalance(address target, bytes memory callData, uint256 value, Replacement[] memory replacement) external onlySelf {
+        for (uint256 i = 0; i < replacement.length; i++) {
+            uint256 bal = 0;
+            if (replacement[i].token != address(0)) {
+                bal = IERC20(replacement[i].token).balanceOf(address(this));
+            } else {
+                bal = address(this).balance;
+
+                // If we're using the native balance, we assume that the caller wants to send the full value to the target.
+                value = bal;
+            }
+
+            uint256 offset = replacement[i].offset;
+
+            if (offset + 32 > callData.length) revert CalldataTooShort(callData.length, offset);
+
+            assembly ("memory-safe") {
+                // Get the pointer to the offset that the caller wants to overwrite.
+                let ptr := add(callData, offset)
+                // Get the current value at the offset.
+                let current := mload(ptr)
+                // Or the current value with the new value.
+                // Reasoning:
+                // - caller should 0-out any portion that they want overwritten.
+                // - if the caller is storing the balance in a smaller integer, like a uint160 or uint128,
+                //   the higher bits will be 0 and not overwrite any other data in the calldata
+                // - The catch: the smaller integer where they want to store the balance must end no
+                //   earlier than the 32nd byte.
+                let val := or(bal, current)
+                // Store the new value at the offset.
+                mstore(ptr, val)
+            }
+        }
+
+        (bool success, ) = target.call{ value: value }(callData);
+        if (!success) revert ReplacementCallFailed(callData);
     }
 
     function _requireSelf() internal view {
