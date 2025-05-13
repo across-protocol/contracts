@@ -142,11 +142,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         uint256 acrossOutputAmount
     );
 
-    /**
-     *
+    /****************************************
      *                ERRORS                *
-     *
-     */
+     ****************************************/
     error InvalidPermit2();
     error ContractInitialized();
     error InvalidSignatureLength();
