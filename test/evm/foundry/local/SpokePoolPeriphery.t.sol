@@ -48,6 +48,35 @@ contract Exchange {
         require(tokenIn.transferFrom(msg.sender, address(this), amountIn));
         require(tokenOut.transfer(msg.sender, amountOutMin));
     }
+
+    // Enhanced swap function that returns more tokens than the minimum
+    function swapWithExtraOutput(
+        IERC20 tokenIn,
+        IERC20 tokenOut,
+        uint256 amountIn,
+        uint256 amountOutMin,
+        uint256 extraOutputPercentage,
+        bool usePermit2
+    ) external {
+        if (tokenIn.balanceOf(address(this)) >= amountIn) {
+            tokenIn.transfer(address(1), amountIn);
+            // Calculate the extra amount based on percentage (in basis points)
+            uint256 actualOutput = amountOutMin + ((amountOutMin * extraOutputPercentage) / 10000);
+            require(tokenOut.transfer(msg.sender, actualOutput));
+            return;
+        }
+
+        // Acquire tokens from the sender
+        if (usePermit2) {
+            permit2.transferFrom(msg.sender, address(this), uint160(amountIn), address(tokenIn));
+        } else {
+            require(tokenIn.transferFrom(msg.sender, address(this), amountIn));
+        }
+
+        // Calculate the extra amount based on percentage (in basis points)
+        uint256 actualOutput = amountOutMin + ((amountOutMin * extraOutputPercentage) / 10000);
+        require(tokenOut.transfer(msg.sender, actualOutput));
+    }
 }
 
 // Utility contract which lets us perform external calls to an internal library.
@@ -207,6 +236,66 @@ contract SpokePoolPeripheryTest is Test {
                 depositor
             )
         );
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeWithProportionalOutput() public {
+        // Prepare test data
+        uint256 extraOutputPercentage = 2000; // 20% extra output
+        uint256 minExpectedAmount = depositAmount;
+        uint256 actualReturnAmount = (depositAmount * 120) / 100;
+        uint256 expectedAdjustedOutput = (depositAmount * 120) / 100;
+
+        // Deal more tokens to the exchange to cover the extra output
+        deal(address(mockERC20), address(dex), actualReturnAmount, true);
+
+        // Create custom calldata for the swapWithExtraOutput function
+        bytes memory customCalldata = abi.encodeWithSelector(
+            dex.swapWithExtraOutput.selector,
+            IERC20(address(mockWETH)),
+            IERC20(address(mockERC20)),
+            mintAmount,
+            minExpectedAmount,
+            extraOutputPercentage,
+            false
+        );
+
+        // Prepare the swap and deposit data
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor
+        );
+
+        // Update the router calldata to use our custom swap function
+        swapData.routerCalldata = customCalldata;
+
+        // Should emit expected deposit event with proportionally adjusted output amount
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(0).toBytes32(),
+            actualReturnAmount,
+            expectedAdjustedOutput, // This should be proportionally increased
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            address(0).toBytes32(), // exclusiveRelayer
+            new bytes(0)
+        );
+
+        proxy.swapAndBridge(swapData);
         vm.stopPrank();
     }
 
@@ -978,6 +1067,107 @@ contract SpokePoolPeripheryTest is Test {
         );
 
         // Check that fee recipient receives expected amount
+        assertEq(mockWETH.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testPermit2SwapAndBridgeWithProportionalOutput() public {
+        // Prepare test data
+        uint256 extraOutputPercentage = 2000; // 20% extra output
+        uint256 minExpectedAmount = depositAmount;
+        uint256 actualReturnAmount = minExpectedAmount + ((minExpectedAmount * extraOutputPercentage) / 10000);
+        uint256 expectedAdjustedOutput = (depositAmount * actualReturnAmount) / minExpectedAmount;
+
+        // Deal more tokens to the exchange to cover the extra output
+        deal(address(mockERC20), address(dex), actualReturnAmount, true);
+
+        // Create custom calldata for the swapWithExtraOutput function
+        bytes memory customCalldata = abi.encodeWithSelector(
+            dex.swapWithExtraOutput.selector,
+            IERC20(address(mockWETH)),
+            IERC20(address(mockERC20)),
+            mintAmount,
+            minExpectedAmount,
+            extraOutputPercentage,
+            true // Use permit2
+        );
+
+        // Prepare the swap and deposit data with submission fee
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor
+        );
+
+        // Update the router calldata to use our custom swap function
+        swapAndDepositData.routerCalldata = customCalldata;
+
+        // Signature transfer details
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
+            nonce: 2, // Use a different nonce from previous test
+            deadline: block.timestamp + 100
+        });
+
+        bytes32 typehash = keccak256(
+            abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING)
+        );
+        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
+
+        // Get the permit2 signature
+        bytes32 msgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                domainSeparator,
+                keccak256(
+                    abi.encode(
+                        typehash,
+                        tokenPermissions,
+                        address(spokePoolPeriphery),
+                        permit.nonce,
+                        permit.deadline,
+                        hashUtils.hashSwapAndDepositData(swapAndDepositData)
+                    )
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Should emit expected deposit event with proportionally adjusted output amount
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(0).toBytes32(),
+            actualReturnAmount,
+            expectedAdjustedOutput, // This should be proportionally increased
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            address(0).toBytes32(), // exclusiveRelayer
+            new bytes(0)
+        );
+
+        spokePoolPeriphery.swapAndBridgeWithPermit2(
+            depositor, // signatureOwner
+            swapAndDepositData,
+            permit,
+            signature
+        );
+
+        // Check that fee recipient receives expected amount
+        // The relayer receives submission fee amount from each test that uses fees
+        // In this case, we're running after testPermit2SwapAndBridgeValidWitness which gives 1 fee
         assertEq(mockWETH.balanceOf(relayer), submissionFeeAmount);
     }
 
