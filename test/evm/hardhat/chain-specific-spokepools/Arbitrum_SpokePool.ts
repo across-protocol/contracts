@@ -11,6 +11,7 @@ import {
   seedContract,
   avmL1ToL2Alias,
   createFakeFromABI,
+  addressToBytes,
 } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
@@ -74,12 +75,6 @@ describe("Arbitrum Spoke Pool", function () {
     await expect(arbitrumSpokePool.setL2GatewayRouter(rando.address)).to.be.reverted;
     await arbitrumSpokePool.connect(crossDomainAlias).setL2GatewayRouter(rando.address);
     expect(await arbitrumSpokePool.l2GatewayRouter()).to.equal(rando.address);
-  });
-
-  it("Only cross domain owner can enable a route", async function () {
-    await expect(arbitrumSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
-    await arbitrumSpokePool.connect(crossDomainAlias).setEnableRoute(l2Dai, 1, true);
-    expect(await arbitrumSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only cross domain owner can whitelist a token pair", async function () {

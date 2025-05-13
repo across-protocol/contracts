@@ -10,6 +10,7 @@ import {
   getContractFactory,
   seedContract,
   createFakeFromABI,
+  addressToBytes,
 } from "../../../../utils/utils";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 import { hre } from "../../../../utils/utils.hre";
@@ -87,13 +88,6 @@ describe("Optimism Spoke Pool", function () {
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).setTokenBridge(l2Dai, rando.address);
     expect(await optimismSpokePool.tokenBridges(l2Dai)).to.equal(rando.address);
-  });
-
-  it("Only cross domain owner can enable a route", async function () {
-    await expect(optimismSpokePool.setEnableRoute(l2Dai, 1, true)).to.be.reverted;
-    crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setEnableRoute(l2Dai, 1, true);
-    expect(await optimismSpokePool.enabledDepositRoutes(l2Dai, 1)).to.equal(true);
   });
 
   it("Only cross domain owner can set the cross domain admin", async function () {

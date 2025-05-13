@@ -9,10 +9,30 @@ import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePo
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
+
+interface EthereumSpokePoolOnlyAddressInterface {
+    function deposit(
+        bytes32 depositor,
+        bytes32 recipient,
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        uint256 destinationChainId,
+        bytes32 exclusiveRelayer,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 exclusivityDeadline,
+        bytes calldata message
+    ) external payable;
+}
 
 contract SpokePoolVerifierTest is Test {
     Ethereum_SpokePool ethereumSpokePool;
     SpokePoolVerifier spokePoolVerifier;
+
+    using AddressToBytes32 for address;
 
     ERC20 mockWETH;
     ERC20 mockERC20;
@@ -42,8 +62,6 @@ contract SpokePoolVerifierTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner)))
         );
         ethereumSpokePool = Ethereum_SpokePool(payable(proxy));
-        ethereumSpokePool.setEnableRoute(address(mockWETH), destinationChainId, true);
-        ethereumSpokePool.setEnableRoute(address(mockERC20), destinationChainId, true);
         spokePoolVerifier = new SpokePoolVerifier();
         vm.stopPrank();
 
@@ -60,12 +78,13 @@ contract SpokePoolVerifierTest is Test {
         vm.expectRevert(SpokePoolVerifier.InvalidMsgValue.selector);
         spokePoolVerifier.deposit{ value: 0 }(
             ethereumSpokePool, // spokePool
-            depositor, // recipient
-            address(mockWETH), // inputToken
+            depositor.toBytes32(), // recipient
+            address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp), // quoteTimestamp
             uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
             0, // exclusivityDeadline
@@ -76,12 +95,13 @@ contract SpokePoolVerifierTest is Test {
         vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
         spokePoolVerifier.deposit{ value: depositAmount }(
             ethereumSpokePool, // spokePool
-            depositor, // recipient
-            address(mockERC20), // inputToken
+            depositor.toBytes32(), // recipient
+            address(mockERC20).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp), // quoteTimestamp
             uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
             0, // exclusivityDeadline
@@ -98,12 +118,13 @@ contract SpokePoolVerifierTest is Test {
         vm.expectRevert(SpokePoolVerifier.InvalidSpokePool.selector);
         spokePoolVerifier.deposit{ value: depositAmount }(
             V3SpokePoolInterface(address(0)), // spokePool
-            depositor, // recipient
-            address(mockWETH), // inputToken
+            depositor.toBytes32(), // recipient
+            address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp), // quoteTimestamp
             uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
             0, // exclusivityDeadline
@@ -121,31 +142,32 @@ contract SpokePoolVerifierTest is Test {
             address(ethereumSpokePool), // callee
             depositAmount, // value
             abi.encodeCall( // data
-                ethereumSpokePool.depositV3,
+                EthereumSpokePoolOnlyAddressInterface.deposit,
                 (
-                    depositor,
-                    depositor,
-                    address(mockWETH),
-                    address(0),
+                    depositor.toBytes32(),
+                    depositor.toBytes32(),
+                    address(mockWETH).toBytes32(),
+                    address(mockWETH).toBytes32(),
                     depositAmount,
                     depositAmount,
                     destinationChainId,
-                    address(0),
+                    bytes32(0),
                     uint32(block.timestamp),
                     uint32(block.timestamp) + fillDeadlineBuffer,
-                    0,
+                    uint32(0),
                     bytes("")
                 )
             )
         );
         spokePoolVerifier.deposit{ value: depositAmount }(
             ethereumSpokePool, // spokePool
-            depositor, // recipient
-            address(mockWETH), // inputToken
+            depositor.toBytes32(), // recipient
+            address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // inputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp), // quoteTimestamp
             uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
             0, // exclusivityDeadline

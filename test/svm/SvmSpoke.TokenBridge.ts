@@ -1,21 +1,20 @@
 import * as anchor from "@coral-xyz/anchor";
-import { BN, workspace, web3, AnchorProvider, Wallet, Program, AnchorError } from "@coral-xyz/anchor";
-import { PublicKey } from "@solana/web3.js";
+import { AnchorError, AnchorProvider, BN, Program, Wallet, web3, workspace } from "@coral-xyz/anchor";
 import { TOKEN_PROGRAM_ID, createMint, getOrCreateAssociatedTokenAccount, mintTo } from "@solana/spl-token";
+import { PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { common } from "./SvmSpoke.common";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
+import { assert } from "chai";
 import {
-  RelayerRefundLeafSolana,
-  RelayerRefundLeafType,
-  relayerRefundHashFn,
+  decodeMessageSentData,
   findProgramAddress,
   loadExecuteRelayerRefundLeafParams,
-  readProgramEvents,
-} from "./utils";
-import { assert } from "chai";
-import { decodeMessageSentData } from "./cctpHelpers";
+  readEventsUntilFound,
+  relayerRefundHashFn,
+} from "../../src/svm/web3-v1";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+import { MessageTransmitter } from "../../target/types/message_transmitter";
+import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
+import { common } from "./SvmSpoke.common";
 
 const { provider, program, owner, initializeState, connection, remoteDomain, chainId, crossDomainAdmin } = common;
 
@@ -26,6 +25,7 @@ describe("svm_spoke.token_bridge", () => {
   const messageTransmitterProgram = workspace.MessageTransmitter as Program<MessageTransmitter>;
 
   let state: PublicKey,
+    seed: BN,
     mint: PublicKey,
     vault: PublicKey,
     tokenMinter: PublicKey,
@@ -73,7 +73,7 @@ describe("svm_spoke.token_bridge", () => {
 
   beforeEach(async () => {
     // Each test will have different state and mint token.
-    state = await initializeState();
+    ({ state, seed } = await initializeState());
     mint = await createMint(connection, payer, owner, owner, 6);
     vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address;
 
@@ -154,7 +154,7 @@ describe("svm_spoke.token_bridge", () => {
     const rootBundleId = stateAccountData.rootBundleId;
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-    const seeds = [Buffer.from("root_bundle"), state.toBuffer(), rootBundleIdBuffer];
+    const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
     const [rootBundle] = PublicKey.findProgramAddressSync(seeds, program.programId);
 
     // Relay root bundle
@@ -316,17 +316,14 @@ describe("svm_spoke.token_bridge", () => {
     const simpleBridgeMessageSentEventData = web3.Keypair.generate();
 
     // Perform the bridge operation.
-    await program.methods
+    const tx = await program.methods
       .bridgeTokensToHubPool(new BN(simpleBridgeAmount))
       .accounts({ ...bridgeTokensToHubPoolAccounts, messageSentEventData: simpleBridgeMessageSentEventData.publicKey })
       .signers([simpleBridgeMessageSentEventData])
       .rpc();
 
-    // Wait for the event to be emitted.
-    await new Promise((resolve) => setTimeout(resolve, 500));
-
-    const events = await readProgramEvents(connection, program);
-    const event = events.find((event) => event.name === "bridgedToHubPool").data;
+    const events = await readEventsUntilFound(connection, tx, [program]);
+    const event = events.find((event) => event.name === "bridgedToHubPool")?.data;
     assert.isNotNull(event, "BridgedToHubPool event should be emitted");
     assert.strictEqual(event.amount.toString(), simpleBridgeAmount.toString(), "Invalid amount");
     assert.strictEqual(event.mint.toString(), mint.toString(), "Invalid mint");

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 /**
@@ -38,12 +38,6 @@ interface SpokePoolInterface {
 
     function setWithdrawalRecipient(address newWithdrawalRecipient) external;
 
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enable
-    ) external;
-
     function pauseDeposits(bool pause) external;
 
     function pauseFills(bool pause) external;
@@ -52,7 +46,7 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
-    function deposit(
+    function depositDeprecated_5947912356(
         address recipient,
         address originToken,
         uint256 amount,

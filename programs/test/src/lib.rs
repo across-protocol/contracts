@@ -5,7 +5,7 @@ use svm_spoke::{
     utils::{is_claimed, process_proof, set_claimed},
 };
 
-declare_id!("84j1xFuoz2xynhesB8hxC5N1zaWPr4MW1DD2gVm9PUs4");
+declare_id!("8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA");
 
 // This program is used to test the svm_spoke program internal utils methods. It's kept separate from the svm_spoke
 // as it simply exports utils methods so direct unit tests can be run against them.
@@ -87,9 +87,7 @@ pub mod test {
     }
     pub fn test_emit_large_log(_ctx: Context<EmitLargeLog>, length: u32) -> Result<()> {
         let large_message = "LOG_TO_TEST_LARGE_MESSAGE".repeat(length as usize);
-        emit!(TestEvent {
-            message: large_message.into(),
-        });
+        emit!(TestEvent { message: large_message });
         Ok(())
     }
 }

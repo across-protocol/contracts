@@ -1,59 +1,21 @@
 import { task } from "hardhat/config";
 import assert from "assert";
-import { askYesNoQuestion, minimalSpokePoolInterface } from "./utils";
-import { CHAIN_IDs, MAINNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
-
-type TokenSymbol = keyof typeof TOKEN_SYMBOLS_MAP;
-
-/**
- * Given a token symbol, determine whether it is a valid key for the TOKEN_SYMBOLS_MAP object.
- */
-function isTokenSymbol(symbol: unknown): symbol is TokenSymbol {
-  return TOKEN_SYMBOLS_MAP[symbol as TokenSymbol] !== undefined;
-}
-
-/**
- * Given a token symbol from the HubPool chain and a remote chain ID, resolve the relevant token symbol and address.
- */
-function resolveTokenOnChain(
-  mainnetSymbol: string,
-  chainId: number
-): { symbol: TokenSymbol; address: string } | undefined {
-  assert(isTokenSymbol(mainnetSymbol), `Unrecognised token symbol (${mainnetSymbol})`);
-  let symbol = mainnetSymbol as TokenSymbol;
-
-  // Handle USDC special case where L1 USDC is mapped to different token symbols on L2s.
-  if (mainnetSymbol === "USDC") {
-    const symbols = ["USDC", "USDC.e", "USDbC", "USDzC"] as TokenSymbol[];
-    const tokenSymbol = symbols.find((symbol) => TOKEN_SYMBOLS_MAP[symbol]?.addresses[chainId]);
-    if (!isTokenSymbol(tokenSymbol)) {
-      return;
-    }
-    symbol = tokenSymbol;
-  } else if (symbol === "DAI" && chainId === CHAIN_IDs.BLAST) {
-    symbol = "USDB";
-  }
-
-  const address = TOKEN_SYMBOLS_MAP[symbol].addresses[chainId];
-  if (!address) {
-    return;
-  }
-
-  return { symbol, address };
-}
+import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
+import { TokenSymbol } from "./types";
 
 const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
 const NO_SYMBOL = "----";
 const NO_ADDRESS = "------------------------------------------";
 
 // Supported mainnet chain IDs.
-const enabledChainIds = Object.values(MAINNET_CHAIN_IDs)
-  .map(Number)
-  .filter((chainId) => chainId !== CHAIN_IDs.BOBA)
-  .sort((x, y) => x - y);
-
-const chainPadding = enabledChainIds[enabledChainIds.length - 1].toString().length;
-const formatChainId = (chainId: number): string => chainId.toString().padStart(chainPadding, " ");
+const enabledChainIds = (hubChainId: number) => {
+  const chainIds = hubChainId === CHAIN_IDs.MAINNET ? MAINNET_CHAIN_IDs : TESTNET_CHAIN_IDs;
+  return Object.values(chainIds)
+    .map(Number)
+    .filter((chainId) => chainId !== CHAIN_IDs.BOBA)
+    .sort((x, y) => x - y);
+};
 
 const getChainsFromList = (taskArgInput: string): number[] =>
   taskArgInput
@@ -63,6 +25,7 @@ const getChainsFromList = (taskArgInput: string): number[] =>
 
 task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
+  .addFlag("disableRoutes", "Set to disable deposit routes for the specified chains")
   .addParam("token", "Symbol of token to enable")
   .addOptionalParam("chains", "Comma-delimited list of chains to enable the token on. Defaults to all supported chains")
   .addOptionalParam(
@@ -73,6 +36,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
     const { chains, token: symbol } = taskArguments;
+    const enableRoute = !taskArguments.disableRoutes;
 
     const hubChainId = parseInt(await hre.getChainId());
     if (hubChainId === 31337) {
@@ -103,18 +67,19 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     const [signer] = await hre.ethers.getSigners();
 
     // Remove chainIds that are in the ignore list.
+    const _enabledChainIds = enabledChainIds(hubChainId);
     let inputChains: number[] = [];
     try {
-      inputChains = (chains?.split(",") ?? enabledChainIds).map(Number);
+      inputChains = (chains?.split(",") ?? _enabledChainIds).map(Number);
       console.log(`\nParsed 'chains' argument:`, inputChains);
     } catch (error) {
       throw new Error(`Failed to parse 'chains' argument ${chains} as a comma-separated list of numbers.`);
     }
-    if (inputChains.length === 0) inputChains = enabledChainIds;
+    if (inputChains.length === 0) inputChains = _enabledChainIds;
     else if (inputChains.some((chain) => isNaN(chain) || !Number.isInteger(chain) || chain < 0)) {
       throw new Error(`Invalid chains list: ${inputChains}`);
     }
-    const chainIds = enabledChainIds.filter((chainId) => inputChains.includes(chainId));
+    const chainIds = _enabledChainIds.filter((chainId) => inputChains.includes(chainId));
 
     console.log("\nLoading L2 companion token address for provided L1 token.");
     const tokens = Object.fromEntries(
@@ -159,9 +124,11 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     let i = 0; // counter for logging.
     const skipped: { [originChainId: number]: number[] } = {};
     const routeChainIds = Object.keys(tokens).map(Number);
+    const chainPadding = _enabledChainIds[enabledChainIds.length - 1].toString().length;
+    const formatChainId = (chainId: number): string => chainId.toString().padStart(chainPadding, " ");
     routeChainIds.forEach((fromId) => {
       const formattedFromId = formatChainId(fromId);
-      const { symbol, address: inputToken } = tokens[fromId];
+      const { address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
       routeChainIds.forEach((toId) => {
         if (fromId === toId || [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)) {
@@ -176,7 +143,9 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         ) {
           const n = (++i).toString().padStart(2, " ");
           console.log(`\t${n} Added route for ${inputToken} from ${formattedFromId} -> ${formatChainId(toId)}.`);
-          callData.push(hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, true]));
+          callData.push(
+            hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, enableRoute])
+          );
         } else {
           skipped[fromId].push(toId);
         }

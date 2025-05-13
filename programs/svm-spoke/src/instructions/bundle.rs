@@ -7,7 +7,7 @@ use anchor_spl::{
 use crate::{
     constants::DISCRIMINATOR_SIZE,
     error::{CommonError, SvmError},
-    event::ExecutedRelayerRefundRoot,
+    event::{ExecutedRelayerRefundRoot, TokensBridged},
     state::{ClaimAccount, ExecuteRelayerRefundLeafParams, RootBundle, State, TransferLiability},
     utils::{is_claimed, set_claimed, verify_merkle_proof},
 };
@@ -18,15 +18,16 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account(seeds = [b"instruction_params", signer.key().as_ref()], bump)]
-    pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>,
+    #[account(mut, seeds = [b"instruction_params", signer.key().as_ref()], bump, close = signer)]
+    pub instruction_params: Account<'info, ExecuteRelayerRefundLeafParams>, // Contains all leaf & proof information.
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(
         mut,
-        seeds = [b"root_bundle", state.key().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        seeds = [b"root_bundle", state.seed.to_le_bytes().as_ref(), instruction_params.root_bundle_id.to_le_bytes().as_ref()], bump,
+        // Realloc to let the size of the dynamic array within root_bundle to grow as leafs are executed.
         realloc = std::cmp::max(
             DISCRIMINATOR_SIZE + RootBundle::INIT_SPACE + instruction_params.relayer_refund_leaf.leaf_id as usize / 8,
             root_bundle.to_account_info().data_len()
@@ -39,7 +40,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = state,
+        associated_token::authority = state, // Ensure owner is the state.
         associated_token::token_program = token_program
     )]
     pub vault: InterfaceAccount<'info, TokenAccount>,
@@ -51,7 +52,7 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-        init_if_needed,
+        init_if_needed, // If first time creating, initialize the liability tracker, else re-use.
         payer = signer,
         space = DISCRIMINATOR_SIZE + TransferLiability::INIT_SPACE,
         seeds = [b"transfer_liability", mint.key().as_ref()],
@@ -64,40 +65,36 @@ pub struct ExecuteRelayerRefundLeaf<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// TODO: update UMIP to consider different encoding for different chains (evm and svm).
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)] // TODO: check if all derives are needed.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct RelayerRefundLeaf {
     pub amount_to_return: u64,
     pub chain_id: u64,
-    #[max_len(0)]
     pub refund_amounts: Vec<u64>,
     pub leaf_id: u32,
     pub mint_public_key: Pubkey,
-    #[max_len(0)]
     pub refund_addresses: Vec<Pubkey>,
 }
 
 impl RelayerRefundLeaf {
-    pub fn to_bytes(&self) -> Vec<u8> {
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let mut bytes = Vec::new();
 
-        bytes.extend_from_slice(&self.amount_to_return.to_le_bytes());
-        bytes.extend_from_slice(&self.chain_id.to_le_bytes());
-        for amount in &self.refund_amounts {
-            bytes.extend_from_slice(&amount.to_le_bytes());
-        }
-        bytes.extend_from_slice(&self.leaf_id.to_le_bytes());
-        bytes.extend_from_slice(self.mint_public_key.as_ref());
-        for address in &self.refund_addresses {
-            bytes.extend_from_slice(address.as_ref());
-        }
+        // This requires the first 64 bytes to be 0 within the encoded leaf data. This protects any kind of EVM leaf
+        // from ever being used on SVM (and vice versa). Note that the chain_id field in theory should protect this but
+        // this 64 blank slot protects it under all cases (no leaves could ever collide due to encoding or type diffs).
+        // 64 bytes covers the first two u256 elements of the struct on Solidity side, which forces the leaf & chain_id,
+        // in interpreted by SVM, to be zero always blocking this leaf type on EVM.
+        bytes.extend_from_slice(&[0u8; 64]);
 
-        bytes
+        AnchorSerialize::serialize(&self, &mut bytes)?;
+
+        Ok(bytes)
     }
 
-    pub fn to_keccak_hash(&self) -> [u8; 32] {
-        let input = self.to_bytes();
-        keccak::hash(&input).0
+    pub fn to_keccak_hash(&self) -> Result<[u8; 32]> {
+        let input = self.to_bytes()?;
+
+        Ok(keccak::hash(&input).to_bytes())
     }
 }
 
@@ -106,7 +103,7 @@ pub fn execute_relayer_refund_leaf<'c, 'info>(
     deferred_refunds: bool,
 ) -> Result<()>
 where
-    'c: 'info, // TODO: add explaining comments on some of more complex syntax.
+    'c: 'info, // The lifetime constraint 'c: 'info ensures that the lifetime 'c is at least as long as 'info.
 {
     // Get pre-loaded instruction parameters.
     let instruction_params = &ctx.accounts.instruction_params;
@@ -117,7 +114,7 @@ where
     let state = &ctx.accounts.state;
 
     let root = ctx.accounts.root_bundle.relayer_refund_root;
-    let leaf = relayer_refund_leaf.to_keccak_hash();
+    let leaf = relayer_refund_leaf.to_keccak_hash()?;
     verify_merkle_proof(root, leaf, proof)?;
 
     if relayer_refund_leaf.chain_id != state.chain_id {
@@ -128,10 +125,7 @@ where
         return err!(CommonError::ClaimedMerkleLeaf);
     }
 
-    set_claimed(
-        &mut ctx.accounts.root_bundle.claimed_bitmap,
-        relayer_refund_leaf.leaf_id,
-    );
+    set_claimed(&mut ctx.accounts.root_bundle.claimed_bitmap, relayer_refund_leaf.leaf_id);
 
     if relayer_refund_leaf.refund_addresses.len() != relayer_refund_leaf.refund_amounts.len() {
         return err!(CommonError::InvalidMerkleLeaf);
@@ -155,9 +149,16 @@ where
 
     if relayer_refund_leaf.amount_to_return > 0 {
         ctx.accounts.transfer_liability.pending_to_hub_pool += relayer_refund_leaf.amount_to_return;
+
+        emit_cpi!(TokensBridged {
+            amount_to_return: relayer_refund_leaf.amount_to_return,
+            chain_id: relayer_refund_leaf.chain_id,
+            leaf_id: relayer_refund_leaf.leaf_id,
+            l2_token_address: ctx.accounts.mint.key(),
+            caller: ctx.accounts.signer.key(),
+        });
     }
 
-    // Emit the ExecutedRelayerRefundRoot event
     emit_cpi!(ExecutedRelayerRefundRoot {
         amount_to_return: relayer_refund_leaf.amount_to_return,
         chain_id: relayer_refund_leaf.chain_id,
@@ -205,11 +206,8 @@ fn distribute_relayer_refunds<'info>(
             to: refund_token_account.to_account_info(),
             authority: ctx.accounts.state.to_account_info(),
         };
-        let cpi_context = CpiContext::new_with_signer(
-            ctx.accounts.token_program.to_account_info(),
-            transfer_accounts,
-            signer_seeds,
-        );
+        let cpi_context =
+            CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), transfer_accounts, signer_seeds);
         transfer_checked(cpi_context, amount.to_owned(), ctx.accounts.mint.decimals)?;
     }
 

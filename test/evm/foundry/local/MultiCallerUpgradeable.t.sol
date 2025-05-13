@@ -8,10 +8,13 @@ import { SpokePool } from "../../../../contracts/SpokePool.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 // This test does not require a mainnet fork (since it is testing contracts before deployment).
 contract MultiCallerUpgradeableTest is Test {
     Ethereum_SpokePool ethereumSpokePool;
+
+    using AddressToBytes32 for address;
 
     ERC20 mockWETH;
     ERC20 mockL2WETH;
@@ -42,11 +45,11 @@ contract MultiCallerUpgradeableTest is Test {
         uint256 mockRepaymentChainId = 1;
         uint32 fillDeadline = uint32(ethereumSpokePool.getCurrentTime()) + 1000;
 
-        mockRelayData.depositor = rando1;
-        mockRelayData.recipient = rando2;
-        mockRelayData.exclusiveRelayer = relayer;
-        mockRelayData.inputToken = address(mockWETH);
-        mockRelayData.outputToken = address(mockL2WETH);
+        mockRelayData.depositor = rando1.toBytes32();
+        mockRelayData.recipient = rando2.toBytes32();
+        mockRelayData.exclusiveRelayer = relayer.toBytes32();
+        mockRelayData.inputToken = address(mockWETH).toBytes32();
+        mockRelayData.outputToken = address(mockL2WETH).toBytes32();
         mockRelayData.inputAmount = depositAmount;
         mockRelayData.outputAmount = depositAmount;
         mockRelayData.originChainId = mockRepaymentChainId;

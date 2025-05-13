@@ -1,4 +1,4 @@
-import { expect, ethers, Contract, SignerWithAddress, getContractFactory } from "../../../utils/utils";
+import { expect, ethers, Contract, SignerWithAddress, getContractFactory, addressToBytes } from "../../../utils/utils";
 import { hre } from "../../../utils/utils.hre";
 import { spokePoolFixture } from "./fixtures/SpokePool.Fixture";
 import { destinationChainId, mockRelayerRefundRoot, mockSlowRelayRoot } from "./constants";
@@ -18,12 +18,6 @@ describe("SpokePool Admin Functions", async function () {
       { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [owner.address] }
     );
     expect(await spokePool.numberOfDeposits()).to.equal(1);
-  });
-  it("Enable token path", async function () {
-    await expect(spokePool.connect(owner).setEnableRoute(erc20.address, destinationChainId, true))
-      .to.emit(spokePool, "EnabledDepositRoute")
-      .withArgs(erc20.address, destinationChainId, true);
-    expect(await spokePool.enabledDepositRoutes(erc20.address, destinationChainId)).to.equal(true);
   });
 
   it("Pause deposits", async function () {
@@ -49,7 +43,7 @@ describe("SpokePool Admin Functions", async function () {
     expect(await spokePool.rootBundles(0)).has.property("relayerRefundRoot", mockRelayerRefundRoot);
 
     await expect(spokePool.connect(owner).emergencyDeleteRootBundle(0))
-      .to.emit(spokePool, "EmergencyDeleteRootBundle")
+      .to.emit(spokePool, "EmergencyDeletedRootBundle")
       .withArgs(0);
 
     expect(await spokePool.rootBundles(0)).has.property("slowRelayRoot", ethers.utils.hexZeroPad("0x0", 32));

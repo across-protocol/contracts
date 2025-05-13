@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Lockable.sol";
 import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "./libraries/AddressConverters.sol";
 
 /**
  * @title SwapAndBridgeBase
@@ -14,6 +15,7 @@ import "@uma/core/contracts/common/implementation/MultiCaller.sol";
  */
 abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     // This contract performs a low level call with arbirary data to an external contract. This is a large attack
     // surface and we should whitelist which function selectors are allowed to be called on the exchange.
@@ -159,16 +161,30 @@ abstract contract SwapAndBridgeBase is Lockable, MultiCaller {
             depositData.outputAmount
         );
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), returnAmount);
-        SPOKE_POOL.depositV3(
-            depositData.depositor,
-            depositData.recipient,
-            address(_acrossInputToken), // input token
-            depositData.outputToken, // output token
-            returnAmount, // input amount.
+        _depositV3(_acrossInputToken, returnAmount, depositData);
+    }
+
+    /**
+     * @notice Approves the spoke pool and calls `depositV3` function with the specified input parameters.
+     * @param _acrossInputToken Token to deposit into the spoke pool.
+     * @param _acrossInputAmount Amount of the input token to deposit into the spoke pool.
+     * @param depositData Specifies the Across deposit params to use.
+     */
+    function _depositV3(
+        IERC20 _acrossInputToken,
+        uint256 _acrossInputAmount,
+        DepositData calldata depositData
+    ) internal {
+        _acrossInputToken.safeIncreaseAllowance(address(SPOKE_POOL), _acrossInputAmount);
+        SPOKE_POOL.deposit(
+            depositData.depositor.toBytes32(),
+            depositData.recipient.toBytes32(),
+            address(_acrossInputToken).toBytes32(), // input token
+            depositData.outputToken.toBytes32(), // output token
+            _acrossInputAmount, // input amount.
             depositData.outputAmount, // output amount
             depositData.destinationChainid,
-            depositData.exclusiveRelayer,
+            depositData.exclusiveRelayer.toBytes32(),
             depositData.quoteTimestamp,
             depositData.fillDeadline,
             depositData.exclusivityDeadline,
