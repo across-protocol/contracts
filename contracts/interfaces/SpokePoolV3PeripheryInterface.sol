@@ -97,6 +97,10 @@ interface SpokePoolV3PeripheryInterface {
         uint256 minExpectedInputTokenAmount;
         // The calldata to use when calling the exchange.
         bytes routerCalldata;
+        // When enabled (true), if the swap returns more tokens than minExpectedInputTokenAmount,
+        // the outputAmount will be increased proportionally.
+        // When disabled (false), the original outputAmount is used regardless of how many tokens are returned.
+        bool enableProportionalAdjustment;
     }
 
     // Extended deposit data to be used specifically for signing off on periphery deposits.

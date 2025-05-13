@@ -233,7 +233,8 @@ contract SpokePoolPeripheryTest is Test {
                 SpokePoolV3PeripheryInterface.TransferType.Approval,
                 address(mockERC20),
                 depositAmount,
-                depositor
+                depositor,
+                true // Enable proportional adjustment by default
             )
         );
         vm.stopPrank();
@@ -260,7 +261,7 @@ contract SpokePoolPeripheryTest is Test {
             false
         );
 
-        // Prepare the swap and deposit data
+        // Prepare the swap and deposit data with proportional adjustment enabled
         SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
             address(mockWETH),
             mintAmount,
@@ -270,7 +271,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Approval,
             address(mockERC20),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment
         );
 
         // Update the router calldata to use our custom swap function
@@ -284,6 +286,66 @@ contract SpokePoolPeripheryTest is Test {
             address(0).toBytes32(),
             actualReturnAmount,
             expectedAdjustedOutput, // This should be proportionally increased
+            destinationChainId,
+            0, // depositId
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0, // exclusivityDeadline
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            address(0).toBytes32(), // exclusiveRelayer
+            new bytes(0)
+        );
+
+        proxy.swapAndBridge(swapData);
+        vm.stopPrank();
+    }
+
+    function testSwapAndBridgeWithoutProportionalOutput() public {
+        // Prepare test data - same as the test with proportional adjustment
+        uint256 extraOutputPercentage = 2000; // 20% extra output
+        uint256 minExpectedAmount = depositAmount;
+        uint256 actualReturnAmount = (depositAmount * 120) / 100;
+
+        // Deal more tokens to the exchange to cover the extra output
+        deal(address(mockERC20), address(dex), actualReturnAmount, true);
+
+        // Create custom calldata for the swapWithExtraOutput function
+        bytes memory customCalldata = abi.encodeWithSelector(
+            dex.swapWithExtraOutput.selector,
+            IERC20(address(mockWETH)),
+            IERC20(address(mockERC20)),
+            mintAmount,
+            minExpectedAmount,
+            extraOutputPercentage,
+            false
+        );
+
+        // Prepare the swap and deposit data with proportional adjustment disabled
+        SpokePoolV3PeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolV3PeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            false // Disable proportional adjustment
+        );
+
+        // Update the router calldata to use our custom swap function
+        swapData.routerCalldata = customCalldata;
+
+        // Should emit expected deposit event with original output amount (not adjusted)
+        vm.startPrank(depositor);
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(0).toBytes32(),
+            actualReturnAmount,
+            depositAmount, // This should be the original amount, not adjusted
             destinationChainId,
             0, // depositId
             uint32(block.timestamp),
@@ -328,7 +390,8 @@ contract SpokePoolPeripheryTest is Test {
                 SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
                 address(mockERC20),
                 depositAmount,
-                depositor
+                depositor,
+                true // Enable proportional adjustment by default
             )
         );
         vm.stopPrank();
@@ -363,7 +426,8 @@ contract SpokePoolPeripheryTest is Test {
                 SpokePoolV3PeripheryInterface.TransferType.Transfer,
                 address(mockERC20),
                 depositAmount,
-                depositor
+                depositor,
+                true // Enable proportional adjustment by default
             )
         );
         vm.stopPrank();
@@ -386,7 +450,8 @@ contract SpokePoolPeripheryTest is Test {
                 SpokePoolV3PeripheryInterface.TransferType.Approval,
                 address(mockERC20),
                 depositAmount,
-                depositor
+                depositor,
+                true // Enable proportional adjustment by default
             )
         );
 
@@ -427,7 +492,8 @@ contract SpokePoolPeripheryTest is Test {
                 SpokePoolV3PeripheryInterface.TransferType.Approval,
                 address(mockERC20),
                 depositAmount,
-                depositor
+                depositor,
+                true // Enable proportional adjustment by default
             )
         );
         vm.stopPrank();
@@ -571,7 +637,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment by default
         );
 
         bytes32 nonce = 0;
@@ -647,7 +714,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment by default
         );
 
         bytes32 nonce = 0;
@@ -689,7 +757,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            rando
+            rando,
+            true // Enable proportional adjustment by default
         );
 
         // Should emit expected deposit event
@@ -786,7 +855,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment by default
         );
 
         bytes32 nonce = bytes32(block.prevrandao);
@@ -865,7 +935,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment by default
         );
 
         bytes32 nonce = bytes32(block.prevrandao);
@@ -908,7 +979,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            rando
+            rando,
+            true // Enable proportional adjustment by default
         );
 
         // Should emit expected deposit event
@@ -1006,7 +1078,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Transfer,
             address(mockERC20),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment by default
         );
 
         // Signature transfer details
@@ -1101,7 +1174,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockERC20),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment
         );
 
         // Update the router calldata to use our custom swap function
@@ -1182,7 +1256,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Transfer,
             address(mockERC20),
             depositAmount,
-            depositor
+            depositor,
+            true // Enable proportional adjustment by default
         );
 
         // Signature transfer details
@@ -1228,7 +1303,8 @@ contract SpokePoolPeripheryTest is Test {
             SpokePoolV3PeripheryInterface.TransferType.Permit2Approval,
             address(mockWETH),
             depositAmount,
-            rando
+            rando,
+            true // Enable proportional adjustment by default
         );
 
         // Should emit expected deposit event
@@ -1280,7 +1356,8 @@ contract SpokePoolPeripheryTest is Test {
         SpokePoolV3PeripheryInterface.TransferType _transferType,
         address _inputToken,
         uint256 _amount,
-        address _depositor
+        address _depositor,
+        bool _enableProportionalAdjustment
     ) internal view returns (SpokePoolV3Periphery.SwapAndDepositData memory) {
         bool usePermit2 = _transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval;
         return
@@ -1311,7 +1388,8 @@ contract SpokePoolPeripheryTest is Test {
                     _swapAmount,
                     _amount,
                     usePermit2
-                )
+                ),
+                enableProportionalAdjustment: _enableProportionalAdjustment
             });
     }
 }

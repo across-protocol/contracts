@@ -641,9 +641,12 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // that we weren't partial filled).
         if (srcBalanceBefore - _swapToken.balanceOf(address(this)) != _swapTokenAmount) revert LeftoverSrcTokens();
 
-        // Calculate adjusted output amount proportionally when we receive more than expected
+        // Calculate adjusted output amount proportionally when we receive more than expected and adjustment is enabled
         uint256 adjustedOutputAmount = swapAndDepositData.depositData.outputAmount;
-        if (returnAmount > swapAndDepositData.minExpectedInputTokenAmount) {
+        if (
+            returnAmount > swapAndDepositData.minExpectedInputTokenAmount &&
+            swapAndDepositData.enableProportionalAdjustment
+        ) {
             adjustedOutputAmount =
                 (swapAndDepositData.depositData.outputAmount * returnAmount) /
                 swapAndDepositData.minExpectedInputTokenAmount;
