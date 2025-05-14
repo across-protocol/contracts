@@ -132,9 +132,12 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
                 value = bal;
             }
 
-            uint256 offset = replacement[i].offset;
+            // + 32 to skip the length of the calldata
+            uint256 offset = replacement[i].offset + 32;
 
-            if (offset + 32 > callData.length) revert CalldataTooShort(callData.length, offset);
+            // 32 has already been added to the offset, and the replacement value is 32 bytes long, so
+            // we don't need to add 32 here. We just directly compare the offset with the length of the calldata.
+            if (offset > callData.length) revert CalldataTooShort(callData.length, offset);
 
             assembly ("memory-safe") {
                 // Get the pointer to the offset that the caller wants to overwrite.
