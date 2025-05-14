@@ -144,10 +144,12 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
                 // Or the current value with the new value.
                 // Reasoning:
                 // - caller should 0-out any portion that they want overwritten.
-                // - if the caller is storing the balance in a smaller integer, like a uint160 or uint128,
-                //   the higher bits will be 0 and not overwrite any other data in the calldata
+                // - if the caller is representing the balance in a smaller integer, like a uint160 or uint128,
+                //   the higher bits will be 0 and not overwrite any other data in the calldata assuming
+                //   the balance is small enough to fit in the smaller integer.
                 // - The catch: the smaller integer where they want to store the balance must end no
-                //   earlier than the 32nd byte.
+                //   earlier than the 32nd byte in their calldata. Otherwise, this would require a
+                //   negative offset, which is not possible.
                 let val := or(bal, current)
                 // Store the new value at the offset.
                 mstore(ptr, val)
