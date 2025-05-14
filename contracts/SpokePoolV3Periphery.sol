@@ -533,9 +533,8 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         bytes32 typedDataHash,
         bytes calldata signature
     ) private view {
-        if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature)) {
+        if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature))
             revert InvalidSignature();
-        }
     }
 
     /**
@@ -603,11 +602,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // The exchange will either receive funds from this contract via a direct transfer, an approval to spend funds on this contract, or via an
         // EIP1271 permit2 signature.
-        if (_transferType == TransferType.Approval) {
-            _swapToken.forceApprove(_exchange, _swapTokenAmount);
-        } else if (_transferType == TransferType.Transfer) {
-            _swapToken.transfer(_exchange, _swapTokenAmount);
-        } else {
+        if (_transferType == TransferType.Approval) _swapToken.forceApprove(_exchange, _swapTokenAmount);
+        else if (_transferType == TransferType.Transfer) _swapToken.transfer(_exchange, _swapTokenAmount);
+        else {
             _swapToken.forceApprove(address(permit2), _swapTokenAmount);
             expectingPermit2Callback = true;
             permit2.permit(
@@ -639,17 +636,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // that we weren't partial filled).
         if (srcBalanceBefore - _swapToken.balanceOf(address(this)) != _swapTokenAmount) revert LeftoverSrcTokens();
 
-        // Calculate adjusted output amount proportionally when we receive more than expected and adjustment is enabled
-        uint256 adjustedOutputAmount = swapAndDepositData.depositData.outputAmount;
-        if (
-            returnAmount > swapAndDepositData.minExpectedInputTokenAmount &&
-            swapAndDepositData.enableProportionalAdjustment
-        ) {
-            adjustedOutputAmount =
-                (swapAndDepositData.depositData.outputAmount * returnAmount) /
-                swapAndDepositData.minExpectedInputTokenAmount;
-        }
-
         emit SwapBeforeBridge(
             _exchange,
             swapAndDepositData.routerCalldata,
@@ -658,7 +644,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             _swapTokenAmount,
             returnAmount,
             swapAndDepositData.depositData.outputToken,
-            adjustedOutputAmount
+            swapAndDepositData.depositData.outputAmount
         );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
@@ -668,7 +654,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             address(_acrossInputToken),
             swapAndDepositData.depositData.outputToken,
             returnAmount,
-            adjustedOutputAmount,
+            swapAndDepositData.depositData.outputAmount,
             swapAndDepositData.depositData.destinationChainId,
             swapAndDepositData.depositData.exclusiveRelayer,
             swapAndDepositData.depositData.quoteTimestamp,
