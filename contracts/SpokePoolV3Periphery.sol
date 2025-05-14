@@ -81,6 +81,8 @@ contract SwapProxy is Lockable {
         SpokePoolV3PeripheryInterface.TransferType transferType,
         bytes calldata routerCalldata
     ) external nonReentrant returns (uint256 outputAmount) {
+        // We'll return the final balance of output tokens
+
         // The exchange will either receive funds from this contract via:
         // 1. A direct approval to spend funds on this contract (TransferType.Approval),
         // 2. A direct transfer of funds to the exchange (TransferType.Transfer), or
@@ -115,12 +117,17 @@ contract SwapProxy is Lockable {
         (bool success, ) = exchange.call(routerCalldata);
         if (!success) revert SwapFailed();
 
-        // Transfer all output tokens back to the periphery
+        // Get the final output token balance
         uint256 outputBalance = IERC20(outputToken).balanceOf(address(this));
+
+        // Transfer all output tokens back to the periphery
         IERC20(outputToken).safeTransfer(msg.sender, outputBalance);
 
         // Emit the swap event
         emit SwapExecuted(exchange, inputToken, outputToken, outputBalance, transferType);
+
+        // Return the net amount received from the swap
+        return outputBalance;
     }
 
     /**
@@ -638,6 +645,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _swapToken.safeTransfer(address(swapProxy), _swapTokenAmount);
 
         // Execute the swap via the swap proxy using the appropriate transfer type
+        // This function will swap _swapToken for _acrossInputToken and return the amount of _acrossInputToken received
         uint256 returnAmount = swapProxy.performSwap(
             address(_swapToken),
             address(_acrossInputToken),
@@ -650,10 +658,18 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // Sanity check that received amount from swap is enough to submit Across deposit with.
         if (returnAmount < swapAndDepositData.minExpectedInputTokenAmount) revert MinimumExpectedInputAmount();
 
-        // Calculate adjusted output amount proportionally when we receive more than expected and adjustment is enabled
+        // Calculate adjusted output amount based on whether proportional adjustment is enabled
         if (swapAndDepositData.minExpectedInputTokenAmount == 0) revert InvalidMinExpectedInputAmount();
-        uint256 adjustedOutputAmount = (swapAndDepositData.depositData.outputAmount * returnAmount) /
-            swapAndDepositData.minExpectedInputTokenAmount;
+        uint256 adjustedOutputAmount;
+        if (swapAndDepositData.enableProportionalAdjustment) {
+            // Adjust the output amount proportionally based on the returned input amount
+            adjustedOutputAmount =
+                (swapAndDepositData.depositData.outputAmount * returnAmount) /
+                swapAndDepositData.minExpectedInputTokenAmount;
+        } else {
+            // Use the fixed output amount without adjustment
+            adjustedOutputAmount = swapAndDepositData.depositData.outputAmount;
+        }
 
         emit SwapBeforeBridge(
             _exchange,
