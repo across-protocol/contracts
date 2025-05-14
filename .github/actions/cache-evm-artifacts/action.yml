@@ -20,6 +20,6 @@ runs:
         path: evm-artifacts.tar
         key: evm-artifacts-${{ runner.os }}-node-${{ inputs.node_version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
     - name: Unpack restored EVM artifacts
-      if: steps.svm-artifacts-cache.outputs.cache-hit == 'true'
+      if: steps.evm-artifacts-cache.outputs.cache-hit == 'true'
       shell: bash
       run: tar -xf evm-artifacts.tar
