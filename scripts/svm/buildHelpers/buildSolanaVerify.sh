@@ -17,7 +17,8 @@ for program in programs/*; do
   echo "Running verified build for $program_name"
   solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
 
-  # We don't need keypair files from the verified build and they cause permission issues on CI
+  # We don't need keypair files from the verified build and they cause permission issues on CI when Swatinem/rust-cache
+  # tries to delete them.
   echo "Removing target/deploy/$program_name-keypair.json"
   sudo rm -f "target/deploy/$program_name-keypair.json"
 
