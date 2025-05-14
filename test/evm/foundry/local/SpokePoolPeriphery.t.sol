@@ -196,7 +196,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -206,7 +206,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge(
@@ -269,7 +269,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             actualReturnAmount,
             expectedAdjustedOutput, // This should be proportionally increased
             destinationChainId,
@@ -279,7 +279,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
 
@@ -329,7 +329,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             actualReturnAmount,
             depositAmount, // This should be the original amount, not adjusted
             destinationChainId,
@@ -339,7 +339,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
 
@@ -353,7 +353,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -363,7 +363,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge(
@@ -389,7 +389,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -399,7 +399,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge(
@@ -432,7 +432,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -442,7 +442,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridge{ value: mintAmount }(
@@ -471,7 +471,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -481,7 +481,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.deposit{ value: mintAmount }(
@@ -560,7 +560,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -570,7 +570,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.depositWithPermit(
@@ -636,7 +636,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -646,7 +646,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridgeWithPermit(
@@ -776,7 +776,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -786,7 +786,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.depositWithAuthorization(
@@ -855,7 +855,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -865,7 +865,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridgeWithAuthorization(
@@ -1006,7 +1006,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -1016,7 +1016,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.depositWithPermit2(
@@ -1081,7 +1081,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -1091,7 +1091,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.swapAndBridgeWithPermit2(
@@ -1180,7 +1180,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            address(0).toBytes32(),
+            bytes32(0),
             actualReturnAmount,
             expectedAdjustedOutput, // This should be proportionally increased
             destinationChainId,
@@ -1190,7 +1190,7 @@ contract SpokePoolPeripheryTest is Test {
             0, // exclusivityDeadline
             depositor.toBytes32(),
             depositor.toBytes32(),
-            address(0).toBytes32(), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
 
@@ -1294,12 +1294,12 @@ contract SpokePoolPeripheryTest is Test {
                 submissionFees: SpokePoolV3PeripheryInterface.Fees({ amount: _feeAmount, recipient: _feeRecipient }),
                 baseDepositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: _token,
-                    outputToken: address(0),
+                    outputToken: bytes32(0),
                     outputAmount: _amount,
                     depositor: _depositor,
-                    recipient: _depositor,
+                    recipient: _depositor.toBytes32(),
                     destinationChainId: destinationChainId,
-                    exclusiveRelayer: address(0),
+                    exclusiveRelayer: bytes32(0),
                     quoteTimestamp: uint32(block.timestamp),
                     fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
                     exclusivityParameter: 0,
@@ -1327,12 +1327,12 @@ contract SpokePoolPeripheryTest is Test {
                 submissionFees: SpokePoolV3PeripheryInterface.Fees({ amount: _feeAmount, recipient: _feeRecipient }),
                 depositData: SpokePoolV3PeripheryInterface.BaseDepositData({
                     inputToken: _inputToken,
-                    outputToken: address(0),
+                    outputToken: bytes32(0),
                     outputAmount: _amount,
                     depositor: _depositor,
-                    recipient: _depositor,
+                    recipient: _depositor.toBytes32(),
                     destinationChainId: destinationChainId,
-                    exclusiveRelayer: address(0),
+                    exclusiveRelayer: bytes32(0),
                     quoteTimestamp: uint32(block.timestamp),
                     fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
                     exclusivityParameter: 0,

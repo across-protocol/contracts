@@ -42,7 +42,7 @@ interface SpokePoolV3PeripheryInterface {
         // Token deposited on origin chain.
         address inputToken;
         // Token received on destination chain.
-        address outputToken;
+        bytes32 outputToken;
         // Amount of output token to be received by recipient.
         uint256 outputAmount;
         // The account credited with deposit who can submit speedups to the Across deposit.
@@ -50,11 +50,11 @@ interface SpokePoolV3PeripheryInterface {
         // The account that will receive the output token on the destination chain. If the output token is
         // wrapped native token, then if this is an EOA then they will receive native token on the destination
         // chain and if this is a contract then they will receive an ERC20.
-        address recipient;
+        bytes32 recipient;
         // The destination chain identifier.
         uint256 destinationChainId;
         // The account that can exclusively fill the deposit before the exclusivity parameter.
-        address exclusiveRelayer;
+        bytes32 exclusiveRelayer;
         // Timestamp of the deposit used by system to charge fees. Must be within short window of time into the past
         // relative to this chain's current time or deposit will revert.
         uint32 quoteTimestamp;

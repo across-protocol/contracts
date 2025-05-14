@@ -15,6 +15,7 @@ import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
 import { SpokePoolV3PeripheryInterface } from "./interfaces/SpokePoolV3PeripheryInterface.sol";
+import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
 
 /**
  * @title SwapProxy
@@ -152,6 +153,7 @@ contract SwapProxy is Lockable {
 contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiCaller, EIP712 {
     using SafeERC20 for IERC20;
     using Address for address;
+    using AddressToBytes32 for address;
 
     // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
     V3SpokePoolInterface public spokePool;
@@ -188,7 +190,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         address indexed acrossInputToken,
         uint256 swapTokenAmount,
         uint256 acrossInputAmount,
-        address indexed acrossOutputToken,
+        bytes32 indexed acrossOutputToken,
         uint256 acrossOutputAmount
     );
 
@@ -260,17 +262,17 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         if (msg.value != inputAmount) revert InvalidMsgValue();
         if (!address(spokePool).isContract()) revert InvalidSpokePool();
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
-        spokePool.depositV3{ value: msg.value }(
-            msg.sender,
-            recipient,
-            inputToken,
+        spokePool.deposit{ value: msg.value }(
+            msg.sender.toBytes32(),
+            recipient.toBytes32(),
+            inputToken.toBytes32(),
             // @dev Setting outputToken to 0x0 to instruct fillers to use the equivalent token
             // as the originToken on the destination chain.
-            address(0),
+            bytes32(0),
             inputAmount,
             outputAmount,
             destinationChainId,
-            exclusiveRelayer,
+            exclusiveRelayer.toBytes32(),
             quoteTimestamp,
             fillDeadline,
             exclusivityParameter,
@@ -435,13 +437,13 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _depositV3(
             depositData.baseDepositData.depositor,
-            depositData.baseDepositData.recipient,
+            depositData.baseDepositData.recipient, // already bytes32
             _inputToken,
-            depositData.baseDepositData.outputToken,
+            depositData.baseDepositData.outputToken, // already bytes32
             _inputAmount,
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
-            depositData.baseDepositData.exclusiveRelayer,
+            depositData.baseDepositData.exclusiveRelayer, // already bytes32
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -481,13 +483,13 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         _depositV3(
             depositData.baseDepositData.depositor,
-            depositData.baseDepositData.recipient,
+            depositData.baseDepositData.recipient, // already bytes32
             depositData.baseDepositData.inputToken,
-            depositData.baseDepositData.outputToken,
+            depositData.baseDepositData.outputToken, // already bytes32
             depositData.inputAmount,
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
-            depositData.baseDepositData.exclusiveRelayer,
+            depositData.baseDepositData.exclusiveRelayer, // already bytes32
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -601,26 +603,26 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      */
     function _depositV3(
         address depositor,
-        address recipient,
+        bytes32 recipient,
         address inputToken,
-        address outputToken,
+        bytes32 outputToken,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes calldata message
     ) private {
         IERC20(inputToken).forceApprove(address(spokePool), inputAmount);
-        spokePool.depositV3(
-            depositor,
+        spokePool.deposit(
+            depositor.toBytes32(),
             recipient,
-            inputToken, // input token
-            outputToken, // output token
-            inputAmount, // input amount.
-            outputAmount, // output amount
+            inputToken.toBytes32(),
+            outputToken,
+            inputAmount,
+            outputAmount,
             destinationChainId,
             exclusiveRelayer,
             quoteTimestamp,
@@ -687,7 +689,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             swapAndDepositData.depositData.depositor,
             swapAndDepositData.depositData.recipient,
             address(_acrossInputToken),
-            swapAndDepositData.depositData.outputToken,
+            swapAndDepositData.depositData.outputToken, // already bytes32
             returnAmount,
             adjustedOutputAmount,
             swapAndDepositData.depositData.destinationChainId,
