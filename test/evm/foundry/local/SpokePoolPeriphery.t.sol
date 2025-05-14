@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
-import { SpokePoolV3Periphery, SpokePoolPeripheryProxy } from "../../../../contracts/SpokePoolV3Periphery.sol";
+import { SpokePoolV3Periphery } from "../../../../contracts/SpokePoolV3Periphery.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { SpokePoolV3PeripheryInterface } from "../../../../contracts/interfaces/SpokePoolV3PeripheryInterface.sol";
@@ -104,7 +104,6 @@ contract SpokePoolPeripheryTest is Test {
     Ethereum_SpokePool ethereumSpokePool;
     HashUtils hashUtils;
     SpokePoolV3Periphery spokePoolPeriphery;
-    SpokePoolPeripheryProxy proxy;
     Exchange dex;
     Exchange cex;
     IPermit2 permit2;
@@ -153,8 +152,6 @@ contract SpokePoolPeripheryTest is Test {
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolV3Periphery();
         domainSeparator = Permit2EIP712(address(permit2)).DOMAIN_SEPARATOR();
-        proxy = new SpokePoolPeripheryProxy();
-        proxy.initialize(spokePoolPeriphery);
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
             fillDeadlineBuffer,
@@ -164,7 +161,7 @@ contract SpokePoolPeripheryTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner)))
         );
         ethereumSpokePool = Ethereum_SpokePool(payable(spokePoolProxy));
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
+        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
         vm.stopPrank();
 
         deal(depositor, mintAmountWithSubmissionFee);
@@ -172,8 +169,8 @@ contract SpokePoolPeripheryTest is Test {
         deal(address(mockERC20), address(dex), depositAmount, true);
         vm.startPrank(depositor);
         mockWETH.deposit{ value: mintAmountWithSubmissionFee }();
-        mockERC20.approve(address(proxy), mintAmountWithSubmissionFee);
-        IERC20(address(mockWETH)).approve(address(proxy), mintAmountWithSubmissionFee);
+        mockERC20.approve(address(spokePoolPeriphery), mintAmountWithSubmissionFee);
+        IERC20(address(mockWETH)).approve(address(spokePoolPeriphery), mintAmountWithSubmissionFee);
 
         // Approve permit2
         IERC20(address(mockWETH)).approve(address(permit2), mintAmountWithSubmissionFee * 10);
@@ -182,21 +179,12 @@ contract SpokePoolPeripheryTest is Test {
 
     function testInitializePeriphery() public {
         SpokePoolV3Periphery _spokePoolPeriphery = new SpokePoolV3Periphery();
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
         assertEq(address(_spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
         assertEq(address(_spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
-        assertEq(address(_spokePoolPeriphery.proxy()), address(proxy));
         assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
         vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, address(proxy), permit2);
-    }
-
-    function testInitializeProxy() public {
-        SpokePoolPeripheryProxy _proxy = new SpokePoolPeripheryProxy();
-        _proxy.initialize(spokePoolPeriphery);
-        assertEq(address(_proxy.spokePoolPeriphery()), address(spokePoolPeriphery));
-        vm.expectRevert(SpokePoolPeripheryProxy.ContractInitialized.selector);
-        _proxy.initialize(spokePoolPeriphery);
+        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
     }
 
     /**
@@ -221,7 +209,7 @@ contract SpokePoolPeripheryTest is Test {
             address(0).toBytes32(), // exclusiveRelayer
             new bytes(0)
         );
-        proxy.swapAndBridge(
+        spokePoolPeriphery.swapAndBridge(
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
@@ -295,7 +283,7 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
 
-        proxy.swapAndBridge(swapData);
+        spokePoolPeriphery.swapAndBridge(swapData);
         vm.stopPrank();
     }
 
@@ -355,7 +343,7 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
 
-        proxy.swapAndBridge(swapData);
+        spokePoolPeriphery.swapAndBridge(swapData);
         vm.stopPrank();
     }
 
@@ -378,7 +366,7 @@ contract SpokePoolPeripheryTest is Test {
             address(0).toBytes32(), // exclusiveRelayer
             new bytes(0)
         );
-        proxy.swapAndBridge(
+        spokePoolPeriphery.swapAndBridge(
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
@@ -414,7 +402,7 @@ contract SpokePoolPeripheryTest is Test {
             address(0).toBytes32(), // exclusiveRelayer
             new bytes(0)
         );
-        proxy.swapAndBridge(
+        spokePoolPeriphery.swapAndBridge(
             _defaultSwapAndDepositData(
                 address(mockWETH),
                 mintAmount,
@@ -434,31 +422,8 @@ contract SpokePoolPeripheryTest is Test {
     /**
      * Value based flows
      */
-    function testSwapAndBridgeNoValueNoProxy() public {
-        // Cannot call swapAndBridge with no value directly.
-        vm.startPrank(depositor);
-        vm.expectRevert(SpokePoolV3Periphery.NotProxy.selector);
-        spokePoolPeriphery.swapAndBridge(
-            _defaultSwapAndDepositData(
-                address(mockWETH),
-                mintAmount,
-                0,
-                address(0),
-                dex,
-                SpokePoolV3PeripheryInterface.TransferType.Approval,
-                address(mockERC20),
-                depositAmount,
-                depositor,
-                true // Enable proportional adjustment by default
-            )
-        );
-
-        vm.stopPrank();
-    }
-
     function testSwapAndBridgeWithValue() public {
-        // Unlike previous test, this one calls the spokePoolPeriphery directly rather than through the proxy
-        // because there is no approval required to be set on the periphery.
+        // This test calls swapAndBridge with native token value
         deal(depositor, mintAmount);
 
         // Should emit expected deposit event
@@ -498,8 +463,7 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testDepositWithValue() public {
-        // Unlike previous test, this one calls the spokePoolPeriphery directly rather than through the proxy
-        // because there is no approval required to be set on the periphery.
+        // This test calls deposit with native token value
         deal(depositor, mintAmount);
 
         // Should emit expected deposit event
@@ -535,8 +499,8 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
-    function testDepositNoValueNoProxy() public {
-        // Cannot call deposit with no value directly.
+    function testDepositNoValue() public {
+        // Should revert when trying to call deposit without msg.value
         vm.startPrank(depositor);
         vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
         spokePoolPeriphery.deposit(

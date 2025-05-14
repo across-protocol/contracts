@@ -14,7 +14,7 @@ import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
-import { SpokePoolV3PeripheryProxyInterface, SpokePoolV3PeripheryInterface } from "./interfaces/SpokePoolV3PeripheryInterface.sol";
+import { SpokePoolV3PeripheryInterface } from "./interfaces/SpokePoolV3PeripheryInterface.sol";
 
 /**
  * @title SwapProxy
@@ -67,10 +67,10 @@ contract SwapProxy is Lockable {
      * @notice Executes a swap on the given exchange with the provided calldata.
      * @param inputToken The token to swap from
      * @param outputToken The token to swap to
+     * @param inputAmount The amount of input tokens to swap
      * @param exchange The exchange to perform the swap
      * @param transferType The method of transferring tokens to the exchange
      * @param routerCalldata The calldata to execute on the exchange
-     * @param minExpectedOutputAmount The minimum expected amount of output tokens
      * @return outputAmount The actual amount of output tokens received from the swap
      */
     function performSwap(
@@ -86,18 +86,18 @@ contract SwapProxy is Lockable {
         // 2. A direct transfer of funds to the exchange (TransferType.Transfer), or
         // 3. A permit2 approval (TransferType.Permit2Approval)
         if (transferType == SpokePoolV3PeripheryInterface.TransferType.Approval) {
-            IERC20(inputToken).forceApprove(exchange, inputBalanceBefore);
+            IERC20(inputToken).forceApprove(exchange, inputAmount);
         } else if (transferType == SpokePoolV3PeripheryInterface.TransferType.Transfer) {
-            IERC20(inputToken).transfer(exchange, inputBalanceBefore);
+            IERC20(inputToken).transfer(exchange, inputAmount);
         } else if (transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval) {
-            IERC20(inputToken).forceApprove(address(permit2), inputBalanceBefore);
+            IERC20(inputToken).forceApprove(address(permit2), inputAmount);
             expectingPermit2Callback = true;
             permit2.permit(
                 address(this), // owner
                 IPermit2.PermitSingle({
                     details: IPermit2.PermitDetails({
                         token: inputToken,
-                        amount: uint160(inputBalanceBefore),
+                        amount: uint160(inputAmount),
                         expiration: uint48(block.timestamp),
                         nonce: eip1271Nonce++
                     }),
@@ -112,7 +112,7 @@ contract SwapProxy is Lockable {
         }
 
         // Execute the swap
-        (bool success,) = exchange.call(routerCalldata);
+        (bool success, ) = exchange.call(routerCalldata);
         if (!success) revert SwapFailed();
 
         // Transfer all output tokens back to the periphery
@@ -120,13 +120,7 @@ contract SwapProxy is Lockable {
         IERC20(outputToken).safeTransfer(msg.sender, outputBalance);
 
         // Emit the swap event
-        emit SwapExecuted(
-            exchange,
-            inputToken,
-            outputToken,
-            outputBalance,
-            transferType
-        );
+        emit SwapExecuted(exchange, inputToken, outputToken, outputBalance, transferType);
     }
 
     /**
@@ -200,9 +194,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     error MinimumExpectedInputAmount();
     error InvalidMsgValue();
     error InvalidSpokePool();
-    error InvalidProxy();
     error InvalidSwapToken();
-    error NotProxy();
     error InvalidSignature();
     error InvalidMinExpectedInputAmount();
     error SwapProxyDeploymentFailed();
@@ -220,7 +212,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @notice Initializes the SwapAndBridgeBase contract.
      * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
      * @param _wrappedNativeToken Address of the wrapped native token for the network this contract is deployed to.
-     * @param _proxy Address of the proxy contract that users should interact with to call this contract.
      * @param _permit2 Address of the deployed network's canonical permit2 contract.
      * @dev These values are initialized in a function and not in the constructor so that the creation code of this contract
      * is the same across networks with different addresses for the wrapped native token and this network's
@@ -229,7 +220,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     function initialize(
         V3SpokePoolInterface _spokePool,
         WETH9Interface _wrappedNativeToken,
-        address _proxy,
         IPermit2 _permit2
     ) external nonReentrant {
         if (initialized) revert ContractInitialized();
@@ -238,11 +228,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         if (!address(_spokePool).isContract()) revert InvalidSpokePool();
         spokePool = _spokePool;
         wrappedNativeToken = _wrappedNativeToken;
-        if (!_proxy.isContract()) revert InvalidProxy();
-        proxy = _proxy;
         if (!address(_permit2).isContract()) revert InvalidPermit2();
         permit2 = _permit2;
-        
+
         // Deploy the swap proxy with reference to the permit2 address
         swapProxy = new SwapProxy(address(_permit2));
     }
@@ -648,7 +636,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // Transfer tokens to the swap proxy for executing the swap
         _swapToken.safeTransfer(address(swapProxy), _swapTokenAmount);
-        
+
         // Execute the swap via the swap proxy using the appropriate transfer type
         uint256 returnAmount = swapProxy.performSwap(
             address(_swapToken),
@@ -664,8 +652,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // Calculate adjusted output amount proportionally when we receive more than expected and adjustment is enabled
         if (swapAndDepositData.minExpectedInputTokenAmount == 0) revert InvalidMinExpectedInputAmount();
-        uint256 adjustedOutputAmount =
-            (swapAndDepositData.depositData.outputAmount * returnAmount) /
+        uint256 adjustedOutputAmount = (swapAndDepositData.depositData.outputAmount * returnAmount) /
             swapAndDepositData.minExpectedInputTokenAmount;
 
         emit SwapBeforeBridge(

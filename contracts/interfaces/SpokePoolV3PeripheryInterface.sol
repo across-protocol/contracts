@@ -8,17 +8,6 @@ import { SpokePoolV3Periphery } from "../SpokePoolV3Periphery.sol";
 import { PeripherySigningLib } from "../libraries/PeripherySigningLib.sol";
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 
-interface SpokePoolV3PeripheryProxyInterface {
-    /**
-     * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
-     * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
-     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
-     */
-    function swapAndBridge(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData) external;
-}
-
 /**
  * @title SpokePoolV3Periphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
