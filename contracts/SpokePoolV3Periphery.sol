@@ -156,6 +156,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     error InvalidSwapToken();
     error NotProxy();
     error InvalidSignature();
+    error InvalidMinExpectedInputAmount();
 
     /**
      * @notice Construct a new Periphery contract.
@@ -645,6 +646,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             returnAmount > swapAndDepositData.minExpectedInputTokenAmount &&
             swapAndDepositData.enableProportionalAdjustment
         ) {
+            if (swapAndDepositData.minExpectedInputTokenAmount == 0) revert InvalidMinExpectedInputAmount();
             adjustedOutputAmount =
                 (swapAndDepositData.depositData.outputAmount * returnAmount) /
                 swapAndDepositData.minExpectedInputTokenAmount;
