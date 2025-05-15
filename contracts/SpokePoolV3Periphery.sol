@@ -91,7 +91,7 @@ contract SwapProxy is Lockable {
         if (transferType == SpokePoolV3PeripheryInterface.TransferType.Approval) {
             IERC20(inputToken).forceApprove(exchange, inputAmount);
         } else if (transferType == SpokePoolV3PeripheryInterface.TransferType.Transfer) {
-            IERC20(inputToken).transfer(exchange, inputAmount);
+            IERC20(inputToken).safeTransfer(exchange, inputAmount);
         } else if (transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval) {
             IERC20(inputToken).forceApprove(address(permit2), inputAmount);
             expectingPermit2Callback = true;

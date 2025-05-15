@@ -6,7 +6,7 @@ import { SpokePoolV3PeripheryInterface } from "../interfaces/SpokePoolV3Peripher
 library PeripherySigningLib {
     string internal constant EIP712_FEES_TYPE = "Fees(uint256 amount,address recipient)";
     string internal constant EIP712_BASE_DEPOSIT_DATA_TYPE =
-        "BaseDepositData(address inputToken,address outputToken,uint256 outputAmount,address depositor,address recipient,uint256 destinationChainId,address exclusiveRelayer,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes message)";
+        "BaseDepositData(address inputToken,bytes32 outputToken,uint256 outputAmount,address depositor,bytes32 recipient,uint256 destinationChainId,bytes32 exclusiveRelayer,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes message)";
     string internal constant EIP712_DEPOSIT_DATA_TYPE =
         "DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount)";
     string internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
