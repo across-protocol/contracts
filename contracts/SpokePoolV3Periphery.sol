@@ -429,13 +429,13 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
             depositData.baseDepositData.depositor,
-            depositData.baseDepositData.recipient, // already bytes32
+            depositData.baseDepositData.recipient,
             _inputToken,
-            depositData.baseDepositData.outputToken, // already bytes32
+            depositData.baseDepositData.outputToken,
             _inputAmount,
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
-            depositData.baseDepositData.exclusiveRelayer, // already bytes32
+            depositData.baseDepositData.exclusiveRelayer,
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -475,13 +475,13 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         _deposit(
             depositData.baseDepositData.depositor,
-            depositData.baseDepositData.recipient, // already bytes32
+            depositData.baseDepositData.recipient,
             depositData.baseDepositData.inputToken,
-            depositData.baseDepositData.outputToken, // already bytes32
+            depositData.baseDepositData.outputToken,
             depositData.inputAmount,
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
-            depositData.baseDepositData.exclusiveRelayer, // already bytes32
+            depositData.baseDepositData.exclusiveRelayer,
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -669,7 +669,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             swapAndDepositData.depositData.depositor,
             swapAndDepositData.depositData.recipient,
             address(_acrossInputToken),
-            swapAndDepositData.depositData.outputToken, // already bytes32
+            swapAndDepositData.depositData.outputToken,
             returnAmount,
             adjustedOutputAmount,
             swapAndDepositData.depositData.destinationChainId,
