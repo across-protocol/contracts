@@ -96,6 +96,11 @@ jobs:
         if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-production-binaries.tar target/deploy
 
+      - name: Release verified production binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/deploy/*.so
+
       - name: Build dist package
         run: yarn build-ts
 
