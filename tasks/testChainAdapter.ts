@@ -24,7 +24,10 @@ task("testChainAdapter", "Verify a chain adapter")
     const signer = new ethers.Wallet.fromMnemonic(getMnemonic()).connect(provider);
 
     const hubChainId = await getChainId();
-    assert([1, 11155111].includes(Number(hubChainId)), "required: --network [mainnet|sepolia]");
+    assert(
+      [CHAIN_IDs.MAINNET, CHAIN_IDs.SEPOLIA].includes(Number(hubChainId)),
+      "required: --network [mainnet|sepolia]"
+    );
     const spokeChainId = parseInt(args.chain);
 
     const [spokeName] = Object.entries(CHAIN_IDs).find(([, chainId]) => chainId === spokeChainId) ?? [];
