@@ -52,10 +52,7 @@ contract SwapProxy is Lockable {
     );
 
     // Errors
-    error NotOwner();
     error SwapFailed();
-    error InvalidReturn();
-    error LeftoverSrcTokens();
     error UnsupportedTransferType();
 
     /**
