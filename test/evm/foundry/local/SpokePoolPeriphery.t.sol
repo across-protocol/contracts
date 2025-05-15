@@ -488,6 +488,7 @@ contract SpokePoolPeripheryTest is Test {
             depositor, // recipient
             address(mockWETH), // inputToken
             mintAmount,
+            bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
             address(0), // exclusiveRelayer
@@ -507,6 +508,7 @@ contract SpokePoolPeripheryTest is Test {
             depositor, // recipient
             address(mockWETH), // inputToken
             mintAmount,
+            bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
             address(0), // exclusiveRelayer

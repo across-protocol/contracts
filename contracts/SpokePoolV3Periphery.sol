@@ -237,6 +237,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         address recipient,
         address inputToken,
         uint256 inputAmount,
+        bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
@@ -252,9 +253,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             msg.sender.toBytes32(),
             recipient.toBytes32(),
             inputToken.toBytes32(),
-            // @dev Setting outputToken to 0x0 to instruct fillers to use the equivalent token
-            // as the originToken on the destination chain.
-            bytes32(0),
+            outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,

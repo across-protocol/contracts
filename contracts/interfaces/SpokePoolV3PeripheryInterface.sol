@@ -127,6 +127,7 @@ interface SpokePoolV3PeripheryInterface {
         address recipient,
         address inputToken,
         uint256 inputAmount,
+        bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
         address exclusiveRelayer,
