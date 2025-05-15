@@ -170,9 +170,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     // Swap proxy used for isolating all swap operations
     SwapProxy public swapProxy;
 
-    // Nonce for this contract to use for EIP1271 "signatures".
-    uint48 private eip1271Nonce;
-
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
 
