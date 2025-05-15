@@ -73,37 +73,6 @@ jobs:
           path: ${{ env.SVM_ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
 
-      # This would duplicate installation if the SVM artifacts cache was not hit above, but otherwise the composite
-      # action would become more complex and we need to add solana-verify anyway.
-      - name: Setup Anchor & Solana
-        uses: ./.github/actions/setup-solana-anchor
-        with:
-          verify_version: 0.4.3
-          node_version: ${{ env.NODE_VERSION }}
-
-      - name: Cache verified production build binaries
-        id: verified-production-build-cache
-        uses: ./.github/actions/cache-svm-artifacts
-        with:
-          type: verified-production-binaries
-          node_version: ${{ env.NODE_VERSION }}
-
-      - name: Create verified build
-        if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
-        run: yarn build-svm-solana-verify
-
-      - name: Archive verified production build (for caching)
-        if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
-        run: tar -cf svm-verified-production-binaries.tar target/deploy
-
-      - name: Archive verified production build (for GitHub release)
-        run: tar -czf svm-verified-production-binaries.tar.gz target/deploy
-
-      - name: Release verified production binaries
-        uses: softprops/action-gh-release@v2
-        with:
-          files: svm-verified-production-binaries.tar.gz
-
       - name: Build dist package
         run: yarn build-ts
 
@@ -136,3 +105,29 @@ jobs:
         run: yarn publish --tag ${{ steps.release.outputs.tag }}
         env:
           NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Due to GitHub cache scoping, we cannot easily share the cache between releases even if the cache key is the same.
+  # In order to not slow down the NPM package publishing, we move the building of SVM binaries for GitHub release to a
+  # separate jobs that runs in parallel.
+  release-svm-production:
+    name: GitHub release SVM production binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Create verified build
+        run: yarn build-svm-solana-verify
+
+      - name: Archive verified production build
+        run: tar -czf svm-verified-production-binaries.tar.gz target/deploy
+
+      - name: Release verified production binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: svm-verified-production-binaries.tar.gz
