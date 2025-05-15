@@ -33,6 +33,9 @@ contract SwapProxy is Lockable {
     // EIP 1271 magic bytes indicating a valid signature.
     bytes4 private constant EIP1271_VALID_SIGNATURE = 0x1626ba7e;
 
+    // EIP 1271 bytes indicating an invalid signature.
+    bytes4 private constant EIP1271_INVALID_SIGNATURE = 0xffffffff;
+
     // Nonce for this contract to use for EIP1271 "signatures".
     uint48 private eip1271Nonce;
 
@@ -139,7 +142,7 @@ contract SwapProxy is Lockable {
     function isValidSignature(bytes32, bytes calldata) external view returns (bytes4 magicBytes) {
         magicBytes = (msg.sender == address(permit2) && expectingPermit2Callback)
             ? EIP1271_VALID_SIGNATURE
-            : bytes4(0xffffffff); // Invalid signature if not permit2 or not expecting callback
+            : EIP1271_INVALID_SIGNATURE;
     }
 }
 
@@ -177,12 +180,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
     bool private expectingPermit2Callback;
 
-    // EIP 1271 magic bytes indicating a valid signature.
-    bytes4 private constant EIP1271_VALID_SIGNATURE = 0x1626ba7e;
-
-    // EIP 1271 bytes indicating an invalid signature.
-    bytes4 private constant EIP1271_INVALID_SIGNATURE = 0xffffffff;
-
     event SwapBeforeBridge(
         address exchange,
         bytes exchangeCalldata,
@@ -206,7 +203,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     error InvalidSwapToken();
     error InvalidSignature();
     error InvalidMinExpectedInputAmount();
-    error SwapProxyDeploymentFailed();
 
     /**
      * @notice Construct a new Periphery contract.
@@ -435,7 +431,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
-        _depositV3(
+        _deposit(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient, // already bytes32
             _inputToken,
@@ -481,7 +477,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             _submissionFeeAmount
         );
 
-        _depositV3(
+        _deposit(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient, // already bytes32
             depositData.baseDepositData.inputToken,
@@ -534,7 +530,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
-        _depositV3(
+        _deposit(
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
             depositData.baseDepositData.inputToken,
@@ -548,18 +544,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
             depositData.baseDepositData.exclusivityParameter,
             depositData.baseDepositData.message
         );
-    }
-
-    /**
-     * @notice Verifies that the signer is the owner of the signing contract.
-     * @dev The _hash and _signature fields are intentionally ignored since this contract will accept
-     * any signature which originated from permit2 after the call to the exchange.
-     * @dev This is safe since this contract should never hold funds nor approvals, other than when it is depositing or swapping.
-     */
-    function isValidSignature(bytes32, bytes calldata) external view returns (bytes4 magicBytes) {
-        magicBytes = (msg.sender == address(permit2) && expectingPermit2Callback)
-            ? EIP1271_VALID_SIGNATURE
-            : EIP1271_INVALID_SIGNATURE;
     }
 
     /**
@@ -601,7 +585,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @param exclusivityParameter The deadline or offset during which the exclusive relayer has rights to fill the deposit without contention.
      * @param message The message to execute on the destination chain.
      */
-    function _depositV3(
+    function _deposit(
         address depositor,
         bytes32 recipient,
         address inputToken,
@@ -685,7 +669,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
-        _depositV3(
+        _deposit(
             swapAndDepositData.depositData.depositor,
             swapAndDepositData.depositData.recipient,
             address(_acrossInputToken),
