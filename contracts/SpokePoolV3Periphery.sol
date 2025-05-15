@@ -176,10 +176,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     // Boolean indicating whether the contract is initialized.
     bool private initialized;
 
-    // Slot for checking whether this contract is expecting a callback from permit2. Used to confirm whether it should return a valid signature response.
-    // When solidity 0.8.24 becomes more widely available, this should be replaced with a TSTORE caching method.
-    bool private expectingPermit2Callback;
-
     event SwapBeforeBridge(
         address exchange,
         bytes exchangeCalldata,
