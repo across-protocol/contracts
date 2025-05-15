@@ -14,13 +14,13 @@ import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
-import { SpokePoolV3PeripheryInterface } from "./interfaces/SpokePoolV3PeripheryInterface.sol";
+import { SpokePoolPeripheryInterface } from "./interfaces/SpokePoolPeripheryInterface.sol";
 import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
 
 /**
  * @title SwapProxy
  * @notice A dedicated proxy contract that isolates swap execution to mitigate frontrunning vulnerabilities.
- * The SpokePoolV3Periphery transfers tokens to this contract, which performs the swap and returns tokens back to the periphery.
+ * The SpokePoolPeriphery transfers tokens to this contract, which performs the swap and returns tokens back to the periphery.
  * @custom:security-contact bugs@across.to
  */
 contract SwapProxy is Lockable {
@@ -69,7 +69,7 @@ contract SwapProxy is Lockable {
         address outputToken,
         uint256 inputAmount,
         address exchange,
-        SpokePoolV3PeripheryInterface.TransferType transferType,
+        SpokePoolPeripheryInterface.TransferType transferType,
         bytes calldata routerCalldata
     ) external nonReentrant returns (uint256 outputAmount) {
         // We'll return the final balance of output tokens
@@ -78,11 +78,11 @@ contract SwapProxy is Lockable {
         // 1. A direct approval to spend funds on this contract (TransferType.Approval),
         // 2. A direct transfer of funds to the exchange (TransferType.Transfer), or
         // 3. A permit2 approval (TransferType.Permit2Approval)
-        if (transferType == SpokePoolV3PeripheryInterface.TransferType.Approval) {
+        if (transferType == SpokePoolPeripheryInterface.TransferType.Approval) {
             IERC20(inputToken).forceApprove(exchange, inputAmount);
-        } else if (transferType == SpokePoolV3PeripheryInterface.TransferType.Transfer) {
+        } else if (transferType == SpokePoolPeripheryInterface.TransferType.Transfer) {
             IERC20(inputToken).safeTransfer(exchange, inputAmount);
-        } else if (transferType == SpokePoolV3PeripheryInterface.TransferType.Permit2Approval) {
+        } else if (transferType == SpokePoolPeripheryInterface.TransferType.Permit2Approval) {
             IERC20(inputToken).forceApprove(address(permit2), inputAmount);
             expectingPermit2Callback = true;
             permit2.permit(
@@ -131,13 +131,13 @@ contract SwapProxy is Lockable {
 }
 
 /**
- * @title SpokePoolV3Periphery
+ * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
  * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiCaller, EIP712 {
+contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCaller, EIP712 {
     using SafeERC20 for IERC20;
     using Address for address;
     using AddressToBytes32 for address;
@@ -174,7 +174,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @notice Construct a new Periphery contract.
      * @param _permit2 Address of the canonical permit2 contract.
      */
-    constructor(IPermit2 _permit2) EIP712("ACROSS-V3-PERIPHERY", "1.0.0") {
+    constructor(IPermit2 _permit2) EIP712("ACROSS-PERIPHERY", "1.0.0") {
         require(address(_permit2) != address(0), "Permit2 cannot be zero address");
         require(_isContract(address(_permit2)), "Permit2 must be a contract");
         permit2 = _permit2;
@@ -184,7 +184,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function deposit(
         address spokePool,
@@ -221,7 +221,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
@@ -244,7 +244,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function swapAndBridgeWithPermit(
         address signatureOwner,
@@ -277,7 +277,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -309,7 +309,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
@@ -352,7 +352,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function depositWithPermit(
         address signatureOwner,
@@ -396,7 +396,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function depositWithPermit2(
         address signatureOwner,
@@ -443,7 +443,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     }
 
     /**
-     * @inheritdoc SpokePoolV3PeripheryInterface
+     * @inheritdoc SpokePoolPeripheryInterface
      */
     function depositWithAuthorization(
         address signatureOwner,

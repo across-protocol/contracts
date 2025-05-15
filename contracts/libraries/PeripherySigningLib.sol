@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { SpokePoolV3PeripheryInterface } from "../interfaces/SpokePoolV3PeripheryInterface.sol";
+import { SpokePoolPeripheryInterface } from "../interfaces/SpokePoolPeripheryInterface.sol";
 
 library PeripherySigningLib {
     string internal constant EIP712_FEES_TYPE = "Fees(uint256 amount,address recipient)";
@@ -51,7 +51,7 @@ library PeripherySigningLib {
      * @param baseDepositData Input struct whose values are hashed.
      * @dev BaseDepositData is only used as a nested struct for both DepositData and SwapAndDepositData.
      */
-    function hashBaseDepositData(SpokePoolV3PeripheryInterface.BaseDepositData calldata baseDepositData)
+    function hashBaseDepositData(SpokePoolPeripheryInterface.BaseDepositData calldata baseDepositData)
         internal
         pure
         returns (bytes32)
@@ -80,7 +80,7 @@ library PeripherySigningLib {
      * @param fees Input struct whose values are hashed.
      * @dev Fees is only used as a nested struct for both DepositData and SwapAndDepositData.
      */
-    function hashFees(SpokePoolV3PeripheryInterface.Fees calldata fees) internal pure returns (bytes32) {
+    function hashFees(SpokePoolPeripheryInterface.Fees calldata fees) internal pure returns (bytes32) {
         return keccak256(abi.encode(EIP712_FEES_TYPEHASH, fees.amount, fees.recipient));
     }
 
@@ -88,7 +88,7 @@ library PeripherySigningLib {
      * @notice Creates the EIP712 compliant hashed data corresponding to the DepositData struct.
      * @param depositData Input struct whose values are hashed.
      */
-    function hashDepositData(SpokePoolV3PeripheryInterface.DepositData calldata depositData)
+    function hashDepositData(SpokePoolPeripheryInterface.DepositData calldata depositData)
         internal
         pure
         returns (bytes32)
@@ -109,7 +109,7 @@ library PeripherySigningLib {
      * @notice Creates the EIP712 compliant hashed data corresponding to the SwapAndDepositData struct.
      * @param swapAndDepositData Input struct whose values are hashed.
      */
-    function hashSwapAndDepositData(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
+    function hashSwapAndDepositData(SpokePoolPeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
         internal
         pure
         returns (bytes32)
