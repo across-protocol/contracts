@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { SpokePoolV3PeripheryInterface } from "../interfaces/SpokePoolV3PeripheryInterface.sol";
+import { SpokePoolPeripheryInterface } from "../interfaces/SpokePoolPeripheryInterface.sol";
 
 library PeripherySigningLib {
     string internal constant EIP712_FEES_TYPE = "Fees(uint256 amount,address recipient)";
     string internal constant EIP712_BASE_DEPOSIT_DATA_TYPE =
-        "BaseDepositData(address inputToken,address outputToken,uint256 outputAmount,address depositor,address recipient,uint256 destinationChainId,address exclusiveRelayer,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes message)";
+        "BaseDepositData(address inputToken,bytes32 outputToken,uint256 outputAmount,address depositor,bytes32 recipient,uint256 destinationChainId,bytes32 exclusiveRelayer,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes message)";
     string internal constant EIP712_DEPOSIT_DATA_TYPE =
-        "DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount)";
+        "DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount,address spokePool)";
     string internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
-        "SwapAndDepositData(Fees submissionFees,BaseDepositData depositData,address swapToken,address exchange,TransferType transferType,uint256 swapTokenAmount,uint256 minExpectedInputTokenAmount,bytes routerCalldata,bool enableProportionalAdjustment)";
+        "SwapAndDepositData(Fees submissionFees,BaseDepositData depositData,address swapToken,address exchange,TransferType transferType,uint256 swapTokenAmount,uint256 minExpectedInputTokenAmount,bytes routerCalldata,bool enableProportionalAdjustment,address spokePool)";
 
     // EIP712 Type hashes.
     bytes32 internal constant EIP712_FEES_TYPEHASH = keccak256(abi.encodePacked(EIP712_FEES_TYPE));
@@ -51,7 +51,7 @@ library PeripherySigningLib {
      * @param baseDepositData Input struct whose values are hashed.
      * @dev BaseDepositData is only used as a nested struct for both DepositData and SwapAndDepositData.
      */
-    function hashBaseDepositData(SpokePoolV3PeripheryInterface.BaseDepositData calldata baseDepositData)
+    function hashBaseDepositData(SpokePoolPeripheryInterface.BaseDepositData calldata baseDepositData)
         internal
         pure
         returns (bytes32)
@@ -80,7 +80,7 @@ library PeripherySigningLib {
      * @param fees Input struct whose values are hashed.
      * @dev Fees is only used as a nested struct for both DepositData and SwapAndDepositData.
      */
-    function hashFees(SpokePoolV3PeripheryInterface.Fees calldata fees) internal pure returns (bytes32) {
+    function hashFees(SpokePoolPeripheryInterface.Fees calldata fees) internal pure returns (bytes32) {
         return keccak256(abi.encode(EIP712_FEES_TYPEHASH, fees.amount, fees.recipient));
     }
 
@@ -88,7 +88,7 @@ library PeripherySigningLib {
      * @notice Creates the EIP712 compliant hashed data corresponding to the DepositData struct.
      * @param depositData Input struct whose values are hashed.
      */
-    function hashDepositData(SpokePoolV3PeripheryInterface.DepositData calldata depositData)
+    function hashDepositData(SpokePoolPeripheryInterface.DepositData calldata depositData)
         internal
         pure
         returns (bytes32)
@@ -99,7 +99,8 @@ library PeripherySigningLib {
                     EIP712_DEPOSIT_DATA_TYPEHASH,
                     hashFees(depositData.submissionFees),
                     hashBaseDepositData(depositData.baseDepositData),
-                    depositData.inputAmount
+                    depositData.inputAmount,
+                    depositData.spokePool
                 )
             );
     }
@@ -108,7 +109,7 @@ library PeripherySigningLib {
      * @notice Creates the EIP712 compliant hashed data corresponding to the SwapAndDepositData struct.
      * @param swapAndDepositData Input struct whose values are hashed.
      */
-    function hashSwapAndDepositData(SpokePoolV3PeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
+    function hashSwapAndDepositData(SpokePoolPeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
         internal
         pure
         returns (bytes32)
@@ -125,7 +126,8 @@ library PeripherySigningLib {
                     swapAndDepositData.swapTokenAmount,
                     swapAndDepositData.minExpectedInputTokenAmount,
                     keccak256(swapAndDepositData.routerCalldata),
-                    swapAndDepositData.enableProportionalAdjustment
+                    swapAndDepositData.enableProportionalAdjustment,
+                    swapAndDepositData.spokePool
                 )
             );
     }
