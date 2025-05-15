@@ -21,12 +21,13 @@ jobs:
         uses: ./.github/actions/cache-svm-artifacts
         with:
           type: artifacts
-          path: ${{ env.ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
       - name: Generate SVM artifacts
         if: steps.svm-artifacts-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-svm-artifacts
         with:
+          type: artifacts
+          path: ${{ env.ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
       - name: Upload SVM artifacts
         uses: actions/upload-artifact@v4
@@ -49,12 +50,12 @@ jobs:
         id: evm-artifacts-cache
         uses: ./.github/actions/cache-evm-artifacts
         with:
-          path: ${{ env.ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
       - name: Generate EVM artifacts
         if: steps.evm-artifacts-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-evm-artifacts
         with:
+          path: ${{ env.ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
       - name: Upload EVM artifacts
         uses: actions/upload-artifact@v4
@@ -150,13 +151,15 @@ jobs:
         uses: ./.github/actions/cache-svm-artifacts
         with:
           type: verified-test-binaries
-          path: target/deploy
           node_version: ${{ env.NODE_VERSION }}
       - name: Create verified build
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         env:
           IS_TEST: true
         run: yarn build-svm-solana-verify
+      - name: Archive verified test build (for caching)
+        if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
+        run: tar -cf svm-verified-test-binaries.tar target/deploy
       - name: Test verified SVM build
         run: anchor test --skip-build
   build-ts:

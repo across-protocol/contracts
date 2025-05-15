@@ -1,5 +1,11 @@
 name: Generate SVM IDL artifacts
 inputs:
+  type:
+    description: "Type of the artifacts, used in archive name"
+    required: true
+  path:
+    description: "Paths to archive for caching"
+    required: true
   node_version:
     description: "Node version to use"
     required: true
@@ -22,3 +28,8 @@ runs:
     - name: Generate SVM IDL artifacts
       shell: bash
       run: yarn generate-svm-artifacts
+    - name: Archive SVM IDL artifacts (for caching)
+      shell: bash
+      env:
+        CACHE_PATHS: ${{ inputs.path }}
+      run: echo "$CACHE_PATHS" | xargs tar -cf svm-${{ inputs.type }}.tar

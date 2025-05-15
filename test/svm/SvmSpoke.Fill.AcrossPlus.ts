@@ -1,39 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import {
-  ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-  getAccount,
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
-  getMinimumBalanceForRentExemptAccount,
-  createApproveCheckedInstruction,
-} from "@solana/spl-token";
-import {
-  PublicKey,
-  Keypair,
-  AccountMeta,
-  TransactionInstruction,
-  sendAndConfirmTransaction,
-  Transaction,
-  ComputeBudgetProgram,
-} from "@solana/web3.js";
-import {
-  calculateRelayHashUint8Array,
-  MulticallHandlerCoder,
-  AcrossPlusMessageCoder,
-  sendTransactionWithLookupTable,
-  loadFillRelayParams,
-  intToU8Array32,
-} from "../../src/svm/web3-v1";
-import { MulticallHandler } from "../../target/types/multicall_handler";
-import { common } from "./SvmSpoke.common";
-import { FillDataParams, FillDataValues } from "../../src/types/svm";
-import { getApproveCheckedInstruction, getTransferCheckedInstruction } from "@solana-program/token";
+import { getApproveCheckedInstruction } from "@solana-program/token";
 import {
   AccountRole,
   address,
@@ -44,11 +11,43 @@ import {
   IAccountMeta,
   pipe,
 } from "@solana/kit";
-import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  createApproveCheckedInstruction,
+  createAssociatedTokenAccountInstruction,
+  createMint,
+  createTransferCheckedInstruction,
+  getAccount,
+  getAssociatedTokenAddressSync,
+  getMinimumBalanceForRentExemptAccount,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  AccountMeta,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  Transaction,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { createDefaultTransaction, signAndSendTransaction, SvmSpokeClient } from "../../src/svm";
 import { FillRelayAsyncInput } from "../../src/svm/clients/SvmSpoke";
-import { SvmSpokeClient } from "../../src/svm";
-const { provider, connection, program, owner, chainId, seedBalance } = common;
-const { initializeState, assertSE } = common;
+import {
+  AcrossPlusMessageCoder,
+  calculateRelayHashUint8Array,
+  intToU8Array32,
+  loadFillRelayParams,
+  MulticallHandlerCoder,
+  sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
+} from "../../src/svm/web3-v1";
+import { FillDataParams, FillDataValues } from "../../src/types/svm";
+import { MulticallHandler } from "../../target/types/multicall_handler";
+import { common } from "./SvmSpoke.common";
+import { createDefaultSolanaClient } from "./utils";
+const { provider, connection, program, owner, chainId, seedBalance, initializeState, assertSE } = common;
 
 describe("svm_spoke.fill.across_plus", () => {
   anchor.setProvider(provider);
@@ -267,7 +266,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
       // Fill using the ALT.
       const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
-      await sendTransactionWithLookupTable(connection, [computeBudgetIx, approveIx, fillIx], relayer);
+      await sendTransactionWithLookupTableV1(connection, [computeBudgetIx, approveIx, fillIx], relayer);
 
       // Verify relayer's balance after the fill
       await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfers get processed.
@@ -387,7 +386,7 @@ describe("svm_spoke.fill.across_plus", () => {
     const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
 
     // Fill using the ALT.
-    await sendTransactionWithLookupTable(connection, [approveIx, fillIx], relayer);
+    await sendTransactionWithLookupTableV1(connection, [approveIx, fillIx], relayer);
 
     // Verify recipient's balance after the fill
     await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfer gets processed.

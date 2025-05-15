@@ -56,6 +56,8 @@
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@scroll-tech/contracts": "^0.1.0",
+    "@solana-developers/helpers": "^2.4.0",
+    "@solana-program/address-lookup-table": "^0.7.0",
     "@solana-program/token": "^0.5.1",
     "@solana/kit": "^2.1.0",
     "@solana/spl-token": "^0.4.6",

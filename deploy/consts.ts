@@ -105,6 +105,7 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
       L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
+      L1OpUSDCBridgeAdapter: "0xE3622468Ea7dD804702B56ca2a4f88C0936995e6",
     },
     [CHAIN_IDs.MODE]: {
       L1CrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
@@ -178,8 +179,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
   },
-  56: {
-    helios: "0x3bed21dae767e4df894b31b14ad32369ce4bad8b",
+  [CHAIN_IDs.BSC]: {
+    helios: "0xcdb25d0a6fffe639bc591a565f2d99507837f2b7",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
