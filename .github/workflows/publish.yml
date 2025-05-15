@@ -108,7 +108,7 @@ jobs:
 
   # Due to GitHub cache scoping, we cannot easily share the cache between releases even if the cache key is the same.
   # In order to not slow down the NPM package publishing, we move the building of SVM binaries for GitHub release to a
-  # separate jobs that runs in parallel.
+  # separate jobs that runs in  parallel.
   release-svm-production:
     name: GitHub release SVM production binaries
     runs-on: ubuntu-latest
