@@ -110,7 +110,7 @@ jobs:
   # In order to not slow down the NPM package publishing, we move the building of SVM binaries for GitHub release to a
   # separate jobs that runs in parallel.
   release-svm-production:
-    name: GitHub release SVM production binaries
+    name: Release SVM production binaries on GitHub
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -121,7 +121,7 @@ jobs:
           verify_version: 0.4.3
           node_version: ${{ env.NODE_VERSION }}
 
-      - name: Create verified build
+      - name: Create verified production build
         run: yarn build-svm-solana-verify
 
       - name: Archive verified production build
@@ -131,3 +131,28 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: svm-verified-production-binaries.tar.gz
+
+  release-svm-test:
+    name: Release SVM test binaries on GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Create verified test build
+        env:
+          IS_TEST: true
+        run: yarn build-svm-solana-verify
+
+      - name: Archive verified test build
+        run: tar -czf svm-verified-test-binaries.tar.gz target/deploy
+
+      - name: Release verified test binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: svm-verified-test-binaries.tar.gz
