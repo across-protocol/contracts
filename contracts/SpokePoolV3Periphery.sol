@@ -42,15 +42,6 @@ contract SwapProxy is Lockable {
     // Slot for checking whether this contract is expecting a callback from permit2. Used to confirm whether it should return a valid signature response.
     bool private expectingPermit2Callback;
 
-    // Events
-    event SwapExecuted(
-        address exchange,
-        address indexed inputToken,
-        address indexed outputToken,
-        uint256 outputAmount,
-        SpokePoolV3PeripheryInterface.TransferType transferType
-    );
-
     // Errors
     error SwapFailed();
     error UnsupportedTransferType();
