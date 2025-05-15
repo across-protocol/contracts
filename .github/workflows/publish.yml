@@ -49,26 +49,28 @@ jobs:
         id: evm-artifacts-cache
         uses: ./.github/actions/cache-evm-artifacts
         with:
-          path: ${{ env.EVM_ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
 
       - name: Generate EVM artifacts
         if: steps.evm-artifacts-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-evm-artifacts
         with:
+          path: ${{ env.EVM_ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
 
       - name: Cache SVM artifacts
         id: svm-artifacts-cache
         uses: ./.github/actions/cache-svm-artifacts
         with:
-          path: ${{ env.SVM_ARTIFACTS_PATHS }}
+          type: artifacts
           node_version: ${{ env.NODE_VERSION }}
 
       - name: Generate SVM artifacts
         if: steps.svm-artifacts-cache.outputs.cache-hit != 'true'
         uses: ./.github/actions/generate-svm-artifacts
         with:
+          type: artifacts
+          path: ${{ env.SVM_ARTIFACTS_PATHS }}
           node_version: ${{ env.NODE_VERSION }}
 
       # This would duplicate installation if the SVM artifacts cache was not hit above, but otherwise the composite
@@ -84,12 +86,15 @@ jobs:
         uses: ./.github/actions/cache-svm-artifacts
         with:
           type: verified-production-binaries
-          path: target/deploy
           node_version: ${{ env.NODE_VERSION }}
 
       - name: Create verified build
         if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
         run: yarn build-svm-solana-verify
+
+      - name: Archive verified production build (for caching)
+        if: steps.verified-production-build-cache.outputs.cache-hit != 'true'
+        run: tar -cf svm-verified-production-binaries.tar target/deploy
 
       - name: Build dist package
         run: yarn build-ts
