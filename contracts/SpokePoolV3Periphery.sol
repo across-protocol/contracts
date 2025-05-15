@@ -123,9 +123,6 @@ contract SwapProxy is Lockable {
         // Transfer all output tokens back to the periphery
         IERC20(outputToken).safeTransfer(msg.sender, outputBalance);
 
-        // Emit the swap event
-        emit SwapExecuted(exchange, inputToken, outputToken, outputBalance, transferType);
-
         // Return the net amount received from the swap
         return outputBalance;
     }
