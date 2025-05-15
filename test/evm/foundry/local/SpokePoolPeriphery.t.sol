@@ -150,7 +150,7 @@ contract SpokePoolPeripheryTest is Test {
         cex = new Exchange(permit2);
 
         vm.startPrank(owner);
-        spokePoolPeriphery = new SpokePoolV3Periphery();
+        spokePoolPeriphery = new SpokePoolV3Periphery(permit2);
         domainSeparator = Permit2EIP712(address(permit2)).DOMAIN_SEPARATOR();
         Ethereum_SpokePool implementation = new Ethereum_SpokePool(
             address(mockWETH),
@@ -161,7 +161,6 @@ contract SpokePoolPeripheryTest is Test {
             new ERC1967Proxy(address(implementation), abi.encodeCall(Ethereum_SpokePool.initialize, (0, owner)))
         );
         ethereumSpokePool = Ethereum_SpokePool(payable(spokePoolProxy));
-        spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
         vm.stopPrank();
 
         deal(depositor, mintAmountWithSubmissionFee);
@@ -177,14 +176,9 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
-    function testInitializePeriphery() public {
-        SpokePoolV3Periphery _spokePoolPeriphery = new SpokePoolV3Periphery();
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
-        assertEq(address(_spokePoolPeriphery.spokePool()), address(ethereumSpokePool));
-        assertEq(address(_spokePoolPeriphery.wrappedNativeToken()), address(mockWETH));
+    function testPeripheryConstructor() public {
+        SpokePoolV3Periphery _spokePoolPeriphery = new SpokePoolV3Periphery(permit2);
         assertEq(address(_spokePoolPeriphery.permit2()), address(permit2));
-        vm.expectRevert(SpokePoolV3Periphery.ContractInitialized.selector);
-        _spokePoolPeriphery.initialize(V3SpokePoolInterface(ethereumSpokePool), mockWETH, permit2);
     }
 
     /**
@@ -485,6 +479,7 @@ contract SpokePoolPeripheryTest is Test {
             new bytes(0)
         );
         spokePoolPeriphery.deposit{ value: mintAmount }(
+            address(ethereumSpokePool), // spokePool address
             depositor, // recipient
             address(mockWETH), // inputToken
             mintAmount,
@@ -505,6 +500,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.startPrank(depositor);
         vm.expectRevert(SpokePoolV3Periphery.InvalidMsgValue.selector);
         spokePoolPeriphery.deposit(
+            address(ethereumSpokePool), // spokePool address
             depositor, // recipient
             address(mockWETH), // inputToken
             mintAmount,
@@ -1307,7 +1303,8 @@ contract SpokePoolPeripheryTest is Test {
                     exclusivityParameter: 0,
                     message: new bytes(0)
                 }),
-                inputAmount: _amount
+                inputAmount: _amount,
+                spokePool: address(ethereumSpokePool)
             });
     }
 
@@ -1353,7 +1350,8 @@ contract SpokePoolPeripheryTest is Test {
                     _amount,
                     usePermit2
                 ),
-                enableProportionalAdjustment: _enableProportionalAdjustment
+                enableProportionalAdjustment: _enableProportionalAdjustment,
+                spokePool: address(ethereumSpokePool)
             });
     }
 }

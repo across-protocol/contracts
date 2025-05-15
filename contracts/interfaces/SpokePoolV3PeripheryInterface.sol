@@ -90,6 +90,8 @@ interface SpokePoolV3PeripheryInterface {
         // the outputAmount will be increased proportionally.
         // When disabled (false), the original outputAmount is used regardless of how many tokens are returned.
         bool enableProportionalAdjustment;
+        // Address of the SpokePool to use for depositing tokens after swap.
+        address spokePool;
     }
 
     // Extended deposit data to be used specifically for signing off on periphery deposits.
@@ -100,6 +102,8 @@ interface SpokePoolV3PeripheryInterface {
         BaseDepositData baseDepositData;
         // The precise input amount to deposit into the spoke pool.
         uint256 inputAmount;
+        // Address of the SpokePool to use for depositing tokens.
+        address spokePool;
     }
 
     /**
@@ -124,6 +128,7 @@ interface SpokePoolV3PeripheryInterface {
      * @param fillDeadline Timestamp after which this deposit can no longer be filled.
      */
     function deposit(
+        address spokePool,
         address recipient,
         address inputToken,
         uint256 inputAmount,
@@ -140,10 +145,7 @@ interface SpokePoolV3PeripheryInterface {
     /**
      * @notice Swaps tokens on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If msg.value is 0, then this function is only callable by the proxy contract, to protect against
-     * approval abuse attacks where a user has set an approval on this contract to spend any ERC20 token.
-     * @dev If swapToken or acrossInputToken are the native token for this chain then this function might fail.
-     * the assumption is that this function will handle only ERC20 tokens.
+     * @dev If msg.value is sent, the swapToken in swapAndDepositData must implement the WETH9 interface for wrapping native tokens.
      * @param swapAndDepositData Specifies the data needed to perform a swap on a generic exchange.
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable;

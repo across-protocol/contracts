@@ -60,7 +60,6 @@ contract SwapProxy is Lockable {
      * @param _permit2 Address of the canonical permit2 contract.
      */
     constructor(address _permit2) {
-        require(_permit2 != address(0), "Permit2 cannot be zero address");
         permit2 = IPermit2(_permit2);
     }
 
@@ -155,20 +154,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     using Address for address;
     using AddressToBytes32 for address;
 
-    // Across SpokePool we'll submit deposits to with acrossInputToken as the input token.
-    V3SpokePoolInterface public spokePool;
-
-    // Wrapped native token contract address.
-    WETH9Interface public wrappedNativeToken;
-
     // Canonical Permit2 contract address.
-    IPermit2 public permit2;
+    IPermit2 public immutable permit2;
 
     // Swap proxy used for isolating all swap operations
-    SwapProxy public swapProxy;
-
-    // Boolean indicating whether the contract is initialized.
-    bool private initialized;
+    SwapProxy public immutable swapProxy;
 
     event SwapBeforeBridge(
         address exchange,
@@ -184,8 +174,6 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
     /****************************************
      *                ERRORS                *
      ****************************************/
-    error InvalidPermit2();
-    error ContractInitialized();
     error InvalidSignatureLength();
     error MinimumExpectedInputAmount();
     error InvalidMsgValue();
@@ -196,34 +184,11 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
     /**
      * @notice Construct a new Periphery contract.
-     * @dev Is empty and all of the state variables are initialized in the initialize function
-     * to allow for deployment at a deterministic address via create2, which requires that the bytecode
-     * across different networks is the same. Constructor parameters affect the bytecode so we can only
-     * add parameters here that are consistent across networks.
+     * @param _permit2 Address of the canonical permit2 contract.
      */
-    constructor() EIP712("ACROSS-V3-PERIPHERY", "1.0.0") {}
-
-    /**
-     * @notice Initializes the SwapAndBridgeBase contract.
-     * @param _spokePool Address of the SpokePool contract that we'll submit deposits to.
-     * @param _wrappedNativeToken Address of the wrapped native token for the network this contract is deployed to.
-     * @param _permit2 Address of the deployed network's canonical permit2 contract.
-     * @dev These values are initialized in a function and not in the constructor so that the creation code of this contract
-     * is the same across networks with different addresses for the wrapped native token and this network's
-     * corresponding spoke pool contract. This is to allow this contract to be deterministically deployed with CREATE2.
-     */
-    function initialize(
-        V3SpokePoolInterface _spokePool,
-        WETH9Interface _wrappedNativeToken,
-        IPermit2 _permit2
-    ) external nonReentrant {
-        if (initialized) revert ContractInitialized();
-        initialized = true;
-
-        if (!address(_spokePool).isContract()) revert InvalidSpokePool();
-        spokePool = _spokePool;
-        wrappedNativeToken = _wrappedNativeToken;
-        if (!address(_permit2).isContract()) revert InvalidPermit2();
+    constructor(IPermit2 _permit2) EIP712("ACROSS-V3-PERIPHERY", "1.0.0") {
+        require(address(_permit2) != address(0), "Permit2 cannot be zero address");
+        require(_isContract(address(_permit2)), "Permit2 must be a contract");
         permit2 = _permit2;
 
         // Deploy the swap proxy with reference to the permit2 address
@@ -234,6 +199,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @inheritdoc SpokePoolV3PeripheryInterface
      */
     function deposit(
+        address spokePool,
         address recipient,
         address inputToken,
         uint256 inputAmount,
@@ -247,9 +213,10 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         bytes memory message
     ) external payable override nonReentrant {
         if (msg.value != inputAmount) revert InvalidMsgValue();
-        if (!address(spokePool).isContract()) revert InvalidSpokePool();
+        if (!_isContract(spokePool)) revert InvalidSpokePool();
+
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
-        spokePool.deposit{ value: msg.value }(
+        V3SpokePoolInterface(spokePool).deposit{ value: msg.value }(
             msg.sender.toBytes32(),
             recipient.toBytes32(),
             inputToken.toBytes32(),
@@ -273,15 +240,18 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // as though the user deposited a wrapped native token.
         if (msg.value != 0) {
             if (msg.value != swapAndDepositData.swapTokenAmount) revert InvalidMsgValue();
-            if (address(swapAndDepositData.swapToken) != address(wrappedNativeToken)) revert InvalidSwapToken();
-            wrappedNativeToken.deposit{ value: msg.value }();
+            if (!_isContract(address(swapAndDepositData.swapToken))) revert InvalidSwapToken();
+            // Assume swapToken implements WETH9 interface if sending value
+            WETH9Interface(swapAndDepositData.swapToken).deposit{ value: msg.value }();
         } else {
+            // Transfer ERC20 tokens from sender to this contract
             IERC20(swapAndDepositData.swapToken).safeTransferFrom(
                 msg.sender,
                 address(this),
                 swapAndDepositData.swapTokenAmount
             );
         }
+
         _swapAndBridge(swapAndDepositData);
     }
 
@@ -421,6 +391,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
+            depositData.spokePool,
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
             _inputToken,
@@ -467,6 +438,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         );
 
         _deposit(
+            depositData.spokePool,
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
             depositData.baseDepositData.inputToken,
@@ -520,6 +492,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
+            depositData.spokePool,
             depositData.baseDepositData.depositor,
             depositData.baseDepositData.recipient,
             depositData.baseDepositData.inputToken,
@@ -575,6 +548,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
      * @param message The message to execute on the destination chain.
      */
     function _deposit(
+        address spokePool,
         address depositor,
         bytes32 recipient,
         address inputToken,
@@ -588,8 +562,9 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         uint32 exclusivityParameter,
         bytes calldata message
     ) private {
-        IERC20(inputToken).forceApprove(address(spokePool), inputAmount);
-        spokePool.deposit(
+        if (!_isContract(spokePool)) revert InvalidSpokePool();
+        IERC20(inputToken).forceApprove(spokePool, inputAmount);
+        V3SpokePoolInterface(spokePool).deposit(
             depositor.toBytes32(),
             recipient,
             inputToken.toBytes32(),
@@ -659,6 +634,7 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
 
         // Deposit the swapped tokens into Across and bridge them using remainder of input params.
         _deposit(
+            swapAndDepositData.spokePool,
             swapAndDepositData.depositData.depositor,
             swapAndDepositData.depositData.recipient,
             address(_acrossInputToken),
@@ -682,5 +658,19 @@ contract SpokePoolV3Periphery is SpokePoolV3PeripheryInterface, Lockable, MultiC
         if (amount > 0) {
             IERC20(feeToken).safeTransfer(recipient, amount);
         }
+    }
+
+    /**
+     * @notice Internal function to check if an address is a contract
+     * @dev This is a replacement for OpenZeppelin's isContract function which is deprecated
+     * @param addr The address to check
+     * @return True if the address is a contract, false otherwise
+     */
+    function _isContract(address addr) private view returns (bool) {
+        uint256 size;
+        assembly {
+            size := extcodesize(addr)
+        }
+        return size > 0;
     }
 }
