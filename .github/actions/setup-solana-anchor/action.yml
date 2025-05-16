@@ -10,6 +10,10 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "Use Node ${{ inputs.node_version }}"
+      uses: ./.github/actions/setup-node-if-needed
+      with:
+        node_version: ${{ inputs.node_version }}
     - name: Extract Solana versions
       uses: solana-developers/github-actions/extract-versions@v0.2.5
       id: versions
@@ -19,4 +23,3 @@ runs:
         anchor_version: ${{ steps.versions.outputs.anchor_version }}
         solana_version: ${{ steps.versions.outputs.solana_version }}
         verify_version: ${{ inputs.verify_version }}
-        node_version: ${{ inputs.node_version }}

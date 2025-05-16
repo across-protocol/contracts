@@ -13,10 +13,9 @@ runs:
   using: "composite"
   steps:
     - name: "Use Node ${{ inputs.node_version }}"
-      uses: actions/setup-node@v3
+      uses: ./.github/actions/setup-node-if-needed
       with:
-        node-version: "${{ inputs.node_version }}"
-        cache: yarn
+        node_version: ${{ inputs.node_version }}
     - name: Setup Anchor & Solana
       uses: ./.github/actions/setup-solana-anchor
       with:
