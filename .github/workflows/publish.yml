@@ -12,6 +12,8 @@ name: Publish Package to npmjs
 on:
   release:
     types: [created]
+permissions:
+  contents: write
 env:
   NODE_VERSION: "20.x"
   EVM_ARTIFACTS_PATHS: |
