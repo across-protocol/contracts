@@ -1,0 +1,26 @@
+name: Generate EVM artifacts
+inputs:
+  path:
+    description: "Paths to archive for caching"
+    required: true
+  node_version:
+    description: "Node version to use"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: "Use Node ${{ inputs.node_version }}"
+      uses: ./.github/actions/setup-node-if-needed
+      with:
+        node_version: ${{ inputs.node_version }}
+    - name: Install packages
+      shell: bash
+      run: yarn install --frozen-lockfile
+    - name: Build EVM
+      shell: bash
+      run: yarn build-evm
+    - name: Archive EVM artifacts (for caching)
+      shell: bash
+      env:
+        CACHE_PATHS: ${{ inputs.path }}
+      run: echo "$CACHE_PATHS" | xargs tar -cf evm-artifacts.tar
