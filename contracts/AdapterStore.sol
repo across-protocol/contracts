@@ -8,8 +8,8 @@ library MessengerTypes {
 }
 
 /**
- * @dev A helper contract for chain adapters on the hub chain that support OFT or xERC20(via Hyperlane) messaging.
- * @dev Handles token => messenger/router mapping storage. Adapters can't store this themselves as they're called
+ * @dev A helper contract for chain adapters on the hub chain that support OFT messaging. Handles
+ * @dev token => messenger mapping storage. Adapters can't store this themselves as they're called
  * @dev via `delegateCall` and their storage is not part of available context.
  */
 contract AdapterStore is Ownable {

@@ -63,7 +63,7 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAd
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
-     * @param _adapterStore Helper storage contract to support bridging via differnt token standards: OFT, XERC20
+     * @param _adapterStore Helper storage contract to support bridging via OFT
      * @param _oftDstEid destination endpoint id for OFT messaging
      * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
