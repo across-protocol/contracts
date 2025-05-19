@@ -19,7 +19,9 @@ for program in programs/*; do
 
   # We don't need keypair files from the verified build and they cause permission issues on CI when Swatinem/rust-cache
   # tries to delete them.
-  echo "Removing target/deploy/$program_name-keypair.json"
-  sudo rm -f "target/deploy/$program_name-keypair.json"
+  if [[ "${CI:-}" == "true" ]]; then
+    echo "Removing target/deploy/$program_name-keypair.json"
+    sudo rm -f "target/deploy/$program_name-keypair.json"
+  fi
 
 done
