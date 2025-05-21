@@ -32,7 +32,7 @@ import {
 } from "@solana/spl-token";
 import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
-import { SvmSpokeClient } from "../../src/svm";
+import { SvmSpokeClient, createDefaultTransaction, signAndSendTransaction } from "../../src/svm";
 import { DepositInput } from "../../src/svm/clients/SvmSpoke";
 import {
   getDepositNowPda,
@@ -47,14 +47,8 @@ import {
 import { DepositData, DepositDataValues } from "../../src/types/svm";
 import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
 import { common } from "./SvmSpoke.common";
-import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
+import { createDefaultSolanaClient } from "./utils";
 const {
-  getOrCreateVaultAta,
-  assertSE,
-  assert,
-  getCurrentTime,
-  depositQuoteTimeBuffer,
-  fillDeadlineBuffer,
   provider,
   connection,
   program,
@@ -62,7 +56,14 @@ const {
   seedBalance,
   initializeState,
   depositData,
+  assertSE,
+  assert,
+  getCurrentTime,
+  depositQuoteTimeBuffer,
+  fillDeadlineBuffer,
+  getOrCreateVaultAta,
 } = common;
+
 const maxExclusivityOffsetSeconds = new BN(MAX_EXCLUSIVITY_OFFSET_SECONDS); // 1 year in seconds
 
 type DepositDataSeed = Parameters<typeof getDepositSeedHash>[0];

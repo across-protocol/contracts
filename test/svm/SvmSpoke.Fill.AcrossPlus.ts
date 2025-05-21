@@ -33,7 +33,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { SvmSpokeClient } from "../../src/svm";
+import { createDefaultTransaction, signAndSendTransaction, SvmSpokeClient } from "../../src/svm";
 import { FillRelayAsyncInput } from "../../src/svm/clients/SvmSpoke";
 import {
   AcrossPlusMessageCoder,
@@ -42,12 +42,12 @@ import {
   intToU8Array32,
   loadFillRelayParams,
   MulticallHandlerCoder,
-  sendTransactionWithLookupTable,
+  sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
 } from "../../src/svm/web3-v1";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
-import { createDefaultSolanaClient, createDefaultTransaction, signAndSendTransaction } from "./utils";
+import { createDefaultSolanaClient } from "./utils";
 const { provider, connection, program, owner, chainId, seedBalance, initializeState, assertSE } = common;
 
 describe("svm_spoke.fill.across_plus", () => {
@@ -268,7 +268,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
       // Fill using the ALT.
       const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
-      await sendTransactionWithLookupTable(connection, [computeBudgetIx, approveIx, fillIx], relayer);
+      await sendTransactionWithLookupTableV1(connection, [computeBudgetIx, approveIx, fillIx], relayer);
 
       // Verify relayer's balance after the fill
       await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfers get processed.
@@ -388,7 +388,7 @@ describe("svm_spoke.fill.across_plus", () => {
     const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
 
     // Fill using the ALT.
-    await sendTransactionWithLookupTable(connection, [approveIx, fillIx], relayer);
+    await sendTransactionWithLookupTableV1(connection, [approveIx, fillIx], relayer);
 
     // Verify recipient's balance after the fill
     await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfer gets processed.
