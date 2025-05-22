@@ -8,7 +8,7 @@ const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
 const NO_SYMBOL = "----";
 const NO_ADDRESS = "------------------------------------------";
 
-const IGNORED_CHAINS = [CHAIN_IDs.BOBA, CHAIN_IDs.BSC, CHAIN_IDs.SOLANA];
+const IGNORED_CHAINS = [CHAIN_IDs.BOBA, CHAIN_IDs.SOLANA];
 const V4_CHAINS = [CHAIN_IDs.BSC, CHAIN_IDs.LISK, CHAIN_IDs.LINEA];
 
 // Supported mainnet chain IDs.
