@@ -85,7 +85,7 @@ export RPC_URL=https://api.devnet.solana.com
 export KEYPAIR=~/.config/solana/dev-wallet.json
 export PROGRAM=svm_spoke # Also repeat the deployment process for multicall_handler
 export PROGRAM_ID=$(cat target/idl/$PROGRAM.json | jq -r ".address")
-export MULTISIG=3qD6V6n2YMkejiiANj3xZo6tHKWvAuMdF89YxSiu26zc # For Squads make sure to use the vault, not the multisig address!
+export MULTISIG= # Export the Squads vault, not the multisig address!
 ```
 
 For the initial deployment also need these:
