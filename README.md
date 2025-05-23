@@ -206,6 +206,47 @@ anchor run squadsIdlUpgrade -- \
   --closeRecipient $(solana address --keypair $KEYPAIR)
 ```
 
+#### Verify
+
+Start with verifying locally that the deployed program matches the source code of the public repository:
+
+```shell
+solana-verify verify-from-repo \
+  --url $RPC_URL \
+  --program-id $PROGRAM_ID \
+   --library-name $PROGRAM \
+  https://github.com/across-protocol/contracts
+solana-verify verify-from-repo \
+  --url $RPC_URL \
+  --keypair $KEYPAIR \
+  --commit-hash 1adc5e132818b523e2b7850afef96ad5ea1712e8 \
+  --program-id $PROGRAM_ID \
+   --library-name $PROGRAM \
+  https://github.com/across-protocol/contracts
+```
+
+When prompted, don't yet upload the verification data to the blockchain as that should be done by the multisig. Proceed with creating the upload transaction and then import and sign/execute it in the Squads multisig:
+
+```shell
+solana-verify export-pda-tx \
+  --url $RPC_URL \
+  --program-id $PROGRAM_ID \
+  --library-name $PROGRAM  \
+  --uploader $MULTISIG \
+  https://github.com/across-protocol/contracts
+```
+
+Note that the initial upload transaction might fail if the multisig vault does not have enough SOL for PDA creation. In that case, transfer the required funds to the multisig vault before executing the upload transaction.
+
+Finally, submit the verification to OtterSec API (only works on mainnet):
+
+```shell
+solana-verify remote submit-job \
+  --url $RPC_URL \
+  --program-id $PROGRAM_ID \
+  --uploader $MULTISIG
+```
+
 ## Miscellaneous topics
 
 ### Manually Finalizing Scroll Claims from L2 -> L1 (Mainnet | Sepolia)
