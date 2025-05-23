@@ -216,13 +216,6 @@ solana-verify verify-from-repo \
   --program-id $PROGRAM_ID \
    --library-name $PROGRAM \
   https://github.com/across-protocol/contracts
-solana-verify verify-from-repo \
-  --url $RPC_URL \
-  --keypair $KEYPAIR \
-  --commit-hash 1adc5e132818b523e2b7850afef96ad5ea1712e8 \
-  --program-id $PROGRAM_ID \
-   --library-name $PROGRAM \
-  https://github.com/across-protocol/contracts
 ```
 
 When prompted, don't yet upload the verification data to the blockchain as that should be done by the multisig. Proceed with creating the upload transaction and then import and sign/execute it in the Squads multisig:
