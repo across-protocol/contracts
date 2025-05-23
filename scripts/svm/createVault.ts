@@ -8,7 +8,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getOrCreateAssociatedTok
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram } from "../../src/svm/web3-v1";
+import { getSpokePoolProgram, SOLANA_SPOKE_STATE_SEED } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -20,12 +20,12 @@ console.log("SVM-Spoke Program ID:", programId.toString());
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
-  .option("seed", { type: "string", demandOption: true, describe: "Seed for the state account PDA" })
+  .option("seed", { type: "string", demandOption: false, describe: "Seed for the state account PDA" })
   .option("originToken", { type: "string", demandOption: true, describe: "Origin token public key" }).argv;
 
 async function createVault(): Promise<void> {
   const resolvedArgv = await argv;
-  const seed = new BN(resolvedArgv.seed);
+  const seed = resolvedArgv.seed ? new BN(resolvedArgv.seed) : SOLANA_SPOKE_STATE_SEED;
   const originToken = new PublicKey(resolvedArgv.originToken);
 
   // Define the state account PDA
