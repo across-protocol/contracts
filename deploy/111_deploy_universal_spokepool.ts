@@ -28,6 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[spokeChainId] ?? ZERO_ADDRESS,
     L2_ADDRESS_MAP[spokeChainId]?.cctpTokenMessenger ?? ZERO_ADDRESS,
   ];
+  console.log(`Deploying new Universal SpokePool on ${spokeChainId} with args:`, constructorArgs);
 
   // @dev Deploy on different address for each chain.
   // The Universal Adapter writes calldata to be relayed to L2 by associating it with the

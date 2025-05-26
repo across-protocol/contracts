@@ -54,21 +54,10 @@ async function deposit(): Promise<void> {
     programId
   );
 
-  // Define the route account PDA
-  const [routePda] = PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("route"),
-      inputToken.toBytes(),
-      seed.toArrayLike(Buffer, "le", 8),
-      destinationChainId.toArrayLike(Buffer, "le", 8),
-    ],
-    programId
-  );
-
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  // Find ATA for the input token to be stored by state (vault). This was created when the route was enabled.
+  // Find ATA for the input token to be stored by state (vault). This should have been created before the deposit is attempted.
   const vault = getAssociatedTokenAddressSync(
     inputToken,
     statePda,
@@ -77,7 +66,7 @@ async function deposit(): Promise<void> {
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  console.log("Depositing V3...");
+  console.log("Depositing...");
   console.table([
     { property: "seed", value: seed.toString() },
     { property: "recipient", value: recipient.toString() },
@@ -94,7 +83,6 @@ async function deposit(): Promise<void> {
     { property: "programId", value: programId.toString() },
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
-    { property: "routePda", value: routePda.toString() },
     { property: "vault", value: vault.toString() },
   ]);
 
@@ -132,7 +120,6 @@ async function deposit(): Promise<void> {
   )
     .accounts({
       state: statePda,
-      route: routePda,
       signer: signer.publicKey,
       userTokenAccount,
       vault: vault,
@@ -157,5 +144,5 @@ async function deposit(): Promise<void> {
   console.log("Transaction signature:", tx);
 }
 
-// Run the depositV3 function
+// Run the deposit function
 deposit();

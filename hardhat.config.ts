@@ -354,7 +354,7 @@ const config: HardhatUserConfig = {
     },
     soneium: {
       chainId: CHAIN_IDs.SONEIUM,
-      url: "https://soneium.blockscout.com",
+      url: "https://soneium.drpc.org",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
