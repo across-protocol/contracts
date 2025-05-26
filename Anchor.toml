@@ -54,6 +54,7 @@ publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKe
 findFillStatusPdaFromEvent = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusPdaFromEvent.ts"
 findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusFromFillStatusPda.ts"
 nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
+squadsIdlUpgrade = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/squadsIdlUpgrade.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
