@@ -149,11 +149,13 @@ async function fillRelay(): Promise<void> {
     ])
     .instruction();
 
-  // Delegate state PDA to pull relayer tokens.
+  const delegate = getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda;
+
+  // Delegate fill delegate PDA to pull relayer tokens.
   const approveIx = await createApproveCheckedInstruction(
     relayerTokenAccount,
     outputToken,
-    statePda,
+    delegate,
     signer.publicKey,
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
@@ -166,7 +168,7 @@ async function fillRelay(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
-    delegate: getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda,
+    delegate,
     instructionParams: program.programId,
     mint: outputToken,
     relayerTokenAccount: relayerTokenAccount,
