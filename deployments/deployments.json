@@ -226,12 +226,12 @@
   },
   "34268394551451": {
     "SvmSpoke": {
-      "address": "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq",
-      "blockNumber": 317101505
+      "address": "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru",
+      "blockNumber": 343455088
     },
     "MulticallHandler": {
-      "address": "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h",
-      "blockNumber": 317112562
+      "address": "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be",
+      "blockNumber": 343468675
     },
     "MessageTransmitter": {
       "address": "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
