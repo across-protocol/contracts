@@ -5,8 +5,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
+svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
