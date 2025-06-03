@@ -17,6 +17,10 @@ artifacts
 cache-zk
 artifacts-zk
 
+# Foundry files
+broadcast/
+script/deployments/tested/
+
 # Upgradeability files
 .openzeppelin
 
@@ -34,3 +38,5 @@ test-ledger
 src/svm/assets 
 src/svm/clients/*
 !src/svm/clients/index.ts
+
+**/.claude/settings.local.json
