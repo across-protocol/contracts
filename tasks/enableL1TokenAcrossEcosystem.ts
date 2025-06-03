@@ -9,7 +9,7 @@ const NO_SYMBOL = "----";
 const NO_ADDRESS = "------------------------------------------";
 
 const IGNORED_CHAINS = [CHAIN_IDs.BOBA, CHAIN_IDs.SOLANA];
-const V4_CHAINS = [CHAIN_IDs.BSC, CHAIN_IDs.LISK, CHAIN_IDs.LINEA];
+const V4_CHAINS = [CHAIN_IDs.BSC, CHAIN_IDs.LISK, CHAIN_IDs.LINEA, CHAIN_IDs.WORLD_CHAIN];
 
 // Supported mainnet chain IDs.
 const enabledChainIds = (hubChainId: number) => {
@@ -28,7 +28,7 @@ const getChainsFromList = (taskArgInput: string): number[] =>
 
 task("enableToken", "Enable a provided token across the entire ecosystem of supported chains")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
-  .addFlag("disableRoutes", "Set to disable deposit routes for the specified chains")
+  .addFlag("disable", "Set to disable deposit routes for the specified chains")
   .addParam("token", "Symbol of token to enable")
   .addOptionalParam("chains", "Comma-delimited list of chains to enable the token on. Defaults to all supported chains")
   .addOptionalParam("burn", "Amount of LP token to burn when enabling a new token", 1, types.int)
@@ -40,7 +40,7 @@ task("enableToken", "Enable a provided token across the entire ecosystem of supp
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
     const { burn, chains, execute, token: symbol } = taskArguments;
-    const enableRoute = !taskArguments.disableRoutes;
+    const enableRoute = !taskArguments.disable;
 
     const hubChainId = parseInt(await hre.getChainId());
     if (hubChainId === 31337) {
