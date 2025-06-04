@@ -10,7 +10,7 @@ library PeripherySigningLib {
     string internal constant EIP712_DEPOSIT_DATA_TYPE =
         "DepositData(Fees submissionFees,BaseDepositData baseDepositData,uint256 inputAmount,address spokePool)";
     string internal constant EIP712_SWAP_AND_DEPOSIT_DATA_TYPE =
-        "SwapAndDepositData(Fees submissionFees,BaseDepositData depositData,address swapToken,address exchange,TransferType transferType,uint256 swapTokenAmount,uint256 minExpectedInputTokenAmount,bytes routerCalldata,bool enableProportionalAdjustment,address spokePool)";
+        "SwapAndDepositData(Fees submissionFees,BaseDepositData depositData,address swapToken,address exchange,uint8 transferType,uint256 swapTokenAmount,uint256 minExpectedInputTokenAmount,bytes routerCalldata,bool enableProportionalAdjustment,address spokePool)";
 
     // EIP712 Type hashes.
     bytes32 internal constant EIP712_FEES_TYPEHASH = keccak256(abi.encodePacked(EIP712_FEES_TYPE));
@@ -122,7 +122,7 @@ library PeripherySigningLib {
                     hashBaseDepositData(swapAndDepositData.depositData),
                     swapAndDepositData.swapToken,
                     swapAndDepositData.exchange,
-                    swapAndDepositData.transferType,
+                    uint8(swapAndDepositData.transferType),
                     swapAndDepositData.swapTokenAmount,
                     swapAndDepositData.minExpectedInputTokenAmount,
                     keccak256(swapAndDepositData.routerCalldata),
