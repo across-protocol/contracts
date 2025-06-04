@@ -133,8 +133,6 @@ contract SwapProxy is Lockable {
 /**
  * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
- * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
- * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
 contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCaller, EIP712 {
@@ -322,7 +320,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
-        // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
+        // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
         IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
