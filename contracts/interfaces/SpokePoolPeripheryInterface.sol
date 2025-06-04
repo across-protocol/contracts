@@ -191,11 +191,11 @@ interface SpokePoolPeripheryInterface {
      * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @dev The nonce from swapAndDepositData.nonce will be used for the `receiveWithAuthorization` call to ensure both signatures are bound together.
      * @param signatureOwner The owner of the EIP3009 signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
      * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
@@ -204,7 +204,6 @@ interface SpokePoolPeripheryInterface {
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata swapAndDepositDataSignature
     ) external;
@@ -245,11 +244,11 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @dev The nonce from depositData.nonce will be used for the `receiveWithAuthorization` call to ensure both signatures are bound together.
      * @param signatureOwner The owner of the EIP3009 signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
      * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
@@ -258,7 +257,6 @@ interface SpokePoolPeripheryInterface {
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata depositDataSignature
     ) external;

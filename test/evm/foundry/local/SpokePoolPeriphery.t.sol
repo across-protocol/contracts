@@ -744,9 +744,7 @@ contract SpokePoolPeripheryTest is Test {
             depositor
         );
 
-        bytes32 nonce = bytes32(block.prevrandao);
-
-        // Get the transfer with auth signature.
+        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -755,7 +753,7 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                nonce
+                bytes32(depositData.nonce)
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
@@ -790,9 +788,8 @@ contract SpokePoolPeripheryTest is Test {
         spokePoolPeriphery.depositWithAuthorization(
             depositor, // signatureOwner
             depositData,
-            block.timestamp, // valid before
-            block.timestamp, // valid after
-            nonce, // nonce
+            block.timestamp, // validAfter
+            block.timestamp, // validBefore
             signature, // receiveWithAuthSignature
             depositDataSignature
         );
@@ -819,9 +816,7 @@ contract SpokePoolPeripheryTest is Test {
             true // Enable proportional adjustment by default
         );
 
-        bytes32 nonce = bytes32(block.prevrandao);
-
-        // Get the transfer with auth signature.
+        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -830,7 +825,7 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                nonce
+                bytes32(swapAndDepositData.nonce)
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
@@ -871,7 +866,6 @@ contract SpokePoolPeripheryTest is Test {
             swapAndDepositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            nonce, // nonce
             signature, // receiveWithAuthSignature
             swapAndDepositDataSignature
         );
@@ -899,9 +893,7 @@ contract SpokePoolPeripheryTest is Test {
             true // Enable proportional adjustment by default
         );
 
-        bytes32 nonce = bytes32(block.prevrandao);
-
-        // Get the transfer with auth signature.
+        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -910,7 +902,7 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                nonce
+                bytes32(swapAndDepositData.nonce)
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
@@ -950,7 +942,6 @@ contract SpokePoolPeripheryTest is Test {
             invalidSwapAndDepositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            nonce, // nonce
             signature, // receiveWithAuthSignature
             swapAndDepositDataSignature
         );

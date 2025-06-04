@@ -322,7 +322,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
@@ -337,7 +336,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
-            nonce,
+            bytes32(swapAndDepositData.nonce),
             v,
             r,
             s
@@ -348,8 +347,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             _submissionFeeAmount
         );
 
-        // Verify and increment nonce to prevent replay attacks.
-        _validateAndIncrementNonce(signatureOwner, swapAndDepositData.nonce);
+        // Note: No need to validate our internal nonce for receiveWithAuthorization
+        // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
@@ -460,7 +459,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata depositDataSignature
     ) external override nonReentrant {
@@ -476,7 +474,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             _inputAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
-            nonce,
+            bytes32(depositData.nonce),
             v,
             r,
             s
@@ -487,8 +485,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             _submissionFeeAmount
         );
 
-        // Verify and increment nonce to prevent replay attacks.
-        _validateAndIncrementNonce(signatureOwner, depositData.nonce);
+        // Note: No need to validate our internal nonce for receiveWithAuthorization
+        // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
