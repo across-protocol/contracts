@@ -45,6 +45,7 @@ contract SwapProxy is Lockable {
     // Errors
     error SwapFailed();
     error UnsupportedTransferType();
+    error InvalidExchange();
 
     /**
      * @notice Constructs a new SwapProxy.
@@ -72,6 +73,9 @@ contract SwapProxy is Lockable {
         SpokePoolPeripheryInterface.TransferType transferType,
         bytes calldata routerCalldata
     ) external nonReentrant returns (uint256 outputAmount) {
+        // Prevent nonce invalidation attack by disallowing exchange to be the permit2 address
+        if (exchange == address(permit2)) revert InvalidExchange();
+
         // We'll return the final balance of output tokens
 
         // The exchange will either receive funds from this contract via:
