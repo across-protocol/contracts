@@ -110,7 +110,7 @@ interface SpokePoolPeripheryInterface {
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
      * This contract should only be used for native token deposits, as this problem only exists for native tokens.
-     * @param recipient Address to receive funds at on destination chain.
+     * @param recipient Address (as bytes32) to receive funds at on destination chain.
      * @param inputToken Token to lock into this contract to initiate deposit.
      * @param inputAmount Amount of tokens to deposit.
      * @param outputAmount Amount of tokens to receive on destination chain.
@@ -119,7 +119,7 @@ interface SpokePoolPeripheryInterface {
      * to LP pool on HubPool.
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param exclusiveRelayer Address of the relayer who has exclusive rights to fill this deposit. Can be set to
+     * @param exclusiveRelayer Address (as bytes32) of the relayer who has exclusive rights to fill this deposit. Can be set to
      * 0x0 if no period is desired. If so, then must set exclusivityParameter to 0.
      * @param exclusivityParameter Timestamp or offset, after which any relayer can fill this deposit. Must set
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
@@ -127,13 +127,13 @@ interface SpokePoolPeripheryInterface {
      */
     function deposit(
         address spokePool,
-        address recipient,
+        bytes32 recipient,
         address inputToken,
         uint256 inputAmount,
         bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
