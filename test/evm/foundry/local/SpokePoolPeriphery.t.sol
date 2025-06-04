@@ -61,8 +61,8 @@ contract Exchange {
         if (tokenIn.balanceOf(address(this)) >= amountIn) {
             tokenIn.transfer(address(1), amountIn);
             // Calculate the extra amount based on percentage (in basis points)
-            uint256 actualOutput = amountOutMin + ((amountOutMin * extraOutputPercentage) / 10000);
-            require(tokenOut.transfer(msg.sender, actualOutput));
+            uint256 actualOutputAmount = amountOutMin + ((amountOutMin * extraOutputPercentage) / 10000);
+            require(tokenOut.transfer(msg.sender, actualOutputAmount));
             return;
         }
 
@@ -1304,8 +1304,282 @@ contract SpokePoolPeripheryTest is Test {
                     message: new bytes(0)
                 }),
                 inputAmount: _amount,
-                spokePool: address(ethereumSpokePool)
+                spokePool: address(ethereumSpokePool),
+                nonce: spokePoolPeriphery.getNonce(_depositor)
             });
+    }
+
+    function testNonceInitiallyZero() public {
+        assertEq(spokePoolPeriphery.getNonce(depositor), 0);
+    }
+
+    function testNonceIncrementsAfterDepositWithPermit() public {
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+
+        // Check initial nonce
+        uint256 initialNonce = spokePoolPeriphery.getNonce(depositor);
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", mockERC20.hashTypedData(bytes32(0)), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
+
+        // Check that nonce was incremented
+        assertEq(spokePoolPeriphery.getNonce(depositor), initialNonce + 1);
+    }
+
+    function testDepositWithPermitInvalidNonce() public {
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+
+        // Manually set an invalid nonce (current nonce is 0, we'll use 5)
+        depositData.nonce = 5;
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", mockERC20.hashTypedData(bytes32(0)), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should revert with InvalidNonce error
+        vm.expectRevert(SpokePoolPeriphery.InvalidNonce.selector);
+        spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
+    }
+
+    function testSwapAndBridgeWithPermitInvalidNonce() public {
+        // We need to deal the exchange some WETH in this test since we swap a permit ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true // Enable proportional adjustment by default
+        );
+
+        // Manually set an invalid nonce (current nonce is 0, we'll use 10)
+        swapAndDepositData.nonce = 10;
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", mockERC20.hashTypedData(bytes32(0)), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Should revert with InvalidNonce error
+        vm.expectRevert(SpokePoolPeriphery.InvalidNonce.selector);
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor,
+            swapAndDepositData,
+            block.timestamp,
+            signature,
+            swapAndDepositDataSignature
+        );
+    }
+
+    function testDepositWithPermitReplayPrevention() public {
+        // Execute a valid transaction first
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", mockERC20.hashTypedData(bytes32(0)), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // First transaction should succeed
+        spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
+
+        // Give more tokens for second attempt
+        deal(address(mockERC20), depositor, mintAmountWithSubmissionFee, true);
+        vm.prank(depositor);
+        mockERC20.approve(address(spokePoolPeriphery), mintAmountWithSubmissionFee);
+
+        // Try to use the same depositData (with same nonce=0) again - should fail
+        vm.expectRevert(SpokePoolPeriphery.InvalidNonce.selector);
+        spokePoolPeriphery.depositWithPermit(
+            depositor,
+            depositData, // Same data with nonce=0, but user nonce is now 1
+            block.timestamp,
+            signature,
+            depositDataSignature
+        );
+    }
+
+    function testSwapAndBridgeWithPermitReplayPrevention() public {
+        // We need to deal the exchange some WETH in this test since we swap a permit ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true // Enable proportional adjustment by default
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature.
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = keccak256(abi.encodePacked("\x19\x01", mockERC20.hashTypedData(bytes32(0)), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // First transaction should succeed
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor,
+            swapAndDepositData,
+            block.timestamp,
+            signature,
+            swapAndDepositDataSignature
+        );
+
+        // Deal more tokens and WETH for second attempt
+        deal(address(mockERC20), depositor, mintAmountWithSubmissionFee, true);
+        vm.prank(depositor);
+        mockERC20.approve(address(spokePoolPeriphery), mintAmountWithSubmissionFee);
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        // Try to use the same swapAndDepositData (with same nonce=0) again - should fail
+        vm.expectRevert(SpokePoolPeriphery.InvalidNonce.selector);
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor,
+            swapAndDepositData, // Same data with nonce=0, but user nonce is now 1
+            block.timestamp,
+            signature,
+            swapAndDepositDataSignature
+        );
     }
 
     function _defaultSwapAndDepositData(
@@ -1351,7 +1625,8 @@ contract SpokePoolPeripheryTest is Test {
                     usePermit2
                 ),
                 enableProportionalAdjustment: _enableProportionalAdjustment,
-                spokePool: address(ethereumSpokePool)
+                spokePool: address(ethereumSpokePool),
+                nonce: spokePoolPeriphery.getNonce(_depositor)
             });
     }
 }

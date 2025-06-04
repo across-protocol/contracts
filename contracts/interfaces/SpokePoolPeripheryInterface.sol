@@ -90,6 +90,8 @@ interface SpokePoolPeripheryInterface {
         bool enableProportionalAdjustment;
         // Address of the SpokePool to use for depositing tokens after swap.
         address spokePool;
+        // User nonce to prevent replay attacks.
+        uint256 nonce;
     }
 
     // Extended deposit data to be used specifically for signing off on periphery deposits.
@@ -102,6 +104,8 @@ interface SpokePoolPeripheryInterface {
         uint256 inputAmount;
         // Address of the SpokePool to use for depositing tokens.
         address spokePool;
+        // User nonce to prevent replay attacks.
+        uint256 nonce;
     }
 
     /**
