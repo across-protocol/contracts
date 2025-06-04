@@ -1282,11 +1282,13 @@ contract SpokePoolPeripheryTest is Test {
      */
     function testZeroAddressFeeRecipientUsesMessageSender() public {
         // Test with permit-based swap where fee recipient is zero address
+        // A relayer (different EOA) submits the transaction, so they should receive the fee
         mockWETH.deposit{ value: depositAmount }();
         mockWETH.transfer(address(dex), depositAmount);
 
-        // Get initial balance of the transaction submitter (depositor in this case)
+        // Get initial balances of both depositor and relayer
         uint256 initialDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 initialRelayerBalance = mockERC20.balanceOf(relayer);
 
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
@@ -1330,7 +1332,7 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
         bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
-        vm.startPrank(depositor);
+        vm.startPrank(relayer);
         spokePoolPeriphery.swapAndBridgeWithPermit(
             depositor,
             swapAndDepositData,
@@ -1340,21 +1342,30 @@ contract SpokePoolPeripheryTest is Test {
         );
         vm.stopPrank();
 
-        // Check that the depositor (msg.sender) received the submission fee since recipient was zero address
-        // The depositor only loses the amount that was swapped (mintAmount), but gets the submission fee back
+        // Check that the depositor paid the full amount (mintAmount + submissionFeeAmount) for the swap
         uint256 finalDepositorBalance = mockERC20.balanceOf(depositor);
-        uint256 actualDecrease = initialDepositorBalance - finalDepositorBalance;
-        uint256 expectedDecrease = mintAmount; // Only the swap amount, not the submission fee
+        uint256 depositorDecrease = initialDepositorBalance - finalDepositorBalance;
         assertEq(
-            actualDecrease,
-            expectedDecrease,
-            "Depositor should get submission fee back when recipient is zero address"
+            depositorDecrease,
+            mintAmountWithSubmissionFee,
+            "Depositor should pay full amount including submission fee"
+        );
+
+        // Check that the relayer (msg.sender) received the submission fee since recipient was zero address
+        uint256 finalRelayerBalance = mockERC20.balanceOf(relayer);
+        uint256 relayerIncrease = finalRelayerBalance - initialRelayerBalance;
+        assertEq(
+            relayerIncrease,
+            submissionFeeAmount,
+            "Relayer should receive submission fee when recipient is zero address"
         );
     }
 
     function testZeroAddressFeeRecipientWithDeposit() public {
         // Test with regular deposit where fee recipient is zero address
+        // A relayer (different EOA) submits the transaction, so they should receive the fee
         uint256 initialDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 initialRelayerBalance = mockERC20.balanceOf(relayer);
 
         SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
             address(mockERC20),
@@ -1389,14 +1400,27 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        vm.startPrank(relayer);
         spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
+        vm.stopPrank();
 
-        // Check that the depositor (msg.sender) received the submission fee since recipient was zero address
-        // The depositor pays mintAmount + submissionFeeAmount, gets mintAmount deposited, gets submissionFeeAmount back
-        // So net effect should be losing exactly mintAmount
+        // Check that the depositor paid the full amount (mintAmount + submissionFeeAmount) for the deposit
         uint256 finalDepositorBalance = mockERC20.balanceOf(depositor);
-        uint256 actualDecrease = initialDepositorBalance - finalDepositorBalance;
-        assertEq(actualDecrease, mintAmount, "Depositor should get submission fee back when recipient is zero address");
+        uint256 depositorDecrease = initialDepositorBalance - finalDepositorBalance;
+        assertEq(
+            depositorDecrease,
+            mintAmountWithSubmissionFee,
+            "Depositor should pay full amount including submission fee"
+        );
+
+        // Check that the relayer (transaction submitter) received the submission fee since recipient was zero address
+        uint256 finalRelayerBalance = mockERC20.balanceOf(relayer);
+        uint256 relayerIncrease = finalRelayerBalance - initialRelayerBalance;
+        assertEq(
+            relayerIncrease,
+            submissionFeeAmount,
+            "Relayer should receive submission fee when recipient is zero address"
+        );
     }
 
     /**
