@@ -45,7 +45,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
     error InvalidCall(uint256 index, Call[] calls);
-    error ReplacementCallFailed(bytes calldData);
+    error ReplacementCallFailed(bytes callData);
     error CalldataTooShort(uint256 callDataLength, uint256 offset);
 
 
