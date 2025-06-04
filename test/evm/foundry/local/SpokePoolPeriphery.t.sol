@@ -1278,6 +1278,128 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     /**
+     * Test zero-address fee recipient convention
+     */
+    function testZeroAddressFeeRecipientUsesMessageSender() public {
+        // Test with permit-based swap where fee recipient is zero address
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        // Get initial balance of the transaction submitter (depositor in this case)
+        uint256 initialDepositorBalance = mockERC20.balanceOf(depositor);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            address(0), // Zero address fee recipient
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        vm.startPrank(depositor);
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor,
+            swapAndDepositData,
+            block.timestamp,
+            signature,
+            swapAndDepositDataSignature
+        );
+        vm.stopPrank();
+
+        // Check that the depositor (msg.sender) received the submission fee since recipient was zero address
+        // The depositor only loses the amount that was swapped (mintAmount), but gets the submission fee back
+        uint256 finalDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 actualDecrease = initialDepositorBalance - finalDepositorBalance;
+        uint256 expectedDecrease = mintAmount; // Only the swap amount, not the submission fee
+        assertEq(
+            actualDecrease,
+            expectedDecrease,
+            "Depositor should get submission fee back when recipient is zero address"
+        );
+    }
+
+    function testZeroAddressFeeRecipientWithDeposit() public {
+        // Test with regular deposit where fee recipient is zero address
+        uint256 initialDepositorBalance = mockERC20.balanceOf(depositor);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            address(0), // Zero address fee recipient
+            depositor
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
+
+        // Check that the depositor (msg.sender) received the submission fee since recipient was zero address
+        // The depositor pays mintAmount + submissionFeeAmount, gets mintAmount deposited, gets submissionFeeAmount back
+        // So net effect should be losing exactly mintAmount
+        uint256 finalDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 actualDecrease = initialDepositorBalance - finalDepositorBalance;
+        assertEq(actualDecrease, mintAmount, "Depositor should get submission fee back when recipient is zero address");
+    }
+
+    /**
      * Helper functions
      */
     function _defaultDepositData(
