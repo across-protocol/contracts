@@ -105,7 +105,7 @@ interface SpokePoolPeripheryInterface {
     }
 
     /**
-     * @notice Passthrough function to `depositV3()` on the SpokePool contract.
+     * @notice Passthrough function to `depositV3()` on the SpokePool contract for native token deposits.
      * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
@@ -125,7 +125,7 @@ interface SpokePoolPeripheryInterface {
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
      * @param fillDeadline Timestamp after which this deposit can no longer be filled.
      */
-    function deposit(
+    function depositNative(
         address spokePool,
         address recipient,
         address inputToken,
