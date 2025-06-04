@@ -222,6 +222,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
@@ -245,6 +250,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      */
     function swapAndBridgeWithPermit(
         address signatureOwner,
@@ -278,6 +288,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -310,6 +325,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
