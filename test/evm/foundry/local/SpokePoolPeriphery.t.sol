@@ -520,12 +520,14 @@ contract SpokePoolPeripheryTest is Test {
 
     function testDepositWithNonContractSpokePool() public {
         // Should revert when trying to call deposit with a non-contract address as spokePool
+        // Give the depositor some ETH for the transaction
+        deal(depositor, 1 ether);
         vm.startPrank(depositor);
 
         // Use an EOA address (depositor) as a non-contract address for spokePool
         address nonContractAddress = depositor;
 
-        // The call should revert because Solidity will check if the address has code before making the call
+        // The call should revert when the spokePool is not a contract
         vm.expectRevert();
         spokePoolPeriphery.deposit{ value: 1 wei }(
             nonContractAddress, // spokePool - this is not a contract
