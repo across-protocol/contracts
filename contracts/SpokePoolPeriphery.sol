@@ -497,7 +497,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     }
 
     /**
-     * @notice Returns the contract's EIP712 domain separator, used to sign hashed depositData/swapAndDepositData types.
+     * @notice Returns the contract's EIP712 domain separator, used to sign hashed DepositData/SwapAndDepositData types.
      */
     function domainSeparator() external view returns (bytes32) {
         return _domainSeparatorV4();
