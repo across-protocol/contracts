@@ -33,6 +33,7 @@ contract OFTTransportAdapter {
 
     error OftFeeCapExceeded();
     error OftInsufficientBalanceForFee();
+    error OftLzFeeNotZero();
     error OftIncorrectAmountReceivedLD();
 
     /**
@@ -87,6 +88,7 @@ contract OFTTransportAdapter {
         uint256 nativeFee = fee.nativeFee;
         if (nativeFee > OFT_FEE_CAP) revert OftFeeCapExceeded();
         if (nativeFee > address(this).balance) revert OftInsufficientBalanceForFee();
+        if (fee.lzTokenFee != 0) revert OftLzFeeNotZero();
 
         // Approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
         _token.forceApprove(address(_messenger), _amount);

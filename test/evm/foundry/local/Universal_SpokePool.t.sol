@@ -11,6 +11,7 @@ import "../../../../contracts/test/MockCCTP.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
+import { OFTTransportAdapter } from "../../../../contracts/libraries/OFTTransportAdapter.sol";
 
 contract MockHelios is IHelios {
     mapping(bytes32 => bytes32) public storageSlots;
@@ -70,7 +71,6 @@ contract UniversalSpokePoolTest is Test {
     using AddressToBytes32 for address;
     MockUniversalSpokePool spokePool;
     MockHelios helios;
-    IOFT oftMessenger;
 
     address hubPoolStore;
     address hubPool;
@@ -111,7 +111,6 @@ contract UniversalSpokePoolTest is Test {
             new ERC1967Proxy(address(spokePool), abi.encodeCall(Universal_SpokePool.initialize, (0, hubPool, hubPool)))
         );
         spokePool = MockUniversalSpokePool(payable(proxy));
-        oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
         deal(address(usdc), address(spokePool), usdcMintAmount, true);
     }
 
@@ -294,6 +293,7 @@ contract UniversalSpokePoolTest is Test {
     }
 
     function testSetOftMessenger() public {
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt), 0, 0));
         bytes memory message = abi.encodeWithSignature(
             "setOftMessenger(address,address)",
             address(usdt),
@@ -305,7 +305,53 @@ contract UniversalSpokePoolTest is Test {
         assertEq(spokePool.oftMessengers(address(usdt)), address(oftMessenger));
     }
 
+    function testNonZeroLzFee() public {
+        // Mock an OFT messenger that returns a non-zero lzTokenFee
+        MockOFTMessenger oftMessengerWithNonZeroLzFee = new MockOFTMessenger(address(usdt), 0, 1); // nativeFee = 0, lzFee = 1
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessengerWithNonZeroLzFee)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++; // Increment nonce for the next message
+
+        // Expect the OftLzFeeNotZero error from OFTTransportAdapter
+        vm.expectRevert(OFTTransportAdapter.OftLzFeeNotZero.selector);
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+    }
+
+    function testFeeTooHigh() public {
+        // Mock an OFT messenger that returns a nativeFee higher than OFT_FEE_CAP
+        uint256 highNativeFee = spokePool.OFT_FEE_CAP() + 1;
+        MockOFTMessenger oftMessengerWithHighFee = new MockOFTMessenger(address(usdt), highNativeFee, 0); // nativeFee > OFT_FEE_CAP, lzFee = 0
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessengerWithHighFee)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++; // Increment nonce for the next message
+
+        // Fund the spokePool with enough native currency to attempt the transaction but less than the high fee
+        // The check for OFT_FEE_CAP happens before the balance check.
+        deal(address(spokePool), spokePool.OFT_FEE_CAP());
+
+        // Expect the OftFeeCapExceeded error from OFTTransportAdapter
+        vm.expectRevert(OFTTransportAdapter.OftFeeCapExceeded.selector);
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+    }
+
     function testBridgeTokensToHubPool_oft() public {
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt), 0, 0));
         bytes memory message = abi.encodeWithSignature(
             "setOftMessenger(address,address)",
             address(usdt),
