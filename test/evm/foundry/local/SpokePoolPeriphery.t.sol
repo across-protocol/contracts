@@ -495,15 +495,16 @@ contract SpokePoolPeripheryTest is Test {
         vm.stopPrank();
     }
 
-    function testDepositNoValue() public {
-        // Should revert when trying to call deposit without msg.value
+    function testDepositWrongValue() public {
+        // Should revert when trying to call deposit with wrong msg.value amount
+        deal(depositor, mintAmount + 1); // Give some ETH to send
         vm.startPrank(depositor);
-        vm.expectRevert(SpokePoolPeriphery.InvalidMsgValue.selector);
-        spokePoolPeriphery.deposit(
+        vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
+        spokePoolPeriphery.deposit{ value: 1 }( // Send 1 wei but expecting mintAmount
             address(ethereumSpokePool), // spokePool address
             depositor, // recipient
             address(mockWETH), // inputToken
-            mintAmount,
+            mintAmount, // This doesn't match msg.value of 1
             bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
@@ -512,6 +513,33 @@ contract SpokePoolPeripheryTest is Test {
             uint32(block.timestamp) + fillDeadlineBuffer,
             0,
             new bytes(0)
+        );
+
+        vm.stopPrank();
+    }
+
+    function testDepositWithNonContractSpokePool() public {
+        // Should revert when trying to call deposit with a non-contract address as spokePool
+        vm.startPrank(depositor);
+
+        // Use an EOA address (depositor) as a non-contract address for spokePool
+        address nonContractAddress = depositor;
+
+        // The call should revert because Solidity will check if the address has code before making the call
+        vm.expectRevert();
+        spokePoolPeriphery.deposit{ value: 1 wei }(
+            nonContractAddress, // spokePool - this is not a contract
+            depositor, // recipient
+            address(mockWETH), // inputToken
+            1 wei, // inputAmount
+            bytes32(0), // outputToken
+            1 wei, // outputAmount
+            destinationChainId,
+            address(0), // exclusiveRelayer
+            uint32(block.timestamp), // quoteTimestamp
+            uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
+            0, // exclusivityParameter
+            new bytes(0) // message
         );
 
         vm.stopPrank();
