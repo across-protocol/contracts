@@ -34,6 +34,7 @@ contract OFTTransportAdapter {
     error OftFeeCapExceeded();
     error OftInsufficientBalanceForFee();
     error OftIncorrectAmountReceivedLD();
+    error OftIncorrectAmountSentLD();
 
     /**
      * @notice intiailizes the OFTTransportAdapter contract.
@@ -95,5 +96,7 @@ contract OFTTransportAdapter {
 
         // The HubPool expects that the amount received by the SpokePool is exactly the sent amount
         if (_amount != oftReceipt.amountReceivedLD) revert OftIncorrectAmountReceivedLD();
+        // Also check the amount sent on origin chain to harden security
+        if (_amount != oftReceipt.amountSentLD) revert OftIncorrectAmountSentLD();
     }
 }
