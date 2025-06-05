@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IOFT } from "./interfaces/IOFT.sol";
 
 library MessengerTypes {
     bytes32 public constant OFT_MESSENGER = bytes32("OFT_MESSENGER");
@@ -24,6 +25,8 @@ contract AdapterStore is Ownable {
     );
 
     error ArrayLengthMismatch();
+    error IOFTTokenMismatch();
+    error NonExistentMessengerType();
 
     function setMessenger(
         bytes32 messengerType,
@@ -59,6 +62,17 @@ contract AdapterStore is Ownable {
         address _srcChainToken,
         address _srcChainMessenger
     ) internal {
+        // @dev Always allow zero-messenger to be set: this can be used to 'remove' a stored token <> messenger relationship
+        if (_srcChainMessenger != address(0)) {
+            if (_messengerType == MessengerTypes.OFT_MESSENGER) {
+                // @dev Protect against human error: check that IOFT messenger's token matches the expected one
+                if (IOFT(_srcChainMessenger).token() != _srcChainToken) {
+                    revert IOFTTokenMismatch();
+                }
+            } else {
+                revert NonExistentMessengerType();
+            }
+        }
         crossChainMessengers[_messengerType][_dstDomainId][_srcChainToken] = _srcChainMessenger;
         emit MessengerSet(_messengerType, _dstDomainId, _srcChainToken, _srcChainMessenger);
     }
