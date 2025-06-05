@@ -17,11 +17,11 @@ interface SpokePoolPeripheryInterface {
     // Enum describing the method of transferring tokens to an exchange.
     enum TransferType {
         // Approve the exchange so that it may transfer tokens from this contract.
-        Approval,
+        Approval, // 0
         // Transfer tokens to the exchange before calling it in this contract.
-        Transfer,
+        Transfer, // 1
         // Approve the exchange by authorizing a transfer with Permit2.
-        Permit2Approval
+        Permit2Approval // 2
     }
 
     // Submission fees can be set by user to pay whoever submits the transaction in a gasless flow.
