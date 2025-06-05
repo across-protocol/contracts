@@ -122,7 +122,7 @@ library PeripherySigningLib {
                     hashBaseDepositData(swapAndDepositData.depositData),
                     swapAndDepositData.swapToken,
                     swapAndDepositData.exchange,
-                    uint8(swapAndDepositData.transferType),
+                    swapAndDepositData.transferType,
                     swapAndDepositData.swapTokenAmount,
                     swapAndDepositData.minExpectedInputTokenAmount,
                     keccak256(swapAndDepositData.routerCalldata),
