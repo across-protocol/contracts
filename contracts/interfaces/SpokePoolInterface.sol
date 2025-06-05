@@ -46,29 +46,6 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
-    function depositDeprecated_5947912356(
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        uint32 quoteTimestamp,
-        bytes memory message,
-        uint256 maxCount
-    ) external payable;
-
-    function depositFor(
-        address depositor,
-        address recipient,
-        address originToken,
-        uint256 amount,
-        uint256 destinationChainId,
-        int64 relayerFeePct,
-        uint32 quoteTimestamp,
-        bytes memory message,
-        uint256 maxCount
-    ) external payable;
-
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
