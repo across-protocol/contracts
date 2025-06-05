@@ -28,7 +28,7 @@ solc_version = "0.8.23"
 revert_strings = "strip"
 
 solc = "0.8.23"
-evm_version = "shanghai"
+evm_version = "prague"
 
 [rpc_endpoints]
 ethereum = "${NODE_URL_1}"
