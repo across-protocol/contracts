@@ -6,7 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import { Lockable } from "./Lockable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
@@ -23,7 +23,7 @@ import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
  * The SpokePoolPeriphery transfers tokens to this contract, which performs the swap and returns tokens back to the periphery.
  * @custom:security-contact bugs@across.to
  */
-contract SwapProxy is Lockable {
+contract SwapProxy is ReentrancyGuard {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -97,7 +97,7 @@ contract SwapProxy is Lockable {
                     spender: exchange,
                     sigDeadline: block.timestamp
                 }), // permitSingle
-                "0x" // signature is unused. The only verification for a valid signature is if we are at this code block.
+                "" // signature is unused. The only verification for a valid signature is if we are at this code block.
             );
             expectingPermit2Callback = false;
         } else {
@@ -137,7 +137,7 @@ contract SwapProxy is Lockable {
  * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
-contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCaller, EIP712 {
+contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712 {
     using SafeERC20 for IERC20;
     using Address for address;
     using AddressToBytes32 for address;
@@ -165,8 +165,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     error InvalidSignatureLength();
     error MinimumExpectedInputAmount();
     error InvalidMsgValue();
-    error InvalidSpokePool();
-    error InvalidSwapToken();
     error InvalidSignature();
     error InvalidMinExpectedInputAmount();
 
@@ -200,9 +198,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         uint32 exclusivityParameter,
         bytes memory message
     ) external payable override nonReentrant {
-        if (msg.value != inputAmount) revert InvalidMsgValue();
-        if (!_isContract(spokePool)) revert InvalidSpokePool();
-
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         V3SpokePoolInterface(spokePool).deposit{ value: msg.value }(
             msg.sender.toBytes32(),
@@ -228,7 +223,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         // as though the user deposited a wrapped native token.
         if (msg.value != 0) {
             if (msg.value != swapAndDepositData.swapTokenAmount) revert InvalidMsgValue();
-            if (!_isContract(address(swapAndDepositData.swapToken))) revert InvalidSwapToken();
             // Assume swapToken implements WETH9 interface if sending value
             WETH9Interface(swapAndDepositData.swapToken).deposit{ value: msg.value }();
         } else {
@@ -550,7 +544,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         uint32 exclusivityParameter,
         bytes calldata message
     ) private {
-        if (!_isContract(spokePool)) revert InvalidSpokePool();
         IERC20(inputToken).forceApprove(spokePool, inputAmount);
         V3SpokePoolInterface(spokePool).deposit(
             depositor.toBytes32(),
