@@ -149,7 +149,7 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
-     * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call will be ignored and the function will continue.
+     * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @param signatureOwner The owner of the permit signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param deadline Deadline before which the permit signature is valid.
@@ -205,7 +205,7 @@ interface SpokePoolPeripheryInterface {
 
     /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
-     * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call will be ignored and the function will continue.
+     * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @param signatureOwner The owner of the permit signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param deadline Deadline before which the permit signature is valid.
