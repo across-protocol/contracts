@@ -1738,7 +1738,7 @@ abstract contract SpokePool is
     }
 
     function _setOftMessenger(address _token, address _messenger) internal {
-        if (IOFT(_messenger).token() != _token) {
+        if (_messenger != address(0) && IOFT(_messenger).token() != _token) {
             revert OFTTokenMismatch();
         }
         oftMessengers[_token] = _messenger;
