@@ -120,7 +120,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         }
     }
 
-    function makeCallWithBalance(address target, bytes memory callData, uint256 value, Replacement[] memory replacement) external onlySelf {
+    function makeCallWithBalance(address target, bytes memory callData, uint256 value, Replacement[] calldata replacement) external onlySelf {
         for (uint256 i = 0; i < replacement.length; i++) {
             uint256 bal = 0;
             if (replacement[i].token != address(0)) {
