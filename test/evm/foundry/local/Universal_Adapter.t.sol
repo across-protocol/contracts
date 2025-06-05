@@ -12,6 +12,7 @@ import { AdapterStore, MessengerTypes } from "../../../../contracts/AdapterStore
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
+import { OFTTransportAdapter } from "../../../../contracts/libraries/OFTTransportAdapter.sol";
 
 contract UniversalAdapterTest is Test {
     using AddressToBytes32 for address;
@@ -23,7 +24,6 @@ contract UniversalAdapterTest is Test {
     uint256 relayRootBundleNonce = 0;
     address relayRootBundleTargetAddress = address(0);
     AdapterStore adapterStore;
-    IOFT oftMessenger;
     ERC20 usdc;
     ERC20 usdt;
     uint256 usdcMintAmount = 100e6;
@@ -57,8 +57,6 @@ contract UniversalAdapterTest is Test {
         store = new HubPoolStore(address(hubPool));
         usdc = new ERC20("USDC", "USDC");
         usdt = new ERC20("USDT", "USDT");
-        oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
-        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
         MockCCTPMinter minter = new MockCCTPMinter();
         cctpMessenger = new MockCCTPMessenger(ITokenMinter(minter));
         adapter = new Universal_Adapter(
@@ -273,6 +271,11 @@ contract UniversalAdapterTest is Test {
     }
 
     function testRelayTokens_oft() public {
+        vm.startPrank(owner);
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt), 0, 0));
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
+        vm.stopPrank();
+
         // Uses OFT to send USDT
         vm.expectCall(
             address(oftMessenger),
@@ -293,6 +296,47 @@ contract UniversalAdapterTest is Test {
                 )
             )
         );
+        hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testNonZeroLzFee() public {
+        vm.startPrank(owner);
+        // Mock an OFT messenger that returns a non-zero lzTokenFee
+        IOFT oftMessengerWithNonZeroLzFee = IOFT(new MockOFTMessenger(address(usdt), 0, 1)); // nativeFee = 0, lzFee = 1
+        adapterStore.setMessenger(
+            MessengerTypes.OFT_MESSENGER,
+            oftDstEid,
+            address(usdt),
+            address(oftMessengerWithNonZeroLzFee)
+        );
+        vm.stopPrank();
+
+        // Expect the OftLzFeeNotZero error from OFTTransportAdapter logic within Universal_Adapter
+        // This will be caught by HubPool and re-thrown. Due to `revert_strings = "strip"`,
+        // HubPool's require(..., "string") will revert with no data.
+        vm.expectRevert();
+        hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testFeeTooHigh() public {
+        // Determine a native fee that is higher than the adapter's OFT_FEE_CAP
+        uint256 highNativeFee = adapter.OFT_FEE_CAP() + 1;
+        MockOFTMessenger oftMessengerWithHighFee = new MockOFTMessenger(address(usdt), highNativeFee, 0); // nativeFee > OFT_FEE_CAP, lzFee = 0
+        vm.startPrank(owner);
+        adapterStore.setMessenger(
+            MessengerTypes.OFT_MESSENGER,
+            oftDstEid,
+            address(usdt),
+            address(oftMessengerWithHighFee)
+        );
+        vm.stopPrank();
+
+        deal(address(hubPool), adapter.OFT_FEE_CAP());
+
+        // Expect the OftFeeCapExceeded error from OFTTransportAdapter logic within Universal_Adapter
+        // This will be caught by HubPool and re-thrown. Due to `revert_strings = "strip"`,
+        // HubPool's require(..., "string") will revert with no data.
+        vm.expectRevert();
         hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
     }
 

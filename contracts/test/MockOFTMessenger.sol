@@ -10,13 +10,21 @@ import "../interfaces/IOFT.sol";
  */
 contract MockOFTMessenger is IOFT {
     address public token;
+    uint256 nativeFee;
+    uint256 lzFee;
 
-    constructor(address _token) {
+    constructor(
+        address _token,
+        uint256 _nativeFee,
+        uint256 _lzFee
+    ) {
         token = _token;
+        nativeFee = _nativeFee;
+        lzFee = _lzFee;
     }
 
     function quoteSend(SendParam calldata _sendParam, bool _payInLzToken) external view returns (MessagingFee memory) {
-        return MessagingFee(0, 0);
+        return MessagingFee(nativeFee, lzFee);
     }
 
     function send(
