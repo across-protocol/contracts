@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IOFT } from "./interfaces/IOFT.sol";
 
+/**
+ * @custom:security-contact bugs@across.to
+ */
 library MessengerTypes {
     bytes32 public constant OFT_MESSENGER = bytes32("OFT_MESSENGER");
 }
@@ -12,6 +15,7 @@ library MessengerTypes {
  * @dev A helper contract for chain adapters on the hub chain that support OFT messaging. Handles
  * @dev token => messenger mapping storage. Adapters can't store this themselves as they're called
  * @dev via `delegateCall` and their storage is not part of available context.
+ * @custom:security-contact bugs@across.to
  */
 contract AdapterStore is Ownable {
     // (messengerType, dstDomainId, srcChainToken) => messenger address
