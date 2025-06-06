@@ -53,7 +53,7 @@ contract OFTTransportAdapter {
      * @dev the caller has to provide both _token and _messenger. The caller is responsible for knowing the correct _messenger
      * @param _token token we're sending on current chain.
      * @param _messenger corresponding OFT messenger on current chain.
-     * @param _to address to receive a trasnfer on the destination chain.
+     * @param _to address to receive a transfer on the destination chain.
      * @param _amount amount to send.
      */
     function _transferViaOFT(
