@@ -305,6 +305,28 @@ contract UniversalSpokePoolTest is Test {
         assertEq(spokePool.oftMessengers(address(usdt)), address(oftMessenger));
     }
 
+    function testSetOftMessenger_removeMessenger() public {
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        assertEq(spokePool.oftMessengers(address(usdt)), address(oftMessenger));
+
+        nonce++;
+
+        // Remove the messenger by setting to address(0)
+        message = abi.encodeWithSignature("setOftMessenger(address,address)", address(usdt), address(0));
+        value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        assertEq(spokePool.oftMessengers(address(usdt)), address(0));
+    }
+
     function testNonZeroLzFee() public {
         // Mock an OFT messenger that returns a non-zero lzTokenFee
         MockOFTMessenger oftMessengerWithNonZeroLzFee = new MockOFTMessenger(address(usdt));

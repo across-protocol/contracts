@@ -323,4 +323,18 @@ describe("Arbitrum Spoke Pool", function () {
       ).to.be.revertedWith("OftIncorrectAmountSentLD");
     });
   });
+
+  it("Cross domain owner can set and remove an OFT messenger", async function () {
+    l2OftMessenger.token.returns(l2UsdtContract.address);
+
+    await expect(arbitrumSpokePool.setOftMessenger(l2UsdtContract.address, l2OftMessenger.address)).to.be.reverted;
+
+    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
+    expect(await arbitrumSpokePool.oftMessengers(l2UsdtContract.address)).to.equal(l2OftMessenger.address);
+
+    await expect(arbitrumSpokePool.setOftMessenger(l2UsdtContract.address, zeroAddress)).to.be.reverted;
+
+    await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, zeroAddress);
+    expect(await arbitrumSpokePool.oftMessengers(l2UsdtContract.address)).to.equal(zeroAddress);
+  });
 });
