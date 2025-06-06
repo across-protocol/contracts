@@ -10,28 +10,49 @@ import "../interfaces/IOFT.sol";
  */
 contract MockOFTMessenger is IOFT {
     address public token;
-    uint256 nativeFee;
-    uint256 lzFee;
+    uint256 public nativeFee;
+    uint256 public lzFee;
+    uint256 public amountSentLDToReturn;
+    uint256 public amountReceivedLDToReturn;
+    bool public useCustomReceipt;
 
-    constructor(
-        address _token,
-        uint256 _nativeFee,
-        uint256 _lzFee
-    ) {
+    constructor(address _token) {
         token = _token;
-        nativeFee = _nativeFee;
-        lzFee = _lzFee;
     }
 
-    function quoteSend(SendParam calldata _sendParam, bool _payInLzToken) external view returns (MessagingFee memory) {
+    function quoteSend(
+        SendParam calldata, /*_sendParam*/
+        bool /*_payInLzToken*/
+    ) external view returns (MessagingFee memory) {
         return MessagingFee(nativeFee, lzFee);
     }
 
     function send(
         SendParam calldata _sendParam,
-        MessagingFee calldata _fee,
-        address _refundAddress
+        MessagingFee calldata, /*_fee*/
+        address /*_refundAddress*/
     ) external payable returns (MessagingReceipt memory, OFTReceipt memory) {
+        if (useCustomReceipt) {
+            return (
+                MessagingReceipt(0, 0, MessagingFee(0, 0)),
+                OFTReceipt(amountSentLDToReturn, amountReceivedLDToReturn)
+            );
+        }
         return (MessagingReceipt(0, 0, MessagingFee(0, 0)), OFTReceipt(_sendParam.amountLD, _sendParam.amountLD));
+    }
+
+    function setLDAmountsToReturn(uint256 _amountSentLD, uint256 _amountReceivedLD) external {
+        amountSentLDToReturn = _amountSentLD;
+        amountReceivedLDToReturn = _amountReceivedLD;
+        useCustomReceipt = true;
+    }
+
+    function resetReceipt() external {
+        useCustomReceipt = false;
+    }
+
+    function setFeesToReturn(uint256 _nativeFee, uint256 _lzFee) external {
+        nativeFee = _nativeFee;
+        lzFee = _lzFee;
     }
 }
