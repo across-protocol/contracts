@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IOFT } from "./interfaces/IOFT.sol";
@@ -18,8 +18,8 @@ library MessengerTypes {
  * @custom:security-contact bugs@across.to
  */
 contract AdapterStore is Ownable {
-    // (messengerType, dstDomainId, srcChainToken) => messenger address
-    mapping(bytes32 => mapping(uint256 => mapping(address => address))) public crossChainMessengers;
+    mapping(bytes32 messengerType => mapping(uint256 dstDomainId => mapping(address srcChainToken => address messengerAddress)))
+        public crossChainMessengers;
 
     event MessengerSet(
         bytes32 indexed messengerType,

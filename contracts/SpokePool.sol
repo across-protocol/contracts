@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
@@ -115,7 +115,7 @@ abstract contract SpokePool is
     mapping(address => mapping(address => uint256)) public relayerRefund;
 
     // Mapping of L2 token address to L2 IOFT messenger address. Required to support bridging via OFT standard
-    mapping(address => address) public oftMessengers;
+    mapping(address l2TokenAddress => address l2OftMessenger) public oftMessengers;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
@@ -1122,11 +1122,7 @@ abstract contract SpokePool is
      * @param originData Data emitted on the origin to parameterize the fill
      * @param fillerData Data provided by the filler to inform the fill or express their preferences
      */
-    function fill(
-        bytes32 orderId,
-        bytes calldata originData,
-        bytes calldata fillerData
-    ) external {
+    function fill(bytes32 orderId, bytes calldata originData, bytes calldata fillerData) external {
         if (keccak256(abi.encode(originData, chainId())) != orderId) {
             revert WrongERC7683OrderId();
         }
@@ -1507,11 +1503,7 @@ abstract contract SpokePool is
     // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
     // bool indicating if the external call was successful, rather than reverting. Original method:
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
-    function _noRevertTransfer(
-        address token,
-        address to,
-        uint256 amount
-    ) internal returns (bool) {
+    function _noRevertTransfer(address token, address to, uint256 amount) internal returns (bool) {
         bool success;
         uint256 returnSize;
         uint256 returnValue;
@@ -1636,11 +1628,7 @@ abstract contract SpokePool is
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayV3(
-        V3RelayExecutionParams memory relayExecution,
-        bytes32 relayer,
-        bool isSlowFill
-    ) internal {
+    function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
         V3RelayData memory relayData = relayExecution.relay;
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
