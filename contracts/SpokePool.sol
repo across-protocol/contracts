@@ -12,7 +12,8 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 import "./libraries/AddressConverters.sol";
-import "./libraries/OFTTransportAdapter.sol";
+import { IOFT } from "./interfaces/IOFT.sol";
+import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
