@@ -4,7 +4,10 @@ pragma solidity ^0.8.0;
 import { OFTTransportAdapter } from "./OFTTransportAdapter.sol";
 import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
 
-// A wrapper of `OFTTransportAdapter` to be used by chain-specific adapters
+/**
+ * @dev A wrapper of `OFTTransportAdapter` to be used by chain-specific adapters
+ * @custom:security-contact bugs@across.to
+ */
 contract OFTTransportAdapterWithStore is OFTTransportAdapter {
     // Helper storage contract to keep track of token => IOFT relationships
     AdapterStore public immutable OFT_ADAPTER_STORE;
