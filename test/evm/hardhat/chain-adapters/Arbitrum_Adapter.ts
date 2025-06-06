@@ -56,7 +56,7 @@ let l1ERC20GatewayRouter: FakeContract,
 const arbitrumChainId = CHAIN_IDs.ARBITRUM;
 const oftArbitrumEid = getOftEid(arbitrumChainId);
 
-describe.only("Arbitrum Chain Adapter", function () {
+describe("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider, refundAddress] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, usdc, l2Usdc, usdt, l2Usdt } = await hubPoolFixture());
