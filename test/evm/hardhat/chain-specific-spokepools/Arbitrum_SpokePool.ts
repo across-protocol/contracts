@@ -208,4 +208,119 @@ describe("Arbitrum Spoke Pool", function () {
     expect(l2OftMessenger.send).to.have.been.calledOnce;
     expect(l2OftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, arbitrumSpokePool.address);
   });
+
+  describe("OFT bridging", function () {
+    const l2UsdtSendAmount = BigNumber.from("1234567");
+    let leaves: any, tree: any;
+
+    beforeEach(async function () {
+      l2OftMessenger.token.returns(l2UsdtContract.address);
+      await arbitrumSpokePool.connect(crossDomainAlias).setOftMessenger(l2UsdtContract.address, l2OftMessenger.address);
+
+      const treeResult = await constructSingleRelayerRefundTree(
+        l2UsdtContract.address,
+        await arbitrumSpokePool.callStatic.chainId(),
+        l2UsdtSendAmount
+      );
+      leaves = treeResult.leaves;
+      tree = treeResult.tree;
+      await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    });
+
+    it("reverts with OftLzFeeNotZero if lzTokenFee is not zero", async function () {
+      const nativeFee = toWei("0.1");
+      const msgFeeStruct: MessagingFeeStructOutput = [
+        nativeFee,
+        BigNumber.from(1), // lzTokenFee
+      ] as MessagingFeeStructOutput;
+      l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+      // Fund the spoke pool with enough ETH to cover the fee as `executeRelayerRefundLeaf` is not payable.
+      await hre.network.provider.send("hardhat_setBalance", [
+        arbitrumSpokePool.address,
+        // @dev Notice, this value is very sensitive to change. It wants a hex string WITHOUT leading zeroes after 0x, whereas
+        // BigNumber's .toHexString() can easily return a leading zero (probably because just converting from bytes)
+        toWei("2").toHexString(),
+      ]);
+
+      await expect(
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("OftLzFeeNotZero");
+    });
+
+    it("reverts with OftFeeCapExceeded if nativeFee is too high", async function () {
+      const highNativeFee = toWei("2"); // Higher than oftFeeCap (1 ETH)
+      const msgFeeStruct: MessagingFeeStructOutput = [
+        highNativeFee, // nativeFee
+        BigNumber.from(0), // lzTokenFee
+      ] as MessagingFeeStructOutput;
+      l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+      // Fund the spoke pool with enough ETH to cover the fee as `executeRelayerRefundLeaf` is not payable.
+      await hre.network.provider.send("hardhat_setBalance", [
+        arbitrumSpokePool.address,
+        // @dev Notice, this value is very sensitive to change. It wants a hex string WITHOUT leading zeroes after 0x, whereas
+        // BigNumber's .toHexString() can easily return a leading zero (probably because just converting from bytes)
+        highNativeFee.toHexString(),
+      ]);
+
+      await expect(
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("OftFeeCapExceeded");
+    });
+
+    it("reverts with OftInsufficientBalanceForFee if spoke pool has not enough ETH for fee", async function () {
+      const nativeFee = toWei("0.1");
+      const msgFeeStruct: MessagingFeeStructOutput = [
+        nativeFee, // nativeFee
+        BigNumber.from(0), // lzTokenFee
+      ] as MessagingFeeStructOutput;
+      l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+      // Note: the `executeRelayerRefundLeaf` is not payable, so the native fee must be covered by the contract's balance
+      await expect(
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("OftInsufficientBalanceForFee");
+    });
+
+    it("reverts with OftIncorrectAmountReceivedLD if OFT receipt has wrong received amount", async function () {
+      const msgFeeStruct: MessagingFeeStructOutput = [BigNumber.from(0), BigNumber.from(0)] as MessagingFeeStructOutput;
+      l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+      const msgReceipt: MessagingReceiptStructOutput = [
+        randomBytes32(),
+        BigNumber.from(1),
+        msgFeeStruct,
+      ] as MessagingReceiptStructOutput;
+      const oftReceipt: OFTReceiptStructOutput = [
+        l2UsdtSendAmount,
+        l2UsdtSendAmount.sub(1), // Incorrect received amount
+      ] as OFTReceiptStructOutput;
+      l2OftMessenger.send.returns([msgReceipt, oftReceipt]);
+
+      await expect(
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("OftIncorrectAmountReceivedLD");
+    });
+
+    it("reverts with OftIncorrectAmountSentLD if OFT receipt has wrong sent amount", async function () {
+      const msgFeeStruct: MessagingFeeStructOutput = [BigNumber.from(0), BigNumber.from(0)] as MessagingFeeStructOutput;
+      l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+      const msgReceipt: MessagingReceiptStructOutput = [
+        randomBytes32(),
+        BigNumber.from(1),
+        msgFeeStruct,
+      ] as MessagingReceiptStructOutput;
+      const oftReceipt: OFTReceiptStructOutput = [
+        l2UsdtSendAmount.sub(1), // Incorrect sent amount
+        l2UsdtSendAmount,
+      ] as OFTReceiptStructOutput;
+      l2OftMessenger.send.returns([msgReceipt, oftReceipt]);
+
+      await expect(
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("OftIncorrectAmountSentLD");
+    });
+  });
 });

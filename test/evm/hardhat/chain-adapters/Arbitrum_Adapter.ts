@@ -56,7 +56,7 @@ let l1ERC20GatewayRouter: FakeContract,
 const arbitrumChainId = CHAIN_IDs.ARBITRUM;
 const oftArbitrumEid = getOftEid(arbitrumChainId);
 
-describe("Arbitrum Chain Adapter", function () {
+describe.only("Arbitrum Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider, refundAddress] = await ethers.getSigners();
     ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, usdc, l2Usdc, usdt, l2Usdt } = await hubPoolFixture());
@@ -318,5 +318,132 @@ describe("Arbitrum Chain Adapter", function () {
     // We should have called send on the oftMessenger once with correct params
     expect(oftMessenger.send).to.have.been.calledOnce;
     expect(oftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, hubPool.address);
+  });
+
+  describe("OFT transfers", function () {
+    const oftMessengerType = ethers.utils.formatBytes32String("OFT_MESSENGER");
+    const internalChainId = arbitrumChainId;
+
+    beforeEach(async function () {
+      oftMessenger.token.returns(usdt.address);
+      adapterStore.crossChainMessengers
+        .whenCalledWith(oftMessengerType, oftArbitrumEid, usdt.address)
+        .returns(oftMessenger.address);
+    });
+
+    it("reverts with OftLzFeeNotZero if lzTokenFee is not zero", async function () {
+      const { leaves, tree } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
+      await hubPool
+        .connect(dataWorker)
+        .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+      const msgFeeStruct: MessagingFeeStructOutput = [
+        toWeiWithDecimals("1", 9).mul(200_000), // nativeFee
+        BigNumber.from(1), // lzTokenFee > 0
+      ] as MessagingFeeStructOutput;
+      oftMessenger.quoteSend.returns(msgFeeStruct);
+
+      await expect(
+        hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("delegatecall failed");
+    });
+
+    it("reverts with OftFeeCapExceeded if nativeFee is too high", async function () {
+      const { leaves, tree } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
+      await hubPool
+        .connect(dataWorker)
+        .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+      const highNativeFee = toWei("2"); // Higher than oftFeeCap (1 ETH)
+      const msgFeeStruct: MessagingFeeStructOutput = [
+        highNativeFee, // nativeFee
+        BigNumber.from(0), // lzTokenFee
+      ] as MessagingFeeStructOutput;
+      oftMessenger.quoteSend.returns(msgFeeStruct);
+
+      await expect(
+        hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("delegatecall failed");
+    });
+
+    it("reverts with OftInsufficientBalanceForFee if hub pool has not enough ETH for fee", async function () {
+      const { leaves, tree } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
+      await hubPool
+        .connect(dataWorker)
+        .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+      const nativeFee = toWei("0.5");
+      const msgFeeStruct: MessagingFeeStructOutput = [
+        nativeFee, // nativeFee
+        BigNumber.from(0), // lzTokenFee
+      ] as MessagingFeeStructOutput;
+      oftMessenger.quoteSend.returns(msgFeeStruct);
+
+      // Drain hubPool's ETH balance
+      const hubPoolBalance = await ethers.provider.getBalance(hubPool.address);
+      // leave 1 wei to avoid "sender doesn't have enough funds" error, which would precede the error we want to test
+      if (hubPoolBalance.gt(0)) {
+        await owner.sendTransaction({ to: randomAddress(), value: hubPoolBalance.sub(1) });
+      }
+
+      await expect(
+        hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("delegatecall failed");
+    });
+
+    it("reverts with OftIncorrectAmountReceivedLD if OFT receipt has wrong received amount", async function () {
+      const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
+      await hubPool
+        .connect(dataWorker)
+        .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+      const msgFeeStruct: MessagingFeeStructOutput = [BigNumber.from(0), BigNumber.from(0)] as MessagingFeeStructOutput;
+      oftMessenger.quoteSend.returns(msgFeeStruct);
+
+      const msgReceipt: MessagingReceiptStructOutput = [
+        randomBytes32(),
+        BigNumber.from(1),
+        msgFeeStruct,
+      ] as MessagingReceiptStructOutput;
+      const oftReceipt: OFTReceiptStructOutput = [
+        tokensSendToL2.sub(1), // Incorrect received amount
+        tokensSendToL2,
+      ] as OFTReceiptStructOutput;
+      oftMessenger.send.returns([msgReceipt, oftReceipt]);
+
+      await expect(
+        hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("delegatecall failed");
+    });
+
+    it("reverts with OftIncorrectAmountSentLD if OFT receipt has wrong sent amount", async function () {
+      const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
+      await hubPool
+        .connect(dataWorker)
+        .proposeRootBundle([3117], 1, tree.getHexRoot(), consts.mockRelayerRefundRoot, consts.mockSlowRelayRoot);
+      await timer.setCurrentTime(Number(await timer.getCurrentTime()) + consts.refundProposalLiveness + 1);
+
+      const msgFeeStruct: MessagingFeeStructOutput = [BigNumber.from(0), BigNumber.from(0)] as MessagingFeeStructOutput;
+      oftMessenger.quoteSend.returns(msgFeeStruct);
+
+      const msgReceipt: MessagingReceiptStructOutput = [
+        randomBytes32(),
+        BigNumber.from(1),
+        msgFeeStruct,
+      ] as MessagingReceiptStructOutput;
+      const oftReceipt: OFTReceiptStructOutput = [
+        tokensSendToL2,
+        tokensSendToL2.sub(1), // Incorrect sent amount
+      ] as OFTReceiptStructOutput;
+      oftMessenger.send.returns([msgReceipt, oftReceipt]);
+
+      await expect(
+        hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]))
+      ).to.be.revertedWith("delegatecall failed");
+    });
   });
 });
