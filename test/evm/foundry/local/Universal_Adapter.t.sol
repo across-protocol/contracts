@@ -272,7 +272,7 @@ contract UniversalAdapterTest is Test {
 
     function testRelayTokens_oft() public {
         vm.startPrank(owner);
-        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt), 0, 0));
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
         adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
         vm.stopPrank();
 
@@ -302,7 +302,9 @@ contract UniversalAdapterTest is Test {
     function testNonZeroLzFee() public {
         vm.startPrank(owner);
         // Mock an OFT messenger that returns a non-zero lzTokenFee
-        IOFT oftMessengerWithNonZeroLzFee = IOFT(new MockOFTMessenger(address(usdt), 0, 1)); // nativeFee = 0, lzFee = 1
+        MockOFTMessenger oftMessengerWithNonZeroLzFee = new MockOFTMessenger(address(usdt));
+        oftMessengerWithNonZeroLzFee.setFeesToReturn(0, 1); // nativeFee = 0, lzFee = 1
+
         adapterStore.setMessenger(
             MessengerTypes.OFT_MESSENGER,
             oftDstEid,
@@ -321,7 +323,8 @@ contract UniversalAdapterTest is Test {
     function testFeeTooHigh() public {
         // Determine a native fee that is higher than the adapter's OFT_FEE_CAP
         uint256 highNativeFee = adapter.OFT_FEE_CAP() + 1;
-        MockOFTMessenger oftMessengerWithHighFee = new MockOFTMessenger(address(usdt), highNativeFee, 0); // nativeFee > OFT_FEE_CAP, lzFee = 0
+        MockOFTMessenger oftMessengerWithHighFee = new MockOFTMessenger(address(usdt));
+        oftMessengerWithHighFee.setFeesToReturn(highNativeFee, 0); // nativeFee > OFT_FEE_CAP, lzFee = 0
         vm.startPrank(owner);
         adapterStore.setMessenger(
             MessengerTypes.OFT_MESSENGER,
@@ -338,6 +341,149 @@ contract UniversalAdapterTest is Test {
         // HubPool's require(..., "string") will revert with no data.
         vm.expectRevert();
         hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testRelayTokens_oft_insufficientBalanceForFee() public {
+        vm.startPrank(owner);
+        uint256 nativeFee = 1e17; // Less than OFT_FEE_CAP (1e18)
+        MockOFTMessenger oftMessenger = new MockOFTMessenger(address(usdt));
+        oftMessenger.setFeesToReturn(nativeFee, 0);
+
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
+        vm.stopPrank();
+
+        // Ensure hubPool has less balance than nativeFee. The hub pool is the msg.sender to adapter.relayTokens
+        // and its delegatecall context is where _transferViaOFT is executed.
+        deal(address(hubPool), nativeFee - 1);
+
+        // Expect revert due to insufficient balance for fee from OFTTransportAdapter.
+        // This will be caught by HubPool and re-thrown.
+        vm.expectRevert();
+        hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testRelayTokens_oft_incorrectAmountReceived() public {
+        vm.startPrank(owner);
+        MockOFTMessenger oftMessenger = new MockOFTMessenger(address(usdt));
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
+        vm.stopPrank();
+
+        // Set amountReceivedLD to be different from the sent amount. `send` will have 0 fee.
+        oftMessenger.setLDAmountsToReturn(usdcMintAmount, usdcMintAmount - 1);
+
+        // Expect the OftIncorrectAmountReceivedLD error from OFTTransportAdapter logic within Universal_Adapter.
+        // This will be caught by HubPool and re-thrown.
+        vm.expectRevert();
+        hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testRelayTokens_oft_incorrectAmountSent() public {
+        vm.startPrank(owner);
+        MockOFTMessenger oftMessenger = new MockOFTMessenger(address(usdt));
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
+        vm.stopPrank();
+
+        // Set amountSentLD to be different from the sent amount. `send` will have 0 fee.
+        oftMessenger.setLDAmountsToReturn(usdcMintAmount - 1, usdcMintAmount);
+
+        // Expect the OftIncorrectAmountSentLD error from OFTTransportAdapter logic within Universal_Adapter.
+        // This will be caught by HubPool and re-thrown.
+        vm.expectRevert();
+        hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testAdapterStore_setMessenger_revert_IOFTTokenMismatch() public {
+        vm.startPrank(owner);
+        // Create a messenger for USDT
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+
+        // Try to set it for USDC, expecting a revert.
+        vm.expectRevert(AdapterStore.IOFTTokenMismatch.selector);
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdc), address(oftMessenger));
+        vm.stopPrank();
+    }
+
+    function testAdapterStore_setMessenger_revert_NonExistentMessengerType() public {
+        vm.startPrank(owner);
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        bytes32 randomType = bytes32("RANDOM_MESSENGER");
+
+        vm.expectRevert(AdapterStore.NonExistentMessengerType.selector);
+        adapterStore.setMessenger(randomType, oftDstEid, address(usdt), address(oftMessenger));
+        vm.stopPrank();
+    }
+
+    function testAdapterStore_batchSetMessengers_revert_ArrayLengthMismatch() public {
+        vm.startPrank(owner);
+        bytes32[] memory messengerTypes = new bytes32[](1);
+        messengerTypes[0] = MessengerTypes.OFT_MESSENGER;
+
+        uint256[] memory dstDomainIds = new uint256[](1);
+        dstDomainIds[0] = oftDstEid;
+
+        address[] memory srcChainTokens = new address[](1);
+        srcChainTokens[0] = address(usdt);
+
+        // Mismatched length for messengers
+        address[] memory srcChainMessengers = new address[](2);
+        srcChainMessengers[0] = address(0);
+        srcChainMessengers[1] = address(0);
+
+        vm.expectRevert(AdapterStore.ArrayLengthMismatch.selector);
+        adapterStore.batchSetMessengers(messengerTypes, dstDomainIds, srcChainTokens, srcChainMessengers);
+        vm.stopPrank();
+    }
+
+    function testAdapterStore_batchSetMessengers() public {
+        vm.startPrank(owner);
+        IOFT oftMessenger1 = IOFT(new MockOFTMessenger(address(usdt)));
+        ERC20 token2 = new ERC20("Token2", "T2");
+        IOFT oftMessenger2 = IOFT(new MockOFTMessenger(address(token2)));
+
+        bytes32[] memory messengerTypes = new bytes32[](2);
+        messengerTypes[0] = MessengerTypes.OFT_MESSENGER;
+        messengerTypes[1] = MessengerTypes.OFT_MESSENGER;
+
+        uint256[] memory dstDomainIds = new uint256[](2);
+        dstDomainIds[0] = oftDstEid;
+        dstDomainIds[1] = oftDstEid;
+
+        address[] memory srcChainTokens = new address[](2);
+        srcChainTokens[0] = address(usdt);
+        srcChainTokens[1] = address(token2);
+
+        address[] memory srcChainMessengers = new address[](2);
+        srcChainMessengers[0] = address(oftMessenger1);
+        srcChainMessengers[1] = address(oftMessenger2);
+
+        adapterStore.batchSetMessengers(messengerTypes, dstDomainIds, srcChainTokens, srcChainMessengers);
+
+        assertEq(
+            adapterStore.crossChainMessengers(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt)),
+            address(oftMessenger1)
+        );
+        assertEq(
+            adapterStore.crossChainMessengers(MessengerTypes.OFT_MESSENGER, oftDstEid, address(token2)),
+            address(oftMessenger2)
+        );
+        vm.stopPrank();
+    }
+
+    function testAdapterStore_setMessenger_removeMessenger() public {
+        vm.startPrank(owner);
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
+
+        assertEq(
+            adapterStore.crossChainMessengers(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt)),
+            address(oftMessenger)
+        );
+
+        // Remove by setting to address(0)
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(0));
+
+        assertEq(adapterStore.crossChainMessengers(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt)), address(0));
+        vm.stopPrank();
     }
 
     function testRelayTokens_default() public {

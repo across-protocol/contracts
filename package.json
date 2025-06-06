@@ -37,7 +37,7 @@
     "build-verified": "yarn build-evm && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
     "test-evm": "yarn test-evm-hardhat && yarn test-evm-foundry",
     "test-evm-hardhat": "IS_TEST=true hardhat test",
-    "test-evm-foundry": "FOUNDRY_PROFILE=local forge test --match-path test/evm/foundry/local/**/*.t.sol",
+    "test-evm-foundry": "FOUNDRY_PROFILE=local forge test",
     "test-svm": "IS_TEST=true yarn build-svm && yarn generate-svm-artifacts && anchor test --skip-build",
     "test-svm-solana-verify": "IS_TEST=true yarn build-svm-solana-verify && yarn generate-svm-artifacts && anchor test --skip-build",
     "test": "yarn test-evm && yarn test-svm",
