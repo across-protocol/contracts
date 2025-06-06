@@ -7,8 +7,7 @@ import "../libraries/CircleCCTPAdapter.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 import { HubPoolStore } from "./utilities/HubPoolStore.sol";
 import { IOFT } from "../interfaces/IOFT.sol";
-
-import "../libraries/OFTTransportAdapterWithStore.sol";
+import { OFTTransportAdapterWithStore } from "../libraries/OFTTransportAdapterWithStore.sol";
 
 interface IOwnable {
     function owner() external view returns (address);
