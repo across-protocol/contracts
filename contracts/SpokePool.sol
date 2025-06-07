@@ -360,7 +360,7 @@ abstract contract SpokePool is
      * @param token token address on the current chain
      * @param messenger IOFT contract address on the current chain for the specified token. Acts as a 'mailbox'
      */
-    function setOftMessenger(address token, address messenger) public onlyAdmin nonReentrant {
+    function setOftMessenger(address token, address messenger) external onlyAdmin nonReentrant {
         _setOftMessenger(token, messenger);
     }
 
@@ -1122,11 +1122,7 @@ abstract contract SpokePool is
      * @param originData Data emitted on the origin to parameterize the fill
      * @param fillerData Data provided by the filler to inform the fill or express their preferences
      */
-    function fill(
-        bytes32 orderId,
-        bytes calldata originData,
-        bytes calldata fillerData
-    ) external {
+    function fill(bytes32 orderId, bytes calldata originData, bytes calldata fillerData) external {
         if (keccak256(abi.encode(originData, chainId())) != orderId) {
             revert WrongERC7683OrderId();
         }
@@ -1507,11 +1503,7 @@ abstract contract SpokePool is
     // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
     // bool indicating if the external call was successful, rather than reverting. Original method:
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
-    function _noRevertTransfer(
-        address token,
-        address to,
-        uint256 amount
-    ) internal returns (bool) {
+    function _noRevertTransfer(address token, address to, uint256 amount) internal returns (bool) {
         bool success;
         uint256 returnSize;
         uint256 returnValue;
@@ -1636,11 +1628,7 @@ abstract contract SpokePool is
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayV3(
-        V3RelayExecutionParams memory relayExecution,
-        bytes32 relayer,
-        bool isSlowFill
-    ) internal {
+    function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
         V3RelayData memory relayData = relayExecution.relay;
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
@@ -1737,7 +1725,7 @@ abstract contract SpokePool is
         else return keccak256(message);
     }
 
-    function _setOftMessenger(address _token, address _messenger) internal {
+    function _setOftMessenger(address _token, address _messenger) private {
         if (_messenger != address(0) && IOFT(_messenger).token() != _token) {
             revert OFTTokenMismatch();
         }
