@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
@@ -115,7 +115,7 @@ abstract contract SpokePool is
     mapping(address => mapping(address => uint256)) public relayerRefund;
 
     // Mapping of L2 token address to L2 IOFT messenger address. Required to support bridging via OFT standard
-    mapping(address => address) public oftMessengers;
+    mapping(address l2TokenAddress => address l2OftMessenger) public oftMessengers;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
