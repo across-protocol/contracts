@@ -55,7 +55,7 @@ async function fillRelay(): Promise<void> {
   const originChainId = new BN(resolvedArgv.originChainId);
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
-  const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
+  const exclusivityDeadline = resolvedArgv.exclusivityDeadline ?? 0; // default to 0
   const message = Buffer.from("");
   const seed = new BN(resolvedArgv.seed);
 
