@@ -148,6 +148,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     // Swap proxy used for isolating all swap operations
     SwapProxy public immutable swapProxy;
 
+    // Mapping from user address to their current nonce
+    mapping(address => uint256) public permitNonces;
+
     event SwapBeforeBridge(
         address exchange,
         bytes exchangeCalldata,
@@ -169,6 +172,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     error InvalidSwapToken();
     error InvalidSignature();
     error InvalidMinExpectedInputAmount();
+    error InvalidNonce();
 
     /**
      * @notice Construct a new Periphery contract.
@@ -267,6 +271,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         try IERC20Permit(_swapToken).permit(signatureOwner, address(this), _pullAmount, deadline, v, r, s) {} catch {}
         IERC20(_swapToken).safeTransferFrom(signatureOwner, address(this), _pullAmount);
         _paySubmissionFees(_swapToken, _submissionFeeRecipient, _submissionFeeAmount);
+        // Verify and increment nonce to prevent replay attacks.
+        _validateAndIncrementNonce(signatureOwner, swapAndDepositData.nonce);
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
@@ -316,7 +322,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata swapAndDepositDataSignature
     ) external override nonReentrant {
@@ -331,7 +336,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
-            nonce,
+            bytes32(swapAndDepositData.nonce),
             v,
             r,
             s
@@ -342,6 +347,15 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             _submissionFeeAmount
         );
 
+        // Note: No need to validate our internal nonce for receiveWithAuthorization
+        // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
+        //
+        // Design Decision: We reuse the receiveWithAuthorization nonce for our signatures,
+        // but not for permit, which creates a theoretical replay attack that we think is
+        // incredibly unlikely because this would require:
+        // 1. A token implementing both ERC-2612 and ERC-3009
+        // 2. A user using the same nonces for swapAndBridgeWithPermit and for swapAndBridgeWithAuthorization
+        // 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
@@ -376,6 +390,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         IERC20(_inputToken).safeTransferFrom(signatureOwner, address(this), _pullAmount);
         _paySubmissionFees(_inputToken, _submissionFeeRecipient, _submissionFeeAmount);
 
+        // Verify and increment nonce to prevent replay attacks.
+        _validateAndIncrementNonce(signatureOwner, depositData.nonce);
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
@@ -450,7 +466,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata depositDataSignature
     ) external override nonReentrant {
@@ -466,7 +481,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             _inputAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
-            nonce,
+            bytes32(depositData.nonce),
             v,
             r,
             s
@@ -477,6 +492,15 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
             _submissionFeeAmount
         );
 
+        // Note: No need to validate our internal nonce for receiveWithAuthorization
+        // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
+        //
+        // Design Decision: We reuse the receiveWithAuthorization nonce for our signatures,
+        // but not for permit, which creates a theoretical replay attack that we think is
+        // incredibly unlikely because this would require:
+        // 1. A token implementing both ERC-2612 and ERC-3009
+        // 2. A user using the same nonces for depositWithPermit and for depositWithAuthorization
+        // 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
@@ -517,6 +541,18 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature)) {
             revert InvalidSignature();
         }
+    }
+
+    /**
+     * @notice Validates and increments the user's nonce to prevent replay attacks.
+     * @param user The user whose nonce is being validated.
+     * @param providedNonce The provided nonce value.
+     */
+    function _validateAndIncrementNonce(address user, uint256 providedNonce) private {
+        if (permitNonces[user] != providedNonce) {
+            revert InvalidNonce();
+        }
+        permitNonces[user]++;
     }
 
     /**
