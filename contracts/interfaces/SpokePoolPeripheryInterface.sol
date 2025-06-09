@@ -156,6 +156,13 @@ interface SpokePoolPeripheryInterface {
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
+     * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
+     * incredibly unlikely because this would require:
+     * 1. A token implementing both ERC-2612 and ERC-3009
+     * 2. A user using the same nonces for swapAndBridgeWithPermit and for swapAndBridgeWithAuthorization
+     * 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
      * @param signatureOwner The owner of the permit signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param deadline Deadline before which the permit signature is valid.
@@ -191,7 +198,8 @@ interface SpokePoolPeripheryInterface {
      * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
-     * @dev The nonce from swapAndDepositData.nonce will be used for the `receiveWithAuthorization` call to ensure both signatures are bound together.
+     * @dev The nonce for the receiveWithAuthorization signature should match the nonce in the SwapAndDepositData.
+     * This nonce is managed by the ERC-3009 token contract.
      * @param signatureOwner The owner of the EIP3009 signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
@@ -211,6 +219,13 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
+     * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
+     * incredibly unlikely because this would require:
+     * 1. A token implementing both ERC-2612 and ERC-3009
+     * 2. A user using the same nonces for depositWithPermit and for depositWithAuthorization
+     * 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
      * @param signatureOwner The owner of the permit signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param deadline Deadline before which the permit signature is valid.
@@ -244,7 +259,8 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
-     * @dev The nonce from depositData.nonce will be used for the `receiveWithAuthorization` call to ensure both signatures are bound together.
+     * @dev The nonce for the receiveWithAuthorization signature should match the nonce in the DepositData.
+     * This nonce is managed by the ERC-3009 token contract.
      * @param signatureOwner The owner of the EIP3009 signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
@@ -260,4 +276,11 @@ interface SpokePoolPeripheryInterface {
         bytes calldata receiveWithAuthSignature,
         bytes calldata depositDataSignature
     ) external;
+
+    /**
+     * @notice Returns the current permit nonce for a user.
+     * @param user The user whose nonce to return.
+     * @return The current permit nonce for the user.
+     */
+    function permitNonces(address user) external view returns (uint256);
 }

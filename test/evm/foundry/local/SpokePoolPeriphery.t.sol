@@ -1296,12 +1296,12 @@ contract SpokePoolPeripheryTest is Test {
                 }),
                 inputAmount: _amount,
                 spokePool: address(ethereumSpokePool),
-                nonce: spokePoolPeriphery.getNonce(_depositor)
+                nonce: spokePoolPeriphery.permitNonces(_depositor)
             });
     }
 
     function testNonceInitiallyZero() public {
-        assertEq(spokePoolPeriphery.getNonce(depositor), 0);
+        assertEq(spokePoolPeriphery.permitNonces(depositor), 0);
     }
 
     function testNonceIncrementsAfterDepositWithPermit() public {
@@ -1314,7 +1314,7 @@ contract SpokePoolPeripheryTest is Test {
         );
 
         // Check initial nonce
-        uint256 initialNonce = spokePoolPeriphery.getNonce(depositor);
+        uint256 initialNonce = spokePoolPeriphery.permitNonces(depositor);
 
         bytes32 nonce = 0;
 
@@ -1343,7 +1343,7 @@ contract SpokePoolPeripheryTest is Test {
         spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
 
         // Check that nonce was incremented
-        assertEq(spokePoolPeriphery.getNonce(depositor), initialNonce + 1);
+        assertEq(spokePoolPeriphery.permitNonces(depositor), initialNonce + 1);
     }
 
     function testDepositWithPermitInvalidNonce() public {
@@ -1617,7 +1617,7 @@ contract SpokePoolPeripheryTest is Test {
                 ),
                 enableProportionalAdjustment: _enableProportionalAdjustment,
                 spokePool: address(ethereumSpokePool),
-                nonce: spokePoolPeriphery.getNonce(_depositor)
+                nonce: spokePoolPeriphery.permitNonces(_depositor)
             });
     }
 }

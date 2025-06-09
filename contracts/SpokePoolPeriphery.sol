@@ -149,7 +149,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     SwapProxy public immutable swapProxy;
 
     // Mapping from user address to their current nonce
-    mapping(address => uint256) public userNonces;
+    mapping(address => uint256) public permitNonces;
 
     event SwapBeforeBridge(
         address exchange,
@@ -349,6 +349,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
         // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
+        //
+        // Design Decision: We reuse the receiveWithAuthorization nonce for our signatures,
+        // but not for permit, which creates a theoretical replay attack that we think is
+        // incredibly unlikely because this would require:
+        // 1. A token implementing both ERC-2612 and ERC-3009
+        // 2. A user using the same nonces for swapAndBridgeWithPermit and for swapAndBridgeWithAuthorization
+        // 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
         // Verify that the signatureOwner signed the input swapAndDepositData.
         _validateSignature(
             signatureOwner,
@@ -487,6 +494,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
         // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
+        //
+        // Design Decision: We reuse the receiveWithAuthorization nonce for our signatures,
+        // but not for permit, which creates a theoretical replay attack that we think is
+        // incredibly unlikely because this would require:
+        // 1. A token implementing both ERC-2612 and ERC-3009
+        // 2. A user using the same nonces for depositWithPermit and for depositWithAuthorization
+        // 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
@@ -514,15 +528,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     }
 
     /**
-     * @notice Returns the current nonce for a user.
-     * @param user The user whose nonce to return.
-     * @return The current nonce for the user.
-     */
-    function getNonce(address user) external view returns (uint256) {
-        return userNonces[user];
-    }
-
-    /**
      * @notice Validates that the typed data hash corresponds to the input signature owner and corresponding signature.
      * @param signatureOwner The alledged signer of the input hash.
      * @param typedDataHash The EIP712 data hash to check the signature against.
@@ -541,13 +546,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     /**
      * @notice Validates and increments the user's nonce to prevent replay attacks.
      * @param user The user whose nonce is being validated.
-     * @param expectedNonce The expected nonce value.
+     * @param providedNonce The provided nonce value.
      */
-    function _validateAndIncrementNonce(address user, uint256 expectedNonce) private {
-        if (userNonces[user] != expectedNonce) {
+    function _validateAndIncrementNonce(address user, uint256 providedNonce) private {
+        if (permitNonces[user] != providedNonce) {
             revert InvalidNonce();
         }
-        userNonces[user]++;
+        permitNonces[user]++;
     }
 
     /**
