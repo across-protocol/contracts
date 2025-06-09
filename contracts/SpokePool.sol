@@ -360,7 +360,7 @@ abstract contract SpokePool is
      * @param token token address on the current chain
      * @param messenger IOFT contract address on the current chain for the specified token. Acts as a 'mailbox'
      */
-    function setOftMessenger(address token, address messenger) public onlyAdmin nonReentrant {
+    function setOftMessenger(address token, address messenger) external onlyAdmin nonReentrant {
         _setOftMessenger(token, messenger);
     }
 
@@ -1725,7 +1725,7 @@ abstract contract SpokePool is
         else return keccak256(message);
     }
 
-    function _setOftMessenger(address _token, address _messenger) internal {
+    function _setOftMessenger(address _token, address _messenger) private {
         if (_messenger != address(0) && IOFT(_messenger).token() != _token) {
             revert OFTTokenMismatch();
         }

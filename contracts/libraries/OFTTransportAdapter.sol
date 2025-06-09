@@ -15,11 +15,12 @@ contract OFTTransportAdapter {
     using SafeERC20 for IERC20;
     using AddressToBytes32 for address;
 
+    /** @notice Empty bytes array used for OFT messaging parameters */
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
 
     /**
-     * @dev a fee cap we check against before sending a message with value to OFTMessenger as fees.
-     * @dev this cap should be pretty conservative (high) to not interfere with operations under normal conditions.
+     * @notice Fee cap checked before sending messages to OFTMessenger
+     * @dev Conservative (high) cap to not interfere with operations under normal conditions
      */
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint256 public immutable OFT_FEE_CAP;
@@ -31,10 +32,19 @@ contract OFTTransportAdapter {
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint32 public immutable OFT_DST_EID;
 
+    /** @notice Thrown when OFT fee exceeds the configured cap */
     error OftFeeCapExceeded();
+
+    /** @notice Thrown when contract has insufficient balance to pay OFT fees */
     error OftInsufficientBalanceForFee();
+
+    /** @notice Thrown when LayerZero token fee is not zero (only native fees supported) */
     error OftLzFeeNotZero();
+
+    /** @notice Thrown when amount received differs from expected amount */
     error OftIncorrectAmountReceivedLD();
+
+    /** @notice Thrown when amount sent differs from expected amount */
     error OftIncorrectAmountSentLD();
 
     /**
@@ -56,12 +66,7 @@ contract OFTTransportAdapter {
      * @param _to address to receive a transfer on the destination chain.
      * @param _amount amount to send.
      */
-    function _transferViaOFT(
-        IERC20 _token,
-        IOFT _messenger,
-        address _to,
-        uint256 _amount
-    ) internal {
+    function _transferViaOFT(IERC20 _token, IOFT _messenger, address _to, uint256 _amount) internal {
         bytes32 to = _to.toBytes32();
 
         SendParam memory sendParam = SendParam(
