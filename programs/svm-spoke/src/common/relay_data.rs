@@ -7,7 +7,7 @@ pub struct RelayData {
     pub exclusive_relayer: Pubkey,
     pub input_token: Pubkey,
     pub output_token: Pubkey,
-    pub input_amount: u64,
+    pub input_amount: [u8; 32],
     pub output_amount: u64,
     pub origin_chain_id: u64,
     pub deposit_id: [u8; 32],
