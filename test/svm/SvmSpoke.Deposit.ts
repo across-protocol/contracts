@@ -774,6 +774,17 @@ describe("svm_spoke.deposit", () => {
     assertSE(vaultAccount.amount, depositData.inputAmount, "Vault balance should equal the deposited amount");
   });
 
+  it("Output token cannot be zero address", async () => {
+    const invalidDepositData = { ...depositData, outputToken: new PublicKey("11111111111111111111111111111111") };
+
+    try {
+      await approvedDeposit(invalidDepositData);
+      assert.fail("Should not be able to process deposit with zero output token address");
+    } catch (err: any) {
+      assert.include(err.toString(), "Error Code: InvalidOutputToken", "Expected InvalidOutputToken error");
+    }
+  });
+
   describe("codama client and solana kit", () => {
     it("Deposit with with solana kit and codama client", async () => {
       // typescript is not happy with the depositData object
