@@ -24,7 +24,12 @@ import {
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram, loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm/web3-v1";
+import {
+  getSpokePoolProgram,
+  intToU8Array32,
+  loadExecuteRelayerRefundLeafParams,
+  relayerRefundHashFn,
+} from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
 // Set up the provider
@@ -98,7 +103,7 @@ async function testBundleLogic(): Promise<void> {
       inputToken,
       inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
       inputAmount,
-      new BN(0),
+      intToU8Array32(new BN(0)),
       new BN(11155111), // destinationChainId.
       PublicKey.default, // exclusiveRelayer
       Math.floor(Date.now() / 1000) - 1, // quoteTimestamp

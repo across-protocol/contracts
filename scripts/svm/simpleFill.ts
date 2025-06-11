@@ -50,7 +50,7 @@ async function fillRelay(): Promise<void> {
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || "11111111111111111111111111111111");
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));

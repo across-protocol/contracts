@@ -23,7 +23,14 @@ import {
 } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getDepositPda, getDepositSeedHash, getSpokePoolProgram, SOLANA_SPOKE_STATE_SEED } from "../../src/svm/web3-v1";
+import {
+  getDepositPda,
+  getDepositSeedHash,
+  getSpokePoolProgram,
+  intToU8Array32,
+  SOLANA_SPOKE_STATE_SEED,
+  u8Array32ToInt,
+} from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -48,7 +55,7 @@ async function nativeDeposit(): Promise<void> {
   const inputToken = NATIVE_MINT;
   const outputToken = new PublicKey(resolvedArgv.outputToken);
   const inputAmount = new BN(resolvedArgv.inputAmount);
-  const outputAmount = new BN(resolvedArgv.outputAmount);
+  const outputAmount = intToU8Array32(new BN(resolvedArgv.outputAmount));
   const destinationChainId = new BN(resolvedArgv.destinationChainId);
   const exclusiveRelayer = PublicKey.default;
   const quoteTimestamp = Math.floor(Date.now() / 1000) - 1;
@@ -85,7 +92,7 @@ async function nativeDeposit(): Promise<void> {
     { property: "inputToken", value: inputToken.toString() },
     { property: "outputToken", value: outputToken.toString() },
     { property: "inputAmount", value: inputAmount.toString() },
-    { property: "outputAmount", value: outputAmount.toString() },
+    { property: "outputAmount", value: u8Array32ToInt(outputAmount).toString() },
     { property: "destinationChainId", value: destinationChainId.toString() },
     { property: "quoteTimestamp", value: quoteTimestamp.toString() },
     { property: "fillDeadline", value: fillDeadline.toString() },

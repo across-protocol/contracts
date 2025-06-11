@@ -20,6 +20,7 @@ import {
   calculateRelayHashUint8Array,
   getFillRelayDelegatePda,
   getSpokePoolProgram,
+  intToU8Array32,
   loadFillRelayParams,
   sendTransactionWithLookupTable,
 } from "../../src/svm/web3-v1";
@@ -58,7 +59,7 @@ async function fillRelayToRandom(): Promise<void> {
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || PublicKey.default.toString());
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
   const depositId = (resolvedArgv.depositId as number[]).map((id) => id); // Ensure depositId is an array of BN
