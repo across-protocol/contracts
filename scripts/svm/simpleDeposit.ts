@@ -40,7 +40,7 @@ const argv = yargs(hideBin(process.argv))
   .option("inputToken", { type: "string", demandOption: true, describe: "Input token public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
   .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
-  .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
+  .option("outputAmount", { type: "string", demandOption: true, describe: "Output amount" })
   .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" })
   .option("integratorId", { type: "string", demandOption: false, describe: "integrator ID" }).argv;
 
