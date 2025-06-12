@@ -21,7 +21,12 @@ import { PublicKey } from "@solana/web3.js";
 import { BN } from "@coral-xyz/anchor";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayEventHashUint8Array, getSpokePoolProgram, evmAddressToPublicKey } from "../../src/svm/web3-v1";
+import {
+  calculateRelayEventHashUint8Array,
+  getSpokePoolProgram,
+  evmAddressToPublicKey,
+  intToU8Array32,
+} from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = anchor.AnchorProvider.env();
@@ -53,7 +58,7 @@ async function findFillStatusPda() {
     exclusiveRelayer: convertAddress(resolvedArgv.exclusive_relayer),
     inputToken: convertAddress(resolvedArgv.input_token),
     outputToken: convertAddress(resolvedArgv.output_token),
-    inputAmount: new BN(resolvedArgv.input_amount),
+    inputAmount: intToU8Array32(new BN(resolvedArgv.input_amount)),
     outputAmount: new BN(resolvedArgv.output_amount),
     originChainId: new BN(resolvedArgv.origin_chain_id),
     depositId: parseStringToUint8Array(resolvedArgv.deposit_id),

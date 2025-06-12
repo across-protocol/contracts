@@ -65,7 +65,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
     exclusiveRelayer: new PublicKey(eventData.exclusiveRelayer),
     inputToken: new PublicKey(eventData.inputToken),
     outputToken: new PublicKey(eventData.outputToken),
-    inputAmount: new BN(eventData.inputAmount),
+    inputAmount: eventData.inputAmount,
     outputAmount: new BN(eventData.outputAmount),
     originChainId: new BN(eventData.originChainId),
     depositId: eventData.depositId,
