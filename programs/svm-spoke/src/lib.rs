@@ -217,6 +217,7 @@ pub mod svm_spoke {
     ///   amount will be sent to the relayer on their repayment chain of choice as a refund following an optimistic
     ///   challenge window in the HubPool, less a system fee.
     /// - output_amount: The amount of output tokens that the relayer will send to the recipient on the destination.
+    ///   This is big-endian encoded as a 32-byte array to match its underlying byte representation on EVM side.
     /// - destination_chain_id: The destination chain identifier where the fill should be made.
     /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity
     ///   deadline timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the
@@ -238,7 +239,7 @@ pub mod svm_spoke {
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         quote_timestamp: u32,
@@ -272,7 +273,7 @@ pub mod svm_spoke {
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         fill_deadline_offset: u32,
@@ -308,7 +309,7 @@ pub mod svm_spoke {
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         deposit_nonce: u64,
@@ -391,6 +392,7 @@ pub mod svm_spoke {
     ///     token on the repayment chain will be sent as a refund to the caller.
     ///   - output_token: The token that the caller will send to the recipient on this chain.
     ///   - input_amount: This amount, less a system fee, will be sent to the caller on their repayment chain.
+    ///     This is big-endian encoded as a 32-byte array to match its underlying byte representation on EVM side
     ///   - output_amount: The amount of output tokens that the caller will send to the recipient.
     ///   - origin_chain_id: The origin chain identifier.
     ///   - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the
