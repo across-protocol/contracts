@@ -95,6 +95,7 @@ export SVM_CHAIN_ID=$(cast to-dec $(cast shr $(cast shl $(cast keccak solana-dev
 export HUB_POOL=0x14224e63716afAcE30C9a417E0542281869f7d9e # This is for sepolia, update for mainnet
 export DEPOSIT_QUOTE_TIME_BUFFER=3600
 export FILL_DEADLINE_BUFFER=21600
+export MAX_LEN=$(( 2 * $(stat -c %s target/deploy/$PROGRAM.so) )) # Reserve twice the size of the program for future upgrades
 ```
 
 #### Initial deployment
@@ -103,11 +104,14 @@ Deploy the program and set the upgrade authority to the multisig:
 
 ```shell
 solana program deploy \
-  --url $RPC_URL target/deploy/$PROGRAM.so \
+  --url $RPC_URL \
   --keypair $KEYPAIR \
   --program-id target/deploy/$PROGRAM-keypair.json \
+  --max-len $MAX_LEN \
   --with-compute-unit-price 50000 \
-  --max-sign-attempts 100
+  --max-sign-attempts 100 \
+  --use-rpc \
+  target/deploy/$PROGRAM.so
 solana program set-upgrade-authority \
   --url $RPC_URL \
   --keypair $KEYPAIR \
