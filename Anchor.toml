@@ -5,17 +5,17 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+multicall_handler = "CnJ2mEFsaJMQ5U4ZUz6HVxBJP5YVUgf9Y4hGVnGU33g4"
+svm_spoke = "4Jg83Lhggz2EdzSsDX2NVcEK56F25jJKK5btUbHAU4Xu"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
-multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+multicall_handler = "CnJ2mEFsaJMQ5U4ZUz6HVxBJP5YVUgf9Y4hGVnGU33g4"
+svm_spoke = "4Jg83Lhggz2EdzSsDX2NVcEK56F25jJKK5btUbHAU4Xu"
 
 [programs.mainnet]
-multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+multicall_handler = "CnJ2mEFsaJMQ5U4ZUz6HVxBJP5YVUgf9Y4hGVnGU33g4"
+svm_spoke = "4Jg83Lhggz2EdzSsDX2NVcEK56F25jJKK5btUbHAU4Xu"
 
 [registry]
 url = "https://api.apr.dev"
