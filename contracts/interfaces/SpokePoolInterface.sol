@@ -56,8 +56,6 @@ interface SpokePoolInterface {
 
     error NotEOA();
     error InvalidDepositorSignature();
-    error InvalidRelayerFeePct();
-    error MaxTransferSizeExceeded();
     error InvalidCrossDomainAdmin();
     error InvalidWithdrawalRecipient();
     error DepositsArePaused();
