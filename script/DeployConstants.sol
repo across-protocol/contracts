@@ -22,25 +22,27 @@ contract DeployConstants {
     uint256 constant OPTIMISM_SEPOLIA = 11155420;
     uint256 constant BASE = 8453;
     uint256 constant BASE_SEPOLIA = 84532;
-    uint256 constant LENS = 1750;
-    uint256 constant LENS_SEPOLIA = 1751;
+    uint256 constant LENS = 232;
+    uint256 constant LENS_TESTNET = 37111;
     uint256 constant LINEA = 59144;
-    uint256 constant SCROLL_SEPOLIA = 534351;
+    uint256 constant LINEA_SEPOLIA = 59141;
     uint256 constant SCROLL = 534352;
-    uint256 constant UNICHAIN = 32659;
-    uint256 constant UNICHAIN_SEPOLIA = 32660;
-    uint256 constant ALEPH_ZERO = 2037;
+    uint256 constant SCROLL_SEPOLIA = 534351;
+    uint256 constant UNICHAIN = 130;
+    uint256 constant UNICHAIN_SEPOLIA = 1301;
+    uint256 constant ALEPH_ZERO = 41455;
     uint256 constant BLAST = 81457;
     uint256 constant BLAST_SEPOLIA = 168587773;
     uint256 constant BOBA = 288;
-    uint256 constant INK = 1337;
-    uint256 constant LISK = 1337;
-    uint256 constant LISK_SEPOLIA = 1337;
+    uint256 constant INK = 57073;
+    uint256 constant INK_SEPOLIA = 763373;
+    uint256 constant LISK = 1135;
+    uint256 constant LISK_SEPOLIA = 4202;
     uint256 constant MODE = 34443;
     uint256 constant MODE_SEPOLIA = 919;
     uint256 constant REDSTONE = 690;
-    uint256 constant SONEIUM = 1337;
-    uint256 constant WORLD_CHAIN = 5005;
+    uint256 constant SONEIUM = 1868;
+    uint256 constant WORLD_CHAIN = 480;
     uint256 constant ZORA = 7777777;
 
     // Token addresses
@@ -57,8 +59,9 @@ contract DeployConstants {
     WETH9Interface constant WETH_BASE = WETH9Interface(0x4200000000000000000000000000000000000006);
     WETH9Interface constant WETH_BASE_SEPOLIA = WETH9Interface(0x4200000000000000000000000000000000000006);
     WETH9Interface constant WETH_LENS = WETH9Interface(0x4200000000000000000000000000000000000006);
-    WETH9Interface constant WETH_LENS_SEPOLIA = WETH9Interface(0x4200000000000000000000000000000000000006);
+    WETH9Interface constant WETH_LENS_TESTNET = WETH9Interface(0x4200000000000000000000000000000000000006);
     WETH9Interface constant WETH_LINEA = WETH9Interface(0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f);
+    WETH9Interface constant WETH_LINEA_SEPOLIA = WETH9Interface(0x4200000000000000000000000000000000000006);
     WETH9Interface constant WETH_SCROLL_SEPOLIA = WETH9Interface(0x5300000000000000000000000000000000000004);
     WETH9Interface constant WETH_SCROLL = WETH9Interface(0x5300000000000000000000000000000000000004);
     WETH9Interface constant WETH_UNICHAIN = WETH9Interface(0x4200000000000000000000000000000000000006);
@@ -77,6 +80,96 @@ contract DeployConstants {
     WETH9Interface constant WETH_WORLD_CHAIN = WETH9Interface(0x4200000000000000000000000000000000000006);
     WETH9Interface constant WETH_ZORA = WETH9Interface(0x4200000000000000000000000000000000000006);
     WETH9Interface constant WETH_POLYGON_ZKEVM = WETH9Interface(0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C); // Custom WETH for testing
+
+    // Aleph Zero
+    address constant ALEPH_ZERO_L2_GATEWAY_ROUTER = 0xD296d45171B97720D3aBdb68B0232be01F1A9216;
+
+    // Arbitrum Sepolia
+    address constant ARBITRUM_SEPOLIA_L2_GATEWAY_ROUTER = 0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7;
+    address constant ARBITRUM_SEPOLIA_CCTP_TOKEN_MESSENGER = 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5;
+    address constant ARBITRUM_SEPOLIA_CCTP_MESSAGE_TRANSMITTER = 0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872;
+
+    // Arbitrum
+    address constant ARBITRUM_L2_GATEWAY_ROUTER = 0x5288c571Fd7aD117beA99bF60FE0846C4E84F933;
+    address constant ARBITRUM_CCTP_TOKEN_MESSENGER = 0x19330d10D9Cc8751218eaf51E8885D058642E08A;
+    address constant ARBITRUM_CCTP_MESSAGE_TRANSMITTER = 0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca;
+    address constant ARBITRUM_UNISWAP_V3_SWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant ARBITRUM_1INCH_V6_ROUTER = 0x111111125421cA6dc452d289314280a0f8842A65;
+
+    // BSC
+    address constant BSC_HELIOS = 0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7;
+
+    // Polygon
+    address constant POLYGON_FX_CHILD = 0x8397259c983751DAf40400790063935a11afa28a;
+    address constant POLYGON_CCTP_TOKEN_MESSENGER = 0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE;
+    address constant POLYGON_CCTP_MESSAGE_TRANSMITTER = 0xF3be9355363857F3e001be68856A2f96b4C39Ba9;
+    address constant POLYGON_UNISWAP_V3_SWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant POLYGON_1INCH_V6_ROUTER = 0x111111125421cA6dc452d289314280a0f8842A65;
+
+    // Polygon Amoy
+    address constant POLYGON_AMOY_FX_CHILD = 0xE5930336866d0388f0f745A2d9207C7781047C0f;
+    address constant POLYGON_AMOY_CCTP_TOKEN_MESSENGER = 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5;
+    address constant POLYGON_AMOY_CCTP_MESSAGE_TRANSMITTER = 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD;
+
+    // ZkSync
+    address constant ZK_SYNC_ZK_ERC20_BRIDGE = 0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102;
+    address constant ZK_SYNC_1INCH_V6_ROUTER = 0x6fd4383cB451173D5f9304F041C7BCBf27d561fF;
+
+    // Optimism
+    address constant OPTIMISM_CCTP_TOKEN_MESSENGER = 0x2B4069517957735bE00ceE0fadAE88a26365528f;
+    address constant OPTIMISM_CCTP_MESSAGE_TRANSMITTER = 0x4D41f22c5a0e5c74090899E5a8Fb597a8842b3e8;
+    address constant OPTIMISM_UNISWAP_V3_SWAP_ROUTER = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address constant OPTIMISM_SYNC_1INCH_V6_ROUTER = 0x111111125421cA6dc452d289314280a0f8842A65;
+
+    // Optimism Sepolia
+    address constant OPTIMISM_SEPOLIA_CCTP_TOKEN_MESSENGER = 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5;
+    address constant OPTIMISM_SEPOLIA_CCTP_MESSAGE_TRANSMITTER = 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD;
+    address constant OPTIMISM_SEPOLIA_UNISWAP_V3_SWAP_ROUTER = 0xd8866E76441df243fc98B892362Fc6264dC3ca80;
+
+    // Base
+    address constant BASE_CCTP_TOKEN_MESSENGER = 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962;
+    address constant BASE_CCTP_MESSAGE_TRANSMITTER = 0xAD09780d193884d503182aD4588450C416D6F9D4;
+    address constant BASE_UNISWAP_V3_SWAP_ROUTER = 0x2626664c2603336E57B271c5C0b26F421741e481;
+    address constant BASE_SYNC_1INCH_V6_ROUTER = 0x111111125421cA6dc452d289314280a0f8842A65;
+
+    // Base Sepolia
+    address constant BASE_SEPOLIA_CCTP_TOKEN_MESSENGER = 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5;
+    address constant BASE_SEPOLIA_CCTP_MESSAGE_TRANSMITTER = 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD;
+    address constant BASE_SEPOLIA_UNISWAP_V3_SWAP_ROUTER = 0x7945814dE23D76dfFf0CFC6ecB76456B9F7Ac648;
+
+    // Lens
+    address constant LENS_ZK_ERC20_BRIDGE = 0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143;
+    address constant LENS_ZK_USDC_BRIDGE = 0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81;
+
+    // Lens Testnet
+    address constant LENS_TESTNET_ZK_ERC20_BRIDGE = 0x427373Be173120D7A042b44D0804E37F25E7330b;
+
+    // Linea
+    address constant LINEA_LINEA_MESSAGE_SERVICE = 0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec;
+    address constant LINEA_CCTP_V2_TOKEN_MESSENGER = 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d;
+    address constant LINEA_LINEA_TOKEN_BRIDGE = 0x353012dc4a9A6cF55c941bADC267f82004A8ceB9;
+
+    // Scroll
+    address constant SCROLL_SCROLL_ERC20_GATEWAY_ROUTER = 0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79;
+    address constant SCROLL_SCROLL_GAS_PRICE_ORACLE = 0x5300000000000000000000000000000000000002;
+    address constant SCROLL_SCROLL_MESSENGER = 0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC;
+
+    // Scroll Sepolia
+    address constant SCROLL_SEPOLIA_SCROLL_ERC20_GATEWAY_ROUTER = 0x9aD3c5617eCAa556d6E166787A97081907171230;
+    address constant SCROLL_SEPOLIA_SCROLL_GAS_PRICE_ORACLE = 0x5300000000000000000000000000000000000002;
+    address constant SCROLL_SEPOLIA_SCROLL_MESSENGER = 0xBa50f5340FB9F3Bd074bD638c9BE13eCB36E603d;
+
+    // Polygon ZkEvm
+    address constant POLYGON_ZKEVM_L2_WETH = 0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C;
+    address constant POLYGON_ZKEVM_POLYGON_ZK_EVM_BRIDGE = 0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7;
+
+    // Unichain
+    address constant UNICHAIN_CCTP_TOKEN_MESSENGER = 0x4e744b28E787c3aD0e810eD65A24461D4ac5a762;
+    address constant UNICHAIN_CCTP_MESSAGE_TRANSMITTER = 0x353bE9E2E38AB1D19104534e4edC21c643Df86f4;
+
+    // Unichain Sepolia
+    address constant UNICHAIN_SEPOLIA_CCTP_TOKEN_MESSENGER = 0x8ed94B8dAd2Dc5453862ea5e316A8e71AAed9782;
+    address constant UNICHAIN_SEPOLIA_CCTP_MESSAGE_TRANSMITTER = 0xbc498c326533d675cf571B90A2Ced265ACb7d086;
 
     // Other constants
     address constant ZERO_ADDRESS = address(0);
@@ -201,392 +294,6 @@ contract DeployConstants {
                     zkBridgeHub: 0x236D1c3Ff32Bd0Ca26b72Af287E895627c0478cE,
                     zkUsdcSharedBridge_232: address(0), // Not deployed on Sepolia
                     zkUsdcSharedBridge_324: address(0) // Not deployed on Sepolia
-                });
-        }
-        revert("Unsupported chain ID");
-    }
-
-    function getL2Addresses(uint256 chainId) public pure returns (L2Addresses memory) {
-        if (chainId == ALEPH_ZERO) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: 0xD296d45171B97720D3aBdb68B0232be01F1A9216,
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == ARBITRUM_SEPOLIA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: 0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7,
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5,
-                    cctpMessageTransmitter: 0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872,
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == ARBITRUM) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: 0x5288c571Fd7aD117beA99bF60FE0846C4E84F933,
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x19330d10D9Cc8751218eaf51E8885D058642E08A,
-                    cctpMessageTransmitter: 0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca,
-                    uniswapV3SwapRouter: 0xE592427A0AEce92De3Edee1F18E0157C05861564,
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == BSC) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: 0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7,
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == POLYGON) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: 0x8397259c983751DAf40400790063935a11afa28a,
-                    cctpTokenMessenger: 0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE,
-                    cctpMessageTransmitter: 0xF3be9355363857F3e001be68856A2f96b4C39Ba9,
-                    uniswapV3SwapRouter: 0xE592427A0AEce92De3Edee1F18E0157C05861564,
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == POLYGON_AMOY) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: 0xE5930336866d0388f0f745A2d9207C7781047C0f,
-                    cctpTokenMessenger: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5,
-                    cctpMessageTransmitter: 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD,
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == ZK_SYNC) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: ZERO_ADDRESS, // CCTP not available on zkSync
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: 0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102,
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == OPTIMISM) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x2B4069517957735bE00ceE0fadAE88a26365528f,
-                    cctpMessageTransmitter: 0x4D41f22c5a0e5c74090899E5a8Fb597a8842b3e8,
-                    uniswapV3SwapRouter: 0xE592427A0AEce92De3Edee1F18E0157C05861564,
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == OPTIMISM_SEPOLIA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5,
-                    cctpMessageTransmitter: 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD,
-                    uniswapV3SwapRouter: 0xd8866E76441df243fc98B892362Fc6264dC3ca80, // Mock_UniswapV3SwapRouter.sol
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == BASE) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x1682Ae6375C4E4A97e4B583BC394c861A46D8962,
-                    cctpMessageTransmitter: 0xAD09780d193884d503182aD4588450C416D6F9D4,
-                    uniswapV3SwapRouter: 0x2626664c2603336E57B271c5C0b26F421741e481,
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == BASE_SEPOLIA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5,
-                    cctpMessageTransmitter: 0x7865fAfC2db2093669d92c0F33AeEF291086BEFD,
-                    uniswapV3SwapRouter: 0x7945814dE23D76dfFf0CFC6ecB76456B9F7Ac648, // Mock_UniswapV3SwapRouter.sol
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == LENS) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: ZERO_ADDRESS, // Not available on Lens
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: 0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143,
-                    zkUSDCBridge: 0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81,
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == LENS_SEPOLIA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: 0x427373Be173120D7A042b44D0804E37F25E7330b,
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == LINEA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: 0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec,
-                    cctpV2TokenMessenger: 0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d,
-                    lineaTokenBridge: 0x353012dc4a9A6cF55c941bADC267f82004A8ceB9,
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == SCROLL_SEPOLIA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: 0x9aD3c5617eCAa556d6E166787A97081907171230,
-                    scrollGasPriceOracle: 0x5300000000000000000000000000000000000002,
-                    scrollMessenger: 0xBa50f5340FB9F3Bd074bD638c9BE13eCB36E603d,
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == SCROLL) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: 0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79,
-                    scrollGasPriceOracle: 0x5300000000000000000000000000000000000002,
-                    scrollMessenger: 0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC,
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == 1442) {
-            // PolygonZkEvm chain
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: address(0),
-                    cctpMessageTransmitter: address(0),
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: 0x3ab6C7AEb93A1CFC64AEEa8BF0f00c176EE42A2C, // Custom WETH for testing
-                    polygonZkEvmBridge: 0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7
-                });
-        } else if (chainId == UNICHAIN) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x4e744b28E787c3aD0e810eD65A24461D4ac5a762,
-                    cctpMessageTransmitter: 0x353bE9E2E38AB1D19104534e4edC21c643Df86f4,
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
-                });
-        } else if (chainId == UNICHAIN_SEPOLIA) {
-            return
-                L2Addresses({
-                    l2GatewayRouter: address(0),
-                    fxChild: address(0),
-                    cctpTokenMessenger: 0x8ed94B8dAd2Dc5453862ea5e316A8e71AAed9782,
-                    cctpMessageTransmitter: 0xbc498c326533d675cf571B90A2Ced265ACb7d086,
-                    uniswapV3SwapRouter: address(0),
-                    helios: address(0),
-                    zkErc20Bridge: address(0),
-                    zkUSDCBridge: address(0),
-                    lineaMessageService: address(0),
-                    cctpV2TokenMessenger: address(0),
-                    lineaTokenBridge: address(0),
-                    scrollERC20GatewayRouter: address(0),
-                    scrollGasPriceOracle: address(0),
-                    scrollMessenger: address(0),
-                    l2Weth: address(0),
-                    polygonZkEvmBridge: address(0)
                 });
         }
         revert("Unsupported chain ID");
@@ -784,8 +491,9 @@ contract DeployConstants {
         if (chainId == BASE) return WETH_BASE;
         if (chainId == BASE_SEPOLIA) return WETH_BASE_SEPOLIA;
         if (chainId == LENS) return WETH_LENS;
-        if (chainId == LENS_SEPOLIA) return WETH_LENS_SEPOLIA;
+        if (chainId == LENS_TESTNET) return WETH_LENS_TESTNET;
         if (chainId == LINEA) return WETH_LINEA;
+        if (chainId == LINEA_SEPOLIA) return WETH_LINEA_SEPOLIA;
         if (chainId == SCROLL_SEPOLIA) return WETH_SCROLL_SEPOLIA;
         if (chainId == SCROLL) return WETH_SCROLL;
         if (chainId == UNICHAIN) return WETH_UNICHAIN;
