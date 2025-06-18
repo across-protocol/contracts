@@ -46,6 +46,43 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
+    // REMOVED FUNCTIONS: These functions have been removed and are now disallowed.
+    // Function selectors are preserved to prevent accidental reuse in future versions.
+    // All calls to these functions will revert.
+
+    /**
+     * @dev REMOVED: This function has been removed and is now disallowed.
+     * @notice Calling this function will revert. Use deposit() or depositV3() instead.
+     * @notice This function shares the same selector as the original "deposit" function that was removed.
+     * The collision was intentionally created to allow reusing the "deposit" name for a different function signature.
+     */
+    function depositDeprecated_5947912356(
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 maxCount
+    ) external payable;
+
+    /**
+     * @dev REMOVED: This function has been removed and is now disallowed.
+     * @notice Calling this function will revert. Use deposit() or depositV3() instead.
+     */
+    function depositFor(
+        address depositor,
+        address recipient,
+        address originToken,
+        uint256 amount,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        uint32 quoteTimestamp,
+        bytes memory message,
+        uint256 maxCount
+    ) external payable;
+
     function executeRelayerRefundLeaf(
         uint32 rootBundleId,
         SpokePoolInterface.RelayerRefundLeaf memory relayerRefundLeaf,
