@@ -5,10 +5,10 @@ import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 
 /**
- * @title DeployConstants
+ * @title Constants
  * @notice Contains constants used in deployment scripts, converted from consts.ts
  */
-contract DeployConstants {
+contract Constants {
     // Chain IDs
     uint256 constant MAINNET = 1;
     uint256 constant SEPOLIA = 11155111;

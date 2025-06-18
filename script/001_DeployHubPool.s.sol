@@ -8,7 +8,7 @@ import { HubPool } from "../contracts/HubPool.sol";
 import { LpTokenFactory } from "../contracts/LpTokenFactory.sol";
 import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
-import { DeployConstants } from "./DeployConstants.sol";
+import { Constants } from "./Constants.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
@@ -17,7 +17,7 @@ import { DeployConstants } from "./DeployConstants.sol";
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
 // 5. forge script script/DeployHubPool.s.sol:DeployHubPool --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
-contract DeployHubPool is Script, Test, DeployConstants {
+contract DeployHubPool is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
