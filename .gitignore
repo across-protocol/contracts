@@ -17,6 +17,10 @@ artifacts
 cache-zk
 artifacts-zk
 
+# Broadcast files
+/broadcast/*
+!/broadcast/*/run-latest.json
+
 # Upgradeability files
 .openzeppelin
 
