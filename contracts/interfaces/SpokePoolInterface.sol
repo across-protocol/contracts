@@ -53,6 +53,8 @@ interface SpokePoolInterface {
     /**
      * @dev REMOVED: This function has been removed and is now disallowed.
      * @notice Calling this function will revert. Use deposit() or depositV3() instead.
+     * @notice This function shares the same selector as the original "deposit" function that was removed.
+     * The collision was intentionally created to allow reusing the "deposit" name for a different function signature.
      */
     function depositDeprecated_5947912356(
         address recipient,
