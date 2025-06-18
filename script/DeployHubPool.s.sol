@@ -21,7 +21,6 @@ contract DeployHubPool is Script, Test, DeployConstants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-        address deployer = vm.addr(deployerPrivateKey);
 
         // Get the current chain ID
         uint256 chainId = block.chainid;
