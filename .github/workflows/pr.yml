@@ -120,7 +120,7 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test evm-hardhat
         shell: bash
-        run: yarn test-evm
+        run: yarn test-evm-hardhat
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts
@@ -208,4 +208,4 @@ jobs:
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
       - name: Test evm-foundry
-        run: forge test --match-path test/evm/foundry/local/**/*.t.sol
+        run: yarn test-evm-foundry

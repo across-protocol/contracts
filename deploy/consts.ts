@@ -45,6 +45,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
+    adapterStore: "", // to be deployed
     hubPoolStore: "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
     zkUsdcSharedBridge_232: "0xf553E6D903AA43420ED7e3bc2313bE9286A8F987",
@@ -272,3 +273,12 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
 export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
   Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
 );
+
+const createChainMap = <T>(selector: (network: any) => T) =>
+  new Map(Object.entries(PUBLIC_NETWORKS).map(([id, network]) => [Number(id), selector(network)]));
+
+/**
+ * Mapping chainId => oft endpoint id
+ * @link https://docs.layerzero.network/v2/deployments/deployed-contracts
+ */
+export const OFT_EIDs = createChainMap<number>((network) => network.oftEid);

@@ -93,7 +93,16 @@ contract PolygonZkEVM_SpokePool is SpokePool, IBridgeMessageReceiver {
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
-    ) SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer) {} // solhint-disable-line no-empty-blocks
+    )
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            // PolygonZkEVM_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0
+        )
+    {} // solhint-disable-line no-empty-blocks
 
     /**
      * @notice Construct the Polygon zkEVM SpokePool.
