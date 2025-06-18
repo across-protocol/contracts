@@ -95,6 +95,10 @@ pub fn _deposit(
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
+    if output_token == Pubkey::default() {
+        return err!(CommonError::InvalidOutputToken);
+    }
+
     if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
     }
