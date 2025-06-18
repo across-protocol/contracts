@@ -46,7 +46,8 @@
     "evm-contract-sizes": "sh scripts/evm-contract-sizes.sh",
     "generate-evm-artifacts": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
-    "pre-commit-hook": "sh scripts/preCommitHook.sh"
+    "pre-commit-hook": "sh scripts/preCommitHook.sh",
+    "extract-addresses": "sh script/extract_foundry_addresses.sh"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.69",
