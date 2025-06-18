@@ -1,6 +1,6 @@
 # Deployed Contract Addresses
 
-Generated on: 2025-06-11 15:12:18 UTC
+Generated on: 2025-06-18 14:21:47 UTC
 
 This file contains the latest deployed smart contract addresses from the broadcast folder.
 
@@ -16,11 +16,11 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ### DeployHubPool.s.sol
 
-- **LpTokenFactory**: `0xa78164e0a5fb436c44ceec77a2f841c8e9016c04`
+- **LpTokenFactory**: `0x01f4b025f4a12873bbed3e531dd5aae6b0b6445a`
 
-  - Transaction Hash: `0xa75d7aace7474949c32749a03c5187eaceea82c236f67252fd1f14895510759c`
-  - Block Number: `8527266`
+  - Transaction Hash: `0x68e3f7e15e4a2756c8c8573e6fc06f394a9956fd3d776fc42ffbea4835c01b04`
+  - Block Number: `8577380`
 
-- **HubPool**: `0xca965c9b7622f6c6caa01b352ec24feb6db967d7`
-  - Transaction Hash: `0x4466250cd0f3a6b638f6c1f5d3af7eda5defc7aa5fed51d6916dae1867435985`
-  - Block Number: `8527266`
+- **HubPool**: `0xfcf9bef0f97a3a94ad7e5f9e6c97a475da802016`
+  - Transaction Hash: `0x6d1dd8b36b5470c5513b0e3f373aaaa49ac232bf52c46411a223d0aec2a18aef`
+  - Block Number: `8577380`
