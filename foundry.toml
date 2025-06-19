@@ -1,4 +1,8 @@
 [profile.default]
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
 src = "contracts"
 out = "artifacts"
 test = "test/evm/foundry"
