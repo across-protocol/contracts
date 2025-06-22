@@ -47,7 +47,7 @@
     "generate-evm-artifacts": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
     "pre-commit-hook": "sh scripts/preCommitHook.sh",
-    "extract-addresses": "sh script/extract_foundry_addresses.sh"
+    "extract-addresses": "./script/extract_foundry_addresses.sh"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.69",
@@ -59,6 +59,7 @@
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@scroll-tech/contracts": "^0.1.0",
     "@solana-developers/helpers": "^2.4.0",
     "@solana-program/address-lookup-table": "^0.7.0",
@@ -147,5 +148,6 @@
   "resolutions": {
     "**/eccrypto/secp256k1": "3.8.1",
     "**/eth-crypto/secp256k1": "5.0.1"
-  }
+  },
+  "packageManager": "yarn@1.22.22"
 }
