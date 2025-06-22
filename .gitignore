@@ -20,6 +20,12 @@ artifacts-zk
 # Broadcast files
 /broadcast/*
 !/broadcast/*/run-latest.json
+!/broadcast/deployed-addresses.md
+!/broadcast/deployed-addresses.json
+!/broadcast/DeployedAddresses.sol
+
+# Foundry files
+out
 
 # Upgradeability files
 .openzeppelin
