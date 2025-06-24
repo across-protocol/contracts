@@ -45,9 +45,8 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
     error InvalidCall(uint256 index, Call[] calls);
-    error ReplacementCallFailed(bytes calldData);
+    error ReplacementCallFailed(bytes callData);
     error CalldataTooShort(uint256 callDataLength, uint256 offset);
-
 
     modifier onlySelf() {
         _requireSelf();
@@ -120,7 +119,22 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         }
     }
 
-    function makeCallWithBalance(address target, bytes memory callData, uint256 value, Replacement[] memory replacement) external onlySelf {
+    /**
+     * @notice Executes a call while replacing specified calldata offsets with current token/native balances.
+     * @dev Modifies calldata in-place using OR operations. Target calldata positions must be zeroed out.
+     * Cannot handle negative balances, making it incompatible with DEXs requiring negative input amounts.
+     * For native balance (token = address(0)), the entire balance is used as call value.
+     * @param target The contract address to call
+     * @param callData The calldata to execute, with zero values at replacement positions
+     * @param value The native token value to send (ignored if native balance replacement is used)
+     * @param replacement Array of Replacement structs specifying token addresses and byte offsets for balance injection
+     */
+    function makeCallWithBalance(
+        address target,
+        bytes memory callData,
+        uint256 value,
+        Replacement[] memory replacement
+    ) external onlySelf {
         for (uint256 i = 0; i < replacement.length; i++) {
             uint256 bal = 0;
             if (replacement[i].token != address(0)) {
