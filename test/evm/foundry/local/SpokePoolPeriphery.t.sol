@@ -531,13 +531,13 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectRevert();
         spokePoolPeriphery.depositNative{ value: 1 wei }(
             nonContractAddress, // spokePool - this is not a contract
-            depositor, // recipient
+            depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             1 wei, // inputAmount
             bytes32(0), // outputToken
             1 wei, // outputAmount
             destinationChainId,
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp), // quoteTimestamp
             uint32(block.timestamp) + fillDeadlineBuffer, // fillDeadline
             0, // exclusivityParameter
