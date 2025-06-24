@@ -8,8 +8,6 @@ import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 /**
  * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
- * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
- * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
 interface SpokePoolPeripheryInterface {
@@ -154,6 +152,7 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
@@ -217,6 +216,7 @@ interface SpokePoolPeripheryInterface {
 
     /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
+     * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
