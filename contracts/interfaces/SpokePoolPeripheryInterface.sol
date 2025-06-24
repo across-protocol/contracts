@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 
 /**
@@ -90,6 +89,8 @@ interface SpokePoolPeripheryInterface {
         bool enableProportionalAdjustment;
         // Address of the SpokePool to use for depositing tokens after swap.
         address spokePool;
+        // User nonce to prevent replay attacks.
+        uint256 nonce;
     }
 
     // Extended deposit data to be used specifically for signing off on periphery deposits.
@@ -102,15 +103,17 @@ interface SpokePoolPeripheryInterface {
         uint256 inputAmount;
         // Address of the SpokePool to use for depositing tokens.
         address spokePool;
+        // User nonce to prevent replay attacks.
+        uint256 nonce;
     }
 
     /**
-     * @notice Passthrough function to `depositV3()` on the SpokePool contract.
+     * @notice Passthrough function to `depositV3()` on the SpokePool contract for native token deposits.
      * @dev Protects the caller from losing their ETH (or other native token) by reverting if the SpokePool address
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
      * This contract should only be used for native token deposits, as this problem only exists for native tokens.
-     * @param recipient Address to receive funds at on destination chain.
+     * @param recipient Address to receive funds on destination chain.
      * @param inputToken Token to lock into this contract to initiate deposit.
      * @param inputAmount Amount of tokens to deposit.
      * @param outputAmount Amount of tokens to receive on destination chain.
@@ -125,7 +128,7 @@ interface SpokePoolPeripheryInterface {
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
      * @param fillDeadline Timestamp after which this deposit can no longer be filled.
      */
-    function deposit(
+    function depositNative(
         address spokePool,
         address recipient,
         address inputToken,
@@ -152,6 +155,13 @@ interface SpokePoolPeripheryInterface {
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
+     * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
+     * incredibly unlikely because this would require:
+     * 1. A token implementing both ERC-2612 and ERC-3009
+     * 2. A user using the same nonces for swapAndBridgeWithPermit and for swapAndBridgeWithAuthorization
+     * 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
      * @param signatureOwner The owner of the permit signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param deadline Deadline before which the permit signature is valid.
@@ -187,11 +197,12 @@ interface SpokePoolPeripheryInterface {
      * @notice Swaps an EIP-3009 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If swapToken does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @dev The nonce for the receiveWithAuthorization signature should match the nonce in the SwapAndDepositData.
+     * This nonce is managed by the ERC-3009 token contract.
      * @param signatureOwner The owner of the EIP3009 signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
      * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
@@ -200,7 +211,6 @@ interface SpokePoolPeripheryInterface {
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata swapAndDepositDataSignature
     ) external;
@@ -208,6 +218,13 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
+     * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
+     * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
+     * incredibly unlikely because this would require:
+     * 1. A token implementing both ERC-2612 and ERC-3009
+     * 2. A user using the same nonces for depositWithPermit and for depositWithAuthorization
+     * 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
      * @param signatureOwner The owner of the permit signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param deadline Deadline before which the permit signature is valid.
@@ -241,11 +258,12 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Deposits an EIP-3009 compliant Across input token into the Spoke Pool contract.
      * @dev If `acrossInputToken` does not implement `receiveWithAuthorization` to the specifications of EIP-3009, this call will revert.
+     * @dev The nonce for the receiveWithAuthorization signature should match the nonce in the DepositData.
+     * This nonce is managed by the ERC-3009 token contract.
      * @param signatureOwner The owner of the EIP3009 signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
      * @param depositData Specifies the Across deposit params to send.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param nonce Unique nonce used in the `receiveWithAuthorization` signature.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
      * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
@@ -254,8 +272,14 @@ interface SpokePoolPeripheryInterface {
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes32 nonce,
         bytes calldata receiveWithAuthSignature,
         bytes calldata depositDataSignature
     ) external;
+
+    /**
+     * @notice Returns the current permit nonce for a user.
+     * @param user The user whose nonce to return.
+     * @return The current permit nonce for the user.
+     */
+    function permitNonces(address user) external view returns (uint256);
 }
