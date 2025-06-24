@@ -165,7 +165,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     /****************************************
      *                ERRORS                *
      ****************************************/
-    error InvalidSignatureLength();
     error MinimumExpectedInputAmount();
     error InvalidMsgValue();
     error InvalidSpokePool();
