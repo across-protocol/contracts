@@ -113,7 +113,7 @@ interface SpokePoolPeripheryInterface {
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
      * This contract should only be used for native token deposits, as this problem only exists for native tokens.
-     * @param recipient Address to receive funds at on destination chain.
+     * @param recipient Address to receive funds on destination chain.
      * @param inputToken Token to lock into this contract to initiate deposit.
      * @param inputAmount Amount of tokens to deposit.
      * @param outputAmount Amount of tokens to receive on destination chain.
