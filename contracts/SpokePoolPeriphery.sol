@@ -36,8 +36,8 @@ contract SwapProxy is Lockable {
     // EIP 1271 bytes indicating an invalid signature.
     bytes4 private constant EIP1271_INVALID_SIGNATURE = 0xffffffff;
 
-    // Nonce for this contract to use for EIP1271 "signatures".
-    uint48 private eip1271Nonce;
+    // Mapping from (token, spender) to nonce for Permit2 operations
+    mapping(address => mapping(address => uint48)) private permit2Nonces;
 
     // Slot for checking whether this contract is expecting a callback from permit2. Used to confirm whether it should return a valid signature response.
     bool private expectingPermit2Callback;
@@ -92,7 +92,7 @@ contract SwapProxy is Lockable {
                         token: inputToken,
                         amount: uint160(inputAmount),
                         expiration: uint48(block.timestamp),
-                        nonce: eip1271Nonce++
+                        nonce: permit2Nonces[inputToken][exchange]++
                     }),
                     spender: exchange,
                     sigDeadline: block.timestamp
