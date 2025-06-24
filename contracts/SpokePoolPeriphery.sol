@@ -189,7 +189,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
     /**
      * @inheritdoc SpokePoolPeripheryInterface
      */
-    function deposit(
+    function depositNative(
         address spokePool,
         address recipient,
         address inputToken,

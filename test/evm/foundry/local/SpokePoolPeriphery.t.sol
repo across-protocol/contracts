@@ -478,7 +478,7 @@ contract SpokePoolPeripheryTest is Test {
             bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
-        spokePoolPeriphery.deposit{ value: mintAmount }(
+        spokePoolPeriphery.depositNative{ value: mintAmount }(
             address(ethereumSpokePool), // spokePool address
             depositor, // recipient
             address(mockWETH), // inputToken
@@ -499,7 +499,7 @@ contract SpokePoolPeripheryTest is Test {
         // Should revert when trying to call deposit without msg.value
         vm.startPrank(depositor);
         vm.expectRevert(SpokePoolPeriphery.InvalidMsgValue.selector);
-        spokePoolPeriphery.deposit(
+        spokePoolPeriphery.depositNative(
             address(ethereumSpokePool), // spokePool address
             depositor, // recipient
             address(mockWETH), // inputToken
