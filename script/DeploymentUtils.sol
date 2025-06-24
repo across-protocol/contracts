@@ -8,7 +8,7 @@ import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/s
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { Constants } from "./Constants.sol";
-import { DeployedAddresses } from "../broadcast/DeployedAddresses.sol";
+import { DeployedAddresses } from "./DeployedAddresses.sol";
 
 /**
  * @title DeploymentUtils
@@ -188,25 +188,5 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
             chainId == INK_SEPOLIA ||
             chainId == LISK_SEPOLIA ||
             chainId == MODE_SEPOLIA;
-    }
-
-    /**
-     * @notice Verify contract on Etherscan (placeholder)
-     * @param contractAddress Address of the contract to verify
-     * @param constructorArgs Constructor arguments
-     * @param contractName Name of the contract
-     */
-    function verifyContract(
-        address contractAddress,
-        bytes memory constructorArgs,
-        string memory contractName
-    ) internal {
-        // This is a placeholder for contract verification
-        // In a real implementation, you would call the verification API
-        console.log("Verifying", contractName, "@", contractAddress);
-        console.log("Constructor args:", vm.toString(constructorArgs));
-
-        // TODO: Implement actual verification logic
-        // This would typically involve calling an external verification service
     }
 }

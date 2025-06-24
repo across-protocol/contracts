@@ -26,7 +26,7 @@ contract DeployEthereumSpokePool is Script, Test, Constants, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWETH(info.spokeChainId);
+        WETH9Interface weth = getWrappedNativeToken(info.spokeChainId);
 
         vm.startBroadcast(deployerPrivateKey);
 
