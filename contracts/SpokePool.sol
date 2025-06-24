@@ -342,6 +342,49 @@ abstract contract SpokePool is
         emit EmergencyDeletedRootBundle(rootBundleId);
     }
 
+    /**************************************
+     *      REMOVED DEPOSITOR FUNCTIONS   *
+     **************************************/
+
+    /**
+     * @dev REMOVED: This function has been removed and is now disallowed to prevent selector reuse.
+     * @notice This function was removed from the protocol. Calling it will revert.
+     * Function selector is preserved to prevent accidental reuse in future versions.
+     * @notice This function shares the same selector as the original "deposit" function that was removed.
+     * The collision was intentionally created to allow reusing the "deposit" name for a different function signature.
+     */
+    function depositDeprecated_5947912356(
+        address,
+        address,
+        uint256,
+        uint256,
+        int64,
+        uint32,
+        bytes memory,
+        uint256
+    ) public payable {
+        revert RemovedFunction();
+    }
+
+    /**
+     * @dev REMOVED: This function has been removed and is now disallowed to prevent selector reuse.
+     * @notice This function was removed from the protocol. Calling it will revert.
+     * Function selector is preserved to prevent accidental reuse in future versions.
+     */
+    function depositFor(
+        address,
+        address,
+        address,
+        uint256,
+        uint256,
+        int64,
+        uint32,
+        bytes memory,
+        uint256
+    ) public payable {
+        revert RemovedFunction();
+    }
+
     /********************************************
      *            DEPOSITOR FUNCTIONS           *
      ********************************************/
