@@ -1,6 +1,6 @@
 # Deployed Contract Addresses
 
-Generated on: 2025-06-22T17:37:34.537Z
+Generated on: 2025-06-24T15:04:31.365Z
 
 This file contains the latest deployed smart contract addresses from the broadcast folder.
 
