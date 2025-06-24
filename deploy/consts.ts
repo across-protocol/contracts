@@ -47,6 +47,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -177,6 +178,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
@@ -185,6 +187,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   [CHAIN_IDs.POLYGON_AMOY]: {
     fxChild: "0xE5930336866d0388f0f745A2d9207C7781047C0f",
@@ -195,6 +198,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
     uniswapV3SwapRouter02: "0x99c56385daBCE3E81d8499d0b8d0257aBC07E8A3",
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
+    lifiDiamond: "0x341e94069f53234fE6DabeF707aD424830525715",
   },
   [CHAIN_IDs.OPTIMISM]: {
     cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",
@@ -202,6 +206,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
@@ -214,17 +219,17 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
     uniswapV3SwapRouter02: "0x2626664c2603336E57B271c5C0b26F421741e481",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   [CHAIN_IDs.BASE_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
   },
-  232: {
-    zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
-  },
   [CHAIN_IDs.LENS]: {
+    zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
     uniswapV3SwapRouter02: "0x6ddD32cd941041D8b61df213B9f515A7D288Dc13",
+    lifiDiamond: "0xF3B20515d9B193531c48E47c18aF16d1e5d28f9a",
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
@@ -233,6 +238,10 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     lineaUsdcBridge: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
+    lifiDiamond: "0xDE1E598b81620773454588B85D6b5D4eEC32573e",
+  },
+  [CHAIN_IDs.SONEIUM]: {
+    lifiDiamond: "0x864b314D4C5a0399368609581d3E8933a63b9232",
   },
   [CHAIN_IDs.SCROLL_SEPOLIA]: {
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
@@ -243,6 +252,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   1442: {
     // Custom WETH for testing because there is no "official" WETH
@@ -252,6 +262,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.UNICHAIN]: {
     cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
     cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+    lifiDiamond: "0x864b314D4C5a0399368609581d3E8933a63b9232",
   },
   [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
     cctpTokenMessenger: "0x8ed94B8dAd2Dc5453862ea5e316A8e71AAed9782",
@@ -259,12 +270,23 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.WORLD_CHAIN]: {
     uniswapV3SwapRouter02: "0x091AD9e2e6e5eD44c1c66dB50e49A601F9f36cF6",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
   [CHAIN_IDs.ZORA]: {
     uniswapV3SwapRouter02: "0x7De04c96BE5159c3b5CeffC82aa176dc81281557",
   },
   [CHAIN_IDs.BLAST]: {
     uniswapV3SwapRouter02: "0x549FEB8c9bd4c12Ad2AB27022dA12492aC452B66",
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+  },
+  [CHAIN_IDs.MODE]: {
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+  },
+  [CHAIN_IDs.LISK]: {
+    lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+  },
+  [CHAIN_IDs.INK]: {
+    lifiDiamond: "0x864b314D4C5a0399368609581d3E8933a63b9232",
   },
 };
 

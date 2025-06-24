@@ -163,7 +163,7 @@ const config: HardhatUserConfig = {
     },
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
-      url: getNodeUrl("polygon-mainnet", true, CHAIN_IDs.POLYGON),
+      url: `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -329,7 +329,7 @@ const config: HardhatUserConfig = {
     },
     soneium: {
       chainId: CHAIN_IDs.SONEIUM,
-      url: "https://soneium.blockscout.com",
+      url: "https://rpc.soneium.org",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
