@@ -193,13 +193,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
      */
     function depositNative(
         address spokePool,
-        address recipient,
+        bytes32 recipient,
         address inputToken,
         uint256 inputAmount,
         bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
@@ -211,13 +211,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         V3SpokePoolInterface(spokePool).deposit{ value: msg.value }(
             msg.sender.toBytes32(),
-            recipient.toBytes32(),
+            recipient,
             inputToken.toBytes32(),
             outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,
-            exclusiveRelayer.toBytes32(),
+            exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
             exclusivityParameter,

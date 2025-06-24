@@ -480,13 +480,13 @@ contract SpokePoolPeripheryTest is Test {
         );
         spokePoolPeriphery.depositNative{ value: mintAmount }(
             address(ethereumSpokePool), // spokePool address
-            depositor, // recipient
+            depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount,
             bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0,
@@ -501,13 +501,13 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectRevert(SpokePoolPeriphery.InvalidMsgValue.selector);
         spokePoolPeriphery.depositNative(
             address(ethereumSpokePool), // spokePool address
-            depositor, // recipient
+            depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount,
             bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0,
