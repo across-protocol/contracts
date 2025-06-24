@@ -241,174 +241,27 @@ function sanitizeContractName(name: string): string {
 }
 
 function generateFoundryScript(broadcastFiles: BroadcastFile[], outputFile: string): void {
-  const allContracts: AllContracts = {};
-
-  // Process each broadcast file
-  for (const broadcastFile of broadcastFiles) {
-    const contracts = extractContractAddresses(broadcastFile);
-
-    if (contracts.length > 0) {
-      const chainId = broadcastFile.chainId;
-      const chainName = getChainName(chainId);
-      // For deployments.json, use contract name as scriptName for each contract
-      if (broadcastFile.isDeploymentsJson) {
-        for (const contract of contracts) {
-          const scriptName = contract.contractName;
-          if (!allContracts[chainId]) {
-            allContracts[chainId] = {
-              chainName: chainName,
-              scripts: {},
-            };
-          }
-          allContracts[chainId].scripts[scriptName] = [contract];
-          console.log(`Added deployments.json contract ${contract.contractName} on ${chainName}`);
-        }
-      } else {
-        const scriptName = broadcastFile.scriptName;
-        if (!allContracts[chainId]) {
-          allContracts[chainId] = {
-            chainName: chainName,
-            scripts: {},
-          };
-        }
-        allContracts[chainId].scripts[scriptName] = contracts;
-        console.log(`Added ${contracts.length} contracts from ${scriptName} on ${chainName}`);
-      }
-    }
-  }
-
   // Generate Solidity contract content
   const content: string[] = [];
   content.push("// SPDX-License-Identifier: MIT");
   content.push("pragma solidity ^0.8.19;");
+  content.push("");
+  content.push('import "forge-std/StdJson.sol";');
+  content.push('import "forge-std/Test.sol";');
   content.push("");
   content.push("/**");
   content.push(" * @title DeployedAddresses");
   content.push(" * @notice This contract contains all deployed contract addresses from Foundry broadcast files");
   content.push(` * @dev Generated on: ${new Date().toISOString()}`);
   content.push(" * @dev This file is auto-generated. Do not edit manually.");
+  content.push(" * @dev Uses Foundry's parseJson functionality for scripts/tests only (not for on-chain use)");
   content.push(" */");
-  content.push("contract DeployedAddresses {");
+  content.push("contract DeployedAddresses is Test {");
+  content.push("    using stdJson for string;");
   content.push("");
-
-  // Generate mapping for dynamic lookup
-  content.push("    // Mapping for dynamic address lookup");
-  content.push("    // chainId => contractName => address");
-  content.push("    mapping(uint256 => mapping(string => address)) private _addresses;");
+  content.push("    // Path to the JSON file containing deployed addresses");
+  content.push('    string private constant JSON_PATH = "../broadcast/deployed-addresses.json";');
   content.push("");
-
-  // Sort by chain ID for consistent output
-  const sortedChainIds = Object.keys(allContracts)
-    .map(Number)
-    .sort((a, b) => a - b);
-
-  for (const chainId of sortedChainIds) {
-    const chainInfo = allContracts[chainId];
-    const chainNameSafe = chainInfo.chainName.replace(/[ -]/g, "_").toUpperCase();
-
-    content.push(`    // ${chainInfo.chainName} (Chain ID: ${chainId})`);
-    content.push("");
-
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      const scriptNameSafe = scriptName
-        .replace(/\.s\.sol$/, "")
-        .replace(/\.sol$/, "")
-        .toUpperCase();
-      content.push(`    // ${scriptName}`);
-
-      for (const contract of contracts) {
-        const contractNameSafe = sanitizeContractName(contract.contractName);
-        let address = contract.contractAddress;
-        // Convert to checksum address
-        try {
-          address = toChecksumAddress(address);
-        } catch (error) {
-          // Keep original address if conversion fails
-        }
-
-        // Skip non-Ethereum addresses (like Solana addresses) for Solidity contracts
-        if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-          console.log(`Skipping non-Ethereum address for Solidity: ${contract.contractName} = ${address}`);
-          continue;
-        }
-
-        // Create a descriptive constant name - use immutable instead of constant
-        const constantName = `${chainNameSafe}_${scriptNameSafe}_${contractNameSafe}`;
-        content.push(`    address public immutable ${constantName};`);
-      }
-
-      content.push("");
-    }
-
-    content.push("");
-  }
-
-  // Generate constructor to populate the mapping and immutable variables
-  content.push("    constructor() {");
-  content.push("        // Initialize the address mapping");
-
-  for (const chainId of sortedChainIds) {
-    const chainInfo = allContracts[chainId];
-    content.push(`        // ${chainInfo.chainName} (Chain ID: ${chainId})`);
-
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      for (const contract of contracts) {
-        const contractName = contract.contractName;
-        let address = contract.contractAddress;
-        try {
-          address = toChecksumAddress(address);
-        } catch (error) {
-          // Keep original address if conversion fails
-        }
-
-        // Skip non-Ethereum addresses for Solidity contracts
-        if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-          continue;
-        }
-
-        content.push(`        _addresses[${chainId}]["${contractName}"] = ${address};`);
-      }
-    }
-
-    content.push("");
-  }
-
-  // Initialize immutable variables
-  content.push("        // Initialize immutable variables");
-
-  for (const chainId of sortedChainIds) {
-    const chainInfo = allContracts[chainId];
-    const chainNameSafe = chainInfo.chainName.replace(/[ -]/g, "_").toUpperCase();
-
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      const scriptNameSafe = scriptName
-        .replace(/\.s\.sol$/, "")
-        .replace(/\.sol$/, "")
-        .toUpperCase();
-
-      for (const contract of contracts) {
-        const contractNameSafe = sanitizeContractName(contract.contractName);
-        let address = contract.contractAddress;
-        try {
-          address = toChecksumAddress(address);
-        } catch (error) {
-          // Keep original address if conversion fails
-        }
-
-        // Skip non-Ethereum addresses for Solidity contracts
-        if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-          continue;
-        }
-
-        const constantName = `${chainNameSafe}_${scriptNameSafe}_${contractNameSafe}`;
-        content.push(`        ${constantName} = ${address};`);
-      }
-    }
-  }
-
-  content.push("    }");
-  content.push("");
-
   content.push("    /**");
   content.push("     * @notice Get contract address by chain ID and contract name");
   content.push("     * @param chainId The chain ID");
@@ -416,10 +269,17 @@ function generateFoundryScript(broadcastFiles: BroadcastFile[], outputFile: stri
   content.push("     * @return The contract address");
   content.push("     */");
   content.push("    function getAddress(uint256 chainId, string memory contractName) public view returns (address) {");
-  content.push("        return _addresses[chainId][contractName];");
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push("        string memory path = string.concat(");
+  content.push("            '.chains[\"', ");
+  content.push("            vm.toString(chainId), ");
+  content.push("            '\"].contracts[\"', ");
+  content.push("            contractName, ");
+  content.push("            '\"].address'");
+  content.push("        );");
+  content.push("        return jsonData.readAddress(path);");
   content.push("    }");
   content.push("");
-
   content.push("    /**");
   content.push("     * @notice Check if a contract exists for the given chain ID and name");
   content.push("     * @param chainId The chain ID");
@@ -427,7 +287,111 @@ function generateFoundryScript(broadcastFiles: BroadcastFile[], outputFile: stri
   content.push("     * @return True if the contract exists, false otherwise");
   content.push("     */");
   content.push("    function hasAddress(uint256 chainId, string memory contractName) public view returns (bool) {");
-  content.push("        return _addresses[chainId][contractName] != address(0);");
+  content.push("        return getAddress(chainId, contractName) != address(0);");
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get transaction hash for a contract");
+  content.push("     * @param chainId The chain ID");
+  content.push("     * @param contractName The contract name");
+  content.push("     * @return The transaction hash");
+  content.push("     */");
+  content.push(
+    "    function getTransactionHash(uint256 chainId, string memory contractName) public view returns (string memory) {"
+  );
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push("        string memory path = string.concat(");
+  content.push("            '.chains[\"', ");
+  content.push("            vm.toString(chainId), ");
+  content.push("            '\"].contracts[\"', ");
+  content.push("            contractName, ");
+  content.push("            '\"].transaction_hash'");
+  content.push("        );");
+  content.push("        return jsonData.readString(path);");
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get block number for a contract deployment");
+  content.push("     * @param chainId The chain ID");
+  content.push("     * @param contractName The contract name");
+  content.push("     * @return The block number");
+  content.push("     */");
+  content.push(
+    "    function getBlockNumber(uint256 chainId, string memory contractName) public view returns (uint256) {"
+  );
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push("        string memory path = string.concat(");
+  content.push("            '.chains[\"', ");
+  content.push("            vm.toString(chainId), ");
+  content.push("            '\"].contracts[\"', ");
+  content.push("            contractName, ");
+  content.push("            '\"].block_number'");
+  content.push("        );");
+  content.push("        return jsonData.readUint(path);");
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get chain name for a given chain ID");
+  content.push("     * @param chainId The chain ID");
+  content.push("     * @return The chain name");
+  content.push("     */");
+  content.push("    function getChainName(uint256 chainId) public view returns (string memory) {");
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push("        string memory path = string.concat('.chains[\"', vm.toString(chainId), '\"].chain_name');");
+  content.push("        return jsonData.readString(path);");
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get all contract names for a given chain ID");
+  content.push("     * @param chainId The chain ID");
+  content.push("     * @return Array of contract names");
+  content.push("     */");
+  content.push("    function getContractNames(uint256 chainId) public view returns (string[] memory) {");
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push(
+    "        string memory path = string.concat('.chains[\"', vm.toString(chainId), '\"].contracts | keys');"
+  );
+  content.push("        return jsonData.readStringArray(path);");
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get all chain IDs");
+  content.push("     * @return Array of chain IDs");
+  content.push("     */");
+  content.push("    function getChainIds() public view returns (uint256[] memory) {");
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push('        string[] memory chainIdStrings = jsonData.readStringArray(".chains | keys");');
+  content.push("        uint256[] memory chainIds = new uint256[](chainIdStrings.length);");
+  content.push("        for (uint256 i = 0; i < chainIdStrings.length; i++) {");
+  content.push("            chainIds[i] = vm.parseUint(chainIdStrings[i]);");
+  content.push("        }");
+  content.push("        return chainIds;");
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get the generation timestamp of the JSON file");
+  content.push("     * @return The generation timestamp");
+  content.push("     */");
+  content.push("    function getGeneratedAt() public view returns (string memory) {");
+  content.push("        string memory jsonData = vm.readFile(JSON_PATH);");
+  content.push('        return jsonData.readString(".generated_at");');
+  content.push("    }");
+  content.push("");
+  content.push("    /**");
+  content.push("     * @notice Get contract info for a specific contract");
+  content.push("     * @param chainId The chain ID");
+  content.push("     * @param contractName The contract name");
+  content.push("     * @return addr The contract address");
+  content.push("     * @return txHash The transaction hash");
+  content.push("     * @return blockNum The block number");
+  content.push("     */");
+  content.push("    function getContractInfo(");
+  content.push("        uint256 chainId,");
+  content.push("        string memory contractName");
+  content.push("    ) public view returns (address addr, string memory txHash, uint256 blockNum) {");
+  content.push("        addr = getAddress(chainId, contractName);");
+  content.push("        txHash = getTransactionHash(chainId, contractName);");
+  content.push("        blockNum = getBlockNumber(chainId, contractName);");
   content.push("    }");
   content.push("}");
 
@@ -587,8 +551,8 @@ function main(): void {
   const outputFile = path.join(broadcastDir, "deployed-addresses.json");
   generateAddressesFile(allFiles, outputFile);
 
-  // Generate Foundry script
-  const scriptOutputFile = path.join(broadcastDir, "DeployedAddresses.sol");
+  // Generate Foundry script in script directory
+  const scriptOutputFile = path.join(scriptDir, "DeployedAddresses.sol");
   generateFoundryScript(allFiles, scriptOutputFile);
 
   console.log("\nDone!");
