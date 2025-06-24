@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 
 import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
-import { SpokePoolPeriphery } from "../../../../contracts/SpokePoolPeriphery.sol";
+import { SpokePoolPeriphery, SwapProxy } from "../../../../contracts/SpokePoolPeriphery.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { SpokePoolPeripheryInterface } from "../../../../contracts/interfaces/SpokePoolPeripheryInterface.sol";
@@ -480,13 +480,13 @@ contract SpokePoolPeripheryTest is Test {
         );
         spokePoolPeriphery.depositNative{ value: mintAmount }(
             address(ethereumSpokePool), // spokePool address
-            depositor, // recipient
+            depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount,
             bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0,
@@ -502,13 +502,13 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
         spokePoolPeriphery.depositNative{ value: 1 }( // Send 1 wei but expecting mintAmount
             address(ethereumSpokePool), // spokePool address
-            depositor, // recipient
+            depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount, // This doesn't match msg.value of 1
             bytes32(0), // outputToken
             mintAmount,
             destinationChainId,
-            address(0), // exclusiveRelayer
+            bytes32(0), // exclusiveRelayer
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0,
@@ -1296,6 +1296,34 @@ contract SpokePoolPeripheryTest is Test {
             permit,
             signature
         );
+    }
+
+    /**
+     * Security tests
+     */
+    function testSwapAndBridgeBlocksPermit2AsExchange() public {
+        // This test verifies that the fix prevents using permit2 as the exchange address
+        // which would allow DoS attacks via invalidateNonces
+        vm.startPrank(depositor);
+
+        // Prepare the swap data first (this will call permitNonces)
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            Exchange(address(permit2)), // Using permit2 as exchange should fail
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true
+        );
+
+        // Attempt to use permit2 as the exchange - this should fail with InvalidExchange
+        vm.expectRevert(SwapProxy.InvalidExchange.selector);
+        spokePoolPeriphery.swapAndBridge(swapData);
+        vm.stopPrank();
     }
 
     /**

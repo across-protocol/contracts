@@ -45,6 +45,7 @@ contract SwapProxy is ReentrancyGuard {
     // Errors
     error SwapFailed();
     error UnsupportedTransferType();
+    error InvalidExchange();
 
     /**
      * @notice Constructs a new SwapProxy.
@@ -72,6 +73,9 @@ contract SwapProxy is ReentrancyGuard {
         SpokePoolPeripheryInterface.TransferType transferType,
         bytes calldata routerCalldata
     ) external nonReentrant returns (uint256 outputAmount) {
+        // Prevent nonce invalidation attack by disallowing exchange to be the permit2 address
+        if (exchange == address(permit2)) revert InvalidExchange();
+
         // We'll return the final balance of output tokens
 
         // The exchange will either receive funds from this contract via:
@@ -133,8 +137,6 @@ contract SwapProxy is ReentrancyGuard {
 /**
  * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
- * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
- * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
 contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, MultiCaller, EIP712 {
@@ -189,13 +191,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      */
     function depositNative(
         address spokePool,
-        address recipient,
+        bytes32 recipient,
         address inputToken,
         uint256 inputAmount,
         bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
@@ -204,13 +206,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         V3SpokePoolInterface(spokePool).deposit{ value: msg.value }(
             msg.sender.toBytes32(),
-            recipient.toBytes32(),
+            recipient,
             inputToken.toBytes32(),
             outputToken,
             inputAmount,
             outputAmount,
             destinationChainId,
-            exclusiveRelayer.toBytes32(),
+            exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
             exclusivityParameter,
@@ -220,6 +222,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
@@ -243,6 +250,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithPermit(
@@ -279,6 +291,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithPermit2(
@@ -312,6 +329,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithAuthorization(
@@ -324,7 +346,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     ) external override nonReentrant {
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
-        // While any contract can vacuously implement `transferWithAuthorization` (or just have a fallback),
+        // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
         IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(

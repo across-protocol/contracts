@@ -8,8 +8,6 @@ import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 /**
  * @title SpokePoolPeriphery
  * @notice Contract for performing more complex interactions with an Across spoke pool deployment.
- * @dev Variables which may be immutable are not marked as immutable, nor defined in the constructor, so that this
- * contract may be deployed deterministically at the same address across different networks.
  * @custom:security-contact bugs@across.to
  */
 interface SpokePoolPeripheryInterface {
@@ -113,7 +111,7 @@ interface SpokePoolPeripheryInterface {
      * they intended to call does not exist on this chain. Because this contract can be deployed at the same address
      * everywhere callers should be protected even if the transaction is submitted to an unintended network.
      * This contract should only be used for native token deposits, as this problem only exists for native tokens.
-     * @param recipient Address to receive funds on destination chain.
+     * @param recipient Address (as bytes32) to receive funds on destination chain.
      * @param inputToken Token to lock into this contract to initiate deposit.
      * @param inputAmount Amount of tokens to deposit.
      * @param outputAmount Amount of tokens to receive on destination chain.
@@ -122,7 +120,7 @@ interface SpokePoolPeripheryInterface {
      * to LP pool on HubPool.
      * @param message Arbitrary data that can be used to pass additional information to the recipient along with the tokens.
      * Note: this is intended to be used to pass along instructions for how a contract should use or allocate the tokens.
-     * @param exclusiveRelayer Address of the relayer who has exclusive rights to fill this deposit. Can be set to
+     * @param exclusiveRelayer Address (as bytes32) of the relayer who has exclusive rights to fill this deposit. Can be set to
      * 0x0 if no period is desired. If so, then must set exclusivityParameter to 0.
      * @param exclusivityParameter Timestamp or offset, after which any relayer can fill this deposit. Must set
      * to 0 if exclusiveRelayer is set to 0x0, and vice versa.
@@ -130,13 +128,13 @@ interface SpokePoolPeripheryInterface {
      */
     function depositNative(
         address spokePool,
-        address recipient,
+        bytes32 recipient,
         address inputToken,
         uint256 inputAmount,
         bytes32 outputToken,
         uint256 outputAmount,
         uint256 destinationChainId,
-        address exclusiveRelayer,
+        bytes32 exclusiveRelayer,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
@@ -154,6 +152,7 @@ interface SpokePoolPeripheryInterface {
     /**
      * @notice Swaps an EIP-2612 token on this chain via specified router before submitting Across deposit atomically.
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
+     * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
@@ -217,6 +216,7 @@ interface SpokePoolPeripheryInterface {
 
     /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
+     * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
      * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
