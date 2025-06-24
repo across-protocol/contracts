@@ -1269,6 +1269,152 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     /**
+     * Test zero-address fee recipient convention
+     */
+    function testZeroAddressFeeRecipientUsesMessageSender() public {
+        // Test with permit-based swap where fee recipient is zero address
+        // A relayer (different EOA) submits the transaction, so they should receive the fee
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        // Get initial balances of both depositor and relayer
+        uint256 initialDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 initialRelayerBalance = mockERC20.balanceOf(relayer);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            address(0), // Zero address fee recipient
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the swap and deposit data signature
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        vm.startPrank(relayer);
+        spokePoolPeriphery.swapAndBridgeWithPermit(
+            depositor,
+            swapAndDepositData,
+            block.timestamp,
+            signature,
+            swapAndDepositDataSignature
+        );
+        vm.stopPrank();
+
+        // Check that the depositor paid the full amount (mintAmount + submissionFeeAmount) for the swap
+        uint256 finalDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 depositorDecrease = initialDepositorBalance - finalDepositorBalance;
+        assertEq(
+            depositorDecrease,
+            mintAmountWithSubmissionFee,
+            "Depositor should pay full amount including submission fee"
+        );
+
+        // Check that the relayer (msg.sender) received the submission fee since recipient was zero address
+        uint256 finalRelayerBalance = mockERC20.balanceOf(relayer);
+        uint256 relayerIncrease = finalRelayerBalance - initialRelayerBalance;
+        assertEq(
+            relayerIncrease,
+            submissionFeeAmount,
+            "Relayer should receive submission fee when recipient is zero address"
+        );
+    }
+
+    function testZeroAddressFeeRecipientWithDeposit() public {
+        // Test with regular deposit where fee recipient is zero address
+        // A relayer (different EOA) submits the transaction, so they should receive the fee
+        uint256 initialDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 initialRelayerBalance = mockERC20.balanceOf(relayer);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            address(0), // Zero address fee recipient
+            depositor
+        );
+
+        bytes32 nonce = 0;
+
+        // Get the permit signature
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.PERMIT_TYPEHASH_EXTERNAL(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                nonce,
+                block.timestamp
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        // Get the deposit data signature
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        vm.startPrank(relayer);
+        spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
+        vm.stopPrank();
+
+        // Check that the depositor paid the full amount (mintAmount + submissionFeeAmount) for the deposit
+        uint256 finalDepositorBalance = mockERC20.balanceOf(depositor);
+        uint256 depositorDecrease = initialDepositorBalance - finalDepositorBalance;
+        assertEq(
+            depositorDecrease,
+            mintAmountWithSubmissionFee,
+            "Depositor should pay full amount including submission fee"
+        );
+
+        // Check that the relayer (transaction submitter) received the submission fee since recipient was zero address
+        uint256 finalRelayerBalance = mockERC20.balanceOf(relayer);
+        uint256 relayerIncrease = finalRelayerBalance - initialRelayerBalance;
+        assertEq(
+            relayerIncrease,
+            submissionFeeAmount,
+            "Relayer should receive submission fee when recipient is zero address"
+        );
+    }
+
+    /**
      * Helper functions
      */
     function _defaultDepositData(

@@ -683,7 +683,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
         uint256 amount
     ) private {
         if (amount > 0) {
-            IERC20(feeToken).safeTransfer(recipient, amount);
+            // Use msg.sender as recipient if recipient is zero address, otherwise use the specified recipient
+            address feeRecipient = recipient == address(0) ? msg.sender : recipient;
+            IERC20(feeToken).safeTransfer(feeRecipient, amount);
         }
     }
 
