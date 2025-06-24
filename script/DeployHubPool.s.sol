@@ -26,7 +26,7 @@ contract DeployHubPool is Script, Test, Constants {
         uint256 chainId = block.chainid;
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWETH(chainId);
+        WETH9Interface weth = getWrappedNativeToken(chainId);
         FinderInterface finder = FinderInterface(getL1Addresses(chainId).finder);
 
         vm.startBroadcast(deployerPrivateKey);
