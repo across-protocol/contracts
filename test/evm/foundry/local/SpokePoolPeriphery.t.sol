@@ -529,7 +529,7 @@ contract SpokePoolPeripheryTest is Test {
 
         // The call should revert when the spokePool is not a contract
         vm.expectRevert();
-        spokePoolPeriphery.deposit{ value: 1 wei }(
+        spokePoolPeriphery.depositNative{ value: 1 wei }(
             nonContractAddress, // spokePool - this is not a contract
             depositor, // recipient
             address(mockWETH), // inputToken
