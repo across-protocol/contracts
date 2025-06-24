@@ -1,12 +1,6 @@
 import { BorshEventCoder, Idl, utils } from "@coral-xyz/anchor";
-import web3, {
-  Address,
-  Commitment,
-  GetSignaturesForAddressApi,
-  GetTransactionApi,
-  RpcTransport,
-  Signature,
-} from "@solana/kit";
+import web3, { Address, Commitment, GetSignaturesForAddressApi, GetTransactionApi, Signature } from "@solana/kit";
+import { RpcClient } from "./types";
 
 type GetTransactionReturnType = ReturnType<GetTransactionApi["getTransaction"]>;
 
@@ -18,7 +12,7 @@ type GetSignaturesForAddressTransaction = ReturnType<GetSignaturesForAddressApi[
  * Reads all events for a specific program.
  */
 export async function readProgramEvents(
-  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
+  rpc: RpcClient,
   program: Address,
   anchorIdl: Idl,
   finality: Commitment = "confirmed",
@@ -45,14 +39,14 @@ export async function readProgramEvents(
 }
 
 async function searchSignaturesUntilLimit(
-  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
+  client: RpcClient,
   program: Address,
   options: GetSignaturesForAddressConfig = { limit: 1000 }
 ): Promise<GetSignaturesForAddressTransaction[]> {
   const allSignatures: GetSignaturesForAddressTransaction[] = [];
   // Fetch all signatures in sequential batches
   while (true) {
-    const signatures = await rpc.getSignaturesForAddress(program, options).send();
+    const signatures = await client.rpc.getSignaturesForAddress(program, options).send();
     allSignatures.push(...signatures);
 
     // Update options for the next batch. Set before to the last fetched signature.
@@ -69,13 +63,15 @@ async function searchSignaturesUntilLimit(
  * Reads events from a transaction.
  */
 export async function readEvents(
-  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
+  client: RpcClient,
   txSignature: Signature,
   programId: Address,
   programIdl: Idl,
   commitment: Commitment = "confirmed"
 ) {
-  const txResult = await rpc.getTransaction(txSignature, { commitment, maxSupportedTransactionVersion: 0 }).send();
+  const txResult = await client.rpc
+    .getTransaction(txSignature, { commitment, maxSupportedTransactionVersion: 0 })
+    .send();
 
   if (txResult === null) return [];
 
@@ -132,16 +128,16 @@ async function processEventFromTx(
  * For a given fillStatusPDa & associated spokePool ProgramID, return the fill event.
  */
 export async function readFillEventFromFillStatusPda(
-  rpc: web3.Rpc<web3.SolanaRpcApiFromTransport<RpcTransport>>,
+  client: RpcClient,
   fillStatusPda: Address,
   programId: Address,
   programIdl: Idl
 ): Promise<{ event: any; slot: number }> {
-  const signatures = await searchSignaturesUntilLimit(rpc, fillStatusPda);
+  const signatures = await searchSignaturesUntilLimit(client, fillStatusPda);
   if (signatures.length === 0) return { event: null, slot: 0 };
 
   // The first signature will always be PDA creation, and therefore CPI event carrying signature. Any older signatures
   // will therefore be either spam or PDA closure signatures and can be ignored when looking for the fill event.
-  const events = await readEvents(rpc, signatures[signatures.length - 1].signature, programId, programIdl);
+  const events = await readEvents(client, signatures[signatures.length - 1].signature, programId, programIdl);
   return { event: events[0], slot: Number(signatures[signatures.length - 1].slot) };
 }

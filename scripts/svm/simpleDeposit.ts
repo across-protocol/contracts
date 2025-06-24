@@ -9,10 +9,16 @@ import {
   getAssociatedTokenAddressSync,
   getMint,
 } from "@solana/spl-token";
-import { PublicKey, Transaction, sendAndConfirmTransaction, TransactionInstruction } from "@solana/web3.js";
+import {
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionInstruction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram } from "../../src/svm/web3-v1";
+import { getDepositPda, getDepositSeedHash, getSpokePoolProgram } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -54,21 +60,10 @@ async function deposit(): Promise<void> {
     programId
   );
 
-  // Define the route account PDA
-  const [routePda] = PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("route"),
-      inputToken.toBytes(),
-      seed.toArrayLike(Buffer, "le", 8),
-      destinationChainId.toArrayLike(Buffer, "le", 8),
-    ],
-    programId
-  );
-
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  // Find ATA for the input token to be stored by state (vault). This was created when the route was enabled.
+  // Find ATA for the input token to be stored by state (vault). This should have been created before the deposit is attempted.
   const vault = getAssociatedTokenAddressSync(
     inputToken,
     statePda,
@@ -77,7 +72,7 @@ async function deposit(): Promise<void> {
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  console.log("Depositing V3...");
+  console.log("Depositing...");
   console.table([
     { property: "seed", value: seed.toString() },
     { property: "recipient", value: recipient.toString() },
@@ -94,7 +89,6 @@ async function deposit(): Promise<void> {
     { property: "programId", value: programId.toString() },
     { property: "providerPublicKey", value: provider.wallet.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
-    { property: "routePda", value: routePda.toString() },
     { property: "vault", value: vault.toString() },
   ]);
 
@@ -102,11 +96,27 @@ async function deposit(): Promise<void> {
 
   const tokenDecimals = (await getMint(provider.connection, inputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
 
+  const depositData: Parameters<typeof getDepositSeedHash>[0] = {
+    depositor: signer.publicKey,
+    recipient,
+    inputToken,
+    outputToken,
+    inputAmount,
+    outputAmount,
+    destinationChainId,
+    exclusiveRelayer,
+    quoteTimestamp: new BN(quoteTimestamp),
+    fillDeadline: new BN(fillDeadline),
+    exclusivityParameter: new BN(exclusivityDeadline),
+    message,
+  };
+  const delegatePda = getDepositPda(depositData, program.programId);
+
   // Delegate state PDA to pull depositor tokens.
   const approveIx = await createApproveCheckedInstruction(
     userTokenAccount,
     inputToken,
-    statePda,
+    delegatePda,
     signer.publicKey,
     BigInt(inputAmount.toString()),
     tokenDecimals,
@@ -114,8 +124,21 @@ async function deposit(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
 
-  const depositIx = await (
-    program.methods.deposit(
+  const depositAccounts = {
+    state: statePda,
+    delegate: delegatePda,
+    signer: signer.publicKey,
+    depositorTokenAccount: userTokenAccount,
+    vault: vault,
+    mint: inputToken,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    systemProgram: SystemProgram.programId,
+    program: programId,
+  };
+
+  const depositIx = await program.methods
+    .deposit(
       signer.publicKey,
       recipient,
       inputToken,
@@ -128,17 +151,8 @@ async function deposit(): Promise<void> {
       fillDeadline,
       exclusivityDeadline,
       message
-    ) as any
-  )
-    .accounts({
-      state: statePda,
-      route: routePda,
-      signer: signer.publicKey,
-      userTokenAccount,
-      vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      mint: inputToken,
-    })
+    )
+    .accounts(depositAccounts)
     .instruction();
   // Create a custom instruction with arbitrary data
 
@@ -157,5 +171,5 @@ async function deposit(): Promise<void> {
   console.log("Transaction signature:", tx);
 }
 
-// Run the depositV3 function
+// Run the deposit function
 deposit();

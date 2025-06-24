@@ -22,13 +22,6 @@ pub struct PausedFills {
 }
 
 #[event]
-pub struct EnabledDepositRoute {
-    pub origin_token: Pubkey,
-    pub destination_chain_id: u64,
-    pub enabled: bool,
-}
-
-#[event]
 pub struct RelayedRootBundle {
     pub root_bundle_id: u32,
     pub relayer_refund_root: [u8; 32],

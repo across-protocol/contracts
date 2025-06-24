@@ -17,21 +17,32 @@ task("testChainAdapter", "Verify a chain adapter")
   .addParam("chain", "chain ID of the adapter being tested")
   .addParam("token", "Token to bridge to the destination chain")
   .addParam("amount", "Amount to bridge to the destination chain")
+  .addOptionalParam("adapter", "Optional address of the bridge adapter to use")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
     const { deployments, ethers, getChainId, network } = hre;
     const provider = new ethers.providers.StaticJsonRpcProvider(network.config.url);
     const signer = new ethers.Wallet.fromMnemonic(getMnemonic()).connect(provider);
 
     const hubChainId = await getChainId();
+    assert(
+      [CHAIN_IDs.MAINNET, CHAIN_IDs.SEPOLIA].includes(Number(hubChainId)),
+      "required: --network [mainnet|sepolia]"
+    );
     const spokeChainId = parseInt(args.chain);
 
     const [spokeName] = Object.entries(CHAIN_IDs).find(([, chainId]) => chainId === spokeChainId) ?? [];
     assert(spokeName, `Could not find any chain entry for chainId ${spokeChainId}.`);
-    const adapterName =
-      chains[spokeChainId] ?? `${spokeName[0].toUpperCase()}${spokeName.slice(1).toLowerCase()}_Adapter`;
 
-    const { address: adapterAddress, abi: adapterAbi } = await deployments.get(adapterName);
-    const adapter = new ethers.Contract(adapterAddress, adapterAbi, provider);
+    let adapterAddress = args.adapter;
+    if (!adapterAddress) {
+      // Last resort - try to guess the adapter address based on the chainId.
+      const adapterName =
+        chains[spokeChainId] ?? `${spokeName[0].toUpperCase()}${spokeName.slice(1).toLowerCase()}_Adapter`;
+      ({ address: adapterAddress } = await deployments.get(adapterName));
+    }
+
+    const abi = new ethers.utils.Interface(["function relayTokens(address,address,uint256,address) payable"]);
+    const adapter = new ethers.Contract(adapterAddress, abi, provider);
     const tokenSymbol = args.token.toUpperCase();
     const tokenAddress = TOKEN_SYMBOLS_MAP[tokenSymbol].addresses[hubChainId];
 
@@ -47,7 +58,7 @@ task("testChainAdapter", "Verify a chain adapter")
     const { amount } = args;
     const scaledAmount = ethers.utils.parseUnits(amount, decimals);
 
-    if (balance.lt(amount)) {
+    if (balance.lt(scaledAmount)) {
       const proceed = await askYesNoQuestion(
         `\t\nWARNING: ${amount} ${tokenSymbol} may be lost.\n` +
           `\t\nProceed to send ${amount} ${tokenSymbol} to chain adapter ${adapterAddress} ?`

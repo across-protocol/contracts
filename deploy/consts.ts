@@ -16,6 +16,7 @@ export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
 export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
 export const AZERO_GAS_PRICE = "240000000000";
+export const CIRCLE_UNINITIALIZED_DOMAIN_ID = 4294967295; // 2^32 - 1
 
 export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
 export const ZK_L2_GAS_LIMIT = 2000000;
@@ -32,22 +33,25 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonRegistry: "0x33a02E6cC863D393d6Bf231B697b82F6e499cA71",
     polygonDepositManager: "0x401F6c983eA34274ec46f84D70b31C151321188b",
     cctpTokenMessenger: "0xBd3fa81B58Ba92a82136038B25aDec7066af3155",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     cctpMessageTransmitter: "0x0a992d191deec32afe36203ad87d7d289a738f81",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F",
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319",
-    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce",
     scrollERC20GatewayRouter: "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
     scrollMessengerRelay: "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
-    scrollGasPriceOracle: "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
+    scrollGasPriceOracle: "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
     blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
     blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
+    hubPoolStore: "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
     uniswapV3SwapRouter02: "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45",
     multicall3: "0xcA11bde05977b3631167028862bE2a173976CA11",
     lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
+    zkUsdcSharedBridge_232: "0xf553E6D903AA43420ED7e3bc2313bE9286A8F987",
+    zkUsdcSharedBridge_324: "0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB", // This is the standard shared bridge contract.
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -58,7 +62,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     usdc: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
     lineaMessageService: "0xd19d4B5d358258f05D7B411E21A1460D11B0876F", // No sepolia deploy address
     lineaTokenBridge: "0x051F1D88f0aF5763fB888eC4378b4D8B29ea3319", // No sepolia deploy address
-    lineaUsdcBridge: "0x504a330327a089d8364c4ab3811ee26976d388ce", // No sepolia deploy address
     scrollERC20GatewayRouter: "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
     scrollMessengerRelay: "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
     scrollGasPriceOracle: "0x247969F4fad93a33d4826046bc3eAE0D36BdE548",
@@ -105,6 +108,7 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.LISK]: {
       L1CrossDomainMessenger: "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
       L1StandardBridge: "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
+      L1OpUSDCBridgeAdapter: "0xE3622468Ea7dD804702B56ca2a4f88C0936995e6",
     },
     [CHAIN_IDs.MODE]: {
       L1CrossDomainMessenger: "0x95bDCA6c8EdEB69C98Bd5bd17660BaCef1298A6f",
@@ -180,6 +184,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     lifiDiamond: "0x1231DEB6f5749EF6cE6943a275A1D3E7486F4EaE",
   },
+  [CHAIN_IDs.BSC]: {
+    helios: "0xB04926aF663cB52899361B1F6313bcFEa5A58B29",
+  },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
     cctpTokenMessenger: "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",
@@ -197,6 +204,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.ZK_SYNC]: {
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
     uniswapV3SwapRouter02: "0x99c56385daBCE3E81d8499d0b8d0257aBC07E8A3",
+    cctpTokenMessenger: ZERO_ADDRESS, // CCTP not available on zkSync.
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
     lifiDiamond: "0x341e94069f53234fE6DabeF707aD424830525715",
   },
@@ -230,13 +238,15 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
     uniswapV3SwapRouter02: "0x6ddD32cd941041D8b61df213B9f515A7D288Dc13",
     lifiDiamond: "0xF3B20515d9B193531c48E47c18aF16d1e5d28f9a",
+    zkUSDCBridge: "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81",
+    cctpTokenMessenger: ZERO_ADDRESS, // Not available on Lens.
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
   },
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
-    lineaUsdcBridge: "0xA2Ee6Fce4ACB62D95448729cDb781e3BEb62504A",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
     lifiDiamond: "0xDE1E598b81620773454588B85D6b5D4eEC32573e",
   },

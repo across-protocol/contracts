@@ -75,7 +75,7 @@ abstract contract SpokePool is
     RootBundle[] public rootBundles;
 
     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
+    mapping(address => mapping(uint256 => bool)) private DEPRECATED_enabledDepositRoutes;
 
     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
@@ -141,12 +141,6 @@ abstract contract SpokePool is
         keccak256(
             "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,bytes32 updatedRecipient,bytes updatedMessage)"
         );
-
-    bytes32 public constant UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH =
-        keccak256(
-            "UpdateDepositDetails(uint256 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
-        );
-
     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
     // Default address used to signify that no relayer should be credited with a refund, for example
@@ -164,6 +158,10 @@ abstract contract SpokePool is
     // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
     // exclusivityDeadline in a deposit event will be set to the current time plus this value.
     uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
+
+    // EIP-7702 prefix for delegated wallets.
+    bytes3 internal constant EIP7702_PREFIX = 0xef0100;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -313,21 +311,6 @@ abstract contract SpokePool is
      */
     function setWithdrawalRecipient(address newWithdrawalRecipient) public override onlyAdmin nonReentrant {
         _setWithdrawalRecipient(newWithdrawalRecipient);
-    }
-
-    /**
-     * @notice Enable/Disable an origin token => destination chain ID route for deposits. Callable by admin only.
-     * @param originToken Token that depositor can deposit to this contract.
-     * @param destinationChainId Chain ID for where depositor wants to receive funds.
-     * @param enabled True to enable deposits, False otherwise.
-     */
-    function setEnableRoute(
-        address originToken,
-        uint256 destinationChainId,
-        bool enabled
-    ) public override onlyAdmin nonReentrant {
-        enabledDepositRoutes[originToken][destinationChainId] = enabled;
-        emit EnabledDepositRoute(originToken, destinationChainId, enabled);
     }
 
     /**
@@ -626,7 +609,9 @@ abstract contract SpokePool is
      * FundsDeposited event is unique which means that the
      * corresponding fill might collide with an existing relay hash on the destination chain SpokePool,
      * which would make this deposit unfillable. In this case, the depositor would subsequently receive a refund
-     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline.
+     * of `inputAmount` of `inputToken` on the origin chain after the fill deadline. Re-using a depositNonce is very
+     * dangerous when combined with `speedUpDeposit`, as a speed up signature can be re-used for any deposits
+     * with the same deposit ID.
      * @dev On the destination chain, the hash of the deposit data will be used to uniquely identify this deposit, so
      * modifying any params in it will result in a different hash and a different deposit. The hash will comprise
      * all parameters to this function along with this chain's chainId(). Relayers are only refunded for filling
@@ -808,7 +793,9 @@ abstract contract SpokePool is
 
     /**
      * @notice Depositor can use this function to signal to relayer to use updated output amount, recipient,
-     * and/or message.
+     * and/or message. The speed up signature uniquely identifies the speed up based only on
+     * depositor, deposit ID and origin chain, so using this function in conjunction with unsafeDeposit is risky
+     * due to the chance of repeating a deposit ID.
      * @dev the depositor and depositId must match the params in a FundsDeposited event that the depositor
      * wants to speed up. The relayer has the option but not the obligation to use this updated information
      * when filling the deposit via fillRelayWithUpdatedDeposit().
@@ -894,7 +881,7 @@ abstract contract SpokePool is
             updatedRecipient.toBytes32(),
             updatedMessage,
             depositorSignature,
-            UPDATE_ADDRESS_DEPOSIT_DETAILS_HASH
+            UPDATE_BYTES32_DEPOSIT_DETAILS_HASH
         );
 
         // Assuming the above checks passed, a relayer can take the signature and the updated deposit information
@@ -1311,10 +1298,6 @@ abstract contract SpokePool is
         // Verify depositor is a valid EVM address.
         params.depositor.checkAddress();
 
-        // Check that deposit route is enabled for the input token. There are no checks required for the output token
-        // which is pulled from the relayer at fill time and passed through this contract atomically to the recipient.
-        if (!enabledDepositRoutes[params.inputToken.toAddress()][params.destinationChainId]) revert DisabledRoute();
-
         // Require that quoteTimestamp has a maximum age so that depositors pay an LP fee based on recent HubPool usage.
         // It is assumed that cross-chain timestamps are normally loosely in-sync, but clock drift can occur. If the
         // SpokePool time stalls or lags significantly, it is still possible to make deposits by setting quoteTimestamp
@@ -1400,9 +1383,6 @@ abstract contract SpokePool is
         uint32 quoteTimestamp,
         bytes memory message
     ) internal {
-        // Check that deposit route is enabled.
-        if (!enabledDepositRoutes[originToken][destinationChainId]) revert DisabledRoute();
-
         // We limit the relay fees to prevent the user spending all their funds on fees.
         if (SignedMath.abs(relayerFeePct) >= 0.5e18) revert InvalidRelayerFeePct();
         if (amount > MAX_TRANSFER_SIZE) revert MaxTransferSizeExceeded();
@@ -1628,12 +1608,21 @@ abstract contract SpokePool is
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
-        if (address(to).isContract()) {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
-        } else {
+        if (!address(to).isContract() || _is7702DelegatedWallet(to)) {
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
+        } else {
+            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         }
+    }
+
+    /**
+     * @notice Checks if an address is a 7702 delegated wallet (EOA with delegated code).
+     * @param account The address to check.
+     * @return True if the address is a 7702 delegated wallet, false otherwise.
+     */
+    function _is7702DelegatedWallet(address account) internal view returns (bool) {
+        return bytes3(account.code) == EIP7702_PREFIX;
     }
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from

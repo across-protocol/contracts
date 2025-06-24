@@ -1,4 +1,4 @@
-import { task } from "hardhat/config";
+import { task, types } from "hardhat/config";
 import assert from "assert";
 import { CHAIN_IDs, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { askYesNoQuestion, resolveTokenOnChain, isTokenSymbol, minimalSpokePoolInterface } from "./utils";
@@ -8,12 +8,15 @@ const { ARBITRUM, OPTIMISM } = CHAIN_IDs;
 const NO_SYMBOL = "----";
 const NO_ADDRESS = "------------------------------------------";
 
+const IGNORED_CHAINS = [CHAIN_IDs.BOBA, CHAIN_IDs.SOLANA];
+const V4_CHAINS = [CHAIN_IDs.BSC, CHAIN_IDs.LISK, CHAIN_IDs.LINEA, CHAIN_IDs.WORLD_CHAIN];
+
 // Supported mainnet chain IDs.
 const enabledChainIds = (hubChainId: number) => {
   const chainIds = hubChainId === CHAIN_IDs.MAINNET ? MAINNET_CHAIN_IDs : TESTNET_CHAIN_IDs;
   return Object.values(chainIds)
     .map(Number)
-    .filter((chainId) => chainId !== CHAIN_IDs.BOBA)
+    .filter((chainId) => !IGNORED_CHAINS.includes(chainId))
     .sort((x, y) => x - y);
 };
 
@@ -23,11 +26,12 @@ const getChainsFromList = (taskArgInput: string): number[] =>
     ?.split(",")
     ?.map((chainId: string) => Number(chainId)) || [];
 
-task("enable-l1-token-across-ecosystem", "Enable a provided token across the entire ecosystem of supported chains")
+task("enableToken", "Enable a provided token across the entire ecosystem of supported chains")
   .addFlag("execute", "Provide this flag if you would like to actually execute the transaction from the EOA")
-  .addFlag("disableRoutes", "Set to disable deposit routes for the specified chains")
+  .addFlag("disable", "Set to disable deposit routes for the specified chains")
   .addParam("token", "Symbol of token to enable")
   .addOptionalParam("chains", "Comma-delimited list of chains to enable the token on. Defaults to all supported chains")
+  .addOptionalParam("burn", "Amount of LP token to burn when enabling a new token", 1, types.int)
   .addOptionalParam(
     "customoptimismbridge",
     "Custom token bridge to set for optimism, for example used with SNX and DAI"
@@ -35,8 +39,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
   .addOptionalParam("depositroutechains", "ChainIds to enable deposit routes for exclusively. Separated by comma.")
   .setAction(async function (taskArguments, hre_) {
     const hre = hre_ as any;
-    const { chains, token: symbol } = taskArguments;
-    const enableRoute = !taskArguments.disableRoutes;
+    const { burn, chains, execute, token: symbol } = taskArguments;
+    const enableRoute = !taskArguments.disable;
 
     const hubChainId = parseInt(await hre.getChainId());
     if (hubChainId === 31337) {
@@ -47,8 +51,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     assert(isTokenSymbol(_matchedSymbol));
     const matchedSymbol = _matchedSymbol as TokenSymbol;
 
-    const l1Token = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubChainId];
-    assert(l1Token !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
+    const l1TokenAddr = TOKEN_SYMBOLS_MAP[matchedSymbol].addresses[hubChainId];
+    assert(l1TokenAddr !== undefined, `Could not find ${symbol} in TOKEN_SYMBOLS_MAP`);
 
     // If deposit routes chains are provided then we'll only add routes involving these chains. This is used to add new
     // deposit routes to a new chain for an existing L1 token, so we also won't add a new LP token if this is defined.
@@ -62,9 +66,12 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     );
     if (!hasSetConfigStore) process.exit(0);
 
-    console.log(`\nRunning task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1Token}`);
+    console.log(`\nRunning task to enable L1 token over entire Across ecosystem 🌉. L1 token: ${l1TokenAddr}`);
     const { deployments, ethers } = hre;
+    const { AddressZero: ZERO_ADDRESS } = ethers.constants;
+    const { hexlify, zeroPad } = ethers.utils;
     const [signer] = await hre.ethers.getSigners();
+    const { BigNumber } = ethers;
 
     // Remove chainIds that are in the ignore list.
     const _enabledChainIds = enabledChainIds(hubChainId);
@@ -108,16 +115,50 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     console.log(`\nConstructing calldata to enable these tokens. Using HubPool at address: ${hubPool.address}`);
 
     // Construct calldata to enable these tokens.
-    const callData = [];
+    // nb. This implementation relies on initial callData ordering when unpacking via Object.entries().
+    const callData: { [target: string]: string[] } = {};
 
-    // If deposit route chains are defined then we don't want to add a new LP token:
-    if (depositRouteChains.length === 0) {
-      console.log(`\nAdding calldata to enable liquidity provision on ${l1Token}`);
-      callData.push(hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1Token]));
-    } else {
-      depositRouteChains.forEach((chainId) =>
-        assert(tokens[chainId].symbol !== NO_SYMBOL, `Token ${symbol} is not defined for chain ${chainId}`)
+    // If the l1 token is not yet enabled for LP, enable it.
+    let { lpToken: lpTokenAddr } = await hubPool.pooledTokens(l1TokenAddr);
+    if (lpTokenAddr === ZERO_ADDRESS) {
+      const [lpFactoryAddr, { abi: lpFactoryABI }] = await Promise.all([
+        hubPool.lpTokenFactory(),
+        deployments.get("LpTokenFactory"),
+      ]);
+      const lpTokenFactory = new ethers.Contract(lpFactoryAddr, lpFactoryABI, signer);
+      lpTokenAddr = await lpTokenFactory.callStatic.createLpToken(l1TokenAddr);
+      console.log(`\nAdding calldata to enable liquidity provision on ${l1TokenAddr} (LP token ${lpTokenAddr})`);
+
+      const erc20 = await ethers.getContractFactory("ExpandedERC20");
+      const l1Token = erc20.attach(l1TokenAddr);
+      const decimals = await l1Token.decimals();
+      const depositAmount = BigNumber.from(burn ?? "1").mul(BigNumber.from(10).pow(decimals));
+      const doBurn = await askYesNoQuestion(`\nBurn ${burn} ${symbol} (${depositAmount}) LP tokens? (RECOMMENDED!)`);
+
+      if (doBurn) {
+        callData[l1Token.address] ??= [];
+        callData[l1Token.address].push(
+          l1Token.interface.encodeFunctionData("approve", [hubPool.address, depositAmount])
+        );
+      }
+
+      // Create LP token and seed the LP with `depositAmount` amount.
+      callData[hubPool.address] ??= [];
+      callData[hubPool.address].push(
+        hubPool.interface.encodeFunctionData("enableL1TokenForLiquidityProvision", [l1TokenAddr])
       );
+      callData[hubPool.address].push(
+        hubPool.interface.encodeFunctionData("addLiquidity", [l1Token.address, depositAmount])
+      );
+
+      // For a new token, the balance of lpToken will be 1:1 with depositAmount. Burn it.
+      if (doBurn) {
+        callData[lpTokenAddr] ??= [];
+        const burnRecipient = hexlify(zeroPad(ethers.utils.arrayify("0x01"), 20));
+        callData[lpTokenAddr].push(
+          erc20.attach(lpTokenAddr).interface.encodeFunctionData("transfer", [burnRecipient, depositAmount])
+        );
+      }
     }
 
     console.log("\nAdding calldata to enable routes between all chains and tokens:");
@@ -131,7 +172,11 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       const { address: inputToken } = tokens[fromId];
       skipped[fromId] = [];
       routeChainIds.forEach((toId) => {
-        if (fromId === toId || [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)) {
+        if (
+          fromId === toId ||
+          V4_CHAINS.includes(fromId) ||
+          [fromId, toId].some((chainId) => tokens[chainId].symbol === NO_SYMBOL)
+        ) {
           return;
         }
 
@@ -143,7 +188,8 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         ) {
           const n = (++i).toString().padStart(2, " ");
           console.log(`\t${n} Added route for ${inputToken} from ${formattedFromId} -> ${formatChainId(toId)}.`);
-          callData.push(
+          callData[hubPool.address] ??= [];
+          callData[hubPool.address].push(
             hubPool.interface.encodeFunctionData("setDepositRoute", [fromId, toId, inputToken, enableRoute])
           );
         } else {
@@ -176,7 +222,10 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         console.log(
           `\t${n} Setting rebalance route for chain ${symbol} ${hubChainId} -> ${destinationToken} on ${toId}.`
         );
-        callData.push(hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1Token, destinationToken]));
+        callData[hubPool.address] ??= [];
+        callData[hubPool.address].push(
+          hubPool.interface.encodeFunctionData("setPoolRebalanceRoute", [toId, l1TokenAddr, destinationToken])
+        );
       } else {
         rebalanceRoutesSkipped.push(toId);
       }
@@ -191,7 +240,7 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
     if (depositRouteChains.includes(ARBITRUM)) {
       const arbitrumToken = tokens[ARBITRUM].address;
       console.log(
-        `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1Token} on Arbitrum.` +
+        `\nAdding call data to whitelist L2 ${arbitrumToken} -> L1 token ${l1TokenAddr} on Arbitrum.` +
           " This is only needed on this chain."
       );
 
@@ -199,8 +248,12 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
       const spokePool = new ethers.Contract(hubPoolDeployment.address, minimalSpokePoolInterface, signer);
       // Find the address of the Arbitrum representation of this token. Construct whitelistToken call to send to the
       // Arbitrum spoke pool via the relaySpokeAdminFunction call.
-      const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [arbitrumToken, l1Token]);
-      callData.push(
+      const whitelistTokenCallData = spokePool.interface.encodeFunctionData("whitelistToken", [
+        arbitrumToken,
+        l1TokenAddr,
+      ]);
+      callData[hubPool.address] ??= [];
+      callData[hubPool.address].push(
         hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [ARBITRUM, whitelistTokenCallData])
       );
     }
@@ -216,20 +269,40 @@ task("enable-l1-token-across-ecosystem", "Enable a provided token across the ent
         optimismToken,
         taskArguments.customoptimismbridge,
       ]);
-      callData.push(
+      callData[hubPool.address].push(
         hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [OPTIMISM, setTokenBridgeCallData])
       );
     }
 
-    console.log(`\n***DONE.***\nCalldata to enable desired token has been constructed!`);
-    console.log(
-      `CallData contains ${callData.length} transactions, which can be sent in one multicall to hub pool @ ${hubPoolDeployment.address}🚀`
-    );
-    console.log(JSON.stringify(callData).replace(/"/g, ""));
+    console.log(`\n***DONE***\nProduced calldata for ${Object.values(callData).flat().length} calls.`);
+    if (execute) {
+      console.log(`\n--execute provided. Submitting transactions.`);
+      for (let [target, calls] of Object.entries(callData)) {
+        if (target === hubPool.address) {
+          const { hash, wait } = await hubPool.multicall(calls);
+          console.log(`\nTarget ${target}: ${hash}`);
+          await wait();
+          continue;
+        }
+        for (const data of calls) {
+          const txnRequest = await signer.populateTransaction({ to: target, data });
+          const txn = await signer.signTransaction(txnRequest);
+          const { hash, wait } = await signer.sendTransaction(txn);
+          console.log(`\nTarget ${target}: ${hash}`);
+          await wait();
+        }
+      }
+    } else {
+      let i = 1;
+      for (const [target, calldata] of Object.entries(callData)) {
+        console.log(`\nTransaction ${i++}:`);
+        if (target === hubPool.address) {
+          console.log("\tmethod: multicall");
+          console.log(`\ttarget: ${target}\n\tdata:\t${[calldata]}`);
+          continue;
+        }
 
-    if (taskArguments.execute && callData.length > 0) {
-      console.log(`\n--execute provided. Trying to execute this on mainnet.`);
-      const { hash } = await hubPool.multicall(callData);
-      console.log(`\nTransaction hash: ${hash}`);
+        calldata.forEach((data) => console.log(`\ttarget:\t${target}\n\tdata:\t${data}`));
+      }
     }
   });

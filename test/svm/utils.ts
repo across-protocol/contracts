@@ -1,27 +1,10 @@
 import { BN, Program, workspace } from "@coral-xyz/anchor";
 import {
   airdropFactory,
-  Commitment,
-  CompilableTransactionMessage,
   createSolanaRpc,
   createSolanaRpcSubscriptions,
-  createTransactionMessage,
   generateKeyPairSigner,
-  getSignatureFromTransaction,
   lamports,
-  pipe,
-  Rpc,
-  RpcSubscriptions,
-  RpcTransport,
-  sendAndConfirmTransactionFactory,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  SignatureNotificationsApi,
-  signTransactionMessageWithSigners,
-  SlotNotificationsApi,
-  SolanaRpcApiFromTransport,
-  TransactionMessageWithBlockhashLifetime,
-  TransactionSigner,
 } from "@solana/kit";
 import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
@@ -34,6 +17,7 @@ import {
   readEvents,
   readProgramEvents,
   relayerRefundHashFn,
+  RpcClient,
 } from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 
@@ -169,37 +153,10 @@ export function testAcrossPlusMessage() {
   return { encodedMessage, fillRemainingAccounts };
 }
 
-export const signAndSendTransaction = async (
-  rpcClient: RpcClient,
-  transactionMessage: CompilableTransactionMessage & TransactionMessageWithBlockhashLifetime,
-  commitment: Commitment = "confirmed"
-) => {
-  const signedTransaction = await signTransactionMessageWithSigners(transactionMessage);
-  const signature = getSignatureFromTransaction(signedTransaction);
-  await sendAndConfirmTransactionFactory(rpcClient)(signedTransaction, {
-    commitment,
-  });
-  return signature;
-};
-
-export const createDefaultTransaction = async (rpcClient: RpcClient, signer: TransactionSigner) => {
-  const { value: latestBlockhash } = await rpcClient.rpc.getLatestBlockhash().send();
-  return pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => setTransactionMessageFeePayerSigner(signer, tx),
-    (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx)
-  );
-};
-
 export const createDefaultSolanaClient = () => {
   const rpc = createSolanaRpc("http://127.0.0.1:8899");
   const rpcSubscriptions = createSolanaRpcSubscriptions("ws://127.0.0.1:8900");
   return { rpc, rpcSubscriptions };
-};
-
-type RpcClient = {
-  rpc: Rpc<SolanaRpcApiFromTransport<RpcTransport>>;
-  rpcSubscriptions: RpcSubscriptions<SignatureNotificationsApi & SlotNotificationsApi>;
 };
 
 export const generateKeyPairSignerWithSol = async (rpcClient: RpcClient, putativeLamports: bigint = 1_000_000_000n) => {
