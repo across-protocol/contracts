@@ -225,6 +225,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
@@ -248,6 +249,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithPermit(
         address signatureOwner,
@@ -283,6 +285,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithPermit2(
         address signatureOwner,
@@ -315,6 +318,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
