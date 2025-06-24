@@ -1276,22 +1276,23 @@ contract SpokePoolPeripheryTest is Test {
         // which would allow DoS attacks via invalidateNonces
         vm.startPrank(depositor);
 
+        // Prepare the swap data first (this will call permitNonces)
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapData = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            Exchange(address(permit2)), // Using permit2 as exchange should fail
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            true
+        );
+
         // Attempt to use permit2 as the exchange - this should fail with InvalidExchange
         vm.expectRevert(SwapProxy.InvalidExchange.selector);
-        spokePoolPeriphery.swapAndBridge(
-            _defaultSwapAndDepositData(
-                address(mockWETH),
-                mintAmount,
-                0,
-                address(0),
-                Exchange(address(permit2)), // Using permit2 as exchange should fail
-                SpokePoolPeripheryInterface.TransferType.Permit2Approval,
-                address(mockERC20),
-                depositAmount,
-                depositor,
-                true
-            )
-        );
+        spokePoolPeriphery.swapAndBridge(swapData);
         vm.stopPrank();
     }
 
