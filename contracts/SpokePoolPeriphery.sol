@@ -227,6 +227,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
@@ -251,6 +256,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithPermit(
@@ -287,6 +297,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithPermit2(
@@ -320,6 +335,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, Lockable, MultiCalle
 
     /**
      * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Revert case: When enableProportionalAdjustment is true, the calculation
+     * depositData.outputAmount * returnAmount may overflow if the product exceeds 2^256-1,
+     * causing immediate transaction revert even when the final division result would fit.
+     * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
+     * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
      */
     function swapAndBridgeWithAuthorization(
