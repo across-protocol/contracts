@@ -1,6 +1,6 @@
 import { getContractFactory, randomAddress, Contract, Signer } from "../../../../utils/utils";
 import { hre } from "../../../../utils/utils.hre";
-import { originChainId, bondAmount, refundProposalLiveness, finalFee } from "../constants";
+import { originChainId, bondAmount, refundProposalLiveness, finalFee, finalFeeUsdt } from "../constants";
 import { repaymentChainId, finalFeeUsdc, TokenRolesEnum } from "../constants";
 import { umaEcosystemFixture } from "./UmaEcosystem.Fixture";
 
@@ -18,23 +18,28 @@ export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool"
   // deployments that follows. The output is spread when returning contract instances from this fixture.
   const parentFixture = await umaEcosystemFixture();
 
-  // Create 3 tokens: WETH for wrapping unwrapping and 2 ERC20s with different decimals.
+  // Create 4 tokens: WETH for wrapping unwrapping and 3 ERC20s with different decimals.
   const weth = await (await getContractFactory("WETH9", signer)).deploy();
   const usdc = await (await getContractFactory("ExpandedERC20", signer)).deploy("USD Coin", "USDC", 6);
   await usdc.addMember(TokenRolesEnum.MINTER, signer.address);
   const dai = await (await getContractFactory("ExpandedERC20", signer)).deploy("DAI Stablecoin", "DAI", 18);
   await dai.addMember(TokenRolesEnum.MINTER, signer.address);
-  const tokens = { weth, usdc, dai };
+  // todo: `usdt` is not strictly `ExpandedERC20`. Does that matter for our tests?
+  const usdt = await (await getContractFactory("ExpandedERC20", signer)).deploy("USDT Stablecoin", "USDT", 6);
+  await usdt.addMember(TokenRolesEnum.MINTER, signer.address);
+  const tokens = { weth, usdc, dai, usdt };
 
   // Set the above currencies as approved in the UMA collateralWhitelist.
   await parentFixture.collateralWhitelist.addToWhitelist(weth.address);
   await parentFixture.collateralWhitelist.addToWhitelist(usdc.address);
   await parentFixture.collateralWhitelist.addToWhitelist(dai.address);
+  await parentFixture.collateralWhitelist.addToWhitelist(usdt.address);
 
   // Set the finalFee for all the new tokens.
   await parentFixture.store.setFinalFee(weth.address, { rawValue: finalFee });
   await parentFixture.store.setFinalFee(usdc.address, { rawValue: finalFeeUsdc });
   await parentFixture.store.setFinalFee(dai.address, { rawValue: finalFee });
+  await parentFixture.store.setFinalFee(usdt.address, { rawValue: finalFeeUsdt });
 
   // Deploy the hubPool.
   const lpTokenFactory = await (await getContractFactory("LpTokenFactory", signer)).deploy();
@@ -64,15 +69,34 @@ export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool"
   );
   await hubPool.setCrossChainContracts(mainnetChainId, mockAdapterMainnet.address, mockSpokeMainnet.address);
 
+  // we need `l2Usdt` to be a real contract, rather than just a random address for testing OFT bridging, that's why we create is separately here compared to other l2 tokens
+  const l2UsdtContract = await (await getContractFactory("ExpandedERC20", signer)).deploy("USDT Stablecoin", "USDT", 6);
+  await l2UsdtContract.addMember(TokenRolesEnum.MINTER, signer.address);
+
   // Deploy mock l2 tokens for each token created before and whitelist the routes.
-  const mockTokens = { l2Weth: randomAddress(), l2Dai: randomAddress(), l2Usdc: randomAddress() };
+  const mockTokens = {
+    l2Weth: randomAddress(),
+    l2Dai: randomAddress(),
+    l2Usdc: randomAddress(),
+    l2Usdt: l2UsdtContract.address,
+  };
 
   // Whitelist pool rebalance routes but don't relay any messages to SpokePool
   await hubPool.setPoolRebalanceRoute(repaymentChainId, weth.address, mockTokens.l2Weth);
   await hubPool.setPoolRebalanceRoute(repaymentChainId, dai.address, mockTokens.l2Dai);
   await hubPool.setPoolRebalanceRoute(repaymentChainId, usdc.address, mockTokens.l2Usdc);
+  await hubPool.setPoolRebalanceRoute(repaymentChainId, usdt.address, mockTokens.l2Usdt);
 
-  return { ...tokens, ...mockTokens, hubPool, mockAdapter, mockSpoke, crossChainAdmin, ...parentFixture };
+  return {
+    ...tokens,
+    l2UsdtContract,
+    ...mockTokens,
+    hubPool,
+    mockAdapter,
+    mockSpoke,
+    crossChainAdmin,
+    ...parentFixture,
+  };
 }
 
 export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: Contract, tokens: Contract[]) {
