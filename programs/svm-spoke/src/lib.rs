@@ -717,6 +717,9 @@ pub mod svm_spoke {
     /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
     /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters. If None for any of these is passed,
     /// the caller must load them via the instruction_params account.
+    /// Note: When verifying the slow fill leaf, the relay data is hashed using AnchorSerialize::serialize that encodes
+    /// output token amounts to little-endian format while input token amount preserves its big-endian encoding as it
+    /// is passed as [u8; 32] array.
     pub fn execute_slow_relay_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
