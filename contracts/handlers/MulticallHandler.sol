@@ -133,7 +133,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         address target,
         bytes memory callData,
         uint256 value,
-        Replacement[] memory replacement
+        Replacement[] calldata replacement
     ) external onlySelf {
         for (uint256 i = 0; i < replacement.length; i++) {
             uint256 bal = 0;
