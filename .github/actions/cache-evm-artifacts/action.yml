@@ -1,0 +1,30 @@
+# Reusable action to cache EVM artifacts if the source code, compiler settings and dependencies have not changed.
+name: Cache EVM Artifacts
+inputs:
+  node_version:
+    description: "Node version used to generate the artifacts"
+    required: true
+outputs:
+  cache-hit:
+    description: "Whether the cache was hit"
+    value: ${{ steps.evm-artifacts-cache.outputs.cache-hit }}
+runs:
+  using: "composite"
+  steps:
+    - name: Resolve Node version
+      id: resolved-node
+      uses: ./.github/actions/setup-node-if-needed
+      with:
+        node_version: ${{ inputs.node_version }}
+    - name: Restore cached EVM artifacts
+      id: evm-artifacts-cache
+      uses: actions/cache@v4
+      with:
+        # The job that generates the artifacts is responsible for archiving them to the cache tarball. This avoids any
+        # conflicts with other caching actions that might have cleaned some of cached contents.
+        path: evm-artifacts.tar
+        key: evm-artifacts-${{ runner.os }}-node-${{ steps.resolved-node.outputs.version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
+    - name: Unpack restored EVM artifacts
+      if: steps.evm-artifacts-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: tar -xf evm-artifacts.tar
