@@ -50,7 +50,7 @@ async function queryFills(): Promise<void> {
       console.table([
         { Property: "inputToken", Value: strPublicKey(event.data.inputToken) },
         { Property: "outputToken", Value: strPublicKey(event.data.outputToken) },
-        { Property: "inputAmount", Value: event.data.inputAmount.toString() },
+        { Property: "inputAmount", Value: u8Array32ToInt(event.data.inputAmount).toString() },
         { Property: "outputAmount", Value: event.data.outputAmount.toString() },
         { Property: "repaymentChainId", Value: event.data.repaymentChainId.toString() },
         { Property: "originChainId", Value: event.data.originChainId.toString() },

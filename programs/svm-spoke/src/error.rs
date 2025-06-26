@@ -33,6 +33,8 @@ pub enum CommonError {
     InsufficientSpokePoolBalanceToExecuteLeaf,
     #[msg("Invalid exclusive relayer!")]
     InvalidExclusiveRelayer,
+    #[msg("Invalid output token!")]
+    InvalidOutputToken,
 }
 
 // SVM specific errors.

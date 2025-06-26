@@ -9,7 +9,7 @@ import {
 } from "@solana/web3.js";
 import { deserialize } from "borsh";
 import { EventType } from "../../types/svm";
-import { publicKeyToEvmAddress } from "./conversionUtils";
+import { publicKeyToEvmAddress, u8Array32ToInt } from "./conversionUtils";
 
 /**
  * Finds a program address with a given label and optional extra seeds.
@@ -230,7 +230,7 @@ function parseDepositId(value: Uint8Array): string {
 /**
  * Stringifies a CPI event.
  */
-export function stringifyCpiEvent(obj: any): any {
+export function stringifyCpiEvent(obj: any, eventName: string): any {
   if (obj?.constructor?.toString()?.includes("PublicKey")) {
     if (obj.toString().startsWith("111111111111")) {
       // First 12 bytes are 0 for EVM addresses.
@@ -244,16 +244,28 @@ export function stringifyCpiEvent(obj: any): any {
   } else if (Array.isArray(obj) && obj.length == 32) {
     return Buffer.from(obj).toString("hex"); // Hex representation for fixed-length arrays
   } else if (Array.isArray(obj)) {
-    return obj.map(stringifyCpiEvent);
+    return obj.map((obj) => stringifyCpiEvent(obj, eventName));
   } else if (obj !== null && typeof obj === "object") {
     return Object.fromEntries(
       Object.entries(obj).map(([key, value]) => {
-        if (key === "depositId" && Array.isArray(value) && value.length === 32) {
-          // Parse depositId using the helper function
-          const parsedValue = parseDepositId(new Uint8Array(value));
-          return [key, parsedValue];
+        if (Array.isArray(value) && value.length === 32) {
+          if (key === "depositId" || key === "deposit_id") {
+            // Parse depositId using the helper function
+            const parsedValue = parseDepositId(new Uint8Array(value));
+            return [key, parsedValue];
+          } else if (
+            eventName.toLowerCase() === "fundsdeposited" &&
+            (key === "outputAmount" || key === "output_amount")
+          ) {
+            return [key, u8Array32ToInt(new Uint8Array(value)).toString()];
+          } else if (
+            (eventName.toLowerCase() === "filledrelay" || eventName.toLowerCase() === "requestedslowfill") &&
+            (key === "inputAmount" || key === "input_amount")
+          ) {
+            return [key, u8Array32ToInt(new Uint8Array(value)).toString()];
+          }
         }
-        return [key, stringifyCpiEvent(value)];
+        return [key, stringifyCpiEvent(value, eventName)];
       })
     );
   }

@@ -43,7 +43,7 @@ export class DepositSeedData {
   inputToken!: Uint8Array;
   outputToken!: Uint8Array;
   inputAmount!: BN;
-  outputAmount!: BN;
+  outputAmount!: number[];
   destinationChainId!: BN;
   exclusiveRelayer!: Uint8Array;
   quoteTimestamp!: BN;
@@ -57,7 +57,7 @@ export class DepositSeedData {
     inputToken: Uint8Array;
     outputToken: Uint8Array;
     inputAmount: BN;
-    outputAmount: BN;
+    outputAmount: number[];
     destinationChainId: BN;
     exclusiveRelayer: Uint8Array;
     quoteTimestamp: BN;
@@ -80,7 +80,7 @@ const depositSeedSchema = new Map([
         ["inputToken", [32]],
         ["outputToken", [32]],
         ["inputAmount", "u64"],
-        ["outputAmount", "u64"],
+        ["outputAmount", [32]],
         ["destinationChainId", "u64"],
         ["exclusiveRelayer", [32]],
         ["quoteTimestamp", "u32"],
@@ -101,7 +101,7 @@ export function getDepositSeedHash(depositData: {
   inputToken: PublicKey;
   outputToken: PublicKey;
   inputAmount: BN;
-  outputAmount: BN;
+  outputAmount: number[];
   destinationChainId: BN;
   exclusiveRelayer: PublicKey;
   quoteTimestamp: BN;
@@ -145,7 +145,7 @@ export class DepositNowSeedData {
   inputToken!: Uint8Array;
   outputToken!: Uint8Array;
   inputAmount!: BN;
-  outputAmount!: BN;
+  outputAmount!: number[];
   destinationChainId!: BN;
   exclusiveRelayer!: Uint8Array;
   fillDeadlineOffset!: BN;
@@ -158,7 +158,7 @@ export class DepositNowSeedData {
     inputToken: Uint8Array;
     outputToken: Uint8Array;
     inputAmount: BN;
-    outputAmount: BN;
+    outputAmount: number[];
     destinationChainId: BN;
     exclusiveRelayer: Uint8Array;
     fillDeadlineOffset: BN;
@@ -180,7 +180,7 @@ const depositNowSeedSchema = new Map([
         ["inputToken", [32]],
         ["outputToken", [32]],
         ["inputAmount", "u64"],
-        ["outputAmount", "u64"],
+        ["outputAmount", [32]],
         ["destinationChainId", "u64"],
         ["exclusiveRelayer", [32]],
         ["fillDeadlineOffset", "u32"],
@@ -200,7 +200,7 @@ export function getDepositNowSeedHash(depositData: {
   inputToken: PublicKey;
   outputToken: PublicKey;
   inputAmount: BN;
-  outputAmount: BN;
+  outputAmount: number[];
   destinationChainId: BN;
   exclusiveRelayer: PublicKey;
   fillDeadlineOffset: BN;

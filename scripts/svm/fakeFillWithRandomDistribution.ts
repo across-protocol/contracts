@@ -20,6 +20,7 @@ import {
   calculateRelayHashUint8Array,
   getFillRelayDelegatePda,
   getSpokePoolProgram,
+  intToU8Array32,
   loadFillRelayParams,
   sendTransactionWithLookupTable,
 } from "../../src/svm/web3-v1";
@@ -40,10 +41,10 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusiveRelayer", { type: "string", demandOption: false, describe: "Exclusive relayer public key" })
   .option("inputToken", { type: "string", demandOption: true, describe: "Input token public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
-  .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
+  .option("inputAmount", { type: "string", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
-  .option("depositId", { type: "array", demandOption: true, describe: "Deposit ID" })
+  .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" })
   .option("repaymentChain", { type: "number", demandOption: false, description: "Repayment chain ID" })
@@ -58,10 +59,10 @@ async function fillRelayToRandom(): Promise<void> {
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || PublicKey.default.toString());
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
-  const depositId = (resolvedArgv.depositId as number[]).map((id) => id); // Ensure depositId is an array of BN
+  const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
   const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
   const repaymentChain = new BN(resolvedArgv.repaymentChain || 1);
@@ -171,11 +172,17 @@ async function fillRelayToRandom(): Promise<void> {
     }))
   );
 
-  // Delegate state PDA to pull relayer tokens.
+  // Delegate to pull relayer tokens.
+  const delegatePda = getFillRelayDelegatePda(
+    relayHashUint8Array,
+    repaymentChain,
+    repaymentAddress,
+    program.programId
+  ).pda;
   const approveInstruction = await createApproveCheckedInstruction(
     relayerTokenAccount,
     outputToken,
-    statePda,
+    delegatePda,
     signer.publicKey,
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
@@ -199,7 +206,7 @@ async function fillRelayToRandom(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
-    delegate: getFillRelayDelegatePda(relayHashUint8Array, repaymentChain, repaymentAddress, program.programId).pda,
+    delegate: delegatePda,
     instructionParams,
     mint: outputToken,
     relayerTokenAccount,
