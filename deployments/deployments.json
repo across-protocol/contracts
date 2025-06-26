@@ -227,11 +227,11 @@
   "34268394551451": {
     "SvmSpoke": {
       "address": "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru",
-      "blockNumber": 349323531
+      "blockNumber": 349354195
     },
     "MulticallHandler": {
       "address": "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be",
-      "blockNumber": 349332183
+      "blockNumber": 349358090
     },
     "MessageTransmitter": {
       "address": "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd",
