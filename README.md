@@ -86,6 +86,7 @@ export KEYPAIR=~/.config/solana/dev-wallet.json
 export PROGRAM=svm_spoke # Also repeat the deployment process for multicall_handler
 export PROGRAM_ID=$(cat target/idl/$PROGRAM.json | jq -r ".address")
 export MULTISIG= # Export the Squads vault, not the multisig address!
+export SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
 ```
 
 For the initial deployment also need these:
@@ -219,6 +220,7 @@ solana-verify verify-from-repo \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
    --library-name $PROGRAM \
+   --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
   https://github.com/across-protocol/contracts
 ```
 
@@ -229,6 +231,7 @@ solana-verify export-pda-tx \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
   --library-name $PROGRAM  \
+  --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
   --uploader $MULTISIG \
   https://github.com/across-protocol/contracts
 ```
