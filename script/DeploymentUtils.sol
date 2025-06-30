@@ -41,13 +41,13 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
 
         // Determine hub chain ID based on spoke chain ID
         uint256 hubChainId;
-        if (spokeChainId == MAINNET) {
-            hubChainId = MAINNET;
-        } else if (spokeChainId == SEPOLIA) {
-            hubChainId = SEPOLIA;
+        if (spokeChainId == MAINNET()) {
+            hubChainId = MAINNET();
+        } else if (spokeChainId == SEPOLIA()) {
+            hubChainId = SEPOLIA();
         } else {
             // For L2 chains, hub is typically mainnet or sepolia
-            hubChainId = isTestnet(spokeChainId) ? SEPOLIA : MAINNET;
+            hubChainId = isTestnet(spokeChainId) ? SEPOLIA() : MAINNET();
         }
 
         // If hubPoolAddress is not provided, try to get it from environment
@@ -173,20 +173,20 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @param chainId Chain ID to check
      * @return bool True if testnet
      */
-    function isTestnet(uint256 chainId) internal pure returns (bool) {
+    function isTestnet(uint256 chainId) internal view returns (bool) {
         return
-            chainId == SEPOLIA ||
-            chainId == ARBITRUM_SEPOLIA ||
-            chainId == OPTIMISM_SEPOLIA ||
-            chainId == BASE_SEPOLIA ||
-            chainId == POLYGON_AMOY ||
-            chainId == LENS_TESTNET ||
-            chainId == LINEA_SEPOLIA ||
-            chainId == SCROLL_SEPOLIA ||
-            chainId == UNICHAIN_SEPOLIA ||
-            chainId == BLAST_SEPOLIA ||
-            chainId == INK_SEPOLIA ||
-            chainId == LISK_SEPOLIA ||
-            chainId == MODE_SEPOLIA;
+            chainId == SEPOLIA() ||
+            chainId == ARBITRUM_SEPOLIA() ||
+            chainId == OPTIMISM_SEPOLIA() ||
+            chainId == BASE_SEPOLIA() ||
+            chainId == POLYGON_AMOY() ||
+            chainId == LENS_TESTNET() ||
+            chainId == LINEA_SEPOLIA() ||
+            chainId == SCROLL_SEPOLIA() ||
+            chainId == UNICHAIN_SEPOLIA() ||
+            chainId == BLAST_SEPOLIA() ||
+            chainId == INK_SEPOLIA() ||
+            chainId == LISK_SEPOLIA() ||
+            chainId == MODE_SEPOLIA();
     }
 }
