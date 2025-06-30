@@ -30,6 +30,7 @@ via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.23"
 revert_strings = "strip"
+fs_permissions = [{ access = "read", path = "./"}]
 
 solc = "0.8.23"
 evm_version = "prague"
