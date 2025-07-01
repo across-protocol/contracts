@@ -24,7 +24,14 @@ import {
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram, loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm/web3-v1";
+import {
+  getDepositPda,
+  getDepositSeedHash,
+  getSpokePoolProgram,
+  intToU8Array32,
+  loadExecuteRelayerRefundLeafParams,
+  relayerRefundHashFn,
+} from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
 
 // Set up the provider
@@ -79,12 +86,28 @@ async function testBundleLogic(): Promise<void> {
   // Use program.methods.deposit to send tokens to the spoke. note this is NOT a valid deposit, we just want to
   // seed tokens into the spoke to test repayment.
 
-  // Delegate state PDA to pull depositor tokens.
   const inputAmount = amounts.reduce((acc, amount) => acc.add(amount), new BN(0));
+
+  const depositData: Parameters<typeof getDepositSeedHash>[0] = {
+    depositor: signer.publicKey,
+    recipient: signer.publicKey, // recipient is the signer for this example
+    inputToken,
+    outputToken: inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
+    inputAmount,
+    outputAmount: intToU8Array32(inputAmount),
+    destinationChainId: new BN(11155111),
+    exclusiveRelayer: PublicKey.default,
+    quoteTimestamp: new BN(Math.floor(Date.now() / 1000) - 1),
+    fillDeadline: new BN(Math.floor(Date.now() / 1000) + 3600),
+    exclusivityParameter: new BN(0),
+    message: Buffer.from([]),
+  };
+  const delegatePda = getDepositPda(depositData, program.programId);
+
   const approveIx = await createApproveCheckedInstruction(
     userTokenAccount,
     inputToken,
-    statePda,
+    delegatePda,
     signer.publicKey,
     BigInt(inputAmount.toString()),
     tokenDecimals,
@@ -93,22 +116,23 @@ async function testBundleLogic(): Promise<void> {
   );
   const depositIx = await (
     program.methods.deposit(
-      signer.publicKey,
-      signer.publicKey, // recipient is the signer for this example
-      inputToken,
-      inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
-      inputAmount,
-      new BN(0),
-      new BN(11155111), // destinationChainId.
-      PublicKey.default, // exclusiveRelayer
-      Math.floor(Date.now() / 1000) - 1, // quoteTimestamp
-      Math.floor(Date.now() / 1000) + 3600, // fillDeadline
-      0, // exclusivityDeadline
-      Buffer.from([]) // message
+      depositData.depositor,
+      depositData.recipient,
+      depositData.inputToken,
+      depositData.outputToken,
+      depositData.inputAmount,
+      depositData.outputAmount,
+      depositData.destinationChainId,
+      depositData.exclusiveRelayer,
+      depositData.quoteTimestamp.toNumber(),
+      depositData.fillDeadline.toNumber(),
+      depositData.exclusivityParameter.toNumber(),
+      Buffer.from([])
     ) as any
   )
     .accounts({
       state: statePda,
+      delegate: delegatePda,
       signer: signer.publicKey,
       userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer.publicKey),
       vault: vault,
@@ -164,7 +188,7 @@ async function testBundleLogic(): Promise<void> {
   const rootBundleId = state.rootBundleId;
   const rootBundleIdBuffer = Buffer.alloc(4);
   rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-  const seeds = [Buffer.from("root_bundle"), statePda.toBuffer(), rootBundleIdBuffer];
+  const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
   const [rootBundle] = PublicKey.findProgramAddressSync(seeds, programId);
 
   console.table([
