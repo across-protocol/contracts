@@ -6,6 +6,9 @@ import "./interfaces/AdapterInterface.sol";
 import "../libraries/CircleCCTPAdapter.sol";
 import { SpokePoolInterface } from "../interfaces/SpokePoolInterface.sol";
 import { HubPoolStore } from "./utilities/HubPoolStore.sol";
+import { IOFT } from "../interfaces/IOFT.sol";
+
+import "../libraries/OFTTransportAdapterWithStore.sol";
 
 interface IOwnable {
     function owner() external view returns (address);
@@ -21,7 +24,7 @@ interface IOwnable {
  * also need to be redeployed to point to the new HubPoolStore.
  * @custom:security-contact bugs@across.to
  */
-contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter {
+contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapterWithStore {
     /// @notice Contract that stores calldata to be relayed to L2 via storage proofs.
     HubPoolStore public immutable DATA_STORE;
 
@@ -31,8 +34,14 @@ contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter {
         HubPoolStore _store,
         IERC20 _l1Usdc,
         ITokenMessenger _cctpTokenMessenger,
-        uint32 _cctpDestinationDomainId
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpDestinationDomainId) {
+        uint32 _cctpDestinationDomainId,
+        address _adapterStore,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
+    )
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _cctpDestinationDomainId)
+        OFTTransportAdapterWithStore(_oftDstEid, _oftFeeCap, _adapterStore)
+    {
         DATA_STORE = _store;
     }
 
@@ -75,8 +84,11 @@ contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 amount,
         address to
     ) external payable override {
+        address oftMessenger = _getOftMessenger(l1Token);
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
+        } else if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
         } else {
             revert NotImplemented();
         }
