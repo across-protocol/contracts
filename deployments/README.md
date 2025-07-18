@@ -31,6 +31,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | Across Bond Token   | [0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea](https://etherscan.io/address/0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea) |
 | MulticallHandler    | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Cher Adapter        | [0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2](https://etherscan.io/address/0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2) |
 
 ## Optimism mainnet (10)
 
@@ -112,10 +113,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Zora mainnet (7777777)
 
-| Contract Name    | Address                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)          |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| Contract Name    | Address                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)         |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://zorascan.xyz/address/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
 ## World Chain mainnet (480)
 
@@ -137,3 +138,24 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Ink_SpokePool    | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.inkonchain.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Soneium mainnet (1868)
+
+| Contract Name     | Address                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Soneium_SpokePool | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
+| MulticallHandler  | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://soneium.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Unichain mainnet (130)
+
+| Contract Name      | Address                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Unichain_SpokePool | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://unichain.blockscout.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://unichain.blockscout.com/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+
+## Lens mainnet (232)
+
+| Contract Name    | Address                                        |
+| ---------------- | ---------------------------------------------- |
+| Lens_SpokePool   | [0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12]() |
+| MulticallHandler | [0xc5939F59b3c9662377DdA53A08D5085b2d52b719]() |

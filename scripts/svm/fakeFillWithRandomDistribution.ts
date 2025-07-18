@@ -1,27 +1,29 @@
 // This script implements a fill where relayed tokens are distributed to random recipients via the message handler.
 // Note that this should be run only on devnet as this is fake fill and all filled tokens are sent to random recipients.
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { AccountMeta, Keypair, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
+  createApproveCheckedInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
-  getOrCreateAssociatedTokenAccount,
   getMint,
-  createApproveCheckedInstruction,
+  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { AccountMeta, Keypair, PublicKey, SystemProgram, TransactionInstruction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
   AcrossPlusMessageCoder,
   MulticallHandlerCoder,
   calculateRelayHashUint8Array,
-  loadFillV3RelayParams,
+  getFillRelayDelegatePda,
+  getSpokePoolProgram,
+  intToU8Array32,
+  loadFillRelayParams,
   sendTransactionWithLookupTable,
-} from "../../src/svm";
+} from "../../src/svm/web3-v1";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
 
 // Set up the provider and signer.
@@ -29,8 +31,7 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const signer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
 
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments
@@ -40,10 +41,10 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusiveRelayer", { type: "string", demandOption: false, describe: "Exclusive relayer public key" })
   .option("inputToken", { type: "string", demandOption: true, describe: "Input token public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
-  .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
+  .option("inputAmount", { type: "string", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
-  .option("depositId", { type: "array", demandOption: true, describe: "Deposit ID" })
+  .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" })
   .option("repaymentChain", { type: "number", demandOption: false, description: "Repayment chain ID" })
@@ -51,17 +52,17 @@ const argv = yargs(hideBin(process.argv))
   .option("distributionCount", { type: "number", demandOption: false, describe: "Distribution count" })
   .option("bufferParams", { type: "boolean", demandOption: false, describe: "Use buffer account for params" }).argv;
 
-async function fillV3RelayToRandom(): Promise<void> {
+async function fillRelayToRandom(): Promise<void> {
   const resolvedArgv = await argv;
   const depositor = new PublicKey(resolvedArgv.depositor);
   const handler = new PublicKey(resolvedArgv.handler);
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || PublicKey.default.toString());
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
-  const depositId = (resolvedArgv.depositId as number[]).map((id) => id); // Ensure depositId is an array of BN
+  const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
   const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
   const repaymentChain = new BN(resolvedArgv.repaymentChain || 1);
@@ -130,7 +131,7 @@ async function fillV3RelayToRandom(): Promise<void> {
     message: encodedMessage,
   };
 
-  console.log("Filling V3 Relay with handler...");
+  console.log("Filling Relay with handler...");
 
   // Define the state account PDA
   const [statePda] = PublicKey.findProgramAddressSync(
@@ -171,11 +172,17 @@ async function fillV3RelayToRandom(): Promise<void> {
     }))
   );
 
-  // Delegate state PDA to pull relayer tokens.
+  // Delegate to pull relayer tokens.
+  const delegatePda = getFillRelayDelegatePda(
+    relayHashUint8Array,
+    repaymentChain,
+    repaymentAddress,
+    program.programId
+  ).pda;
   const approveInstruction = await createApproveCheckedInstruction(
     relayerTokenAccount,
     outputToken,
-    statePda,
+    delegatePda,
     signer.publicKey,
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
@@ -184,11 +191,11 @@ async function fillV3RelayToRandom(): Promise<void> {
   );
 
   // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
-  const fillV3RelayValues: FillDataValues = [relayHash, relayData, repaymentChain, repaymentAddress];
+  const fillRelayValues: FillDataValues = [relayHash, relayData, repaymentChain, repaymentAddress];
   if (bufferParams) {
-    await loadFillV3RelayParams(program, signer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+    await loadFillRelayParams(program, signer, fillRelayValues[1], fillRelayValues[2], fillRelayValues[3]);
   }
-  const fillV3RelayParams: FillDataParams = bufferParams ? [fillV3RelayValues[0], null, null, null] : fillV3RelayValues;
+  const fillRelayParams: FillDataParams = bufferParams ? [fillRelayValues[0], null, null, null] : fillRelayValues;
   const [instructionParams] = bufferParams
     ? PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
@@ -199,6 +206,7 @@ async function fillV3RelayToRandom(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
+    delegate: delegatePda,
     instructionParams,
     mint: outputToken,
     relayerTokenAccount,
@@ -214,7 +222,7 @@ async function fillV3RelayToRandom(): Promise<void> {
     ...multicallHandlerCoder.compiledKeyMetas,
   ];
   const fillInstruction = await program.methods
-    .fillV3Relay(...fillV3RelayParams)
+    .fillRelay(...fillRelayParams)
     .accounts(fillAccounts)
     .remainingAccounts(remainingAccounts)
     .instruction();
@@ -229,5 +237,5 @@ async function fillV3RelayToRandom(): Promise<void> {
   console.log("Transaction signature:", txSignature);
 }
 
-// Run the fillV3RelayToRandom function
-fillV3RelayToRandom();
+// Run the fillRelayToRandom function
+fillRelayToRandom();

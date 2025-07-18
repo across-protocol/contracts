@@ -1,38 +1,43 @@
 // This script executes a fake relayer repayment with a generated leaf. Useful for testing.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import {
-  PublicKey,
-  SystemProgram,
-  Keypair,
-  ComputeBudgetProgram,
-  AddressLookupTableProgram,
-  VersionedTransaction,
-  TransactionMessage,
-  sendAndConfirmTransaction,
-  Transaction,
-} from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccount,
-  getMint,
   createApproveCheckedInstruction,
+  createAssociatedTokenAccount,
+  getAssociatedTokenAddressSync,
+  getMint,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import {
+  AddressLookupTableProgram,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+  TransactionMessage,
+  VersionedTransaction,
+  sendAndConfirmTransaction,
+} from "@solana/web3.js";
+import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import {
+  getDepositPda,
+  getDepositSeedHash,
+  getSpokePoolProgram,
+  intToU8Array32,
+  loadExecuteRelayerRefundLeafParams,
+  relayerRefundHashFn,
+} from "../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { loadExecuteRelayerRefundLeafParams, relayerRefundHashFn } from "../../src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments
@@ -57,13 +62,6 @@ async function testBundleLogic(): Promise<void> {
     programId
   );
 
-  // This assumes that the destination chain Id 11155111 has been enabled. This is the sepolia chain ID.
-  // I.e this test assumes that enableRoute has been called with destinationChainId 11155111 and inputToken.
-  const [routePda] = PublicKey.findProgramAddressSync(
-    [Buffer.from("route"), inputToken.toBytes(), statePda.toBytes(), new BN(11155111).toArrayLike(Buffer, "le", 8)], // Assuming destinationChainId is 1
-    programId
-  );
-
   const vault = getAssociatedTokenAddressSync(
     inputToken,
     statePda,
@@ -78,7 +76,6 @@ async function testBundleLogic(): Promise<void> {
     { property: "inputToken", value: inputToken.toString() },
     { property: "signer", value: signer.publicKey.toString() },
     { property: "statePda", value: statePda.toString() },
-    { property: "routePda", value: routePda.toString() },
     { property: "vault", value: vault.toString() },
   ]);
 
@@ -86,15 +83,31 @@ async function testBundleLogic(): Promise<void> {
 
   const tokenDecimals = (await getMint(provider.connection, inputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
 
-  // Use program.methods.depositV3 to send tokens to the spoke. note this is NOT a valid deposit, we just want to
+  // Use program.methods.deposit to send tokens to the spoke. note this is NOT a valid deposit, we just want to
   // seed tokens into the spoke to test repayment.
 
-  // Delegate state PDA to pull depositor tokens.
   const inputAmount = amounts.reduce((acc, amount) => acc.add(amount), new BN(0));
+
+  const depositData: Parameters<typeof getDepositSeedHash>[0] = {
+    depositor: signer.publicKey,
+    recipient: signer.publicKey, // recipient is the signer for this example
+    inputToken,
+    outputToken: inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
+    inputAmount,
+    outputAmount: intToU8Array32(inputAmount),
+    destinationChainId: new BN(11155111),
+    exclusiveRelayer: PublicKey.default,
+    quoteTimestamp: new BN(Math.floor(Date.now() / 1000) - 1),
+    fillDeadline: new BN(Math.floor(Date.now() / 1000) + 3600),
+    exclusivityParameter: new BN(0),
+    message: Buffer.from([]),
+  };
+  const delegatePda = getDepositPda(depositData, program.programId);
+
   const approveIx = await createApproveCheckedInstruction(
     userTokenAccount,
     inputToken,
-    statePda,
+    delegatePda,
     signer.publicKey,
     BigInt(inputAmount.toString()),
     tokenDecimals,
@@ -102,24 +115,24 @@ async function testBundleLogic(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
   const depositIx = await (
-    program.methods.depositV3(
-      signer.publicKey,
-      signer.publicKey, // recipient is the signer for this example
-      inputToken,
-      inputToken, // Re-use inputToken as outputToken. does not matter for this deposit.
-      inputAmount,
-      new BN(0),
-      new BN(11155111), // destinationChainId. assumed to be enabled, as with routePDA
-      PublicKey.default, // exclusiveRelayer
-      Math.floor(Date.now() / 1000) - 1, // quoteTimestamp
-      Math.floor(Date.now() / 1000) + 3600, // fillDeadline
-      0, // exclusivityDeadline
-      Buffer.from([]) // message
+    program.methods.deposit(
+      depositData.depositor,
+      depositData.recipient,
+      depositData.inputToken,
+      depositData.outputToken,
+      depositData.inputAmount,
+      depositData.outputAmount,
+      depositData.destinationChainId,
+      depositData.exclusiveRelayer,
+      depositData.quoteTimestamp.toNumber(),
+      depositData.fillDeadline.toNumber(),
+      depositData.exclusivityParameter.toNumber(),
+      Buffer.from([])
     ) as any
   )
     .accounts({
       state: statePda,
-      route: routePda,
+      delegate: delegatePda,
       signer: signer.publicKey,
       userTokenAccount: getAssociatedTokenAddressSync(inputToken, signer.publicKey),
       vault: vault,
@@ -175,12 +188,11 @@ async function testBundleLogic(): Promise<void> {
   const rootBundleId = state.rootBundleId;
   const rootBundleIdBuffer = Buffer.alloc(4);
   rootBundleIdBuffer.writeUInt32LE(rootBundleId);
-  const seeds = [Buffer.from("root_bundle"), statePda.toBuffer(), rootBundleIdBuffer];
+  const seeds = [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer];
   const [rootBundle] = PublicKey.findProgramAddressSync(seeds, programId);
 
   console.table([
     { property: "State PDA", value: statePda.toString() },
-    { property: "Route PDA", value: routePda.toString() },
     { property: "Root Bundle PDA", value: rootBundle.toString() },
     { property: "Signer", value: signer.publicKey.toString() },
   ]);

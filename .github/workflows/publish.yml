@@ -12,6 +12,19 @@ name: Publish Package to npmjs
 on:
   release:
     types: [created]
+permissions:
+  contents: write
+env:
+  NODE_VERSION: "20.x"
+  EVM_ARTIFACTS_PATHS: |
+    artifacts
+    cache
+    typechain
+  SVM_ARTIFACTS_PATHS: |
+    target/idl
+    target/types
+    src/svm/assets
+    src/svm/clients
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,23 +35,48 @@ jobs:
       - name: Validate and extract release information
         id: release
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
-      # Setup Anchor to enable compilation and export of Solana programs
-      - name: Setup Anchor & Build
-        uses: metadaoproject/setup-anchor@v2
-        with:
-          anchor-version: "0.30.1"
-          solana-cli-version: "1.18.21"
-          node-version: "20.17.0"
-      # - run: anchor build
+
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v3
         with:
-          node-version: "18.x"
+          node-version: "${{ env.NODE_VERSION }}"
           always-auth: true
           registry-url: "https://registry.npmjs.org"
+          cache: "yarn"
 
-      # Perform installs, run tests, run a build step, etc. here, as needed.
-      - run: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile
+
+      - name: Cache EVM artifacts
+        id: evm-artifacts-cache
+        uses: ./.github/actions/cache-evm-artifacts
+        with:
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Generate EVM artifacts
+        if: steps.evm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-evm-artifacts
+        with:
+          path: ${{ env.EVM_ARTIFACTS_PATHS }}
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Cache SVM artifacts
+        id: svm-artifacts-cache
+        uses: ./.github/actions/cache-svm-artifacts
+        with:
+          type: artifacts
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Generate SVM artifacts
+        if: steps.svm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-svm-artifacts
+        with:
+          type: artifacts
+          path: ${{ env.SVM_ARTIFACTS_PATHS }}
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Build dist package
+        run: yarn build-ts
 
       # The last two steps will publish the package. Note that we're using
       # information from the `release` step above (I told you we'd use it
@@ -69,3 +107,54 @@ jobs:
         run: yarn publish --tag ${{ steps.release.outputs.tag }}
         env:
           NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Due to GitHub cache scoping, we cannot easily share the cache between releases even if the cache key is the same.
+  # In order to not slow down the NPM package publishing, we move the building of SVM binaries for GitHub release to a
+  # separate jobs that runs in parallel.
+  release-svm-production:
+    name: Release SVM production binaries on GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Create verified production build
+        run: yarn build-svm-solana-verify
+
+      - name: Archive verified production build
+        run: tar -czf svm-verified-production-binaries.tar.gz target/deploy
+
+      - name: Release verified production binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: svm-verified-production-binaries.tar.gz
+
+  release-svm-test:
+    name: Release SVM test binaries on GitHub
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ env.NODE_VERSION }}
+
+      - name: Create verified test build
+        env:
+          IS_TEST: true
+        run: yarn build-svm-solana-verify
+
+      - name: Archive verified test build
+        run: tar -czf svm-verified-test-binaries.tar.gz target/deploy
+
+      - name: Release verified test binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: svm-verified-test-binaries.tar.gz

@@ -1,6 +1,20 @@
 use anchor_lang::prelude::*;
 
-declare_id!("DnLjPzpMCW2CF99URhGF3jDYnVRcCJMjUWsbPb4xVoBn");
+#[cfg(not(feature = "no-entrypoint"))]
+use ::solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Across",
+    project_url: "https://across.to",
+    contacts: "email:bugs@across.to",
+    policy: "https://docs.across.to/resources/bug-bounty",
+    preferred_languages: "en",
+    source_code: "https://github.com/across-protocol/contracts/tree/master/programs/svm-spoke",
+    auditors: "OpenZeppelin"
+}
+
+declare_id!("DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter);
@@ -32,9 +46,9 @@ use utils::*;
 pub mod svm_spoke {
     use super::*;
 
-    /// **************************************
-    ///            ADMIN FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //            ADMIN FUNCTIONS           *
+    // *************************************
 
     /// Initializes the state for the SVM Spoke Pool. Only callable once.
     ///
@@ -109,34 +123,6 @@ pub mod svm_spoke {
         instructions::transfer_ownership(ctx, new_owner)
     }
 
-    /// Enables or disables a route for deposits from origin token to destination chain ID. Callable only by the owner.
-    ///
-    /// ### Required Accounts:
-    /// - signer (Signer): The account that must be the owner to authorize the route change.
-    /// - payer (Signer): The account responsible for paying the transaction fees.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed] where `seed` is 0 on mainnet.
-    /// - route (Writable): PDA to store route information. Created on the first call, updated subsequently.
-    ///   Seed: ["route",origin_token,state.seed,destination_chain_id].
-    /// - vault (Writable): ATA to hold the origin token for the associated route. Created on the first call.
-    ///   Authority must be set as the state, and mint must be the origin_token_mint.
-    /// - origin_token_mint: The mint account for the origin token.
-    /// - token_program: The token program.
-    /// - associated_token_program: The associated token program.
-    /// - system_program: The system program required for account creation.
-    ///
-    /// ### Parameters:
-    /// - origin_token: The public key of the origin token.
-    /// - destination_chain_id: The chain ID of the destination.
-    /// - enabled: Boolean indicating whether the route is enabled or disabled.
-    pub fn set_enable_route(
-        ctx: Context<SetEnableRoute>,
-        origin_token: Pubkey,
-        destination_chain_id: u64,
-        enabled: bool,
-    ) -> Result<()> {
-        instructions::set_enable_route(ctx, origin_token, destination_chain_id, enabled)
-    }
-
     /// Sets the cross-domain admin for the Spoke Pool. Only callable by owner. Used if Hubpool upgrades.
     ///
     /// ### Required Accounts:
@@ -194,16 +180,16 @@ pub mod svm_spoke {
         instructions::emergency_delete_root_bundle(ctx, root_bundle_id)
     }
 
-    /// **************************************
-    ///          DEPOSIT FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //          DEPOSIT FUNCTIONS           *
+    // *************************************
 
     /// Request to bridge input_token to a target chain and receive output_token.
     ///
     /// The fee paid to relayers and the system is captured in the spread between the input and output amounts,
     /// denominated in the input token. A relayer on the destination chain will send `output_amount` of `output_token`
     /// to the recipient and receive `input_token` on a repayment chain of their choice. The fee accounts for:
-    /// Destination transaction costs, relayer's opportunity cost of capital while waiting for a refund during the
+    /// destination transaction costs, relayer's opportunity cost of capital while waiting for a refund during the
     /// optimistic challenge window in the HubPool, and the system fee charged to the relayer.
     ///
     /// On the destination chain, a unique hash of the deposit data is used to identify this deposit. Modifying any
@@ -214,47 +200,46 @@ pub mod svm_spoke {
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the deposit.
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
-    ///   Seed: ["route",input_token,state.seed,destination_chain_id].
     /// - depositor_token_account (Writable): The depositor's ATA for the input token.
     /// - vault (Writable): Programs ATA for the associated input token. This is where the depositor's assets are sent.
     ///   Authority must be the state.
     /// - mint (Account): The mint account for the input token.
     /// - token_program (Interface): The token program.
+    /// - delegate (Account): The account used to delegate the input amount of the input token.
     ///
     /// ### Parameters
     /// - depositor: The account credited with the deposit. Can be different from the signer.
     /// - recipient: The account receiving funds on the destination chain. Depending on the output chain can be an ETH
-    ///     address or a contract address or any other address type encoded as a bytes32 field.
+    ///   address or a contract address or any other address type encoded as a bytes32 field.
     /// - input_token: The token pulled from the caller's account and locked into this program's vault on deposit.
     /// - output_token: The token that the relayer will send to the recipient on the destination chain.
     /// - input_amount: The amount of input tokens to pull from the caller's account and lock into the vault. This
     ///   amount will be sent to the relayer on their repayment chain of choice as a refund following an optimistic
     ///   challenge window in the HubPool, less a system fee.
     /// - output_amount: The amount of output tokens that the relayer will send to the recipient on the destination.
-    /// - destination_chain_id: The destination chain identifier. Must be enabled along with the input token as a valid
-    ///   deposit route from this spoke pool or this transaction will revert.
+    ///   This is big-endian encoded as a 32-byte array to match its underlying byte representation on EVM side.
+    /// - destination_chain_id: The destination chain identifier where the fill should be made.
     /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity
     ///   deadline timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the
     ///   current block timestamp.
     /// - quote_timestamp: The HubPool timestamp that is used to determine the system fee paid by the depositor. This
     ///   must be set to some time between [currentTime - depositQuoteTimeBuffer, currentTime].
     /// - fill_deadline: The deadline for the relayer to fill the deposit. After this destination chain timestamp, the
-    ///   fill will revert on the destination chain. Must be set between [currentTime,currentTime+fillDeadlineBuffer].
+    ///   fill will revert on the destination chain. Must be set before currentTime + fillDeadlineBuffer.
     /// - exclusivity_parameter: Sets the exclusivity deadline timestamp for the exclusiveRelayer to fill the deposit.
     ///   1. If 0, no exclusivity period.
     ///   2. If less than MAX_EXCLUSIVITY_PERIOD_SECONDS, adds this value to the current block timestamp.
     ///   3. Otherwise, uses this value as the exclusivity deadline timestamp.
     /// - message: The message to send to the recipient on the destination chain if the recipient is a contract.
     ///   If not empty, the recipient contract must implement handleV3AcrossMessage() or the fill will revert.
-    pub fn deposit_v3(
-        ctx: Context<DepositV3>,
+    pub fn deposit(
+        ctx: Context<Deposit>,
         depositor: Pubkey,
         recipient: Pubkey,
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         quote_timestamp: u32,
@@ -262,7 +247,7 @@ pub mod svm_spoke {
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
-        instructions::deposit_v3(
+        instructions::deposit(
             ctx,
             depositor,
             recipient,
@@ -279,22 +264,23 @@ pub mod svm_spoke {
         )
     }
 
-    // Equivalent to deposit_v3 except quote_timestamp is set to the current time.
-    pub fn deposit_v3_now(
-        ctx: Context<DepositV3>,
+    /// Equivalent to deposit except quote_timestamp is set to the current time.
+    /// The deposit `fill_deadline` is calculated as the current time plus `fill_deadline_offset`.
+    pub fn deposit_now(
+        ctx: Context<Deposit>,
         depositor: Pubkey,
         recipient: Pubkey,
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
-        fill_deadline: u32,
+        fill_deadline_offset: u32,
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
-        instructions::deposit_v3_now(
+        instructions::deposit_now(
             ctx,
             depositor,
             recipient,
@@ -304,23 +290,26 @@ pub mod svm_spoke {
             output_amount,
             destination_chain_id,
             exclusive_relayer,
-            fill_deadline,
+            fill_deadline_offset,
             exclusivity_parameter,
             message,
         )
     }
 
-    /// Equivalent to deposit_v3 except the deposit_nonce is not used to derive the deposit_id for the depositor. This
-    /// Lets the caller influence the deposit ID to make it deterministic for the depositor. The computed depositID is
-    /// the keccak256 hash of [signer, depositor, deposit_nonce].
-    pub fn unsafe_deposit_v3(
-        ctx: Context<DepositV3>,
+    /// Equivalent to deposit, except that it doesn't use the global `number_of_deposits` counter as the deposit
+    /// nonce. Instead, it allows the caller to pass a `deposit_nonce`. This function is designed for anyone who
+    /// wants to pre-compute their resultant deposit ID, which can be useful for filling a deposit faster and
+    /// avoiding the risk of a deposit ID unexpectedly changing due to another deposit front-running this one and
+    /// incrementing the global deposit ID counter. This enables the caller to influence the deposit ID, making it
+    /// deterministic for the depositor. The computed `depositID` is the keccak256 hash of [signer, depositor, deposit_nonce].
+    pub fn unsafe_deposit(
+        ctx: Context<Deposit>,
         depositor: Pubkey,
         recipient: Pubkey,
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         deposit_nonce: u64,
@@ -329,7 +318,7 @@ pub mod svm_spoke {
         exclusivity_parameter: u32,
         message: Vec<u8>,
     ) -> Result<()> {
-        instructions::unsafe_deposit_v3(
+        instructions::unsafe_deposit(
             ctx,
             depositor,
             recipient,
@@ -363,16 +352,16 @@ pub mod svm_spoke {
         Ok(utils::get_unsafe_deposit_id(signer, depositor, deposit_nonce))
     }
 
-    /// **************************************
-    ///          RELAYER FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //          RELAYER FUNCTIONS           *
+    // *************************************
 
     /// Fulfill request to bridge cross chain by sending specified output tokens to recipient.
     ///
     /// Relayer & system fee is captured in the spread between input and output amounts. This fee accounts for tx costs,
     /// relayer's capital opportunity cost, and a system fee. The relay_data hash uniquely identifies the deposit to
     /// fill, ensuring relayers are refunded only for deposits matching the original hash from the origin SpokePool.
-    /// This hash includes all parameters from deposit_v3() and must match the destination_chain_id. Note the relayer
+    /// This hash includes all parameters from deposit() and must match the destination_chain_id. Note the relayer
     /// creates an ATA in calling this method to store the fill_status. This should be closed once the deposit has
     /// expired to let the relayer re-claim their rent. Cannot fill more than once. Partial fills are not supported.
     ///
@@ -382,9 +371,6 @@ pub mod svm_spoke {
     ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
     ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
-    ///   Seed: ["route",input_token,state.seed,destination_chain_id].
-    /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
     /// - mint (Account): The mint of the output token, sent from the relayer to the recipient.
     /// - relayer_token_account (Writable): The relayer's ATA for the input token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
@@ -393,18 +379,20 @@ pub mod svm_spoke {
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Interface): The associated token program.
     /// - system_program (Interface): The system program.
+    /// - delegate (Account): The account used to delegate the output amount of the output token.
     ///
     /// ### Parameters:
-    /// - _relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
+    /// - relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit to be filled. Should match
-    ///   all the same-named parameters emitted in the origin chain V3FundsDeposited event.
+    ///   all the same-named parameters emitted in the origin chain FundsDeposited event.
     ///   - depositor: The account credited with the deposit.
     ///   - recipient: The account receiving funds on this chain.
     ///   - input_token: The token pulled from the caller's account to initiate the deposit. The equivalent of this
     ///     token on the repayment chain will be sent as a refund to the caller.
     ///   - output_token: The token that the caller will send to the recipient on this chain.
     ///   - input_amount: This amount, less a system fee, will be sent to the caller on their repayment chain.
+    ///     This is big-endian encoded as a 32-byte array to match its underlying byte representation on EVM side
     ///   - output_amount: The amount of output tokens that the caller will send to the recipient.
     ///   - origin_chain_id: The origin chain identifier.
     ///   - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the
@@ -414,20 +402,20 @@ pub mod svm_spoke {
     ///   - exclusivity_deadline: The deadline for the exclusive relayer to fill the deposit. After this timestamp,
     ///     anyone can fill this deposit.
     ///   - message: The message to send to the recipient if the recipient is a contract that implements a
-    ///     handle_v3_across_message() public function.
+    ///     handle_across_message() public function.
     /// - repayment_chain_id: Chain of SpokePool where relayer wants to be refunded after the challenge window has
-    ///     passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
+    ///   passed. Will receive input_amount of the equivalent token to input_token on the repayment chain.
     /// - repayment_address: The address of the recipient on the repayment chain that they want to be refunded to.
     /// Note: relay_data, repayment_chain_id, and repayment_address are optional parameters. If None for any of these
     /// is passed, the caller must load them via the instruction_params account.
-    pub fn fill_v3_relay<'info>(
-        ctx: Context<'_, '_, '_, 'info, FillV3Relay<'info>>,
-        _relay_hash: [u8; 32],
-        relay_data: Option<V3RelayData>,
+    pub fn fill_relay<'info>(
+        ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
+        relay_hash: [u8; 32],
+        relay_data: Option<RelayData>,
         repayment_chain_id: Option<u64>,
         repayment_address: Option<Pubkey>,
     ) -> Result<()> {
-        instructions::fill_v3_relay(ctx, relay_data, repayment_chain_id, repayment_address)
+        instructions::fill_relay(ctx, relay_hash, relay_data, repayment_chain_id, repayment_address)
     }
 
     /// Closes the FillStatusAccount PDA to reclaim relayer rent.
@@ -455,16 +443,13 @@ pub mod svm_spoke {
     /// - state (Account): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
     /// - vault (InterfaceAccount): The ATA for the refunded mint. Authority must be the state.
     /// - mint (InterfaceAccount): The mint account for the token being refunded.
-    /// - token_account (InterfaceAccount): The ATA for the token being refunded to.
+    /// - refund_address: token account authority receiving the refund.
+    /// - token_account (InterfaceAccount): The receiving token account for the refund. When refund_address is different
+    ///   from the signer, this must match its ATA.
     /// - claim_account (Account): The claim account PDA. Seed: ["claim_account",mint,refund_address].
     /// - token_program (Interface): The token program.
     pub fn claim_relayer_refund(ctx: Context<ClaimRelayerRefund>) -> Result<()> {
         instructions::claim_relayer_refund(ctx)
-    }
-
-    /// Functionally identical to claim_relayer_refund() except the refund is sent to a specified refund address.
-    pub fn claim_relayer_refund_for(ctx: Context<ClaimRelayerRefundFor>, refund_address: Pubkey) -> Result<()> {
-        instructions::claim_relayer_refund_for(ctx, refund_address)
     }
 
     /// Creates token accounts in batch for a set of addresses.
@@ -482,11 +467,11 @@ pub mod svm_spoke {
         instructions::create_token_accounts(ctx)
     }
 
-    /// **************************************
-    ///           BUNDLE FUNCTIONS           *
-    /// *************************************
+    // **************************************
+    //           BUNDLE FUNCTIONS           *
+    // *************************************
 
-    /// Executes relayer refund leaf. Only callable by owner.
+    /// Executes relayer refund leaf.
     ///
     /// Processes a relayer refund leaf, verifying its inclusion in a previous Merkle root and that it was not
     /// previously executed. Function has two modes of operation: a) transfers all relayer refunds directly to
@@ -494,7 +479,8 @@ pub mod svm_spoke {
     /// refund. In the happy path, (a) should be used. (b) should only be used if there is a relayer within the bundle
     /// who can't receive the transfer for some reason, such as failed token transfers due to blacklisting. Executing
     /// relayer refunds requires the caller to create a LUT and load the execution params into it. This is needed to
-    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the UMIP.
+    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Accross
+    /// UMIP: https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-179.md
     ///
     /// instruction_params Parameters:
     /// - root_bundle_id: The ID of the root bundle containing the relayer refund root.
@@ -520,8 +506,7 @@ pub mod svm_spoke {
     /// - token_program: The token program.
     /// - system_program: The system program required for account creation.
     ///
-    /// execute_relayer_refund_leaf executes in mode (a) where refunds are sent to ATA directly.
-    /// execute_relayer_refund_leaf_deferred executes in mode (b) where refunds are allocated to the claim_account PDA.
+    /// execute_relayer_refund_leaf executes in mode where refunds are sent to ATA directly.
     pub fn execute_relayer_refund_leaf<'c, 'info>(
         ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
@@ -531,6 +516,7 @@ pub mod svm_spoke {
         instructions::execute_relayer_refund_leaf(ctx, false)
     }
 
+    /// Similar to execute_relayer_refund_leaf, but executes in mode where refunds are allocated to claim_account PDAs.
     pub fn execute_relayer_refund_leaf_deferred<'c, 'info>(
         ctx: Context<'_, '_, 'c, 'info, ExecuteRelayerRefundLeaf<'info>>,
     ) -> Result<()>
@@ -632,18 +618,12 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that pays for the transaction and initializes the claim account.
+    /// - mint: The mint associated with the claim account.
+    /// - refund_address: The refund address associated with the claim account.
     /// - claim_account (Writable): The newly created claim account PDA to store claim data for this associated mint.
     ///   Seed: ["claim_account",mint,refund_address].
     /// - system_program: The system program required for account creation.
-    ///
-    /// ### Parameters:
-    /// - _mint: The public key of the mint associated with the claim account.
-    /// - _refund_address: The public key of the refund address associated with the claim account.
-    pub fn initialize_claim_account(
-        ctx: Context<InitializeClaimAccount>,
-        _mint: Pubkey,
-        _refund_address: Pubkey,
-    ) -> Result<()> {
+    pub fn initialize_claim_account(ctx: Context<InitializeClaimAccount>) -> Result<()> {
         instructions::initialize_claim_account(ctx)
     }
 
@@ -655,22 +635,16 @@ pub mod svm_spoke {
     ///
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the closure. Must be the initializer of the claim account.
+    /// - mint: The mint associated with the claim account.
+    /// - refund_address: The refund address associated with the claim account.
     /// - claim_account (Writable): The claim account PDA to be closed. Seed: ["claim_account",mint,refund_address].
-    ///
-    /// ### Parameters:
-    /// - _mint: The public key of the mint associated with the claim account.
-    /// - _refund_address: The public key of the refund address associated with the claim account.
-    pub fn close_claim_account(
-        ctx: Context<CloseClaimAccount>,
-        _mint: Pubkey,           // Only used in account constraints.
-        _refund_address: Pubkey, // Only used in account constraints.
-    ) -> Result<()> {
+    pub fn close_claim_account(ctx: Context<CloseClaimAccount>) -> Result<()> {
         instructions::close_claim_account(ctx)
     }
 
-    /// **************************************
-    ///         SLOW FILL FUNCTIONS          *
-    /// *************************************
+    // **************************************
+    //         SLOW FILL FUNCTIONS          *
+    // *************************************
 
     /// Requests Across to send LP funds to this program to fulfill a slow fill.
     ///
@@ -678,7 +652,7 @@ pub mod svm_spoke {
     /// token via PoolRebalanceRoutes. Slow fills are created by inserting slow fill objects into a Merkle tree that is
     /// included in the next HubPool "root bundle". Once the optimistic challenge window has passed, the HubPool will
     /// relay the slow root to this chain via relayRootBundle(). Once the slow root is relayed, the slow fill can be
-    /// executed by anyone who calls executeV3SlowRelayLeaf(). Cant request a slow fill if the fill deadline has
+    /// executed by anyone who calls executeSlowRelayLeaf(). Cant request a slow fill if the fill deadline has
     /// passed. Cant request a slow fill if the relay has already been filled or a slow fill has already been requested.
     ///
     /// ### Required Accounts:
@@ -696,22 +670,22 @@ pub mod svm_spoke {
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit that should be slow filled. If any
     ///   of the params are missing or different from the origin chain deposit, then Across will not include a slow
-    ///   fill for the intended deposit. See fill_v3_relay & V3RelayData struct for more details.
+    ///   fill for the intended deposit. See fill_relay & RelayData struct for more details.
     /// Note: relay_data is optional parameter. If None for it is passed, the caller must load it via the
     /// instruction_params account.
-    pub fn request_v3_slow_fill(
-        ctx: Context<RequestV3SlowFill>,
+    pub fn request_slow_fill(
+        ctx: Context<RequestSlowFill>,
         _relay_hash: [u8; 32],
-        relay_data: Option<V3RelayData>,
+        relay_data: Option<RelayData>,
     ) -> Result<()> {
-        instructions::request_v3_slow_fill(ctx, relay_data)
+        instructions::request_slow_fill(ctx, relay_data)
     }
 
     /// Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
     ///
     /// Executing a slow fill leaf is equivalent to filling the relayData, so this function cannot be used to
     /// double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-    /// like any other fill sent through fillV3Relay(). There is no relayer credited with filling this relay since funds
+    /// like any other fill sent through fillRelay(). There is no relayer credited with filling this relay since funds
     /// are sent directly out of this program's vault.
     ///
     /// ### Required Accounts:
@@ -733,7 +707,7 @@ pub mod svm_spoke {
     /// - _relay_hash: The hash identifying the deposit to be filled. Used to identify the deposit to be filled.
     /// - slow_fill_leaf: Contains all data necessary to uniquely verify the slow fill. This struct contains:
     ///     - relayData: Struct containing all the data needed to identify the original deposit to be slow filled. Same
-    ///       as the relay_data struct in fill_v3_relay().
+    ///       as the relay_data struct in fill_relay().
     ///     - chainId: Chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
     ///       chainId, then this function will revert.
     ///     - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
@@ -743,19 +717,22 @@ pub mod svm_spoke {
     /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
     /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters. If None for any of these is passed,
     /// the caller must load them via the instruction_params account.
-    pub fn execute_v3_slow_relay_leaf<'info>(
-        ctx: Context<'_, '_, '_, 'info, ExecuteV3SlowRelayLeaf<'info>>,
+    /// Note: When verifying the slow fill leaf, the relay data is hashed using AnchorSerialize::serialize that encodes
+    /// output token amounts to little-endian format while input token amount preserves its big-endian encoding as it
+    /// is passed as [u8; 32] array.
+    pub fn execute_slow_relay_leaf<'info>(
+        ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],
-        slow_fill_leaf: Option<V3SlowFill>,
+        slow_fill_leaf: Option<SlowFill>,
         _root_bundle_id: Option<u32>,
         proof: Option<Vec<[u8; 32]>>,
     ) -> Result<()> {
-        instructions::execute_v3_slow_relay_leaf(ctx, slow_fill_leaf, proof)
+        instructions::execute_slow_relay_leaf(ctx, slow_fill_leaf, proof)
     }
 
-    /// **************************************
-    ///       CCTP FUNCTIONS FUNCTIONS       *
-    /// *************************************
+    // **************************************
+    //       CCTP FUNCTIONS FUNCTIONS       *
+    // *************************************
 
     /// Handles cross-chain messages received from L1 Ethereum over CCTP.
     ///

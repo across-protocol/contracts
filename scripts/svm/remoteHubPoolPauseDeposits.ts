@@ -4,7 +4,7 @@
 // - HUB_POOL_ADDRESS: Hub Pool address
 
 import * as anchor from "@coral-xyz/anchor";
-import { AnchorProvider, BN, Program, web3 } from "@coral-xyz/anchor";
+import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
 import { getNodeUrl } from "@uma/common";
 import "dotenv/config";
@@ -16,10 +16,10 @@ import {
   CIRCLE_IRIS_API_URL_MAINNET,
   decodeMessageHeader,
   getMessages,
+  getMessageTransmitterProgram,
+  getSpokePoolProgram,
   isSolanaDevnet,
-} from "../../src/svm";
-import { MessageTransmitter } from "../../target/types/message_transmitter";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+} from "../../src/svm/web3-v1";
 import { HubPool__factory } from "../../typechain";
 import { requireEnv } from "./utils/helpers";
 
@@ -53,15 +53,13 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const remoteDomain = 0; // Ethereum
 
   // Get Solana programs and accounts.
-  const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-  const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
+  const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
     svmSpokeProgram.programId
   );
 
-  const messageTransmitterIdl = require("../../target/idl/message_transmitter.json");
-  const messageTransmitterProgram = new Program<MessageTransmitter>(messageTransmitterIdl, provider);
+  const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
     messageTransmitterProgram.programId
@@ -81,7 +79,7 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
   const spokePoolIface = new ethers.utils.Interface(["function pauseDeposits(bool pause)"]);
 
-  console.log("Remotely configuring deposit route...");
+  console.log("Remotely pausing deposits...");
   console.table([
     { Property: "seed", Value: seed.toString() },
     { Property: "chainId", Value: (chainId as any).toString() },
@@ -191,7 +189,7 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   console.log("Your transaction signature", receiveMessageTx);
 
   let stateAccount = await svmSpokeProgram.account.state.fetch(statePda);
-  console.log("Updated deposit route state to: pausedDeposits =", stateAccount.pausedDeposits);
+  console.log("Updated deposit state to: pausedDeposits =", stateAccount.pausedDeposits);
 }
 
 remoteHubPoolPauseDeposit()

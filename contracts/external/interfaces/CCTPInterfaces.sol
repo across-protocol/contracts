@@ -57,6 +57,39 @@ interface ITokenMessenger {
     function localMinter() external view returns (ITokenMinter minter);
 }
 
+// Source: https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/TokenMessengerV2.sol#L138C1-L166C15
+interface ITokenMessengerV2 {
+    /**
+     * @notice Deposits and burns tokens from sender to be minted on destination domain.
+     * Emits a `DepositForBurn` event.
+     * @dev reverts if:
+     * - given burnToken is not supported
+     * - given destinationDomain has no TokenMessenger registered
+     * - transferFrom() reverts. For example, if sender's burnToken balance or approved allowance
+     * to this contract is less than `amount`.
+     * - burn() reverts. For example, if `amount` is 0.
+     * - maxFee is greater than or equal to `amount`.
+     * - MessageTransmitterV2#sendMessage reverts.
+     * @param amount amount of tokens to burn
+     * @param destinationDomain destination domain to receive message on
+     * @param mintRecipient address of mint recipient on destination domain
+     * @param burnToken token to burn `amount` of, on local domain
+     * @param destinationCaller authorized caller on the destination domain, as bytes32. If equal to bytes32(0),
+     * any address can broadcast the message.
+     * @param maxFee maximum fee to pay on the destination domain, specified in units of burnToken
+     * @param minFinalityThreshold the minimum finality at which a burn message will be attested to.
+     */
+    function depositForBurn(
+        uint256 amount,
+        uint32 destinationDomain,
+        bytes32 mintRecipient,
+        address burnToken,
+        bytes32 destinationCaller,
+        uint256 maxFee,
+        uint32 minFinalityThreshold
+    ) external;
+}
+
 /**
  * A TokenMessenger stores a TokenMinter contract which extends the TokenController contract. The TokenController
  * contract has a burnLimitsPerMessage public mapping which can be queried to find the per-message burn limit
@@ -73,4 +106,25 @@ interface ITokenMinter {
      * @return burnLimit maximum burn amount per message for token
      */
     function burnLimitsPerMessage(address token) external view returns (uint256);
+}
+
+/**
+ * IMessageTransmitter in CCTP inherits IRelayer and IReceiver, but here we only import sendMessage from IRelayer:
+ * https://github.com/circlefin/evm-cctp-contracts/blob/377c9bd813fb86a42d900ae4003599d82aef635a/src/interfaces/IMessageTransmitter.sol#L25
+ * https://github.com/circlefin/evm-cctp-contracts/blob/377c9bd813fb86a42d900ae4003599d82aef635a/src/interfaces/IRelayer.sol#L23-L35
+ */
+interface IMessageTransmitter {
+    /**
+     * @notice Sends an outgoing message from the source domain.
+     * @dev Increment nonce, format the message, and emit `MessageSent` event with message information.
+     * @param destinationDomain Domain of destination chain
+     * @param recipient Address of message recipient on destination domain as bytes32
+     * @param messageBody Raw bytes content of message
+     * @return nonce reserved by message
+     */
+    function sendMessage(
+        uint32 destinationDomain,
+        bytes32 recipient,
+        bytes calldata messageBody
+    ) external returns (uint64);
 }

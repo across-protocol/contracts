@@ -7,6 +7,11 @@ pub struct SetXDomainAdmin {
 }
 
 #[event]
+pub struct TransferredOwnership {
+    pub new_owner: Pubkey,
+}
+
+#[event]
 pub struct PausedDeposits {
     pub is_paused: bool,
 }
@@ -14,13 +19,6 @@ pub struct PausedDeposits {
 #[event]
 pub struct PausedFills {
     pub is_paused: bool,
-}
-
-#[event]
-pub struct EnabledDepositRoute {
-    pub origin_token: Pubkey,
-    pub destination_chain_id: u64,
-    pub enabled: bool,
 }
 
 #[event]
@@ -37,11 +35,11 @@ pub struct EmergencyDeletedRootBundle {
 
 // Deposit events
 #[event]
-pub struct V3FundsDeposited {
+pub struct FundsDeposited {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
-    pub output_amount: u64,
+    pub output_amount: [u8; 32],
     pub destination_chain_id: u64,
     pub deposit_id: [u8; 32],
     pub quote_timestamp: u32,
@@ -62,7 +60,7 @@ pub enum FillType {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct V3RelayExecutionEventInfo {
+pub struct RelayExecutionEventInfo {
     pub updated_recipient: Pubkey,
     pub updated_message_hash: [u8; 32],
     pub updated_output_amount: u64,
@@ -70,10 +68,10 @@ pub struct V3RelayExecutionEventInfo {
 }
 
 #[event]
-pub struct FilledV3Relay {
+pub struct FilledRelay {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
-    pub input_amount: u64,
+    pub input_amount: [u8; 32],
     pub output_amount: u64,
     pub repayment_chain_id: u64,
     pub origin_chain_id: u64,
@@ -84,17 +82,16 @@ pub struct FilledV3Relay {
     pub relayer: Pubkey,
     pub depositor: Pubkey,
     pub recipient: Pubkey,
-    // TODO: update EVM implementation to use message_hash in all fill related events.
     pub message_hash: [u8; 32],
-    pub relay_execution_info: V3RelayExecutionEventInfo,
+    pub relay_execution_info: RelayExecutionEventInfo,
 }
 
 // Slow fill events
 #[event]
-pub struct RequestedV3SlowFill {
+pub struct RequestedSlowFill {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
-    pub input_amount: u64,
+    pub input_amount: [u8; 32],
     pub output_amount: u64,
     pub origin_chain_id: u64,
     pub deposit_id: [u8; 32],

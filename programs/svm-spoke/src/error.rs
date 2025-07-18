@@ -3,11 +3,9 @@ use anchor_lang::prelude::*;
 // Common Errors with EVM SpokePool.
 #[error_code]
 pub enum CommonError {
-    #[msg("The route is not enabled!")]
-    DisabledRoute,
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
-    #[msg("Ivalid fill deadline!")]
+    #[msg("Invalid fill deadline!")]
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
@@ -35,6 +33,8 @@ pub enum CommonError {
     InsufficientSpokePoolBalanceToExecuteLeaf,
     #[msg("Invalid exclusive relayer!")]
     InvalidExclusiveRelayer,
+    #[msg("Invalid output token!")]
+    InvalidOutputToken,
 }
 
 // SVM specific errors.
@@ -42,14 +42,10 @@ pub enum CommonError {
 pub enum SvmError {
     #[msg("Only the owner can call this function!")]
     NotOwner,
-    #[msg("Invalid route PDA!")]
-    InvalidRoutePDA,
     #[msg("Invalid relay hash!")]
     InvalidRelayHash,
     #[msg("The fill deadline has not passed!")]
     CanOnlyCloseFillStatusPdaIfFillDeadlinePassed,
-    #[msg("The fill status is not filled!")]
-    NotFilled,
     #[msg("The caller is not the relayer!")]
     NotRelayer,
     #[msg("Cannot set time if not in test mode!")]
@@ -72,10 +68,14 @@ pub enum SvmError {
     NonZeroRefundClaim,
     #[msg("Invalid claim initializer!")]
     InvalidClaimInitializer,
+    #[msg("Invalid refund token account!")]
+    InvalidRefundTokenAccount,
     #[msg("Seed must be 0 in production!")]
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
+    #[msg("Invalid delegate PDA!")]
+    InvalidDelegatePda,
 }
 
 // CCTP specific errors.
@@ -93,8 +93,6 @@ pub enum CallDataError {
     InvalidUint32,
     #[msg("Invalid solidity uint64 argument")]
     InvalidUint64,
-    #[msg("Invalid solidity uint128 argument")]
-    InvalidUint128,
     #[msg("Unsupported solidity selector")]
     UnsupportedSelector,
 }

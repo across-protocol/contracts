@@ -3,7 +3,7 @@ use anchor_lang::{prelude::*, solana_program::system_program};
 use crate::error::SvmError;
 
 #[derive(Accounts)]
-#[instruction(total_size: u32)]
+#[instruction(_total_size: u32)]
 pub struct InitializeInstructionParams<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -12,7 +12,7 @@ pub struct InitializeInstructionParams<'info> {
     #[account(
         init,
         payer = signer,
-        space = total_size as usize,
+        space = _total_size as usize,
         seeds = [b"instruction_params", signer.key().as_ref()],
         bump
     )]
@@ -22,7 +22,6 @@ pub struct InitializeInstructionParams<'info> {
 }
 
 #[derive(Accounts)]
-#[instruction(offset: u32, fragment: Vec<u8>)]
 pub struct WriteInstructionParamsFragment<'info> {
     pub signer: Signer<'info>,
 

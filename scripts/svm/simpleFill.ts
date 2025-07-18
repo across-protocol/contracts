@@ -2,8 +2,7 @@
 // this script can easily create invalid fills.
 
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   TOKEN_PROGRAM_ID,
@@ -12,16 +11,21 @@ import {
   getMint,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
+import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayHashUint8Array, intToU8Array32 } from "../../src/svm";
+import {
+  calculateRelayHashUint8Array,
+  getFillRelayDelegatePda,
+  getSpokePoolProgram,
+  intToU8Array32,
+} from "../../src/svm/web3-v1";
+import { FillDataValues } from "../../src/types/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments
@@ -32,26 +36,26 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusiveRelayer", { type: "string", demandOption: false, describe: "Exclusive relayer public key" })
   .option("inputToken", { type: "string", demandOption: true, describe: "Input token public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
-  .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
+  .option("inputAmount", { type: "string", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
   .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
   .option("fillDeadline", { type: "number", demandOption: false, describe: "Fill deadline" })
   .option("exclusivityDeadline", { type: "number", demandOption: false, describe: "Exclusivity deadline" }).argv;
 
-async function fillV3Relay(): Promise<void> {
+async function fillRelay(): Promise<void> {
   const resolvedArgv = await argv;
   const depositor = new PublicKey(resolvedArgv.depositor);
   const recipient = new PublicKey(resolvedArgv.recipient);
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || "11111111111111111111111111111111");
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
-  const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
+  const exclusivityDeadline = resolvedArgv.exclusivityDeadline ?? 0; // default to 0
   const message = Buffer.from("");
   const seed = new BN(resolvedArgv.seed);
 
@@ -73,7 +77,7 @@ async function fillV3Relay(): Promise<void> {
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  console.log("Filling V3 Relay...");
+  console.log("Filling Relay...");
 
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
@@ -135,11 +139,23 @@ async function fillV3Relay(): Promise<void> {
 
   const tokenDecimals = (await getMint(provider.connection, outputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
 
-  // Delegate state PDA to pull relayer tokens.
+  // Create the ATA using the create_token_accounts method
+  const createTokenAccountsIx = await program.methods
+    .createTokenAccounts()
+    .accounts({ signer: signer.publicKey, mint: outputToken, tokenProgram: TOKEN_PROGRAM_ID })
+    .remainingAccounts([
+      { pubkey: recipient, isWritable: false, isSigner: false },
+      { pubkey: recipientTokenAccount, isWritable: true, isSigner: false },
+    ])
+    .instruction();
+
+  const delegate = getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda;
+
+  // Delegate fill delegate PDA to pull relayer tokens.
   const approveIx = await createApproveCheckedInstruction(
     relayerTokenAccount,
     outputToken,
-    statePda,
+    delegate,
     signer.publicKey,
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
@@ -147,28 +163,34 @@ async function fillV3Relay(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
 
-  const fillIx = await (
-    program.methods.fillV3Relay(Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey) as any
-  )
-    .accounts({
-      state: statePda,
-      signer: signer.publicKey,
-      instructionParams: program.programId,
-      mint: outputToken,
-      relayerTokenAccount: relayerTokenAccount,
-      recipientTokenAccount: recipientTokenAccount,
-      fillStatus: fillStatusPda,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-      systemProgram: SystemProgram.programId,
-      programId: programId,
-    })
+  const fillDataValues: FillDataValues = [Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey];
+
+  const fillAccounts = {
+    state: statePda,
+    signer: signer.publicKey,
+    delegate,
+    instructionParams: program.programId,
+    mint: outputToken,
+    relayerTokenAccount: relayerTokenAccount,
+    recipientTokenAccount: recipientTokenAccount,
+    fillStatus: fillStatusPda,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    systemProgram: SystemProgram.programId,
+    programId: programId,
+    program: program.programId,
+  };
+
+  const fillIx = await program.methods
+    .fillRelay(...fillDataValues)
+    .accounts(fillAccounts)
     .instruction();
-  const fillTx = new Transaction().add(approveIx, fillIx);
+
+  const fillTx = new Transaction().add(createTokenAccountsIx, approveIx, fillIx);
   const tx = await sendAndConfirmTransaction(provider.connection, fillTx, [signer]);
 
   console.log("Transaction signature:", tx);
 }
 
-// Run the fillV3Relay function
-fillV3Relay();
+// Run the fillRelay function
+fillRelay();

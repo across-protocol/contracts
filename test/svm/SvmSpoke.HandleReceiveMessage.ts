@@ -1,16 +1,15 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorError, AnchorProvider, BN, Program, web3, workspace } from "@coral-xyz/anchor";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, createMint } from "@solana/spl-token";
 import { Keypair } from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
-import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm";
+import { encodeMessageHeader, evmAddressToPublicKey } from "../../src/svm/web3-v1";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { common } from "./SvmSpoke.common";
 
-const { createRoutePda, getVaultAta, initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
+const { initializeState, crossDomainAdmin, remoteDomain, localDomain } = common;
 
 describe("svm_spoke.handle_receive_message", () => {
   anchor.setProvider(AnchorProvider.env());
@@ -26,9 +25,8 @@ describe("svm_spoke.handle_receive_message", () => {
   let usedNonces: web3.PublicKey;
   let selfAuthority: web3.PublicKey;
   let eventAuthority: web3.PublicKey;
-  const firstNonce = 1;
   const attestation = Buffer.alloc(0);
-  let nonce = firstNonce;
+  let nonce = 0;
   let remainingAccounts: web3.AccountMeta[];
   const cctpMessageversion = 0;
   let destinationCaller = new web3.PublicKey(new Uint8Array(32)); // We don't use permissioned caller.
@@ -38,7 +36,6 @@ describe("svm_spoke.handle_receive_message", () => {
     "function pauseDeposits(bool pause)",
     "function pauseFills(bool pause)",
     "function setCrossDomainAdmin(address newCrossDomainAdmin)",
-    "function setEnableRoute(bytes32 originToken, uint64 destinationChainId, bool enabled)",
     "function relayRootBundle(bytes32 relayerRefundRoot, bytes32 slowRelayRoot)",
     "function emergencyDeleteRootBundle(uint256 rootBundleId)",
   ]);
@@ -57,10 +54,15 @@ describe("svm_spoke.handle_receive_message", () => {
       [Buffer.from("message_transmitter")],
       messageTransmitterProgram.programId
     );
-    [usedNonces] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("used_nonces"), Buffer.from(remoteDomain.toString()), Buffer.from(firstNonce.toString())],
-      messageTransmitterProgram.programId
-    );
+    usedNonces = await messageTransmitterProgram.methods
+      .getNoncePda({
+        nonce: new BN(nonce.toString()),
+        sourceDomain: remoteDomain.toNumber(),
+      })
+      .accounts({
+        messageTransmitter: messageTransmitterState,
+      })
+      .view();
     [selfAuthority] = web3.PublicKey.findProgramAddressSync([Buffer.from("self_authority")], program.programId);
     [eventAuthority] = web3.PublicKey.findProgramAddressSync([Buffer.from("__event_authority")], program.programId);
 
@@ -145,10 +147,15 @@ describe("svm_spoke.handle_receive_message", () => {
 
   it("Block Wrong Source Domain", async () => {
     const sourceDomain = 666;
-    [receiveMessageAccounts.usedNonces] = web3.PublicKey.findProgramAddressSync(
-      [Buffer.from("used_nonces"), Buffer.from(sourceDomain.toString()), Buffer.from(firstNonce.toString())],
-      messageTransmitterProgram.programId
-    );
+    receiveMessageAccounts.usedNonces = await messageTransmitterProgram.methods
+      .getNoncePda({
+        nonce: new BN(nonce.toString()),
+        sourceDomain,
+      })
+      .accounts({
+        messageTransmitter: messageTransmitterState,
+      })
+      .view();
 
     const calldata = ethereumIface.encodeFunctionData("pauseDeposits", [true]);
     const messageBody = Buffer.from(calldata.slice(2), "hex");
@@ -295,121 +302,6 @@ describe("svm_spoke.handle_receive_message", () => {
     );
   });
 
-  it("Enables and disables route remotely", async () => {
-    // Enable the route.
-    const originToken = await createMint(provider.connection, (provider.wallet as any).payer, owner, owner, 6);
-    const routeChainId = 1;
-    let calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, true]);
-    let messageBody = Buffer.from(calldata.slice(2), "hex");
-    let message = encodeMessageHeader({
-      version: cctpMessageversion,
-      sourceDomain: remoteDomain.toNumber(),
-      destinationDomain: localDomain,
-      nonce: BigInt(nonce),
-      sender: crossDomainAdmin,
-      recipient: program.programId,
-      destinationCaller,
-      messageBody,
-    });
-
-    // Remaining accounts specific to SetEnableRoute.
-    const routePda = createRoutePda(originToken, seed, new BN(routeChainId));
-    const vault = await getVaultAta(originToken, state);
-    // Same 3 remaining accounts passed for HandleReceiveMessage context.
-    const enableRouteRemainingAccounts = remainingAccounts.slice(0, 3);
-    // payer in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: true,
-      isWritable: true,
-      pubkey: provider.wallet.publicKey,
-    });
-    // state in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: state,
-    });
-    // route in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: true,
-      pubkey: routePda,
-    });
-    // vault in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: true,
-      pubkey: vault,
-    });
-    // origin_token_mint in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: originToken,
-    });
-    // token_program in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: TOKEN_PROGRAM_ID,
-    });
-    // associated_token_program in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,
-    });
-    // system_program in self-invoked SetEnableRoute.
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: web3.SystemProgram.programId,
-    });
-    // event_authority in self-invoked SetEnableRoute (appended by Anchor with event_cpi macro).
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: eventAuthority,
-    });
-    // program in self-invoked SetEnableRoute (appended by Anchor with event_cpi macro).
-    enableRouteRemainingAccounts.push({
-      isSigner: false,
-      isWritable: false,
-      pubkey: program.programId,
-    });
-    await messageTransmitterProgram.methods
-      .receiveMessage({ message, attestation })
-      .accounts(receiveMessageAccounts)
-      .remainingAccounts(enableRouteRemainingAccounts)
-      .rpc();
-
-    let routeAccount = await program.account.route.fetch(routePda);
-    assert.isTrue(routeAccount.enabled, "Route should be enabled");
-
-    // Disable the route.
-    nonce += 1;
-    calldata = ethereumIface.encodeFunctionData("setEnableRoute", [originToken.toBuffer(), routeChainId, false]);
-    messageBody = Buffer.from(calldata.slice(2), "hex");
-    message = encodeMessageHeader({
-      version: cctpMessageversion,
-      sourceDomain: remoteDomain.toNumber(),
-      destinationDomain: localDomain,
-      nonce: BigInt(nonce),
-      sender: crossDomainAdmin,
-      recipient: program.programId,
-      destinationCaller,
-      messageBody,
-    });
-    await messageTransmitterProgram.methods
-      .receiveMessage({ message, attestation })
-      .accounts(receiveMessageAccounts)
-      .remainingAccounts(enableRouteRemainingAccounts)
-      .rpc();
-
-    routeAccount = await program.account.route.fetch(routePda);
-    assert.isFalse(routeAccount.enabled, "Route should be disabled");
-  });
-
   it("Relays root bundle remotely", async () => {
     // Encode relayRootBundle message.
     const relayerRefundRoot = crypto.randomBytes(32);
@@ -435,7 +327,7 @@ describe("svm_spoke.handle_receive_message", () => {
     const [rootBundle] = web3.PublicKey.findProgramAddressSync(seeds, program.programId);
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const relayRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
-    // payer in self-invoked SetEnableRoute.
+    // payer in self-invoked RelayRootBundle.
     relayRootBundleRemainingAccounts.push({
       isSigner: true,
       isWritable: true,
@@ -520,34 +412,34 @@ describe("svm_spoke.handle_receive_message", () => {
       messageBody,
     });
 
-    // Remaining accounts specific to EmergencyDeleteRootBundle.
+    // Remaining accounts specific to EmergencyDeletedRootBundle.
     // Same 3 remaining accounts passed for HandleReceiveMessage context.
     const emergencyDeleteRootBundleRemainingAccounts = remainingAccounts.slice(0, 3);
-    // closer in self-invoked EmergencyDeleteRootBundle.
+    // closer in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: true,
       isWritable: true,
       pubkey: provider.wallet.publicKey,
     });
-    // state in self-invoked EmergencyDeleteRootBundle.
+    // state in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: state,
     });
-    // root_bundle in self-invoked EmergencyDeleteRootBundle.
+    // root_bundle in self-invoked EmergencyDeletedRootBundle.
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: true,
       pubkey: rootBundle,
     });
-    // event_authority in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    // event_authority in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,
       pubkey: eventAuthority,
     });
-    // program in self-invoked EmergencyDeleteRootBundle (appended by Anchor with event_cpi macro).
+    // program in self-invoked EmergencyDeletedRootBundle (appended by Anchor with event_cpi macro).
     emergencyDeleteRootBundleRemainingAccounts.push({
       isSigner: false,
       isWritable: false,

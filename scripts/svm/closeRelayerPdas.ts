@@ -1,18 +1,16 @@
 // This script closes all Relayer PDAs associated with tracking fill Status. Relayers should do this periodically to
 // reclaim the lamports within these tracking accounts. Fill Status PDAs can be closed on the deposit has expired.
 import * as anchor from "@coral-xyz/anchor";
-import { BN, Program, AnchorProvider } from "@coral-xyz/anchor";
+import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { SvmSpoke } from "../../target/types/svm_spoke";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayEventHashUint8Array, readProgramEvents } from "../../src/svm";
+import { calculateRelayEventHashUint8Array, getSpokePoolProgram, readProgramEvents } from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const idl = require("../../target/idl/svm_spoke.json");
-const program = new Program<SvmSpoke>(idl, provider);
+const program = getSpokePoolProgram(provider);
 const programId = program.programId;
 
 // Parse arguments
@@ -34,7 +32,7 @@ async function closeExpiredRelays(): Promise<void> {
   try {
     const events = await readProgramEvents(provider.connection, program);
     const fillEvents = events.filter(
-      (event) => event.name === "filledV3Relay" && new PublicKey(event.data.relayer).equals(relayer)
+      (event) => event.name === "filledRelay" && new PublicKey(event.data.relayer).equals(relayer)
     );
 
     console.log(`Number of fill events found: ${fillEvents.length}`);
@@ -67,7 +65,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
     exclusiveRelayer: new PublicKey(eventData.exclusiveRelayer),
     inputToken: new PublicKey(eventData.inputToken),
     outputToken: new PublicKey(eventData.outputToken),
-    inputAmount: new BN(eventData.inputAmount),
+    inputAmount: eventData.inputAmount,
     outputAmount: new BN(eventData.outputAmount),
     originChainId: new BN(eventData.originChainId),
     depositId: eventData.depositId,

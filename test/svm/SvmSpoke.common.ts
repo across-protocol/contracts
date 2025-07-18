@@ -1,11 +1,11 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
-import { ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import { Keypair, PublicKey, Signer } from "@solana/web3.js";
 import { assert } from "chai";
 import { randomBytes } from "crypto";
 import { ethers } from "ethers";
-import { evmAddressToPublicKey } from "../../src/svm";
+import { evmAddressToPublicKey, intToU8Array32 } from "../../src/svm/web3-v1";
 import { DepositData } from "../../src/types/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
@@ -71,22 +71,22 @@ const initializeState = async (
   return { state, seed: actualSeed };
 };
 
-const createRoutePda = (originToken: PublicKey, seed: BN, routeChainId: BN) => {
-  return PublicKey.findProgramAddressSync(
-    [
-      Buffer.from("route"),
-      originToken.toBytes(),
-      seed.toArrayLike(Buffer, "le", 8),
-      routeChainId.toArrayLike(Buffer, "le", 8),
-    ],
-    program.programId
-  )[0];
-};
-
-const getVaultAta = async (tokenMint: PublicKey, state: PublicKey) => {
+const getOrCreateVaultAta = async (payer: Signer, tokenMint: PublicKey, state: PublicKey) => {
   const tokenMintAccount = await provider.connection.getAccountInfo(tokenMint);
   if (tokenMintAccount === null) throw new Error("Token Mint account not found");
-  return getAssociatedTokenAddressSync(tokenMint, state, true, tokenMintAccount.owner, ASSOCIATED_TOKEN_PROGRAM_ID);
+  return (
+    await getOrCreateAssociatedTokenAccount(
+      provider.connection,
+      payer,
+      tokenMint,
+      state,
+      true,
+      undefined,
+      undefined,
+      tokenMintAccount.owner,
+      ASSOCIATED_TOKEN_PROGRAM_ID
+    )
+  ).address;
 };
 
 async function setCurrentTime(program: Program<SvmSpoke>, state: any, signer: anchor.web3.Keypair, newTime: BN) {
@@ -129,8 +129,7 @@ export const common = {
   depositQuoteTimeBuffer,
   fillDeadlineBuffer,
   initializeState,
-  createRoutePda,
-  getVaultAta,
+  getOrCreateVaultAta,
   setCurrentTime,
   getCurrentTime,
   assert,
@@ -141,7 +140,7 @@ export const common = {
     inputToken: null, // Placeholder, to be assigned in the test file
     outputToken,
     inputAmount,
-    outputAmount,
+    outputAmount: intToU8Array32(outputAmount),
     destinationChainId,
     exclusiveRelayer,
     quoteTimestamp,

@@ -3,7 +3,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEvents, stringifyCpiEvent } from "../../src/svm";
+import { readProgramEvents, stringifyCpiEvent } from "../../src/svm/web3-v1";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
 // Set up the provider
@@ -20,8 +20,8 @@ const argvPromise = yargs(hideBin(process.argv)).option("eventName", {
   describe: "Name of the event to query",
   choices: [
     "any",
-    "filledV3Relay",
-    "v3FundsDeposited",
+    "filledRelay",
+    "fundsDeposited",
     "enabledDepositRoute",
     "relayedRootBundle",
     "executedRelayerRefundRoot",
@@ -30,7 +30,7 @@ const argvPromise = yargs(hideBin(process.argv)).option("eventName", {
     "pausedFills",
     "setXDomainAdmin",
     "emergencyDeletedRootBundle",
-    "requestedV3SlowFill",
+    "RequestedSlowFill",
     "claimedRelayerRefund",
     "tokensBridged",
   ],
@@ -41,7 +41,7 @@ async function queryEvents(): Promise<void> {
   const eventName = argv.eventName || "any";
   const events = await readProgramEvents(provider.connection, program, "confirmed");
   const filteredEvents = events.filter((event) => (eventName == "any" ? true : event.name == eventName));
-  const formattedEvents = filteredEvents.map((event) => stringifyCpiEvent(event));
+  const formattedEvents = filteredEvents.map((event) => stringifyCpiEvent(event.data, event.name));
   console.log(JSON.stringify(formattedEvents, null, 2));
 }
 

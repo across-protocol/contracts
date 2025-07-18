@@ -1,9 +1,14 @@
 import { BN, Program, workspace } from "@coral-xyz/anchor";
+import {
+  airdropFactory,
+  createSolanaRpc,
+  createSolanaRpcSubscriptions,
+  generateKeyPairSigner,
+  lamports,
+} from "@solana/kit";
 import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
-import { MulticallHandler } from "../../target/types/multicall_handler";
-
 import {
   AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
@@ -12,7 +17,9 @@ import {
   readEvents,
   readProgramEvents,
   relayerRefundHashFn,
+  RpcClient,
 } from "../../src/svm";
+import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import { MerkleTree } from "@uma/common";
 import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
@@ -145,3 +152,19 @@ export function testAcrossPlusMessage() {
   ];
   return { encodedMessage, fillRemainingAccounts };
 }
+
+export const createDefaultSolanaClient = () => {
+  const rpc = createSolanaRpc("http://127.0.0.1:8899");
+  const rpcSubscriptions = createSolanaRpcSubscriptions("ws://127.0.0.1:8900");
+  return { rpc, rpcSubscriptions };
+};
+
+export const generateKeyPairSignerWithSol = async (rpcClient: RpcClient, putativeLamports: bigint = 1_000_000_000n) => {
+  const signer = await generateKeyPairSigner();
+  await airdropFactory(rpcClient)({
+    recipientAddress: signer.address,
+    lamports: lamports(putativeLamports),
+    commitment: "confirmed",
+  });
+  return signer;
+};

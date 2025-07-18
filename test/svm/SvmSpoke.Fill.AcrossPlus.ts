@@ -1,44 +1,58 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
+import { getApproveCheckedInstruction } from "@solana-program/token";
+import {
+  AccountRole,
+  address,
+  appendTransactionMessageInstruction,
+  createKeyPairFromBytes,
+  createSignerFromKeyPair,
+  getProgramDerivedAddress,
+  IAccountMeta,
+  pipe,
+} from "@solana/kit";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  TOKEN_PROGRAM_ID,
+  createApproveCheckedInstruction,
+  createAssociatedTokenAccountInstruction,
   createMint,
+  createTransferCheckedInstruction,
+  getAccount,
+  getAssociatedTokenAddressSync,
+  getMinimumBalanceForRentExemptAccount,
   getOrCreateAssociatedTokenAccount,
   mintTo,
-  getAccount,
-  createTransferCheckedInstruction,
-  getAssociatedTokenAddressSync,
-  createAssociatedTokenAccountInstruction,
-  getMinimumBalanceForRentExemptAccount,
-  createApproveCheckedInstruction,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
-  PublicKey,
-  Keypair,
   AccountMeta,
-  TransactionInstruction,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
   sendAndConfirmTransaction,
   Transaction,
-  ComputeBudgetProgram,
+  TransactionInstruction,
 } from "@solana/web3.js";
+import { createDefaultTransaction, signAndSendTransaction, SvmSpokeClient } from "../../src/svm";
+import { FillRelayAsyncInput } from "../../src/svm/clients/SvmSpoke";
 import {
-  calculateRelayHashUint8Array,
-  MulticallHandlerCoder,
   AcrossPlusMessageCoder,
-  sendTransactionWithLookupTable,
-  loadFillV3RelayParams,
+  calculateRelayHashUint8Array,
+  getFillRelayDelegatePda,
   intToU8Array32,
-} from "../../src/svm";
+  loadFillRelayParams,
+  MulticallHandlerCoder,
+  sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
+} from "../../src/svm/web3-v1";
+import { FillDataParams, FillDataValues } from "../../src/types/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
-import { FillDataParams, FillDataValues } from "../../src/types/svm";
-const { provider, connection, program, owner, chainId, seedBalance } = common;
-const { initializeState, assertSE } = common;
+import { createDefaultSolanaClient } from "./utils";
+const { provider, connection, program, owner, chainId, seedBalance, initializeState, assertSE } = common;
 
 describe("svm_spoke.fill.across_plus", () => {
   anchor.setProvider(provider);
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const relayer = Keypair.generate();
 
   const handlerProgram = anchor.workspace.MulticallHandler as Program<MulticallHandler>;
@@ -49,14 +63,15 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipientATA: PublicKey,
     state: PublicKey,
     mint: PublicKey,
-    relayerATA: PublicKey;
+    relayerATA: PublicKey,
+    seed: BN;
 
   const relayAmount = 500000;
   const mintDecimals = 6;
   let relayData: any; // reused relay data for all tests.
   let accounts: any; // Store accounts to simplify contract interactions.
 
-  function updateRelayData(newRelayData: any) {
+  const updateRelayData = (newRelayData: any) => {
     relayData = newRelayData;
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
@@ -66,6 +81,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
     accounts = {
       state,
+      delegate: getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -76,14 +92,17 @@ describe("svm_spoke.fill.across_plus", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
-  }
+  };
 
-  async function createApproveAndFillIx(multicallHandlerCoder: MulticallHandlerCoder, bufferParams = false) {
+  const createApproveAndFillIx = async (multicallHandlerCoder: MulticallHandlerCoder, bufferParams = false) => {
+    const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(relayHashUint8Array);
+
     // Delegate state PDA to pull relayer tokens.
     const approveIx = await createApproveCheckedInstruction(
       accounts.relayerTokenAccount,
       accounts.mint,
-      accounts.state,
+      getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       accounts.signer,
       BigInt(relayAmount),
       mintDecimals
@@ -94,28 +113,24 @@ describe("svm_spoke.fill.across_plus", () => {
       ...multicallHandlerCoder.compiledKeyMetas,
     ];
 
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
-
     // Prepare fill instruction.
-    const fillV3RelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
+    const fillRelayValues: FillDataValues = [relayHash, relayData, new BN(1), relayer.publicKey];
     if (bufferParams) {
-      await loadFillV3RelayParams(program, relayer, fillV3RelayValues[1], fillV3RelayValues[2], fillV3RelayValues[3]);
+      await loadFillRelayParams(program, relayer, fillRelayValues[1], fillRelayValues[2], fillRelayValues[3]);
       [accounts.instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
         program.programId
       );
     }
-    const fillV3RelayParams: FillDataParams = bufferParams
-      ? [fillV3RelayValues[0], null, null, null]
-      : fillV3RelayValues;
+    const fillRelayParams: FillDataParams = bufferParams ? [fillRelayValues[0], null, null, null] : fillRelayValues;
     const fillIx = await program.methods
-      .fillV3Relay(...fillV3RelayParams)
+      .fillRelay(...fillRelayParams)
       .accounts(accounts)
       .remainingAccounts(remainingAccounts)
       .instruction();
 
     return { approveIx, fillIx };
-  }
+  };
 
   before("Creates token mint and associated token accounts", async () => {
     mint = await createMint(connection, payer, owner, owner, mintDecimals);
@@ -133,7 +148,7 @@ describe("svm_spoke.fill.across_plus", () => {
     finalRecipient = Keypair.generate().publicKey;
     finalRecipientATA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, finalRecipient)).address;
 
-    ({ state } = await initializeState());
+    ({ state, seed } = await initializeState());
 
     const initialRelayData = {
       depositor: finalRecipient,
@@ -141,7 +156,7 @@ describe("svm_spoke.fill.across_plus", () => {
       exclusiveRelayer: relayer.publicKey,
       inputToken: mint, // This is lazy. it should be an encoded token from a separate domain most likely.
       outputToken: mint,
-      inputAmount: new BN(relayAmount),
+      inputAmount: intToU8Array32(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
@@ -253,7 +268,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
       // Fill using the ALT.
       const computeBudgetIx = ComputeBudgetProgram.setComputeUnitLimit({ units: 1_400_000 });
-      await sendTransactionWithLookupTable(connection, [computeBudgetIx, approveIx, fillIx], relayer);
+      await sendTransactionWithLookupTableV1(connection, [computeBudgetIx, approveIx, fillIx], relayer);
 
       // Verify relayer's balance after the fill
       await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfers get processed.
@@ -275,7 +290,7 @@ describe("svm_spoke.fill.across_plus", () => {
 
     it("Max token distributions within invoked message call, regular params", async () => {
       // Larger distribution would exceed message size limits.
-      const numberOfDistributions = 7;
+      const numberOfDistributions = 6;
 
       await fillTokenDistributions(numberOfDistributions);
     });
@@ -373,7 +388,7 @@ describe("svm_spoke.fill.across_plus", () => {
     const { approveIx, fillIx } = await createApproveAndFillIx(multicallHandlerCoder);
 
     // Fill using the ALT.
-    await sendTransactionWithLookupTable(connection, [approveIx, fillIx], relayer);
+    await sendTransactionWithLookupTableV1(connection, [approveIx, fillIx], relayer);
 
     // Verify recipient's balance after the fill
     await new Promise((resolve) => setTimeout(resolve, 500)); // Make sure token transfer gets processed.
@@ -383,5 +398,147 @@ describe("svm_spoke.fill.across_plus", () => {
       relayAmount,
       "Recipient's balance should be increased by the relay amount"
     );
+  });
+
+  describe("codama client and solana kit", () => {
+    it("Forwards tokens to the final recipient within invoked message call using codama client", async () => {
+      const iRelayerBal = (await getAccount(connection, relayerATA)).amount;
+
+      // Construct ix to transfer all tokens from handler to the final recipient.
+      const transferIx = createTransferCheckedInstruction(
+        handlerATA,
+        mint,
+        finalRecipientATA,
+        handlerSigner,
+        relayData.outputAmount,
+        mintDecimals
+      );
+
+      const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
+
+      const handlerMessage = multicallHandlerCoder.encode();
+
+      const message = new AcrossPlusMessageCoder({
+        handler: handlerProgram.programId,
+        readOnlyLen: multicallHandlerCoder.readOnlyLen,
+        valueAmount: new BN(0),
+        accounts: multicallHandlerCoder.compiledMessage.accountKeys,
+        handlerMessage,
+      });
+
+      const encodedMessage = message.encode();
+
+      // Update relay data with the encoded message.
+      const newRelayData = { ...relayData, message: encodedMessage };
+      updateRelayData(newRelayData);
+
+      const rpcClient = createDefaultSolanaClient();
+      const signer = await createSignerFromKeyPair(await createKeyPairFromBytes(relayer.secretKey));
+
+      const [eventAuthority] = await getProgramDerivedAddress({
+        programAddress: address(program.programId.toString()),
+        seeds: ["__event_authority"],
+      });
+
+      const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+      const relayHash = Array.from(relayHashUint8Array);
+      const delegate = address(
+        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString()
+      );
+      const formattedAccounts = {
+        state: address(accounts.state.toString()),
+        delegate,
+        instructionParams: address(program.programId.toString()),
+        mint: address(mint.toString()),
+        relayerTokenAccount: address(relayerATA.toString()),
+        recipientTokenAccount: address(handlerATA.toString()),
+        fillStatus: address(accounts.fillStatus.toString()),
+        tokenProgram: address(TOKEN_PROGRAM_ID.toString()),
+        associatedTokenProgram: address(ASSOCIATED_TOKEN_PROGRAM_ID.toString()),
+        systemProgram: address(anchor.web3.SystemProgram.programId.toString()),
+        program: address(program.programId.toString()),
+        eventAuthority,
+        signer,
+      };
+
+      const formattedRelayData = {
+        relayHash: new Uint8Array(relayHash),
+        relayData: {
+          depositor: address(relayData.depositor.toString()),
+          recipient: address(relayData.recipient.toString()),
+          exclusiveRelayer: address(relayData.exclusiveRelayer.toString()),
+          inputToken: address(relayData.inputToken.toString()),
+          outputToken: address(relayData.outputToken.toString()),
+          inputAmount: new Uint8Array(relayData.inputAmount),
+          outputAmount: relayData.outputAmount.toNumber(),
+          originChainId: relayData.originChainId.toNumber(),
+          depositId: new Uint8Array(relayData.depositId),
+          fillDeadline: relayData.fillDeadline,
+          exclusivityDeadline: relayData.exclusivityDeadline,
+          message: encodedMessage,
+        },
+        repaymentChainId: 1,
+        repaymentAddress: address(relayer.publicKey.toString()),
+      };
+
+      const approveIx = getApproveCheckedInstruction({
+        source: address(accounts.relayerTokenAccount.toString()),
+        mint: address(accounts.mint.toString()),
+        delegate,
+        owner: address(accounts.signer.toString()),
+        amount: BigInt(relayData.outputAmount.toString()),
+        decimals: mintDecimals,
+      });
+
+      const fillRelayInput: FillRelayAsyncInput = {
+        ...formattedRelayData,
+        ...formattedAccounts,
+      };
+
+      const fillRelayIxData = await SvmSpokeClient.getFillRelayInstructionAsync(fillRelayInput);
+      const fillRelayIx = {
+        ...fillRelayIxData,
+        accounts: fillRelayIxData.accounts.map((account) =>
+          account.address === program.programId.toString() ||
+          account.address === TOKEN_PROGRAM_ID.toString() ||
+          account.address === ASSOCIATED_TOKEN_PROGRAM_ID.toString()
+            ? { ...account, role: AccountRole.READONLY }
+            : account
+        ),
+      };
+
+      const _remainingAccounts: AccountMeta[] = [
+        { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
+        ...multicallHandlerCoder.compiledKeyMetas,
+      ];
+      const remainingAccounts: IAccountMeta<string>[] = _remainingAccounts.map((account) => ({
+        address: address(account.pubkey.toString()),
+        role: account.isWritable ? AccountRole.WRITABLE : AccountRole.READONLY,
+      }));
+      (fillRelayIx.accounts as IAccountMeta<string>[]).push(...remainingAccounts);
+
+      await pipe(
+        await createDefaultTransaction(rpcClient, signer),
+        (tx) => appendTransactionMessageInstruction(approveIx, tx),
+        (tx) => appendTransactionMessageInstruction(fillRelayIx, tx),
+        (tx) => signAndSendTransaction(rpcClient, tx)
+      );
+
+      // Verify relayer's balance after the fill
+      const fRelayerBal = (await getAccount(connection, relayerATA)).amount;
+      assertSE(
+        fRelayerBal,
+        iRelayerBal - BigInt(relayAmount),
+        "Relayer's balance should be reduced by the relay amount"
+      );
+
+      // Verify final recipient's balance after the fill
+      const finalRecipientAccount = await getAccount(connection, finalRecipientATA);
+      assertSE(
+        finalRecipientAccount.amount,
+        relayAmount,
+        "Final recipient's balance should be increased by the relay amount"
+      );
+    });
   });
 });
