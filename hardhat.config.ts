@@ -94,6 +94,7 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Bob_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -364,6 +365,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
+    "bob-sepolia": {
+      chainId: CHAIN_IDs.BOB_SEPOLIA,
+      url: "https://bob-sepolia.rpc.gobob.xyz",
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "sepolia" },
+    },
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
@@ -399,6 +407,7 @@ const config: HardhatUserConfig = {
       soneium: "blockscout",
       unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
       "unichain-sepolia": process.env.UNICHAIN_ETHERSCAN_API_KEY!,
+      "bob-sepolia": "blockscout",
     },
     customChains: [
       {
@@ -607,6 +616,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api-sepolia.uniscan.xyz/api",
           browserURL: "https://sepolia.uniscan.xyz",
+        },
+      },
+      {
+        network: "bob-sepolia",
+        chainId: CHAIN_IDs.BOB_SEPOLIA,
+        urls: {
+          apiURL: "https://bob-sepolia.explorer.gobob.xyz/api",
+          browserURL: "https://bob-sepolia.explorer.gobob.xyz",
         },
       },
     ],

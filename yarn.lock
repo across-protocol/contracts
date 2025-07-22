@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@across-protocol/constants@^3.1.66":
-  version "3.1.66"
-  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.66.tgz#952964fe1ae98ac8bd928655d81a20744da8dbe7"
-  integrity sha512-PP0445MLMnFWFzCvpXZQHD4n3DBJIQoIt3RSENNjCOJbkxDd4pqqDOAwN/BWv1jS6kLhKt6/U2poHRGJ4UPPXg==
+"@across-protocol/constants@^3.1.69":
+  version "3.1.69"
+  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.69.tgz#67e0ac09a6b26dcc7f8b7004066db227f7c16b5b"
+  integrity sha512-YyrcUTE8oiX/Ki8lmIITTkUzdKG/J4SAws7S1CMyCZA6VjRyvGvLdzQs9QHVU9UyR6Kx5N/CaGy+kTKIixUEgQ==
 
 "@across-protocol/contracts@^0.1.4":
   version "0.1.4"
