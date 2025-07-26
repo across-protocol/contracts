@@ -12,6 +12,7 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 import "./libraries/AddressConverters.sol";
+import "./libraries/OFTTransportAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -37,7 +38,8 @@ abstract contract SpokePool is
     ReentrancyGuardUpgradeable,
     MultiCallerUpgradeable,
     EIP712CrossChainUpgradeable,
-    IDestinationSettler
+    IDestinationSettler,
+    OFTTransportAdapter
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
@@ -110,6 +112,9 @@ abstract contract SpokePool is
     // Mapping of L2TokenAddress to relayer to outstanding refund amount. Used when a relayer repayment fails for some
     // reason (eg blacklist) to track their outstanding liability, thereby letting them claim it later.
     mapping(address => mapping(address => uint256)) public relayerRefund;
+
+    // Mapping of L2 token address to L2 IOFT messenger address. Required to support bridging via OFT standard
+    mapping(address => address) public oftMessengers;
 
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
@@ -194,6 +199,9 @@ abstract contract SpokePool is
     event EmergencyDeletedRootBundle(uint256 indexed rootBundleId);
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
+    event SetOFTMessenger(address indexed token, address indexed messenger);
+
+    error OFTTokenMismatch();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -209,13 +217,17 @@ abstract contract SpokePool is
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
+     * @param _oftDstEid destination endpoint id for OFT messaging
+     * @param _oftFeeCap fee cap in native token when paying for cross-chain OFT transfers
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) {
+        uint32 _fillDeadlineBuffer,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
+    ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
@@ -344,6 +356,15 @@ abstract contract SpokePool is
         //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
         emit EmergencyDeletedRootBundle(rootBundleId);
+    }
+
+    /**
+     * @notice Add token -> OFTMessenger relationship. Callable only by admin.
+     * @param token token address on the current chain
+     * @param messenger IOFT contract address on the current chain for the specified token. Acts as a 'mailbox'
+     */
+    function setOftMessenger(address token, address messenger) public onlyAdmin nonReentrant {
+        _setOftMessenger(token, messenger);
     }
 
     /**************************************
@@ -1728,6 +1749,18 @@ abstract contract SpokePool is
         else return keccak256(message);
     }
 
+    function _setOftMessenger(address _token, address _messenger) internal {
+        if (IOFT(_messenger).token() != _token) {
+            revert OFTTokenMismatch();
+        }
+        oftMessengers[_token] = _messenger;
+        emit SetOFTMessenger(_token, _messenger);
+    }
+
+    function _getOftMessenger(address _token) internal view returns (address) {
+        return oftMessengers[_token];
+    }
+
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
     // certain admin functions. For L2 contracts, the cross chain admin refers to some L1 address or contract, and for
     // L1, this would just be the same admin of the HubPool.
@@ -1739,5 +1772,5 @@ abstract contract SpokePool is
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
     // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    uint256[998] private __gap;
+    uint256[997] private __gap;
 }

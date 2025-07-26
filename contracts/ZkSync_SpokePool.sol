@@ -67,7 +67,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            // ZkSync_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0
+        )
         CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         address zero = address(0);
