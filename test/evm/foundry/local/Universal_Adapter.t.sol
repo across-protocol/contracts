@@ -8,19 +8,28 @@ import { Universal_Adapter, HubPoolStore } from "../../../../contracts/chain-ada
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import "../../../../contracts/test/MockCCTP.sol";
+import { AdapterStore, MessengerTypes } from "../../../../contracts/AdapterStore.sol";
+import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
+import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 contract UniversalAdapterTest is Test {
+    using AddressToBytes32 for address;
+
     Universal_Adapter adapter;
     HubPoolStore store;
     MockHubPool hubPool;
     address spokePoolTarget;
     uint256 relayRootBundleNonce = 0;
     address relayRootBundleTargetAddress = address(0);
-    address adapterStore = address(0);
+    AdapterStore adapterStore;
+    IOFT oftMessenger;
     ERC20 usdc;
+    ERC20 usdt;
     uint256 usdcMintAmount = 100e6;
     MockCCTPMessenger cctpMessenger;
     uint32 cctpDestinationDomainId = 7;
+    uint256 oftDstEid = 42161;
 
     address owner = vm.addr(7);
 
@@ -40,18 +49,26 @@ contract UniversalAdapterTest is Test {
     function setUp() public {
         spokePoolTarget = vm.addr(1);
         vm.startPrank(owner);
+        adapterStore = new AdapterStore();
+
         hubPool = new MockHubPool(address(0)); // Initialize adapter to address 0 and we'll overwrite
         // it after we use this hub pool to initialize the hub pool store which is used to initialize
         // the adapter.
         store = new HubPoolStore(address(hubPool));
         usdc = new ERC20("USDC", "USDC");
+        usdt = new ERC20("USDT", "USDT");
+        oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        adapterStore.setMessenger(MessengerTypes.OFT_MESSENGER, oftDstEid, address(usdt), address(oftMessenger));
         MockCCTPMinter minter = new MockCCTPMinter();
         cctpMessenger = new MockCCTPMessenger(ITokenMinter(minter));
         adapter = new Universal_Adapter(
             store,
             IERC20(address(usdc)),
             ITokenMessenger(address(cctpMessenger)),
-            cctpDestinationDomainId
+            cctpDestinationDomainId,
+            address(adapterStore),
+            uint32(oftDstEid),
+            1e18
         );
         hubPool.changeAdapter(address(adapter));
         hubPool.setPendingRootBundle(pendingRootBundle);
@@ -253,6 +270,30 @@ contract UniversalAdapterTest is Test {
             )
         );
         hubPool.relayTokens(address(usdc), makeAddr("l2Usdc"), usdcMintAmount, spokePoolTarget);
+    }
+
+    function testRelayTokens_oft() public {
+        // Uses OFT to send USDT
+        vm.expectCall(
+            address(oftMessenger),
+            abi.encodeCall(
+                oftMessenger.send,
+                (
+                    SendParam({
+                        dstEid: uint32(oftDstEid),
+                        to: spokePoolTarget.toBytes32(),
+                        amountLD: usdcMintAmount,
+                        minAmountLD: usdcMintAmount,
+                        extraOptions: bytes(""),
+                        composeMsg: bytes(""),
+                        oftCmd: bytes("")
+                    }),
+                    MessagingFee({ nativeFee: 0, lzTokenFee: 0 }),
+                    address(hubPool)
+                )
+            )
+        );
+        hubPool.relayTokens(address(usdt), makeAddr("l2Usdt"), usdcMintAmount, spokePoolTarget);
     }
 
     function testRelayTokens_default() public {

@@ -8,6 +8,9 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { Universal_SpokePool, IHelios } from "../../../../contracts/Universal_SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import "../../../../contracts/test/MockCCTP.sol";
+import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
+import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 contract MockHelios is IHelios {
     mapping(bytes32 => bytes32) public storageSlots;
@@ -40,7 +43,9 @@ contract MockUniversalSpokePool is Universal_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _oftDstId,
+        uint256 _oftFeeCap
     )
         Universal_SpokePool(
             _adminUpdateBuffer,
@@ -50,7 +55,9 @@ contract MockUniversalSpokePool is Universal_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            _oftDstId,
+            _oftFeeCap
         )
     {}
 
@@ -60,8 +67,10 @@ contract MockUniversalSpokePool is Universal_SpokePool {
 }
 
 contract UniversalSpokePoolTest is Test {
+    using AddressToBytes32 for address;
     MockUniversalSpokePool spokePool;
     MockHelios helios;
+    IOFT oftMessenger;
 
     address hubPoolStore;
     address hubPool;
@@ -71,12 +80,15 @@ contract UniversalSpokePoolTest is Test {
     uint256 adminUpdateBuffer = 1 days;
 
     ERC20 usdc;
+    ERC20 usdt;
     uint256 usdcMintAmount = 100e6;
     MockCCTPMessenger cctpMessenger;
+    uint256 oftDstEid = 1;
 
     function setUp() public {
         helios = new MockHelios();
         usdc = new ERC20("USDC", "USDC");
+        usdt = new ERC20("USDT", "USDT");
         MockCCTPMinter minter = new MockCCTPMinter();
         cctpMessenger = new MockCCTPMessenger(ITokenMinter(minter));
         hubPool = makeAddr("hubPool");
@@ -90,13 +102,16 @@ contract UniversalSpokePoolTest is Test {
             7200,
             7200,
             IERC20(address(usdc)),
-            ITokenMessenger(address(cctpMessenger))
+            ITokenMessenger(address(cctpMessenger)),
+            uint32(oftDstEid),
+            1e18
         );
         vm.prank(owner);
         address proxy = address(
             new ERC1967Proxy(address(spokePool), abi.encodeCall(Universal_SpokePool.initialize, (0, hubPool, hubPool)))
         );
         spokePool = MockUniversalSpokePool(payable(proxy));
+        oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
         deal(address(usdc), address(spokePool), usdcMintAmount, true);
     }
 
@@ -276,5 +291,49 @@ contract UniversalSpokePoolTest is Test {
         vm.expectRevert(Universal_SpokePool.AdminCallNotValidated.selector);
         spokePool.setCrossDomainAdmin(makeAddr("randomAdmin"));
         vm.stopPrank();
+    }
+
+    function testSetOftMessenger() public {
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        assertEq(spokePool.oftMessengers(address(usdt)), address(oftMessenger));
+    }
+
+    function testBridgeTokensToHubPool_oft() public {
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+
+        vm.expectCall(
+            address(oftMessenger),
+            abi.encodeCall(
+                oftMessenger.send,
+                (
+                    SendParam({
+                        dstEid: uint32(oftDstEid),
+                        to: hubPool.toBytes32(),
+                        amountLD: usdcMintAmount,
+                        minAmountLD: usdcMintAmount,
+                        extraOptions: bytes(""),
+                        composeMsg: bytes(""),
+                        oftCmd: bytes("")
+                    }),
+                    MessagingFee({ nativeFee: 0, lzTokenFee: 0 }),
+                    address(spokePool)
+                )
+            )
+        );
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
     }
 }
