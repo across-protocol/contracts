@@ -25,18 +25,22 @@ import {
 import {
   AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
-  intToU8Array32,
-  loadFillV3RelayParams,
   MulticallHandlerCoder,
-  prependComputeBudget,
   sendTransactionWithLookupTable,
-  getSolanaChainId,
-  isSolanaDevnet,
-  SOLANA_SPOKE_STATE_SEED,
-  SOLANA_USDC_MAINNET,
+  loadFillRelayParamsWeb3V1,
+  sendTransactionWithLookupTableWeb3V1,
+  prependComputeBudgetWeb3V1,
 } from "../../src/svm";
 import { CHAIN_IDs } from "../../utils/constants";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
+import {
+  getFillRelayDelegatePda,
+  getSolanaChainId,
+  intToU8Array32,
+  isSolanaDevnet,
+  SOLANA_SPOKE_STATE_SEED,
+  SOLANA_USDC_MAINNET,
+} from "../../src/svm/web3-v1";
 
 const swapApiBaseUrl = "https://quote-api.jup.ag/v6/";
 
@@ -249,7 +253,7 @@ async function acrossPlusJupiter(): Promise<void> {
     exclusiveRelayer: PublicKey.default,
     inputToken: usdcMint, // This is not a real deposit, so use the same USDC as input token.
     outputToken: usdcMint, // USDC is output token for the bridge and input token for the swap.
-    inputAmount: new BN(usdcAmount.toString()), // This is not a real deposit, so use the same USDC amount as input amount.
+    inputAmount: intToU8Array32(new BN(usdcAmount.toString())),
     outputAmount: new BN(usdcAmount.toString()),
     originChainId: new BN(CHAIN_IDs.MAINNET), // This is not a real deposit, so use MAINNET as origin chain id.
     depositId: intToU8Array32(new BN(Math.random() * 2 ** 32)), // This is not a real deposit, use random deposit id.
@@ -281,15 +285,27 @@ async function acrossPlusJupiter(): Promise<void> {
     await getOrCreateAssociatedTokenAccount(provider.connection, relayer, usdcMint, handlerSigner, true, "confirmed")
   ).address;
 
+  // Fetch the state from the on-chain program to get chainId
+  const state = await svmSpokeProgram.account.state.fetch(statePda);
+  const chainId = new BN(state.chainId);
+  const delegate = getFillRelayDelegatePda(
+    relayHashUint8Array,
+    chainId,
+    relayer.publicKey,
+    svmSpokeProgram.programId
+  ).pda;
+
   // Delegate state PDA to pull relayer USDC tokens.
   const usdcDecimals = (await getMint(provider.connection, usdcMint)).decimals;
-  const approveIx = await createApproveCheckedInstruction(
+  const approveIx = createApproveCheckedInstruction(
     relayerUsdcTA,
-    usdcMint,
-    statePda,
+    usdcMint, // == outputToken
+    delegate,
     relayer.publicKey,
-    BigInt(usdcAmount.toString()),
-    usdcDecimals
+    BigInt(relayData.outputAmount.toString()),
+    usdcDecimals,
+    undefined,
+    TOKEN_PROGRAM_ID
   );
 
   // Prepare fill instruction.
@@ -299,7 +315,7 @@ async function acrossPlusJupiter(): Promise<void> {
     solanaChainId,
     relayer.publicKey,
   ];
-  await loadFillV3RelayParams(
+  await loadFillRelayParamsWeb3V1(
     svmSpokeProgram,
     relayer,
     fillV3RelayValues[1],
@@ -312,10 +328,11 @@ async function acrossPlusJupiter(): Promise<void> {
     svmSpokeProgram.programId
   );
 
-  const fillV3RelayParams: FillDataParams = [fillV3RelayValues[0], null, null, null];
+  const fillRelayParams: FillDataParams = [fillV3RelayValues[0], null, null, null];
   const fillAccounts = {
     state: statePda,
     signer: relayer.publicKey,
+    delegate,
     instructionParams,
     mint: usdcMint,
     relayerTokenAccount: relayerUsdcTA,
@@ -330,15 +347,15 @@ async function acrossPlusJupiter(): Promise<void> {
     ...multicallHandlerCoder.compiledKeyMetas,
   ];
   const fillIx = await svmSpokeProgram.methods
-    .fillV3Relay(...fillV3RelayParams)
+    .fillRelay(...fillRelayParams)
     .accounts(fillAccounts)
     .remainingAccounts(fillRemainingAccounts)
     .instruction();
 
   // Fill using the ALT with the provided compute budget settings.
-  const txSignature = await sendTransactionWithLookupTable(
+  const txSignature = await sendTransactionWithLookupTableWeb3V1(
     provider.connection,
-    prependComputeBudget([approveIx, fillIx], priorityFeePrice, fillComputeUnit),
+    prependComputeBudgetWeb3V1([approveIx, fillIx], priorityFeePrice, fillComputeUnit),
     relayer,
     addressLookupTableAccounts
   );
