@@ -2,6 +2,15 @@
 // the message handler. Note that Jupiter swap works only on mainnet, so extra care should be taken to select output
 // token, amounts and final recipient since this is a fake fill and relayer would not be refunded.
 
+/**
+ * Example run command:
+ * anchor run acrossPlusJupiter --provider.cluster mainnet --provider.wallet ~/.config/solana/id.json -- \
+  --recipient BgfHZYcwGT2czY8xzvH5PsCmHrgTgSZ1c4hQY9EteAC5 \
+  --outputMint So11111111111111111111111111111111111111112 \
+  --usdcValue 2.5 \
+  --slippageBps 75
+ */
+
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
 import { AccountMeta, TransactionInstruction, PublicKey, AddressLookupTableAccount } from "@solana/web3.js";
@@ -176,7 +185,7 @@ async function acrossPlusJupiter(): Promise<void> {
       })),
       data: Buffer.from(instruction.data, "base64"),
     });
-    const innerCpiLimit = 1280;
+    const innerCpiLimit = 10 * 1024;
     const innerCpiSize = transactionInstruction.keys.length * 34 + transactionInstruction.data.length;
     if (innerCpiSize > innerCpiLimit) {
       throw new Error(
