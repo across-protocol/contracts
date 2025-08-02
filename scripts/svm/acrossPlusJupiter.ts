@@ -74,7 +74,12 @@ const argv = yargs(hideBin(process.argv))
   .option("slippageBps", { type: "number", demandOption: false, describe: "Custom slippage in bps" })
   .option("maxAccounts", { type: "number", demandOption: false, describe: "Maximum swap accounts" })
   .option("priorityFeePrice", { type: "number", demandOption: false, describe: "Priority fee price in micro lamports" })
-  .option("fillComputeUnit", { type: "number", demandOption: false, describe: "Compute unit limit in fill" }).argv;
+  .option("fillComputeUnit", { type: "number", demandOption: false, describe: "Compute unit limit in fill" })
+  .option("minHops", {
+    type: "number",
+    demandOption: false,
+    describe: "Require at least this many swap legs (hops)",
+  }).argv;
 
 async function acrossPlusJupiter(): Promise<void> {
   const resolvedArgv = await argv;
@@ -83,6 +88,7 @@ async function acrossPlusJupiter(): Promise<void> {
   const outputMint = new PublicKey(resolvedArgv.outputMint);
   const usdcAmount = parseUsdc(resolvedArgv.usdcValue);
   const slippageBps = resolvedArgv.slippageBps || 100; // default to 1%
+  const minHops = resolvedArgv.minHops || 1;
   const maxAccounts = resolvedArgv.maxAccounts || 24;
   const priorityFeePrice = resolvedArgv.priorityFeePrice;
   const fillComputeUnit = resolvedArgv.fillComputeUnit || 400_000;
@@ -115,6 +121,7 @@ async function acrossPlusJupiter(): Promise<void> {
     { Property: "usdcValue (formatted)", Value: formatUsdc(usdcAmount) },
     { Property: "slippageBps", Value: slippageBps },
     { Property: "maxAccounts", Value: maxAccounts },
+    { Property: "minHops", Value: minHops },
     { Property: "handlerSigner", Value: handlerSigner.toString() },
   ]);
 
@@ -131,11 +138,18 @@ async function acrossPlusJupiter(): Promise<void> {
         "&slippageBps=" +
         slippageBps +
         "&maxAccounts=" +
-        maxAccounts
+        maxAccounts +
+        (minHops > 1 ? "&onlyDirectRoutes=false" : "")
     )
   ).json();
   if (quoteResponse.error) {
     throw new Error("Failed to get quote: " + quoteResponse.error);
+  }
+
+  if (quoteResponse.routePlan && quoteResponse.routePlan.length < minHops) {
+    throw new Error(
+      `Quote returned only ${quoteResponse.routePlan.length} hop(s), which is less than requested minimum of ${minHops}`
+    );
   }
 
   // Create swap instructions on behalf of the handler signer. We do not enable unwrapping of WSOL as that would require
