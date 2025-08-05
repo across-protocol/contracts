@@ -164,6 +164,10 @@ abstract contract SpokePool is
     // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
     // exclusivityDeadline in a deposit event will be set to the current time plus this value.
     uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
+
+    // EIP-7702 prefix for delegated wallets.
+    bytes3 internal constant EIP7702_PREFIX = 0xef0100;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -1618,12 +1622,21 @@ abstract contract SpokePool is
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
-        if (address(to).isContract()) {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
-        } else {
+        if (!address(to).isContract() || _is7702DelegatedWallet(to)) {
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
+        } else {
+            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         }
+    }
+
+    /**
+     * @notice Checks if an address is a 7702 delegated wallet (EOA with delegated code).
+     * @param account The address to check.
+     * @return True if the address is a 7702 delegated wallet, false otherwise.
+     */
+    function _is7702DelegatedWallet(address account) internal view returns (bool) {
+        return bytes3(account.code) == EIP7702_PREFIX;
     }
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from

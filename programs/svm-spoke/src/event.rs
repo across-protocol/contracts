@@ -22,13 +22,6 @@ pub struct PausedFills {
 }
 
 #[event]
-pub struct EnabledDepositRoute {
-    pub origin_token: Pubkey,
-    pub destination_chain_id: u64,
-    pub enabled: bool,
-}
-
-#[event]
 pub struct RelayedRootBundle {
     pub root_bundle_id: u32,
     pub relayer_refund_root: [u8; 32],
@@ -46,7 +39,7 @@ pub struct FundsDeposited {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
     pub input_amount: u64,
-    pub output_amount: u64,
+    pub output_amount: [u8; 32],
     pub destination_chain_id: u64,
     pub deposit_id: [u8; 32],
     pub quote_timestamp: u32,
@@ -78,7 +71,7 @@ pub struct RelayExecutionEventInfo {
 pub struct FilledRelay {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
-    pub input_amount: u64,
+    pub input_amount: [u8; 32],
     pub output_amount: u64,
     pub repayment_chain_id: u64,
     pub origin_chain_id: u64,
@@ -98,7 +91,7 @@ pub struct FilledRelay {
 pub struct RequestedSlowFill {
     pub input_token: Pubkey,
     pub output_token: Pubkey,
-    pub input_amount: u64,
+    pub input_amount: [u8; 32],
     pub output_amount: u64,
     pub origin_chain_id: u64,
     pub deposit_id: [u8; 32],

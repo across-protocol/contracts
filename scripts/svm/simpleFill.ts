@@ -14,7 +14,12 @@ import {
 import { PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { calculateRelayHashUint8Array, getSpokePoolProgram, intToU8Array32 } from "../../src/svm/web3-v1";
+import {
+  calculateRelayHashUint8Array,
+  getFillRelayDelegatePda,
+  getSpokePoolProgram,
+  intToU8Array32,
+} from "../../src/svm/web3-v1";
 import { FillDataValues } from "../../src/types/svm";
 
 // Set up the provider
@@ -31,7 +36,7 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusiveRelayer", { type: "string", demandOption: false, describe: "Exclusive relayer public key" })
   .option("inputToken", { type: "string", demandOption: true, describe: "Input token public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
-  .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
+  .option("inputAmount", { type: "string", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
   .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
@@ -45,12 +50,12 @@ async function fillRelay(): Promise<void> {
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || "11111111111111111111111111111111");
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
-  const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
+  const exclusivityDeadline = resolvedArgv.exclusivityDeadline ?? 0; // default to 0
   const message = Buffer.from("");
   const seed = new BN(resolvedArgv.seed);
 
@@ -72,7 +77,7 @@ async function fillRelay(): Promise<void> {
   // Define the signer (replace with your actual signer)
   const signer = (provider.wallet as anchor.Wallet).payer;
 
-  console.log("Filling V3 Relay...");
+  console.log("Filling Relay...");
 
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
@@ -144,11 +149,13 @@ async function fillRelay(): Promise<void> {
     ])
     .instruction();
 
-  // Delegate state PDA to pull relayer tokens.
+  const delegate = getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda;
+
+  // Delegate fill delegate PDA to pull relayer tokens.
   const approveIx = await createApproveCheckedInstruction(
     relayerTokenAccount,
     outputToken,
-    statePda,
+    delegate,
     signer.publicKey,
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
@@ -161,6 +168,7 @@ async function fillRelay(): Promise<void> {
   const fillAccounts = {
     state: statePda,
     signer: signer.publicKey,
+    delegate,
     instructionParams: program.programId,
     mint: outputToken,
     relayerTokenAccount: relayerTokenAccount,
@@ -184,5 +192,5 @@ async function fillRelay(): Promise<void> {
   console.log("Transaction signature:", tx);
 }
 
-// Run the fillV3Relay function
+// Run the fillRelay function
 fillRelay();

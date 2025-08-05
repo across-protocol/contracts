@@ -15,6 +15,7 @@ import { MerkleTree } from "@uma/common/dist/MerkleTree";
 import { SlowFillLeaf } from "../../src/types/svm";
 import {
   calculateRelayHashUint8Array,
+  getFillRelayDelegatePda,
   hashNonEmptyMessage,
   intToU8Array32,
   readEventsUntilFound,
@@ -22,12 +23,23 @@ import {
 } from "../../src/svm/web3-v1";
 import { testAcrossPlusMessage } from "./utils";
 
-const { provider, connection, program, owner, chainId, seedBalance, initializeState } = common;
-const { recipient, setCurrentTime, assertSE, assert } = common;
+const {
+  provider,
+  connection,
+  program,
+  owner,
+  chainId,
+  seedBalance,
+  initializeState,
+  recipient,
+  setCurrentTime,
+  assertSE,
+  assert,
+} = common;
 
 describe("svm_spoke.slow_fill", () => {
   anchor.setProvider(provider);
-  const payer = (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer;
+  const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const relayer = Keypair.generate();
   const otherRelayer = Keypair.generate();
   const { encodedMessage, fillRemainingAccounts } = testAcrossPlusMessage();
@@ -49,7 +61,7 @@ describe("svm_spoke.slow_fill", () => {
 
   const initialMintAmount = 10_000_000_000;
 
-  async function updateRelayData(newRelayData: SlowFillLeaf["relayData"]) {
+  const updateRelayData = async (newRelayData: SlowFillLeaf["relayData"]) => {
     relayData = newRelayData;
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     [fillStatus] = PublicKey.findProgramAddressSync([Buffer.from("fills"), relayHashUint8Array], program.programId);
@@ -68,6 +80,7 @@ describe("svm_spoke.slow_fill", () => {
     };
     fillAccounts = {
       state,
+      delegate: getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       signer: relayer.publicKey,
       instructionParams: program.programId,
       mint: mint,
@@ -78,7 +91,7 @@ describe("svm_spoke.slow_fill", () => {
       associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
       systemProgram: anchor.web3.SystemProgram.programId,
     };
-  }
+  };
 
   const relaySlowFillRootBundle = async (
     slowRelayLeafRecipient = recipient,
@@ -95,7 +108,7 @@ describe("svm_spoke.slow_fill", () => {
         exclusiveRelayer: relayer.publicKey,
         inputToken: mint,
         outputToken: mint,
-        inputAmount: new BN(relayAmount),
+        inputAmount: intToU8Array32(relayAmount),
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
         depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
@@ -117,7 +130,7 @@ describe("svm_spoke.slow_fill", () => {
     const leaf = slowRelayLeafs[0];
 
     let stateAccountData = await program.account.state.fetch(state);
-    const rootBundleId = stateAccountData.rootBundleId;
+    const { rootBundleId } = stateAccountData;
 
     const rootBundleIdBuffer = Buffer.alloc(4);
     rootBundleIdBuffer.writeUInt32LE(rootBundleId);
@@ -171,7 +184,7 @@ describe("svm_spoke.slow_fill", () => {
       exclusiveRelayer: relayer.publicKey,
       inputToken: mint, // This is lazy. it should be an encoded token from a separate domain most likely.
       outputToken: mint,
-      inputAmount: new BN(relayAmount),
+      inputAmount: intToU8Array32(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(1),
@@ -183,7 +196,7 @@ describe("svm_spoke.slow_fill", () => {
     await updateRelayData(initialRelayData);
   });
 
-  it("Requests a V3 slow fill, verify the event & state change", async () => {
+  it("Requests a slow fill, verify the event & state change", async () => {
     // Attempt to request a slow fill before the exclusivityDeadline
     const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
 
@@ -212,18 +225,21 @@ describe("svm_spoke.slow_fill", () => {
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
         assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
-      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      } else {
+        assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      }
     });
   });
 
-  it("Fails to request a V3 slow fill if the relay has already been filled", async () => {
-    const relayHash = Array.from(calculateRelayHashUint8Array(relayData, chainId));
+  it("Fails to request a slow fill if the relay has already been filled", async () => {
+    const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
+    const relayHash = Array.from(relayHashUint8Array);
 
     // Fill the relay first
     const approveIx = await createApproveCheckedInstruction(
       fillAccounts.relayerTokenAccount,
       fillAccounts.mint,
-      fillAccounts.state,
+      getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       fillAccounts.signer,
       BigInt(relayData.outputAmount.toString()),
       tokenDecimals
@@ -284,7 +300,7 @@ describe("svm_spoke.slow_fill", () => {
     assert.equal(fillStatusAccount.relayer.toString(), relayer.publicKey.toString(), "Caller should be set as relayer");
   });
 
-  it("Fails to request a V3 slow fill multiple times for the same fill", async () => {
+  it("Fails to request a slow fill multiple times for the same fill", async () => {
     const relayHash = calculateRelayHashUint8Array(relayData, chainId);
 
     // Set the contract time to be after the exclusivityDeadline
@@ -310,14 +326,14 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Executes V3 slow relay leaf, verify the event & state change", async () => {
+  it("Executes slow relay leaf, verify the event & state change", async () => {
     // Relay root bundle with slow fill leaf.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
 
     const iVaultBal = (await connection.getTokenAccountBalance(vault)).value.amount;
     const iRecipientBal = (await connection.getTokenAccountBalance(recipientTA)).value.amount;
 
-    // Attempt to execute V3 slow relay leaf before requesting slow fill. This should fail before requested,
+    // Attempt to execute slow relay leaf before requesting slow fill. This should fail before requested,
     // even if there is a valid proof.
     const executeSlowRelayLeafAccounts = {
       state: state,
@@ -342,14 +358,14 @@ describe("svm_spoke.slow_fill", () => {
       assert.include(err.toString(), "AccountNotInitialized", "Expected AccountNotInitialized error");
     }
 
-    // Request V3 slow fill
+    // Request slow fill
     await program.methods
       .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Execute V3 slow relay leaf after requesting slow fill
+    // Execute slow relay leaf after requesting slow fill
     const ix = await program.methods
       .executeSlowRelayLeaf(Array.from(relayHash), leaf, rootBundleId, proofAsNumbers)
       .accounts(executeSlowRelayLeafAccounts)
@@ -384,7 +400,9 @@ describe("svm_spoke.slow_fill", () => {
     Object.entries(relayData).forEach(([key, value]) => {
       if (key === "message") {
         assertSE(event.messageHash, hashNonEmptyMessage(value as Buffer), `MessageHash should match`);
-      } else assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      } else {
+        assertSE(event[key], value, `${key.charAt(0).toUpperCase() + key.slice(1)} should match`);
+      }
     });
     // RelayExecutionInfo should match.
     assertSE(event.relayExecutionInfo.updatedRecipient, relayData.recipient, "UpdatedRecipient should match");
@@ -400,7 +418,7 @@ describe("svm_spoke.slow_fill", () => {
     assertSE(event.relayer, PublicKey.default, "Repayment address should be 0");
   });
 
-  it("Fails to request a V3 slow fill when fills are paused", async () => {
+  it("Fails to request a slow fill when fills are paused", async () => {
     // Pause fills
     const pauseFillsAccounts = {
       state: state,
@@ -426,8 +444,8 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Fails to execute V3 slow relay leaf to wrong recipient", async () => {
-    // Request V3 slow fill.
+  it("Fails to execute slow relay leaf to wrong recipient", async () => {
+    // Request slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
       .requestSlowFill(Array.from(relayHash), leaf.relayData)
@@ -435,7 +453,7 @@ describe("svm_spoke.slow_fill", () => {
       .signers([relayer])
       .rpc();
 
-    // Try to execute V3 slow relay leaf with wrong recipient token account should fail.
+    // Try to execute slow relay leaf with wrong recipient token account should fail.
     const wrongRecipient = Keypair.generate().publicKey;
     const wrongRecipientTA = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, wrongRecipient)).address;
     try {
@@ -463,8 +481,8 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Cannot replay execute V3 slow relay leaf against wrong fill status account", async () => {
-    // Request V3 slow fill for the first recipient.
+  it("Cannot replay execute slow relay leaf against wrong fill status account", async () => {
+    // Request slow fill for the first recipient.
     const firstRecipient = Keypair.generate().publicKey;
     const {
       relayHash: firstRelayHash,
@@ -481,7 +499,7 @@ describe("svm_spoke.slow_fill", () => {
     const firstRecipientTA = recipientTA; // Global recipientTA will get updated when passing the second relayData.
     const firstFillStatus = fillStatus; // Global fillStatus will get updated when passing the second relayData.
 
-    // Request V3 slow fill for the second recipient.
+    // Request slow fill for the second recipient.
     // Note: we could also had generated single slow relay root for both recipients, but having them relayed in separate
     // root bundles makes it easier to reuse existing test code.
     const secondRecipient = Keypair.generate().publicKey;
@@ -494,7 +512,7 @@ describe("svm_spoke.slow_fill", () => {
     const secondFillStatus = fillStatus; // Global fillStatus got updated with the second relayData.
 
     const iFirstRecipientBal = (await connection.getTokenAccountBalance(firstRecipientTA)).value.amount;
-    // Execute V3 slow relay leaf for the first recipient.
+    // Execute slow relay leaf for the first recipient.
     const executeSlowRelayLeafAccounts = {
       state,
       rootBundle: firstRootBundle,
@@ -519,7 +537,7 @@ describe("svm_spoke.slow_fill", () => {
       "First recipient balance should be increased by its relay amount"
     );
 
-    // Try to replay execute V3 slow relay leaf for the first recipient using the fill status account that is derived
+    // Try to replay execute slow relay leaf for the first recipient using the fill status account that is derived
     // from the second relay hash. This should fail due to mismatching relay hash.
     try {
       const executeSlowRelayLeafAccounts = {
@@ -546,8 +564,8 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Fails to execute V3 slow relay leaf for mint inconsistent output_token", async () => {
-    // Request V3 slow fill.
+  it("Fails to execute slow relay leaf for mint inconsistent output_token", async () => {
+    // Request slow fill.
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle();
     await program.methods
       .requestSlowFill(Array.from(relayHash), leaf.relayData)
@@ -561,7 +579,7 @@ describe("svm_spoke.slow_fill", () => {
     const wrongVault = (await getOrCreateAssociatedTokenAccount(connection, payer, wrongMint, state, true)).address;
     await mintTo(connection, payer, wrongMint, wrongVault, provider.publicKey, initialMintAmount);
 
-    // Try to execute V3 slow relay leaf with inconsistent mint should fail.
+    // Try to execute slow relay leaf with inconsistent mint should fail.
     try {
       const executeSlowRelayLeafAccounts = {
         state,
@@ -587,8 +605,8 @@ describe("svm_spoke.slow_fill", () => {
     }
   });
 
-  it("Cannot execute V3 slow relay leaf targeted at another chain", async () => {
-    // Request V3 slow fill for another chain.
+  it("Cannot execute slow relay leaf targeted at another chain", async () => {
+    // Request slow fill for another chain.
     const anotherChainId = new BN(Math.floor(Math.random() * 1000000));
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
       undefined,
@@ -600,7 +618,7 @@ describe("svm_spoke.slow_fill", () => {
       .signers([relayer])
       .rpc();
 
-    // Trying to execute V3 slow relay leaf for another chain should fail as the program overrides chain_id that should
+    // Trying to execute slow relay leaf for another chain should fail as the program overrides chain_id that should
     // invalidate the proofs.
     try {
       const executeSlowRelayLeafAccounts = {
@@ -635,14 +653,14 @@ describe("svm_spoke.slow_fill", () => {
       Buffer.alloc(0)
     );
 
-    // Request V3 slow fill
+    // Request slow fill
     const tx1 = await program.methods
       .requestSlowFill(Array.from(relayHash), leaf.relayData)
       .accounts(requestAccounts)
       .signers([relayer])
       .rpc();
 
-    // Execute V3 slow relay leaf after requesting slow fill
+    // Execute slow relay leaf after requesting slow fill
     const executeSlowRelayLeafAccounts = {
       state,
       rootBundle,

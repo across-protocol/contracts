@@ -17,8 +17,8 @@ const argvPromise = yargs(hideBin(process.argv))
     describe: "Name of the event to query",
     choices: [
       "any",
-      "FilledV3Relay",
-      "V3FundsDeposited",
+      "FilledRelay",
+      "FundsDeposited",
       "EnabledDepositRoute",
       "RelayedRootBundle",
       "ExecutedRelayerRefundRoot",
@@ -27,7 +27,7 @@ const argvPromise = yargs(hideBin(process.argv))
       "PausedFills",
       "SetXDomainAdmin",
       "EmergencyDeletedRootBundle",
-      "RequestedV3SlowFill",
+      "RequestedSlowFill",
       "ClaimedRelayerRefund",
       "TokensBridged",
     ],
@@ -52,7 +52,7 @@ async function queryEvents(): Promise<void> {
   const events = await readProgramEvents({ rpc, rpcSubscriptions }, address(programId), SvmSpokeIdl, "confirmed");
 
   const filteredEvents = events.filter((e) => (eventName === "any" ? true : e.name === eventName));
-  const formattedEvents = filteredEvents.map(stringifyCpiEvent);
+  const formattedEvents = filteredEvents.map((event) => stringifyCpiEvent(event.data, event.name));
 
   console.log(JSON.stringify(formattedEvents, null, 2));
 }

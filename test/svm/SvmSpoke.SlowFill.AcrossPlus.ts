@@ -145,11 +145,11 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         program.programId
       );
     }
-    const requestV3SlowFillParams: RequestSlowFillDataParams = bufferParams
+    const requestSlowFillParams: RequestSlowFillDataParams = bufferParams
       ? [requestSlowFillValues[0], null]
       : requestSlowFillValues;
     const requestIx = await program.methods
-      .requestSlowFill(...requestV3SlowFillParams)
+      .requestSlowFill(...requestSlowFillParams)
       .accounts(requestAccounts)
       .instruction();
 
@@ -226,7 +226,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       exclusiveRelayer: relayer.publicKey,
       inputToken: mint, // This is lazy. it should be an encoded token from a separate domain most likely.
       outputToken: mint,
-      inputAmount: new BN(relayAmount),
+      inputAmount: intToU8Array32(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
@@ -272,7 +272,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     // Request and execute slow fill.
     const { requestIx, executeIx } = await createSlowFillIx(multicallHandlerCoder);
     await sendAndConfirmTransaction(connection, new Transaction().add(requestIx), [relayer]);
-    await sendAndConfirmTransaction(connection, new Transaction().add(executeIx), [relayer]);
+    await sendTransactionWithLookupTable(connection, [executeIx], relayer);
 
     // Verify vault's balance after the fill
     const fVaultBal = (await getAccount(connection, vault)).amount;
@@ -383,7 +383,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
 
     it("Max token distributions within invoked message call, regular params", async () => {
       // Larger distribution would exceed message size limits.
-      const numberOfDistributions = 6;
+      const numberOfDistributions = 5;
 
       await fillTokenDistributions(numberOfDistributions);
     });

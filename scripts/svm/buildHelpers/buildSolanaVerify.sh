@@ -8,6 +8,8 @@ else
   CARGO_OPTIONS=""
 fi
 
+SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
+
 for program in programs/*; do
   [ -d "$program" ] || continue
 
@@ -15,11 +17,13 @@ for program in programs/*; do
   program_name=${dir_name//-/_}
 
   echo "Running verified build for $program_name"
-  solana-verify build --library-name "$program_name" -- $CARGO_OPTIONS
+  solana-verify build --library-name "$program_name" --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" -- $CARGO_OPTIONS
 
   # We don't need keypair files from the verified build and they cause permission issues on CI when Swatinem/rust-cache
   # tries to delete them.
-  echo "Removing target/deploy/$program_name-keypair.json"
-  sudo rm -f "target/deploy/$program_name-keypair.json"
+  if [[ "${CI:-}" == "true" ]]; then
+    echo "Removing target/deploy/$program_name-keypair.json"
+    sudo rm -f "target/deploy/$program_name-keypair.json"
+  fi
 
 done

@@ -3,11 +3,9 @@ use anchor_lang::prelude::*;
 // Common Errors with EVM SpokePool.
 #[error_code]
 pub enum CommonError {
-    #[msg("The route is not enabled!")]
-    DisabledRoute,
     #[msg("Invalid quote timestamp!")]
     InvalidQuoteTimestamp,
-    #[msg("Ivalid fill deadline!")]
+    #[msg("Invalid fill deadline!")]
     InvalidFillDeadline,
     #[msg("Caller is not the exclusive relayer and exclusivity deadline has not passed!")]
     NotExclusiveRelayer,
@@ -35,6 +33,8 @@ pub enum CommonError {
     InsufficientSpokePoolBalanceToExecuteLeaf,
     #[msg("Invalid exclusive relayer!")]
     InvalidExclusiveRelayer,
+    #[msg("Invalid output token!")]
+    InvalidOutputToken,
 }
 
 // SVM specific errors.
@@ -74,6 +74,8 @@ pub enum SvmError {
     InvalidProductionSeed,
     #[msg("Invalid remaining accounts for ATA creation!")]
     InvalidATACreationAccounts,
+    #[msg("Invalid delegate PDA!")]
+    InvalidDelegatePda,
 }
 
 // CCTP specific errors.
