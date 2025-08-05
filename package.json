@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.0.11",
+  "version": "4.1.1",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -49,7 +49,7 @@
     "pre-commit-hook": "sh scripts/preCommitHook.sh"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.63",
+    "@across-protocol/constants": "^3.1.69",
     "@coral-xyz/anchor": "^0.31.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
@@ -76,8 +76,8 @@
     "zksync-web3": "^0.14.3"
   },
   "devDependencies": {
-    "@codama/nodes-from-anchor": "^1.1.0",
-    "@codama/renderers-js": "^1.1.1",
+    "@codama/nodes-from-anchor": "^1.2.0",
+    "@codama/renderers-js": "^1.2.14",
     "@consensys/linea-sdk": "^0.1.6",
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
     "@matterlabs/hardhat-zksync-solc": "^1.1.4",
@@ -98,7 +98,7 @@
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.3.7",
-    "codama": "^1.2.0",
+    "codama": "^1.3.0",
     "dotenv": "^10.0.0",
     "eslint": "^7.29.0",
     "eslint-config-prettier": "^8.3.0",
@@ -119,7 +119,7 @@
     "prettier": "^2.8.8",
     "prettier-plugin-solidity": "^1.4.1",
     "pretty-quick": "^2.0.1",
-    "solhint": "^3.3.6",
+    "solhint": "^3.6.2",
     "solidity-coverage": "^0.7.16",
     "ts-mocha": "^10.0.0",
     "ts-node": "^10.1.0",
