@@ -552,11 +552,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @param typedDataHash The EIP712 data hash to check the signature against.
      * @param signature The signature to validate.
      */
-    function _validateSignature(
-        address signatureOwner,
-        bytes32 typedDataHash,
-        bytes calldata signature
-    ) private view {
+    function _validateSignature(address signatureOwner, bytes32 typedDataHash, bytes calldata signature) private view {
         if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature)) {
             revert InvalidSignature();
         }
@@ -692,11 +688,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         );
     }
 
-    function _paySubmissionFees(
-        address feeToken,
-        address recipient,
-        uint256 amount
-    ) private {
+    function _paySubmissionFees(address feeToken, address recipient, uint256 amount) private {
         if (amount > 0) {
             // Use msg.sender as recipient if recipient is zero address, otherwise use the specified recipient
             address feeRecipient = recipient == address(0) ? msg.sender : recipient;

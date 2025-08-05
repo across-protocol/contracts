@@ -26,13 +26,7 @@ contract Exchange {
         permit2 = _permit2;
     }
 
-    function swap(
-        IERC20 tokenIn,
-        IERC20 tokenOut,
-        uint256 amountIn,
-        uint256 amountOutMin,
-        bool usePermit2
-    ) external {
+    function swap(IERC20 tokenIn, IERC20 tokenOut, uint256 amountIn, uint256 amountOutMin, bool usePermit2) external {
         if (tokenIn.balanceOf(address(this)) >= amountIn) {
             tokenIn.transfer(address(1), amountIn);
             require(tokenOut.transfer(msg.sender, amountOutMin));
@@ -81,19 +75,15 @@ contract Exchange {
 
 // Utility contract which lets us perform external calls to an internal library.
 contract HashUtils {
-    function hashDepositData(SpokePoolPeripheryInterface.DepositData calldata depositData)
-        external
-        pure
-        returns (bytes32)
-    {
+    function hashDepositData(
+        SpokePoolPeripheryInterface.DepositData calldata depositData
+    ) external pure returns (bytes32) {
         return PeripherySigningLib.hashDepositData(depositData);
     }
 
-    function hashSwapAndDepositData(SpokePoolPeriphery.SwapAndDepositData calldata swapAndDepositData)
-        external
-        pure
-        returns (bytes32)
-    {
+    function hashSwapAndDepositData(
+        SpokePoolPeriphery.SwapAndDepositData calldata swapAndDepositData
+    ) external pure returns (bytes32) {
         return PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
     }
 }
@@ -117,9 +107,9 @@ contract SpokePoolPeripheryTest is Test {
     address relayer;
 
     uint256 destinationChainId = 10;
-    uint256 mintAmount = 10**22;
+    uint256 mintAmount = 10 ** 22;
     uint256 submissionFeeAmount = 1;
-    uint256 depositAmount = 5 * (10**18);
+    uint256 depositAmount = 5 * (10 ** 18);
     uint256 depositAmountWithSubmissionFee = depositAmount + submissionFeeAmount;
     uint256 mintAmountWithSubmissionFee = mintAmount + submissionFeeAmount;
     uint32 fillDeadlineBuffer = 7200;

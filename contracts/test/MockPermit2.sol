@@ -69,21 +69,12 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
         );
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint160 amount,
-        address token
-    ) external {
+    function transferFrom(address from, address to, uint160 amount, address token) external {
         _transfer(from, to, amount, token);
     }
 
     // This is not a copy of permit2's permit.
-    function permit(
-        address owner,
-        PermitSingle memory permitSingle,
-        bytes calldata signature
-    ) external {
+    function permit(address owner, PermitSingle memory permitSingle, bytes calldata signature) external {
         if (block.timestamp > permitSingle.sigDeadline) revert SignatureExpired();
 
         // Verify the signer address from the signature.
@@ -93,12 +84,7 @@ contract MockPermit2 is IPermit2, Permit2EIP712 {
     }
 
     // This is not a copy of permit2's permit.
-    function _transfer(
-        address from,
-        address to,
-        uint160 amount,
-        address token
-    ) private {
+    function _transfer(address from, address to, uint160 amount, address token) private {
         uint256 allowed = allowance[from][token][msg.sender];
 
         if (allowed != type(uint160).max) {
@@ -173,11 +159,7 @@ library SignatureVerification {
 
     bytes32 constant UPPER_BIT_MASK = (0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
 
-    function verify(
-        bytes calldata signature,
-        bytes32 hash,
-        address claimedSigner
-    ) internal view {
+    function verify(bytes calldata signature, bytes32 hash, address claimedSigner) internal view {
         bytes32 r;
         bytes32 s;
         uint8 v;

@@ -31,11 +31,7 @@ interface IPermit2 {
         uint256 requestedAmount;
     }
 
-    function permit(
-        address owner,
-        PermitSingle memory permitSingle,
-        bytes calldata signature
-    ) external;
+    function permit(address owner, PermitSingle memory permitSingle, bytes calldata signature) external;
 
     function permitWitnessTransferFrom(
         PermitTransferFrom memory permit,
@@ -46,10 +42,5 @@ interface IPermit2 {
         bytes calldata signature
     ) external;
 
-    function transferFrom(
-        address from,
-        address to,
-        uint160 amount,
-        address token
-    ) external;
+    function transferFrom(address from, address to, uint160 amount, address token) external;
 }

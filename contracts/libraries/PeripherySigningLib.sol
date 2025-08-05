@@ -51,11 +51,9 @@ library PeripherySigningLib {
      * @param baseDepositData Input struct whose values are hashed.
      * @dev BaseDepositData is only used as a nested struct for both DepositData and SwapAndDepositData.
      */
-    function hashBaseDepositData(SpokePoolPeripheryInterface.BaseDepositData calldata baseDepositData)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function hashBaseDepositData(
+        SpokePoolPeripheryInterface.BaseDepositData calldata baseDepositData
+    ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -88,11 +86,9 @@ library PeripherySigningLib {
      * @notice Creates the EIP712 compliant hashed data corresponding to the DepositData struct.
      * @param depositData Input struct whose values are hashed.
      */
-    function hashDepositData(SpokePoolPeripheryInterface.DepositData calldata depositData)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function hashDepositData(
+        SpokePoolPeripheryInterface.DepositData calldata depositData
+    ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -110,11 +106,9 @@ library PeripherySigningLib {
      * @notice Creates the EIP712 compliant hashed data corresponding to the SwapAndDepositData struct.
      * @param swapAndDepositData Input struct whose values are hashed.
      */
-    function hashSwapAndDepositData(SpokePoolPeripheryInterface.SwapAndDepositData calldata swapAndDepositData)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function hashSwapAndDepositData(
+        SpokePoolPeripheryInterface.SwapAndDepositData calldata swapAndDepositData
+    ) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -138,15 +132,7 @@ library PeripherySigningLib {
      * @notice Reads an input bytes, and, assuming it is a signature for a 32-byte hash, returns the v, r, and s values.
      * @param _signature The input signature to deserialize.
      */
-    function deserializeSignature(bytes calldata _signature)
-        internal
-        pure
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
+    function deserializeSignature(bytes calldata _signature) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
         if (_signature.length != 65) revert InvalidSignature();
         v = uint8(_signature[64]);
         r = bytes32(_signature[0:32]);
