@@ -22,7 +22,7 @@ runs:
         fi
     - name: Setup Node.js
       if: steps.check-node.outputs.installed == 'false'
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: "${{ inputs.node_version }}"
     - name: Resolve actual Node version
