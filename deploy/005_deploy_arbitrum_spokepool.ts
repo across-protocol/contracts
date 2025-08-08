@@ -2,10 +2,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WETH } from "./consts";
-import { getHyperlaneDomainId, getOftEid, toWei } from "../utils/utils";
+import { getOftEid, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's

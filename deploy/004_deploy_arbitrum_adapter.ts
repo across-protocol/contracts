@@ -1,5 +1,5 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { getHyperlaneDomainId, getOftEid, toWei } from "../utils/utils";
+import { getOftEid, toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
@@ -31,16 +31,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
-    args: [
-      L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
-      L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
-      l2RefundAddress,
-      USDC[chainId],
-      L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-      L1_ADDRESS_MAP[chainId].adapterStore,
-      oftDstEid,
-      oftFeeCap,
-    ],
+    gasLimit: 2000000,
+    args,
   });
   await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
 };
