@@ -37,6 +37,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @return info Deployment information struct
      */
     function getSpokePoolDeploymentInfo(address hubPoolAddress) public view returns (DeploymentInfo memory info) {
+        console.log("hubPoolAddress", hubPoolAddress);
         uint256 spokeChainId = block.chainid;
 
         // Determine hub chain ID based on spoke chain ID

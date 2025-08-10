@@ -13,287 +13,298 @@ import { console } from "forge-std/console.sol";
  * @dev This contract uses Foundry's parseJson functions to load constants from constants.json
  */
 contract Constants is Script {
+    string public file;
+
+    constructor() {
+        file = vm.readFile("script/constants.json");
+    }
+
     // Chain IDs - loaded from JSON
     function MAINNET() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.MAINNET");
+        return vm.parseJsonUint(file, ".chainIds.MAINNET");
     }
 
     function SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.SEPOLIA");
     }
 
     function ARBITRUM() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.ARBITRUM");
+        return vm.parseJsonUint(file, ".chainIds.ARBITRUM");
     }
 
     function ARBITRUM_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.ARBITRUM_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.ARBITRUM_SEPOLIA");
     }
 
     function BSC() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.BSC");
+        return vm.parseJsonUint(file, ".chainIds.BSC");
     }
 
     function POLYGON() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.POLYGON");
+        return vm.parseJsonUint(file, ".chainIds.POLYGON");
     }
 
     function POLYGON_AMOY() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.POLYGON_AMOY");
+        return vm.parseJsonUint(file, ".chainIds.POLYGON_AMOY");
     }
 
     function ZK_SYNC() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.ZK_SYNC");
+        return vm.parseJsonUint(file, ".chainIds.ZK_SYNC");
     }
 
     function OPTIMISM() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.OPTIMISM");
+        return vm.parseJsonUint(file, ".chainIds.OPTIMISM");
     }
 
     function OPTIMISM_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.OPTIMISM_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.OPTIMISM_SEPOLIA");
     }
 
     function BASE() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.BASE");
+        return vm.parseJsonUint(file, ".chainIds.BASE");
     }
 
     function BASE_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.BASE_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.BASE_SEPOLIA");
     }
 
     function LENS() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.LENS");
+        return vm.parseJsonUint(file, ".chainIds.LENS");
     }
 
     function LENS_TESTNET() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.LENS_TESTNET");
+        return vm.parseJsonUint(file, ".chainIds.LENS_TESTNET");
     }
 
     function LINEA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.LINEA");
+        return vm.parseJsonUint(file, ".chainIds.LINEA");
     }
 
     function LINEA_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.LINEA_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.LINEA_SEPOLIA");
     }
 
     function SCROLL() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.SCROLL");
+        return vm.parseJsonUint(file, ".chainIds.SCROLL");
     }
 
     function SCROLL_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.SCROLL_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.SCROLL_SEPOLIA");
     }
 
     function UNICHAIN() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.UNICHAIN");
+        return vm.parseJsonUint(file, ".chainIds.UNICHAIN");
     }
 
     function UNICHAIN_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.UNICHAIN_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.UNICHAIN_SEPOLIA");
     }
 
     function ALEPH_ZERO() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.ALEPH_ZERO");
+        return vm.parseJsonUint(file, ".chainIds.ALEPH_ZERO");
     }
 
     function BLAST() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.BLAST");
+        return vm.parseJsonUint(file, ".chainIds.BLAST");
     }
 
     function BLAST_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.BLAST_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.BLAST_SEPOLIA");
     }
 
     function BOBA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.BOBA");
+        return vm.parseJsonUint(file, ".chainIds.BOBA");
     }
 
     function INK() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.INK");
+        return vm.parseJsonUint(file, ".chainIds.INK");
     }
 
     function INK_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.INK_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.INK_SEPOLIA");
     }
 
     function LISK() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.LISK");
+        return vm.parseJsonUint(file, ".chainIds.LISK");
     }
 
     function LISK_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.LISK_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.LISK_SEPOLIA");
     }
 
     function MODE() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.MODE");
+        return vm.parseJsonUint(file, ".chainIds.MODE");
     }
 
     function MODE_SEPOLIA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.MODE_SEPOLIA");
+        return vm.parseJsonUint(file, ".chainIds.MODE_SEPOLIA");
     }
 
     function REDSTONE() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.REDSTONE");
+        return vm.parseJsonUint(file, ".chainIds.REDSTONE");
     }
 
     function SONEIUM() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.SONEIUM");
+        return vm.parseJsonUint(file, ".chainIds.SONEIUM");
     }
 
     function WORLD_CHAIN() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.WORLD_CHAIN");
+        return vm.parseJsonUint(file, ".chainIds.WORLD_CHAIN");
     }
 
     function ZORA() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".chainIds.ZORA");
+        return vm.parseJsonUint(file, ".chainIds.ZORA");
     }
 
     // Token addresses - loaded from JSON
     function WRAPPED_NATIVE_TOKEN_MAINNET() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.MAINNET"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.MAINNET"));
     }
 
     function WRAPPED_NATIVE_TOKEN_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.SEPOLIA"));
+        console.log("file", file);
+        console.log(
+            "vm.parseJsonAddress(file, '.wrappedNativeTokens.SEPOLIA')",
+            vm.parseJsonAddress(file, ".wrappedNativeTokens.SEPOLIA")
+        );
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_ARBITRUM() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.ARBITRUM"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.ARBITRUM"));
     }
 
     function WRAPPED_NATIVE_TOKEN_ARBITRUM_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.ARBITRUM_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.ARBITRUM_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_BSC() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.BSC"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.BSC"));
     }
 
     function WRAPPED_NATIVE_TOKEN_POLYGON() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.POLYGON"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.POLYGON"));
     }
 
     function WRAPPED_NATIVE_TOKEN_POLYGON_AMOY() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.POLYGON_AMOY"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.POLYGON_AMOY"));
     }
 
     function WRAPPED_NATIVE_TOKEN_ZK_SYNC() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.ZK_SYNC"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.ZK_SYNC"));
     }
 
     function WRAPPED_NATIVE_TOKEN_OPTIMISM() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.OPTIMISM"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.OPTIMISM"));
     }
 
     function WRAPPED_NATIVE_TOKEN_OPTIMISM_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.OPTIMISM_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.OPTIMISM_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_BASE() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.BASE"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.BASE"));
     }
 
     function WRAPPED_NATIVE_TOKEN_BASE_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.BASE_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.BASE_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_LENS() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.LENS"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.LENS"));
     }
 
     function WRAPPED_NATIVE_TOKEN_LENS_TESTNET() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.LENS_TESTNET"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.LENS_TESTNET"));
     }
 
     function WRAPPED_NATIVE_TOKEN_LINEA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.LINEA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.LINEA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_LINEA_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.LINEA_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.LINEA_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_SCROLL_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.SCROLL_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.SCROLL_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_SCROLL() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.SCROLL"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.SCROLL"));
     }
 
     function WRAPPED_NATIVE_TOKEN_UNICHAIN() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.UNICHAIN"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.UNICHAIN"));
     }
 
     function WRAPPED_NATIVE_TOKEN_UNICHAIN_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.UNICHAIN_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.UNICHAIN_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_ALEPH_ZERO() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.ALEPH_ZERO"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.ALEPH_ZERO"));
     }
 
     function WRAPPED_NATIVE_TOKEN_BLAST() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.BLAST"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.BLAST"));
     }
 
     function WRAPPED_NATIVE_TOKEN_BLAST_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.BLAST_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.BLAST_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_BOBA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.BOBA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.BOBA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_INK() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.INK"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.INK"));
     }
 
     function WRAPPED_NATIVE_TOKEN_LISK() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.LISK"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.LISK"));
     }
 
     function WRAPPED_NATIVE_TOKEN_LISK_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.LISK_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.LISK_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_MODE() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.MODE"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.MODE"));
     }
 
     function WRAPPED_NATIVE_TOKEN_MODE_SEPOLIA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.MODE_SEPOLIA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.MODE_SEPOLIA"));
     }
 
     function WRAPPED_NATIVE_TOKEN_REDSTONE() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.REDSTONE"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.REDSTONE"));
     }
 
     function WRAPPED_NATIVE_TOKEN_SONEIUM() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.SONEIUM"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.SONEIUM"));
     }
 
     function WRAPPED_NATIVE_TOKEN_WORLD_CHAIN() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.WORLD_CHAIN"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.WORLD_CHAIN"));
     }
 
     function WRAPPED_NATIVE_TOKEN_ZORA() public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress("constants.json", ".wrappedNativeTokens.ZORA"));
+        return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.ZORA"));
     }
 
     // Other constants - loaded from JSON
     function ZERO_ADDRESS() public view returns (address) {
-        return vm.parseJsonAddress("constants.json", ".otherConstants.ZERO_ADDRESS");
+        return vm.parseJsonAddress(file, ".otherConstants.ZERO_ADDRESS");
     }
 
     function QUOTE_TIME_BUFFER() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".timeConstants.QUOTE_TIME_BUFFER");
+        return vm.parseJsonUint(file, ".timeConstants.QUOTE_TIME_BUFFER");
     }
 
     function FILL_DEADLINE_BUFFER() public view returns (uint256) {
-        return vm.parseJsonUint("constants.json", ".timeConstants.FILL_DEADLINE_BUFFER");
+        return vm.parseJsonUint(file, ".timeConstants.FILL_DEADLINE_BUFFER");
     }
 
     // L1 Address Map
@@ -359,101 +370,92 @@ contract Constants is Script {
         if (chainId == MAINNET() || chainId == SEPOLIA()) {
             return
                 L1Addresses({
-                    finder: vm.parseJsonAddress("constants.json", string.concat(".l1Addresses.", chainName, ".finder")),
+                    finder: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".finder")),
                     l1ArbitrumInbox: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".l1ArbitrumInbox")
                     ),
                     l1ERC20GatewayRouter: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".l1ERC20GatewayRouter")
                     ),
                     polygonRootChainManager: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".polygonRootChainManager")
                     ),
                     polygonFxRoot: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".polygonFxRoot")
                     ),
                     polygonERC20Predicate: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".polygonERC20Predicate")
                     ),
                     polygonRegistry: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".polygonRegistry")
                     ),
                     polygonDepositManager: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".polygonDepositManager")
                     ),
                     cctpTokenMessenger: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".cctpTokenMessenger")
                     ),
                     cctpV2TokenMessenger: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".cctpV2TokenMessenger")
                     ),
                     cctpMessageTransmitter: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".cctpMessageTransmitter")
                     ),
                     lineaMessageService: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".lineaMessageService")
                     ),
                     lineaTokenBridge: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".lineaTokenBridge")
                     ),
                     scrollERC20GatewayRouter: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".scrollERC20GatewayRouter")
                     ),
                     scrollMessengerRelay: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".scrollMessengerRelay")
                     ),
                     scrollGasPriceOracle: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".scrollGasPriceOracle")
                     ),
                     blastYieldManager: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".blastYieldManager")
                     ),
                     blastDaiRetriever: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".blastDaiRetriever")
                     ),
                     l1AlephZeroInbox: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".l1AlephZeroInbox")
                     ),
                     l1AlephZeroERC20GatewayRouter: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".l1AlephZeroERC20GatewayRouter")
                     ),
-                    donationBox: vm.parseJsonAddress(
-                        "constants.json",
-                        string.concat(".l1Addresses.", chainName, ".donationBox")
-                    ),
-                    hubPoolStore: vm.parseJsonAddress(
-                        "constants.json",
-                        string.concat(".l1Addresses.", chainName, ".hubPoolStore")
-                    ),
-                    zkBridgeHub: vm.parseJsonAddress(
-                        "constants.json",
-                        string.concat(".l1Addresses.", chainName, ".zkBridgeHub")
-                    ),
+                    donationBox: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".donationBox")),
+                    hubPoolStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".hubPoolStore")),
+                    zkBridgeHub: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".zkBridgeHub")),
                     zkUsdcSharedBridge_232: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".zkUsdcSharedBridge_232")
                     ),
                     zkUsdcSharedBridge_324: vm.parseJsonAddress(
-                        "constants.json",
+                        file,
                         string.concat(".l1Addresses.", chainName, ".zkUsdcSharedBridge_324")
                     )
                 });
@@ -473,29 +475,23 @@ contract Constants is Script {
 
         return
             OpStackAddresses({
-                L1CrossDomainMessenger: vm.parseJsonAddress(
-                    "constants.json",
-                    string.concat(path, ".L1CrossDomainMessenger")
-                ),
-                L1StandardBridge: vm.parseJsonAddress("constants.json", string.concat(path, ".L1StandardBridge")),
-                L1BlastBridge: vm.parseJsonAddress("constants.json", string.concat(path, ".L1BlastBridge")),
-                L1OpUSDCBridgeAdapter: vm.parseJsonAddress(
-                    "constants.json",
-                    string.concat(path, ".L1OpUSDCBridgeAdapter")
-                )
+                L1CrossDomainMessenger: vm.parseJsonAddress(file, string.concat(path, ".L1CrossDomainMessenger")),
+                L1StandardBridge: vm.parseJsonAddress(file, string.concat(path, ".L1StandardBridge")),
+                L1BlastBridge: vm.parseJsonAddress(file, string.concat(path, ".L1BlastBridge")),
+                L1OpUSDCBridgeAdapter: vm.parseJsonAddress(file, string.concat(path, ".L1OpUSDCBridgeAdapter"))
             });
     }
 
     // Circle domain IDs mapping
     function getCircleDomainId(uint256 chainId) public view returns (uint32) {
         string memory chainName = _getChainName(chainId);
-        return uint32(vm.parseJsonUint("constants.json", string.concat(".circleDomainIds.", chainName)));
+        return uint32(vm.parseJsonUint(file, string.concat(".circleDomainIds.", chainName)));
     }
 
     // Get WETH address for any supported chain
     function getWrappedNativeToken(uint256 chainId) public view returns (WETH9Interface) {
         string memory chainName = _getChainName(chainId);
-        return WETH9Interface(vm.parseJsonAddress("constants.json", string.concat(".wrappedNativeTokens.", chainName)));
+        return WETH9Interface(vm.parseJsonAddress(file, string.concat(".wrappedNativeTokens.", chainName)));
     }
 
     // Helper function to convert chain ID to chain name
@@ -534,5 +530,77 @@ contract Constants is Script {
         if (chainId == WORLD_CHAIN()) return "WORLD_CHAIN";
         if (chainId == ZORA()) return "ZORA";
         revert("Unsupported chain ID");
+    }
+
+    /**
+     * @notice Get L2 address from constants.json
+     * @param chainId The chain ID to get the address for
+     * @param addressType The type of address to get (e.g., "l2GatewayRouter", "cctpTokenMessenger")
+     * @return The L2 address
+     */
+    function getL2Address(uint256 chainId, string memory addressType) public view returns (address) {
+        string memory chainName = _getChainName(chainId);
+        string memory jsonPath = string(abi.encodePacked(".l2Addresses.", chainName, ".", addressType));
+        return vm.parseJsonAddress(file, jsonPath);
+    }
+
+    /**
+     * @notice Get USDC address for the given chain
+     * @param chainId The chain ID to get USDC address for
+     * @return The USDC address
+     */
+    function getUSDCAddress(uint256 chainId) public view returns (address) {
+        // Map chain ID to chain name for constants.json lookup
+        if (chainId == ARBITRUM()) {
+            // Arbitrum mainnet
+            return vm.parseJsonAddress(file, ".usdcAddresses.ARBITRUM");
+        } else if (chainId == ARBITRUM_SEPOLIA()) {
+            // Arbitrum Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.ARBITRUM_SEPOLIA");
+        } else if (chainId == MAINNET()) {
+            // Mainnet
+            return vm.parseJsonAddress(file, ".usdcAddresses.MAINNET");
+        } else if (chainId == SEPOLIA()) {
+            // Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.SEPOLIA");
+        } else if (chainId == OPTIMISM()) {
+            // Optimism
+            return vm.parseJsonAddress(file, ".usdcAddresses.OPTIMISM");
+        } else if (chainId == OPTIMISM_SEPOLIA()) {
+            // Optimism Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.OPTIMISM_SEPOLIA");
+        } else if (chainId == BASE()) {
+            // Base
+            return vm.parseJsonAddress(file, ".usdcAddresses.BASE");
+        } else if (chainId == BASE_SEPOLIA()) {
+            // Base Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.BASE_SEPOLIA");
+        } else if (chainId == POLYGON()) {
+            // Polygon
+            return vm.parseJsonAddress(file, ".usdcAddresses.POLYGON");
+        } else if (chainId == POLYGON_AMOY()) {
+            // Polygon Amoy
+            return vm.parseJsonAddress(file, ".usdcAddresses.POLYGON_AMOY");
+        } else if (chainId == LINEA()) {
+            // Linea
+            return vm.parseJsonAddress(file, ".usdcAddresses.LINEA");
+        } else if (chainId == LINEA_SEPOLIA()) {
+            // Linea Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.LINEA_SEPOLIA");
+        } else if (chainId == UNICHAIN()) {
+            // Unichain
+            return vm.parseJsonAddress(file, ".usdcAddresses.UNICHAIN");
+        } else if (chainId == UNICHAIN_SEPOLIA()) {
+            // Unichain Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.UNICHAIN_SEPOLIA");
+        } else if (chainId == BLAST()) {
+            // Blast
+            return vm.parseJsonAddress(file, ".usdcAddresses.BLAST");
+        } else if (chainId == BLAST_SEPOLIA()) {
+            // Blast Sepolia
+            return vm.parseJsonAddress(file, ".usdcAddresses.BLAST_SEPOLIA");
+        } else {
+            revert("Unsupported chain ID for USDC lookup");
+        }
     }
 }
