@@ -2,7 +2,6 @@ import { task } from "hardhat/config";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import "hardhat-deploy";
 import "@nomiclabs/hardhat-ethers";
-import { inspect } from "util";
 
 /**
  * Verify that the deployment init code (creation bytecode + encoded constructor args)
@@ -17,12 +16,15 @@ import { inspect } from "util";
  */
 task("verify-bytecode", "Verify deploy transaction input against local artifacts")
   .addOptionalParam("contract", "Contract name; falls back to env CONTRACT")
-  // @dev For proxies, we don't save transactionHash in deployments/. You have to provide it manually by checking e.g. block explorer first
+  // @dev For proxies, we don't save transactionHash in deployments/. You have to provide it manually via --tx-hash 0x... by checking e.g. block explorer first
   .addOptionalParam("txHash", "Deployment transaction hash (defaults to deployments JSON)")
   .addOptionalParam("libraries", "Libraries to link. JSON string or 'Name=0x..,Other=0x..'")
   .setAction(
     async (args: { contract?: string; txHash?: string; libraries?: string }, hre: HardhatRuntimeEnvironment) => {
       const { deployments, ethers, artifacts, network } = hre;
+
+      // make sure we're using latest local contract artifacts for verification
+      await hre.run("compile");
 
       const contractName = args.contract || process.env.CONTRACT;
       if (!contractName) throw new Error("Please provide --contract or set CONTRACT env var");
@@ -54,7 +56,7 @@ task("verify-bytecode", "Verify deploy transaction input against local artifacts
       /**
        * TODO
        * the `libraries` bit is untested. Could be wrong. Could remove this part if we don't have contracts with dynamic libraries
-       * artifact.linkReferences might help solve this better.
+       * artifact.linkReferences might help solve this better. Also, deployments.libraries. Implement only if required later.
        */
       const libraries: Record<string, string> = parseLibraries(args.libraries);
       const factory = await ethers.getContractFactoryFromArtifact(
