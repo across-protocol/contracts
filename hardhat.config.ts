@@ -112,6 +112,8 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
       },
+      suppressedErrors: ["sendtransfer"],
+      contractsToCompile: ["SpokePoolPeriphery"],
     },
   },
   networks: {
@@ -181,7 +183,7 @@ const config: HardhatUserConfig = {
     },
     bsc: {
       chainId: 56,
-      url: "https://binance.llamarpc.com",
+      url: "https://bsc-dataseed1.binance.org",
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -222,7 +224,7 @@ const config: HardhatUserConfig = {
     },
     linea: {
       chainId: CHAIN_IDs.LINEA,
-      url: `https://linea-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: `https://rpc.linea.build`,
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -284,7 +286,7 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
       ethNetwork: "mainnet",
-      verifyURL: "", // @todo
+      verifyURL: "https://verify.lens.xyz/contract_verification",
       zksync: true,
     },
     "lens-sepolia": {
