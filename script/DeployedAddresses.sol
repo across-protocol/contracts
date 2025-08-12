@@ -7,7 +7,7 @@ import "forge-std/Test.sol";
 /**
  * @title DeployedAddresses
  * @notice This contract contains all deployed contract addresses from Foundry broadcast files
- * @dev Generated on: 2025-06-24T15:04:31.369Z
+ * @dev Generated on: 2025-08-12T21:41:52.096Z
  * @dev This file is auto-generated. Do not edit manually.
  * @dev Uses Foundry's parseJson functionality for scripts/tests only (not for on-chain use)
  */
@@ -15,7 +15,7 @@ contract DeployedAddresses is Test {
     using stdJson for string;
 
     // Path to the JSON file containing deployed addresses
-    string private constant JSON_PATH = "./broadcast/deployed-addresses.json";
+    string private constant JSON_PATH = "../broadcast/deployed-addresses.json";
 
     /**
      * @notice Get contract address by chain ID and contract name
@@ -32,11 +32,6 @@ contract DeployedAddresses is Test {
             contractName,
             '"].address'
         );
-
-        if (!vm.keyExists(jsonData, path)) {
-            return address(0);
-        }
-
         return jsonData.readAddress(path);
     }
 
@@ -104,8 +99,8 @@ contract DeployedAddresses is Test {
      */
     function getContractNames(uint256 chainId) public view returns (string[] memory) {
         string memory jsonData = vm.readFile(JSON_PATH);
-        string memory path = string.concat('.chains["', vm.toString(chainId), '"].contracts');
-        return vm.parseJsonKeys(jsonData, path);
+        string memory path = string.concat('.chains["', vm.toString(chainId), '"].contracts | keys');
+        return jsonData.readStringArray(path);
     }
 
     /**
@@ -114,7 +109,7 @@ contract DeployedAddresses is Test {
      */
     function getChainIds() public view returns (uint256[] memory) {
         string memory jsonData = vm.readFile(JSON_PATH);
-        string[] memory chainIdStrings = vm.parseJsonKeys(jsonData, ".chains");
+        string[] memory chainIdStrings = jsonData.readStringArray(".chains | keys");
         uint256[] memory chainIds = new uint256[](chainIdStrings.length);
         for (uint256 i = 0; i < chainIdStrings.length; i++) {
             chainIds[i] = vm.parseUint(chainIdStrings[i]);

@@ -598,4 +598,9 @@ contract Constants is Script {
             revert("Unsupported chain ID for USDC lookup");
         }
     }
+
+    function getOftEid(uint256 chainId) public view returns (uint256) {
+        string memory chainName = _getChainName(chainId);
+        return vm.parseJsonUint(file, string.concat(".oftEids.", chainName));
+    }
 }

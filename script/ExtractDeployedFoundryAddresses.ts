@@ -168,8 +168,13 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
 
+          let contractName = tx.contractName as string;
+          if ((tx.contractName as string).includes("_SpokePool")) {
+            contractName = "SpokePool";
+          }
+
           contracts.push({
-            contractName: tx.contractName || "Unknown",
+            contractName: contractName || "Unknown",
             contractAddress: tx.contractAddress,
             transactionHash: txHash,
             blockNumber: blockNumber,
@@ -194,16 +199,35 @@ function getChainName(chainId: number): string {
     137: "Polygon",
     80002: "Polygon Amoy",
     10: "Optimism",
+    130: "Unichain",
     11155420: "Optimism Sepolia",
     8453: "Base",
     84532: "Base Sepolia",
     56: "BSC",
+    232: "Lens",
+    288: "Boba",
     324: "zkSync Era",
+    480: "World Chain",
+    690: "Redstone",
+    1135: "Lisk",
+    4202: "List Sepolia",
+    1301: "Unichain Sepolia",
+    1868: "Soneium",
     59144: "Linea",
     534352: "Scroll",
     534351: "Scroll Sepolia",
     81457: "Blast",
     168587773: "Blast Sepolia",
+    34443: "Mode",
+    919: "Mode Testnet",
+    37111: "Lens Testnet",
+    41455: "Aleph Zero",
+    57073: "Ink",
+    129399: "Tatara Testnet",
+    808813: "BOB Sepolia",
+    7777777: "Zora",
+    34268394551451: "Solana",
+    133268194659241: "Solana Devnet",
     // Add more chain IDs as needed
   };
   return chainNames[chainId] || `Chain ${chainId}`;
@@ -527,14 +551,14 @@ function main(): void {
   console.log(`Scanning broadcast directory: ${broadcastDir}`);
   console.log(`Scanning deployments directory: ${deploymentsDir}`);
 
-  // Find all broadcast files
-  const broadcastFiles = findBroadcastFiles(broadcastDir);
-
   // Read deployments.json
   const deploymentsFiles = readDeploymentsFile(deploymentsDir);
 
-  // Combine both sources
-  const allFiles = [...broadcastFiles, ...deploymentsFiles];
+  // Find all broadcast files
+  const broadcastFiles = findBroadcastFiles(broadcastDir);
+
+  // Combine both sources (order is important, deployments.json should be first)
+  const allFiles = [...deploymentsFiles, ...broadcastFiles];
 
   if (allFiles.length === 0) {
     console.error("No run-latest.json files found in broadcast directory and no deployments.json found");

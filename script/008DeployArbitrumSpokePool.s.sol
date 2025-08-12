@@ -40,7 +40,9 @@ contract DeployArbitrumSpokePool is Script, Test, Constants, DeploymentUtils {
             QUOTE_TIME_BUFFER(), // _quoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             getUSDCAddress(info.spokeChainId), // _usdc
-            cctpTokenMessenger // _cctpTokenMessenger
+            cctpTokenMessenger, // _cctpTokenMessenger
+            getOftEid(info.hubChainId), // _oftDstEid
+            1 ether // _oftFeeCap
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -74,6 +76,7 @@ contract DeployArbitrumSpokePool is Script, Test, Constants, DeploymentUtils {
 
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
+        console.log("OFT EID", getOftEid(info.hubChainId));
 
         // Transfer ownership to hub pool if this is a new proxy
         if (result.isNewProxy) {
