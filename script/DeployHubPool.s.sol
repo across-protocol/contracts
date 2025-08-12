@@ -35,7 +35,7 @@ contract DeployHubPool is Script, Test, Constants {
         LpTokenFactory lpTokenFactory = new LpTokenFactory();
 
         // Deploy HubPool with the LpTokenFactory address
-        HubPool hubPool = new HubPool(lpTokenFactory, finder, weth, ZERO_ADDRESS());
+        HubPool hubPool = new HubPool(lpTokenFactory, finder, weth, address(0));
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);

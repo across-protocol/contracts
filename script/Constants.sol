@@ -294,11 +294,6 @@ contract Constants is Script {
         return WETH9Interface(vm.parseJsonAddress(file, ".wrappedNativeTokens.ZORA"));
     }
 
-    // Other constants - loaded from JSON
-    function ZERO_ADDRESS() public view returns (address) {
-        return vm.parseJsonAddress(file, ".otherConstants.ZERO_ADDRESS");
-    }
-
     function QUOTE_TIME_BUFFER() public view returns (uint256) {
         return vm.parseJsonUint(file, ".timeConstants.QUOTE_TIME_BUFFER");
     }

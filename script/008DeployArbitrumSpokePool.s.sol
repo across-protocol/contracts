@@ -58,7 +58,7 @@ contract DeployArbitrumSpokePool is Script, Test, Constants, DeploymentUtils {
             "Arbitrum_SpokePool",
             constructorArgs,
             initArgs,
-            false // implementationOnly
+            true // implementationOnly
         );
 
         // Log the deployed addresses
@@ -71,6 +71,9 @@ contract DeployArbitrumSpokePool is Script, Test, Constants, DeploymentUtils {
         console.log("USDC address:", getUSDCAddress(info.spokeChainId));
         console.log("Arbitrum_SpokePool proxy deployed to:", result.proxy);
         console.log("Arbitrum_SpokePool implementation deployed to:", result.implementation);
+
+        console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
+        console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
 
         // Transfer ownership to hub pool if this is a new proxy
         if (result.isNewProxy) {
