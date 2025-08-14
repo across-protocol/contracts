@@ -13,7 +13,14 @@
 
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, Program, Wallet } from "@coral-xyz/anchor";
-import { AccountMeta, TransactionInstruction, PublicKey, AddressLookupTableAccount } from "@solana/web3.js";
+import {
+  AccountMeta,
+  TransactionInstruction,
+  PublicKey,
+  AddressLookupTableAccount,
+  SendTransactionError,
+} from "@solana/web3.js";
+import { BigNumber } from "ethers";
 import fetch from "cross-fetch";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
@@ -24,6 +31,7 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   createApproveCheckedInstruction,
   createAssociatedTokenAccountIdempotentInstruction,
+  createCloseAccountInstruction,
   createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
   getMinimumBalanceForRentExemptAccount,
@@ -50,6 +58,7 @@ import {
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_MAINNET,
 } from "../../src/svm/web3-v1";
+import { inspect } from "util";
 
 const swapApiBaseUrl = "https://quote-api.jup.ag/v6/";
 
@@ -75,6 +84,12 @@ const argv = yargs(hideBin(process.argv))
   .option("maxAccounts", { type: "number", demandOption: false, describe: "Maximum swap accounts" })
   .option("priorityFeePrice", { type: "number", demandOption: false, describe: "Priority fee price in micro lamports" })
   .option("fillComputeUnit", { type: "number", demandOption: false, describe: "Compute unit limit in fill" })
+  .option("gasUsd", {
+    type: "string",
+    demandOption: false,
+    describe: "USDC value (formatted) to convert into SOL for gas top-up",
+    default: "1",
+  })
   .option("minHops", {
     type: "number",
     demandOption: false,
@@ -91,7 +106,17 @@ async function acrossPlusJupiter(): Promise<void> {
   const minHops = resolvedArgv.minHops || 1;
   const maxAccounts = resolvedArgv.maxAccounts || 24;
   const priorityFeePrice = resolvedArgv.priorityFeePrice;
-  const fillComputeUnit = resolvedArgv.fillComputeUnit || 400_000;
+  const fillComputeUnit = resolvedArgv.fillComputeUnit || 2_000_000;
+  const requestedGasUsdc: BigNumber = parseUsdc(resolvedArgv.gasUsd || "1");
+  const wsolMint = new PublicKey("So11111111111111111111111111111111111111112");
+  const isOutputWsol = outputMint.equals(wsolMint);
+  let gasUsdcAmount: BigNumber = isOutputWsol ? BigNumber.from(0) : requestedGasUsdc;
+
+  if (gasUsdcAmount.gt(0) && gasUsdcAmount.gte(usdcAmount)) {
+    throw new Error("USDC amount too small for requested gasUsd top-up");
+  }
+
+  const mainUsdcAmount: BigNumber = usdcAmount.sub(gasUsdcAmount);
 
   const usdcMint = new PublicKey(SOLANA_USDC_MAINNET); // Only mainnet USDC is supported in this script.
 
@@ -105,8 +130,9 @@ async function acrossPlusJupiter(): Promise<void> {
   const recipientOutputTA = getAssociatedTokenAddressSync(outputMint, recipient, true, outputTokenProgram);
   const handlerOutputTA = getAssociatedTokenAddressSync(outputMint, handlerSigner, true, outputTokenProgram);
 
-  // Will need lamports to potentially create ATA both for the recipient and the handler signer.
-  const valueAmount = (await getMinimumBalanceForRentExemptAccount(provider.connection)) * 2;
+  // Will need lamports to potentially create ATAs: handler+recipient for output, and optionally handler WSOL.
+  const rentExempt = await getMinimumBalanceForRentExemptAccount(provider.connection);
+  const valueAmount = rentExempt * (2 + (gasUsdcAmount.gt(0) ? 1 : 0));
 
   console.log("Filling Across+ swap...");
   console.table([
@@ -119,13 +145,15 @@ async function acrossPlusJupiter(): Promise<void> {
     { Property: "inputMint", Value: usdcMint.toString() },
     { Property: "outputMint", Value: outputMint.toString() },
     { Property: "usdcValue (formatted)", Value: formatUsdc(usdcAmount) },
+    { Property: "gasUsd (formatted)", Value: formatUsdc(gasUsdcAmount) },
+    { Property: "mainUsdc (formatted)", Value: formatUsdc(mainUsdcAmount) },
     { Property: "slippageBps", Value: slippageBps },
     { Property: "maxAccounts", Value: maxAccounts },
     { Property: "minHops", Value: minHops },
     { Property: "handlerSigner", Value: handlerSigner.toString() },
   ]);
 
-  // Get quote from Jupiter.
+  // Get quote from Jupiter for main output swap.
   const quoteResponse = await (
     await fetch(
       swapApiBaseUrl +
@@ -134,7 +162,7 @@ async function acrossPlusJupiter(): Promise<void> {
         "&outputMint=" +
         outputMint.toString() +
         "&amount=" +
-        usdcAmount +
+        mainUsdcAmount.toString() +
         "&slippageBps=" +
         slippageBps +
         "&maxAccounts=" +
@@ -152,8 +180,7 @@ async function acrossPlusJupiter(): Promise<void> {
     );
   }
 
-  // Create swap instructions on behalf of the handler signer. We do not enable unwrapping of WSOL as that would require
-  // additional logic to handle transferring SOL from the handler signer to the recipient.
+  // Create swap instructions for main output on behalf of the handler signer. No auto unwrap for main output.
   const wrapAndUnwrapSol = false;
   const instructions = await (
     await fetch(swapApiBaseUrl + "swap-instructions", {
@@ -164,6 +191,51 @@ async function acrossPlusJupiter(): Promise<void> {
   ).json();
   if (instructions.error) {
     throw new Error("Failed to get swap instructions: " + instructions.error);
+  }
+
+  // Optional gas top-up: quote and instructions for USDC -> WSOL (we will close WSOL ATA to recipient to unwrap safely).
+  let gasInstructions: any | null = null;
+  let gasQuoteResponse: any | null = null;
+  if (gasUsdcAmount.gt(0)) {
+    gasQuoteResponse = await (
+      await fetch(
+        swapApiBaseUrl +
+          "quote?inputMint=" +
+          usdcMint.toString() +
+          "&outputMint=So11111111111111111111111111111111111111112" +
+          "&amount=" +
+          gasUsdcAmount.toString() +
+          "&slippageBps=" +
+          slippageBps +
+          "&maxAccounts=" +
+          maxAccounts +
+          (minHops > 1 ? "&onlyDirectRoutes=false" : "")
+      )
+    ).json();
+    if (gasQuoteResponse.error) {
+      throw new Error("Failed to get gas quote: " + gasQuoteResponse.error);
+    }
+    if (gasQuoteResponse.routePlan && gasQuoteResponse.routePlan.length < minHops) {
+      throw new Error(
+        `Gas quote returned only ${gasQuoteResponse.routePlan.length} hop(s), which is less than requested minimum of ${minHops}`
+      );
+    }
+
+    const gasWrapAndUnwrapSol = false;
+    gasInstructions = await (
+      await fetch(swapApiBaseUrl + "swap-instructions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteResponse: gasQuoteResponse,
+          userPublicKey: handlerSigner.toString(),
+          wrapAndUnwrapSol: gasWrapAndUnwrapSol,
+        }),
+      })
+    ).json();
+    if (gasInstructions.error) {
+      throw new Error("Failed to get gas swap instructions: " + gasInstructions.error);
+    }
   }
 
   // Helper to load Jupiter ALTs.
@@ -186,7 +258,12 @@ async function acrossPlusJupiter(): Promise<void> {
     }, []);
   };
 
-  const addressLookupTableAccounts = await getAddressLookupTableAccounts(instructions.addressLookupTableAddresses);
+  // Load ALTs for both main and gas swaps (if any).
+  const altAddrsSet = new Set<string>(instructions.addressLookupTableAddresses || []);
+  if (gasInstructions && gasInstructions.addressLookupTableAddresses) {
+    for (const a of gasInstructions.addressLookupTableAddresses) altAddrsSet.add(a);
+  }
+  const addressLookupTableAccounts = await getAddressLookupTableAccounts(Array.from(altAddrsSet));
 
   // Helper to deserialize instruction and check if it would fit in inner CPI limit.
   const deserializeInstruction = (instruction: any) => {
@@ -240,16 +317,35 @@ async function acrossPlusJupiter(): Promise<void> {
     outputTokenProgram
   );
 
+  // If gas swap is requested, prepare WSOL ATA for handler and close it to recipient after swap to unwrap to SOL.
+  const handlerWsolTA = gasQuoteResponse ? getAssociatedTokenAddressSync(wsolMint, handlerSigner, true) : null;
+  const createHandlerWsolATAInstruction = gasQuoteResponse
+    ? createAssociatedTokenAccountIdempotentInstruction(
+        handlerSigner,
+        handlerWsolTA!,
+        handlerSigner,
+        wsolMint,
+        TOKEN_PROGRAM_ID
+      )
+    : null;
+  const closeHandlerWsolInstruction = gasQuoteResponse
+    ? createCloseAccountInstruction(handlerWsolTA!, recipient, handlerSigner, [], TOKEN_PROGRAM_ID)
+    : null;
+
   // Encode all instructions with handler PDA as the payer for ATA initialization.
-  const multicallHandlerCoder = new MulticallHandlerCoder(
-    [
-      createHandlerATAInstruction,
-      deserializeInstruction(instructions.swapInstruction),
-      createRecipientATAInstruction,
-      transferInstruction,
-    ],
-    handlerSigner
-  );
+  const multicallInstructions: TransactionInstruction[] = [
+    createHandlerATAInstruction,
+    deserializeInstruction(instructions.swapInstruction),
+    createRecipientATAInstruction,
+    transferInstruction,
+  ];
+  if (gasInstructions) {
+    if (createHandlerWsolATAInstruction) multicallInstructions.push(createHandlerWsolATAInstruction);
+    multicallInstructions.push(deserializeInstruction(gasInstructions.swapInstruction));
+    if (closeHandlerWsolInstruction) multicallInstructions.push(closeHandlerWsolInstruction);
+  }
+
+  const multicallHandlerCoder = new MulticallHandlerCoder(multicallInstructions, handlerSigner);
   const handlerMessage = multicallHandlerCoder.encode();
   const message = new AcrossPlusMessageCoder({
     handler: handlerProgram.programId,
@@ -375,14 +471,25 @@ async function acrossPlusJupiter(): Promise<void> {
     .remainingAccounts(fillRemainingAccounts)
     .instruction();
 
-  // Fill using the ALT with the provided compute budget settings.
-  const txSignature = await sendTransactionWithLookupTableWeb3V1(
-    provider.connection,
-    prependComputeBudgetWeb3V1([approveIx, fillIx], priorityFeePrice, fillComputeUnit),
-    relayer,
-    addressLookupTableAccounts
-  );
-  console.log("Fill transaction signature:", txSignature);
+  try {
+    // Fill using the ALT with the provided compute budget settings.
+    const txSignature = await sendTransactionWithLookupTableWeb3V1(
+      provider.connection,
+      prependComputeBudgetWeb3V1([approveIx, fillIx], priorityFeePrice, fillComputeUnit),
+      relayer,
+      addressLookupTableAccounts
+    );
+    console.log("Fill transaction signature:", txSignature);
+  } catch (err: any) {
+    if (err.getLogs !== undefined) {
+      console.log(
+        "caught error while sending transaction, calling .getLogs()",
+        await (err as SendTransactionError).getLogs(provider.connection)
+      );
+    }
+    // console.log("caught error while sending transaction, calling .getLogs()", await (err as SendTransactionError).getLogs(provider.connection))
+    throw err;
+  }
 }
 
 acrossPlusJupiter();
