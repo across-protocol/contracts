@@ -1,0 +1,363 @@
+{
+  "address": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "ArrayLengthMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "IOFTTokenMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NonExistentMessengerType",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "messengerType",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "dstDomainId",
+          "type": "uint256"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "srcChainToken",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "srcChainMessenger",
+          "type": "address"
+        }
+      ],
+      "name": "MessengerSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32[]",
+          "name": "messengerTypes",
+          "type": "bytes32[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "dstDomainIds",
+          "type": "uint256[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "srcChainTokens",
+          "type": "address[]"
+        },
+        {
+          "internalType": "address[]",
+          "name": "srcChainMessengers",
+          "type": "address[]"
+        }
+      ],
+      "name": "batchSetMessengers",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "messengerType",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "dstDomainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "srcChainToken",
+          "type": "address"
+        }
+      ],
+      "name": "crossChainMessengers",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "messengerAddress",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "messengerType",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "dstDomainId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "srcChainToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "srcChainMessenger",
+          "type": "address"
+        }
+      ],
+      "name": "setMessenger",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x9595eeaf1cc15ebf8b083618ff2d65ebeeb1982cd4b8e0750c020da14894d1a7",
+  "receipt": {
+    "to": null,
+    "from": "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    "contractAddress": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
+    "transactionIndex": 234,
+    "gasUsed": "477837",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000001000000000000000000000000000000000000020000000000000000000800000000000000000000000000040000400000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000020000001000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x9fa8634384df4e489520dc9c123015a18ac0b0f15c4a14f1dd66b4e9e7470125",
+    "transactionHash": "0x9595eeaf1cc15ebf8b083618ff2d65ebeeb1982cd4b8e0750c020da14894d1a7",
+    "logs": [
+      {
+        "transactionIndex": 234,
+        "blockNumber": 23086526,
+        "transactionHash": "0x9595eeaf1cc15ebf8b083618ff2d65ebeeb1982cd4b8e0750c020da14894d1a7",
+        "address": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x0000000000000000000000009a8f92a830a5cb89a3816e3d267cb7791c16b04d"
+        ],
+        "data": "0x",
+        "logIndex": 537,
+        "blockHash": "0x9fa8634384df4e489520dc9c123015a18ac0b0f15c4a14f1dd66b4e9e7470125"
+      }
+    ],
+    "blockNumber": 23086526,
+    "cumulativeGasUsed": "19661751",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "a4568173fdd07a4724f5e04f961d9865",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.23+commit.f704f362\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"ArrayLengthMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"IOFTTokenMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NonExistentMessengerType\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"messengerType\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"dstDomainId\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"srcChainToken\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"srcChainMessenger\",\"type\":\"address\"}],\"name\":\"MessengerSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"bytes32[]\",\"name\":\"messengerTypes\",\"type\":\"bytes32[]\"},{\"internalType\":\"uint256[]\",\"name\":\"dstDomainIds\",\"type\":\"uint256[]\"},{\"internalType\":\"address[]\",\"name\":\"srcChainTokens\",\"type\":\"address[]\"},{\"internalType\":\"address[]\",\"name\":\"srcChainMessengers\",\"type\":\"address[]\"}],\"name\":\"batchSetMessengers\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"messengerType\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"dstDomainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"srcChainToken\",\"type\":\"address\"}],\"name\":\"crossChainMessengers\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"messengerAddress\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"messengerType\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"dstDomainId\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"srcChainToken\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"srcChainMessenger\",\"type\":\"address\"}],\"name\":\"setMessenger\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"custom:security-contact\":\"bugs@across.to\",\"details\":\"A helper contract for chain adapters on the hub chain that support OFT messaging. Handlestoken => messenger mapping storage. Adapters can't store this themselves as they're calledvia `delegateCall` and their storage is not part of available context.\",\"events\":{\"MessengerSet(bytes32,uint256,address,address)\":{\"params\":{\"dstDomainId\":\"Destination domain ID\",\"messengerType\":\"Type of messenger being set\",\"srcChainMessenger\":\"Source chain messenger address\",\"srcChainToken\":\"Source chain token address\"}}},\"kind\":\"dev\",\"methods\":{\"batchSetMessengers(bytes32[],uint256[],address[],address[])\":{\"params\":{\"dstDomainIds\":\"Array of destination domain IDs\",\"messengerTypes\":\"Array of messenger types\",\"srcChainMessengers\":\"Array of source chain messenger addresses\",\"srcChainTokens\":\"Array of source chain token addresses\"}},\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"renounceOwnership()\":{\"details\":\"Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.\"},\"setMessenger(bytes32,uint256,address,address)\":{\"params\":{\"dstDomainId\":\"Destination domain ID\",\"messengerType\":\"Type of messenger to set\",\"srcChainMessenger\":\"Source chain messenger address\",\"srcChainToken\":\"Source chain token address\"}},\"transferOwnership(address)\":{\"details\":\"Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.\"}},\"version\":1},\"userdoc\":{\"errors\":{\"ArrayLengthMismatch()\":[{\"notice\":\"Thrown when array lengths don't match in batch operations \"}],\"IOFTTokenMismatch()\":[{\"notice\":\"Thrown when IOFT messenger's token doesn't match expected token \"}],\"NonExistentMessengerType()\":[{\"notice\":\"Thrown when messenger type is not supported \"}]},\"events\":{\"MessengerSet(bytes32,uint256,address,address)\":{\"notice\":\"Emitted when a messenger is set for a specific token and destination\"}},\"kind\":\"user\",\"methods\":{\"batchSetMessengers(bytes32[],uint256[],address[],address[])\":{\"notice\":\"Sets multiple messengers in a single transaction\"},\"crossChainMessengers(bytes32,uint256,address)\":{\"notice\":\"Maps messenger type and destination domain to token-messenger pairs \"},\"setMessenger(bytes32,uint256,address,address)\":{\"notice\":\"Sets a messenger for a specific token and destination domain\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/AdapterStore.sol\":\"AdapterStore\"},\"debug\":{\"revertStrings\":\"strip\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"@openzeppelin/contracts/access/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.0) (access/Ownable.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../utils/Context.sol\\\";\\n\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * By default, the owner account will be the one that deploys the contract. This\\n * can later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract Ownable is Context {\\n    address private _owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the deployer as the initial owner.\\n     */\\n    constructor() {\\n        _transferOwnership(_msgSender());\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        _checkOwner();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if the sender is not the owner.\\n     */\\n    function _checkOwner() internal view virtual {\\n        require(owner() == _msgSender(), \\\"Ownable: caller is not the owner\\\");\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby disabling any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        _transferOwnership(address(0));\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        require(newOwner != address(0), \\\"Ownable: new owner is the zero address\\\");\\n        _transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual {\\n        address oldOwner = _owner;\\n        _owner = newOwner;\\n        emit OwnershipTransferred(oldOwner, newOwner);\\n    }\\n}\\n\",\"keccak256\":\"0xba43b97fba0d32eb4254f6a5a297b39a19a247082a02d6e69349e071e2946218\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.4) (utils/Context.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n\\n    function _contextSuffixLength() internal view virtual returns (uint256) {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0xa92e4fa126feb6907daa0513ddd816b2eb91f30a808de54f63c17d0e162c3439\",\"license\":\"MIT\"},\"contracts/AdapterStore.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.18;\\n\\nimport { Ownable } from \\\"@openzeppelin/contracts/access/Ownable.sol\\\";\\nimport { IOFT } from \\\"./interfaces/IOFT.sol\\\";\\n\\n/**\\n * @title MessengerTypes\\n * @notice Library containing messenger type constants\\n * @custom:security-contact bugs@across.to\\n */\\nlibrary MessengerTypes {\\n    /** @notice Identifier for OFT (Omni-chain Fungible Token by LayerZero) messenger type */\\n    bytes32 public constant OFT_MESSENGER = bytes32(\\\"OFT_MESSENGER\\\");\\n}\\n\\n/**\\n * @dev A helper contract for chain adapters on the hub chain that support OFT messaging. Handles\\n * @dev token => messenger mapping storage. Adapters can't store this themselves as they're called\\n * @dev via `delegateCall` and their storage is not part of available context.\\n * @custom:security-contact bugs@across.to\\n */\\ncontract AdapterStore is Ownable {\\n    /** @notice Maps messenger type and destination domain to token-messenger pairs */\\n    mapping(bytes32 messengerType => mapping(uint256 dstDomainId => mapping(address srcChainToken => address messengerAddress)))\\n        public crossChainMessengers;\\n\\n    /**\\n     * @notice Emitted when a messenger is set for a specific token and destination\\n     * @param messengerType Type of messenger being set\\n     * @param dstDomainId Destination domain ID\\n     * @param srcChainToken Source chain token address\\n     * @param srcChainMessenger Source chain messenger address\\n     */\\n    event MessengerSet(\\n        bytes32 indexed messengerType,\\n        uint256 indexed dstDomainId,\\n        address indexed srcChainToken,\\n        address srcChainMessenger\\n    );\\n\\n    /** @notice Thrown when array lengths don't match in batch operations */\\n    error ArrayLengthMismatch();\\n\\n    /** @notice Thrown when IOFT messenger's token doesn't match expected token */\\n    error IOFTTokenMismatch();\\n\\n    /** @notice Thrown when messenger type is not supported */\\n    error NonExistentMessengerType();\\n\\n    /**\\n     * @notice Sets a messenger for a specific token and destination domain\\n     * @param messengerType Type of messenger to set\\n     * @param dstDomainId Destination domain ID\\n     * @param srcChainToken Source chain token address\\n     * @param srcChainMessenger Source chain messenger address\\n     */\\n    function setMessenger(\\n        bytes32 messengerType,\\n        uint256 dstDomainId,\\n        address srcChainToken,\\n        address srcChainMessenger\\n    ) external onlyOwner {\\n        _setMessenger(messengerType, dstDomainId, srcChainToken, srcChainMessenger);\\n    }\\n\\n    /**\\n     * @notice Sets multiple messengers in a single transaction\\n     * @param messengerTypes Array of messenger types\\n     * @param dstDomainIds Array of destination domain IDs\\n     * @param srcChainTokens Array of source chain token addresses\\n     * @param srcChainMessengers Array of source chain messenger addresses\\n     */\\n    function batchSetMessengers(\\n        bytes32[] calldata messengerTypes,\\n        uint256[] calldata dstDomainIds,\\n        address[] calldata srcChainTokens,\\n        address[] calldata srcChainMessengers\\n    ) external onlyOwner {\\n        if (\\n            messengerTypes.length != dstDomainIds.length ||\\n            messengerTypes.length != srcChainTokens.length ||\\n            messengerTypes.length != srcChainMessengers.length\\n        ) {\\n            revert ArrayLengthMismatch();\\n        }\\n\\n        for (uint256 i = 0; i < dstDomainIds.length; i++) {\\n            _setMessenger(messengerTypes[i], dstDomainIds[i], srcChainTokens[i], srcChainMessengers[i]);\\n        }\\n    }\\n\\n    /**\\n     * @notice Internal function to set a messenger with validation\\n     * @param _messengerType Type of messenger to set\\n     * @param _dstDomainId Destination domain ID\\n     * @param _srcChainToken Source chain token address\\n     * @param _srcChainMessenger Source chain messenger address\\n     */\\n    function _setMessenger(\\n        bytes32 _messengerType,\\n        uint256 _dstDomainId,\\n        address _srcChainToken,\\n        address _srcChainMessenger\\n    ) internal {\\n        // @dev Always allow zero-messenger to be set: this can be used to 'remove' a stored token <> messenger relationship\\n        if (_srcChainMessenger != address(0)) {\\n            if (_messengerType == MessengerTypes.OFT_MESSENGER) {\\n                // @dev Protect against human error: check that IOFT messenger's token matches the expected one\\n                if (IOFT(_srcChainMessenger).token() != _srcChainToken) {\\n                    revert IOFTTokenMismatch();\\n                }\\n            } else {\\n                revert NonExistentMessengerType();\\n            }\\n        }\\n        crossChainMessengers[_messengerType][_dstDomainId][_srcChainToken] = _srcChainMessenger;\\n        emit MessengerSet(_messengerType, _dstDomainId, _srcChainToken, _srcChainMessenger);\\n    }\\n}\\n\",\"keccak256\":\"0xd13309eb2b0a3df5d51b1ee1e19fd349347e35307cd420e8e2f637271530e039\",\"license\":\"BUSL-1.1\"},\"contracts/interfaces/IOFT.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/**\\n * @notice This file contains minimal copies of relevant structs / interfaces for OFT bridging. Source code link:\\n * https://github.com/LayerZero-Labs/LayerZero-v2/blob/9a4049ae3a374e1c0ef01ac9fb53dd83f4257a68/packages/layerzero-v2/evm/oapp/contracts/oft/interfaces/IOFT.sol\\n * It's also published as a part of an npm package: @layerzerolabs/oft-evm. The published code is incompatible with\\n * our compiler version requirements, so we copy it here instead\\n */\\n\\nstruct MessagingReceipt {\\n    bytes32 guid;\\n    uint64 nonce;\\n    MessagingFee fee;\\n}\\n\\nstruct MessagingFee {\\n    uint256 nativeFee;\\n    uint256 lzTokenFee;\\n}\\n\\n/**\\n * @dev Struct representing token parameters for the OFT send() operation.\\n */\\nstruct SendParam {\\n    uint32 dstEid; // Destination endpoint ID.\\n    bytes32 to; // Recipient address.\\n    uint256 amountLD; // Amount to send in local decimals.\\n    uint256 minAmountLD; // Minimum amount to send in local decimals.\\n    bytes extraOptions; // Additional options supplied by the caller to be used in the LayerZero message.\\n    bytes composeMsg; // The composed message for the send() operation.\\n    bytes oftCmd; // The OFT command to be executed, unused in default OFT implementations.\\n}\\n\\n/**\\n * @dev Struct representing OFT receipt information.\\n */\\nstruct OFTReceipt {\\n    uint256 amountSentLD; // Amount of tokens ACTUALLY debited from the sender in local decimals.\\n    // @dev In non-default implementations, the amountReceivedLD COULD differ from this value.\\n    uint256 amountReceivedLD; // Amount of tokens to be received on the remote side.\\n}\\n\\n/**\\n * @title IOFT\\n * @dev Interface for the OftChain (OFT) token.\\n * @dev Does not inherit ERC20 to accommodate usage by OFTAdapter as well.\\n * @dev This specific interface ID is '0x02e49c2c'.\\n */\\ninterface IOFT {\\n    /**\\n     * @notice Retrieves the address of the token associated with the OFT.\\n     * @return token The address of the ERC20 token implementation.\\n     */\\n    function token() external view returns (address);\\n\\n    /**\\n     * @notice Provides a quote for the send() operation.\\n     * @param _sendParam The parameters for the send() operation.\\n     * @param _payInLzToken Flag indicating whether the caller is paying in the LZ token.\\n     * @return fee The calculated LayerZero messaging fee from the send() operation.\\n     *\\n     * @dev MessagingFee: LayerZero msg fee\\n     *  - nativeFee: The native fee.\\n     *  - lzTokenFee: The lzToken fee.\\n     */\\n    function quoteSend(SendParam calldata _sendParam, bool _payInLzToken) external view returns (MessagingFee memory);\\n\\n    /**\\n     * @notice Executes the send() operation.\\n     * @param _sendParam The parameters for the send operation.\\n     * @param _fee The fee information supplied by the caller.\\n     *      - nativeFee: The native fee.\\n     *      - lzTokenFee: The lzToken fee.\\n     * @param _refundAddress The address to receive any excess funds from fees etc. on the src.\\n     * @return receipt The LayerZero messaging receipt from the send() operation.\\n     * @return oftReceipt The OFT receipt information.\\n     *\\n     * @dev MessagingReceipt: LayerZero msg receipt\\n     *  - guid: The unique identifier for the sent message.\\n     *  - nonce: The nonce of the sent message.\\n     *  - fee: The LayerZero fee incurred for the message.\\n     */\\n    function send(\\n        SendParam calldata _sendParam,\\n        MessagingFee calldata _fee,\\n        address _refundAddress\\n    ) external payable returns (MessagingReceipt memory, OFTReceipt memory);\\n}\\n\",\"keccak256\":\"0x9c32621db83fa983cdc964eec1cd8ee07f98f40aca4d799abe953df620cf1994\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x6080806040523461005a575f8054336001600160a01b0319821681178355916001600160a01b03909116907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09080a3610746908161005f8239f35b5f80fdfe608060409080825260049182361015610016575f80fd5b5f3560e01c918263715018a6146103a25782638da5cb5b14610355575081638f7d9bec146102dc57816395d59d121461018557508063d08a2d8f146101145763f2fde38b14610063575f80fd5b346101105760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112610110573573ffffffffffffffffffffffffffffffffffffffff808216809203610110576100ba6104ee565b8115610110575f54827fffffffffffffffffffffffff00000000000000000000000000000000000000008216175f55167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e05f80a3005b5f80fd5b50346101105760807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105761014c61043c565b6064359073ffffffffffffffffffffffffffffffffffffffff8216820361011057610183926101796104ee565b602435903561050e565b005b9050346101105760807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105767ffffffffffffffff908235828111610110576101d6903690850161045f565b91602435848111610110576101ee903690870161045f565b94909260443582811161011057610208903690890161045f565b969092606435908111610110576102229036908a0161045f565b98909461022d6104ee565b8288148015906102d2575b80156102c8575b6102a25750505f5b81811061025057005b8061029c878b8761029661028a868f8f8261028f926102838f9d8f60019f8261028a9761027c92610490565b359c610490565b3597610490565b6104cd565b948d610490565b9261050e565b01610247565b517fa24a13a6000000000000000000000000000000000000000000000000000000008152fd5b508988141561023f565b5088881415610238565b9050346101105760607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105760209161031861043c565b90355f5260018352815f206024355f528352815f2073ffffffffffffffffffffffffffffffffffffffff8092165f528352815f2054169051908152f35b34610110575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105760209073ffffffffffffffffffffffffffffffffffffffff5f54168152f35b34610110575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112610110576103d86104ee565b5f73ffffffffffffffffffffffffffffffffffffffff81547fffffffffffffffffffffffff000000000000000000000000000000000000000081168355167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e08280a3005b6044359073ffffffffffffffffffffffffffffffffffffffff8216820361011057565b9181601f840112156101105782359167ffffffffffffffff8311610110576020808501948460051b01011161011057565b91908110156104a05760051b0190565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffd5b3573ffffffffffffffffffffffffffffffffffffffff811681036101105790565b73ffffffffffffffffffffffffffffffffffffffff5f5416330361011057565b90919273ffffffffffffffffffffffffffffffffffffffff80911690816105a6575b7f444623aa961faed91435ed1429e49548d6cf597edc4121dacef3734bebd5984f91602091845f526001835260405f20865f52835260405f20961695865f52825260405f20817fffffffffffffffffffffffff0000000000000000000000000000000000000000825416179055604051908152a4565b7f4f46545f4d455353454e4745520000000000000000000000000000000000000083036106e6576040517ffc0c546a000000000000000000000000000000000000000000000000000000008152602081600481865afa9081156106db575f9161063f575b508116858216146105305760046040517f89541172000000000000000000000000000000000000000000000000000000008152fd5b905060203d6020116106d4575b7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f820116820182811067ffffffffffffffff8211176106a75760209183916040528101031261011057518181168103610110575f61060a565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b503d61064c565b6040513d5f823e3d90fd5b60046040517fce3f631c000000000000000000000000000000000000000000000000000000008152fdfea26469706673582212206cb8e5ff1075e3e78ba8e65519d53b6fbe60ec5a4d5c15d0b4acd5d45d527a5964736f6c63430008170033",
+  "deployedBytecode": "0x608060409080825260049182361015610016575f80fd5b5f3560e01c918263715018a6146103a25782638da5cb5b14610355575081638f7d9bec146102dc57816395d59d121461018557508063d08a2d8f146101145763f2fde38b14610063575f80fd5b346101105760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112610110573573ffffffffffffffffffffffffffffffffffffffff808216809203610110576100ba6104ee565b8115610110575f54827fffffffffffffffffffffffff00000000000000000000000000000000000000008216175f55167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e05f80a3005b5f80fd5b50346101105760807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105761014c61043c565b6064359073ffffffffffffffffffffffffffffffffffffffff8216820361011057610183926101796104ee565b602435903561050e565b005b9050346101105760807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105767ffffffffffffffff908235828111610110576101d6903690850161045f565b91602435848111610110576101ee903690870161045f565b94909260443582811161011057610208903690890161045f565b969092606435908111610110576102229036908a0161045f565b98909461022d6104ee565b8288148015906102d2575b80156102c8575b6102a25750505f5b81811061025057005b8061029c878b8761029661028a868f8f8261028f926102838f9d8f60019f8261028a9761027c92610490565b359c610490565b3597610490565b6104cd565b948d610490565b9261050e565b01610247565b517fa24a13a6000000000000000000000000000000000000000000000000000000008152fd5b508988141561023f565b5088881415610238565b9050346101105760607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105760209161031861043c565b90355f5260018352815f206024355f528352815f2073ffffffffffffffffffffffffffffffffffffffff8092165f528352815f2054169051908152f35b34610110575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101105760209073ffffffffffffffffffffffffffffffffffffffff5f54168152f35b34610110575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112610110576103d86104ee565b5f73ffffffffffffffffffffffffffffffffffffffff81547fffffffffffffffffffffffff000000000000000000000000000000000000000081168355167f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e08280a3005b6044359073ffffffffffffffffffffffffffffffffffffffff8216820361011057565b9181601f840112156101105782359167ffffffffffffffff8311610110576020808501948460051b01011161011057565b91908110156104a05760051b0190565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52603260045260245ffd5b3573ffffffffffffffffffffffffffffffffffffffff811681036101105790565b73ffffffffffffffffffffffffffffffffffffffff5f5416330361011057565b90919273ffffffffffffffffffffffffffffffffffffffff80911690816105a6575b7f444623aa961faed91435ed1429e49548d6cf597edc4121dacef3734bebd5984f91602091845f526001835260405f20865f52835260405f20961695865f52825260405f20817fffffffffffffffffffffffff0000000000000000000000000000000000000000825416179055604051908152a4565b7f4f46545f4d455353454e4745520000000000000000000000000000000000000083036106e6576040517ffc0c546a000000000000000000000000000000000000000000000000000000008152602081600481865afa9081156106db575f9161063f575b508116858216146105305760046040517f89541172000000000000000000000000000000000000000000000000000000008152fd5b905060203d6020116106d4575b7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f820116820182811067ffffffffffffffff8211176106a75760209183916040528101031261011057518181168103610110575f61060a565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b503d61064c565b6040513d5f823e3d90fd5b60046040517fce3f631c000000000000000000000000000000000000000000000000000000008152fdfea26469706673582212206cb8e5ff1075e3e78ba8e65519d53b6fbe60ec5a4d5c15d0b4acd5d45d527a5964736f6c63430008170033",
+  "devdoc": {
+    "custom:security-contact": "bugs@across.to",
+    "details": "A helper contract for chain adapters on the hub chain that support OFT messaging. Handlestoken => messenger mapping storage. Adapters can't store this themselves as they're calledvia `delegateCall` and their storage is not part of available context.",
+    "events": {
+      "MessengerSet(bytes32,uint256,address,address)": {
+        "params": {
+          "dstDomainId": "Destination domain ID",
+          "messengerType": "Type of messenger being set",
+          "srcChainMessenger": "Source chain messenger address",
+          "srcChainToken": "Source chain token address"
+        }
+      }
+    },
+    "kind": "dev",
+    "methods": {
+      "batchSetMessengers(bytes32[],uint256[],address[],address[])": {
+        "params": {
+          "dstDomainIds": "Array of destination domain IDs",
+          "messengerTypes": "Array of messenger types",
+          "srcChainMessengers": "Array of source chain messenger addresses",
+          "srcChainTokens": "Array of source chain token addresses"
+        }
+      },
+      "owner()": {
+        "details": "Returns the address of the current owner."
+      },
+      "renounceOwnership()": {
+        "details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+      },
+      "setMessenger(bytes32,uint256,address,address)": {
+        "params": {
+          "dstDomainId": "Destination domain ID",
+          "messengerType": "Type of messenger to set",
+          "srcChainMessenger": "Source chain messenger address",
+          "srcChainToken": "Source chain token address"
+        }
+      },
+      "transferOwnership(address)": {
+        "details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "errors": {
+      "ArrayLengthMismatch()": [
+        {
+          "notice": "Thrown when array lengths don't match in batch operations "
+        }
+      ],
+      "IOFTTokenMismatch()": [
+        {
+          "notice": "Thrown when IOFT messenger's token doesn't match expected token "
+        }
+      ],
+      "NonExistentMessengerType()": [
+        {
+          "notice": "Thrown when messenger type is not supported "
+        }
+      ]
+    },
+    "events": {
+      "MessengerSet(bytes32,uint256,address,address)": {
+        "notice": "Emitted when a messenger is set for a specific token and destination"
+      }
+    },
+    "kind": "user",
+    "methods": {
+      "batchSetMessengers(bytes32[],uint256[],address[],address[])": {
+        "notice": "Sets multiple messengers in a single transaction"
+      },
+      "crossChainMessengers(bytes32,uint256,address)": {
+        "notice": "Maps messenger type and destination domain to token-messenger pairs "
+      },
+      "setMessenger(bytes32,uint256,address,address)": {
+        "notice": "Sets a messenger for a specific token and destination domain"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 4146,
+        "contract": "contracts/AdapterStore.sol:AdapterStore",
+        "label": "_owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 17879,
+        "contract": "contracts/AdapterStore.sol:AdapterStore",
+        "label": "crossChainMessengers",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_bytes32,t_mapping(t_uint256,t_mapping(t_address,t_address)))"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_address,t_address)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => address)",
+        "numberOfBytes": "32",
+        "value": "t_address"
+      },
+      "t_mapping(t_bytes32,t_mapping(t_uint256,t_mapping(t_address,t_address)))": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => mapping(uint256 => mapping(address => address)))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_uint256,t_mapping(t_address,t_address))"
+      },
+      "t_mapping(t_uint256,t_mapping(t_address,t_address))": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => mapping(address => address))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_address)"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}
