@@ -24,8 +24,8 @@
     "lint-js": "yarn prettier --list-different **/*.js **/*.ts",
     "lint-rust": "cargo +nightly fmt --all -- --check && cargo clippy",
     "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo +nightly fmt  --all && cargo clippy",
-    "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
-    "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
+    "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain out; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
+    "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain out",
     "generate-svm-artifacts": "bash ./scripts/svm/buildHelpers/buildIdl.sh && sh ./scripts/svm/buildHelpers/generateSvmAssets.sh && yarn generate-svm-clients",
     "generate-svm-clients": "yarn ts-node ./scripts/svm/buildHelpers/generateSvmClients.ts && yarn ts-node ./scripts/svm/buildHelpers/renameClientsImports.ts",
     "build-evm": "hardhat compile",
@@ -46,7 +46,8 @@
     "evm-contract-sizes": "sh scripts/evm-contract-sizes.sh",
     "generate-evm-artifacts": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
-    "pre-commit-hook": "sh scripts/preCommitHook.sh"
+    "pre-commit-hook": "sh scripts/preCommitHook.sh",
+    "extract-addresses": "./script/utils/extract_foundry_addresses.sh"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.69",
@@ -58,6 +59,7 @@
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@scroll-tech/contracts": "^0.1.0",
     "@solana-developers/helpers": "^2.4.0",
     "@solana-program/address-lookup-table": "^0.7.0",
