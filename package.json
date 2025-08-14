@@ -62,7 +62,7 @@
     "@solana-developers/helpers": "^2.4.0",
     "@solana-program/address-lookup-table": "^0.7.0",
     "@solana-program/token": "^0.5.1",
-    "@solana/kit": "^2.3.0",
+    "@solana/kit": "^2.1.0",
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "1.98.2",
     "@types/yargs": "^17.0.33",
