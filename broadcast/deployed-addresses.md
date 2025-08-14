@@ -1,6 +1,6 @@
 # Deployed Contract Addresses
 
-Generated on: 2025-08-22T17:41:10.580Z
+Generated on: 2025-08-25T21:46:10.496Z
 
 This file contains the latest deployed smart contract addresses from the broadcast folder.
 
@@ -22,9 +22,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ### Arbitrum_Adapter
 
-- **Arbitrum_Adapter**: `0x5473CBD30bEd1Bf97C0c9d7c59d268CD620dA426`
+- **Arbitrum_Adapter**: `0x5eC9844936875E27eBF22172f4d92E107D35B57C`
   - Transaction Hash: `Unknown`
-  - Block Number: `19915048`
+  - Block Number: `23086601`
 
 ### Arbitrum_RescueAdapter
 
