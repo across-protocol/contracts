@@ -15,7 +15,7 @@ runs:
       id: check-node
       shell: bash
       run: |
-        if command -v node 2>/dev/null | grep -q "v${{ inputs.node_version }}"; then
+        if node --version 2>/dev/null | grep -q "v${{ inputs.node_version }}"; then
           echo "installed=true" >> "$GITHUB_OUTPUT"
         else
           echo "installed=false" >> "$GITHUB_OUTPUT"
