@@ -207,7 +207,6 @@ async function acrossPlusJupiter(): Promise<void> {
         slippageBps +
         "&maxAccounts=" +
         maxAccounts +
-        (minHops > 1 ? "&onlyDirectRoutes=false" : "&onlyDirectRoutes=true") +
         (excludeDexesCsv ? "&excludeDexes=" + encodeURIComponent(excludeDexesCsv) : "")
     )
   ).json();
@@ -280,7 +279,6 @@ async function acrossPlusJupiter(): Promise<void> {
           slippageBps +
           "&maxAccounts=" +
           maxAccounts +
-          (minHops > 1 ? "&onlyDirectRoutes=false" : "&onlyDirectRoutes=true") +
           (excludeDexesCsv ? "&excludeDexes=" + encodeURIComponent(excludeDexesCsv) : "")
       )
     ).json();
