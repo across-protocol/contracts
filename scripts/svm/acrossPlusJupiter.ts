@@ -19,6 +19,7 @@ import {
   PublicKey,
   AddressLookupTableAccount,
   SendTransactionError,
+  SolanaJSONRPCError,
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
@@ -63,6 +64,16 @@ import {
 
 const swapApiBaseUrl = "https://quote-api.jup.ag/v6/";
 
+// Logging and Jupiter config
+const LOG_PREFIX = "[AcrossPlus]";
+const JUPITER_EXCLUDED_DEXES: string[] = [
+  // Keep this list curated to avoid CPI depth/riskier venues
+  "Stabble Stable Swap", // excluding because of CPI call depth
+  "Stabble Weighted Swap", // same as above
+  "Obric V2", // excluding because `Program log: AnchorError thrown in programs/obric-solana/src/instructions/swap_ixs.rs:331. Error Code: Rejected. Error Number: 6028. Error Message: Rejected.`
+  "Meteora", // excluding because CPI call depth: Meteora Vault Program
+];
+
 // Set up Solana provider and signer.
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
@@ -91,11 +102,6 @@ const argv = yargs(hideBin(process.argv))
     describe: "USDC value (formatted) to convert into SOL for gas top-up",
     default: "1",
   })
-  .option("excludeDexes", {
-    type: "string",
-    demandOption: false,
-    describe: "Comma-separated list of DEX labels to exclude in Jupiter quotes (e.g. 'Lifinity V2,Orca')",
-  })
   .option("minHops", {
     type: "number",
     demandOption: false,
@@ -110,19 +116,14 @@ async function acrossPlusJupiter(): Promise<void> {
   const usdcAmount = parseUsdc(resolvedArgv.usdcValue);
   const slippageBps = resolvedArgv.slippageBps || 100; // default to 1%
   const minHops = resolvedArgv.minHops || 1;
-  const maxAccounts = resolvedArgv.maxAccounts || 24;
+  const maxAccounts = resolvedArgv.maxAccounts || 16;
   const priorityFeePrice = resolvedArgv.priorityFeePrice;
   const fillComputeUnit = resolvedArgv.fillComputeUnit || 2_000_000;
   const requestedGasUsdc: BigNumber = parseUsdc(resolvedArgv.gasUsd || "1");
   const wsolMint = new PublicKey("So11111111111111111111111111111111111111112");
   const isOutputWsol = outputMint.equals(wsolMint);
   let gasUsdcAmount: BigNumber = isOutputWsol ? BigNumber.from(0) : requestedGasUsdc;
-  const autoExcludeDexes = ["Stabble Stable Swap"]; // mitigate CPI depth seen in trace
-  const userExcludeDexes = (resolvedArgv.excludeDexes || "")
-    .split(",")
-    .map((s: string) => s.trim())
-    .filter((s: string) => s.length > 0);
-  const excludeDexesCsv = Array.from(new Set([...userExcludeDexes, ...autoExcludeDexes])).join(",");
+  const excludeDexesCsv = JUPITER_EXCLUDED_DEXES.join(",");
 
   if (gasUsdcAmount.gt(0) && gasUsdcAmount.gte(usdcAmount)) {
     throw new Error("USDC amount too small for requested gasUsd top-up");
@@ -135,31 +136,24 @@ async function acrossPlusJupiter(): Promise<void> {
   // Handler signer will swap tokens on Jupiter.
   const [handlerSigner] = PublicKey.findProgramAddressSync([Buffer.from("handler_signer")], handlerProgram.programId);
 
-  // Robust error logger for send/confirm errors (handles different shapes of web3 errors)
-  const logTxError = async (err: any, label: string) => {
-    try {
-      console.log(`USER_DEBUG_OVERFLOW ${label} error:`, err?.message || String(err));
-      const maybeSTE = err as SendTransactionError;
-      if (maybeSTE && typeof maybeSTE.getLogs === "function") {
-        const logs = await maybeSTE.getLogs(provider.connection);
-        console.log(`USER_DEBUG_OVERFLOW ${label} getLogs:`, logs);
-        return;
-      }
-      if (Array.isArray(err?.transactionLogs)) {
-        console.log(`USER_DEBUG_OVERFLOW ${label} transactionLogs:`, err.transactionLogs);
-        return;
-      }
-      if (Array.isArray(err?.logs)) {
-        console.log(`USER_DEBUG_OVERFLOW ${label} logs:`, err.logs);
-        return;
-      }
-      if (Array.isArray(err?.data?.logs)) {
-        console.log(`USER_DEBUG_OVERFLOW ${label} data.logs:`, err.data.logs);
-        return;
-      }
-    } catch (inner: any) {
-      console.log(`USER_DEBUG_OVERFLOW ${label} logging failed:`, inner?.message || String(inner));
+  // Focused error logger using typed web3 error classes
+  const logTxError = async (err: unknown, label: string) => {
+    if (err instanceof SendTransactionError) {
+      const txErr = err.transactionError;
+      const logs = (await err.getLogs(provider.connection).catch(() => undefined)) || err.logs;
+      console.error(`${LOG_PREFIX} ${label} SendTransactionError:`, txErr?.message || err.message);
+      if (logs && logs.length) console.error(`${LOG_PREFIX} ${label} logs:`, logs);
+      return;
     }
+    if (err instanceof SolanaJSONRPCError) {
+      console.error(`${LOG_PREFIX} ${label} RPC error [${String(err.code)}]:`, err.message);
+      const dataLogs = (err as any)?.data?.logs;
+      if (Array.isArray(dataLogs)) console.error(`${LOG_PREFIX} ${label} RPC logs:`, dataLogs);
+      return;
+    }
+    const anyErr = err as any;
+    console.error(`${LOG_PREFIX} ${label} error:`, anyErr?.message || String(err));
+    if (Array.isArray(anyErr?.data?.logs)) console.error(`${LOG_PREFIX} ${label} logs:`, anyErr.data.logs);
   };
 
   // Get ATAs for the output mint.
@@ -173,7 +167,7 @@ async function acrossPlusJupiter(): Promise<void> {
   const rentExempt = await getMinimumBalanceForRentExemptAccount(provider.connection);
   const valueAmount = rentExempt * (2 + (gasUsdcAmount.gt(0) ? 1 : 0));
 
-  console.log("Filling Across+ swap...");
+  console.log(`${LOG_PREFIX} Starting Across+ Jupiter fill`);
   console.table([
     { Property: "svmSpokeProgramProgramId", Value: svmSpokeProgram.programId.toString() },
     { Property: "handlerProgramId", Value: handlerProgram.programId.toString() },
@@ -232,36 +226,25 @@ async function acrossPlusJupiter(): Promise<void> {
   if (instructions.error) {
     throw new Error("Failed to get swap instructions: " + instructions.error);
   }
-  console.log(
-    "USER_DEBUG_OVERFLOW main swap: routePlanLen, altCount",
-    Array.isArray(quoteResponse.routePlan) ? quoteResponse.routePlan.length : null,
-    Array.isArray(instructions.addressLookupTableAddresses) ? instructions.addressLookupTableAddresses.length : 0
-  );
-  if (Array.isArray(instructions.addressLookupTableAddresses)) {
-    console.log("USER_DEBUG_OVERFLOW main swap ALT addresses:", instructions.addressLookupTableAddresses);
+  const mainAltCount = Array.isArray(instructions.addressLookupTableAddresses)
+    ? instructions.addressLookupTableAddresses.length
+    : 0;
+  const mainRoutePlan = Array.isArray(quoteResponse?.routePlan) ? quoteResponse.routePlan : [];
+  console.log(`${LOG_PREFIX} Main swap planned: legs=${mainRoutePlan.length}, jupAlts=${mainAltCount}`);
+  if (mainRoutePlan.length > 0) {
+    console.table(
+      mainRoutePlan.map((leg: any, idx: number) => {
+        const si = leg?.swapInfo || {};
+        return {
+          idx,
+          label: si.label,
+          percent: leg?.percent,
+          inMint: si.inputMint,
+          outMint: si.outputMint,
+        };
+      })
+    );
   }
-  // USER_DEBUG_ROUTE: planned main route legs and venues
-  try {
-    const rp = Array.isArray(quoteResponse?.routePlan) ? quoteResponse.routePlan : [];
-    console.log("USER_DEBUG_ROUTE main: legs=", rp.length);
-    if (rp.length > 0) {
-      console.table(
-        rp.map((leg: any, idx: number) => {
-          const si = leg?.swapInfo || {};
-          return {
-            idx,
-            label: si.label,
-            ammKey: leg?.ammKey,
-            percent: leg?.percent,
-            inMint: si.inputMint,
-            outMint: si.outputMint,
-            inAmount: String(si.inAmount ?? ""),
-            outAmount: String(si.outAmount ?? ""),
-          };
-        })
-      );
-    }
-  } catch (_) {}
 
   // Optional gas top-up: quote and instructions for USDC -> WSOL (we will close WSOL ATA to recipient to unwrap safely).
   let gasInstructions: any | null = null;
@@ -286,13 +269,6 @@ async function acrossPlusJupiter(): Promise<void> {
       throw new Error("Failed to get gas quote: " + gasQuoteResponse.error);
     }
 
-    // Don't require minHops adherence from a gas swap
-    // if (gasQuoteResponse.routePlan && gasQuoteResponse.routePlan.length < minHops) {
-    //   throw new Error(
-    //     `Gas quote returned only ${gasQuoteResponse.routePlan.length} hop(s), which is less than requested minimum of ${minHops}`
-    //   );
-    // }
-
     const gasWrapAndUnwrapSol = false;
     gasInstructions = await (
       await fetch(swapApiBaseUrl + "swap-instructions", {
@@ -308,38 +284,25 @@ async function acrossPlusJupiter(): Promise<void> {
     if (gasInstructions.error) {
       throw new Error("Failed to get gas swap instructions: " + gasInstructions.error);
     }
-    console.log(
-      "USER_DEBUG_OVERFLOW gas swap: routePlanLen, altCount",
-      Array.isArray(gasQuoteResponse.routePlan) ? gasQuoteResponse.routePlan.length : null,
-      Array.isArray(gasInstructions.addressLookupTableAddresses)
-        ? gasInstructions.addressLookupTableAddresses.length
-        : 0
-    );
-    if (Array.isArray(gasInstructions.addressLookupTableAddresses)) {
-      console.log("USER_DEBUG_OVERFLOW gas swap ALT addresses:", gasInstructions.addressLookupTableAddresses);
+    const gasAltCount = Array.isArray(gasInstructions.addressLookupTableAddresses)
+      ? gasInstructions.addressLookupTableAddresses.length
+      : 0;
+    const gasRoutePlan = Array.isArray(gasQuoteResponse?.routePlan) ? gasQuoteResponse.routePlan : [];
+    console.log(`${LOG_PREFIX} Gas swap planned: legs=${gasRoutePlan.length}, jupAlts=${gasAltCount}`);
+    if (gasRoutePlan.length > 0) {
+      console.table(
+        gasRoutePlan.map((leg: any, idx: number) => {
+          const si = leg?.swapInfo || {};
+          return {
+            idx,
+            label: si.label,
+            percent: leg?.percent,
+            inMint: si.inputMint,
+            outMint: si.outputMint,
+          };
+        })
+      );
     }
-    // USER_DEBUG_ROUTE: planned gas route legs and venues
-    try {
-      const rp = Array.isArray(gasQuoteResponse?.routePlan) ? gasQuoteResponse.routePlan : [];
-      console.log("USER_DEBUG_ROUTE gas: legs=", rp.length);
-      if (rp.length > 0) {
-        console.table(
-          rp.map((leg: any, idx: number) => {
-            const si = leg?.swapInfo || {};
-            return {
-              idx,
-              label: si.label,
-              ammKey: leg?.ammKey,
-              percent: leg?.percent,
-              inMint: si.inputMint,
-              outMint: si.outputMint,
-              inAmount: String(si.inAmount ?? ""),
-              outAmount: String(si.outAmount ?? ""),
-            };
-          })
-        );
-      }
-    } catch (_) {}
   }
 
   // Helper to load Jupiter ALTs.
@@ -368,11 +331,7 @@ async function acrossPlusJupiter(): Promise<void> {
     for (const a of gasInstructions.addressLookupTableAddresses) altAddrsSet.add(a);
   }
   const addressLookupTableAccounts = await getAddressLookupTableAccounts(Array.from(altAddrsSet));
-  console.log("USER_DEBUG_OVERFLOW union ALT count:", addressLookupTableAccounts.length);
-  console.log(
-    "USER_DEBUG_OVERFLOW union ALT keys:",
-    addressLookupTableAccounts.map((a) => a.key.toBase58())
-  );
+  console.log(`${LOG_PREFIX} Jupiter ALT tables provided:`, addressLookupTableAccounts.length);
 
   // Helper to deserialize instruction and check if it would fit in inner CPI limit.
   const deserializeInstruction = (instruction: any) => {
@@ -387,13 +346,6 @@ async function acrossPlusJupiter(): Promise<void> {
     });
     const innerCpiLimit = 10 * 1024;
     const innerCpiSize = transactionInstruction.keys.length * 34 + transactionInstruction.data.length;
-    console.log(
-      "USER_DEBUG_OVERFLOW JUP ix program, keys, dataLen, innerCpiSize:",
-      transactionInstruction.programId.toBase58(),
-      transactionInstruction.keys.length,
-      transactionInstruction.data.length,
-      innerCpiSize
-    );
     if (innerCpiSize > innerCpiLimit) {
       throw new Error(
         `Instruction too large for inner CPI: ${innerCpiSize} > ${innerCpiLimit}, try lowering maxAccounts`
@@ -408,7 +360,7 @@ async function acrossPlusJupiter(): Promise<void> {
     recipientOutputTA,
   ]);
   console.log(
-    "USER_DEBUG_OVERFLOW output ATA existence [handler,recipient]:",
+    `${LOG_PREFIX} Output ATA existence [handler, recipient]:`,
     Boolean(handlerOutputInfo),
     Boolean(recipientOutputInfo)
   );
@@ -458,7 +410,7 @@ async function acrossPlusJupiter(): Promise<void> {
     : null;
   if (handlerWsolTA) {
     const [wsolInfo] = await provider.connection.getMultipleAccountsInfo([handlerWsolTA]);
-    console.log("USER_DEBUG_OVERFLOW handler WSOL ATA existence:", Boolean(wsolInfo));
+    console.log(`${LOG_PREFIX} Handler WSOL ATA existence:`, Boolean(wsolInfo));
   }
 
   // Encode all instructions with handler PDA as the payer for ATA initialization.
@@ -475,10 +427,7 @@ async function acrossPlusJupiter(): Promise<void> {
     multicallInstructions.push(gasSwapIx);
     if (closeHandlerWsolInstruction) multicallInstructions.push(closeHandlerWsolInstruction);
   }
-  console.log(
-    "USER_DEBUG_OVERFLOW multicall ixs (programId, keys, dataLen):",
-    multicallInstructions.map((ix) => [ix.programId.toBase58(), ix.keys.length, ix.data.length])
-  );
+  console.log(`${LOG_PREFIX} Multicall instructions prepared:`, multicallInstructions.length);
 
   const multicallHandlerCoder = new MulticallHandlerCoder(multicallInstructions, handlerSigner);
   const handlerMessage = multicallHandlerCoder.encode();
@@ -491,13 +440,9 @@ async function acrossPlusJupiter(): Promise<void> {
   });
   const encodedMessage = message.encode();
   console.log(
-    "USER_DEBUG_OVERFLOW compiledMessage accountKeys len:",
-    multicallHandlerCoder.compiledMessage.accountKeys.length
+    `${LOG_PREFIX} Encoded handler message: keyCount=${multicallHandlerCoder.compiledMessage.accountKeys.length}, ` +
+      `handlerBytes=${handlerMessage.length}, encodedBytes=${encodedMessage.length}`
   );
-  console.log("USER_DEBUG_OVERFLOW compiledKeyMetas len:", multicallHandlerCoder.compiledKeyMetas.length);
-  console.log("USER_DEBUG_OVERFLOW readOnlyLen:", multicallHandlerCoder.readOnlyLen);
-  console.log("USER_DEBUG_OVERFLOW handlerMessage bytes:", handlerMessage.length);
-  console.log("USER_DEBUG_OVERFLOW encodedMessage bytes:", encodedMessage.length);
 
   // Define the state account PDA
   const [statePda] = PublicKey.findProgramAddressSync(
@@ -524,7 +469,7 @@ async function acrossPlusJupiter(): Promise<void> {
     message: encodedMessage,
   };
   const relayHashUint8Array = calculateRelayHashUint8Array(relayData, solanaChainId);
-  console.log("Relay Data:");
+  console.log(`${LOG_PREFIX} Relay data prepared`);
   console.table(
     Object.entries(relayData)
       .map(([key, value]) => ({
@@ -533,7 +478,7 @@ async function acrossPlusJupiter(): Promise<void> {
       }))
       .filter((entry) => entry.key !== "message") // Message is printed separately.
   );
-  console.log("Relay message:", relayData.message.toString("hex"));
+  console.log(`${LOG_PREFIX} Relay message (hex):`, relayData.message.toString("hex"));
 
   // Define the fill status account PDA
   const [fillStatusPda] = PublicKey.findProgramAddressSync(
@@ -613,13 +558,13 @@ async function acrossPlusJupiter(): Promise<void> {
     { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
     ...multicallHandlerCoder.compiledKeyMetas,
   ];
-  console.log("USER_DEBUG_OVERFLOW fillRemainingAccounts len:", fillRemainingAccounts.length);
+  console.log(`${LOG_PREFIX} Fill remaining accounts:`, fillRemainingAccounts.length);
   const fillIx = await svmSpokeProgram.methods
     .fillRelay(...fillRelayParams)
     .accounts(fillAccounts)
     .remainingAccounts(fillRemainingAccounts)
     .instruction();
-  console.log("USER_DEBUG_OVERFLOW fillIx keys len:", fillIx.keys.length, "data len:", fillIx.data.length);
+  console.log(`${LOG_PREFIX} Fill instruction prepared: keys=${fillIx.keys.length}, dataLen=${fillIx.data.length}`);
 
   const finalIxs = prependComputeBudgetWeb3V1([approveIx, fillIx], priorityFeePrice, fillComputeUnit);
   const finalPrograms = new Set<string>();
@@ -628,13 +573,12 @@ async function acrossPlusJupiter(): Promise<void> {
     finalPrograms.add(ix.programId.toBase58());
     ix.keys.forEach((k) => finalAccounts.add(k.pubkey.toBase58()));
   }
-  console.log("USER_DEBUG_OVERFLOW finalIxs count:", finalIxs.length);
-  console.log("USER_DEBUG_OVERFLOW final unique accounts:", finalAccounts.size);
-  console.log("USER_DEBUG_OVERFLOW final programs:", Array.from(finalPrograms));
-  console.log("USER_DEBUG_OVERFLOW compute budget settings:", { priorityFeePrice, fillComputeUnit });
+  console.log(`${LOG_PREFIX} Final ixs: ${finalIxs.length}, uniqueAccounts=${finalAccounts.size}`);
+  console.log(`${LOG_PREFIX} Compute budget:`, { priorityFeePrice, fillComputeUnit });
 
   // Preflight compile and measure serialized size to confirm packet overflow root cause
   let preflightBytes: number | null = null;
+  let noAltBytes: number | null = null;
   let preflightOverflow = false;
   try {
     const { blockhash } = await provider.connection.getLatestBlockhash();
@@ -650,53 +594,80 @@ async function acrossPlusJupiter(): Promise<void> {
     const lookups = msgV0.addressTableLookups || [];
     preflightBytes = bytes.length;
     console.log(
-      "USER_DEBUG_OVERFLOW pre-send message: staticKeys, lookupCount, lookupIdxLens, ixCount, serializedBytes",
-      msgV0.staticAccountKeys?.length ?? null,
-      lookups.length,
-      lookups.map((l: any) => [l.writableIndexes.length, l.readonlyIndexes.length]),
-      msgV0.compiledInstructions.length,
-      bytes.length
+      `${LOG_PREFIX} Preflight (with Jupiter ALTs): bytes=${bytes.length}, staticKeys=${
+        msgV0.staticAccountKeys?.length ?? null
+      }, lookupTables=${lookups.length}`
     );
     if (bytes.length > 1200) preflightOverflow = true;
+
+    // Also estimate without ALTs to approximate savings
+    try {
+      const msgNoAlt = new TransactionMessage({
+        payerKey: relayer.publicKey,
+        recentBlockhash: blockhash,
+        instructions: finalIxs,
+      }).compileToV0Message([]);
+      const vtNoAlt = new VersionedTransaction(msgNoAlt);
+      vtNoAlt.sign([relayer]);
+      noAltBytes = vtNoAlt.serialize().length;
+      if (typeof noAltBytes === "number") {
+        console.log(
+          `${LOG_PREFIX} Preflight (no ALTs): bytes=${noAltBytes}, staticKeys=${
+            msgNoAlt.staticAccountKeys?.length ?? null
+          }`
+        );
+      }
+    } catch {}
   } catch (e) {
-    console.log("USER_DEBUG_OVERFLOW pre-send compile failed:", (e as Error).message);
+    console.log(`${LOG_PREFIX} Preflight compile failed:`, (e as Error).message);
     preflightOverflow = true;
   }
 
-  try {
-    // If preflight suggests overflow, fall back to local LUT creation path that packs all addresses.
-    if (preflightOverflow) {
-      console.log(
-        "USER_DEBUG_OVERFLOW preflight suggests overflow; using local LUT creation path (no pre-provided ALTs)",
-        { preflightBytes }
-      );
-      const txSignature = await sendTransactionWithLookupTableWeb3V1(provider.connection, finalIxs, relayer);
-      console.log("Fill transaction signature:", txSignature);
-      return;
-    }
-
-    // Fill using the ALT with the provided compute budget settings.
-    const txSignature = await sendTransactionWithLookupTableWeb3V1(
-      provider.connection,
-      finalIxs,
-      relayer,
-      addressLookupTableAccounts
+  // Compute simple metrics about accounts and tables for reporting
+  const lookupAddressesSet = new Set<string>();
+  for (const ix of finalIxs) {
+    lookupAddressesSet.add(ix.programId.toBase58());
+    ix.keys.forEach((k) => lookupAddressesSet.add(k.pubkey.toBase58()));
+  }
+  const totalUniqueAccounts = lookupAddressesSet.size;
+  const jupAltTables = addressLookupTableAccounts.length;
+  const jupAltAddresses = addressLookupTableAccounts.reduce((acc, a) => acc + a.state.addresses.length, 0);
+  const localLutExtendTxs = Math.ceil(totalUniqueAccounts / 30);
+  console.log(
+    `${LOG_PREFIX} Metrics: txBytes=${
+      preflightBytes ?? "<unknown>"
+    }, jupAltTables=${jupAltTables}, jupAltAddresses=${jupAltAddresses}, uniqueAccounts=${totalUniqueAccounts}`
+  );
+  if (preflightOverflow) {
+    console.log(
+      `${LOG_PREFIX} Preflight overflow detected; sending with a single local ALT (${localLutExtendTxs} extend txs)`
     );
-    console.log("Fill transaction signature:", txSignature);
-  } catch (err: any) {
-    if (err instanceof RangeError || (err?.message && String(err.message).includes("encoding overruns"))) {
-      console.log("USER_DEBUG_OVERFLOW caught RangeError during message compile/send; retry with local LUT path");
-      try {
-        const txSignature = await sendTransactionWithLookupTableWeb3V1(provider.connection, finalIxs, relayer);
-        console.log("Fill transaction signature (local LUT):", txSignature);
-        return;
-      } catch (err2: any) {
-        await logTxError(err2, "sendTransaction-localLUT");
-        throw err2;
-      }
+    try {
+      const txSignature = await sendTransactionWithLookupTableWeb3V1(provider.connection, finalIxs, relayer);
+      console.log(`${LOG_PREFIX} Fill transaction signature:`, txSignature);
+    } catch (err: any) {
+      await logTxError(err, "sendTransaction-localLUT");
+      throw err;
     }
-    await logTxError(err, "sendTransaction");
-    throw err;
+  } else {
+    const saved =
+      typeof noAltBytes === "number" && typeof preflightBytes === "number" ? noAltBytes - preflightBytes : null;
+    console.log(
+      `${LOG_PREFIX} Using Jupiter ALTs (no local ALT).` +
+        (typeof saved === "number" ? ` Approx bytes saved vs no-ALT: ~${saved}` : "")
+    );
+    try {
+      const txSignature = await sendTransactionWithLookupTableWeb3V1(
+        provider.connection,
+        finalIxs,
+        relayer,
+        addressLookupTableAccounts
+      );
+      console.log(`${LOG_PREFIX} Fill transaction signature:`, txSignature);
+    } catch (err: any) {
+      await logTxError(err, "sendTransaction-jupALTs");
+      throw err;
+    }
   }
 }
 
