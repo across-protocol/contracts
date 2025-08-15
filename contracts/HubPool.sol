@@ -26,7 +26,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
- * @notice Contract deployed on Ethereum that houses L1 token liquidity for all SpokePools. A dataworker can interact
+ * @notice Contract deployed on Ethereum that houses L1 token liquidity for all SpokePools. A data worker can interact
  * with merkle roots stored in this contract via inclusion proofs to instruct this contract to send tokens to L2
  * SpokePools via "pool rebalances" that can be used to pay out relayers on those networks. This contract is also
  * responsible for publishing relayer refund and slow relay merkle roots to SpokePools.
@@ -222,7 +222,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
 
     /**
      * @notice This allows for the deletion of the active proposal in case of emergency.
-     * @dev This is primarily intended to rectify situations where an unexecutable bundle gets through liveness in the
+     * @dev This is primarily intended to rectify situations where an inexecutable bundle gets through liveness in the
      * case of a non-malicious bug in the proposal/dispute code. Without this function, the contract would be
      * indefinitely blocked, migration would be required, and in-progress transfers would never be repaid.
      */
@@ -485,7 +485,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         uint256 lpTokenAmount,
         bool sendEth
     ) public override nonReentrant unpaused {
-        require(address(weth) == l1Token || !sendEth, "Cant send eth");
+        require(address(weth) == l1Token || !sendEth, "Can't send eth");
         uint256 l1TokensToReturn = (lpTokenAmount * _exchangeRateCurrent(l1Token)) / 1e18;
 
         ExpandedIERC20(pooledTokens[l1Token].lpToken).burnFrom(msg.sender, lpTokenAmount);
@@ -536,7 +536,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
     }
 
     /**
-     * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This should be done
+     * @notice Synchronizess any balance changes in this contract with the utilized & liquid reserves. This should be done
      * at the conclusion of a L2->L1 token transfer via the canonical token bridge, when this contract's reserves do not
      * reflect its true balance due to new tokens being dropped onto the contract at the conclusion of a bridging action.
      */
@@ -1058,7 +1058,7 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         return rootBundleProposal.unclaimedPoolRebalanceLeafCount != 0;
     }
 
-    // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the callback function
+    // If functionCallStackOriginatesFromOutsideThisContract is true then this was called by the external call
     // by dropping ETH onto the contract. In this case, deposit the ETH into WETH. This would happen if ETH was sent
     // over the optimism bridge, for example. If false then this was set as a result of unwinding LP tokens, with the
     // intention of sending ETH to the LP. In this case, do nothing as we intend on sending the ETH to the LP.
