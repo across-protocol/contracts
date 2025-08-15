@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -204,7 +203,7 @@ contract ZkStackAdapterTest is Test {
 
     // Sending Weth should give a hash of L2TransactionHashDirect.
     function testRelayWeth(uint256 amountToSend, address random) public {
-        amountToSend = uint256(bound(amountToSend, 1, 2**255)); // Bound the amountToSend so that amountToSend + baseCost <= 2**256-1
+        amountToSend = uint256(bound(amountToSend, 1, 2 ** 255)); // Bound the amountToSend so that amountToSend + baseCost <= 2**256-1
         vm.deal(random, amountToSend + baseCost);
         vm.startPrank(random);
         // Normally, the Hub Pool would be delegatecalling the adapter so the balance would "already exist" in the adapter, but here,
@@ -401,7 +400,7 @@ contract ZkStackAdapterTest is Test {
 
     // There should be a hash of L2TransactionDirect and an approval for the custom gas token.
     function testRelayCustomGasToken(uint256 amountToSend, address random) public {
-        amountToSend = uint256(bound(amountToSend, 1, 2**255)); // Bound amountToSend so amountToSend+baseCost < 2**256
+        amountToSend = uint256(bound(amountToSend, 1, 2 ** 255)); // Bound amountToSend so amountToSend+baseCost < 2**256
         bytes32 expectedTxnHash = keccak256(
             abi.encode(
                 BridgeHubInterface.L2TransactionRequestDirect({
