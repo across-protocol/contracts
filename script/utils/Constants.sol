@@ -16,10 +16,11 @@ contract Constants is Script {
     string public file;
 
     constructor() {
-        file = vm.readFile("script/constants.json");
+        file = vm.readFile("script/utils/constants.json");
     }
 
     function getChainId(string memory chainName) public view returns (uint256) {
+        console.log("chainName", chainName);
         return vm.parseJsonUint(file, string.concat(".chainIds.", chainName));
     }
 
@@ -223,7 +224,7 @@ contract Constants is Script {
 
     // Helper function to convert chain ID to chain name
     function _getChainName(uint256 chainId) internal view returns (string memory) {
-        if (chainId == getChainId(" MAINNET")) return "MAINNET";
+        if (chainId == getChainId("MAINNET")) return "MAINNET";
         if (chainId == getChainId("SEPOLIA")) return "SEPOLIA";
         if (chainId == getChainId("ARBITRUM")) return "ARBITRUM";
         if (chainId == getChainId("ARBITRUM_SEPOLIA")) return "ARBITRUM_SEPOLIA";
