@@ -20,6 +20,7 @@ contract Constants is Script {
     }
 
     function getChainId(string memory chainName) public view returns (uint256) {
+        console.log("chainName", chainName);
         return vm.parseJsonUint(file, string.concat(".chainIds.", chainName));
     }
 
