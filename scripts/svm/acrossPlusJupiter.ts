@@ -265,6 +265,7 @@ async function acrossPlusJupiter(): Promise<void> {
     { Property: "handlerProgramId", Value: handlerProgram.programId.toString() },
     { Property: "recipient", Value: recipient.toString() },
     { Property: "recipientTA", Value: recipientOutputTA.toString() },
+    { Property: "handlerOutputTA", Value: handlerOutputTA.toString() },
     { Property: "valueAmount", Value: valueAmount.toString() },
     { Property: "relayerPublicKey", Value: relayer.publicKey.toString() },
     { Property: "inputMint", Value: usdcMint.toString() },
@@ -421,6 +422,24 @@ async function acrossPlusJupiter(): Promise<void> {
     console.log(`${LOG_PREFIX} Handler WSOL ATA existence:`, Boolean(wsolInfo));
   }
 
+  // Helpers for SPL and SOL balance reads
+  const getSplAmountOrZero = async (account: PublicKey): Promise<bigint> => {
+    try {
+      const info = await provider.connection.getAccountInfo(account, { commitment: "confirmed" });
+      if (!info) return 0n;
+      const bal = await provider.connection.getTokenAccountBalance(account, "confirmed");
+      return BigInt(bal.value.amount);
+    } catch {
+      return 0n;
+    }
+  };
+  const getLamportsOrZero = async (account: PublicKey): Promise<bigint> => {
+    const info = await provider.connection.getAccountInfo(account, { commitment: "confirmed" });
+    return info ? BigInt(info.lamports) : 0n;
+  };
+
+  // Capture pre-transaction balances will be done later after USDC ATAs are ensured
+
   // Encode all instructions with handler PDA as the payer for ATA initialization.
   const mainSwapIx = deserializeInstruction(mainInstructions.swapInstruction);
   const multicallInstructions: TransactionInstruction[] = [
@@ -500,6 +519,15 @@ async function acrossPlusJupiter(): Promise<void> {
     await getOrCreateAssociatedTokenAccount(provider.connection, relayer, usdcMint, handlerSigner, true, "confirmed")
   ).address;
 
+  // Capture pre-transaction balances for analysis
+  const preBalances = {
+    handlerUsdc: await getSplAmountOrZero(handlerUsdcTA),
+    handlerOutput: await getSplAmountOrZero(handlerOutputTA),
+    recipientOutput: await getSplAmountOrZero(recipientOutputTA),
+    handlerWsol: handlerWsolTA ? await getSplAmountOrZero(handlerWsolTA) : 0n,
+    recipientLamports: await getLamportsOrZero(recipient),
+  };
+
   // Fetch the state from the on-chain program to get chainId
   const state = await svmSpokeProgram.account.state.fetch(statePda);
   const chainId = new BN(state.chainId);
@@ -522,6 +550,71 @@ async function acrossPlusJupiter(): Promise<void> {
     undefined,
     TOKEN_PROGRAM_ID
   );
+
+  // Reporter to compare pre/post balances and minOut thresholds
+  const reportPostSwapDeltas = async (txSig: string) => {
+    try {
+      await provider.connection.confirmTransaction(txSig, "confirmed");
+    } catch {}
+
+    const postBalances = {
+      handlerUsdc: await getSplAmountOrZero(handlerUsdcTA),
+      handlerOutput: await getSplAmountOrZero(handlerOutputTA),
+      recipientOutput: await getSplAmountOrZero(recipientOutputTA),
+      handlerWsol: handlerWsolTA ? await getSplAmountOrZero(handlerWsolTA) : 0n,
+      recipientLamports: await getLamportsOrZero(recipient),
+    };
+
+    const minMainOut = BigInt(String(mainQuoteResponse.otherAmountThreshold ?? 0));
+    const minGasOut = gasQuoteResponse ? BigInt(String(gasQuoteResponse.otherAmountThreshold ?? 0)) : 0n;
+    const recipientOutputDelta = postBalances.recipientOutput - preBalances.recipientOutput;
+    const handlerOutputDelta = postBalances.handlerOutput - preBalances.handlerOutput;
+    const handlerOutputLeft = postBalances.handlerOutput;
+    const recipientLamportsDelta = postBalances.recipientLamports - preBalances.recipientLamports;
+
+    const usdcInFromFill = BigInt(usdcAmount.toString());
+    const expectedUsdcSpent = usdcInFromFill; // main + gas should equal total usdcAmount
+    const actualUsdcSpent = preBalances.handlerUsdc + usdcInFromFill - postBalances.handlerUsdc;
+    const usdcSpentDelta = actualUsdcSpent - expectedUsdcSpent;
+
+    console.log(`${LOG_PREFIX} Min output thresholds:`);
+    console.table(
+      [
+        { kind: "Main", mint: outputMint.toBase58(), minOutRaw: minMainOut.toString(), decimals: outputDecimals },
+        gasQuoteResponse
+          ? { kind: "Gas(WSOL)", mint: "So1111...1112", minOutRaw: minGasOut.toString(), decimals: 9 }
+          : undefined,
+      ].filter(Boolean) as any[]
+    );
+
+    console.log(`${LOG_PREFIX} Post-swap deltas and balances:`);
+    console.table([
+      { metric: "recipientOutputDelta", value: recipientOutputDelta.toString(), mint: outputMint.toBase58() },
+      { metric: "handlerOutputDelta", value: handlerOutputDelta.toString(), mint: outputMint.toBase58() },
+      { metric: "handlerOutputLeft", value: handlerOutputLeft.toString(), mint: outputMint.toBase58() },
+      { metric: "recipientLamportsDelta", value: recipientLamportsDelta.toString() },
+    ]);
+
+    console.log(`${LOG_PREFIX} Inspect ATAs in a block explorer:`);
+    console.table(
+      [
+        { label: "handler USDC ATA", address: handlerUsdcTA.toBase58() },
+        { label: "handler output ATA", address: handlerOutputTA.toBase58() },
+        { label: "recipient output ATA", address: recipientOutputTA.toBase58() },
+        handlerWsolTA ? { label: "handler WSOL ATA", address: handlerWsolTA.toBase58() } : undefined,
+      ].filter(Boolean) as any[]
+    );
+
+    console.log(`${LOG_PREFIX} Handler USDC flow check (exact-in expectation)`);
+    console.table([
+      { field: "preHandlerUsdc", raw: preBalances.handlerUsdc.toString(), decimals: usdcDecimals },
+      { field: "fillTransferIn", raw: usdcInFromFill.toString(), decimals: usdcDecimals },
+      { field: "expectedSpent", raw: expectedUsdcSpent.toString(), decimals: usdcDecimals },
+      { field: "postHandlerUsdc", raw: postBalances.handlerUsdc.toString(), decimals: usdcDecimals },
+      { field: "actualSpent", raw: actualUsdcSpent.toString(), decimals: usdcDecimals },
+      { field: "spentDelta(actual-expected)", raw: usdcSpentDelta.toString(), decimals: usdcDecimals },
+    ]);
+  };
 
   // Prepare fill instruction.
   const fillV3RelayValues: FillDataValues = [
@@ -653,6 +746,7 @@ async function acrossPlusJupiter(): Promise<void> {
     try {
       const txSignature = await sendTransactionWithLookupTableWeb3V1(provider.connection, finalIxs, relayer);
       console.log(`${LOG_PREFIX} Fill transaction signature:`, txSignature);
+      await reportPostSwapDeltas(txSignature);
     } catch (err: any) {
       await logTxError(err, "sendTransaction-localLUT");
       throw err;
@@ -672,6 +766,7 @@ async function acrossPlusJupiter(): Promise<void> {
         addressLookupTableAccounts
       );
       console.log(`${LOG_PREFIX} Fill transaction signature:`, txSignature);
+      await reportPostSwapDeltas(txSignature);
     } catch (err: any) {
       await logTxError(err, "sendTransaction-jupALTs");
       throw err;
