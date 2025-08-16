@@ -66,6 +66,7 @@ const swapApiBaseUrl = "https://quote-api.jup.ag/v6/";
 
 // Logging and Jupiter config
 const LOG_PREFIX = "[AcrossPlus]";
+const SOLANA_TX_SIZE_LIMIT = 1232;
 const JUPITER_EXCLUDED_DEXES: string[] = [
   // Keep this list curated to avoid CPI depth/riskier venues
   "Stabble Stable Swap", // excluding because of CPI call depth
@@ -73,6 +74,87 @@ const JUPITER_EXCLUDED_DEXES: string[] = [
   "Obric V2", // excluding because `Program log: AnchorError thrown in programs/obric-solana/src/instructions/swap_ixs.rs:331. Error Code: Rejected. Error Number: 6028. Error Message: Rejected.`
   "Meteora", // excluding because CPI call depth: Meteora Vault Program
 ];
+
+// Helper to get a Jupiter quote + swap instructions, with logging and per-quote maxAccounts control.
+const fetchJupiterQuoteAndIxs = async (opts: {
+  label: string;
+  inputMint: PublicKey;
+  outputMint: PublicKey;
+  amount: BigNumber;
+  slippageBps: number;
+  maxAccounts: number;
+  excludeDexesCsv?: string;
+  userPublicKey: PublicKey;
+  wrapAndUnwrapSol?: boolean;
+  minHops?: number;
+}): Promise<{ quoteResponse: any; instructions: any }> => {
+  const {
+    label,
+    inputMint,
+    outputMint,
+    amount,
+    slippageBps,
+    maxAccounts,
+    excludeDexesCsv,
+    userPublicKey,
+    wrapAndUnwrapSol = false,
+    minHops,
+  } = opts;
+
+  const quoteUrl =
+    swapApiBaseUrl +
+    "quote?inputMint=" +
+    inputMint.toString() +
+    "&outputMint=" +
+    outputMint.toString() +
+    "&amount=" +
+    amount.toString() +
+    "&slippageBps=" +
+    String(slippageBps) +
+    "&maxAccounts=" +
+    String(maxAccounts) +
+    (excludeDexesCsv ? "&excludeDexes=" + encodeURIComponent(excludeDexesCsv) : "");
+
+  const quoteResponse = await (await fetch(quoteUrl)).json();
+  if (quoteResponse.error) throw new Error("Failed to get quote: " + quoteResponse.error);
+
+  if (typeof minHops === "number" && quoteResponse.routePlan && quoteResponse.routePlan.length < minHops) {
+    throw new Error(
+      `Quote returned only ${quoteResponse.routePlan.length} hop(s), which is less than requested minimum of ${minHops}`
+    );
+  }
+
+  const instructions = await (
+    await fetch(swapApiBaseUrl + "swap-instructions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quoteResponse, userPublicKey: userPublicKey.toString(), wrapAndUnwrapSol }),
+    })
+  ).json();
+  if (instructions.error) throw new Error("Failed to get swap instructions: " + instructions.error);
+
+  const altCount = Array.isArray(instructions.addressLookupTableAddresses)
+    ? instructions.addressLookupTableAddresses.length
+    : 0;
+  const routePlan = Array.isArray(quoteResponse?.routePlan) ? quoteResponse.routePlan : [];
+  console.log(`${LOG_PREFIX} ${label} swap planned: legs=${routePlan.length}, jupAlts=${altCount}`);
+  if (routePlan.length > 0) {
+    console.table(
+      routePlan.map((leg: any, idx: number) => {
+        const si = leg?.swapInfo || {};
+        return {
+          idx,
+          label: si.label,
+          percent: leg?.percent,
+          inMint: si.inputMint,
+          outMint: si.outputMint,
+        };
+      })
+    );
+  }
+
+  return { quoteResponse, instructions };
+};
 
 // Set up Solana provider and signer.
 const provider = AnchorProvider.env();
@@ -93,7 +175,16 @@ const argv = yargs(hideBin(process.argv))
   .option("outputMint", { type: "string", demandOption: true, describe: "Token to receive from the swap" })
   .option("usdcValue", { type: "string", demandOption: true, describe: "USDC value bridged/swapped (formatted)" })
   .option("slippageBps", { type: "number", demandOption: false, describe: "Custom slippage in bps" })
-  .option("maxAccounts", { type: "number", demandOption: false, describe: "Maximum swap accounts" })
+  .option("maxAccountsMain", {
+    type: "number",
+    demandOption: false,
+    describe: "Maximum swap accounts for the main output swap",
+  })
+  .option("maxAccountsGas", {
+    type: "number",
+    demandOption: false,
+    describe: "Maximum swap accounts for the gas WSOL swap",
+  })
   .option("priorityFeePrice", { type: "number", demandOption: false, describe: "Priority fee price in micro lamports" })
   .option("fillComputeUnit", { type: "number", demandOption: false, describe: "Compute unit limit in fill" })
   .option("gasUsd", {
@@ -116,7 +207,8 @@ async function acrossPlusJupiter(): Promise<void> {
   const usdcAmount = parseUsdc(resolvedArgv.usdcValue);
   const slippageBps = resolvedArgv.slippageBps || 100; // default to 1%
   const minHops = resolvedArgv.minHops || 1;
-  const maxAccounts = resolvedArgv.maxAccounts || 16;
+  const maxAccountsMain = resolvedArgv.maxAccountsMain || 22;
+  const maxAccountsGas = resolvedArgv.maxAccountsGas || 10;
   const priorityFeePrice = resolvedArgv.priorityFeePrice;
   const fillComputeUnit = resolvedArgv.fillComputeUnit || 2_000_000;
   const requestedGasUsdc: BigNumber = parseUsdc(resolvedArgv.gasUsd || "1");
@@ -181,128 +273,44 @@ async function acrossPlusJupiter(): Promise<void> {
     { Property: "gasUsd (formatted)", Value: formatUsdc(gasUsdcAmount) },
     { Property: "mainUsdc (formatted)", Value: formatUsdc(mainUsdcAmount) },
     { Property: "slippageBps", Value: slippageBps },
-    { Property: "maxAccounts", Value: maxAccounts },
+    { Property: "maxAccountsMain", Value: maxAccountsMain },
+    { Property: "maxAccountsGas", Value: maxAccountsGas },
     { Property: "minHops", Value: minHops },
     { Property: "handlerSigner", Value: handlerSigner.toString() },
     { Property: "excludeDexes", Value: excludeDexesCsv || "<none>" },
   ]);
 
-  // Get quote from Jupiter for main output swap.
-  const quoteResponse = await (
-    await fetch(
-      swapApiBaseUrl +
-        "quote?inputMint=" +
-        usdcMint.toString() +
-        "&outputMint=" +
-        outputMint.toString() +
-        "&amount=" +
-        mainUsdcAmount.toString() +
-        "&slippageBps=" +
-        slippageBps +
-        "&maxAccounts=" +
-        maxAccounts +
-        (excludeDexesCsv ? "&excludeDexes=" + encodeURIComponent(excludeDexesCsv) : "")
-    )
-  ).json();
-  if (quoteResponse.error) {
-    throw new Error("Failed to get quote: " + quoteResponse.error);
-  }
+  // Get quote from Jupiter for main output swap
+  const { quoteResponse: mainQuoteResponse, instructions: mainInstructions } = await fetchJupiterQuoteAndIxs({
+    label: "Main",
+    inputMint: usdcMint,
+    outputMint,
+    amount: mainUsdcAmount,
+    slippageBps,
+    maxAccounts: maxAccountsMain,
+    excludeDexesCsv,
+    userPublicKey: handlerSigner,
+    wrapAndUnwrapSol: false,
+    minHops,
+  });
 
-  if (quoteResponse.routePlan && quoteResponse.routePlan.length < minHops) {
-    throw new Error(
-      `Quote returned only ${quoteResponse.routePlan.length} hop(s), which is less than requested minimum of ${minHops}`
-    );
-  }
-
-  // Create swap instructions for main output on behalf of the handler signer. No auto unwrap for main output.
-  const wrapAndUnwrapSol = false;
-  const instructions = await (
-    await fetch(swapApiBaseUrl + "swap-instructions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ quoteResponse, userPublicKey: handlerSigner.toString(), wrapAndUnwrapSol }),
-    })
-  ).json();
-  if (instructions.error) {
-    throw new Error("Failed to get swap instructions: " + instructions.error);
-  }
-  const mainAltCount = Array.isArray(instructions.addressLookupTableAddresses)
-    ? instructions.addressLookupTableAddresses.length
-    : 0;
-  const mainRoutePlan = Array.isArray(quoteResponse?.routePlan) ? quoteResponse.routePlan : [];
-  console.log(`${LOG_PREFIX} Main swap planned: legs=${mainRoutePlan.length}, jupAlts=${mainAltCount}`);
-  if (mainRoutePlan.length > 0) {
-    console.table(
-      mainRoutePlan.map((leg: any, idx: number) => {
-        const si = leg?.swapInfo || {};
-        return {
-          idx,
-          label: si.label,
-          percent: leg?.percent,
-          inMint: si.inputMint,
-          outMint: si.outputMint,
-        };
-      })
-    );
-  }
-
-  // Optional gas top-up: quote and instructions for USDC -> WSOL (we will close WSOL ATA to recipient to unwrap safely).
+  // Optional gas swap: quote and get instructions for USDC -> WSOL -> close WSOL ATA to recipient to unwrap to SOL
   let gasInstructions: any | null = null;
   let gasQuoteResponse: any | null = null;
   if (gasUsdcAmount.gt(0)) {
-    gasQuoteResponse = await (
-      await fetch(
-        swapApiBaseUrl +
-          "quote?inputMint=" +
-          usdcMint.toString() +
-          "&outputMint=So11111111111111111111111111111111111111112" +
-          "&amount=" +
-          gasUsdcAmount.toString() +
-          "&slippageBps=" +
-          slippageBps +
-          "&maxAccounts=" +
-          maxAccounts +
-          (excludeDexesCsv ? "&excludeDexes=" + encodeURIComponent(excludeDexesCsv) : "")
-      )
-    ).json();
-    if (gasQuoteResponse.error) {
-      throw new Error("Failed to get gas quote: " + gasQuoteResponse.error);
-    }
-
-    const gasWrapAndUnwrapSol = false;
-    gasInstructions = await (
-      await fetch(swapApiBaseUrl + "swap-instructions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          quoteResponse: gasQuoteResponse,
-          userPublicKey: handlerSigner.toString(),
-          wrapAndUnwrapSol: gasWrapAndUnwrapSol,
-        }),
-      })
-    ).json();
-    if (gasInstructions.error) {
-      throw new Error("Failed to get gas swap instructions: " + gasInstructions.error);
-    }
-    const gasAltCount = Array.isArray(gasInstructions.addressLookupTableAddresses)
-      ? gasInstructions.addressLookupTableAddresses.length
-      : 0;
-    const gasRoutePlan = Array.isArray(gasQuoteResponse?.routePlan) ? gasQuoteResponse.routePlan : [];
-    console.log(`${LOG_PREFIX} Gas swap planned: legs=${gasRoutePlan.length}, jupAlts=${gasAltCount}`);
-    if (gasRoutePlan.length > 0) {
-      console.table(
-        gasRoutePlan.map((leg: any, idx: number) => {
-          const si = leg?.swapInfo || {};
-          return {
-            idx,
-            label: si.label,
-            percent: leg?.percent,
-            inMint: si.inputMint,
-            outMint: si.outputMint,
-          };
-        })
-      );
-    }
+    const result = await fetchJupiterQuoteAndIxs({
+      label: "Gas",
+      inputMint: usdcMint,
+      outputMint: wsolMint,
+      amount: gasUsdcAmount,
+      slippageBps,
+      maxAccounts: maxAccountsGas,
+      excludeDexesCsv,
+      userPublicKey: handlerSigner,
+      wrapAndUnwrapSol: false,
+    });
+    gasQuoteResponse = result.quoteResponse;
+    gasInstructions = result.instructions;
   }
 
   // Helper to load Jupiter ALTs.
@@ -326,7 +334,7 @@ async function acrossPlusJupiter(): Promise<void> {
   };
 
   // Load ALTs for both main and gas swaps (if any).
-  const altAddrsSet = new Set<string>(instructions.addressLookupTableAddresses || []);
+  const altAddrsSet = new Set<string>(mainInstructions.addressLookupTableAddresses || []);
   if (gasInstructions && gasInstructions.addressLookupTableAddresses) {
     for (const a of gasInstructions.addressLookupTableAddresses) altAddrsSet.add(a);
   }
@@ -388,7 +396,7 @@ async function acrossPlusJupiter(): Promise<void> {
     outputMint,
     recipientOutputTA,
     handlerSigner,
-    quoteResponse.otherAmountThreshold,
+    mainQuoteResponse.otherAmountThreshold,
     outputDecimals,
     undefined,
     outputTokenProgram
@@ -414,7 +422,7 @@ async function acrossPlusJupiter(): Promise<void> {
   }
 
   // Encode all instructions with handler PDA as the payer for ATA initialization.
-  const mainSwapIx = deserializeInstruction(instructions.swapInstruction);
+  const mainSwapIx = deserializeInstruction(mainInstructions.swapInstruction);
   const multicallInstructions: TransactionInstruction[] = [
     createHandlerATAInstruction,
     mainSwapIx,
@@ -598,7 +606,7 @@ async function acrossPlusJupiter(): Promise<void> {
         msgV0.staticAccountKeys?.length ?? null
       }, lookupTables=${lookups.length}`
     );
-    if (bytes.length > 1200) preflightOverflow = true;
+    if (bytes.length > SOLANA_TX_SIZE_LIMIT) preflightOverflow = true;
 
     // Also estimate without ALTs to approximate savings
     try {
