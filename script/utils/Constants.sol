@@ -58,6 +58,7 @@ contract Constants is Script {
         address blastDaiRetriever;
         address l1AlephZeroInbox;
         address l1AlephZeroERC20GatewayRouter;
+        address adapterStore;
         address donationBox;
         address hubPoolStore;
         address zkBridgeHub;
@@ -176,6 +177,7 @@ contract Constants is Script {
                         file,
                         string.concat(".l1Addresses.", chainName, ".l1AlephZeroERC20GatewayRouter")
                     ),
+                    adapterStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".adapterStore")),
                     donationBox: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".donationBox")),
                     hubPoolStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".hubPoolStore")),
                     zkBridgeHub: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".zkBridgeHub")),
