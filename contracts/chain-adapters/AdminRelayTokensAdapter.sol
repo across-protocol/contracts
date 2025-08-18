@@ -15,9 +15,11 @@ contract AdminRelayTokensAdapter is AdapterInterface {
     }
 
     function relayMessage(address target, bytes calldata message) external payable {
-        (bytes32 requiedCustomAdminSalt, address l1Token, address l2Token, uint256 amount, address spokePool) = abi
-            .decode(message, (bytes32, address, address, uint256, address));
-        require(requiedCustomAdminSalt == requiredAdminMessage(), "incorrect admin message");
+        (bytes32 adminSalt, address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(
+            message,
+            (bytes32, address, address, uint256, address)
+        );
+        require(adminSalt == requiredAdminSalt(), "incorrect admin salt");
         require(target == spokePool, "target / spokepool mismatch");
 
         // We are ok with this low-level call since the adapter address is set by the admin and we've
@@ -39,7 +41,7 @@ contract AdminRelayTokensAdapter is AdapterInterface {
         revert("not supported");
     }
 
-    function requiredAdminMessage() public pure returns (bytes32) {
+    function requiredAdminSalt() public pure returns (bytes32) {
         return keccak256("SEND_VIA_ADMIN_RELAY_TOKENS_ADAPTER");
     }
 }
