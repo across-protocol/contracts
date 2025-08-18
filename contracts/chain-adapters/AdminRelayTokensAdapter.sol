@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
- * @dev a custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool
+ * @dev A custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool
  */
 contract AdminRelayTokensAdapter is AdapterInterface {
-    // @dev underlying adapter that will perform `relayTokens` action
+    // @dev Underlying adapter whose `relayTokens` logic will be executed via delegatecall. Must be trusted
     address public immutable UNDERLYING_ADAPTER;
 
     constructor(address underlyingAdapter) {
@@ -15,11 +15,15 @@ contract AdminRelayTokensAdapter is AdapterInterface {
     }
 
     /**
-     * @param target receiver of tokens on the destination chain. SpokePool address passed in by the HubPool
-     * @param message abi-encoded arguments params for the `relayTokens` function call: (address l1Token,
+     * @param target Receiver of tokens on the destination chain. SpokePool address passed in by the HubPool
+     * @param message Abi-encoded arguments params for the `relayTokens` function call: (address l1Token,
      * address l2Token, uint256 amount, address spokePool)
      */
     function relayMessage(address target, bytes calldata message) external payable {
+        // This adapter is not intended to accept any value as a part of `relayMessage`. It's intended usecase is to be
+        // `deletagecall`ed into, and delegatecall does not allow for attaching the `value`
+        require(msg.value == 0, "value transfer not supported");
+
         (address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(
             message,
             (address, address, uint256, address)
