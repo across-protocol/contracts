@@ -4,20 +4,20 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 
 /**
- * @dev a custom adapter that allows admin to call `relayTokens` on adapters form HubPool by calling `relayMessage` on this adapter
+ * @dev a custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool
  */
 contract AdminRelayTokensAdapter is AdapterInterface {
-    // @dev adapter to delegatecall `relayTokens` on
-    address immutable targetAdapter;
+    // @dev underlying adapter that will perform `relayTokens` action
+    address immutable underlyingAdapter;
 
-    constructor(address _targetAdapter) {
-        targetAdapter = _targetAdapter;
+    constructor(address _underlyingAdapter) {
+        underlyingAdapter = _underlyingAdapter;
     }
 
     /**
-     * @param target address of the spokepool which will be the receiver of tokens for the `relayTokens` call performed by this special adapter
-     * @param message abi-encoded arguments: (address l1Token, address l2Token, uint256 amount, address spokePool). These are the required params
-     * to perform a `relayTokens` call via an underlying `targetAdapter`
+     * @param target receiver of tokens on the destination chain. SpokePool address passed in by the HubPool
+     * @param message abi-encoded arguments params for the `relayTokens` function call: (address l1Token,
+     * address l2Token, uint256 amount, address spokePool)
      */
     function relayMessage(address target, bytes calldata message) external payable {
         (address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(
@@ -29,7 +29,7 @@ contract AdminRelayTokensAdapter is AdapterInterface {
         // We are ok with this low-level call since the adapter address is set by the admin and we've
         // already checked that its not the zero address.
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = targetAdapter.delegatecall(
+        (bool success, ) = underlyingAdapter.delegatecall(
             abi.encodeWithSignature(
                 "relayTokens(address,address,uint256,address)",
                 l1Token, // l1Token.
