@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./interfaces/AdapterInterface.sol";
+import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
 /**
  * @dev a custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool
  */
 contract AdminRelayTokensAdapter is AdapterInterface {
     // @dev underlying adapter that will perform `relayTokens` action
-    address immutable underlyingAdapter;
+    address public immutable UNDERLYING_ADAPTER;
 
-    constructor(address _underlyingAdapter) {
-        underlyingAdapter = _underlyingAdapter;
+    constructor(address underlyingAdapter) {
+        UNDERLYING_ADAPTER = underlyingAdapter;
     }
 
     /**
@@ -29,7 +29,7 @@ contract AdminRelayTokensAdapter is AdapterInterface {
         // We are ok with this low-level call since the adapter address is set by the admin and we've
         // already checked that its not the zero address.
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = underlyingAdapter.delegatecall(
+        (bool success, ) = UNDERLYING_ADAPTER.delegatecall(
             abi.encodeWithSignature(
                 "relayTokens(address,address,uint256,address)",
                 l1Token, // l1Token.
