@@ -9,7 +9,6 @@ import "./interfaces/AdapterInterface.sol";
 contract AdminRelayTokensAdapter is AdapterInterface {
     // @dev adapter to delegatecall `relayTokens` on
     address immutable targetAdapter;
-    bytes32 public constant ADMIN_SALT = keccak256("SEND_VIA_ADMIN_RELAY_TOKENS_ADAPTER");
 
     constructor(address _targetAdapter) {
         targetAdapter = _targetAdapter;
@@ -17,15 +16,14 @@ contract AdminRelayTokensAdapter is AdapterInterface {
 
     /**
      * @param target address of the spokepool which will be the receiver of tokens for the `relayTokens` call performed by this special adapter
-     * @param message abi-encoded arguments: (bytes32 adminSalt, address l1Token, address l2Token, uint256 amount, address spokePool). They include
-     * admin salt + params required to call a `relayTokens` function on an underlying `targetAdapter`
+     * @param message abi-encoded arguments: (address l1Token, address l2Token, uint256 amount, address spokePool). These are the required params
+     * to perform a `relayTokens` call via an underlying `targetAdapter`
      */
     function relayMessage(address target, bytes calldata message) external payable {
-        (bytes32 adminSalt, address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(
+        (address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(
             message,
-            (bytes32, address, address, uint256, address)
+            (address, address, uint256, address)
         );
-        require(adminSalt == ADMIN_SALT, "incorrect admin salt");
         require(target == spokePool, "target / spokepool mismatch");
 
         // We are ok with this low-level call since the adapter address is set by the admin and we've
