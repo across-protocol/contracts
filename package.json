@@ -93,7 +93,7 @@
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.5",
     "@types/mocha": "^9.0.0",
-    "@types/node": "^12.0.0",
+    "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.3.7",
