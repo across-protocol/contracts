@@ -34,11 +34,11 @@ contract AdminRelayTokensAdapter is AdapterInterface {
         // already checked that its not the zero address.
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = UNDERLYING_ADAPTER.delegatecall(
-            abi.encodeWithSignature(
-                "relayTokens(address,address,uint256,address)",
+            abi.encodeWithSelector(
+                AdapterInterface.relayTokens.selector,
                 l1Token, // l1Token.
                 l2Token, // l2Token.
-                uint256(amount), // amount.
+                amount, // amount.
                 spokePool // to. This should be the spokePool.
             )
         );
