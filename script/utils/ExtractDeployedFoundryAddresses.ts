@@ -13,6 +13,8 @@ import * as fs from "fs";
 import * as path from "path";
 import { getAddress } from "ethers/lib/utils";
 
+import { PUBLIC_NETWORKS } from "../../utils/constants";
+
 interface BroadcastFile {
   scriptName: string;
   chainId: number;
@@ -191,46 +193,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 }
 
 function getChainName(chainId: number): string {
-  const chainNames: { [id: number]: string } = {
-    1: "Mainnet",
-    11155111: "Sepolia",
-    42161: "Arbitrum One",
-    421614: "Arbitrum Sepolia",
-    137: "Polygon",
-    80002: "Polygon Amoy",
-    10: "Optimism",
-    130: "Unichain",
-    11155420: "Optimism Sepolia",
-    8453: "Base",
-    84532: "Base Sepolia",
-    56: "BSC",
-    232: "Lens",
-    288: "Boba",
-    324: "zkSync Era",
-    480: "World Chain",
-    690: "Redstone",
-    1135: "Lisk",
-    4202: "List Sepolia",
-    1301: "Unichain Sepolia",
-    1868: "Soneium",
-    59144: "Linea",
-    534352: "Scroll",
-    534351: "Scroll Sepolia",
-    81457: "Blast",
-    168587773: "Blast Sepolia",
-    34443: "Mode",
-    919: "Mode Testnet",
-    37111: "Lens Testnet",
-    41455: "Aleph Zero",
-    57073: "Ink",
-    129399: "Tatara Testnet",
-    808813: "BOB Sepolia",
-    7777777: "Zora",
-    34268394551451: "Solana",
-    133268194659241: "Solana Devnet",
-    // Add more chain IDs as needed
-  };
-  return chainNames[chainId] || `Chain ${chainId}`;
+  return PUBLIC_NETWORKS[chainId]?.name || `Chain ${chainId}`;
 }
 
 function toChecksumAddress(address: string): string {
