@@ -5,7 +5,7 @@
 // - No Jupiter swaps. The SOL is sent using value_amount transfer inside the SVM Spoke program
 //   (see message_utils.rs), which transfers lamports from the relayer to the first message account.
 // - We avoid pre-populated instruction params; relay_data is passed inline to fillRelay.
-// - We attempt to keep the transaction small: handler message contains a single SPL transfer instruction.
+// - We attempt to keep the transaction small: handler message contains only the SOL recipient as the single account.
 //
 // Example:
 // anchor run acrossPlusValueForward --provider.cluster mainnet --provider.wallet ~/.config/solana/id.json -- \
@@ -30,12 +30,9 @@ import { hideBin } from "yargs/helpers";
 import { BigNumber } from "ethers";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  createApproveCheckedInstruction,
+  createApproveInstruction,
   createAssociatedTokenAccountIdempotentInstruction,
-  createTransferCheckedInstruction,
   getAssociatedTokenAddressSync,
-  getMint,
-  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 import { MulticallHandler } from "../../target/types/multicall_handler";
@@ -84,16 +81,16 @@ async function acrossPlusValueForward(): Promise<void> {
   const priorityFeePrice = resolved.priorityFeePrice as number | undefined;
   const fillComputeUnit = resolved.fillComputeUnit as number | undefined;
 
+  // 1 USDC goes to SOL (forwarded as lamports); the rest goes out as USDC to the user directly from fill.
+  const oneUsdc = BigNumber.from(1_000_000);
+  if (usdcAmount.lte(oneUsdc)) throw new Error("USDC amount must be greater than 1 USDC");
+  const usdcToUser = usdcAmount.sub(oneUsdc);
+
   // Compute value_amount from $200/SOL: 1 USDC ≈ 0.005 SOL = 5_000_000 lamports.
   const LAMPORTS_PER_SOL = BigNumber.from(1_000_000_000);
   const USD_PER_SOL = BigNumber.from(200);
   const LAMPORTS_PER_USD = LAMPORTS_PER_SOL.div(USD_PER_SOL); // 5_000_000
-  const valueLamports = LAMPORTS_PER_USD; // Always forward ~1 USDC worth of SOL
-
-  // 1 USDC goes to SOL (forwarded as lamports); the rest goes out as USDC.
-  const oneUsdc = BigNumber.from(1_000_000);
-  if (usdcAmount.lte(oneUsdc)) throw new Error("USDC amount must be greater than 1 USDC");
-  const usdcToUser = usdcAmount.sub(oneUsdc);
+  const valueLamports = LAMPORTS_PER_USD; // Forward ~1 USDC worth of SOL
 
   // State PDA and chainId
   const seed = SOLANA_SPOKE_STATE_SEED;
@@ -107,19 +104,13 @@ async function acrossPlusValueForward(): Promise<void> {
   const solanaChainId = new BN(getSolanaChainId("mainnet").toString());
   const usdcMint = new PublicKey(SOLANA_USDC_MAINNET);
 
-  // Multicall handler signer PDA
-  const [handlerSigner] = PublicKey.findProgramAddressSync([Buffer.from("handler_signer")], handlerProgram.programId);
-
-  // Relayer and handler USDC ATAs (no pre-create RPC; all created idempotently inside the same tx)
-  // Determine token program for USDC mint to derive correct ATAs
+  // Determine token program for USDC mint (Token-2022 vs Token)
   const usdcMintInfo = await provider.connection.getAccountInfo(usdcMint);
   if (!usdcMintInfo) throw new Error("USDC mint account not found");
   const usdcTokenProgram = new PublicKey(usdcMintInfo.owner);
 
+  // Relayer and recipient USDC ATAs (create inside the same tx idempotently)
   const relayerUsdcTA = getAssociatedTokenAddressSync(usdcMint, relayer.publicKey, true, usdcTokenProgram);
-  const handlerUsdcTA = getAssociatedTokenAddressSync(usdcMint, handlerSigner, true, usdcTokenProgram);
-
-  // Recipient USDC ATA. Create idempotently in the same tx.
   const recipientUsdcTA = getAssociatedTokenAddressSync(usdcMint, recipient, true, usdcTokenProgram);
   const createRecipientAtaIx = createAssociatedTokenAccountIdempotentInstruction(
     relayer.publicKey,
@@ -128,31 +119,9 @@ async function acrossPlusValueForward(): Promise<void> {
     usdcMint,
     usdcTokenProgram
   );
-  const createHandlerAtaIx = createAssociatedTokenAccountIdempotentInstruction(
-    relayer.publicKey,
-    handlerUsdcTA,
-    handlerSigner,
-    usdcMint,
-    usdcTokenProgram
-  );
 
-  const usdcDecimals = (await getMint(provider.connection, usdcMint)).decimals;
-
-  // Build a single-token transfer from handler -> recipient for (usdcAmount - 1 USDC)
-  const transferIx = createTransferCheckedInstruction(
-    handlerUsdcTA,
-    usdcMint,
-    recipientUsdcTA,
-    handlerSigner,
-    BigInt(usdcToUser.toString()),
-    usdcDecimals,
-    undefined,
-    usdcTokenProgram
-  );
-
-  // Encode handler message. Payer key for MulticallHandlerCoder is set to the SOL recipient so that
-  // the first compiled account equals the SOL recipient, and value_amount is transferred to them.
-  const multicallHandlerCoder = new MulticallHandlerCoder([transferIx], recipient);
+  // Handler message: only value transfer; no inner token transfers. Ensure first account is the SOL recipient.
+  const multicallHandlerCoder = new MulticallHandlerCoder([], recipient);
   const handlerMessage = multicallHandlerCoder.encode();
   const message = new AcrossPlusMessageCoder({
     handler: handlerProgram.programId,
@@ -163,10 +132,10 @@ async function acrossPlusValueForward(): Promise<void> {
   });
   const encodedMessage = message.encode();
 
-  // Relay data: inputAmount reflects total USDC bridged; outputAmount excludes the 1 USDC used for SOL value.
+  // Relay data: tokens go directly to the user's ATA; outputAmount excludes the 1 USDC used for SOL value.
   const relayData = {
-    depositor: recipient, // not a real bridge deposit; align with demo pattern
-    recipient: handlerSigner,
+    depositor: recipient, // demo pattern
+    recipient: recipient,
     exclusiveRelayer: PublicKey.default,
     inputToken: usdcMint,
     outputToken: usdcMint,
@@ -185,25 +154,23 @@ async function acrossPlusValueForward(): Promise<void> {
     svmSpokeProgram.programId
   );
 
-  // Approve delegate to pull the exact outputAmount into handler signer account
+  // Approve delegate to pull the exact outputAmount into recipient ATA
   const delegate = getFillRelayDelegatePda(
     relayHashUint8Array,
     chainId,
     relayer.publicKey,
     svmSpokeProgram.programId
   ).pda;
-  const approveIx = createApproveCheckedInstruction(
+  const approveIx = createApproveInstruction(
     relayerUsdcTA,
-    usdcMint,
     delegate,
     relayer.publicKey,
     BigInt(usdcToUser.toString()),
-    usdcDecimals,
-    undefined,
+    [],
     usdcTokenProgram
   );
 
-  // Compose fill call without prepopulated instruction params
+  // Prepare fill instruction (no preloaded instruction params)
   const fillRelayValues: FillDataValues = [
     Array.from(relayHashUint8Array),
     relayData,
@@ -216,18 +183,18 @@ async function acrossPlusValueForward(): Promise<void> {
     state: statePda,
     signer: relayer.publicKey,
     delegate,
-    instructionParams: svmSpokeProgram.programId, // unused when passing inline relay_data
     mint: usdcMint,
     relayerTokenAccount: relayerUsdcTA,
-    recipientTokenAccount: handlerUsdcTA,
+    recipientTokenAccount: recipientUsdcTA,
     fillStatus: fillStatusPda,
     tokenProgram: usdcTokenProgram,
     associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    instructionParams: svmSpokeProgram.programId,
     program: svmSpokeProgram.programId,
   };
   const remainingAccounts: AccountMeta[] = [
     { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
-    ...multicallHandlerCoder.compiledKeyMetas,
+    { pubkey: recipient, isSigner: false, isWritable: true },
   ];
 
   const fillIx = await svmSpokeProgram.methods
@@ -237,14 +204,15 @@ async function acrossPlusValueForward(): Promise<void> {
     .instruction();
 
   const ixs: TransactionInstruction[] = [];
-  // Create both ATAs idempotently inside the same tx, then approve and fill
-  ixs.push(createHandlerAtaIx, createRecipientAtaIx, approveIx, fillIx);
+  // Create recipient ATA idempotently inside the same tx, then approve and fill
+  ixs.push(createRecipientAtaIx, approveIx, fillIx);
 
   const finalIxs = prependComputeBudgetWeb3V1(ixs, priorityFeePrice, fillComputeUnit);
 
   // Preflight serialize estimate against 1232-byte limit (v0 msg, no ALTs)
   const SOLANA_TX_SIZE_LIMIT = 1232;
   let preflightBytes: number | null = null;
+  let legacyBytes: number | null = null;
   try {
     const { blockhash } = await provider.connection.getLatestBlockhash();
     const msgV0 = new TransactionMessage({
@@ -255,7 +223,15 @@ async function acrossPlusValueForward(): Promise<void> {
     const vt = new VersionedTransaction(msgV0);
     vt.sign([relayer]);
     preflightBytes = vt.serialize().length;
-    console.log(`${LOG_PREFIX} Preflight: bytes=${preflightBytes}, limit=${SOLANA_TX_SIZE_LIMIT}`);
+    // Legacy estimate
+    const legacyTx = new Transaction().add(...finalIxs);
+    legacyTx.recentBlockhash = blockhash;
+    legacyTx.feePayer = relayer.publicKey;
+    legacyTx.sign(relayer);
+    legacyBytes = legacyTx.serialize({ requireAllSignatures: false, verifySignatures: false }).length;
+    console.log(
+      `${LOG_PREFIX} Preflight: v0-bytes=${preflightBytes}, legacy-bytes=${legacyBytes}, limit=${SOLANA_TX_SIZE_LIMIT}`
+    );
   } catch (e) {
     console.log(`${LOG_PREFIX} Preflight compile failed:`, (e as Error).message);
   }
@@ -272,7 +248,8 @@ async function acrossPlusValueForward(): Promise<void> {
       { property: "usdcAmount", value: usdcAmount.toString() },
       { property: "usdcToUser", value: usdcToUser.toString() },
       { property: "valueLamports", value: valueLamports.toString() },
-      { property: "preflightBytes", value: String(preflightBytes ?? "<unknown>") },
+      { property: "preflightV0Bytes", value: String(preflightBytes ?? "<unknown>") },
+      { property: "preflightLegacyBytes", value: String(legacyBytes ?? "<unknown>") },
     ]);
   } catch (err) {
     await logTxError(err, "sendTransaction");
