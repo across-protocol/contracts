@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-14T16:09:40.061Z",
+  "generated_at": "2025-08-20T15:59:27.228Z",
   "chains": {
     "1": {
       "chain_name": "Mainnet",
@@ -237,7 +237,7 @@
       }
     },
     "56": {
-      "chain_name": "BSC",
+      "chain_name": "BNB Smart Chain",
       "contracts": {
         "SpokePool": {
           "address": "0x4e8E101924eDE233C13e2D8622DC8aED2872d505",
@@ -372,7 +372,7 @@
       }
     },
     "324": {
-      "chain_name": "zkSync Era",
+      "chain_name": "zkSync",
       "contracts": {
         "SpokePool": {
           "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF",
@@ -442,7 +442,7 @@
       }
     },
     "919": {
-      "chain_name": "Mode Testnet",
+      "chain_name": "Mode Sepolia",
       "contracts": {
         "SpokePool": {
           "address": "0xbd886FC0725Cc459b55BbFEb3E4278610331f83b",
@@ -522,7 +522,7 @@
       }
     },
     "4202": {
-      "chain_name": "List Sepolia",
+      "chain_name": "Lisk Sepolia",
       "contracts": {
         "SpokePool": {
           "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -592,7 +592,7 @@
       }
     },
     "37111": {
-      "chain_name": "Lens Testnet",
+      "chain_name": "Lens Sepolia",
       "contracts": {
         "SpokePool": {
           "address": "0x6A0a7f39530923911832Dd60667CE5da5449967B",
@@ -777,7 +777,7 @@
       }
     },
     "129399": {
-      "chain_name": "Tatara Testnet",
+      "chain_name": "Tatara",
       "contracts": {
         "SpokePool": {
           "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64",

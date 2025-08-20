@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Script to extract deployed contract addresses from Foundry broadcast files.
  *

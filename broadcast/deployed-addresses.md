@@ -1,6 +1,6 @@
 # Deployed Contract Addresses
 
-Generated on: 2025-08-14T16:09:40.060Z
+Generated on: 2025-08-20T15:59:27.228Z
 
 This file contains the latest deployed smart contract addresses from the broadcast folder.
 
@@ -278,7 +278,7 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `137675818`
 
-## BSC (Chain ID: 56)
+## BNB Smart Chain (Chain ID: 56)
 
 ### SpokePool
 
@@ -420,7 +420,7 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `619993`
 
-## zkSync Era (Chain ID: 324)
+## zkSync (Chain ID: 324)
 
 ### SpokePool
 
@@ -492,7 +492,7 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `16783149`
 
-## Mode Testnet (Chain ID: 919)
+## Mode Sepolia (Chain ID: 919)
 
 ### SpokePool
 
@@ -572,7 +572,7 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `8910059`
 
-## List Sepolia (Chain ID: 4202)
+## Lisk Sepolia (Chain ID: 4202)
 
 ### SpokePool
 
@@ -644,7 +644,7 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `25393939`
 
-## Lens Testnet (Chain ID: 37111)
+## Lens Sepolia (Chain ID: 37111)
 
 ### SpokePool
 
@@ -834,7 +834,7 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `32080834`
 
-## Tatara Testnet (Chain ID: 129399)
+## Tatara (Chain ID: 129399)
 
 ### SpokePool
 
