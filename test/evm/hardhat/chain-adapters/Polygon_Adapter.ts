@@ -19,12 +19,24 @@ import {
   randomAddress,
   createFakeFromABI,
   toWei,
+  getOftEid,
+  createTypedFakeFromABI,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { TokenRolesEnum } from "@uma/common";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
+import {
+  IOFT,
+  MessagingFeeStructOutput,
+  MessagingReceiptStructOutput,
+  OFTReceiptStructOutput,
+  SendParamStruct,
+} from "../../../../typechain/contracts/interfaces/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
+import { AdapterStore, AdapterStore__factory } from "../../../../typechain";
+import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract,
   polygonAdapter: Contract,
@@ -41,9 +53,11 @@ let rootChainManager: FakeContract,
   depositManager: FakeContract,
   cctpMessenger: FakeContract,
   cctpTokenMinter: FakeContract,
-  erc20Predicate: string;
-
-const polygonChainId = 137;
+  erc20Predicate: string,
+  oftMessenger: FakeContract<IOFT>,
+  adapterStore: FakeContract<AdapterStore>;
+const polygonChainId = CHAIN_IDs.POLYGON;
+const oftArbitrumEid = getOftEid(polygonChainId);
 
 describe("Polygon Chain Adapter", function () {
   beforeEach(async function () {
@@ -73,6 +87,10 @@ describe("Polygon Chain Adapter", function () {
     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
 
+    oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
+    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
+    const oftFeeCap = toWei("1");
+
     polygonAdapter = await (
       await getContractFactory("Polygon_Adapter", owner)
     ).deploy(
@@ -83,7 +101,10 @@ describe("Polygon Chain Adapter", function () {
       matic.address,
       weth.address,
       usdc.address,
-      cctpMessenger.address
+      cctpMessenger.address,
+      adapterStore.address,
+      oftArbitrumEid,
+      oftFeeCap
     );
 
     await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
