@@ -34,8 +34,6 @@ import {
   createAssociatedTokenAccountIdempotentInstruction,
   getAssociatedTokenAddressSync,
 } from "@solana/spl-token";
-import { SvmSpoke } from "../../target/types/svm_spoke";
-import { MulticallHandler } from "../../target/types/multicall_handler";
 import {
   AcrossPlusMessageCoder,
   MulticallHandlerCoder,
@@ -46,7 +44,9 @@ import { CHAIN_IDs } from "../../utils/constants";
 import { FillDataParams, FillDataValues } from "../../src/types/svm";
 import {
   getFillRelayDelegatePda,
+  getMulticallHandlerProgram,
   getSolanaChainId,
+  getSpokePoolProgram,
   intToU8Array32,
   isSolanaDevnet,
   SOLANA_SPOKE_STATE_SEED,
@@ -58,11 +58,8 @@ const provider = AnchorProvider.env();
 anchor.setProvider(provider);
 const relayer = (provider.wallet as Wallet).payer;
 
-// Programs
-const svmSpokeIdl = require("../../target/idl/svm_spoke.json");
-const svmSpokeProgram = new Program<SvmSpoke>(svmSpokeIdl, provider);
-const handlerIdl = require("../../target/idl/multicall_handler.json");
-const handlerProgram = new Program<MulticallHandler>(handlerIdl, provider);
+const svmSpokeProgram = getSpokePoolProgram(provider);
+const handlerProgram = getMulticallHandlerProgram(provider);
 
 if (isSolanaDevnet(provider)) throw new Error("This script is only for mainnet");
 
