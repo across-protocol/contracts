@@ -43,10 +43,11 @@ let hubPool: Contract,
   weth: Contract,
   dai: Contract,
   usdc: Contract,
+  usdt: Contract,
   matic: Contract,
   timer: Contract,
   mockSpoke: Contract;
-let l2Weth: string, l2Dai: string, l2WMatic: string, l2Usdc: string;
+let l2Weth: string, l2Dai: string, l2WMatic: string, l2Usdc: string, l2Usdt: string;
 let owner: SignerWithAddress, dataWorker: SignerWithAddress, liquidityProvider: SignerWithAddress;
 let rootChainManager: FakeContract,
   fxStateSender: FakeContract,
@@ -62,17 +63,17 @@ const oftArbitrumEid = getOftEid(polygonChainId);
 describe("Polygon Chain Adapter", function () {
   beforeEach(async function () {
     [owner, dataWorker, liquidityProvider] = await ethers.getSigners();
-    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, usdc, l2Usdc } = await hubPoolFixture());
+    ({ weth, dai, l2Weth, l2Dai, hubPool, mockSpoke, timer, usdc, l2Usdc, usdt, l2Usdt } = await hubPoolFixture());
 
     matic = await (await getContractFactory("ExpandedERC20", owner)).deploy("Matic", "MATIC", 18);
     await matic.addMember(TokenRolesEnum.MINTER, owner.address);
     l2WMatic = randomAddress();
 
-    await seedWallet(dataWorker, [dai, matic, usdc], weth, amountToLp);
-    await seedWallet(liquidityProvider, [dai, matic, usdc], weth, amountToLp.mul(10));
+    await seedWallet(dataWorker, [dai, matic, usdc, usdt], weth, amountToLp);
+    await seedWallet(liquidityProvider, [dai, matic, usdc, usdt], weth, amountToLp.mul(10));
 
-    await enableTokensForLP(owner, hubPool, weth, [weth, dai, matic, usdc]);
-    for (const token of [weth, dai, matic, usdc]) {
+    await enableTokensForLP(owner, hubPool, weth, [weth, dai, matic, usdc, usdt]);
+    for (const token of [weth, dai, matic, usdc, usdt]) {
       await token.connect(liquidityProvider).approve(hubPool.address, amountToLp);
       await hubPool.connect(liquidityProvider).addLiquidity(token.address, amountToLp);
       await token.connect(dataWorker).approve(hubPool.address, bondAmount.mul(10));
@@ -112,6 +113,7 @@ describe("Polygon Chain Adapter", function () {
     await hubPool.setPoolRebalanceRoute(polygonChainId, dai.address, l2Dai);
     await hubPool.setPoolRebalanceRoute(polygonChainId, matic.address, l2WMatic);
     await hubPool.setPoolRebalanceRoute(polygonChainId, usdc.address, l2Usdc);
+    await hubPool.setPoolRebalanceRoute(polygonChainId, usdt.address, l2Usdt);
   });
 
   it("relayMessage calls spoke pool functions", async function () {
@@ -210,5 +212,60 @@ describe("Polygon Chain Adapter", function () {
       ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
       usdc.address
     );
+  });
+
+  it("Correctly calls the OFT bridge adapter when attempting to bridge USDT", async function () {
+    const internalChainId = polygonChainId;
+
+    // Ensure HubPool has ETH balance to pay native OFT fee if needed
+    await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
+
+    // Configure AdapterStore to return OFT messenger for USDT
+    oftMessenger.token.returns(usdt.address);
+
+    const oftMessengerType = ethers.utils.formatBytes32String("OFT_MESSENGER");
+    await adapterStore
+      .connect(owner)
+      .setMessenger(oftMessengerType, oftArbitrumEid, usdt.address, oftMessenger.address);
+    adapterStore.crossChainMessengers
+      .whenCalledWith(oftMessengerType, oftArbitrumEid, usdt.address)
+      .returns(oftMessenger.address);
+
+    const { leaves, tree, tokensSendToL2 } = await constructSingleChainTree(usdt.address, 1, internalChainId, 6);
+    await hubPool
+      .connect(dataWorker)
+      .proposeRootBundle([3117], 1, tree.getHexRoot(), mockRelayerRefundRoot, mockSlowRelayRoot);
+    await timer.setCurrentTime(Number(await timer.getCurrentTime()) + refundProposalLiveness + 1);
+
+    // Mock OFT fees and send receipts
+    const msgFeeStruct: MessagingFeeStructOutput = [toWei("0"), ethers.BigNumber.from(0)] as MessagingFeeStructOutput;
+    oftMessenger.quoteSend.returns(msgFeeStruct);
+
+    const msgReceipt: MessagingReceiptStructOutput = [
+      ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+      ethers.BigNumber.from("1"),
+      msgFeeStruct,
+    ] as MessagingReceiptStructOutput;
+    const oftReceipt: OFTReceiptStructOutput = [tokensSendToL2, tokensSendToL2] as OFTReceiptStructOutput;
+    oftMessenger.send.returns([msgReceipt, oftReceipt]);
+
+    await hubPool.connect(dataWorker).executeRootBundle(...Object.values(leaves[0]), tree.getHexProof(leaves[0]));
+
+    // Adapter should have approved OFT messenger to spend USDT from HubPool
+    expect(await usdt.allowance(hubPool.address, oftMessenger.address)).to.equal(tokensSendToL2);
+
+    const sendParam: SendParamStruct = {
+      dstEid: oftArbitrumEid,
+      to: ethers.utils.hexZeroPad(mockSpoke.address, 32).toLowerCase(),
+      amountLD: tokensSendToL2,
+      minAmountLD: tokensSendToL2,
+      extraOptions: "0x",
+      composeMsg: "0x",
+      oftCmd: "0x",
+    };
+
+    // We should have called send on the OFT messenger once with correct params
+    expect(oftMessenger.send).to.have.been.calledOnce;
+    expect(oftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, hubPool.address);
   });
 });
