@@ -1,0 +1,310 @@
+diff --git a/contracts/Polygon_SpokePool.sol b/contracts/Polygon_SpokePool.sol
+index ef36acec..ee3dbc76 100644
+--- a/contracts/Polygon_SpokePool.sol
++++ b/contracts/Polygon_SpokePool.sol
+@@ -21,11 +21,7 @@ interface IFxMessageProcessor {
+      * @param rootMessageSender Original L1 sender of data.
+      * @param data ABI encoded function call to execute on this contract.
+      */
+-    function processMessageFromRoot(
+-        uint256 stateId,
+-        address rootMessageSender,
+-        bytes calldata data
+-    ) external;
++    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
+ }
+ 
+ /**
+@@ -85,16 +81,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter
+         uint32 _depositQuoteTimeBuffer,
+         uint32 _fillDeadlineBuffer,
+         IERC20 _l2Usdc,
+-        ITokenMessenger _cctpTokenMessenger
++        ITokenMessenger _cctpTokenMessenger,
++        uint32 _oftDstEid,
++        uint256 _oftFeeCap
+     )
+-        SpokePool(
+-            _wrappedNativeTokenAddress,
+-            _depositQuoteTimeBuffer,
+-            _fillDeadlineBuffer,
+-            // Polygon_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+-            0,
+-            0
+-        )
++        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftDstEid, _oftFeeCap)
+         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
+     {} // solhint-disable-line no-empty-blocks
+ 
+@@ -153,7 +144,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter
+      * @param data ABI encoded function call to execute on this contract.
+      */
+     function processMessageFromRoot(
+-        uint256, /*stateId*/
++        uint256 /*stateId*/,
+         address rootMessageSender,
+         bytes calldata data
+     ) public validateInternalCalls {
+@@ -256,10 +247,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter
+         // due to a MAX_LOGS constraint imposed by the ERC20Predicate, so if this SpokePool will be used to withdraw
+         // MATIC then additional constraints need to be imposed to limit the # of logs produed by the L2 withdrawal
+         // transaction. Currently, MATIC is not a supported token in Across for this SpokePool.
++        address oftMessenger = _getOftMessenger(l2TokenAddress);
+ 
+         // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
+         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+             _transferUsdc(withdrawalRecipient, amountToReturn);
++        } else if (oftMessenger != address(0)) {
++            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+         } else {
+             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
+                 address(polygonTokenBridger),
+diff --git a/contracts/chain-adapters/Polygon_Adapter.sol b/contracts/chain-adapters/Polygon_Adapter.sol
+index 09d65829..37698a16 100644
+--- a/contracts/chain-adapters/Polygon_Adapter.sol
++++ b/contracts/chain-adapters/Polygon_Adapter.sol
+@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+ 
+ import "../libraries/CircleCCTPAdapter.sol";
+ import "../external/interfaces/CCTPInterfaces.sol";
++import { IOFT } from "../interfaces/IOFT.sol";
++import { OFTTransportAdapterWithStore } from "../libraries/OFTTransportAdapterWithStore.sol";
+ 
+ /**
+  * @notice Send tokens to Polygon.
+@@ -26,11 +28,7 @@ interface IRootChainManager {
+      * @param rootToken L1 Address of token to send.
+      * @param depositData Data to pass to L2 including amount of tokens to send. Should be abi.encode(amount).
+      */
+-    function depositFor(
+-        address user,
+-        address rootToken,
+-        bytes calldata depositData
+-    ) external;
++    function depositFor(address user, address rootToken, bytes calldata depositData) external;
+ }
+ 
+ /**
+@@ -55,11 +53,7 @@ interface DepositManager {
+      * @param user Recipient of L2 equivalent tokens on Polygon.
+      * @param amount Amount of `token` to send.
+      */
+-    function depositERC20ForUser(
+-        address token,
+-        address user,
+-        uint256 amount
+-    ) external;
++    function depositERC20ForUser(address token, address user, uint256 amount) external;
+ }
+ 
+ /**
+@@ -72,7 +66,7 @@ interface DepositManager {
+  */
+ 
+ // solhint-disable-next-line contract-name-camelcase
+-contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
++contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapterWithStore {
+     using SafeERC20 for IERC20;
+     IRootChainManager public immutable ROOT_CHAIN_MANAGER;
+     IFxStateSender public immutable FX_STATE_SENDER;
+@@ -91,6 +85,9 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
+      * @param _l1Weth WETH address on L1.
+      * @param _l1Usdc USDC address on L1.
+      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
++     * @param _adapterStore Helper storage contract to support bridging via OFT
++     * @param _oftDstEid destination endpoint id for OFT messaging
++     * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
+      */
+     constructor(
+         IRootChainManager _rootChainManager,
+@@ -100,8 +97,14 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
+         address _l1Matic,
+         WETH9Interface _l1Weth,
+         IERC20 _l1Usdc,
+-        ITokenMessenger _cctpTokenMessenger
+-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Polygon) {
++        ITokenMessenger _cctpTokenMessenger,
++        address _adapterStore,
++        uint32 _oftDstEid,
++        uint256 _oftFeeCap
++    )
++        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Polygon)
++        OFTTransportAdapterWithStore(_oftDstEid, _oftFeeCap, _adapterStore)
++    {
+         ROOT_CHAIN_MANAGER = _rootChainManager;
+         FX_STATE_SENDER = _fxStateSender;
+         DEPOSIT_MANAGER = _depositManager;
+@@ -128,12 +131,9 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
+      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
+      * @param to Bridge recipient.
+      */
+-    function relayTokens(
+-        address l1Token,
+-        address l2Token,
+-        uint256 amount,
+-        address to
+-    ) external payable override {
++    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
++        address oftMessenger = _getOftMessenger(l1Token);
++
+         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
+         if (l1Token == address(L1_WETH)) {
+             L1_WETH.withdraw(amount);
+@@ -142,6 +142,8 @@ contract Polygon_Adapter is AdapterInterface, CircleCCTPAdapter {
+         // If the l1Token is USDC, then we send it to the CCTP bridge
+         else if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
+             _transferUsdc(to, amount);
++        } else if (oftMessenger != address(0)) {
++            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
+         } else if (l1Token == L1_MATIC) {
+             IERC20(l1Token).safeIncreaseAllowance(address(DEPOSIT_MANAGER), amount);
+             DEPOSIT_MANAGER.depositERC20ForUser(l1Token, to, amount);
+diff --git a/deploy/009_deploy_polygon_adapter.ts b/deploy/009_deploy_polygon_adapter.ts
+index 7f4789cf..171dfbef 100644
+--- a/deploy/009_deploy_polygon_adapter.ts
++++ b/deploy/009_deploy_polygon_adapter.ts
+@@ -1,6 +1,7 @@
+ import { DeployFunction } from "hardhat-deploy/types";
+ import { HardhatRuntimeEnvironment } from "hardhat/types";
+-import { TOKEN_SYMBOLS_MAP } from "../utils";
++import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
++import { getOftEid, toWei } from "../utils/utils";
+ import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
+ 
+ const MATIC = TOKEN_SYMBOLS_MAP.MATIC.addresses;
+@@ -9,6 +10,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+   const { deployer } = await hre.getNamedAccounts();
+   const chainId = parseInt(await hre.getChainId());
+ 
++  const spokeChainId = chainId == CHAIN_IDs.MAINNET ? CHAIN_IDs.POLYGON : CHAIN_IDs.POLYGON_AMOY;
++
++  const oftDstEid = getOftEid(spokeChainId);
++  const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
++
+   const args = [
+     L1_ADDRESS_MAP[chainId].polygonRootChainManager,
+     L1_ADDRESS_MAP[chainId].polygonFxRoot,
+@@ -18,6 +24,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+     WETH[chainId],
+     USDC[chainId],
+     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
++    L1_ADDRESS_MAP[chainId].adapterStore,
++    oftDstEid,
++    oftFeeCap,
+   ];
+   const instance = await hre.deployments.deploy("Polygon_Adapter", {
+     from: deployer,
+diff --git a/deploy/011_deploy_polygon_spokepool.ts b/deploy/011_deploy_polygon_spokepool.ts
+index e7ef0f5d..e65e7e99 100644
+--- a/deploy/011_deploy_polygon_spokepool.ts
++++ b/deploy/011_deploy_polygon_spokepool.ts
+@@ -2,9 +2,10 @@ import { DeployFunction } from "hardhat-deploy/types";
+ import { HardhatRuntimeEnvironment } from "hardhat/types";
+ import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
+ import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WMATIC } from "./consts";
++import { getOftEid, toWei } from "../utils/utils";
+ 
+ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
++  const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+ 
+   const initArgs = [
+     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
+@@ -19,12 +20,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+     L2_ADDRESS_MAP[spokeChainId].fxChild,
+   ];
+ 
++  const oftEid = getOftEid(hubChainId);
++  const oftFeeCap = toWei(1); // 1 eth fee cap
+   const constructorArgs = [
+     WMATIC[spokeChainId],
+     QUOTE_TIME_BUFFER,
+     FILL_DEADLINE_BUFFER,
+     USDC[spokeChainId],
+     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
++    oftEid,
++    oftFeeCap,
+   ];
+   await deployNewProxy("Polygon_SpokePool", constructorArgs, initArgs);
+ };
+diff --git a/test/evm/hardhat/chain-adapters/Polygon_Adapter.ts b/test/evm/hardhat/chain-adapters/Polygon_Adapter.ts
+index 207711ea..2a3fa7fb 100644
+--- a/test/evm/hardhat/chain-adapters/Polygon_Adapter.ts
++++ b/test/evm/hardhat/chain-adapters/Polygon_Adapter.ts
+@@ -19,12 +19,24 @@ import {
+   randomAddress,
+   createFakeFromABI,
+   toWei,
++  getOftEid,
++  createTypedFakeFromABI,
+ } from "../../../../utils/utils";
+ import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
+ import { constructSingleChainTree } from "../MerkleLib.utils";
+ import { TokenRolesEnum } from "@uma/common";
+ import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
++import {
++  IOFT,
++  MessagingFeeStructOutput,
++  MessagingReceiptStructOutput,
++  OFTReceiptStructOutput,
++  SendParamStruct,
++} from "../../../../typechain/contracts/interfaces/IOFT";
++import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
+ import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
++import { AdapterStore, AdapterStore__factory } from "../../../../typechain";
++import { CHAIN_IDs } from "@across-protocol/constants";
+ 
+ let hubPool: Contract,
+   polygonAdapter: Contract,
+@@ -41,9 +53,11 @@ let rootChainManager: FakeContract,
+   depositManager: FakeContract,
+   cctpMessenger: FakeContract,
+   cctpTokenMinter: FakeContract,
+-  erc20Predicate: string;
+-
+-const polygonChainId = 137;
++  erc20Predicate: string,
++  oftMessenger: FakeContract<IOFT>,
++  adapterStore: FakeContract<AdapterStore>;
++const polygonChainId = CHAIN_IDs.POLYGON;
++const oftArbitrumEid = getOftEid(polygonChainId);
+ 
+ describe("Polygon Chain Adapter", function () {
+   beforeEach(async function () {
+@@ -73,6 +87,10 @@ describe("Polygon Chain Adapter", function () {
+     cctpMessenger.localMinter.returns(cctpTokenMinter.address);
+     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
+ 
++    oftMessenger = await createTypedFakeFromABI([...IOFT__factory.abi]);
++    adapterStore = await createTypedFakeFromABI([...AdapterStore__factory.abi]);
++    const oftFeeCap = toWei("1");
++
+     polygonAdapter = await (
+       await getContractFactory("Polygon_Adapter", owner)
+     ).deploy(
+@@ -83,7 +101,10 @@ describe("Polygon Chain Adapter", function () {
+       matic.address,
+       weth.address,
+       usdc.address,
+-      cctpMessenger.address
++      cctpMessenger.address,
++      adapterStore.address,
++      oftArbitrumEid,
++      oftFeeCap
+     );
+ 
+     await hubPool.setCrossChainContracts(polygonChainId, polygonAdapter.address, mockSpoke.address);
+diff --git a/tsconfig.json b/tsconfig.json
+index 1ea894eb..e4ab79fc 100644
+--- a/tsconfig.json
++++ b/tsconfig.json
+@@ -18,7 +18,8 @@
+     "./test-utils.ts",
+     "tasks/enableL1TokenAcrossEcosystem.ts",
+     "utils/utils.ts",
+-    "src/types"
++    "src/types",
++    "deploy/"
+   ],
+   "files": ["./hardhat.config.ts"]
+ }

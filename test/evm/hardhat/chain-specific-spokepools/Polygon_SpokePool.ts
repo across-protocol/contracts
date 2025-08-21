@@ -23,6 +23,15 @@ import {
   addressToBytes,
   toBN,
 } from "../../../../utils/utils";
+import { getOftEid } from "../../../../utils/utils";
+import { CHAIN_IDs } from "@across-protocol/constants";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
+import {
+  MessagingFeeStructOutput,
+  MessagingReceiptStructOutput,
+  OFTReceiptStructOutput,
+  SendParamStruct,
+} from "../../../../typechain/contracts/interfaces/IOFT";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { buildRelayerRefundLeaves, buildRelayerRefundTree, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
@@ -30,18 +39,26 @@ import { randomBytes } from "crypto";
 import { V3RelayData, deployMockSpokePoolCaller } from "../fixtures/SpokePool.Fixture";
 import { CCTPTokenMessengerInterface, CCTPTokenMinterInterface } from "../../../../utils/abis";
 
-let hubPool: Contract, polygonSpokePool: Contract, dai: Contract, weth: Contract, l2Dai: string, l2Usdc: string;
+let hubPool: Contract,
+  polygonSpokePool: Contract,
+  dai: Contract,
+  weth: Contract,
+  l2Dai: string,
+  l2Usdc: string,
+  usdt: Contract,
+  l2UsdtContract: Contract;
 let polygonRegistry: FakeContract,
   erc20Predicate: FakeContract,
   l2CctpTokenMessenger: FakeContract,
-  cctpTokenMinter: FakeContract;
+  cctpTokenMinter: FakeContract,
+  l2OftMessenger: FakeContract;
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
-describe("Polygon Spoke Pool", function () {
+describe.only("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
-    ({ weth, hubPool, l2Dai, l2Usdc } = await hubPoolFixture());
+    ({ weth, hubPool, l2Dai, l2Usdc, usdt, l2UsdtContract } = await hubPoolFixture());
 
     // The spoke pool exists on l2, so add a random chainId for L1 to ensure that the L2's block.chainid will not match.
     const l1ChainId = randomBigNumber();
@@ -53,6 +70,7 @@ describe("Polygon Spoke Pool", function () {
     cctpTokenMinter = await createFakeFromABI(CCTPTokenMinterInterface);
     l2CctpTokenMessenger.localMinter.returns(cctpTokenMinter.address);
     cctpTokenMinter.burnLimitsPerMessage.returns(toWei("1000000"));
+    l2OftMessenger = await createFakeFromABI([...IOFT__factory.abi]);
 
     polygonRegistry.erc20Predicate.returns(() => erc20Predicate.address);
 
@@ -63,28 +81,47 @@ describe("Polygon Spoke Pool", function () {
     dai = await (await getContractFactory("PolygonERC20Test", owner)).deploy();
     await dai.addMember(TokenRolesEnum.MINTER, owner.address);
 
+    const oftHubEid = getOftEid(CHAIN_IDs.MAINNET);
+
     polygonSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Polygon_SpokePool", owner),
       [0, polygonTokenBridger.address, owner.address, hubPool.address, fxChild.address],
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+        constructorArgs: [
+          weth.address,
+          60 * 60,
+          9 * 60 * 60,
+          l2Usdc,
+          l2CctpTokenMessenger.address,
+          oftHubEid,
+          toWei("1"),
+        ],
       }
     );
 
-    await seedContract(polygonSpokePool, relayer, [dai], weth, amountHeldByPool);
+    await seedContract(polygonSpokePool, relayer, [dai, l2UsdtContract], weth, amountHeldByPool);
     await seedWallet(owner, [], weth, toWei("1"));
   });
 
   it("Only cross domain owner upgrade logic contract", async function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
+    const oftHubEid = getOftEid(CHAIN_IDs.MAINNET);
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Polygon_SpokePool", owner),
       {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
-        constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
+        constructorArgs: [
+          weth.address,
+          60 * 60,
+          9 * 60 * 60,
+          l2Usdc,
+          l2CctpTokenMessenger.address,
+          oftHubEid,
+          toWei("1"),
+        ],
       }
     );
 
@@ -102,6 +139,89 @@ describe("Polygon Spoke Pool", function () {
     ).to.be.revertedWith("NotFxChild");
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, upgradeData);
+  });
+
+  it("Bridge tokens to hub pool correctly using the OFT messaging for L2 USDT token", async function () {
+    // Configure OFT messenger for L2 USDT via cross-domain call
+    l2OftMessenger.token.returns(l2UsdtContract.address);
+    const setOftMessengerData = polygonSpokePool.interface.encodeFunctionData("setOftMessenger", [
+      l2UsdtContract.address,
+      l2OftMessenger.address,
+    ]);
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setOftMessengerData);
+
+    const l2UsdtSendAmount = toWei("1");
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2UsdtContract.address,
+      await polygonSpokePool.callStatic.chainId(),
+      l2UsdtSendAmount
+    );
+
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      tree.getHexRoot(),
+      mockTreeRoot,
+    ]);
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+
+    const nativeFee = ethers.BigNumber.from(0);
+    const msgFeeStruct: MessagingFeeStructOutput = [nativeFee, ethers.BigNumber.from(0)] as MessagingFeeStructOutput;
+    l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+    const msgReceipt: MessagingReceiptStructOutput = [
+      ethers.utils.hexlify(ethers.utils.randomBytes(32)),
+      ethers.BigNumber.from("1"),
+      msgFeeStruct,
+    ] as MessagingReceiptStructOutput;
+    const oftReceipt: OFTReceiptStructOutput = [l2UsdtSendAmount, l2UsdtSendAmount] as OFTReceiptStructOutput;
+    l2OftMessenger.send.returns([msgReceipt, oftReceipt]);
+
+    await polygonSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
+
+    // Spoke should have approved OFT messenger to spend its L2 USDT
+    expect(await l2UsdtContract.allowance(polygonSpokePool.address, l2OftMessenger.address)).to.equal(l2UsdtSendAmount);
+
+    const oftHubEid = getOftEid(CHAIN_IDs.MAINNET);
+    const sendParam: SendParamStruct = {
+      dstEid: oftHubEid,
+      to: ethers.utils.hexZeroPad(hubPool.address, 32).toLowerCase(),
+      amountLD: l2UsdtSendAmount,
+      minAmountLD: l2UsdtSendAmount,
+      extraOptions: "0x",
+      composeMsg: "0x",
+      oftCmd: "0x",
+    };
+
+    expect(l2OftMessenger.send).to.have.been.calledOnce;
+    expect(l2OftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, polygonSpokePool.address);
+  });
+
+  it("reverts with OftInsufficientBalanceForFee if spoke pool has not enough ETH for OFT fee", async function () {
+    l2OftMessenger.token.returns(l2UsdtContract.address);
+    const setOftMessengerData = polygonSpokePool.interface.encodeFunctionData("setOftMessenger", [
+      l2UsdtContract.address,
+      l2OftMessenger.address,
+    ]);
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, setOftMessengerData);
+
+    const l2UsdtSendAmount = toWei("1");
+    const { leaves, tree } = await constructSingleRelayerRefundTree(
+      l2UsdtContract.address,
+      await polygonSpokePool.callStatic.chainId(),
+      l2UsdtSendAmount
+    );
+    const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
+      tree.getHexRoot(),
+      mockTreeRoot,
+    ]);
+    await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, relayRootBundleData);
+
+    const nativeFee = toWei("0.1");
+    const msgFeeStruct: MessagingFeeStructOutput = [nativeFee, ethers.BigNumber.from(0)] as MessagingFeeStructOutput;
+    l2OftMessenger.quoteSend.returns(msgFeeStruct);
+
+    await expect(
+      polygonSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("OftInsufficientBalanceForFee");
   });
 
   it("Only correct caller can set the cross domain admin", async function () {
