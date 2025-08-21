@@ -55,7 +55,7 @@ let polygonRegistry: FakeContract,
 
 let owner: SignerWithAddress, relayer: SignerWithAddress, rando: SignerWithAddress, fxChild: SignerWithAddress;
 
-describe.only("Polygon Spoke Pool", function () {
+describe("Polygon Spoke Pool", function () {
   beforeEach(async function () {
     [owner, relayer, fxChild, rando] = await ethers.getSigners();
     ({ weth, hubPool, l2Dai, l2Usdc, usdt, l2UsdtContract } = await hubPoolFixture());
