@@ -2,9 +2,10 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, WMATIC } from "./consts";
+import { getOftEid, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
 
   const initArgs = [
     // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -19,12 +20,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L2_ADDRESS_MAP[spokeChainId].fxChild,
   ];
 
+  const oftEid = getOftEid(hubChainId);
+  const oftFeeCap = toWei(1); // 1 eth fee cap
   const constructorArgs = [
     WMATIC[spokeChainId],
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId],
     L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    oftEid,
+    oftFeeCap,
   ];
   await deployNewProxy("Polygon_SpokePool", constructorArgs, initArgs);
 };
