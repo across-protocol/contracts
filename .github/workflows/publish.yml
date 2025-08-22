@@ -29,7 +29,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
       # Note we set an `id` called `release`. We'll use that later...
       - name: Validate and extract release information
@@ -115,7 +115,7 @@ jobs:
     name: Release SVM production binaries on GitHub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
@@ -138,7 +138,7 @@ jobs:
     name: Release SVM test binaries on GitHub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
