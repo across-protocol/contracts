@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-20T15:59:27.228Z",
+  "generated_at": "2025-08-22T17:41:10.581Z",
   "chains": {
     "1": {
       "chain_name": "Mainnet",
@@ -900,9 +900,9 @@
           "block_number": 4911835
         },
         "SpokePool": {
-          "address": "0xf4883c2dc7fc45eba7baf91d2928055d4b14d21b",
-          "transaction_hash": "0x5cba50737d86ef9d146202c17a620479800501b226c057bac505128af8c4eccb",
-          "block_number": 8605919
+          "address": "0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662",
+          "transaction_hash": "Unknown",
+          "block_number": 5288470
         },
         "PolygonTokenBridger": {
           "address": "0x4e3737679081c4D3029D88cA560918094f2e0284",
@@ -938,11 +938,6 @@
           "address": "0x9b2c2f3fD98cF8468715Be31155cc053C56f822A",
           "transaction_hash": "Unknown",
           "block_number": 8409722
-        },
-        "ERC1967Proxy": {
-          "address": "0x71f23002439dc6c2dc24f15d573922f8afd9455a",
-          "transaction_hash": "0x6cc66c10ff866a20d01e200304847f51b5a17311bd1d95c54efa51a0140179aa",
-          "block_number": 8605919
         }
       }
     },

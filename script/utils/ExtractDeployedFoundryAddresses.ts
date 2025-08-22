@@ -12,7 +12,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { getAddress } from "ethers/lib/utils";
 
-import { PUBLIC_NETWORKS } from "../../utils/constants";
+import { PUBLIC_NETWORKS, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs } from "../../utils/constants";
 
 interface BroadcastFile {
   scriptName: string;
@@ -272,14 +272,93 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   content.push("This file contains the latest deployed smart contract addresses from the broadcast folder.");
   content.push("");
 
-  // Sort by chain ID for consistent output
+  // Sort by priority: mainnet first, then testnet, then others
   const sortedChainIds = Object.keys(allContracts)
     .map(Number)
-    .sort((a, b) => a - b);
+    .sort((a, b) => {
+      const aIsMainnet = Object.values(MAINNET_CHAIN_IDs).includes(a);
+      const bIsMainnet = Object.values(MAINNET_CHAIN_IDs).includes(b);
+      const aIsTestnet = Object.values(TESTNET_CHAIN_IDs).includes(a);
+      const bIsTestnet = Object.values(TESTNET_CHAIN_IDs).includes(b);
+
+      // Mainnet networks first
+      if (aIsMainnet && !bIsMainnet) return -1;
+      if (!aIsMainnet && bIsMainnet) return 1;
+
+      // If both are mainnet or both are not mainnet, sort by chain ID
+      if (aIsMainnet === bIsMainnet) {
+        return a - b;
+      }
+
+      // Testnet networks second
+      if (aIsTestnet && !bIsTestnet) return -1;
+      if (!aIsTestnet && bIsTestnet) return 1;
+
+      // If both are testnet or both are not testnet, sort by chain ID
+      if (aIsTestnet === bIsTestnet) {
+        return a - b;
+      }
+
+      // Default sort by chain ID
+      return a - b;
+    });
+
+  // Log the sorting priority for visibility
+  console.log("\nChain sorting priority:");
+  const mainnetChains = sortedChainIds.filter((id) => Object.values(MAINNET_CHAIN_IDs).includes(id));
+  const testnetChains = sortedChainIds.filter((id) => Object.values(TESTNET_CHAIN_IDs).includes(id));
+  const otherChains = sortedChainIds.filter(
+    (id) => !Object.values(MAINNET_CHAIN_IDs).includes(id) && !Object.values(TESTNET_CHAIN_IDs).includes(id)
+  );
+
+  console.log(
+    `  Mainnet chains (${mainnetChains.length}): ${mainnetChains.map((id) => `${getChainName(id)}(${id})`).join(", ")}`
+  );
+  console.log(
+    `  Testnet chains (${testnetChains.length}): ${testnetChains.map((id) => `${getChainName(id)}(${id})`).join(", ")}`
+  );
+  console.log(
+    `  Other chains (${otherChains.length}): ${otherChains.map((id) => `${getChainName(id)}(${id})`).join(", ")}`
+  );
+  console.log("");
 
   for (const chainId of sortedChainIds) {
     const chainInfo = allContracts[chainId];
-    content.push(`## ${chainInfo.chainName} (Chain ID: ${chainId})`);
+    const isMainnet = Object.values(MAINNET_CHAIN_IDs).includes(chainId);
+    const isTestnet = Object.values(TESTNET_CHAIN_IDs).includes(chainId);
+
+    // Add section headers only once at the beginning of each category
+    if (
+      isMainnet &&
+      (chainId === sortedChainIds[0] ||
+        (sortedChainIds.indexOf(chainId) > 0 &&
+          !Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
+    ) {
+      content.push("## 🚀 Mainnet Networks");
+      content.push("");
+    } else if (
+      isTestnet &&
+      !isMainnet &&
+      (chainId === sortedChainIds[0] ||
+        (sortedChainIds.indexOf(chainId) > 0 &&
+          Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1]) &&
+          !Object.values(TESTNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
+    ) {
+      content.push("## 🧪 Testnet Networks");
+      content.push("");
+    } else if (
+      !isMainnet &&
+      !isTestnet &&
+      (chainId === sortedChainIds[0] ||
+        (sortedChainIds.indexOf(chainId) > 0 &&
+          Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1]) &&
+          Object.values(TESTNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
+    ) {
+      content.push("## 🔗 Other Networks");
+      content.push("");
+    }
+
+    content.push(`### ${chainInfo.chainName} (Chain ID: ${chainId})`);
     content.push("");
 
     for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
