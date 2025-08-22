@@ -1,11 +1,13 @@
 import * as deployments_ from "../deployments/deployments.json";
 
-interface DeploymentExport {
-  [chainId: string]: { [contractName: string]: { address: string; blockNumber: number } };
-}
-const deployments: DeploymentExport = deployments_ as any;
+/** Mapping: chainId -> contractName -> { address, blockNumber }. */
+export type Deployments = Record<string, Record<string, { address: string; blockNumber: number }>>;
 
-// Returns the deployed address of any contract on any network.
+export const deployments: Readonly<Deployments> = deployments_ as Deployments;
+
+/**
+ * Returns the deployed address of any contract on any network.
+ */
 export function getDeployedAddress(
   contractName: string,
   networkId: number | string,
@@ -19,7 +21,26 @@ export function getDeployedAddress(
   return address;
 }
 
-// Returns the deployment block number of any contract on any network.
+/**
+ * Returns all active deployments for a given contract name across all chains.
+ * Each result contains chainId, address, and blockNumber.
+ */
+export function getAllDeployedAddresses(
+  contractName: string
+): Array<{ chainId: number; address: string; blockNumber: number }> {
+  const results: Array<{ chainId: number; address: string; blockNumber: number }> = [];
+  Object.keys(deployments).forEach((_chainId) => {
+    const info = deployments[_chainId]?.[contractName];
+    if (info?.address) {
+      results.push({ chainId: Number(_chainId), address: info.address, blockNumber: info.blockNumber });
+    }
+  });
+  return results;
+}
+
+/**
+ * Returns the deployment block number of any contract on any network.
+ */
 export function getDeployedBlockNumber(contractName: string, networkId: number): number {
   try {
     return deployments[networkId.toString()][contractName].blockNumber;
@@ -28,7 +49,9 @@ export function getDeployedBlockNumber(contractName: string, networkId: number):
   }
 }
 
-// Returns the chainId and contract name for a given contract address.
+/**
+ * Returns the chainId and contract name for a given contract address.
+ */
 export function getContractInfoFromAddress(contractAddress: string): { chainId: Number; contractName: string } {
   const returnValue: { chainId: number; contractName: string }[] = [];
 
