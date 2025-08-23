@@ -204,7 +204,7 @@ describe("Scroll Chain Adapter", function () {
     const hubTxn = await hubPool.relaySpokePoolAdminFunction(scrollChainId, functionCallData);
 
     // To begin, we're expecting that the relaying fees needed to send this message have bene
-    // derrived from `l1GasPriceOracle.estimateCrossDomainMessageFee`.
+    // derived from `l1GasPriceOracle.estimateCrossDomainMessageFee`.
     await expect(hubTxn).to.changeEtherBalances([l1Messenger], [fakedRelayerFee]);
 
     // Let's check that the L1->L2 message was sent correctly and that the message
