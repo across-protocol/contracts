@@ -30,7 +30,7 @@ describe("HubPool Root Bundle Dispute", function () {
         consts.mockSlowRelayRoot
       );
 
-    // Increment time to avoid any weirdness with the dispute occuring at the same time as the proposal.
+    // Increment time to avoid any weirdness with the dispute occurring at the same time as the proposal.
     const proposalTime = await hubPool.getCurrentTime();
     await hubPool.connect(dataWorker).setCurrentTime(proposalTime.add(15));
 
