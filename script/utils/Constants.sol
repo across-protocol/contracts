@@ -295,6 +295,17 @@ contract Constants is Script {
         return vm.parseJsonAddress(file, jsonPath);
     }
 
+    /**
+     * @notice Get WGHO address for the given chain
+     * @param chainId The chain ID to get WGHO address for
+     * @return The WGHO address
+     */
+    function getWghoAddress(uint256 chainId) public view returns (address) {
+        string memory chainName = _getChainName(chainId);
+        string memory jsonPath = string(abi.encodePacked(".wghoAddresses.", chainName));
+        return vm.parseJsonAddress(file, jsonPath);
+    }
+
     function getOftEid(uint256 chainId) public view returns (uint256) {
         string memory chainName = _getChainName(chainId);
         return vm.parseJsonUint(file, string.concat(".oftEids.", chainName));
