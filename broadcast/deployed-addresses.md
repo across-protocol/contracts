@@ -688,6 +688,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `17456376`
 
+### 057DeployInkSpokePool.s.sol
+
+- **SpokePool**: `0x5be04e53b465c6fd89ecff3d36ddf666d198e31a`
+  - Transaction Hash: `0x4be0cb8bd16c8541998b7fb4fe7fb93fb453af9edf96dcdef7c2b48f5f134667`
+  - Block Number: `22643750`
+
 ### Linea (Chain ID: 59144)
 
 #### SpokePool
@@ -740,6 +746,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `21071991`
 
+### 036DeployBlastSpokePool.s.sol
+
+- **SpokePool**: `0xfcb6f77112951e1995d37542b519fe0a85a1aa77`
+  - Transaction Hash: `0x36ddae4eb4e86aab7bcead1e4e18dab4ac19b2e6facdcbc363df0b2f37e2eea0`
+  - Block Number: `23665884`
+
+### 049DeployZoraSpokePool.s.sol
+
+- **SpokePool**: `0x39e7ffa77a4ac4d34021c6bbe4c8778d47f684f2`
+  - Transaction Hash: `0xdce59ac179e030fccf4d1ef567157e21f63e152724843e4ec43330b282ad50a7`
+  - Block Number: `23666000`
+
 ### Scroll (Chain ID: 534352)
 
 #### SpokePool
@@ -766,6 +784,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `16783149`
 
+### 027DeployScrollSpokePool.s.sol
+
+- **SpokePool**: `0x9fda59848900a9c93b7dd9341312a292df8fcdc8`
+  - Transaction Hash: `0xe052d93c759370f20c1c3b0212a149a7207c0ea31bb2967e5cf3753f497d736e`
+  - Block Number: `20085960`
+
 ### Zora (Chain ID: 7777777)
 
 #### SpokePool
@@ -791,6 +815,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `32130332`
+
+### 049DeployZoraSpokePool.s.sol
+
+- **SpokePool**: `0x40ad479382ad2a5c3061487a5094a677b00f6cb0`
+  - Transaction Hash: `0x095f04a9587bad2fabfa5f0a40bb1e2b3481ad5a8904b33a9abd8ac4e0332deb`
+  - Block Number: `34724058`
 
 ### Solana (Chain ID: 34268394551451)
 
