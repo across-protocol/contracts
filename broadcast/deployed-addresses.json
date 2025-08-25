@@ -735,9 +735,9 @@
       "chain_name": "Blast",
       "contracts": {
         "SpokePool": {
-          "address": "0x39e7ffa77a4ac4d34021c6bbe4c8778d47f684f2",
-          "transaction_hash": "0xdce59ac179e030fccf4d1ef567157e21f63e152724843e4ec43330b282ad50a7",
-          "block_number": 23666000
+          "address": "0xfcb6f77112951e1995d37542b519fe0a85a1aa77",
+          "transaction_hash": "0x36ddae4eb4e86aab7bcead1e4e18dab4ac19b2e6facdcbc363df0b2f37e2eea0",
+          "block_number": 23665884
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",

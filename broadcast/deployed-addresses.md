@@ -752,12 +752,6 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0x36ddae4eb4e86aab7bcead1e4e18dab4ac19b2e6facdcbc363df0b2f37e2eea0`
   - Block Number: `23665884`
 
-### 049DeployZoraSpokePool.s.sol
-
-- **SpokePool**: `0x39e7ffa77a4ac4d34021c6bbe4c8778d47f684f2`
-  - Transaction Hash: `0xdce59ac179e030fccf4d1ef567157e21f63e152724843e4ec43330b282ad50a7`
-  - Block Number: `23666000`
-
 ### Scroll (Chain ID: 534352)
 
 #### SpokePool
