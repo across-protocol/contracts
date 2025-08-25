@@ -284,6 +284,17 @@ contract Constants is Script {
         return vm.parseJsonAddress(file, jsonPath);
     }
 
+    /**
+     * @notice Get USDC.e address for the given chain
+     * @param chainId The chain ID to get USDC.e address for
+     * @return The USDC.e address
+     */
+    function getUSDCeAddress(uint256 chainId) public view returns (address) {
+        string memory chainName = _getChainName(chainId);
+        string memory jsonPath = string(abi.encodePacked(".usdceAddresses.", chainName));
+        return vm.parseJsonAddress(file, jsonPath);
+    }
+
     function getOftEid(uint256 chainId) public view returns (uint256) {
         string memory chainName = _getChainName(chainId);
         return vm.parseJsonUint(file, string.concat(".oftEids.", chainName));
