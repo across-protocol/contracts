@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
 import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
 import "./external/interfaces/WETH9Interface.sol";
+import { IOFT, SendParam, MessagingFee, OFTReceipt } from "./interfaces/IOFT.sol";
 import "./interfaces/SpokePoolInterface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 
@@ -238,7 +239,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
     }
 
     function _preExecuteLeafHook(address) internal override {
-        // Wraps MATIC --> WMATIC before distributing tokens from this contract.
+        // Wraps MATIC --> WMATIC before distributing tokens from this contract. Preserves the current call's msg.value
+        // in native to allow paying for OFT fees
         _wrap();
     }
 
@@ -253,7 +255,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         } else if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+            _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
                 address(polygonTokenBridger),
@@ -266,8 +268,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
 
     function _wrap() internal {
         uint256 balance = address(this).balance;
-        //slither-disable-next-line arbitrary-send-eth
-        if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
+        if (balance > msg.value) {
+            //slither-disable-next-line arbitrary-send-eth
+            wrappedNativeToken.deposit{ value: balance - msg.value }();
+        }
     }
 
     // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`, which is why
