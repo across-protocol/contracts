@@ -414,6 +414,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `2884429`
 
+### 059DeployLensSpokePool.s.sol
+
+- **SpokePool**: `0xc7772ce23a3ed7f87fe51b87617c7c7d21f15d39`
+  - Transaction Hash: `0xa4938f34425c997b4686b5bad4f66b04bfbc2270dfe9c00b8f134da6a7b6edf5`
+  - Block Number: `4092265`
+
 ### Boba (Chain ID: 288)
 
 ### SpokePool
@@ -494,6 +500,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `16783149`
 
+### 047DeployRedstoneSpokePool.s.sol
+
+- **SpokePool**: `0x78d8cb7284b14c123a2e81a3246494e8dad873e4`
+  - Transaction Hash: `0xa57c46d87a2f441460948eee80f1301db9881360e82158d1dae50e73f3d32166`
+  - Block Number: `21978768`
+
 ### Lisk (Chain ID: 1135)
 
 ### SpokePool
@@ -545,6 +557,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `8910059`
+
+### 060DeployCherSpokePool.s.sol
+
+- **SpokePool**: `0x48e687205d3962c43891b8cde5a4fe75fa6c8d7a`
+  - Transaction Hash: `0x5e126b5845bf4425d053febf06089e7c02411ee3edf7df6ffa888bc530d85c7f`
+  - Block Number: `11504355`
 
 ### Base (Chain ID: 8453)
 
@@ -603,6 +621,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `25393939`
+
+### 039DeployModeSpokePool.s.sol
+
+- **SpokePool**: `0xc49226858478de8757e425661b1b5297102330d7`
+  - Transaction Hash: `0x0c14a2fadf82090979edd310e414ba7c7da3558ef1283ad2ec762f0093b5839b`
+  - Block Number: `27988148`
 
 ### Aleph Zero (Chain ID: 41455)
 
