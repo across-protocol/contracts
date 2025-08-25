@@ -665,9 +665,9 @@
       "chain_name": "Ink",
       "contracts": {
         "SpokePool": {
-          "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
-          "transaction_hash": "Unknown",
-          "block_number": 1139240
+          "address": "0x5be04e53b465c6fd89ecff3d36ddf666d198e31a",
+          "transaction_hash": "0x4be0cb8bd16c8541998b7fb4fe7fb93fb453af9edf96dcdef7c2b48f5f134667",
+          "block_number": 22643750
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -735,9 +735,9 @@
       "chain_name": "Blast",
       "contracts": {
         "SpokePool": {
-          "address": "0x2D509190Ed0172ba588407D4c2df918F955Cc6E1",
-          "transaction_hash": "Unknown",
-          "block_number": 5574280
+          "address": "0x39e7ffa77a4ac4d34021c6bbe4c8778d47f684f2",
+          "transaction_hash": "0xdce59ac179e030fccf4d1ef567157e21f63e152724843e4ec43330b282ad50a7",
+          "block_number": 23666000
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -815,9 +815,9 @@
       "chain_name": "Scroll",
       "contracts": {
         "SpokePool": {
-          "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96",
-          "transaction_hash": "Unknown",
-          "block_number": 7489705
+          "address": "0x9fda59848900a9c93b7dd9341312a292df8fcdc8",
+          "transaction_hash": "0xe052d93c759370f20c1c3b0212a149a7207c0ea31bb2967e5cf3753f497d736e",
+          "block_number": 20085960
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
@@ -855,9 +855,9 @@
       "chain_name": "Zora",
       "contracts": {
         "SpokePool": {
-          "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97",
-          "transaction_hash": "Unknown",
-          "block_number": 18382867
+          "address": "0x40ad479382ad2a5c3061487a5094a677b00f6cb0",
+          "transaction_hash": "0x095f04a9587bad2fabfa5f0a40bb1e2b3481ad5a8904b33a9abd8ac4e0332deb",
+          "block_number": 34724058
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
