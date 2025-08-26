@@ -238,10 +238,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         emit SetPolygonTokenBridger(address(_polygonTokenBridger));
     }
 
-    function _preExecuteLeafHook(address) internal override {
-        // Wraps MATIC --> WMATIC before distributing tokens from this contract. Preserves the current call's msg.value
-        // in native to allow paying for OFT fees
-        _wrap();
+    function _preExecuteLeafHook(address l2TokenAddress) internal override {
+        // Wraps MATIC --> WMATIC before distributing tokens from this contract. Only wrap if the token is not an OFT token
+        if (_getOftMessenger(l2TokenAddress) == address(0)) {
+            _wrap();
+        }
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
@@ -268,10 +269,8 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
 
     function _wrap() internal {
         uint256 balance = address(this).balance;
-        if (balance > msg.value) {
-            //slither-disable-next-line arbitrary-send-eth
-            wrappedNativeToken.deposit{ value: balance - msg.value }();
-        }
+        //slither-disable-next-line arbitrary-send-eth
+        if (balance > 0) wrappedNativeToken.deposit{ value: balance }();
     }
 
     // @dev: This contract will trigger admin functions internally via the `processMessageFromRoot`, which is why
