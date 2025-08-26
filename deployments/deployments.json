@@ -13,7 +13,7 @@
     "LpTokenFactory": { "address": "0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d", "blockNumber": 14704307 },
     "Optimism_Adapter": { "address": "0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b", "blockNumber": 19915034 },
     "PolygonTokenBridger": { "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57", "blockNumber": 14819539 },
-    "Polygon_Adapter": { "address": "0xb4AeF0178f5725392A26eE18684C2aB62adc912e", "blockNumber": 19915066 },
+    "Polygon_Adapter": { "address": "0xF71F1e20F75820b484F8A0959C2D9E5cdd89c9F0", "blockNumber": 23227800 },
     "ZkSync_Adapter": { "address": "0xA374585E6062517Ee367ee5044946A6fBe17724f", "blockNumber": 22167105 },
     "Base_Adapter": { "address": "0xE1421233BF7158A19f89F17c9735F9cbd3D9529c", "blockNumber": 19915087 },
     "Linea_Adapter": { "address": "0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787", "blockNumber": 22169879 },
