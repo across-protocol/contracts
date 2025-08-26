@@ -25,6 +25,7 @@ storage-layouts/proposed*
 
 # IDE
 .idea
+.vscode
 
 # Anchor files
 .anchor

@@ -21,6 +21,7 @@ const tasks = [
   "finalizeScrollClaims",
   "rescueStuckScrollTxn",
   "verifySpokePool",
+  "verifyBytecode",
   "evmRelayMessageWithdrawal",
   "testChainAdapter",
   "upgradeSpokePool",
