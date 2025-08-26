@@ -81,7 +81,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
     ) public returns (DeploymentResult memory result) {
         uint256 chainId = block.chainid;
 
-        contractName = string(abi.encodePacked(contractName, ".sol"));
+        contractName = string(abi.encodePacked("contracts/", contractName, ".sol:", contractName));
 
         // Check if a SpokePool already exists on this chain
         address existingProxy = getDeployedAddress("SpokePool", chainId, false);

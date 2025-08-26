@@ -16,7 +16,7 @@ contract Constants is Script {
     string public file;
 
     constructor() {
-        file = vm.readFile("script/constants.json");
+        file = vm.readFile("script/utils/constants.json");
     }
 
     function getChainId(string memory chainName) public view returns (uint256) {
@@ -57,6 +57,7 @@ contract Constants is Script {
         address blastDaiRetriever;
         address l1AlephZeroInbox;
         address l1AlephZeroERC20GatewayRouter;
+        address adapterStore;
         address donationBox;
         address hubPoolStore;
         address zkBridgeHub;
@@ -175,6 +176,7 @@ contract Constants is Script {
                         file,
                         string.concat(".l1Addresses.", chainName, ".l1AlephZeroERC20GatewayRouter")
                     ),
+                    adapterStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".adapterStore")),
                     donationBox: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".donationBox")),
                     hubPoolStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".hubPoolStore")),
                     zkBridgeHub: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".zkBridgeHub")),
@@ -223,7 +225,7 @@ contract Constants is Script {
 
     // Helper function to convert chain ID to chain name
     function _getChainName(uint256 chainId) internal view returns (string memory) {
-        if (chainId == getChainId(" MAINNET")) return "MAINNET";
+        if (chainId == getChainId("MAINNET")) return "MAINNET";
         if (chainId == getChainId("SEPOLIA")) return "SEPOLIA";
         if (chainId == getChainId("ARBITRUM")) return "ARBITRUM";
         if (chainId == getChainId("ARBITRUM_SEPOLIA")) return "ARBITRUM_SEPOLIA";
@@ -279,6 +281,28 @@ contract Constants is Script {
     function getUSDCAddress(uint256 chainId) public view returns (address) {
         string memory chainName = _getChainName(chainId);
         string memory jsonPath = string(abi.encodePacked(".usdcAddresses.", chainName));
+        return vm.parseJsonAddress(file, jsonPath);
+    }
+
+    /**
+     * @notice Get USDC.e address for the given chain
+     * @param chainId The chain ID to get USDC.e address for
+     * @return The USDC.e address
+     */
+    function getUSDCeAddress(uint256 chainId) public view returns (address) {
+        string memory chainName = _getChainName(chainId);
+        string memory jsonPath = string(abi.encodePacked(".usdceAddresses.", chainName));
+        return vm.parseJsonAddress(file, jsonPath);
+    }
+
+    /**
+     * @notice Get WGHO address for the given chain
+     * @param chainId The chain ID to get WGHO address for
+     * @return The WGHO address
+     */
+    function getWghoAddress(uint256 chainId) public view returns (address) {
+        string memory chainName = _getChainName(chainId);
+        string memory jsonPath = string(abi.encodePacked(".wghoAddresses.", chainName));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
