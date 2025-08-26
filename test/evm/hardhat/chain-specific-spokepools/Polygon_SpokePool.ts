@@ -195,7 +195,7 @@ describe("Polygon Spoke Pool", function () {
     expect(l2OftMessenger.send).to.have.been.calledWith(sendParam, msgFeeStruct, polygonSpokePool.address);
   });
 
-  it("reverts with OftInsufficientBalanceForFee if spoke pool has not enough ETH for OFT fee", async function () {
+  it("reverts with OFTFeeUnderpaid if caller does not supply the required OFT fee", async function () {
     l2OftMessenger.token.returns(l2UsdtContract.address);
     const setOftMessengerData = polygonSpokePool.interface.encodeFunctionData("setOftMessenger", [
       l2UsdtContract.address,
@@ -221,7 +221,7 @@ describe("Polygon Spoke Pool", function () {
 
     await expect(
       polygonSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-    ).to.be.revertedWith("OftInsufficientBalanceForFee");
+    ).to.be.revertedWith("OFTFeeUnderpaid");
   });
 
   it("Only correct caller can set the cross domain admin", async function () {
