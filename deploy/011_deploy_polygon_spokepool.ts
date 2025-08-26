@@ -21,7 +21,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   ];
 
   const oftEid = getOftEid(hubChainId);
-  const oftFeeCap = toWei(1); // 1 eth fee cap
+  // Fee cap of 22K POL is roughly equivalent to $5K at current POL price of ~0.23
+  const oftFeeCap = toWei(22000);
   const constructorArgs = [
     WMATIC[spokeChainId],
     QUOTE_TIME_BUFFER,
