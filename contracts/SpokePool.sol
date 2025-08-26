@@ -12,7 +12,7 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 import "./libraries/AddressConverters.sol";
-import { IOFT, SendParam, MessagingFee, OFTReceipt } from "./interfaces/IOFT.sol";
+import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
