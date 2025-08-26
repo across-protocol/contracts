@@ -28,7 +28,7 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        WETH9Interface wgho = getWrappedNativeToken(info.spokeChainId);
+        address wgho = getWghoAddress(info.spokeChainId);
 
         // Get L2 addresses for Lens
         address zkErc20Bridge = getL2Address(info.spokeChainId, "zkErc20Bridge");
@@ -50,7 +50,7 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
 
         // Prepare constructor arguments for Lens_SpokePool
         bytes memory constructorArgs = abi.encode(
-            address(wgho), // _wrappedNativeTokenAddress
+            wgho, // _wrappedNativeTokenAddress
             usdcAddress, // _circleUSDC
             zkUSDCBridge, // _zkUSDCBridge
             cctpTokenMessenger, // _cctpTokenMessenger

@@ -170,9 +170,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           const blockNumber = txHashToBlock[txHash] || null;
 
           let contractName = tx.contractName as string;
-          if ((tx.contractName as string).includes("_SpokePool")) {
-            contractName = "SpokePool";
-          }
 
           contracts.push({
             contractName: contractName || "Unknown",
@@ -362,7 +359,8 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     content.push("");
 
     for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      content.push(`### ${scriptName}`);
+      const name = contracts.length > 1 ? contracts[0].contractName : scriptName;
+      content.push(`#### ${name}`);
       content.push("");
 
       for (const contract of contracts) {
