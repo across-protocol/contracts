@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-22T17:41:10.581Z",
+  "generated_at": "2025-08-25T21:46:10.497Z",
   "chains": {
     "1": {
       "chain_name": "Mainnet",
@@ -15,9 +15,9 @@
           "block_number": 15976846
         },
         "Arbitrum_Adapter": {
-          "address": "0x5473CBD30bEd1Bf97C0c9d7c59d268CD620dA426",
+          "address": "0x5eC9844936875E27eBF22172f4d92E107D35B57C",
           "transaction_hash": "Unknown",
-          "block_number": 19915048
+          "block_number": 23086601
         },
         "Arbitrum_RescueAdapter": {
           "address": "0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375",

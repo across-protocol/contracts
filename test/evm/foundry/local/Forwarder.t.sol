@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -128,11 +127,7 @@ contract ForwarderTest is Test {
     }
 
     // Attempting to send a message to an uninitialized adapter should revert
-    function testUninitializedAdapter(
-        address target,
-        uint256 randomChainId,
-        bytes memory message
-    ) public {
+    function testUninitializedAdapter(address target, uint256 randomChainId, bytes memory message) public {
         vm.assume(randomChainId != L3_CHAIN_ID);
         vm.startPrank(aliasedOwner);
         vm.expectRevert(ForwarderBase.UninitializedChainAdapter.selector);
