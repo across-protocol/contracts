@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
 import "./external/interfaces/WETH9Interface.sol";
+import { IOFT } from "./interfaces/IOFT.sol";
 import "./interfaces/SpokePoolInterface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 
@@ -237,9 +238,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         emit SetPolygonTokenBridger(address(_polygonTokenBridger));
     }
 
-    function _preExecuteLeafHook(address) internal override {
-        // Wraps MATIC --> WMATIC before distributing tokens from this contract.
-        _wrap();
+    function _preExecuteLeafHook(address l2TokenAddress) internal override {
+        // Wraps MATIC --> WMATIC before distributing tokens from this contract. Only wrap if the token is not an OFT token
+        if (_getOftMessenger(l2TokenAddress) == address(0)) {
+            _wrap();
+        }
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
@@ -253,7 +256,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         } else if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+            _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
                 address(polygonTokenBridger),
