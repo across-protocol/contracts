@@ -372,8 +372,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
         content.push("");
       }
     }
-
-    // content.push("");
   }
 
   // Generate JSON format as well
