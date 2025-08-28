@@ -1,7 +1,6 @@
 import * as dotenv from "dotenv";
-
 import { HardhatUserConfig } from "hardhat/config";
-import { getNodeUrl, getMnemonic } from "@uma/common";
+import { PUBLIC_NETWORKS } from "@across-protocol/constants";
 import { CHAIN_IDs } from "./utils/constants";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
@@ -14,6 +13,25 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
+
+const getNodeUrl = (chainId: number): string => {
+  let url = process.env[`NODE_URL_${chainId}`] ?? process.env.CUSTOM_NODE_URL;
+  if (url === undefined) {
+    // eslint-disable-next-line no-console
+    console.log(`No configured RPC provider for chain ${chainId}, reverting to public RPC.`);
+    url = PUBLIC_NETWORKS[chainId].publicRPC;
+  }
+
+  return url;
+};
+
+const getMnemonic = () => {
+  // Publicly-disclosed mnemonic. This is required for hre deployments in test.
+  const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+  const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
+  return MNEMONIC;
+};
+const mnemonic = getMnemonic();
 
 // Custom tasks to add to HRE.
 const tasks = [
@@ -41,7 +59,6 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 const compileZk = process.env.COMPILE_ZK === "true";
 
 const solcVersion = "0.8.23";
-const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
