@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Zora_SpokePool } from "../contracts/Zora_SpokePool.sol";
+import { OP_SpokePool } from "../contracts/OP_SpokePool.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
@@ -41,7 +41,7 @@ contract DeployZoraSpokePool is Script, Test, DeploymentUtils {
         // Initialize deposit counter to 1
         // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
         bytes memory initArgs = abi.encodeWithSelector(
-            Zora_SpokePool.initialize.selector,
+            OP_SpokePool.initialize.selector,
             1, // _initialDepositId
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
@@ -49,7 +49,7 @@ contract DeployZoraSpokePool is Script, Test, DeploymentUtils {
 
         // Deploy the proxy
         DeploymentResult memory result = deployNewProxy(
-            "Zora_SpokePool",
+            "OP_SpokePool",
             constructorArgs,
             initArgs,
             true // implementationOnly

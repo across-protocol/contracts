@@ -97,6 +97,7 @@ const config: HardhatUserConfig = {
       "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Mode_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/OP_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
