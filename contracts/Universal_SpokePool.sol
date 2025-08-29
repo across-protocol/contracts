@@ -185,7 +185,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         } else if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+            _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             revert NotImplemented();
         }
