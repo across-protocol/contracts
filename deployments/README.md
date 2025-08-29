@@ -155,7 +155,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Lens mainnet (232)
 
-| Contract Name    | Address                                        |
-| ---------------- | ---------------------------------------------- |
-| Lens_SpokePool   | [0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12]() |
-| MulticallHandler | [0xc5939F59b3c9662377DdA53A08D5085b2d52b719]() |
+| Contract Name    | Address                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Lens_SpokePool   | [0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12](https://explorer.lens.xyz/address/0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12) |
+| MulticallHandler | [0xc5939F59b3c9662377DdA53A08D5085b2d52b719](https://explorer.lens.xyz/address/0xc5939F59b3c9662377DdA53A08D5085b2d52b719) |
