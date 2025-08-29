@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-25T21:46:10.497Z",
+  "generated_at": "2025-08-29T20:35:33.826Z",
   "chains": {
     "1": {
       "chain_name": "Mainnet",
@@ -70,9 +70,9 @@
           "block_number": 14819539
         },
         "Polygon_Adapter": {
-          "address": "0xb4AeF0178f5725392A26eE18684C2aB62adc912e",
+          "address": "0xF71F1e20F75820b484F8A0959C2D9E5cdd89c9F0",
           "transaction_hash": "Unknown",
-          "block_number": 19915066
+          "block_number": 23227800
         },
         "ZkSync_Adapter": {
           "address": "0xA374585E6062517Ee367ee5044946A6fBe17724f",
