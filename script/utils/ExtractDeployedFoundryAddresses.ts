@@ -360,7 +360,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
 
     for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
       const name = contracts.length > 0 ? contracts[0].contractName : scriptName;
-      content.push(`### ${name}`);
+      content.push(`#### ${name}`);
       content.push("");
 
       for (const contract of contracts) {
