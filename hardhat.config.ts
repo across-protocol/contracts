@@ -1,4 +1,5 @@
 import * as dotenv from "dotenv";
+dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
 import { CHAIN_IDs, PUBLIC_NETWORKS } from "./utils/constants";
 
@@ -46,8 +47,6 @@ const tasks = [
 
 // eslint-disable-next-line node/no-missing-require
 tasks.forEach((task) => require(`./tasks/${task}`));
-
-dotenv.config();
 
 const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 
@@ -199,6 +198,11 @@ const config: HardhatUserConfig = {
       companionNetworks: { l1: "mainnet" },
     },
     bsc: {
+      // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
+      // gas: "auto",
+      // gasPrice: 3e8, // 0.3 GWEI
+      // allowUnlimitedContractSize: true,
+      // gasMultiplier: 4.0,
       chainId: CHAIN_IDs.BSC,
       url: getNodeUrl(CHAIN_IDs.BSC),
       saveDeployments: true,

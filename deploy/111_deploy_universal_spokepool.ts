@@ -3,9 +3,18 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
 import { FILL_DEADLINE_BUFFER, L1_ADDRESS_MAP, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, ZERO_ADDRESS } from "./consts";
 import { CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils/constants";
+import { getOftEid, toWei } from "../utils/utils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { hubPool, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
+  if (spokeChainId == CHAIN_IDs.BSC) {
+    console.log("For BSC deployment to work, `hardhat.config.ts` might need a tweak");
+    // Set these in hardhat.config.ts networks.bsc
+    // gas: "auto",
+    // gasPrice: 3e8, // 0.3 GWEI
+    // allowUnlimitedContractSize: true,
+    // gasMultiplier: 4.0,
+  }
 
   const initArgs = [1, hubPool.address, hubPool.address];
 
@@ -18,6 +27,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     throw new Error(`Wrapped native token not found for ${wrappedNativeSymbol} on chainId ${spokeChainId}`);
   }
 
+  const oftEid = getOftEid(hubChainId);
+  // ! Notice. Deployed has to adjust this fee cap based on dst chain's native token. 4.4 BNB for BSC
+  const oftFeeCap = toWei(4.4); // ~1 ETH fee cap
+
   const constructorArgs = [
     24 * 60 * 60, // 1 day; Helios latest head timestamp must be 1 day old before an admin can force execute a message.
     L2_ADDRESS_MAP[spokeChainId]?.helios,
@@ -27,6 +40,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId] ?? ZERO_ADDRESS,
     L2_ADDRESS_MAP[spokeChainId]?.cctpTokenMessenger ?? ZERO_ADDRESS,
+    oftEid,
+    oftFeeCap,
   ];
   console.log(`Deploying new Universal SpokePool on ${spokeChainId} with args:`, constructorArgs);
 
