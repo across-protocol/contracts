@@ -448,7 +448,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         [relayer]
       );
     }
-    const { txSignature } = await sendTransactionWithLookupTable(connection, [executeIx], relayer);
+    const txSignature = await sendTransactionWithLookupTable(connection, [executeIx], relayer);
     await connection.confirmTransaction(txSignature, "confirmed");
     await connection.getTransaction(txSignature, {
       commitment: "confirmed",
