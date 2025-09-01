@@ -76,7 +76,7 @@
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 73247089 }
   },
   "232": {
-    "SpokePool": { "address": "0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12", "blockNumber": 193290 },
+    "SpokePool": { "address": "0xb234cA484866c811d0e6D3318866F583781ED045", "blockNumber": 4197027 },
     "MulticallHandler": { "address": "0xc5939F59b3c9662377DdA53A08D5085b2d52b719", "blockNumber": 193291 },
     "SpokePoolPeriphery": { "address": "0x8A8cA9c4112c67b7Dae7dF7E89EA45D592362107", "blockNumber": 2884429 }
   },
