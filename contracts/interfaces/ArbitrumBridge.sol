@@ -7,7 +7,7 @@ pragma solidity ^0.8.0;
  * used as native currency on upper layer.
  * @dev Fees are paid in this token. There are certain restrictions on the native token:
  *       - The token can't be rebasing or have a transfer fee
- *       - The token must only be transferrable via a call to the token address itself
+ *       - The token must only be transferable via a call to the token address itself
  *       - The token must only be able to set allowance via a call to the token address itself
  *       - The token must not have a callback on transfer, and more generally a user must not be able to make a transfer to themselves revert
  *       - The token must have a max of 2^256 - 1 wei total supply unscaled
