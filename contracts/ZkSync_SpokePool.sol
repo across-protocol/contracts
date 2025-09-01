@@ -140,7 +140,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     // Wrap any ETH owned by this contract so we can send expected L2 token to recipient. This is necessary because
-    // this SpokePool will receive ETH from the canonical token bridge instead of WETH. This may not be neccessary
+    // this SpokePool will receive ETH from the canonical token bridge instead of WETH. This may not be necessary
     // if ETH on ZkSync is treated as ETH and the fallback() function is triggered when this contract receives
     // ETH. We will have to test this but this function for now allows the contract to safely convert all of its
     // held ETH into WETH at the cost of higher gas costs.
