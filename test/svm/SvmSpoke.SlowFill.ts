@@ -108,7 +108,7 @@ describe("svm_spoke.slow_fill", () => {
         exclusiveRelayer: relayer.publicKey,
         inputToken: mint,
         outputToken: mint,
-        inputAmount: new BN(relayAmount),
+        inputAmount: intToU8Array32(relayAmount),
         outputAmount: new BN(relayAmount),
         originChainId: new BN(1),
         depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // Unique ID for each test.
@@ -184,7 +184,7 @@ describe("svm_spoke.slow_fill", () => {
       exclusiveRelayer: relayer.publicKey,
       inputToken: mint, // This is lazy. it should be an encoded token from a separate domain most likely.
       outputToken: mint,
-      inputAmount: new BN(relayAmount),
+      inputAmount: intToU8Array32(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(1),

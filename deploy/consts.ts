@@ -45,10 +45,12 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
+    adapterStore: "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
     hubPoolStore: "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
     zkUsdcSharedBridge_232: "0xf553E6D903AA43420ED7e3bc2313bE9286A8F987",
     zkUsdcSharedBridge_324: "0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB", // This is the standard shared bridge contract.
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.SEPOLIA]: {
     finder: "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4",
@@ -71,6 +73,7 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonRegistry: "0xfE92F7c3a701e43d8479738c8844bCc555b9e5CD",
     polygonDepositManager: "0x44Ad17990F9128C6d823Ee10dB7F0A5d40a731A4",
     zkBridgeHub: "0x236D1c3Ff32Bd0Ca26b72Af287E895627c0478cE",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
 };
 
@@ -178,9 +181,11 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.BSC]: {
-    helios: "0xcdb25d0a6fffe639bc591a565f2d99507837f2b7",
+    helios: "0xB04926aF663cB52899361B1F6313bcFEa5A58B29",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
@@ -188,6 +193,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0xF3be9355363857F3e001be68856A2f96b4C39Ba9",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.POLYGON_AMOY]: {
     fxChild: "0xE5930336866d0388f0f745A2d9207C7781047C0f",
@@ -198,12 +204,14 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
     cctpTokenMessenger: ZERO_ADDRESS, // CCTP not available on zkSync.
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
+    permit2: "0x0000000000225e31d15943971f47ad3022f714fa",
   },
   [CHAIN_IDs.OPTIMISM]: {
     cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",
     cctpMessageTransmitter: "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.OPTIMISM_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
@@ -215,6 +223,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0xAD09780d193884d503182aD4588450C416D6F9D4",
     uniswapV3SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.BASE_SEPOLIA]: {
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
@@ -225,6 +234,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
     zkUSDCBridge: "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81",
     cctpTokenMessenger: ZERO_ADDRESS, // Not available on Lens.
+    permit2: "0x0000000000225e31D15943971F47aD3022F714Fa",
   },
   [CHAIN_IDs.LENS_SEPOLIA]: {
     zkErc20Bridge: "0x427373Be173120D7A042b44D0804E37F25E7330b",
@@ -233,6 +243,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
+    permit2: "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768", // PancakeSwap Permit2
   },
   [CHAIN_IDs.SCROLL_SEPOLIA]: {
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
@@ -243,6 +254,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollERC20GatewayRouter: "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
     scrollGasPriceOracle: "0x5300000000000000000000000000000000000002",
     scrollMessenger: "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   1442: {
     // Custom WETH for testing because there is no "official" WETH
@@ -252,10 +264,35 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.UNICHAIN]: {
     cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
     cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
     cctpTokenMessenger: "0x8ed94B8dAd2Dc5453862ea5e316A8e71AAed9782",
     cctpMessageTransmitter: "0xbc498c326533d675cf571B90A2Ced265ACb7d086",
+  },
+  [CHAIN_IDs.BLAST]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.ZORA]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.WORLD_CHAIN]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.INK]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.SONEIUM]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.LISK]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.REDSTONE]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.MODE]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
 };
 
@@ -272,3 +309,12 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
 export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
   Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
 );
+
+const createChainMap = <T>(selector: (network: any) => T) =>
+  new Map(Object.entries(PUBLIC_NETWORKS).map(([id, network]) => [Number(id), selector(network)]));
+
+/**
+ * Mapping chainId => oft endpoint id
+ * @link https://docs.layerzero.network/v2/deployments/deployed-contracts
+ */
+export const OFT_EIDs = createChainMap<number>((network) => network.oftEid);

@@ -4,8 +4,6 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
-  NATIVE_MINT,
-  TOKEN_PROGRAM_ID,
   createApproveCheckedInstruction,
   createAssociatedTokenAccountIdempotentInstruction,
   createCloseAccountInstruction,
@@ -13,17 +11,26 @@ import {
   getAssociatedTokenAddressSync,
   getMinimumBalanceForRentExemptAccount,
   getMint,
+  NATIVE_MINT,
+  TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
   PublicKey,
-  Transaction,
   sendAndConfirmTransaction,
-  TransactionInstruction,
   SystemProgram,
+  Transaction,
+  TransactionInstruction,
 } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram, SOLANA_SPOKE_STATE_SEED } from "../../src/svm/web3-v1";
+import {
+  getDepositPda,
+  getDepositSeedHash,
+  getSpokePoolProgram,
+  intToU8Array32,
+  SOLANA_SPOKE_STATE_SEED,
+  u8Array32ToInt,
+} from "../../src/svm/web3-v1";
 
 // Set up the provider
 const provider = AnchorProvider.env();
@@ -37,7 +44,7 @@ const argv = yargs(hideBin(process.argv))
   .option("recipient", { type: "string", demandOption: true, describe: "Recipient public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
   .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
-  .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
+  .option("outputAmount", { type: "string", demandOption: true, describe: "Output amount" })
   .option("destinationChainId", { type: "string", demandOption: true, describe: "Destination chain ID" })
   .option("integratorId", { type: "string", demandOption: false, describe: "integrator ID" }).argv;
 
@@ -48,7 +55,7 @@ async function nativeDeposit(): Promise<void> {
   const inputToken = NATIVE_MINT;
   const outputToken = new PublicKey(resolvedArgv.outputToken);
   const inputAmount = new BN(resolvedArgv.inputAmount);
-  const outputAmount = new BN(resolvedArgv.outputAmount);
+  const outputAmount = intToU8Array32(new BN(resolvedArgv.outputAmount));
   const destinationChainId = new BN(resolvedArgv.destinationChainId);
   const exclusiveRelayer = PublicKey.default;
   const quoteTimestamp = Math.floor(Date.now() / 1000) - 1;
@@ -85,7 +92,7 @@ async function nativeDeposit(): Promise<void> {
     { property: "inputToken", value: inputToken.toString() },
     { property: "outputToken", value: outputToken.toString() },
     { property: "inputAmount", value: inputAmount.toString() },
-    { property: "outputAmount", value: outputAmount.toString() },
+    { property: "outputAmount", value: u8Array32ToInt(outputAmount).toString() },
     { property: "destinationChainId", value: destinationChainId.toString() },
     { property: "quoteTimestamp", value: quoteTimestamp.toString() },
     { property: "fillDeadline", value: fillDeadline.toString() },
@@ -125,11 +132,27 @@ async function nativeDeposit(): Promise<void> {
     ? []
     : [createCloseAccountInstruction(userTokenAccount, signer.publicKey, signer.publicKey)];
 
+  const depositData: Parameters<typeof getDepositSeedHash>[0] = {
+    depositor: signer.publicKey,
+    recipient,
+    inputToken,
+    outputToken,
+    inputAmount,
+    outputAmount,
+    destinationChainId,
+    exclusiveRelayer,
+    quoteTimestamp: new BN(quoteTimestamp),
+    fillDeadline: new BN(fillDeadline),
+    exclusivityParameter: new BN(exclusivityDeadline),
+    message,
+  };
+  const delegatePda = getDepositPda(depositData, program.programId);
+
   // Delegate state PDA to pull depositor tokens.
   const approveIx = await createApproveCheckedInstruction(
     userTokenAccount,
     inputToken,
-    statePda,
+    delegatePda,
     signer.publicKey,
     BigInt(inputAmount.toString()),
     tokenDecimals,
@@ -137,8 +160,21 @@ async function nativeDeposit(): Promise<void> {
     TOKEN_PROGRAM_ID
   );
 
-  const depositIx = await (
-    program.methods.deposit(
+  const depositAccounts = {
+    state: statePda,
+    delegate: delegatePda,
+    signer: signer.publicKey,
+    depositorTokenAccount: userTokenAccount,
+    vault: vault,
+    mint: inputToken,
+    tokenProgram: TOKEN_PROGRAM_ID,
+    associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+    systemProgram: SystemProgram.programId,
+    program: programId,
+  };
+
+  const depositIx = await program.methods
+    .deposit(
       signer.publicKey,
       recipient,
       inputToken,
@@ -151,16 +187,8 @@ async function nativeDeposit(): Promise<void> {
       fillDeadline,
       exclusivityDeadline,
       message
-    ) as any
-  )
-    .accounts({
-      state: statePda,
-      signer: signer.publicKey,
-      userTokenAccount,
-      vault: vault,
-      tokenProgram: TOKEN_PROGRAM_ID,
-      mint: inputToken,
-    })
+    )
+    .accounts(depositAccounts)
     .instruction();
 
   // Create the deposit transaction

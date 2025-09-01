@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -18,6 +17,7 @@ import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "..
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { HubPool } from "../../../../contracts/HubPool.sol";
 import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpTokenFactoryInterface.sol";
+import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
 
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().
@@ -56,6 +56,7 @@ contract RouterAdapterTest is Test {
     MockBedrockCrossDomainMessenger crossDomainMessenger;
     MockBedrockL1StandardBridge standardBridge;
     HubPool hubPool;
+    AdapterStore adapterStore;
 
     address l2Target;
     address owner;
@@ -94,6 +95,8 @@ contract RouterAdapterTest is Test {
         crossDomainMessenger = new MockBedrockCrossDomainMessenger();
         standardBridge = new MockBedrockL1StandardBridge();
 
+        adapterStore = new AdapterStore();
+
         optimismAdapter = new Optimism_Adapter(
             WETH9Interface(address(l1Weth)),
             address(crossDomainMessenger),
@@ -115,7 +118,7 @@ contract RouterAdapterTest is Test {
     // Sending Weth should call depositETHTo().
     function testRelayWeth(uint256 amountToSend, address random) public {
         // Prevent fuzz testing with amountToSend * 2 > 2^256
-        amountToSend = uint256(bound(amountToSend, 1, 2**254));
+        amountToSend = uint256(bound(amountToSend, 1, 2 ** 254));
         vm.deal(address(l1Weth), amountToSend);
         vm.deal(address(routerAdapter), amountToSend);
 

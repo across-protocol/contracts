@@ -21,15 +21,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(
-    depositor: Pubkey,
-    recipient: Pubkey,
-    input_token: Pubkey,
-    output_token: Pubkey,
-    input_amount: u64,
-    output_amount: u64,
-    destination_chain_id: u64
-)]
+#[instruction(depositor: Pubkey, recipient: Pubkey, input_token: Pubkey)]
 pub struct Deposit<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
@@ -82,7 +74,7 @@ pub fn _deposit(
     input_token: Pubkey,
     output_token: Pubkey,
     input_amount: u64,
-    output_amount: u64,
+    output_amount: [u8; 32],
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
     deposit_id: [u8; 32],
@@ -94,6 +86,10 @@ pub fn _deposit(
 ) -> Result<()> {
     let state = &mut ctx.accounts.state;
     let current_time = get_current_time(state)?;
+
+    if output_token == Pubkey::default() {
+        return err!(CommonError::InvalidOutputToken);
+    }
 
     if current_time.checked_sub(quote_timestamp).unwrap_or(u32::MAX) > state.deposit_quote_time_buffer {
         return err!(CommonError::InvalidQuoteTimestamp);
@@ -156,7 +152,7 @@ pub fn deposit(
     input_token: Pubkey,
     output_token: Pubkey,
     input_amount: u64,
-    output_amount: u64,
+    output_amount: [u8; 32],
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
     quote_timestamp: u32,
@@ -208,7 +204,7 @@ pub fn deposit_now(
     input_token: Pubkey,
     output_token: Pubkey,
     input_amount: u64,
-    output_amount: u64,
+    output_amount: [u8; 32],
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
     fill_deadline_offset: u32,
@@ -260,7 +256,7 @@ pub fn unsafe_deposit(
     input_token: Pubkey,
     output_token: Pubkey,
     input_amount: u64,
-    output_amount: u64,
+    output_amount: [u8; 32],
     destination_chain_id: u64,
     exclusive_relayer: Pubkey,
     deposit_nonce: u64,
