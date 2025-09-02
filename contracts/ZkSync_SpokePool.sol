@@ -8,11 +8,11 @@ import "./SpokePool.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
-    function withdraw(
-        address _l1Receiver,
-        address _l2Token,
-        uint256 _amount
-    ) external;
+    function withdraw(address _l1Receiver, address _l2Token, uint256 _amount) external;
+}
+
+interface IZkErc20 {
+    function l2Bridge() external view returns (address);
 }
 
 interface IL2ETH {
@@ -166,7 +166,13 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
                 zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
             }
         } else {
-            zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            // Elastic chain bridged tokens advertise custom bridge interface via the l2Bridge() getter.
+            address l2Bridge = IZkErc20(l2TokenAddress).l2Bridge();
+            if (l2Bridge != address(0)) {
+                ZkBridgeLike(l2Bridge).withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            } else {
+                zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            }
         }
     }
 
