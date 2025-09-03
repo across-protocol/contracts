@@ -17,10 +17,46 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
     }
 
     // @dev Any spoke pool's interface can be used here since they all should have the same upgradeTo function signature.
-    const abi = ["function upgradeTo(address newImplementation) external"];
+    const abi = [
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "newImplementation",
+            type: "address",
+          },
+          { internalType: "bytes", name: "data", type: "bytes" },
+        ],
+        name: "upgradeToAndCall",
+        outputs: [],
+        stateMutability: "payable",
+        type: "function",
+      },
+      {
+        inputs: [{ internalType: "bytes[]", name: "data", type: "bytes[]" }],
+        name: "multicall",
+        outputs: [{ internalType: "bytes[]", name: "results", type: "bytes[]" }],
+        stateMutability: "nonpayable",
+        type: "function",
+      },
+      {
+        inputs: [{ internalType: "bool", name: "pause", type: "bool" }],
+        name: "pauseDeposits",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+      },
+    ];
     const spokePool = new ethers.Contract(implementation, abi);
 
-    const upgradeTo = spokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
+    const data = spokePool.interface.encodeFunctionData("multicall", [
+      [
+        spokePool.interface.encodeFunctionData("pauseDeposits", [true]),
+        spokePool.interface.encodeFunctionData("pauseDeposits", [false]),
+      ],
+    ]);
+
+    const upgradeTo = spokePool.interface.encodeFunctionData("upgradeToAndCall", [implementation, data]);
     console.log(`upgradeTo bytes: `, upgradeTo);
 
     console.log(

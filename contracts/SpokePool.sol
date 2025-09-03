@@ -290,18 +290,6 @@ abstract contract SpokePool is
     function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 
     /**
-     * @notice Try to upgrade to new implementation and then downgrade to old implementation.
-     * @dev This is used to test the upgradeability of the contract.
-     * @param newImplementation New implementation address.
-     */
-    function try_upgradeTo(address newImplementation) public {
-        address oldImplementation = _getImplementation();
-        upgradeTo(newImplementation);
-        upgradeTo(oldImplementation);
-        revert("SUCCESSFULLY_UPGRADED_AND_DOWNGRADED");
-    }
-
-    /**
      * @notice Pauses deposit-related functions. This is intended to be used if this contract is deprecated or when
      * something goes awry.
      * @dev Affects `deposit()` but not `speedUpDeposit()`, so that existing deposits can be sped up and still
