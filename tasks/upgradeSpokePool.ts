@@ -70,7 +70,7 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
     } else {
       /**
        * We perform this seemingly unnecessary pause/unpause sequence because we want to ensure that the
-       * upgrade is successful and the new implementation is functioning correctly.
+       * upgrade is successful and the new implementation gets forwarded calls by the proxy contract as expected
        *
        * Since the upgrade and call happens atomically, the upgrade will revert if the new implementation
        * is not functioning correctly.
