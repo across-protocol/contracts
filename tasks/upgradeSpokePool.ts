@@ -1,10 +1,11 @@
 import { task } from "hardhat/config";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { HardhatRuntimeEnvironment, ActionType } from "hardhat/types";
 
 task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
   .addParam("implementation", "New SpokePool implementation address")
+  .addOptionalParam("upgradeOnly", "Upgrade only, do not pause deposits")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
-    const { implementation } = args;
+    const { implementation, upgradeOnly } = args;
     if (!implementation) {
       console.log("Usage: yarn hardhat upgrade-spokepool --implementation <implementation>");
       return;
@@ -18,6 +19,19 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
 
     // @dev Any spoke pool's interface can be used here since they all should have the same upgradeTo function signature.
     const abi = [
+      {
+        inputs: [
+          {
+            internalType: "address",
+            name: "newImplementation",
+            type: "address",
+          },
+        ],
+        name: "upgradeTo",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function",
+      },
       {
         inputs: [
           {
@@ -49,17 +63,23 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
     ];
     const spokePool = new ethers.Contract(implementation, abi);
 
-    const data = spokePool.interface.encodeFunctionData("multicall", [
-      [
-        spokePool.interface.encodeFunctionData("pauseDeposits", [true]),
-        spokePool.interface.encodeFunctionData("pauseDeposits", [false]),
-      ],
-    ]);
+    let calldata = "";
+    if (upgradeOnly) {
+      calldata = spokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
+      console.log(`upgradeTo bytes: `, calldata);
+    } else {
+      const data = spokePool.interface.encodeFunctionData("multicall", [
+        [
+          spokePool.interface.encodeFunctionData("pauseDeposits", [true]),
+          spokePool.interface.encodeFunctionData("pauseDeposits", [false]),
+        ],
+      ]);
 
-    const upgradeTo = spokePool.interface.encodeFunctionData("upgradeToAndCall", [implementation, data]);
-    console.log(`upgradeTo bytes: `, upgradeTo);
+      calldata = spokePool.interface.encodeFunctionData("upgradeToAndCall", [implementation, data]);
+      console.log(`upgradeToAndCall bytes: `, calldata);
+    }
 
     console.log(
-      `Call relaySpokePoolAdminFunction() with the params [<chainId>, ${upgradeTo}] on the hub pool from the owner's account.`
+      `Call relaySpokePoolAdminFunction() with the params [<chainId>, ${calldata}] on the hub pool from the owner's account.`
     );
   });
