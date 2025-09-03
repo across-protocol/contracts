@@ -1,9 +1,9 @@
 import { task } from "hardhat/config";
-import { HardhatRuntimeEnvironment, ActionType } from "hardhat/types";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
   .addParam("implementation", "New SpokePool implementation address")
-  .addOptionalParam("upgradeOnly", "Upgrade only, do not pause deposits")
+  .addOptionalParam("upgradeOnly", "Upgrade only, do not pause/unpause deposits")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
     const { implementation, upgradeOnly } = args;
     if (!implementation) {
@@ -68,6 +68,13 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
       calldata = spokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
       console.log(`upgradeTo bytes: `, calldata);
     } else {
+      /**
+       * We perform this seemingly unnecessary pause/unpause sequence because we want to ensure that the
+       * upgrade is successful and the new implementation is functioning correctly.
+       *
+       * Since the upgrade and call happens atomically, the upgrade will revert if the new implementation
+       * is not functioning correctly.
+       */
       const data = spokePool.interface.encodeFunctionData("multicall", [
         [
           spokePool.interface.encodeFunctionData("pauseDeposits", [true]),
