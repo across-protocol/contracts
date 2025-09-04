@@ -36,7 +36,27 @@ solc = "0.8.23"
 evm_version = "prague"
 
 [rpc_endpoints]
+arbitrum = "${NODE_URL_42161}"
+base = "${NODE_URL_8453}"
+bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
+ink = "${NODE_URL_57073}"
+lens = "${NODE_URL_262}"
+linea = "${NODE_URL_59144}"
+lisk = "${NODE_URL_1135}"
+mode = "${NODE_URL_34443}"
+optimism = "${NODE_URL_10}"
+polygon = "${NODE_URL_137}"
+redstone = "${NODE_URL_690}"
+scroll = "${NODE_URL_534352}"
+soneium = "${NODE_URL_1868}"
+unichain = "${NODE_URL_130}"
+world-chain = "${NODE_URL_480}"
+
+[profile.default.zksync]
+compile = true
+fallback_oz = true
+mode = '3'
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
