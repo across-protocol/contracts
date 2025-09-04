@@ -48,7 +48,7 @@
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
     "pre-commit-hook": "sh scripts/preCommitHook.sh",
     "extract-addresses": "./script/utils/extract_foundry_addresses.sh",
-    "generate-constants-json": "ts-node ./scripts/generate-constants-json.ts"
+    "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.69",
