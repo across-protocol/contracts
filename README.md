@@ -61,9 +61,20 @@ yarn lint-fix
 
 ### EVM
 
+#### Hardhat
+
 ```shell
 NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --network mainnet
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
+```
+
+#### Foundry
+
+```shell
+forge build
+
+forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+
 ```
 
 ### SVM
