@@ -19,6 +19,7 @@
   "main": "dist/index.js",
   "scripts": {
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
+    "forge-script-zksync": "forge script --zksync --suppress-errors sendtransfer",
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
     "lint-js": "yarn prettier --list-different **/*.js **/*.ts",
