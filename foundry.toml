@@ -53,10 +53,11 @@ soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 
-[profile.default.zksync]
+[profile.zksync]
 compile = true
 fallback_oz = true
 mode = '3'
+zksync = true
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
