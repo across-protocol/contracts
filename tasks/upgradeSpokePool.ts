@@ -17,50 +17,10 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
       throw new Error(`Implementation address must be checksummed (${implementation})`);
     }
 
+    const artifact = await hre.artifacts.readArtifact("SpokePool");
+
     // @dev Any spoke pool's interface can be used here since they all should have the same upgradeTo function signature.
-    const abi = [
-      {
-        inputs: [
-          {
-            internalType: "address",
-            name: "newImplementation",
-            type: "address",
-          },
-        ],
-        name: "upgradeTo",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-      {
-        inputs: [
-          {
-            internalType: "address",
-            name: "newImplementation",
-            type: "address",
-          },
-          { internalType: "bytes", name: "data", type: "bytes" },
-        ],
-        name: "upgradeToAndCall",
-        outputs: [],
-        stateMutability: "payable",
-        type: "function",
-      },
-      {
-        inputs: [{ internalType: "bytes[]", name: "data", type: "bytes[]" }],
-        name: "multicall",
-        outputs: [{ internalType: "bytes[]", name: "results", type: "bytes[]" }],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-      {
-        inputs: [{ internalType: "bool", name: "pause", type: "bool" }],
-        name: "pauseDeposits",
-        outputs: [],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-    ];
+    const abi = artifact.abi;
     const spokePool = new ethers.Contract(implementation, abi);
 
     let calldata = "";
