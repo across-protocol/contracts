@@ -73,7 +73,7 @@ ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license 
 ```shell
 forge build
 
-forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url https://mainnet.infura.com/xxx --broadcast --verify --verifier-api-key XXX -vvvv
+forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
 
 ```
 
