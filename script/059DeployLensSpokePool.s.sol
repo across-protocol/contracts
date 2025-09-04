@@ -11,10 +11,10 @@ import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens -vvvv
+// 2. yarn forge-script-zksync script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        forge script script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens \
+//        yarn forge-script-zksync script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens \
 //        --broadcast --verify --verifier blockscout --verifier-url https://verify.lens.xyz/contract_verification
 
 contract DeployLensSpokePool is Script, Test, DeploymentUtils {
