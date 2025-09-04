@@ -208,7 +208,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
 
         string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
 
-        if (isZkSyncChain && keccak256(abi.encodePacked(foundryProfile)) != keccak256(abi.encodePacked("zksync"))) {
+        if (isZkSyncChain) {
             vm.assertEq(
                 foundryProfile,
                 string("zksync"),
