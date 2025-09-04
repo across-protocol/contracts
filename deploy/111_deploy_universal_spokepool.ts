@@ -12,7 +12,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Set these in hardhat.config.ts networks.bsc
     // gas: "auto",
     // gasPrice: 3e8, // 0.3 GWEI
-    // allowUnlimitedContractSize: true,
     // gasMultiplier: 4.0,
   }
 

@@ -201,7 +201,6 @@ const config: HardhatUserConfig = {
       // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
       // gas: "auto",
       // gasPrice: 3e8, // 0.3 GWEI
-      // allowUnlimitedContractSize: true,
       // gasMultiplier: 4.0,
       chainId: CHAIN_IDs.BSC,
       url: getNodeUrl(CHAIN_IDs.BSC),
