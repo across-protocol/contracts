@@ -14,7 +14,6 @@ import {
   QUOTE_TIME_BUFFER,
   FILL_DEADLINE_BUFFER,
   ARBITRUM_MAX_SUBMISSION_COST,
-  AZERO_GAS_PRICE,
   CIRCLE_UNINITIALIZED_DOMAIN_ID,
   ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT,
   ZK_L2_GAS_LIMIT,
@@ -37,154 +36,15 @@ function convertChainIdsToObject(chainIds: any): { [key: string]: number } {
   return result;
 }
 
-// Helper function to extract wrapped native tokens from TOKEN_SYMBOLS_MAP
-function extractWrappedNativeTokens(): { [key: string]: string } {
-  const result: { [key: string]: string } = {};
-
-  // Extract WETH addresses for each chain
-  for (const [chainId, addresses] of Object.entries(WETH)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = addresses;
-    }
-  }
-
-  return result;
-}
-
-// Helper function to extract USDC addresses
-function extractUsdcAddresses(): { [key: string]: string } {
-  const result: { [key: string]: string } = {};
-
-  for (const [chainId, address] of Object.entries(USDC)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = address;
-    }
-  }
-
-  return result;
-}
-
-// Helper function to extract USDCe addresses
-function extractUsdceAddresses(): { [key: string]: string } {
-  const result: { [key: string]: string } = {};
-
-  for (const [chainId, address] of Object.entries(USDCe)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = address;
-    }
-  }
-
-  return result;
-}
-
-// Helper function to extract WGHO addresses
-function extractWghoAddresses(): { [key: string]: string } {
-  const result: { [key: string]: string } = {};
-
-  for (const [chainId, address] of Object.entries(WGHO)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = address;
-    }
-  }
-
-  return result;
-}
-
-// Helper function to convert L1_ADDRESS_MAP to the expected format
-function convertL1Addresses(): { [key: string]: { [key: string]: string } } {
-  const result: { [key: string]: { [key: string]: string } } = {};
-
-  for (const [chainId, addresses] of Object.entries(L1_ADDRESS_MAP)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = addresses;
-    }
-  }
-
-  return result;
-}
-
-// Helper function to convert L2_ADDRESS_MAP to the expected format
-function convertL2Addresses(): { [key: string]: { [key: string]: string } } {
-  const result: { [key: string]: { [key: string]: string } } = {};
-
-  for (const [chainId, addresses] of Object.entries(L2_ADDRESS_MAP)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = addresses;
-    }
-  }
-
-  return result;
-}
-
-// Helper function to convert OP_STACK_ADDRESS_MAP to the expected format
-function convertOpStackAddresses(): { [key: string]: { [key: string]: { [key: string]: string } } } {
-  const result: { [key: string]: { [key: string]: { [key: string]: string } } } = {};
-
-  for (const [hubChainId, spokeChains] of Object.entries(OP_STACK_ADDRESS_MAP)) {
-    const hubChainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(hubChainId)
-    );
-    if (hubChainName) {
-      result[hubChainName] = {};
-      for (const [spokeChainId, addresses] of Object.entries(spokeChains)) {
-        const spokeChainName = Object.keys(CHAIN_IDs).find(
-          (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(spokeChainId)
-        );
-        if (spokeChainName) {
-          result[hubChainName][spokeChainName] = addresses;
-        }
-      }
-    }
-  }
-
-  return result;
-}
-
 // Helper function to convert OFT_EIDs to the expected format
-function convertOftEids(): { [key: string]: number } {
+function filterInvalidValues(values: { [key: string]: number }): { [key: string]: number } {
   const result: { [key: string]: number } = {};
 
-  for (const [chainId, eid] of OFT_EIDs.entries()) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = eid;
+  for (const [chainId, eid] of Object.entries(values)) {
+    if (eid === -1) {
+      continue;
     }
-  }
-
-  return result;
-}
-
-// Helper function to convert CIRCLE_DOMAIN_IDs to the expected format
-function convertCircleDomainIds(): { [key: string]: number } {
-  const result: { [key: string]: number } = {};
-
-  for (const [chainId, domainId] of Object.entries(CIRCLE_DOMAIN_IDs)) {
-    const chainName = Object.keys(CHAIN_IDs).find(
-      (key) => CHAIN_IDs[key as keyof typeof CHAIN_IDs] === Number(chainId)
-    );
-    if (chainName) {
-      result[chainName] = domainId;
-    }
+    result[chainId] = eid;
   }
 
   return result;
@@ -194,27 +54,26 @@ function convertCircleDomainIds(): { [key: string]: number } {
 function generateConstantsJson() {
   const constants = {
     chainIds: convertChainIdsToObject(CHAIN_IDs),
-    oftEids: convertOftEids(),
-    wrappedNativeTokens: extractWrappedNativeTokens(),
-    l2Addresses: convertL2Addresses(),
-    l1Addresses: convertL1Addresses(),
-    opStackAddresses: convertOpStackAddresses(),
-    circleDomainIds: convertCircleDomainIds(),
+    oftEids: filterInvalidValues(Object.fromEntries(OFT_EIDs)),
+    wrappedNativeTokens: WETH,
+    l2Addresses: L2_ADDRESS_MAP,
+    l1Addresses: L1_ADDRESS_MAP,
+    opStackAddresses: OP_STACK_ADDRESS_MAP,
+    circleDomainIds: filterInvalidValues(CIRCLE_DOMAIN_IDs),
     timeConstants: {
-      QUOTE_TIME_BUFFER: QUOTE_TIME_BUFFER,
-      FILL_DEADLINE_BUFFER: FILL_DEADLINE_BUFFER,
+      QUOTE_TIME_BUFFER,
+      FILL_DEADLINE_BUFFER,
     },
-    usdcAddresses: extractUsdcAddresses(),
-    usdceAddresses: extractUsdceAddresses(),
-    wghoAddresses: extractWghoAddresses(),
+    usdcAddresses: USDC,
+    usdceAddresses: USDCe,
+    wghoAddresses: WGHO,
     otherConstants: {
-      ZERO_ADDRESS: ZERO_ADDRESS,
-      ARBITRUM_MAX_SUBMISSION_COST: ARBITRUM_MAX_SUBMISSION_COST,
-      AZERO_GAS_PRICE: AZERO_GAS_PRICE,
-      CIRCLE_UNINITIALIZED_DOMAIN_ID: CIRCLE_UNINITIALIZED_DOMAIN_ID,
-      ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT: ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT,
-      ZK_L2_GAS_LIMIT: ZK_L2_GAS_LIMIT,
-      ZK_MAX_GASPRICE: ZK_MAX_GASPRICE,
+      ZERO_ADDRESS,
+      ARBITRUM_MAX_SUBMISSION_COST,
+      CIRCLE_UNINITIALIZED_DOMAIN_ID,
+      ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT,
+      ZK_L2_GAS_LIMIT,
+      ZK_MAX_GASPRICE,
     },
   };
 
@@ -229,7 +88,7 @@ function main() {
     const constants = generateConstantsJson();
 
     // Write to script/utils/constants.json
-    const outputPath = path.join(__dirname, "../script/utils/constants.json");
+    const outputPath = path.join(__dirname, "./constants.json");
     const outputDir = path.dirname(outputPath);
 
     // Ensure the directory exists
