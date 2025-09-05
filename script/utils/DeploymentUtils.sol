@@ -30,6 +30,10 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
         bool isNewProxy;
     }
 
+    constructor() {
+        checkZkSyncChain(block.chainid);
+    }
+
     /**
      * @notice Get deployment information for SpokePool deployment
      * @dev This function mimics getSpokePoolDeploymentInfo from utils.hre.ts
@@ -189,5 +193,27 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
             chainId == getChainId("INK_SEPOLIA") ||
             chainId == getChainId("LISK_SEPOLIA") ||
             chainId == getChainId("MODE_SEPOLIA");
+    }
+
+    /**
+     * @notice Check if a chain ID is a ZkSync chain
+     * @dev This function will revert if the chain ID is a ZkSync chain but the FOUNDRY_PROFILE is not zksync
+     * @param chainId Chain ID to check
+     */
+    function checkZkSyncChain(uint256 chainId) internal view {
+        bool isZkSyncChain = chainId == getChainId("ZK_SYNC") ||
+            chainId == getChainId("ZK_SYNC_SEPOLIA") ||
+            chainId == getChainId("LENS") ||
+            chainId == getChainId("LENS_TESTNET");
+
+        string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
+
+        if (isZkSyncChain) {
+            vm.assertEq(
+                foundryProfile,
+                string("zksync"),
+                "Chain is a ZkSync chain but FOUNDRY_PROFILE is not zksync. Use yarn forge-script-zksync to deploy"
+            );
+        }
     }
 }
