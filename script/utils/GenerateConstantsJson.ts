@@ -53,21 +53,21 @@ function filterInvalidValues(values: { [key: string]: number }): { [key: string]
 // Generate the constants.json structure
 function generateConstantsJson() {
   const constants = {
-    chainIds: convertChainIdsToObject(CHAIN_IDs),
-    oftEids: filterInvalidValues(Object.fromEntries(OFT_EIDs)),
-    wrappedNativeTokens: WETH,
-    l2Addresses: L2_ADDRESS_MAP,
-    l1Addresses: L1_ADDRESS_MAP,
-    opStackAddresses: OP_STACK_ADDRESS_MAP,
-    circleDomainIds: filterInvalidValues(CIRCLE_DOMAIN_IDs),
-    timeConstants: {
+    CHAIN_IDs: convertChainIdsToObject(CHAIN_IDs),
+    OFT_EIDs: filterInvalidValues(Object.fromEntries(OFT_EIDs)),
+    WETH,
+    L2_ADDRESS_MAP,
+    L1_ADDRESS_MAP,
+    OP_STACK_ADDRESS_MAP,
+    CIRCLE_DOMAIN_IDs: filterInvalidValues(CIRCLE_DOMAIN_IDs),
+    TIME_CONSTANTS: {
       QUOTE_TIME_BUFFER,
       FILL_DEADLINE_BUFFER,
     },
-    usdcAddresses: USDC,
-    usdceAddresses: USDCe,
-    wghoAddresses: WGHO,
-    otherConstants: {
+    USDC,
+    USDCe,
+    WGHO,
+    OTHER_CONSTANTS: {
       ZERO_ADDRESS,
       ARBITRUM_MAX_SUBMISSION_COST,
       CIRCLE_UNINITIALIZED_DOMAIN_ID,
@@ -99,9 +99,9 @@ function main() {
     fs.writeFileSync(outputPath, JSON.stringify(constants, null, 2));
 
     console.log(`✅ Successfully generated constants.json at ${outputPath}`);
-    console.log(`📊 Generated ${Object.keys(constants.chainIds).length} chain IDs`);
-    console.log(`📊 Generated ${Object.keys(constants.l1Addresses).length} L1 address mappings`);
-    console.log(`📊 Generated ${Object.keys(constants.l2Addresses).length} L2 address mappings`);
+    console.log(`📊 Generated ${Object.keys(constants.CHAIN_IDs).length} chain IDs`);
+    console.log(`📊 Generated ${Object.keys(constants.L1_ADDRESS_MAP).length} L1 address mappings`);
+    console.log(`📊 Generated ${Object.keys(constants.L2_ADDRESS_MAP).length} L2 address mappings`);
   } catch (error) {
     console.error("❌ Error generating constants.json:", error);
     process.exit(1);

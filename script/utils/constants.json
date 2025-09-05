@@ -1,5 +1,5 @@
 {
-  "chainIds": {
+  "CHAIN_IDs": {
     "ALEPH_ZERO": 41455,
     "ARBITRUM": 42161,
     "BASE": 8453,
@@ -41,7 +41,7 @@
     "ZK_SYNC_SEPOLIA": 300,
     "SOLANA_DEVNET": 133268194659241
   },
-  "oftEids": {
+  "OFT_EIDs": {
     "1": 30101,
     "10": 30111,
     "56": 30102,
@@ -61,7 +61,7 @@
     "34268394551451": 30168,
     "133268194659241": 40168
   },
-  "wrappedNativeTokens": {
+  "WETH": {
     "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
     "10": "0x4200000000000000000000000000000000000006",
     "56": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
@@ -98,7 +98,7 @@
     "11155420": "0x4200000000000000000000000000000000000006",
     "168587773": "0x4200000000000000000000000000000000000023"
   },
-  "l2Addresses": {
+  "L2_ADDRESS_MAP": {
     "10": {
       "cctpTokenMessenger": "0x2B4069517957735bE00ceE0fadAE88a26365528f",
       "cctpMessageTransmitter": "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
@@ -226,7 +226,7 @@
       "uniswapV3SwapRouter": "0xd8866E76441df243fc98B892362Fc6264dC3ca80"
     }
   },
-  "l1Addresses": {
+  "L1_ADDRESS_MAP": {
     "1": {
       "finder": "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
       "l1ArbitrumInbox": "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",
@@ -278,7 +278,7 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     }
   },
-  "opStackAddresses": {
+  "OP_STACK_ADDRESS_MAP": {
     "1": {
       "10": {
         "L1CrossDomainMessenger": "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1",
@@ -362,7 +362,7 @@
       }
     }
   },
-  "circleDomainIds": {
+  "CIRCLE_DOMAIN_IDs": {
     "1": 0,
     "10": 2,
     "130": 10,
@@ -380,11 +380,11 @@
     "34268394551451": 5,
     "133268194659241": 5
   },
-  "timeConstants": {
+  "TIME_CONSTANTS": {
     "QUOTE_TIME_BUFFER": 3600,
     "FILL_DEADLINE_BUFFER": 21600
   },
-  "usdcAddresses": {
+  "USDC": {
     "1": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "10": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
     "130": "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
@@ -404,7 +404,7 @@
     "34268394551451": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
     "133268194659241": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"
   },
-  "usdceAddresses": {
+  "USDCe": {
     "1": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "10": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
     "137": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
@@ -417,11 +417,11 @@
     "42161": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "11155420": "0x9552a0a6624A23B848060AE5901659CDDa1f83f8"
   },
-  "wghoAddresses": {
+  "WGHO": {
     "1": "0x1ff1dC3cB9eeDbC6Eb2d99C03b30A05cA625fB5a",
     "232": "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F"
   },
-  "otherConstants": {
+  "OTHER_CONSTANTS": {
     "ZERO_ADDRESS": "0x0000000000000000000000000000000000000000",
     "ARBITRUM_MAX_SUBMISSION_COST": "10000000000000000",
     "CIRCLE_UNINITIALIZED_DOMAIN_ID": 4294967295,
