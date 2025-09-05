@@ -25,7 +25,7 @@ contract DeployScrollSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWrappedNativeToken(info.spokeChainId);
+        address weth = getWETHAddress(info.spokeChainId);
 
         // Get L2 addresses for Scroll
         address l2GatewayRouter = getL2Address(info.spokeChainId, "scrollERC20GatewayRouter");
@@ -35,7 +35,7 @@ contract DeployScrollSpokePool is Script, Test, DeploymentUtils {
 
         // Prepare constructor arguments for Scroll_SpokePool
         bytes memory constructorArgs = abi.encode(
-            address(weth), // _wrappedNativeTokenAddress
+            weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
         );
@@ -64,7 +64,7 @@ contract DeployScrollSpokePool is Script, Test, DeploymentUtils {
         console.log("Chain ID:", info.spokeChainId);
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
-        console.log("WETH address:", address(weth));
+        console.log("WETH address:", weth);
         console.log("L2 Gateway Router:", l2GatewayRouter);
         console.log("L2 Scroll Messenger:", l2ScrollMessenger);
         console.log("Scroll_SpokePool proxy deployed to:", result.proxy);
