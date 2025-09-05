@@ -124,7 +124,7 @@ contract ZkSync_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
 
     // We need to pay a base fee to the operator to include our L1 --> L2 transaction.
-    // https://era.zksync.io/docs/dev/developer-guides/bridging/l1-l2.html#getting-the-base-cost
+    // https://docs.zksync.io/zksync-network/sdk/js/ethers/guides/accounts-l1-l2#base-cost
 
     // Generally, the following params are a bit hard to set and may change in the future once ZkSync
     // goes live. For now, we'll hardcode these and use aggressive values to ensure inclusion.
