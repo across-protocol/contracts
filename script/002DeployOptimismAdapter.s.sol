@@ -9,6 +9,7 @@ import { Constants } from "./utils/Constants.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
+import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
@@ -39,7 +40,7 @@ contract DeployOptimismAdapter is Script, Test, Constants {
 
         // Deploy Optimism_Adapter with constructor parameters
         Optimism_Adapter optimismAdapter = new Optimism_Adapter(
-            getWrappedNativeToken(chainId), // L1 WETH
+            WETH9Interface(getWETHAddress(chainId)), // L1 WETH
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
             IERC20(getUSDCAddress(chainId)), // L1 USDC
@@ -49,7 +50,7 @@ contract DeployOptimismAdapter is Script, Test, Constants {
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
         console.log("Optimism_Adapter deployed to:", address(optimismAdapter));
-        console.log("L1 WETH:", address(getWrappedNativeToken(chainId)));
+        console.log("L1 WETH:", getWETHAddress(chainId));
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);
         console.log("L1 USDC:", getUSDCAddress(chainId));

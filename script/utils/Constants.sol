@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
-import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
-
 import { Script } from "forge-std/Script.sol";
-import { console } from "forge-std/console.sol";
 
 /**
  * @title Constants
@@ -20,19 +16,15 @@ contract Constants is Script {
     }
 
     function getChainId(string memory chainName) public view returns (uint256) {
-        return vm.parseJsonUint(file, string.concat(".chainIds.", chainName));
-    }
-
-    function getWrappedNativeToken(string memory chainName) public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress(file, string.concat(".wrappedNativeTokens.", chainName)));
+        return vm.parseJsonUint(file, string.concat(".CHAIN_IDs.", chainName));
     }
 
     function QUOTE_TIME_BUFFER() public view returns (uint256) {
-        return vm.parseJsonUint(file, ".timeConstants.QUOTE_TIME_BUFFER");
+        return vm.parseJsonUint(file, ".TIME_CONSTANTS.QUOTE_TIME_BUFFER");
     }
 
     function FILL_DEADLINE_BUFFER() public view returns (uint256) {
-        return vm.parseJsonUint(file, ".timeConstants.FILL_DEADLINE_BUFFER");
+        return vm.parseJsonUint(file, ".TIME_CONSTANTS.FILL_DEADLINE_BUFFER");
     }
 
     // L1 Address Map
@@ -95,98 +87,110 @@ contract Constants is Script {
 
     // Helper functions to get addresses for a specific chain
     function getL1Addresses(uint256 chainId) public view returns (L1Addresses memory) {
-        string memory chainName = _getChainName(chainId);
+        string memory chainIdString = vm.toString(chainId);
         if (chainId == getChainId("MAINNET") || chainId == getChainId("SEPOLIA")) {
             return
                 L1Addresses({
-                    finder: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".finder")),
+                    finder: vm.parseJsonAddress(file, string.concat(".L1_ADDRESS_MAP.", chainIdString, ".finder")),
                     l1ArbitrumInbox: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".l1ArbitrumInbox")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1ArbitrumInbox")
                     ),
                     l1ERC20GatewayRouter: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".l1ERC20GatewayRouter")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1ERC20GatewayRouter")
                     ),
                     polygonRootChainManager: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".polygonRootChainManager")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".polygonRootChainManager")
                     ),
                     polygonFxRoot: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".polygonFxRoot")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".polygonFxRoot")
                     ),
                     polygonERC20Predicate: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".polygonERC20Predicate")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".polygonERC20Predicate")
                     ),
                     polygonRegistry: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".polygonRegistry")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".polygonRegistry")
                     ),
                     polygonDepositManager: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".polygonDepositManager")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".polygonDepositManager")
                     ),
                     cctpTokenMessenger: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".cctpTokenMessenger")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpTokenMessenger")
                     ),
                     cctpV2TokenMessenger: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".cctpV2TokenMessenger")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpV2TokenMessenger")
                     ),
                     cctpMessageTransmitter: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".cctpMessageTransmitter")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".cctpMessageTransmitter")
                     ),
                     lineaMessageService: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".lineaMessageService")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".lineaMessageService")
                     ),
                     lineaTokenBridge: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".lineaTokenBridge")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".lineaTokenBridge")
                     ),
                     scrollERC20GatewayRouter: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".scrollERC20GatewayRouter")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollERC20GatewayRouter")
                     ),
                     scrollMessengerRelay: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".scrollMessengerRelay")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollMessengerRelay")
                     ),
                     scrollGasPriceOracle: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".scrollGasPriceOracle")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".scrollGasPriceOracle")
                     ),
                     blastYieldManager: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".blastYieldManager")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastYieldManager")
                     ),
                     blastDaiRetriever: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".blastDaiRetriever")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastDaiRetriever")
                     ),
                     l1AlephZeroInbox: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".l1AlephZeroInbox")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroInbox")
                     ),
                     l1AlephZeroERC20GatewayRouter: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".l1AlephZeroERC20GatewayRouter")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroERC20GatewayRouter")
                     ),
-                    adapterStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".adapterStore")),
-                    donationBox: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".donationBox")),
-                    hubPoolStore: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".hubPoolStore")),
-                    zkBridgeHub: vm.parseJsonAddress(file, string.concat(".l1Addresses.", chainName, ".zkBridgeHub")),
+                    adapterStore: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".adapterStore")
+                    ),
+                    donationBox: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".donationBox")
+                    ),
+                    hubPoolStore: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".hubPoolStore")
+                    ),
+                    zkBridgeHub: vm.parseJsonAddress(
+                        file,
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".zkBridgeHub")
+                    ),
                     zkUsdcSharedBridge_232: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".zkUsdcSharedBridge_232")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".zkUsdcSharedBridge_232")
                     ),
                     zkUsdcSharedBridge_324: vm.parseJsonAddress(
                         file,
-                        string.concat(".l1Addresses.", chainName, ".zkUsdcSharedBridge_324")
+                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".zkUsdcSharedBridge_324")
                     )
                 });
         }
@@ -197,10 +201,12 @@ contract Constants is Script {
         uint256 hubChainId,
         uint256 spokeChainId
     ) public view returns (OpStackAddresses memory) {
-        string memory hubChainName = _getChainName(hubChainId);
-        string memory spokeChainName = _getChainName(spokeChainId);
-
-        string memory path = string.concat(".opStackAddresses.", hubChainName, ".", spokeChainName);
+        string memory path = string.concat(
+            ".OP_STACK_ADDRESS_MAP.",
+            vm.toString(hubChainId),
+            ".",
+            vm.toString(spokeChainId)
+        );
 
         return
             OpStackAddresses({
@@ -213,14 +219,12 @@ contract Constants is Script {
 
     // Circle domain IDs mapping
     function getCircleDomainId(uint256 chainId) public view returns (uint32) {
-        string memory chainName = _getChainName(chainId);
-        return uint32(vm.parseJsonUint(file, string.concat(".circleDomainIds.", chainName)));
+        return uint32(vm.parseJsonUint(file, string.concat(".CIRCLE_DOMAIN_IDs.", vm.toString(chainId))));
     }
 
     // Get WETH address for any supported chain
-    function getWrappedNativeToken(uint256 chainId) public view returns (WETH9Interface) {
-        string memory chainName = _getChainName(chainId);
-        return WETH9Interface(vm.parseJsonAddress(file, string.concat(".wrappedNativeTokens.", chainName)));
+    function getWETHAddress(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".WETH.", vm.toString(chainId)));
     }
 
     // Helper function to convert chain ID to chain name
@@ -238,9 +242,8 @@ contract Constants is Script {
         if (chainId == getChainId("BASE")) return "BASE";
         if (chainId == getChainId("BASE_SEPOLIA")) return "BASE_SEPOLIA";
         if (chainId == getChainId("LENS")) return "LENS";
-        if (chainId == getChainId("LENS_TESTNET")) return "LENS_TESTNET";
+        if (chainId == getChainId("LENS_SEPOLIA")) return "LENS_SEPOLIA";
         if (chainId == getChainId("LINEA")) return "LINEA";
-        if (chainId == getChainId("LINEA_SEPOLIA")) return "LINEA_SEPOLIA";
         if (chainId == getChainId("SCROLL_SEPOLIA")) return "SCROLL_SEPOLIA";
         if (chainId == getChainId("SCROLL")) return "SCROLL";
         if (chainId == getChainId("UNICHAIN")) return "UNICHAIN";
@@ -269,7 +272,7 @@ contract Constants is Script {
      */
     function getL2Address(uint256 chainId, string memory addressType) public view returns (address) {
         string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".l2Addresses.", chainName, ".", addressType));
+        string memory jsonPath = string(abi.encodePacked(".L2_ADDRESS_MAP.", chainName, ".", addressType));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
@@ -280,7 +283,7 @@ contract Constants is Script {
      */
     function getUSDCAddress(uint256 chainId) public view returns (address) {
         string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".usdcAddresses.", chainName));
+        string memory jsonPath = string(abi.encodePacked(".USDC.", chainName));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
@@ -291,7 +294,7 @@ contract Constants is Script {
      */
     function getUSDCeAddress(uint256 chainId) public view returns (address) {
         string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".usdceAddresses.", chainName));
+        string memory jsonPath = string(abi.encodePacked(".USDCe.", chainName));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
@@ -302,12 +305,12 @@ contract Constants is Script {
      */
     function getWghoAddress(uint256 chainId) public view returns (address) {
         string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".wghoAddresses.", chainName));
+        string memory jsonPath = string(abi.encodePacked(".WGHO.", chainName));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
     function getOftEid(uint256 chainId) public view returns (uint256) {
         string memory chainName = _getChainName(chainId);
-        return vm.parseJsonUint(file, string.concat(".oftEids.", chainName));
+        return vm.parseJsonUint(file, string.concat(".OFT_EIDs.", chainName));
     }
 }

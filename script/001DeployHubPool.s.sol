@@ -26,7 +26,7 @@ contract DeployHubPool is Script, Test, Constants {
         uint256 chainId = block.chainid;
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWrappedNativeToken(chainId);
+        address weth = getWETHAddress(chainId);
         FinderInterface finder = FinderInterface(getL1Addresses(chainId).finder);
 
         vm.startBroadcast(deployerPrivateKey);
@@ -35,7 +35,7 @@ contract DeployHubPool is Script, Test, Constants {
         LpTokenFactory lpTokenFactory = new LpTokenFactory();
 
         // Deploy HubPool with the LpTokenFactory address
-        HubPool hubPool = new HubPool(lpTokenFactory, finder, weth, address(0));
+        HubPool hubPool = new HubPool(lpTokenFactory, finder, WETH9Interface(weth), address(0));
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
