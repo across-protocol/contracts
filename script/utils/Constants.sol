@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
-import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
-
 import { Script } from "forge-std/Script.sol";
-import { console } from "forge-std/console.sol";
 
 /**
  * @title Constants
@@ -227,8 +223,8 @@ contract Constants is Script {
     }
 
     // Get WETH address for any supported chain
-    function getWrappedNativeToken(uint256 chainId) public view returns (WETH9Interface) {
-        return WETH9Interface(vm.parseJsonAddress(file, string.concat(".WETH.", vm.toString(chainId))));
+    function getWETHAddress(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".WETH.", vm.toString(chainId)));
     }
 
     // Helper function to convert chain ID to chain name

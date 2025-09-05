@@ -5,7 +5,6 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Arbitrum_SpokePool } from "../contracts/Arbitrum_SpokePool.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
@@ -25,7 +24,7 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWrappedNativeToken(info.spokeChainId);
+        address weth = getWETHAddress(info.spokeChainId);
 
         // Get L2 addresses for Arbitrum
         address l2GatewayRouter = getL2Address(info.spokeChainId, "l2GatewayRouter");
@@ -35,7 +34,7 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
 
         // Prepare constructor arguments for Arbitrum_SpokePool
         bytes memory constructorArgs = abi.encode(
-            address(weth), // _weth
+            weth, // _weth
             QUOTE_TIME_BUFFER(), // _quoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             getUSDCAddress(info.spokeChainId), // _usdc
@@ -66,7 +65,7 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
         console.log("Chain ID:", info.spokeChainId);
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
-        console.log("WETH address:", address(weth));
+        console.log("WETH address:", weth);
         console.log("L2 Gateway Router:", l2GatewayRouter);
         console.log("CCTP Token Messenger:", cctpTokenMessenger);
         console.log("USDC address:", getUSDCAddress(info.spokeChainId));
