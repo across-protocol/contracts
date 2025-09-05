@@ -327,6 +327,8 @@ interface V3SpokePoolInterface {
     error InvalidQuoteTimestamp();
     error InvalidFillDeadline();
     error InvalidExclusiveRelayer();
+    error InvalidOutputToken();
+    error RemovedFunction();
     error MsgValueDoesNotMatchInputAmount();
     error NotExclusiveRelayer();
     error NoSlowFillsInExclusivityWindow();
