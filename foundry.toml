@@ -35,6 +35,12 @@ fs_permissions = [{ access = "read", path = "./"}]
 solc = "0.8.23"
 evm_version = "prague"
 
+[profile.zksync.zksync]
+compile = true
+fallback_oz = true
+mode = '3'
+zksolc = "1.5.7"
+
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"
 base = "${NODE_URL_8453}"
@@ -53,11 +59,6 @@ soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 
-[profile.zksync]
-compile = true
-fallback_oz = true
-mode = '3'
-zksync = true
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
