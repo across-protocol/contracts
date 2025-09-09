@@ -184,7 +184,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.BSC]: {
-    helios: "0xB04926aF663cB52899361B1F6313bcFEa5A58B29",
+    helios: "0xE58480CA74f1A819faFd777BEDED4E2D5629943d",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.POLYGON]: {
