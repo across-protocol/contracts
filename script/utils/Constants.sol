@@ -218,50 +218,29 @@ contract Constants is Script {
     }
 
     // Circle domain IDs mapping
-    function getCircleDomainId(uint256 chainId) public view returns (uint32) {
-        return uint32(vm.parseJsonUint(file, string.concat(".CIRCLE_DOMAIN_IDs.", vm.toString(chainId))));
+    function getCircleDomainId(uint256 chainId) public view returns (uint256) {
+        // return uint32(vm.parseJsonUint(file, string.concat(".CIRCLE_DOMAIN_IDs.", vm.toString(chainId))));
+        int256 cctpDomain = vm.parseJsonInt(
+            file,
+            string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain")
+        );
+        if (cctpDomain == -1) {
+            revert("Circle domain ID not found");
+        }
+        return uint256(cctpDomain);
+    }
+
+    function getOftEid(uint256 chainId) public view returns (uint256) {
+        int256 oftEid = vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".oftEid"));
+        if (oftEid == -1) {
+            revert("OFT EID not found");
+        }
+        return uint256(oftEid);
     }
 
     // Get WETH address for any supported chain
     function getWETHAddress(uint256 chainId) public view returns (address) {
         return vm.parseJsonAddress(file, string.concat(".WETH.", vm.toString(chainId)));
-    }
-
-    // Helper function to convert chain ID to chain name
-    function _getChainName(uint256 chainId) internal view returns (string memory) {
-        if (chainId == getChainId("MAINNET")) return "MAINNET";
-        if (chainId == getChainId("SEPOLIA")) return "SEPOLIA";
-        if (chainId == getChainId("ARBITRUM")) return "ARBITRUM";
-        if (chainId == getChainId("ARBITRUM_SEPOLIA")) return "ARBITRUM_SEPOLIA";
-        if (chainId == getChainId("BSC")) return "BSC";
-        if (chainId == getChainId("POLYGON")) return "POLYGON";
-        if (chainId == getChainId("POLYGON_AMOY")) return "POLYGON_AMOY";
-        if (chainId == getChainId("ZK_SYNC")) return "ZK_SYNC";
-        if (chainId == getChainId("OPTIMISM")) return "OPTIMISM";
-        if (chainId == getChainId("OPTIMISM_SEPOLIA")) return "OPTIMISM_SEPOLIA";
-        if (chainId == getChainId("BASE")) return "BASE";
-        if (chainId == getChainId("BASE_SEPOLIA")) return "BASE_SEPOLIA";
-        if (chainId == getChainId("LENS")) return "LENS";
-        if (chainId == getChainId("LENS_SEPOLIA")) return "LENS_SEPOLIA";
-        if (chainId == getChainId("LINEA")) return "LINEA";
-        if (chainId == getChainId("SCROLL_SEPOLIA")) return "SCROLL_SEPOLIA";
-        if (chainId == getChainId("SCROLL")) return "SCROLL";
-        if (chainId == getChainId("UNICHAIN")) return "UNICHAIN";
-        if (chainId == getChainId("UNICHAIN_SEPOLIA")) return "UNICHAIN_SEPOLIA";
-        if (chainId == getChainId("ALEPH_ZERO")) return "ALEPH_ZERO";
-        if (chainId == getChainId("BLAST")) return "BLAST";
-        if (chainId == getChainId("BLAST_SEPOLIA")) return "BLAST_SEPOLIA";
-        if (chainId == getChainId("BOBA")) return "BOBA";
-        if (chainId == getChainId("INK")) return "INK";
-        if (chainId == getChainId("LISK")) return "LISK";
-        if (chainId == getChainId("LISK_SEPOLIA")) return "LISK_SEPOLIA";
-        if (chainId == getChainId("MODE")) return "MODE";
-        if (chainId == getChainId("MODE_SEPOLIA")) return "MODE_SEPOLIA";
-        if (chainId == getChainId("REDSTONE")) return "REDSTONE";
-        if (chainId == getChainId("SONEIUM")) return "SONEIUM";
-        if (chainId == getChainId("WORLD_CHAIN")) return "WORLD_CHAIN";
-        if (chainId == getChainId("ZORA")) return "ZORA";
-        revert("Unsupported chain ID");
     }
 
     /**
@@ -271,8 +250,7 @@ contract Constants is Script {
      * @return The L2 address
      */
     function getL2Address(uint256 chainId, string memory addressType) public view returns (address) {
-        string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".L2_ADDRESS_MAP.", chainName, ".", addressType));
+        string memory jsonPath = string(abi.encodePacked(".L2_ADDRESS_MAP.", vm.toString(chainId), ".", addressType));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
@@ -282,8 +260,7 @@ contract Constants is Script {
      * @return The USDC address
      */
     function getUSDCAddress(uint256 chainId) public view returns (address) {
-        string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".USDC.", chainName));
+        string memory jsonPath = string(abi.encodePacked(".USDC.", vm.toString(chainId)));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
@@ -293,8 +270,7 @@ contract Constants is Script {
      * @return The USDC.e address
      */
     function getUSDCeAddress(uint256 chainId) public view returns (address) {
-        string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".USDCe.", chainName));
+        string memory jsonPath = string(abi.encodePacked(".USDCe.", vm.toString(chainId)));
         return vm.parseJsonAddress(file, jsonPath);
     }
 
@@ -304,13 +280,7 @@ contract Constants is Script {
      * @return The WGHO address
      */
     function getWghoAddress(uint256 chainId) public view returns (address) {
-        string memory chainName = _getChainName(chainId);
-        string memory jsonPath = string(abi.encodePacked(".WGHO.", chainName));
+        string memory jsonPath = string(abi.encodePacked(".WGHO.", vm.toString(chainId)));
         return vm.parseJsonAddress(file, jsonPath);
-    }
-
-    function getOftEid(uint256 chainId) public view returns (uint256) {
-        string memory chainName = _getChainName(chainId);
-        return vm.parseJsonUint(file, string.concat(".OFT_EIDs.", chainName));
     }
 }
