@@ -1,6 +1,6 @@
 # Deployed Contract Addresses
 
-Generated on: 2025-08-29T21:11:26.295Z
+Generated on: 2025-09-09T21:17:28.862Z
 
 This file contains the latest deployed smart contract addresses from the broadcast folder.
 
@@ -142,9 +142,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Universal_Adapter
 
-- **Universal_Adapter**: `0x22001f37B586792F25Ef9d19d99537C6446e0833`
+- **Universal_Adapter**: `0x6f1C9d3bcDF51316E7b515a62C02F601500b084b`
   - Transaction Hash: `Unknown`
-  - Block Number: `22368546`
+  - Block Number: `23251254`
 
 #### Blast_Adapter
 
@@ -208,9 +208,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Lens_Adapter
 
-- **Lens_Adapter**: `0x63AC22131eD457aeCbD63e6c4C7eeC7BBC74fF1F`
+- **Lens_Adapter**: `0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf`
   - Transaction Hash: `Unknown`
-  - Block Number: `22167069`
+  - Block Number: `22382942`
 
 #### DoctorWho_Adapter
 
@@ -398,9 +398,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### SpokePool
 
-- **SpokePool**: `0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12`
+- **SpokePool**: `0xb234cA484866c811d0e6D3318866F583781ED045`
   - Transaction Hash: `Unknown`
-  - Block Number: `193290`
+  - Block Number: `4197027`
 
 #### MulticallHandler
 
@@ -413,12 +413,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0x8A8cA9c4112c67b7Dae7dF7E89EA45D592362107`
   - Transaction Hash: `Unknown`
   - Block Number: `2884429`
-
-#### Lens_SpokePool
-
-- **Lens_SpokePool**: `0xc7772ce23a3ed7f87fe51b87617c7c7d21f15d39`
-  - Transaction Hash: `0xa4938f34425c997b4686b5bad4f66b04bfbc2270dfe9c00b8f134da6a7b6edf5`
-  - Block Number: `4092265`
 
 ### Boba (Chain ID: 288)
 
