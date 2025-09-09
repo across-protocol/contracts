@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.0;
 
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
@@ -28,7 +28,9 @@ contract AdminRelayTokensAdapter is AdapterInterface {
             message,
             (address, address, uint256, address)
         );
-        require(target == spokePool, TargetSpokeMismatch());
+        if (target != spokePool) {
+            revert TargetSpokeMismatch();
+        }
 
         // We are ok with this low-level call since the adapter address is set by the admin and we've
         // already checked that its not the zero address.
@@ -42,10 +44,12 @@ contract AdminRelayTokensAdapter is AdapterInterface {
                 spokePool // to. This should be the spokePool.
             )
         );
-        require(success, DelegateCallFailed());
+        if (!success) {
+            revert DelegateCallFailed();
+        }
     }
 
     function relayTokens(address, address, uint256, address) external payable {
-        revert(RelayTokensNotSupported());
+        revert RelayTokensNotSupported();
     }
 }
