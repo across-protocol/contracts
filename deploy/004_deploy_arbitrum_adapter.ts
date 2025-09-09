@@ -1,6 +1,7 @@
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { getOftEid, toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC } from "./consts";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 
@@ -16,6 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const oftDstEid = getOftEid(spokeChainId);
   const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
+  const adapterStore = getDeployedAddress("AdapterStore", chainId);
 
   const args = [
     L1_ADDRESS_MAP[chainId].l1ArbitrumInbox,
@@ -23,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     l2RefundAddress,
     USDC[chainId],
     L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    L1_ADDRESS_MAP[chainId].adapterStore,
+    adapterStore,
     oftDstEid,
     oftFeeCap,
   ];

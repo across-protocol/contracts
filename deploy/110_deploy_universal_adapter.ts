@@ -5,6 +5,7 @@ import { CIRCLE_DOMAIN_IDs, L1_ADDRESS_MAP, USDC, ZERO_ADDRESS } from "./consts"
 import { CCTP_NO_DOMAIN } from "@across-protocol/constants";
 import { CIRCLE_UNINITIALIZED_DOMAIN_ID } from "./consts";
 import assert from "assert";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { SPOKE_CHAIN_ID } = process.env;
@@ -20,6 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // todo: implement similar treatment to `CIRCLE_DOMAIN_IDs`
   const oftDstEid = getOftEid(Number(SPOKE_CHAIN_ID));
   const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
+  const adapterStore = getDeployedAddress("AdapterStore", chainId);
 
   const cctpDomainId = CIRCLE_DOMAIN_IDs[Number(SPOKE_CHAIN_ID)] ?? CCTP_NO_DOMAIN;
   const args = [
@@ -27,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     USDC[chainId],
     cctpDomainId === CCTP_NO_DOMAIN ? ZERO_ADDRESS : L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
     cctpDomainId === CCTP_NO_DOMAIN ? CIRCLE_UNINITIALIZED_DOMAIN_ID : cctpDomainId,
-    L1_ADDRESS_MAP[chainId].adapterStore,
+    adapterStore,
     oftDstEid,
     oftFeeCap,
   ];
