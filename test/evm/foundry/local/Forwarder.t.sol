@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { MockERC20 } from "forge-std/mocks/MockERC20.sol";
 
 import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -18,6 +17,7 @@ import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitru
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
 import { ForwarderInterface } from "../../../../contracts/chain-adapters/interfaces/ForwarderInterface.sol";
+import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -40,6 +40,7 @@ contract ForwarderTest is Test {
     WETH9 l2Weth;
     MockBedrockCrossDomainMessenger crossDomainMessenger;
     MockBedrockL1StandardBridge standardBridge;
+    AdapterStore adapterStore;
 
     address owner;
     address aliasedOwner;
@@ -56,6 +57,8 @@ contract ForwarderTest is Test {
 
         crossDomainMessenger = new MockBedrockCrossDomainMessenger();
         standardBridge = new MockBedrockL1StandardBridge();
+
+        adapterStore = new AdapterStore();
 
         optimismAdapter = new Optimism_Adapter(
             WETH9Interface(address(l2Weth)),
@@ -124,11 +127,7 @@ contract ForwarderTest is Test {
     }
 
     // Attempting to send a message to an uninitialized adapter should revert
-    function testUninitializedAdapter(
-        address target,
-        uint256 randomChainId,
-        bytes memory message
-    ) public {
+    function testUninitializedAdapter(address target, uint256 randomChainId, bytes memory message) public {
         vm.assume(randomChainId != L3_CHAIN_ID);
         vm.startPrank(aliasedOwner);
         vm.expectRevert(ForwarderBase.UninitializedChainAdapter.selector);

@@ -41,8 +41,8 @@ contract SpokePoolVerifierTest is Test {
     address owner;
 
     uint256 destinationChainId = 10;
-    uint256 mintAmount = 10**22;
-    uint256 depositAmount = 5 * (10**18);
+    uint256 mintAmount = 10 ** 22;
+    uint256 depositAmount = 5 * (10 ** 18);
     uint32 fillDeadlineBuffer = 7200;
 
     function setUp() public {
@@ -81,6 +81,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
@@ -97,6 +98,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockERC20).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
@@ -119,6 +121,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // outputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer
@@ -144,7 +147,7 @@ contract SpokePoolVerifierTest is Test {
                     depositor.toBytes32(),
                     depositor.toBytes32(),
                     address(mockWETH).toBytes32(),
-                    bytes32(0),
+                    address(mockWETH).toBytes32(),
                     depositAmount,
                     depositAmount,
                     destinationChainId,
@@ -161,6 +164,7 @@ contract SpokePoolVerifierTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH).toBytes32(), // inputToken
             depositAmount, // inputAmount
+            address(mockWETH).toBytes32(), // inputToken
             depositAmount, // outputAmount
             destinationChainId, // destinationChainId
             bytes32(0), // exclusiveRelayer

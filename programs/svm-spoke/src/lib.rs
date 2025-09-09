@@ -14,7 +14,7 @@ security_txt! {
     auditors: "OpenZeppelin"
 }
 
-declare_id!("JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq");
+declare_id!("DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter);
@@ -123,34 +123,6 @@ pub mod svm_spoke {
         instructions::transfer_ownership(ctx, new_owner)
     }
 
-    /// Enables or disables a route for deposits from origin token to destination chain ID. Callable only by the owner.
-    ///
-    /// ### Required Accounts:
-    /// - signer (Signer): The account that must be the owner to authorize the route change.
-    /// - payer (Signer): The account responsible for paying the transaction fees.
-    /// - state (Writable): The Spoke state PDA. Seed: ["state",state.seed] where `seed` is 0 on mainnet.
-    /// - route (Writable): PDA to store route information. Created on the first call, updated subsequently.
-    ///   Seed: ["route",origin_token,state.seed,destination_chain_id].
-    /// - vault (Writable): ATA to hold the origin token for the associated route. Created on the first call.
-    ///   Authority must be set as the state, and mint must be the origin_token_mint.
-    /// - origin_token_mint: The mint account for the origin token.
-    /// - token_program: The token program.
-    /// - associated_token_program: The associated token program.
-    /// - system_program: The system program required for account creation.
-    ///
-    /// ### Parameters:
-    /// - origin_token: The public key of the origin token.
-    /// - destination_chain_id: The chain ID of the destination.
-    /// - enabled: Boolean indicating whether the route is enabled or disabled.
-    pub fn set_enable_route(
-        ctx: Context<SetEnableRoute>,
-        origin_token: Pubkey,
-        destination_chain_id: u64,
-        enabled: bool,
-    ) -> Result<()> {
-        instructions::set_enable_route(ctx, origin_token, destination_chain_id, enabled)
-    }
-
     /// Sets the cross-domain admin for the Spoke Pool. Only callable by owner. Used if Hubpool upgrades.
     ///
     /// ### Required Accounts:
@@ -228,13 +200,12 @@ pub mod svm_spoke {
     /// ### Required Accounts:
     /// - signer (Signer): The account that authorizes the deposit.
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
-    ///   Seed: ["route",input_token,state.seed,destination_chain_id].
     /// - depositor_token_account (Writable): The depositor's ATA for the input token.
     /// - vault (Writable): Programs ATA for the associated input token. This is where the depositor's assets are sent.
     ///   Authority must be the state.
     /// - mint (Account): The mint account for the input token.
     /// - token_program (Interface): The token program.
+    /// - delegate (Account): The account used to delegate the input amount of the input token.
     ///
     /// ### Parameters
     /// - depositor: The account credited with the deposit. Can be different from the signer.
@@ -246,8 +217,8 @@ pub mod svm_spoke {
     ///   amount will be sent to the relayer on their repayment chain of choice as a refund following an optimistic
     ///   challenge window in the HubPool, less a system fee.
     /// - output_amount: The amount of output tokens that the relayer will send to the recipient on the destination.
-    /// - destination_chain_id: The destination chain identifier. Must be enabled along with the input token as a valid
-    ///   deposit route from this spoke pool or this transaction will revert.
+    ///   This is big-endian encoded as a 32-byte array to match its underlying byte representation on EVM side.
+    /// - destination_chain_id: The destination chain identifier where the fill should be made.
     /// - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the exclusivity
     ///   deadline timestamp. This must be a valid, non-zero address if the exclusivity deadline is greater than the
     ///   current block timestamp.
@@ -268,7 +239,7 @@ pub mod svm_spoke {
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         quote_timestamp: u32,
@@ -302,7 +273,7 @@ pub mod svm_spoke {
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         fill_deadline_offset: u32,
@@ -338,7 +309,7 @@ pub mod svm_spoke {
         input_token: Pubkey,
         output_token: Pubkey,
         input_amount: u64,
-        output_amount: u64,
+        output_amount: [u8; 32],
         destination_chain_id: u64,
         exclusive_relayer: Pubkey,
         deposit_nonce: u64,
@@ -400,9 +371,6 @@ pub mod svm_spoke {
     ///   instruction data due to message size constraints. Pass this program ID to represent None. When Some, this must
     ///   be derived from the signer's public key with seed ["instruction_params",signer].
     /// - state (Writable): Spoke state PDA. Seed: ["state",state.seed] where seed is 0 on mainnet.
-    /// - route (Account): The route PDA for the particular bridged route in question. Validates a route is enabled.
-    ///   Seed: ["route",input_token,state.seed,destination_chain_id].
-    /// - vault (Writable): The ATA for refunded mint. Authority must be the state.
     /// - mint (Account): The mint of the output token, sent from the relayer to the recipient.
     /// - relayer_token_account (Writable): The relayer's ATA for the input token.
     /// - recipient_token_account (Writable): The recipient's ATA for the output token.
@@ -411,9 +379,10 @@ pub mod svm_spoke {
     /// - token_program (Interface): The token program.
     /// - associated_token_program (Interface): The associated token program.
     /// - system_program (Interface): The system program.
+    /// - delegate (Account): The account used to delegate the output amount of the output token.
     ///
     /// ### Parameters:
-    /// - _relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
+    /// - relay_hash: The hash identifying the deposit to be filled. Caller must pass this in. Computed as hash of
     ///   the flattened relay_data & destination_chain_id.
     /// - relay_data: Struct containing all the data needed to identify the deposit to be filled. Should match
     ///   all the same-named parameters emitted in the origin chain FundsDeposited event.
@@ -423,6 +392,7 @@ pub mod svm_spoke {
     ///     token on the repayment chain will be sent as a refund to the caller.
     ///   - output_token: The token that the caller will send to the recipient on this chain.
     ///   - input_amount: This amount, less a system fee, will be sent to the caller on their repayment chain.
+    ///     This is big-endian encoded as a 32-byte array to match its underlying byte representation on EVM side
     ///   - output_amount: The amount of output tokens that the caller will send to the recipient.
     ///   - origin_chain_id: The origin chain identifier.
     ///   - exclusive_relayer: The relayer that will be exclusively allowed to fill this deposit before the
@@ -440,12 +410,12 @@ pub mod svm_spoke {
     /// is passed, the caller must load them via the instruction_params account.
     pub fn fill_relay<'info>(
         ctx: Context<'_, '_, '_, 'info, FillRelay<'info>>,
-        _relay_hash: [u8; 32],
+        relay_hash: [u8; 32],
         relay_data: Option<RelayData>,
         repayment_chain_id: Option<u64>,
         repayment_address: Option<Pubkey>,
     ) -> Result<()> {
-        instructions::fill_relay(ctx, relay_data, repayment_chain_id, repayment_address)
+        instructions::fill_relay(ctx, relay_hash, relay_data, repayment_chain_id, repayment_address)
     }
 
     /// Closes the FillStatusAccount PDA to reclaim relayer rent.
@@ -747,6 +717,9 @@ pub mod svm_spoke {
     /// - proof: Inclusion proof for this leaf in slow relay root in root bundle.
     /// Note: slow_fill_leaf, _root_bundle_id, and proof are optional parameters. If None for any of these is passed,
     /// the caller must load them via the instruction_params account.
+    /// Note: When verifying the slow fill leaf, the relay data is hashed using AnchorSerialize::serialize that encodes
+    /// output token amounts to little-endian format while input token amount preserves its big-endian encoding as it
+    /// is passed as [u8; 32] array.
     pub fn execute_slow_relay_leaf<'info>(
         ctx: Context<'_, '_, '_, 'info, ExecuteSlowRelayLeaf<'info>>,
         _relay_hash: [u8; 32],

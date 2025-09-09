@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { getContractFactory, toBN } from "./utils";
+import { BigNumber, getContractFactory, toBN } from "./utils";
 
 type unsafeAllowTypes = (
   | "delegatecall"
@@ -37,7 +37,7 @@ export async function getSpokePoolDeploymentInfo(
   return { hubPool, hubChainId, spokeChainId };
 }
 
-type FnArgs = number | string;
+type FnArgs = number | string | BigNumber;
 export async function deployNewProxy(
   name: string,
   constructorArgs: FnArgs[],
@@ -82,6 +82,7 @@ export async function deployNewProxy(
   const artifact = await deployments.getExtendedArtifact(name);
   const deployment: DeploymentSubmission = {
     address: instance,
+    args: constructorArgs,
     ...artifact,
   };
   await deployments.save(name, deployment);

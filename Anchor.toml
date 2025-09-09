@@ -5,8 +5,8 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
+svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
 
 [programs.devnet]
@@ -14,8 +14,8 @@ multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
 svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
 
 [programs.mainnet]
-multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
-svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
+svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
 
 [registry]
 url = "https://api.apr.dev"
@@ -30,8 +30,8 @@ queryEvents = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEvents.ts"
 queryEventsV2 = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEventsV2.ts"
 initialize = "NODE_NO_WARNINGS=1 yarn run ts-node  ./scripts/svm/initialize.ts"
 queryState = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryState.ts"
-enableRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/enableRoute.ts"
-queryRoute = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryRoute.ts"
+createVault = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/createVault.ts"
+queryVault = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryVault.ts"
 simpleDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/simpleDeposit.ts"
 queryDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryDeposits.ts"
 queryFills = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryFills.ts"
@@ -47,12 +47,14 @@ proposeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/p
 executeRebalanceToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/executeRebalanceToHubPool.ts"
 bridgeLiabilityToHubPool = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/bridgeLiabilityToHubPool.ts"
 remoteHubPoolPauseDeposits = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/remoteHubPoolPauseDeposits.ts"
-generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/generateExternalTypes.ts"
+generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/buildHelpers/generateExternalTypes.ts"
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
 addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressToPublicKey.ts"
 publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
 findFillStatusPdaFromEvent = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusPdaFromEvent.ts"
 findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusFromFillStatusPda.ts"
+nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
+squadsIdlUpgrade = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/squadsIdlUpgrade.ts"
 
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"

@@ -23,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { zkErc20Bridge, zkUSDCBridge, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
 
   const initArgs = [
-    0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
+    100_000, // Redeployment of the Spoke Pool proxy @ 09-01-2025. Offset the initial deposit ID by 100k
     zkErc20Bridge,
     hubPool.address,
     hubPool.address,

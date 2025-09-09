@@ -38,7 +38,7 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
-     * @param _crossDomainMessenger XDomainMessenger World Chain system contract.
+     * @param _crossDomainMessenger XDomainMessenger Destination chain system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      */
@@ -63,8 +63,8 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Send cross-chain message to target on World Chain.
-     * @param target Contract on World Chain that will receive message.
+     * @notice Send cross-chain message to target on destination chain.
+     * @param target Contract on destination chain that will receive message.
      * @param message Data to send to target.
      */
     function relayMessage(address target, bytes calldata message) external payable override {
@@ -73,18 +73,13 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     }
 
     /**
-     * @notice Bridge tokens to World Chain.
+     * @notice Bridge tokens to destination chain.
      * @param l1Token L1 token to deposit.
      * @param l2Token L2 token to receive.
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
