@@ -21,7 +21,7 @@ contract MockOFTMessenger is IOFT {
     }
 
     function quoteSend(
-        SendParam calldata /*_sendParam*/,
+        SendParam calldata, /*_sendParam*/
         bool /*_payInLzToken*/
     ) external view returns (MessagingFee memory) {
         return MessagingFee(nativeFee, lzFee);
@@ -29,7 +29,7 @@ contract MockOFTMessenger is IOFT {
 
     function send(
         SendParam calldata _sendParam,
-        MessagingFee calldata /*_fee*/,
+        MessagingFee calldata, /*_fee*/
         address /*_refundAddress*/
     ) external payable returns (MessagingReceipt memory, OFTReceipt memory) {
         if (useCustomReceipt) {

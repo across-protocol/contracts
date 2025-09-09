@@ -41,8 +41,8 @@ contract SpokePoolVerifierTest is Test {
     address owner;
 
     uint256 destinationChainId = 10;
-    uint256 mintAmount = 10 ** 22;
-    uint256 depositAmount = 5 * (10 ** 18);
+    uint256 mintAmount = 10**22;
+    uint256 depositAmount = 5 * (10**18);
     uint32 fillDeadlineBuffer = 7200;
 
     function setUp() public {

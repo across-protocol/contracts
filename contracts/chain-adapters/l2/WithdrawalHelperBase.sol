@@ -102,7 +102,11 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      * L1/L2 given knowledge of only one of the addresses. Both arguments are provided to enable a flexible interface; however, due
      * to this, `withdrawToken` MUST account for situations where the L1/L2 token mapping is incorrect.
      */
-    function withdrawToken(address l1Token, address l2Token, uint256 amountToReturn) public virtual;
+    function withdrawToken(
+        address l1Token,
+        address l2Token,
+        uint256 amountToReturn
+    ) public virtual;
 
     /*
      * @notice Wraps the contract's entire balance of the native token.

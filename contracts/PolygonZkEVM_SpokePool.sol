@@ -18,7 +18,11 @@ interface IBridgeMessageReceiver {
      * @param originNetwork Polygon zkEVM's internal network id of source chain.
      * @param data Data to be received and executed on this contract.
      */
-    function onMessageReceived(address originAddress, uint32 originNetwork, bytes memory data) external payable;
+    function onMessageReceived(
+        address originAddress,
+        uint32 originNetwork,
+        bytes memory data
+    ) external payable;
 }
 
 /**
