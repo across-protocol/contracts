@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.27;
 
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
@@ -7,6 +7,10 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
  * @dev A custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool
  */
 contract AdminRelayTokensAdapter is AdapterInterface {
+    error TargetSpokeMismatch();
+    error DelegateCallFailed();
+    error RelayTokensNotSupported();
+
     // @dev Underlying adapter whose `relayTokens` logic will be executed via delegatecall. Must be trusted
     address public immutable UNDERLYING_ADAPTER;
 
@@ -20,15 +24,11 @@ contract AdminRelayTokensAdapter is AdapterInterface {
      * address l2Token, uint256 amount, address spokePool)
      */
     function relayMessage(address target, bytes calldata message) external payable {
-        // This adapter is not intended to accept any value as a part of `relayMessage`. It's intended usecase is to be
-        // `deletagecall`ed into, and delegatecall does not allow for attaching the `value`
-        require(msg.value == 0, "value transfer not supported");
-
         (address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(
             message,
             (address, address, uint256, address)
         );
-        require(target == spokePool, "target / spokepool mismatch");
+        require(target == spokePool, TargetSpokeMismatch());
 
         // We are ok with this low-level call since the adapter address is set by the admin and we've
         // already checked that its not the zero address.
@@ -42,10 +42,10 @@ contract AdminRelayTokensAdapter is AdapterInterface {
                 spokePool // to. This should be the spokePool.
             )
         );
-        require(success, "delegatecall failed");
+        require(success, DelegateCallFailed());
     }
 
     function relayTokens(address, address, uint256, address) external payable {
-        revert("not supported");
+        revert(RelayTokensNotSupported());
     }
 }
