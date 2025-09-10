@@ -31,9 +31,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // ! Notice. Deployed has to adjust this fee cap based on dst chain's native token. 4.4 BNB for BSC
   const oftFeeCap = toWei(4.4); // ~1 ETH fee cap
 
+  const heliosAddress = getDeployedAddress("Helios", spokeChainId, false);
+
   const constructorArgs = [
     24 * 60 * 60, // 1 day; Helios latest head timestamp must be 1 day old before an admin can force execute a message.
-    L2_ADDRESS_MAP[spokeChainId]?.helios,
+    heliosAddress,
     getDeployedAddress("HubPoolStore", hubChainId),
     expectedWrappedNative,
     QUOTE_TIME_BUFFER,
