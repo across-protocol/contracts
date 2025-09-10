@@ -224,6 +224,7 @@ async function acrossPlusJupiter(): Promise<void> {
   const mainUsdcAmount: BigNumber = usdcAmount.sub(gasUsdcAmount);
 
   const usdcMint = new PublicKey(SOLANA_USDC_MAINNET); // Only mainnet USDC is supported in this script.
+  const isOutputUsdc = outputMint.equals(usdcMint);
 
   // Handler signer will swap tokens on Jupiter.
   const [handlerSigner] = PublicKey.findProgramAddressSync([Buffer.from("handler_signer")], handlerProgram.programId);
@@ -281,19 +282,30 @@ async function acrossPlusJupiter(): Promise<void> {
     { Property: "excludeDexes", Value: excludeDexesCsv || "<none>" },
   ]);
 
-  // Get quote from Jupiter for main output swap
-  const { quoteResponse: mainQuoteResponse, instructions: mainInstructions } = await fetchJupiterQuoteAndIxs({
-    label: "Main",
-    inputMint: usdcMint,
-    outputMint,
-    amount: mainUsdcAmount,
-    slippageBps,
-    maxAccounts: maxAccountsMain,
-    excludeDexesCsv,
-    userPublicKey: handlerSigner,
-    wrapAndUnwrapSol: false,
-    minHops,
-  });
+  // Get quote from Jupiter for main output swap, unless output is USDC (no swap needed)
+  let mainQuoteResponse: any = null;
+  let mainInstructions: any = { addressLookupTableAddresses: [] as string[] };
+  const includeMainSwap = !isOutputUsdc;
+  if (includeMainSwap) {
+    const result = await fetchJupiterQuoteAndIxs({
+      label: "Main",
+      inputMint: usdcMint,
+      outputMint,
+      amount: mainUsdcAmount,
+      slippageBps,
+      maxAccounts: maxAccountsMain,
+      excludeDexesCsv,
+      userPublicKey: handlerSigner,
+      wrapAndUnwrapSol: false,
+      minHops,
+    });
+    mainQuoteResponse = result.quoteResponse;
+    mainInstructions = result.instructions;
+  } else {
+    console.log(`${LOG_PREFIX} Skipping main swap: output mint is USDC`);
+    mainQuoteResponse = { otherAmountThreshold: mainUsdcAmount.toString(), routePlan: [] };
+    mainInstructions = { addressLookupTableAddresses: [] };
+  }
 
   // Optional gas swap: quote and get instructions for USDC -> WSOL -> close WSOL ATA to recipient to unwrap to SOL
   let gasInstructions: any | null = null;
@@ -392,12 +404,15 @@ async function acrossPlusJupiter(): Promise<void> {
   // can be stolen by anyone. This could be improved by creating a sweeper program that reads actual handler ATA balance
   // and transfers all of them to the recipient ATA.
   const outputDecimals = (await getMint(provider.connection, outputMint, undefined, outputTokenProgram)).decimals;
+  const minOutMainRaw: bigint = includeMainSwap
+    ? BigInt(String(mainQuoteResponse.otherAmountThreshold))
+    : BigInt(mainUsdcAmount.toString());
   const transferInstruction = createTransferCheckedInstruction(
     handlerOutputTA,
     outputMint,
     recipientOutputTA,
     handlerSigner,
-    mainQuoteResponse.otherAmountThreshold,
+    minOutMainRaw,
     outputDecimals,
     undefined,
     outputTokenProgram
@@ -441,13 +456,12 @@ async function acrossPlusJupiter(): Promise<void> {
   // Capture pre-transaction balances will be done later after USDC ATAs are ensured
 
   // Encode all instructions with handler PDA as the payer for ATA initialization.
-  const mainSwapIx = deserializeInstruction(mainInstructions.swapInstruction);
-  const multicallInstructions: TransactionInstruction[] = [
-    createHandlerATAInstruction,
-    mainSwapIx,
-    createRecipientATAInstruction,
-    transferInstruction,
-  ];
+  const multicallInstructions: TransactionInstruction[] = [createHandlerATAInstruction];
+  if (includeMainSwap) {
+    const mainSwapIx = deserializeInstruction(mainInstructions.swapInstruction);
+    multicallInstructions.push(mainSwapIx);
+  }
+  multicallInstructions.push(createRecipientATAInstruction, transferInstruction);
   if (gasInstructions) {
     if (createHandlerWsolATAInstruction) multicallInstructions.push(createHandlerWsolATAInstruction);
     const gasSwapIx = deserializeInstruction(gasInstructions.swapInstruction);
@@ -461,7 +475,7 @@ async function acrossPlusJupiter(): Promise<void> {
   const message = new AcrossPlusMessageCoder({
     handler: handlerProgram.programId,
     readOnlyLen: multicallHandlerCoder.readOnlyLen,
-    valueAmount: new BN(valueAmount), // Must exactly cover ATA creation.
+    valueAmount: new BN(valueAmount),
     accounts: multicallHandlerCoder.compiledMessage.accountKeys,
     handlerMessage,
   });
@@ -565,7 +579,7 @@ async function acrossPlusJupiter(): Promise<void> {
       recipientLamports: await getLamportsOrZero(recipient),
     };
 
-    const minMainOut = BigInt(String(mainQuoteResponse.otherAmountThreshold ?? 0));
+    const minMainOut = BigInt(String(minOutMainRaw ?? 0n));
     const minGasOut = gasQuoteResponse ? BigInt(String(gasQuoteResponse.otherAmountThreshold ?? 0)) : 0n;
     const recipientOutputDelta = postBalances.recipientOutput - preBalances.recipientOutput;
     const handlerOutputDelta = postBalances.handlerOutput - preBalances.handlerOutput;
