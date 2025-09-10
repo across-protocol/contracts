@@ -77,6 +77,24 @@ forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --br
 
 ```
 
+#### Foundry (ZKSync)
+
+To enable ZKSync support, the zksync fork of foundry must be installed (see [here](https://foundry-book.zksync.io/introduction/installation#using-foundryup-zksync) for instructions).
+
+Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
+
+```shell
+export FOUNDRY_PROFILE=zksync
+
+forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+```
+
+Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
+
+```shell
+yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+```
+
 ### SVM
 
 Before deploying for the first time make sure all program IDs in `lib.rs` and `Anchor.toml` are the same as listed when running `anchor keys list`. If not, update them to match the deployment keypairs under `target/deploy/` and commit the changes.

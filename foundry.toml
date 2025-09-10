@@ -58,6 +58,7 @@ scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
+zksync = "${NODE_URL_324}"
 
 
 [etherscan]
