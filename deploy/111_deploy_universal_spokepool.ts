@@ -1,9 +1,10 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L1_ADDRESS_MAP, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, ZERO_ADDRESS } from "./consts";
+import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, ZERO_ADDRESS } from "./consts";
 import { CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { getOftEid, toWei } from "../utils/utils";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -33,7 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const constructorArgs = [
     24 * 60 * 60, // 1 day; Helios latest head timestamp must be 1 day old before an admin can force execute a message.
     L2_ADDRESS_MAP[spokeChainId]?.helios,
-    L1_ADDRESS_MAP[CHAIN_IDs.MAINNET]?.hubPoolStore,
+    getDeployedAddress("HubPoolStore", hubChainId),
     expectedWrappedNative,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
