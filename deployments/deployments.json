@@ -2,6 +2,7 @@
   "1": {
     "AcrossConfigStore": { "address": "0x3B03509645713718B78951126E0A6de6f10043f5", "blockNumber": 14717196 },
     "AcrossMerkleDistributor": { "address": "0xE50b2cEAC4f60E840Ae513924033E753e2366487", "blockNumber": 15976846 },
+    "AdapterStore": { "address": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b", "blockNumber": 23086526 },
     "Arbitrum_Adapter": { "address": "0x5eC9844936875E27eBF22172f4d92E107D35B57C", "blockNumber": 23086601 },
     "Arbitrum_RescueAdapter": { "address": "0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375", "blockNumber": 16233939 },
     "Arbitrum_SendTokensAdapter": { "address": "0xC06A68DF12376271817FcEBfb45Be996B0e1593E", "blockNumber": 16691987 },
@@ -55,7 +56,8 @@
     "SpokePool": { "address": "0x4e8E101924eDE233C13e2D8622DC8aED2872d505", "blockNumber": 48762335 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 49157612 },
     "MulticallHandler": { "address": "0xAC537C12fE8f544D712d71ED4376a502EEa944d7", "blockNumber": 48762440 },
-    "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 52135703 }
+    "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 52135703 },
+    "Helios": { "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d", "blockNumber": 59344945 }
   },
   "137": {
     "MintableERC1155": { "address": "0xA15a90E7936A2F8B70E181E955760860D133e56B", "blockNumber": 40600414 },
