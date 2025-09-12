@@ -23,10 +23,20 @@ import {
   L2_ADDRESS_MAP,
 } from "../../deploy/consts";
 
-// Helper function to convert chain IDs object to the expected format
-function convertChainIdsToObject(chainIds: any): { [key: string]: number } {
+/**
+ * Convert the chain IDs object to the expected format
+ * @returns { [key: string]: number }
+ * @example
+ * {
+ *   "1": 1,
+ *   "10": 10,
+ *   "56": 56,
+ *   "137": 137,
+ * }
+ */
+function convertChainIdsToObject(): { [key: string]: number } {
   const result: { [key: string]: number } = {};
-  for (const [key, value] of Object.entries(chainIds)) {
+  for (const [key, value] of Object.entries(CHAIN_IDs)) {
     if (typeof value === "number") {
       result[key] = value;
     }
@@ -34,7 +44,18 @@ function convertChainIdsToObject(chainIds: any): { [key: string]: number } {
   return result;
 }
 
-function generateWrappedNativeTokens() {
+/**
+ * Generate the wrapped native tokens for the public networks
+ * @returns { [key: string]: string }
+ * @example
+ * {
+ *   "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+ *   "10": "0x4200000000000000000000000000000000000006",
+ *   "56": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+ *   "137": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+ * }
+ */
+function generateWrappedNativeTokens(): { [key: string]: string } {
   const result: { [key: string]: string } = {};
   for (const [key, value] of Object.entries(PUBLIC_NETWORKS)) {
     const nativeToken = value.nativeToken;
@@ -59,7 +80,7 @@ function generateWrappedNativeTokens() {
 function generateConstantsJson() {
   const constants = {
     PUBLIC_NETWORKS,
-    CHAIN_IDs: convertChainIdsToObject(CHAIN_IDs),
+    CHAIN_IDs: convertChainIdsToObject(),
     WETH,
     WRAPPED_NATIVE_TOKENS: generateWrappedNativeTokens(),
     L2_ADDRESS_MAP,
