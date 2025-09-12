@@ -3,8 +3,9 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
   .addParam("implementation", "New SpokePool implementation address")
+  .addOptionalParam("upgradeOnly", "Upgrade only, do not pause/unpause deposits")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
-    const { implementation } = args;
+    const { implementation, upgradeOnly } = args;
     if (!implementation) {
       console.log("Usage: yarn hardhat upgrade-spokepool --implementation <implementation>");
       return;
@@ -16,14 +17,36 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
       throw new Error(`Implementation address must be checksummed (${implementation})`);
     }
 
+    const artifact = await hre.artifacts.readArtifact("SpokePool");
+
     // @dev Any spoke pool's interface can be used here since they all should have the same upgradeTo function signature.
-    const abi = ["function upgradeTo(address newImplementation) external"];
+    const abi = artifact.abi;
     const spokePool = new ethers.Contract(implementation, abi);
 
-    const upgradeTo = spokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
-    console.log(`upgradeTo bytes: `, upgradeTo);
+    let calldata = "";
+    if (upgradeOnly) {
+      calldata = spokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
+      console.log(`upgradeTo bytes: `, calldata);
+    } else {
+      /**
+       * We perform this seemingly unnecessary pause/unpause sequence because we want to ensure that the
+       * upgrade is successful and the new implementation gets forwarded calls by the proxy contract as expected
+       *
+       * Since the upgrade and call happens atomically, the upgrade will revert if the new implementation
+       * is not functioning correctly.
+       */
+      const data = spokePool.interface.encodeFunctionData("multicall", [
+        [
+          spokePool.interface.encodeFunctionData("pauseDeposits", [true]),
+          spokePool.interface.encodeFunctionData("pauseDeposits", [false]),
+        ],
+      ]);
+
+      calldata = spokePool.interface.encodeFunctionData("upgradeToAndCall", [implementation, data]);
+      console.log(`upgradeToAndCall bytes: `, calldata);
+    }
 
     console.log(
-      `Call relaySpokePoolAdminFunction() with the params [<chainId>, ${upgradeTo}] on the hub pool from the owner's account.`
+      `Call relaySpokePoolAdminFunction() with the params [<chainId>, ${calldata}] on the hub pool from the owner's account.`
     );
   });
