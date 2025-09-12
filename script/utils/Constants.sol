@@ -306,6 +306,11 @@ contract Constants is Script {
         return vm.parseJsonAddress(file, jsonPath);
     }
 
+    /**
+     * @notice Get OFT EID for the given chain
+     * @param chainId The chain ID to get OFT EID for
+     * @return The OFT EID
+     */
     function getOftEid(uint256 chainId) public view returns (uint256) {
         string memory chainName = _getChainName(chainId);
         return vm.parseJsonUint(file, string.concat(".oftEids.", chainName));

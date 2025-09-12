@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-08-29T20:35:33.826Z",
+  "generated_at": "2025-09-12T01:26:53.819Z",
   "chains": {
     "1": {
       "chain_name": "Mainnet",
@@ -13,6 +13,11 @@
           "address": "0xE50b2cEAC4f60E840Ae513924033E753e2366487",
           "transaction_hash": "Unknown",
           "block_number": 15976846
+        },
+        "AdapterStore": {
+          "address": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
+          "transaction_hash": "Unknown",
+          "block_number": 23086526
         },
         "Arbitrum_Adapter": {
           "address": "0x5eC9844936875E27eBF22172f4d92E107D35B57C",
@@ -115,9 +120,9 @@
           "block_number": 22474211
         },
         "Universal_Adapter": {
-          "address": "0x22001f37B586792F25Ef9d19d99537C6446e0833",
+          "address": "0x6f1C9d3bcDF51316E7b515a62C02F601500b084b",
           "transaction_hash": "Unknown",
-          "block_number": 22368546
+          "block_number": 23251254
         },
         "Blast_Adapter": {
           "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81",
@@ -170,9 +175,9 @@
           "block_number": 21597341
         },
         "Lens_Adapter": {
-          "address": "0x63AC22131eD457aeCbD63e6c4C7eeC7BBC74fF1F",
+          "address": "0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf",
           "transaction_hash": "Unknown",
-          "block_number": 22167069
+          "block_number": 22382942
         },
         "DoctorWho_Adapter": {
           "address": "0xFADcC43096756e1527306FD92982FEbBe3c629Fa",
@@ -258,6 +263,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 52135703
+        },
+        "Helios": {
+          "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d",
+          "transaction_hash": "Unknown",
+          "block_number": 59344945
         }
       }
     },
@@ -345,9 +355,9 @@
       "chain_name": "Lens",
       "contracts": {
         "SpokePool": {
-          "address": "0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12",
+          "address": "0xb234cA484866c811d0e6D3318866F583781ED045",
           "transaction_hash": "Unknown",
-          "block_number": 193290
+          "block_number": 4197027
         },
         "MulticallHandler": {
           "address": "0xc5939F59b3c9662377DdA53A08D5085b2d52b719",
