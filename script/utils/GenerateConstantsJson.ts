@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Import the constants from the TypeScript files
-import { CHAIN_IDs, PUBLIC_NETWORKS } from "../../utils/constants";
+import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
 import {
   ZERO_ADDRESS,
   USDC,
@@ -34,12 +34,34 @@ function convertChainIdsToObject(chainIds: any): { [key: string]: number } {
   return result;
 }
 
+function generateWrappedNativeTokens() {
+  const result: { [key: string]: string } = {};
+  for (const [key, value] of Object.entries(PUBLIC_NETWORKS)) {
+    const nativeToken = value.nativeToken;
+    const wrappedPrefix = "W";
+    const wrappedNativeSymbol = `${wrappedPrefix}${nativeToken}`;
+
+    // Check if the wrapped token symbol exists in TOKEN_SYMBOLS_MAP
+    if (wrappedNativeSymbol in TOKEN_SYMBOLS_MAP) {
+      const tokenInfo = TOKEN_SYMBOLS_MAP[wrappedNativeSymbol as keyof typeof TOKEN_SYMBOLS_MAP];
+      const wrappedNativeToken = tokenInfo.addresses[Number(key)];
+      result[key] = wrappedNativeToken;
+    } else {
+      console.warn(
+        `Warning: Wrapped token symbol "${wrappedNativeSymbol}" not found in TOKEN_SYMBOLS_MAP for chain ${key}`
+      );
+    }
+  }
+  return result;
+}
+
 // Generate the constants.json structure
 function generateConstantsJson() {
   const constants = {
     PUBLIC_NETWORKS,
     CHAIN_IDs: convertChainIdsToObject(CHAIN_IDs),
     WETH,
+    WRAPPED_NATIVE_TOKENS: generateWrappedNativeTokens(),
     L2_ADDRESS_MAP,
     L1_ADDRESS_MAP,
     OP_STACK_ADDRESS_MAP,
