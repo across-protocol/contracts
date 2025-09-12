@@ -47,7 +47,8 @@
     "generate-evm-artifacts": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
     "pre-commit-hook": "sh scripts/preCommitHook.sh",
-    "extract-addresses": "./script/utils/extract_foundry_addresses.sh"
+    "extract-addresses": "./script/utils/extract_foundry_addresses.sh",
+    "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.69",
