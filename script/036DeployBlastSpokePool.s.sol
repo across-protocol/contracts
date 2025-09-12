@@ -34,7 +34,7 @@ contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        address weth = getWETHAddress(info.spokeChainId);
+        address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get USDB and DAI addresses based on chain
         address usdb = getUSDBAddress(info.spokeChainId);

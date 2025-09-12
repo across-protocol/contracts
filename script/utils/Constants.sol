@@ -243,6 +243,10 @@ contract Constants is Script {
         return vm.parseJsonAddress(file, string.concat(".WETH.", vm.toString(chainId)));
     }
 
+    function getWrappedNativeToken(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId)));
+    }
+
     /**
      * @notice Get L2 address from constants.json
      * @param chainId The chain ID to get the address for

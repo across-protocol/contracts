@@ -24,7 +24,7 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        address weth = getWETHAddress(info.spokeChainId);
+        address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get L2 addresses for Arbitrum
         address l2GatewayRouter = getL2Address(info.spokeChainId, "l2GatewayRouter");

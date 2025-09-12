@@ -26,7 +26,7 @@ contract DeployCherSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        address weth = getWETHAddress(info.spokeChainId);
+        address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get USDC address for Cher
         address usdcAddress = getUSDCeAddress(info.spokeChainId);

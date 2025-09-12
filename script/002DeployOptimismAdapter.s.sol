@@ -32,6 +32,8 @@ contract DeployOptimismAdapter is Script, Test, Constants {
             "Optimism_Adapter should only be deployed on Ethereum mainnet or Sepolia"
         );
 
+        address weth = getWrappedNativeToken(chainId);
+
         // Get OP Stack addresses for this chain and Optimism
         uint256 optimismChainId = getChainId("OPTIMISM");
         Constants.OpStackAddresses memory opStack = getOpStackAddresses(chainId, optimismChainId);
@@ -40,7 +42,7 @@ contract DeployOptimismAdapter is Script, Test, Constants {
 
         // Deploy Optimism_Adapter with constructor parameters
         Optimism_Adapter optimismAdapter = new Optimism_Adapter(
-            WETH9Interface(getWETHAddress(chainId)), // L1 WETH
+            WETH9Interface(weth), // L1 WETH
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
             IERC20(getUSDCAddress(chainId)), // L1 USDC
@@ -50,7 +52,7 @@ contract DeployOptimismAdapter is Script, Test, Constants {
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
         console.log("Optimism_Adapter deployed to:", address(optimismAdapter));
-        console.log("L1 WETH:", getWETHAddress(chainId));
+        console.log("L1 WETH:", weth);
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);
         console.log("L1 USDC:", getUSDCAddress(chainId));
