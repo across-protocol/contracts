@@ -37,6 +37,7 @@ evm_version = "prague"
 
 [rpc_endpoints]
 ethereum = "${NODE_URL_1}"
+hyperevm = "${NODE_URL_999}"
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
