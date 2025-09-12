@@ -10,7 +10,6 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { getAddress } from "ethers/lib/utils";
 
 import { PUBLIC_NETWORKS, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs } from "../../utils/constants";
 
@@ -190,37 +189,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
 function getChainName(chainId: number): string {
   return PUBLIC_NETWORKS[chainId]?.name || `Chain ${chainId}`;
-}
-
-function toChecksumAddress(address: string): string {
-  // Check if this looks like an Ethereum address (0x followed by 40 hex characters)
-  if (/^0x[a-fA-F0-9]{40}$/.test(address)) {
-    // Use ethers.js to get the checksummed address for valid Ethereum addresses
-    try {
-      return getAddress(address);
-    } catch (error) {
-      // If ethers validation fails, return the original address
-      console.warn(`Warning: Invalid Ethereum address format: ${address}`);
-      return address;
-    }
-  } else {
-    // For non-Ethereum addresses (like Solana), return as-is
-    return address;
-  }
-}
-
-function sanitizeContractName(name: string): string {
-  // Remove special characters and replace with underscores
-  let sanitized = name.replace(/[^a-zA-Z0-9]/g, "_");
-  // Remove multiple consecutive underscores
-  sanitized = sanitized.replace(/_+/g, "_");
-  // Remove leading/trailing underscores
-  sanitized = sanitized.replace(/^_+|_+$/g, "");
-  // Ensure it starts with a letter
-  if (sanitized && /^\d/.test(sanitized)) {
-    sanitized = "CONTRACT_" + sanitized;
-  }
-  return sanitized.toUpperCase();
 }
 
 function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: string): void {
