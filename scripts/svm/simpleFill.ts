@@ -152,7 +152,7 @@ async function fillRelay(): Promise<void> {
   const delegate = getFillRelayDelegatePda(relayHashUint8Array, chainId, signer.publicKey, program.programId).pda;
 
   // Delegate fill delegate PDA to pull relayer tokens.
-  const approveIx = await createApproveCheckedInstruction(
+  const approveIx = createApproveCheckedInstruction(
     relayerTokenAccount,
     outputToken,
     delegate,
