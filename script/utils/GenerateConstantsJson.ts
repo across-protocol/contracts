@@ -34,15 +34,8 @@ import {
  *   "137": 137,
  * }
  */
-function convertChainIdsToObject(): { [key: string]: number } {
-  const result: { [key: string]: number } = {};
-  for (const [key, value] of Object.entries(CHAIN_IDs)) {
-    if (typeof value === "number") {
-      result[key] = value;
-    }
-  }
-  return result;
-}
+const convertChainIdsToObject = (): { [key: string]: number } =>
+  Object.fromEntries(Object.entries(CHAIN_IDs).map(([chainIdName, chainId]) => [chainIdName, chainId]));
 
 /**
  * Generate the wrapped native tokens for the public networks

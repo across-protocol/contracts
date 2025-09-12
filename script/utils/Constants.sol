@@ -219,7 +219,6 @@ contract Constants is Script {
 
     // Circle domain IDs mapping
     function getCircleDomainId(uint256 chainId) public view returns (uint256) {
-        // return uint32(vm.parseJsonUint(file, string.concat(".CIRCLE_DOMAIN_IDs.", vm.toString(chainId))));
         int256 cctpDomain = vm.parseJsonInt(
             file,
             string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain")
