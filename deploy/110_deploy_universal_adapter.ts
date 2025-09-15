@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const args = [
     hubPoolStore,
     USDC[chainId],
-    cctpDomainId === CCTP_NO_DOMAIN ? ZERO_ADDRESS : L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+    cctpDomainId === CCTP_NO_DOMAIN ? ZERO_ADDRESS : L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
     cctpDomainId === CCTP_NO_DOMAIN ? CIRCLE_UNINITIALIZED_DOMAIN_ID : cctpDomainId,
     adapterStore,
     oftDstEid,

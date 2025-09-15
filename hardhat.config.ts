@@ -22,7 +22,6 @@ const getNodeUrl = (chainId: number): string => {
     url = PUBLIC_NETWORKS[chainId].publicRPC;
   }
 
-  console.log(`Using RPC provider for chain ${chainId}: ${url}`);
   return url;
 };
 
