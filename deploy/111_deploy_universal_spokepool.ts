@@ -40,8 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     expectedWrappedNative,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
-    // USDC[spokeChainId] ?? ZERO_ADDRESS,
-    "0xb88339CB7199b77E23DB6E890353E22632Ba630f", // USDC on HyperEVM
+    USDC[spokeChainId] ?? ZERO_ADDRESS,
     L2_ADDRESS_MAP[spokeChainId]?.cctpTokenMessenger ?? ZERO_ADDRESS,
     oftEid,
     oftFeeCap,
