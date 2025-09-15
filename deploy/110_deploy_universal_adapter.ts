@@ -27,6 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const args = [
     hubPoolStore,
     USDC[chainId],
+    // ! Notice: pick `cctpV2TokenMessenger` / `cctpTokenMessenger` here to match your spoke CCTP version
     cctpDomainId === CCTP_NO_DOMAIN ? ZERO_ADDRESS : L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
     cctpDomainId === CCTP_NO_DOMAIN ? CIRCLE_UNINITIALIZED_DOMAIN_ID : cctpDomainId,
     adapterStore,
