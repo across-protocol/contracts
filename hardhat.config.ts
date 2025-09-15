@@ -22,6 +22,7 @@ const getNodeUrl = (chainId: number): string => {
     url = PUBLIC_NETWORKS[chainId].publicRPC;
   }
 
+  console.log(`Using RPC provider for chain ${chainId}: ${url}`);
   return url;
 };
 
@@ -204,6 +205,13 @@ const config: HardhatUserConfig = {
       // gasMultiplier: 4.0,
       chainId: CHAIN_IDs.BSC,
       url: getNodeUrl(CHAIN_IDs.BSC),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
+    hyperevm: {
+      chainId: CHAIN_IDs.HYPEREVM,
+      url: getNodeUrl(CHAIN_IDs.HYPEREVM),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -410,6 +418,7 @@ const config: HardhatUserConfig = {
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       bsc: process.env.BNB_ETHERSCAN_API_KEY!,
+      hyperevm: process.env.ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
       tatara: "blockscout",

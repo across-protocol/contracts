@@ -29,7 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const oftEid = getOftEid(hubChainId);
   // ! Notice. Deployed has to adjust this fee cap based on dst chain's native token. 4.4 BNB for BSC
-  const oftFeeCap = toWei(4.4); // ~1 ETH fee cap
+  const oftFeeCap = toWei(85.8); // ~1 ETH fee cap
 
   const heliosAddress = getDeployedAddress("Helios", spokeChainId);
 
@@ -40,7 +40,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     expectedWrappedNative,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
-    USDC[spokeChainId] ?? ZERO_ADDRESS,
+    // USDC[spokeChainId] ?? ZERO_ADDRESS,
+    "0xb88339CB7199b77E23DB6E890353E22632Ba630f", // USDC on HyperEVM
     L2_ADDRESS_MAP[spokeChainId]?.cctpTokenMessenger ?? ZERO_ADDRESS,
     oftEid,
     oftFeeCap,
