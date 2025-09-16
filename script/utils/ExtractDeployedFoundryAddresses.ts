@@ -348,8 +348,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
         content.push("");
       }
     }
-
-    content.push("");
   }
 
   // Generate JSON format as well
@@ -381,7 +379,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
 
   // Write JSON file
   const jsonFile = outputFile.replace(/\.[^/.]+$/, ".json");
-  fs.writeFileSync(jsonFile, JSON.stringify(jsonOutput, null, 2));
+  fs.writeFileSync(jsonFile, JSON.stringify(jsonOutput, null, 2) + "\n");
 
   console.log("Generated deployed addresses files:");
   console.log(`  - Markdown: ${markdownFile}`);
