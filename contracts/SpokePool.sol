@@ -12,7 +12,7 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 import "./libraries/AddressConverters.sol";
-import { IOFT } from "./interfaces/IOFT.sol";
+import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -203,6 +203,8 @@ abstract contract SpokePool is
     event SetOFTMessenger(address indexed token, address indexed messenger);
 
     error OFTTokenMismatch();
+    /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
+    error OFTFeeUnderpaid();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -1748,6 +1750,30 @@ abstract contract SpokePool is
 
     function _getOftMessenger(address _token) internal view returns (address) {
         return oftMessengers[_token];
+    }
+
+    /**
+     * @notice Perform an OFT transfer where the caller supplies the native fee via msg.value.
+     * @dev Supports overpayment: any excess native token is refunded to msg.sender before executing the transfer.
+     *      This function does not re-quote and uses the provided `fee` with `_sendOftTransfer`.
+     *      Must be invoked from a payable context.
+     * @param _token ERC-20 token to transfer.
+     * @param _messenger OFT messenger contract on the current chain for `_token`.
+     * @param _to Destination address on the remote chain.
+     * @param _amount Amount of tokens to transfer.
+     */
+    function _fundedTransferViaOft(IERC20 _token, IOFT _messenger, address _to, uint256 _amount) internal {
+        (SendParam memory sendParam, MessagingFee memory fee) = _buildOftTransfer(_messenger, _to, _amount);
+
+        if (fee.nativeFee > msg.value) {
+            revert OFTFeeUnderpaid();
+        }
+        // Refund any overpayment to the caller using a safe native transfer.
+        uint256 refund = msg.value - fee.nativeFee;
+        if (refund > 0) {
+            AddressLibUpgradeable.sendValue(payable(msg.sender), refund);
+        }
+        _sendOftTransfer(_token, _messenger, sendParam, fee);
     }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute

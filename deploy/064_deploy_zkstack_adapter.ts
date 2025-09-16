@@ -17,7 +17,7 @@ import {
  * This adapter supports ZkStack L2s.
  *
  * Usage:
- * $ SPOKE_CHAIN_ID=37111 yarn hardhat deploy --network sepolia --tags ZkStackCustomGasTokenAdapter
+ * $ SPOKE_CHAIN_ID=37111 yarn hardhat deploy --network sepolia --tags ZkStackAdapter
  */
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

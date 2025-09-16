@@ -1,8 +1,7 @@
 import * as dotenv from "dotenv";
-
+dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
-import { getNodeUrl, getMnemonic } from "@uma/common";
-import { CHAIN_IDs } from "./utils/constants";
+import { CHAIN_IDs, PUBLIC_NETWORKS } from "./utils/constants";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -15,12 +14,32 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
+const getNodeUrl = (chainId: number): string => {
+  let url = process.env[`NODE_URL_${chainId}`] ?? process.env.CUSTOM_NODE_URL;
+  if (url === undefined) {
+    // eslint-disable-next-line no-console
+    console.log(`No configured RPC provider for chain ${chainId}, reverting to public RPC.`);
+    url = PUBLIC_NETWORKS[chainId].publicRPC;
+  }
+
+  return url;
+};
+
+const getMnemonic = () => {
+  // Publicly-disclosed mnemonic. This is required for hre deployments in test.
+  const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+  const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
+  return MNEMONIC;
+};
+const mnemonic = getMnemonic();
+
 // Custom tasks to add to HRE.
 const tasks = [
   "enableL1TokenAcrossEcosystem",
   "finalizeScrollClaims",
   "rescueStuckScrollTxn",
   "verifySpokePool",
+  "verifyBytecode",
   "evmRelayMessageWithdrawal",
   "testChainAdapter",
   "upgradeSpokePool",
@@ -28,8 +47,6 @@ const tasks = [
 
 // eslint-disable-next-line node/no-missing-require
 tasks.forEach((task) => require(`./tasks/${task}`));
-
-dotenv.config();
 
 const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 
@@ -40,7 +57,6 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 const compileZk = process.env.COMPILE_ZK === "true";
 
 const solcVersion = "0.8.23";
-const mnemonic = getMnemonic();
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -123,7 +139,7 @@ const config: HardhatUserConfig = {
       allowUnlimitedContractSize: true,
     },
     mainnet: {
-      url: getNodeUrl("mainnet", true, 1),
+      url: getNodeUrl(CHAIN_IDs.MAINNET),
       accounts: { mnemonic },
       saveDeployments: true,
       chainId: CHAIN_IDs.MAINNET,
@@ -131,7 +147,7 @@ const config: HardhatUserConfig = {
     },
     zksync: {
       chainId: CHAIN_IDs.ZK_SYNC,
-      url: "https://mainnet.era.zksync.io",
+      url: getNodeUrl(CHAIN_IDs.ZK_SYNC),
       saveDeployments: true,
       accounts: { mnemonic },
       ethNetwork: "mainnet",
@@ -140,105 +156,110 @@ const config: HardhatUserConfig = {
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     optimism: {
-      url: getNodeUrl("optimism-mainnet", true, CHAIN_IDs.OPTIMISM),
+      chainId: CHAIN_IDs.OPTIMISM,
+      url: getNodeUrl(CHAIN_IDs.OPTIMISM),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: CHAIN_IDs.OPTIMISM,
       companionNetworks: { l1: "mainnet" },
     },
     "optimism-sepolia": {
-      url: getNodeUrl("optimism-sepolia", true, CHAIN_IDs.OPTIMISM_SEPOLIA),
+      chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
+      url: getNodeUrl(CHAIN_IDs.OPTIMISM_SEPOLIA),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
       companionNetworks: { l1: "sepolia" },
     },
     arbitrum: {
       chainId: CHAIN_IDs.ARBITRUM,
-      url: getNodeUrl("arbitrum-mainnet", true, CHAIN_IDs.ARBITRUM),
+      url: getNodeUrl(CHAIN_IDs.ARBITRUM),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "arbitrum-sepolia": {
       chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
-      url: getNodeUrl("arbitrum-sepolia", true, CHAIN_IDs.ARBITRUM_SEPOLIA),
+      url: getNodeUrl(CHAIN_IDs.ARBITRUM_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      chainId: CHAIN_IDs.SEPOLIA,
+      url: getNodeUrl(CHAIN_IDs.SEPOLIA),
       accounts: { mnemonic },
       saveDeployments: true,
-      chainId: CHAIN_IDs.SEPOLIA,
       companionNetworks: { l1: "sepolia" },
     },
     polygon: {
       chainId: CHAIN_IDs.POLYGON,
-      url: "https://polygon-rpc.com",
+      url: getNodeUrl(CHAIN_IDs.POLYGON),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     bsc: {
-      chainId: 56,
-      url: "https://bsc-dataseed1.binance.org",
+      // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
+      // gas: "auto",
+      // gasPrice: 3e8, // 0.3 GWEI
+      // gasMultiplier: 4.0,
+      chainId: CHAIN_IDs.BSC,
+      url: getNodeUrl(CHAIN_IDs.BSC),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
-    boba: {
-      chainId: CHAIN_IDs.BOBA,
-      url: getNodeUrl("boba", true, CHAIN_IDs.BOBA),
+    hyperevm: {
+      chainId: CHAIN_IDs.HYPEREVM,
+      url: getNodeUrl(CHAIN_IDs.HYPEREVM),
+      saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "polygon-amoy": {
       chainId: CHAIN_IDs.POLYGON_AMOY,
-      url: "https://rpc-amoy.polygon.technology",
+      url: getNodeUrl(CHAIN_IDs.POLYGON_AMOY),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     base: {
       chainId: CHAIN_IDs.BASE,
-      url: "https://mainnet.base.org",
+      url: getNodeUrl(CHAIN_IDs.BASE),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "base-sepolia": {
       chainId: CHAIN_IDs.BASE_SEPOLIA,
-      url: `https://base-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: getNodeUrl(CHAIN_IDs.BASE_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     ink: {
       chainId: CHAIN_IDs.INK,
-      url: "https://rpc-gel.inkonchain.com",
+      url: getNodeUrl(CHAIN_IDs.INK),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     linea: {
       chainId: CHAIN_IDs.LINEA,
-      url: `https://rpc.linea.build`,
+      url: getNodeUrl(CHAIN_IDs.LINEA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     scroll: {
       chainId: CHAIN_IDs.SCROLL,
-      url: "https://rpc.scroll.io",
+      url: getNodeUrl(CHAIN_IDs.SCROLL),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "scroll-sepolia": {
       chainId: CHAIN_IDs.SCROLL_SEPOLIA,
-      url: "https://sepolia-rpc.scroll.io",
+      url: getNodeUrl(CHAIN_IDs.SCROLL_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
@@ -259,21 +280,21 @@ const config: HardhatUserConfig = {
     },
     mode: {
       chainId: CHAIN_IDs.MODE,
-      url: "https://mainnet.mode.network",
+      url: getNodeUrl(CHAIN_IDs.MODE),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "mode-sepolia": {
       chainId: CHAIN_IDs.MODE_SEPOLIA,
-      url: "https://sepolia.mode.network",
+      url: getNodeUrl(CHAIN_IDs.MODE_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     tatara: {
       chainId: CHAIN_IDs.TATARA,
-      url: "https://rpc.tatara.katanarpc.com/<apikey>",
+      url: getNodeUrl(CHAIN_IDs.TATARA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
@@ -281,7 +302,7 @@ const config: HardhatUserConfig = {
     },
     lens: {
       chainId: CHAIN_IDs.LENS,
-      url: "https://api.lens.matterhosted.dev",
+      url: getNodeUrl(CHAIN_IDs.LENS),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
@@ -291,7 +312,7 @@ const config: HardhatUserConfig = {
     },
     "lens-sepolia": {
       chainId: CHAIN_IDs.LENS_SEPOLIA,
-      url: "https://rpc.testnet.lens.dev",
+      url: getNodeUrl(CHAIN_IDs.LENS_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
@@ -301,84 +322,77 @@ const config: HardhatUserConfig = {
     },
     lisk: {
       chainId: CHAIN_IDs.LISK,
-      url: "https://rpc.api.lisk.com",
+      url: getNodeUrl(CHAIN_IDs.LISK),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "lisk-sepolia": {
       chainId: CHAIN_IDs.LISK_SEPOLIA,
-      url: "https://rpc.sepolia-api.lisk.com",
+      url: getNodeUrl(CHAIN_IDs.LISK_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     redstone: {
       chainId: CHAIN_IDs.REDSTONE,
-      url: "https://rpc.redstonechain.com",
+      url: getNodeUrl(CHAIN_IDs.REDSTONE),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     blast: {
       chainId: CHAIN_IDs.BLAST,
-      url: "https://rpc.blast.io",
+      url: getNodeUrl(CHAIN_IDs.BLAST),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "blast-sepolia": {
       chainId: CHAIN_IDs.BLAST_SEPOLIA,
-      url: "https://sepolia.blast.io",
+      url: getNodeUrl(CHAIN_IDs.BLAST_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     worldchain: {
       chainId: CHAIN_IDs.WORLD_CHAIN,
-      url: "https://worldchain-mainnet.g.alchemy.com/public",
+      url: getNodeUrl(CHAIN_IDs.WORLD_CHAIN),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     zora: {
       chainId: CHAIN_IDs.ZORA,
-      url: "https://rpc.zora.energy",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    alephzero: {
-      chainId: CHAIN_IDs.ALEPH_ZERO,
-      url: "https://rpc.alephzero.raas.gelato.cloud",
+      url: getNodeUrl(CHAIN_IDs.ZORA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     soneium: {
       chainId: CHAIN_IDs.SONEIUM,
-      url: "https://soneium.drpc.org",
+      url: getNodeUrl(CHAIN_IDs.SONEIUM),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     unichain: {
       chainId: CHAIN_IDs.UNICHAIN,
-      url: "https://mainnet.unichain.org",
+      url: getNodeUrl(CHAIN_IDs.UNICHAIN),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
     "unichain-sepolia": {
       chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
-      url: "https://sepolia.unichain.org",
+      url: getNodeUrl(CHAIN_IDs.UNICHAIN_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
     },
     "bob-sepolia": {
       chainId: CHAIN_IDs.BOB_SEPOLIA,
-      url: "https://bob-sepolia.rpc.gobob.xyz",
+      url: getNodeUrl(CHAIN_IDs.BOB_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
@@ -403,6 +417,7 @@ const config: HardhatUserConfig = {
       "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
       bsc: process.env.BNB_ETHERSCAN_API_KEY!,
+      hyperevm: process.env.ETHERSCAN_API_KEY!,
       mode: "blockscout",
       "mode-sepolia": "blockscout",
       tatara: "blockscout",
@@ -413,7 +428,6 @@ const config: HardhatUserConfig = {
       "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
       zora: "routescan",
       worldchain: "blockscout",
-      alephzero: "blockscout",
       ink: "blockscout",
       soneium: "blockscout",
       unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
@@ -421,14 +435,6 @@ const config: HardhatUserConfig = {
       "bob-sepolia": "blockscout",
     },
     customChains: [
-      {
-        network: "alephzero",
-        chainId: CHAIN_IDs.ALEPH_ZERO,
-        urls: {
-          apiURL: "https://evm-explorer.alephzero.org/api",
-          browserURL: "https://evm-explorer.alephzero.org",
-        },
-      },
       {
         network: "base",
         chainId: CHAIN_IDs.BASE,

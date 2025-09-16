@@ -23,7 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { zkErc20Bridge, zkUSDCBridge, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
 
   const initArgs = [
-    0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
+    100_000, // Redeployment of the Spoke Pool proxy @ 09-01-2025. Offset the initial deposit ID by 100k
     zkErc20Bridge,
     hubPool.address,
     hubPool.address,
@@ -73,6 +73,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     newAddress = proxy.address;
   }
 
+  // Verify the proxy + implementation contract.
+  // @dev Verify before saving artifacts; saving artifacts seems to prevent successful verification.
+  // It's observed that saving artifacts seems to trigger a rebuild, hardhat-zksync-verify subsequently
+  // complains about a bytecode mismatch in the deployed artifact.
+  await hre.run("verify:verify", { address: newAddress, constructorArguments: constructorArgs });
+
   // Save the deployment manually because OZ's hardhat-upgrades packages bypasses hardhat-deploy.
   // See also: https://stackoverflow.com/questions/74870472
   const extendedArtifact = await deployments.getExtendedArtifact(contractName);
@@ -81,9 +87,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     ...extendedArtifact,
   };
   await deployments.save(contractName, deployment);
-
-  // Verify the proxy + implementation contract.
-  await hre.run("verify:verify", { address: newAddress, constructorArguments: constructorArgs });
 };
 
 module.exports = func;

@@ -82,6 +82,7 @@ export async function deployNewProxy(
   const artifact = await deployments.getExtendedArtifact(name);
   const deployment: DeploymentSubmission = {
     address: instance,
+    args: constructorArgs,
     ...artifact,
   };
   await deployments.save(name, deployment);

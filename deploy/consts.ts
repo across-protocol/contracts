@@ -45,8 +45,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
     l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
-    adapterStore: "", // to be deployed
-    hubPoolStore: "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
     zkBridgeHub: "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
     zkUsdcSharedBridge_232: "0xf553E6D903AA43420ED7e3bc2313bE9286A8F987",
     zkUsdcSharedBridge_324: "0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB", // This is the standard shared bridge contract.
@@ -184,8 +182,11 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.BSC]: {
-    helios: "0xB04926aF663cB52899361B1F6313bcFEa5A58B29",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.HYPEREVM]: {
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
