@@ -91,7 +91,7 @@
   "288": { "SpokePool": { "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58", "blockNumber": 619993 } },
   "324": {
     "SpokePool": { "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF", "blockNumber": 10352565 },
-    "MulticallHandler": { "address": "0x68d3806E57148D6c6793C78EbDDbc272fE605dbf", "blockNumber": 36906393 },
+    "MulticallHandler": { "address": "0x68d3806E57148D6c6793C78EbDDbc272fE605dbf", "blockNumber": 63168917 },
     "SpokePoolPeriphery": { "address": "0x672b9ba0CE73b69b5F940362F0ee36AAA3F02986", "blockNumber": 62189304 }
   },
   "480": {
@@ -103,34 +103,34 @@
   "690": {
     "SpokePool": { "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97", "blockNumber": 5512122 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 17147100 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 5159031 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 20457079 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 16783149 }
   },
   "919": {
     "SpokePool": { "address": "0xbd886FC0725Cc459b55BbFEb3E4278610331f83b", "blockNumber": 13999465 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 15826581 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 32616082 }
   },
   "1135": {
     "SpokePool": { "address": "0x9552a0a6624A23B848060AE5901659CDDa1f83f8", "blockNumber": 2602337 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 15875239 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 2948231 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 19185347 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 18113085 }
   },
   "4202": {
     "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 7267988 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 7660205 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 23893534 }
   },
   "8453": {
     "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 2164878 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 29844942 },
     "1inch_SwapAndBridge": { "address": "0x7CFaBF2eA327009B39f40078011B0Fb714b65926", "blockNumber": 14450808 },
     "UniswapV3_SwapAndBridge": { "address": "0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4", "blockNumber": 14450714 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 16917922 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 33154505 }
   },
   "34443": {
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 8043187 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 23155816 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 10228826 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 26465760 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 25393939 }
   },
   "42161": {
@@ -138,49 +138,49 @@
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 333624754 },
     "1inch_SwapAndBridge": { "address": "0xC456398D5eE3B93828252e48beDEDbc39e03368E", "blockNumber": 211175795 },
     "UniswapV3_SwapAndBridge": { "address": "0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D", "blockNumber": 211175481 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 230779625 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 360020909 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 351421618 }
   },
   "59144": {
     "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 2721169 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 18705781 },
-    "MulticallHandler": { "address": "0xdF1C940487574EEfa79989a79a4936A0F979cDa2", "blockNumber": 5669220 },
+    "MulticallHandler": { "address": "0xdF1C940487574EEfa79989a79a4936A0F979cDa2", "blockNumber": 21108879 },
     "SpokePoolPeriphery": { "address": "0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0", "blockNumber": 20348650 }
   },
   "84532": {
     "SpokePool": { "address": "0x82B564983aE7274c86695917BBf8C99ECb6F0F8F", "blockNumber": 6082004 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 12429513 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 28665844 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 32080834 }
   },
   "80002": {
     "PolygonTokenBridger": { "address": "0x4e3737679081c4D3029D88cA560918094f2e0284", "blockNumber": 7529773 },
     "SpokePool": { "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5", "blockNumber": 7529960 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 8797771 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 24181411 }
   },
   "168587773": {
     "SpokePool": { "address": "0x5545092553Cf5Bf786e87a87192E902D50D8f022", "blockNumber": 7634204 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 7973417 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 24206664 }
   },
   "81457": {
     "SpokePool": { "address": "0x2D509190Ed0172ba588407D4c2df918F955Cc6E1", "blockNumber": 5574280 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 18834642 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 5876291 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 22144286 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 21071991 }
   },
   "421614": {
     "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 12411026 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 58993382 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 175845768 }
   },
   "534352": {
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 7489705 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 15223712 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 7489978 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 17441646 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 16783149 }
   },
   "7777777": {
     "SpokePool": { "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97", "blockNumber": 18382867 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 29892606 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 18119854 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 33202799 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 32130332 }
   },
   "11155111": {
@@ -200,11 +200,6 @@
   "37111": {
     "SpokePool": { "address": "0x6A0a7f39530923911832Dd60667CE5da5449967B", "blockNumber": 156275 },
     "MulticallHandler": { "address": "0x02D2B95F631E0CF6c203E77f827381B0885F7822", "blockNumber": 145561 }
-  },
-  "41455": {
-    "SpokePool": { "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97", "blockNumber": 4240318 },
-    "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 8669066 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 4112529 }
   },
   "57073": {
     "SpokePool": { "address": "0xeF684C38F94F48775959ECf2012D7E864ffb9dd4", "blockNumber": 1139240 },
