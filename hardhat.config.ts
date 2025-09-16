@@ -129,7 +129,7 @@ const config: HardhatUserConfig = {
         enabled: true,
       },
       suppressedErrors: ["sendtransfer"],
-      contractsToCompile: ["SpokePoolPeriphery"],
+      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler"],
     },
   },
   networks: {
