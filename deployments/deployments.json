@@ -226,7 +226,7 @@
   },
   "1301": {
     "SpokePool": { "address": "0x6999526e507Cc3b03b180BbE05E1Ff938259A874", "blockNumber": 12593713 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 12594561 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 26247751 }
   },
   "129399": {
     "SpokePool": { "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64", "blockNumber": 2929205 },
