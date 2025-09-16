@@ -21,7 +21,7 @@
     "BondToken": { "address": "0xee1dc6bcf1ee967a350e9ac6caaaa236109002ea", "blockNumber": 17980554 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 22420136 },
     "Mode_Adapter": { "address": "0xf1B59868697f3925b72889ede818B9E7ba0316d0", "blockNumber": 19914094 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 20277013 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 22967417 },
     "Lisk_Adapter": { "address": "0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b", "blockNumber": 22474211 },
     "Universal_Adapter_56": { "address": "0x6f1C9d3bcDF51316E7b515a62C02F601500b084b", "blockNumber": 23251254 },
     "Universal_Adapter_999": { "address": "0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B", "blockNumber": 23371516 },
