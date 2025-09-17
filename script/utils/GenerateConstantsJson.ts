@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Import the constants from the TypeScript files
-import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
+import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP, ChainFamily } from "../../utils/constants";
 import {
   ZERO_ADDRESS,
   USDC,
@@ -86,6 +86,7 @@ function generateConstantsJson() {
     USDC,
     USDCe,
     WGHO,
+    CHAIN_FAMILIES: ChainFamily,
     OTHER_CONSTANTS: {
       ZERO_ADDRESS,
       ARBITRUM_MAX_SUBMISSION_COST,

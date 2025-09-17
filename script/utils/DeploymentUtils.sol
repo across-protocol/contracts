@@ -203,10 +203,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @param chainId Chain ID to check
      */
     function checkZkSyncChain(uint256 chainId) internal view {
-        bool isZkSyncChain = chainId == getChainId("ZK_SYNC") ||
-            chainId == getChainId("ZK_SYNC_SEPOLIA") ||
-            chainId == getChainId("LENS") ||
-            chainId == getChainId("LENS_TESTNET");
+        bool isZkSyncChain = getChainFamily(chainId) == "ZK_STACK";
 
         string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
 
