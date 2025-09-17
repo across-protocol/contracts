@@ -39,7 +39,6 @@ interface AllContracts {
 }
 
 interface JsonOutput {
-  generated_at: string;
   chains: {
     [chainId: string]: {
       chain_name: string;
@@ -244,7 +243,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
             };
           }
           allContracts[chainId].scripts[scriptName] = [contract];
-          console.log(`Added deployments.json contract ${contract.contractName} on ${chainName}`);
         }
       } else {
         const scriptName = broadcastFile.scriptName;
@@ -255,7 +253,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
           };
         }
         allContracts[chainId].scripts[scriptName] = contracts;
-        console.log(`Added ${contracts.length} contracts from ${scriptName} on ${chainName}`);
       }
     }
   }
@@ -263,8 +260,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   // Generate output content
   const content: string[] = [];
   content.push("# Deployed Contract Addresses");
-  content.push("");
-  content.push(`Generated on: ${new Date().toISOString()}`);
   content.push("");
   content.push("This file contains the latest deployed smart contract addresses from the broadcast folder.");
   content.push("");
@@ -299,25 +294,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
       // Default sort by chain ID
       return a - b;
     });
-
-  // Log the sorting priority for visibility
-  console.log("\nChain sorting priority:");
-  const mainnetChains = sortedChainIds.filter((id) => Object.values(MAINNET_CHAIN_IDs).includes(id));
-  const testnetChains = sortedChainIds.filter((id) => Object.values(TESTNET_CHAIN_IDs).includes(id));
-  const otherChains = sortedChainIds.filter(
-    (id) => !Object.values(MAINNET_CHAIN_IDs).includes(id) && !Object.values(TESTNET_CHAIN_IDs).includes(id)
-  );
-
-  console.log(
-    `  Mainnet chains (${mainnetChains.length}): ${mainnetChains.map((id) => `${getChainName(id)}(${id})`).join(", ")}`
-  );
-  console.log(
-    `  Testnet chains (${testnetChains.length}): ${testnetChains.map((id) => `${getChainName(id)}(${id})`).join(", ")}`
-  );
-  console.log(
-    `  Other chains (${otherChains.length}): ${otherChains.map((id) => `${getChainName(id)}(${id})`).join(", ")}`
-  );
-  console.log("");
 
   for (const chainId of sortedChainIds) {
     const chainInfo = allContracts[chainId];
@@ -376,7 +352,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
 
   // Generate JSON format as well
   const jsonOutput: JsonOutput = {
-    generated_at: new Date().toISOString(),
     chains: {},
   };
 
@@ -404,7 +379,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
 
   // Write JSON file
   const jsonFile = outputFile.replace(/\.[^/.]+$/, ".json");
-  fs.writeFileSync(jsonFile, JSON.stringify(jsonOutput, null, 2));
+  fs.writeFileSync(jsonFile, JSON.stringify(jsonOutput, null, 2) + "\n");
 
   console.log("Generated deployed addresses files:");
   console.log(`  - Markdown: ${markdownFile}`);
@@ -415,8 +390,6 @@ function main(): void {
   // Get the script directory and find broadcast folder
   const scriptDir = path.dirname(__filename);
   const projectRoot = path.dirname(scriptDir);
-  console.log("Project root:", projectRoot);
-  console.log("Script dir:", scriptDir);
   const broadcastDir = path.join(projectRoot, "..", "broadcast");
   const deploymentsDir = path.join(projectRoot, "..", "deployments");
 
@@ -443,10 +416,6 @@ function main(): void {
   }
 
   console.log(`Found ${broadcastFiles.length} broadcast files and ${deploymentsFiles.length} deployment entries:`);
-  for (const bf of allFiles) {
-    const source = bf.isDeploymentsJson ? "deployments.json" : "broadcast";
-    console.log(`  - ${bf.scriptName} on ${getChainName(bf.chainId)} (from ${source})`);
-  }
 
   // Generate output files inside broadcast directory
   const outputFile = path.join(broadcastDir, "deployed-addresses.json");
