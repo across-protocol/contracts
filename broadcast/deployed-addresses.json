@@ -1,5 +1,5 @@
 {
-  "generated_at": "2025-09-09T21:17:28.863Z",
+  "generated_at": "2025-09-15T23:00:31.247Z",
   "chains": {
     "1": {
       "chain_name": "Mainnet",
@@ -13,6 +13,11 @@
           "address": "0xE50b2cEAC4f60E840Ae513924033E753e2366487",
           "transaction_hash": "Unknown",
           "block_number": 15976846
+        },
+        "AdapterStore": {
+          "address": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
+          "transaction_hash": "Unknown",
+          "block_number": 23086526
         },
         "Arbitrum_Adapter": {
           "address": "0x5eC9844936875E27eBF22172f4d92E107D35B57C",
@@ -114,10 +119,15 @@
           "transaction_hash": "Unknown",
           "block_number": 22474211
         },
-        "Universal_Adapter": {
+        "Universal_Adapter_56": {
           "address": "0x6f1C9d3bcDF51316E7b515a62C02F601500b084b",
           "transaction_hash": "Unknown",
           "block_number": 23251254
+        },
+        "Universal_Adapter_999": {
+          "address": "0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B",
+          "transaction_hash": "Unknown",
+          "block_number": 23371516
         },
         "Blast_Adapter": {
           "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81",
@@ -258,6 +268,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 52135703
+        },
+        "Helios": {
+          "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d",
+          "transaction_hash": "Unknown",
+          "block_number": 59344945
         }
       }
     },
@@ -458,6 +473,21 @@
           "address": "0x924a9f036260DdD5808007E1AA95f08eD08aA569",
           "transaction_hash": "Unknown",
           "block_number": 15826581
+        }
+      }
+    },
+    "999": {
+      "chain_name": "HyperEVM",
+      "contracts": {
+        "SpokePool": {
+          "address": "0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04",
+          "transaction_hash": "Unknown",
+          "block_number": 13937805
+        },
+        "Helios": {
+          "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5",
+          "transaction_hash": "Unknown",
+          "block_number": 13934816
         }
       }
     },
