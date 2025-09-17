@@ -512,8 +512,6 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `16783149`
 
-<<<<<<< HEAD
-
 #### Redstone_SpokePool
 
 - **Redstone_SpokePool**: `0x78d8cb7284b14c123a2e81a3246494e8dad873e4`
@@ -533,7 +531,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Helios**: `0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5`
   - Transaction Hash: `Unknown`
   - Block Number: `13934816`
-    > > > > > > > b1e927dad0aa5cd2fbd3c8864c380fd99ed88805
 
 ### Lisk (Chain ID: 1135)
 
