@@ -1,6 +1,10 @@
 [profile.default]
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
 src = "contracts"
-out = "artifacts"
+out = "out"
 test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
 remappings = [
@@ -26,14 +30,42 @@ via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.23"
 revert_strings = "strip"
+fs_permissions = [{ access = "read", path = "./"}]
 
 solc = "0.8.23"
 evm_version = "prague"
 
+[profile.zksync.zksync]
+compile = true
+fallback_oz = true
+mode = '3'
+zksolc = "1.5.7"
+
 [rpc_endpoints]
+arbitrum = "${NODE_URL_42161}"
+base = "${NODE_URL_8453}"
+bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
+ink = "${NODE_URL_57073}"
+lens = "${NODE_URL_262}"
+linea = "${NODE_URL_59144}"
+lisk = "${NODE_URL_1135}"
+mode = "${NODE_URL_34443}"
+optimism = "${NODE_URL_10}"
+polygon = "${NODE_URL_137}"
+redstone = "${NODE_URL_690}"
+scroll = "${NODE_URL_534352}"
+soneium = "${NODE_URL_1868}"
+unichain = "${NODE_URL_130}"
+world-chain = "${NODE_URL_480}"
+zksync = "${NODE_URL_324}"
+
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
+
+# A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local forge test`
+[profile.local]
+test = "test/evm/foundry/local"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
