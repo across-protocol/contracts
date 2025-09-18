@@ -84,9 +84,7 @@ To enable ZKSync support, the zksync fork of foundry must be installed (see [her
 Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
 
 ```shell
-export FOUNDRY_PROFILE=zksync
-
-forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
 ```
 
 Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.

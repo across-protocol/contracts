@@ -5,7 +5,6 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Optimism_SpokePool } from "../contracts/Optimism_SpokePool.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
@@ -25,7 +24,7 @@ contract DeployOptimismSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWrappedNativeToken(info.spokeChainId);
+        address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get L2 addresses for Optimism
         address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
@@ -34,7 +33,7 @@ contract DeployOptimismSpokePool is Script, Test, DeploymentUtils {
 
         // Prepare constructor arguments for Optimism_SpokePool
         bytes memory constructorArgs = abi.encode(
-            address(weth), // _wrappedNativeTokenAddress
+            weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             getUSDCAddress(info.spokeChainId), // _l2Usdc
@@ -62,7 +61,7 @@ contract DeployOptimismSpokePool is Script, Test, DeploymentUtils {
         console.log("Chain ID:", info.spokeChainId);
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
-        console.log("WETH address:", address(weth));
+        console.log("WETH address:", weth);
         console.log("CCTP Token Messenger:", cctpTokenMessenger);
         console.log("USDC address:", getUSDCAddress(info.spokeChainId));
         console.log("Optimism_SpokePool proxy deployed to:", result.proxy);
