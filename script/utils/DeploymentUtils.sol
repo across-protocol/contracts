@@ -31,7 +31,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
     }
 
     constructor() {
-        checkZkSyncChain(block.chainid);
+        checkZkStackChain(block.chainid);
     }
 
     /**
@@ -198,20 +198,20 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
     }
 
     /**
-     * @notice Check if a chain ID is a ZkSync chain
+     * @notice Check if a chain ID is a ZkStack chain
      * @dev This function will revert if the chain ID is a ZkSync chain but the FOUNDRY_PROFILE is not zksync
      * @param chainId Chain ID to check
      */
-    function checkZkSyncChain(uint256 chainId) internal view {
-        bool isZkSyncChain = getChainFamily(chainId) == "ZK_STACK";
+    function checkZkStackChain(uint256 chainId) internal view {
+        bool isZkStackChain = getChainFamily(chainId) == string("ZK_STACK");
 
         string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
 
-        if (isZkSyncChain) {
+        if (isZkStackChain) {
             vm.assertEq(
                 foundryProfile,
                 string("zksync"),
-                "Chain is a ZkSync chain but FOUNDRY_PROFILE is not zksync. Use yarn forge-script-zksync to deploy"
+                "Chain is a ZkStack chain but FOUNDRY_PROFILE is not zksync. Use yarn forge-script-zksync to deploy"
             );
         }
     }
