@@ -223,14 +223,19 @@ contract Constants is Script {
 
     // Circle domain IDs mapping
     function getCircleDomainId(uint256 chainId) public view returns (uint256) {
-        int256 cctpDomain = vm.parseJsonInt(
-            file,
-            string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain")
-        );
+        int256 cctpDomain = _getCctpDomain(chainId);
         if (cctpDomain == -1) {
             revert("Circle domain ID not found");
         }
         return uint256(cctpDomain);
+    }
+
+    function hasCctpDomain(uint256 chainId) public view returns (bool) {
+        return _getCctpDomain(chainId) != -1;
+    }
+
+    function _getCctpDomain(uint256 chainId) internal view returns (int256) {
+        return vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain"));
     }
 
     function getOftEid(uint256 chainId) public view returns (uint256) {
