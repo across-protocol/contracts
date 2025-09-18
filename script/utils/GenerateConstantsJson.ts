@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Import the constants from the TypeScript files
-import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP, ChainFamily } from "../../utils/constants";
+import { CHAIN_IDs, PUBLIC_NETWORKS, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP, ChainFamily } from "../../utils/constants";
 import {
   ZERO_ADDRESS,
   USDC,
@@ -74,6 +74,7 @@ function generateConstantsJson() {
   const constants = {
     PUBLIC_NETWORKS,
     CHAIN_IDs: convertChainIdsToObject(),
+    TESTNET_CHAIN_IDs: Object.values(TESTNET_CHAIN_IDs),
     WETH,
     WRAPPED_NATIVE_TOKENS: generateWrappedNativeTokens(),
     L2_ADDRESS_MAP,

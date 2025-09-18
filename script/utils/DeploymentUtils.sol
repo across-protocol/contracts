@@ -179,22 +179,13 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @return bool True if testnet
      */
     function isTestnet(uint256 chainId) internal view returns (bool) {
-        return
-            chainId == getChainId("ARBITRUM_SEPOLIA") ||
-            chainId == getChainId("BASE_SEPOLIA") ||
-            chainId == getChainId("BLAST_SEPOLIA") ||
-            chainId == getChainId("BOB_SEPOLIA") ||
-            chainId == getChainId("INK_SEPOLIA") ||
-            chainId == getChainId("TATARA") ||
-            chainId == getChainId("LENS_SEPOLIA") ||
-            chainId == getChainId("LISK_SEPOLIA") ||
-            chainId == getChainId("MODE_SEPOLIA") ||
-            chainId == getChainId("OPTIMISM_SEPOLIA") ||
-            chainId == getChainId("POLYGON_AMOY") ||
-            chainId == getChainId("SCROLL_SEPOLIA") ||
-            chainId == getChainId("SEPOLIA") ||
-            chainId == getChainId("UNICHAIN_SEPOLIA") ||
-            chainId == getChainId("ZK_SYNC_SEPOLIA");
+        uint256[] memory testnetChainIds = getTestnetChainIds();
+        for (uint256 i = 0; i < testnetChainIds.length; i++) {
+            if (chainId == testnetChainIds[i]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

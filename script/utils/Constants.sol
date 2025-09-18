@@ -19,6 +19,10 @@ contract Constants is Script {
         return vm.parseJsonUint(file, string.concat(".CHAIN_IDs.", chainName));
     }
 
+    function getTestnetChainIds() public view returns (uint256[] memory) {
+        return vm.parseJsonUintArray(file, ".TESTNET_CHAIN_IDs");
+    }
+
     function QUOTE_TIME_BUFFER() public view returns (uint256) {
         return vm.parseJsonUint(file, ".TIME_CONSTANTS.QUOTE_TIME_BUFFER");
     }
