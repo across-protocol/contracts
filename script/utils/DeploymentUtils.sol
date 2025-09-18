@@ -203,7 +203,8 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @param chainId Chain ID to check
      */
     function checkZkStackChain(uint256 chainId) internal view {
-        bool isZkStackChain = getChainFamily(chainId) == string("ZK_STACK");
+        bool isZkStackChain = keccak256(abi.encodePacked(getChainFamily(chainId))) ==
+            keccak256(abi.encodePacked("ZK_STACK"));
 
         string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
 
