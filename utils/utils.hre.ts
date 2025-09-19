@@ -92,7 +92,11 @@ export async function deployNewProxy(
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
   const contract = `contracts/${name}.sol:${name}`;
-  await run("verify:verify", { address: instance, constructorArguments: constructorArgs, contract });
+  if (hre.config.blockscout.enabled && hre.config.blockscout.customChains.some((chain) => chain.chainId === chainId)) {
+    await run("verify:blockscout", { address: instance, constructorArguments: constructorArgs, contract });
+  } else {
+    await run("verify:verify", { address: instance, constructorArguments: constructorArgs, contract });
+  }
 }
 
 export { hre };
