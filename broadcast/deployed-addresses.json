@@ -363,6 +363,11 @@
           "transaction_hash": "Unknown",
           "block_number": 4197027
         },
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "transaction_hash": "Unknown",
+          "block_number": 4419395
+        },
         "MulticallHandler": {
           "address": "0x1Ed0D59019a52870337b51DEe8190486a8663037",
           "transaction_hash": "Unknown",
@@ -392,6 +397,11 @@
           "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF",
           "transaction_hash": "Unknown",
           "block_number": 10352565
+        },
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "transaction_hash": "Unknown",
+          "block_number": 64765628
         },
         "MulticallHandler": {
           "address": "0x68d3806E57148D6c6793C78EbDDbc272fE605dbf",
