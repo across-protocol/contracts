@@ -85,12 +85,14 @@
   },
   "232": {
     "SpokePool": { "address": "0xb234cA484866c811d0e6D3318866F583781ED045", "blockNumber": 4197027 },
+    "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 4419395 },
     "MulticallHandler": { "address": "0x1Ed0D59019a52870337b51DEe8190486a8663037", "blockNumber": 3458452 },
     "SpokePoolPeriphery": { "address": "0x8A8cA9c4112c67b7Dae7dF7E89EA45D592362107", "blockNumber": 2884429 }
   },
   "288": { "SpokePool": { "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58", "blockNumber": 619993 } },
   "324": {
     "SpokePool": { "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF", "blockNumber": 10352565 },
+    "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 64765628 },
     "MulticallHandler": { "address": "0x68d3806E57148D6c6793C78EbDDbc272fE605dbf", "blockNumber": 63168917 },
     "SpokePoolPeriphery": { "address": "0x672b9ba0CE73b69b5F940362F0ee36AAA3F02986", "blockNumber": 62189304 }
   },
