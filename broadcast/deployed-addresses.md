@@ -530,6 +530,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `13937805`
 
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `14459886`
+
 #### Helios
 
 - **Helios**: `0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5`
