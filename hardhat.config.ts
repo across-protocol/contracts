@@ -403,6 +403,14 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
+        network: "hyperevm",
+        chainId: CHAIN_IDs.HYPEREVM,
+        urls: {
+          apiURL: "https://hyperevmscan.io/api",
+          browserURL: "https://hyperevmscan.io",
+        },
+      },
+      {
         network: "zksync",
         chainId: CHAIN_IDs.ZK_SYNC,
         urls: {
