@@ -1641,6 +1641,17 @@
   dependencies:
     chalk "4.1.2"
 
+"@matterlabs/hardhat-zksync-solc@0.4.1":
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-0.4.1.tgz#e8e67d947098d7bb8925f968544d34e522af5a9c"
+  integrity sha512-fdlGf/2yZR5ihVNc2ubea1R/nNFXRONL29Fgz5FwB3azB13rPb76fkQgcFIg9zSufHsEy6zUUT029NkxLNA9Sw==
+  dependencies:
+    "@nomiclabs/hardhat-docker" "^2.0.0"
+    chalk "4.1.2"
+    dockerode "^3.3.4"
+    fs-extra "^11.1.1"
+    semver "^7.5.1"
+
 "@matterlabs/hardhat-zksync-solc@^0.4.0":
   version "0.4.0"
   resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-0.4.0.tgz#4f0352398a9de9144fd2c0e32295e212318e164c"
@@ -1670,25 +1681,6 @@
     sinon-chai "^3.7.0"
     undici "^6.18.2"
 
-"@matterlabs/hardhat-zksync-solc@^1.5.0":
-  version "1.5.1"
-  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-1.5.1.tgz#9ceb413a7f4410bc00baadaecad5d3861fe3b72e"
-  integrity sha512-dd9CcOH31kgfe1QPAecNqGohcAzySVoFKFfp23kIfhenIXFhI7OfbxUy5uVyeycZYHip0zgRsNAIVPsIpgjPWw==
-  dependencies:
-    "@matterlabs/hardhat-zksync-telemetry" "^1.1.1"
-    "@nomiclabs/hardhat-docker" "^2.0.2"
-    chai "^4.3.4"
-    chalk "^4.1.2"
-    debug "^4.3.5"
-    dockerode "^4.0.2"
-    fs-extra "^11.2.0"
-    lodash "^4.17.21"
-    proper-lockfile "^4.1.2"
-    semver "^7.6.2"
-    sinon "^18.0.0"
-    sinon-chai "^3.7.0"
-    undici "^6.18.2"
-
 "@matterlabs/hardhat-zksync-telemetry@^1.1.1":
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-telemetry/-/hardhat-zksync-telemetry-1.1.1.tgz#d2a373843c129ef7ed1fef38dd10ba124f201935"
@@ -1705,24 +1697,16 @@
     "@matterlabs/hardhat-zksync-solc" "^0.4.0"
     dockerode "^3.3.4"
 
-"@matterlabs/hardhat-zksync-verify@^1.9.0":
-  version "1.9.0"
-  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-verify/-/hardhat-zksync-verify-1.9.0.tgz#0a8ebf08edbda5309363f95353fdf89a57a0ace8"
-  integrity sha512-apd8h4c237jU/kRVgPSdTVdg0QlNq1jC2Kretx4AR49biHMlAC5IaRhLwGaR8vn9jT5xTTfC7UZYhUvtseRWbQ==
+"@matterlabs/hardhat-zksync-verify@^0.2.0":
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-verify/-/hardhat-zksync-verify-0.2.2.tgz#daa34bc4404096ed0f44461ee366c1cb0e5a4f2f"
+  integrity sha512-WgcItoZGY702oJ708uCP5uLvmwzDLBfhMqq2D0Kh1U/3fCTlPza9zMGUFHxKMQYsITKTeQ5zKOjKoi8MXOeUdQ==
   dependencies:
-    "@ethersproject/abi" "^5.7.0"
-    "@ethersproject/address" "5.7.0"
-    "@matterlabs/hardhat-zksync-solc" "^1.5.0"
-    "@matterlabs/hardhat-zksync-telemetry" "^1.1.1"
-    "@nomicfoundation/hardhat-verify" "^2.0.8"
-    axios "^1.7.2"
-    cbor "^9.0.2"
-    chai "^4.3.4"
-    chalk "^4.1.2"
-    debug "^4.3.5"
-    semver "^7.6.2"
-    sinon "^18.0.0"
-    sinon-chai "^3.7.0"
+    "@matterlabs/hardhat-zksync-solc" "0.4.1"
+    "@nomicfoundation/hardhat-verify" "^1.0.2"
+    axios "^1.4.0"
+    chalk "4.1.2"
+    dockerode "^3.3.4"
 
 "@matterlabs/zksync-contracts@^0.2.4":
   version "0.2.4"
@@ -2072,10 +2056,10 @@
     mcl-wasm "^0.7.1"
     rustbn.js "~0.2.0"
 
-"@nomicfoundation/hardhat-verify@^1.0.4":
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-1.0.4.tgz#a9e63ace50fa69fe348f38ec6bf9397dcc476ccc"
-  integrity sha512-zKH7lCgesD9MQbrMsV9DH9NS5Qhkv9K1W9LvbkZWvUQdpyS6zzDyIuJwmfxRKfUGXVlpA2X8nSL3MtxSj3s5aw==
+"@nomicfoundation/hardhat-verify@^1.0.2", "@nomicfoundation/hardhat-verify@^1.0.3":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-1.1.1.tgz#6a433d777ce0172d1f0edf7f2d3e1df14b3ecfc1"
+  integrity sha512-9QsTYD7pcZaQFEA3tBb/D/oCStYDiEVDN7Dxeo/4SCyHRSm86APypxxdOMEPlGmXsAvd+p1j/dTODcpxb8aztA==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@ethersproject/address" "^5.0.2"
@@ -2087,17 +2071,17 @@
     table "^6.8.0"
     undici "^5.14.0"
 
-"@nomicfoundation/hardhat-verify@^2.0.14", "@nomicfoundation/hardhat-verify@^2.0.8":
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-2.1.1.tgz#0af5fc4228df860062865fcafb4a01bc0b89f8a3"
-  integrity sha512-K1plXIS42xSHDJZRkrE2TZikqxp9T4y6jUMUNI/imLgN5uCcEQokmfU0DlyP9zzHncYK92HlT5IWP35UVCLrPw==
+"@nomicfoundation/hardhat-verify@^1.0.4":
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-1.0.4.tgz#a9e63ace50fa69fe348f38ec6bf9397dcc476ccc"
+  integrity sha512-zKH7lCgesD9MQbrMsV9DH9NS5Qhkv9K1W9LvbkZWvUQdpyS6zzDyIuJwmfxRKfUGXVlpA2X8nSL3MtxSj3s5aw==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@ethersproject/address" "^5.0.2"
     cbor "^8.1.0"
+    chalk "^2.4.2"
     debug "^4.1.1"
     lodash.clonedeep "^4.5.0"
-    picocolors "^1.1.0"
     semver "^6.3.0"
     table "^6.8.0"
     undici "^5.14.0"
@@ -5085,6 +5069,15 @@ axios@^0.21.1:
   dependencies:
     follow-redirects "^1.14.0"
 
+axios@^1.4.0:
+  version "1.12.2"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.12.2.tgz#6c307390136cf7a2278d09cec63b136dfc6e6da7"
+  integrity sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==
+  dependencies:
+    follow-redirects "^1.15.6"
+    form-data "^4.0.4"
+    proxy-from-env "^1.1.0"
+
 axios@^1.6.1:
   version "1.7.8"
   resolved "https://registry.yarnpkg.com/axios/-/axios-1.7.8.tgz#1997b1496b394c21953e68c14aaa51b7b5de3d6e"
@@ -5092,15 +5085,6 @@ axios@^1.6.1:
   dependencies:
     follow-redirects "^1.15.6"
     form-data "^4.0.0"
-    proxy-from-env "^1.1.0"
-
-axios@^1.7.2:
-  version "1.12.2"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.12.2.tgz#6c307390136cf7a2278d09cec63b136dfc6e6da7"
-  integrity sha512-vMJzPewAlRyOgxV2dU0Cuz2O8zzzx9VYtbJOaBgXFeLc4IV/Eg50n4LowmehOOR61S8ZMpc2K5Sa7g6A4jfkUw==
-  dependencies:
-    follow-redirects "^1.15.6"
-    form-data "^4.0.4"
     proxy-from-env "^1.1.0"
 
 axios@^1.7.4:
@@ -6370,13 +6354,6 @@ cbor@^8.0.0, cbor@^8.1.0:
   version "8.1.0"
   resolved "https://registry.yarnpkg.com/cbor/-/cbor-8.1.0.tgz#cfc56437e770b73417a2ecbfc9caf6b771af60d5"
   integrity sha512-DwGjNW9omn6EwP70aXsn7FQJx5kO12tX0bZkaTjzdVFM6/7nhA4t0EENocKGx6D2Bch9PE2KzCUf5SceBdeijg==
-  dependencies:
-    nofilter "^3.1.0"
-
-cbor@^9.0.2:
-  version "9.0.2"
-  resolved "https://registry.yarnpkg.com/cbor/-/cbor-9.0.2.tgz#536b4f2d544411e70ec2b19a2453f10f83cd9fdb"
-  integrity sha512-JPypkxsB10s9QOWwa6zwPzqE1Md3vqpPc+cai4sAecuCsRyAtAl/pMyhPlMbT/xtPnm2dznJZYRLui57qiRhaQ==
   dependencies:
     nofilter "^3.1.0"
 
@@ -14112,11 +14089,6 @@ picocolors@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.0.0.tgz#cb5bdc74ff3f51892236eaf79d68bc44564ab81c"
   integrity sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==
-
-picocolors@^1.1.0:
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/picocolors/-/picocolors-1.1.1.tgz#3d321af3eab939b083c8f929a1d12cda81c26b6b"
-  integrity sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==
 
 picomatch@^2.0.4, picomatch@^2.2.1, picomatch@^2.2.3, picomatch@^2.3.1:
   version "2.3.1"
