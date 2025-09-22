@@ -250,6 +250,13 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    plasma: {
+      chainId: CHAIN_IDs.PLASMA,
+      url: getNodeUrl(CHAIN_IDs.PLASMA),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     scroll: {
       chainId: CHAIN_IDs.SCROLL,
       url: getNodeUrl(CHAIN_IDs.SCROLL),
