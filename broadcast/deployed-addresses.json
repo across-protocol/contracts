@@ -128,6 +128,11 @@
           "transaction_hash": "Unknown",
           "block_number": 23371516
         },
+        "Universal_Adapter_9745": {
+          "address": "0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363",
+          "transaction_hash": "Unknown",
+          "block_number": 23419367
+        },
         "Blast_Adapter": {
           "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81",
           "transaction_hash": "Unknown",
@@ -607,6 +612,11 @@
           "address": "0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75",
           "transaction_hash": "Unknown",
           "block_number": 1552582
+        },
+        "SpokePool": {
+          "address": "0x2271a5E74eA8A29764ab10523575b41AA52455f0",
+          "transaction_hash": "Unknown",
+          "block_number": 1623864
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",

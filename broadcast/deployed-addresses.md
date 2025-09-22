@@ -156,6 +156,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `23371516`
 
+#### Universal_Adapter_9745
+
+- **Universal_Adapter_9745**: `0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363`
+  - Transaction Hash: `Unknown`
+  - Block Number: `23419367`
+
 #### Blast_Adapter
 
 - **Blast_Adapter**: `0xF2bEf5E905AAE0295003ab14872F811E914EdD81`
@@ -621,6 +627,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Helios**: `0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75`
   - Transaction Hash: `Unknown`
   - Block Number: `1552582`
+
+#### SpokePool
+
+- **SpokePool**: `0x2271a5E74eA8A29764ab10523575b41AA52455f0`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1623864`
 
 #### SpokePoolVerifier
 
