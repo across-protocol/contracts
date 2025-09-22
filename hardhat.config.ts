@@ -33,13 +33,13 @@ const getMnemonic = () => {
 };
 const mnemonic = getMnemonic();
 
-const getDefaultHardhatConfig = (chainId: number): any => {
+const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): any => {
   return {
     chainId,
     url: getNodeUrl(chainId),
     accounts: { mnemonic },
     saveDeployments: true,
-    companionNetworks: { l1: "mainnet" },
+    companionNetworks: { l1: isTestnet ? "sepolia" : "mainnet" },
   };
 };
 
@@ -160,28 +160,10 @@ const config: HardhatUserConfig = {
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
     optimism: getDefaultHardhatConfig(CHAIN_IDs.OPTIMISM),
-    "optimism-sepolia": {
-      chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.OPTIMISM_SEPOLIA),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      companionNetworks: { l1: "sepolia" },
-    },
+    "optimism-sepolia": getDefaultHardhatConfig(CHAIN_IDs.OPTIMISM_SEPOLIA, true),
     arbitrum: getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM),
-    "arbitrum-sepolia": {
-      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.ARBITRUM_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    sepolia: {
-      chainId: CHAIN_IDs.SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.SEPOLIA),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      companionNetworks: { l1: "sepolia" },
-    },
+    "arbitrum-sepolia": getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM_SEPOLIA, true),
+    sepolia: getDefaultHardhatConfig(CHAIN_IDs.SEPOLIA, true),
     polygon: getDefaultHardhatConfig(CHAIN_IDs.POLYGON),
     bsc: getDefaultHardhatConfig(CHAIN_IDs.BSC),
     // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
@@ -189,32 +171,14 @@ const config: HardhatUserConfig = {
     // gasPrice: 3e8, // 0.3 GWEI
     // gasMultiplier: 4.0,
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
-    "polygon-amoy": {
-      chainId: CHAIN_IDs.POLYGON_AMOY,
-      url: getNodeUrl(CHAIN_IDs.POLYGON_AMOY),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
-    "base-sepolia": {
-      chainId: CHAIN_IDs.BASE_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.BASE_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),
     ink: getDefaultHardhatConfig(CHAIN_IDs.INK),
     linea: getDefaultHardhatConfig(CHAIN_IDs.LINEA),
     plasma: getDefaultHardhatConfig(CHAIN_IDs.PLASMA),
     scroll: getDefaultHardhatConfig(CHAIN_IDs.SCROLL),
-    "scroll-sepolia": {
-      chainId: CHAIN_IDs.SCROLL_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.SCROLL_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "scroll-sepolia": getDefaultHardhatConfig(CHAIN_IDs.SCROLL_SEPOLIA, true),
     "polygon-zk-evm": {
       chainId: 1101,
       url: "https://zkevm-rpc.com",
@@ -230,13 +194,7 @@ const config: HardhatUserConfig = {
       companionNetworks: { l1: "goerli" },
     },
     mode: getDefaultHardhatConfig(CHAIN_IDs.MODE),
-    "mode-sepolia": {
-      chainId: CHAIN_IDs.MODE_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.MODE_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "mode-sepolia": getDefaultHardhatConfig(CHAIN_IDs.MODE_SEPOLIA, true),
     tatara: {
       chainId: CHAIN_IDs.TATARA,
       url: getNodeUrl(CHAIN_IDs.TATARA),
@@ -266,40 +224,16 @@ const config: HardhatUserConfig = {
       zksync: true,
     },
     lisk: getDefaultHardhatConfig(CHAIN_IDs.LISK),
-    "lisk-sepolia": {
-      chainId: CHAIN_IDs.LISK_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.LISK_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "lisk-sepolia": getDefaultHardhatConfig(CHAIN_IDs.LISK_SEPOLIA, true),
     redstone: getDefaultHardhatConfig(CHAIN_IDs.REDSTONE),
     blast: getDefaultHardhatConfig(CHAIN_IDs.BLAST),
-    "blast-sepolia": {
-      chainId: CHAIN_IDs.BLAST_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.BLAST_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "blast-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BLAST_SEPOLIA, true),
     worldchain: getDefaultHardhatConfig(CHAIN_IDs.WORLD_CHAIN),
     zora: getDefaultHardhatConfig(CHAIN_IDs.ZORA),
     soneium: getDefaultHardhatConfig(CHAIN_IDs.SONEIUM),
     unichain: getDefaultHardhatConfig(CHAIN_IDs.UNICHAIN),
-    "unichain-sepolia": {
-      chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.UNICHAIN_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    "bob-sepolia": {
-      chainId: CHAIN_IDs.BOB_SEPOLIA,
-      url: getNodeUrl(CHAIN_IDs.BOB_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    "unichain-sepolia": getDefaultHardhatConfig(CHAIN_IDs.UNICHAIN_SEPOLIA, true),
+    "bob-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BOB_SEPOLIA, true),
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
