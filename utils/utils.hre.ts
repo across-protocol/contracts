@@ -4,6 +4,7 @@ import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { BigNumber, getContractFactory, toBN } from "./utils";
+import {} from "@nomicfoundation/hardhat-verify";
 
 type unsafeAllowTypes = (
   | "delegatecall"
@@ -92,10 +93,17 @@ export async function deployNewProxy(
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
   const contract = `contracts/${name}.sol:${name}`;
+  await verifyContract(instance, constructorArgs, contract);
+  // await run("verify", { address: instance, constructorArguments: constructorArgs, contract });
+}
+
+export async function verifyContract(address: string, constructorArguments: any[], contract?: string) {
+  const { run, getChainId } = hre;
+  const chainId = Number(await getChainId());
   if (hre.config.blockscout.enabled && hre.config.blockscout.customChains.some((chain) => chain.chainId === chainId)) {
-    await run("verify:blockscout", { address: instance, constructorArguments: constructorArgs, contract });
+    await run("verify:blockscout", { address, constructorArguments, contract });
   } else {
-    await run("verify:verify", { address: instance, constructorArguments: constructorArgs, contract });
+    await run("verify:verify", { address, constructorArguments, contract });
   }
 }
 
