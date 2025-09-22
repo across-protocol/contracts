@@ -93,7 +93,6 @@ export async function deployNewProxy(
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
   const contract = `contracts/${name}.sol:${name}`;
   await verifyContract(instance, constructorArgs, contract);
-  // await run("verify", { address: instance, constructorArguments: constructorArgs, contract });
 }
 
 export async function verifyContract(address: string, constructorArguments: any[], contract?: string) {
