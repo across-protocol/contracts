@@ -614,6 +614,26 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `33154505`
 
+### Plasma (Chain ID: 9745)
+
+#### Helios
+
+- **Helios**: `0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1552582`
+
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1619568`
+
+#### MulticallHandler
+
+- **MulticallHandler**: `0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1619956`
+
 ### Mode (Chain ID: 34443)
 
 #### SpokePool

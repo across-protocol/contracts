@@ -250,6 +250,15 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
     },
+    plasma: {
+      // chainId: CHAIN_IDs.PLASMA,
+      // url: getNodeUrl(CHAIN_IDs.PLASMA),
+      chainId: 9745,
+      url: getNodeUrl(9745),
+      saveDeployments: true,
+      accounts: { mnemonic },
+      companionNetworks: { l1: "mainnet" },
+    },
     scroll: {
       chainId: CHAIN_IDs.SCROLL,
       url: getNodeUrl(CHAIN_IDs.SCROLL),
@@ -423,6 +432,14 @@ const config: HardhatUserConfig = {
   blockscout: {
     enabled: true,
     customChains: [
+      {
+        network: "plasma",
+        chainId: 9745,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmascan.to",
+        },
+      },
       {
         network: "bob-sepolia",
         chainId: CHAIN_IDs.BOB_SEPOLIA,

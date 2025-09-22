@@ -600,6 +600,26 @@
         }
       }
     },
+    "9745": {
+      "chain_name": "Plasma",
+      "contracts": {
+        "Helios": {
+          "address": "0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75",
+          "transaction_hash": "Unknown",
+          "block_number": 1552582
+        },
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "transaction_hash": "Unknown",
+          "block_number": 1619568
+        },
+        "MulticallHandler": {
+          "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba",
+          "transaction_hash": "Unknown",
+          "block_number": 1619956
+        }
+      }
+    },
     "34443": {
       "chain_name": "Mode",
       "contracts": {
