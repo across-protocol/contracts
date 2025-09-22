@@ -6,7 +6,6 @@ import { CCTP_NO_DOMAIN } from "@across-protocol/constants";
 import { CIRCLE_UNINITIALIZED_DOMAIN_ID } from "./consts";
 import assert from "assert";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { verifyContract } from "../utils/utils.hre";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { SPOKE_CHAIN_ID } = process.env;
@@ -35,14 +34,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     oftDstEid,
     oftFeeCap,
   ];
-  console.log(`Deploying new Universal Adapter on ${SPOKE_CHAIN_ID} with args:`, args);
   const instance = await hre.deployments.deploy("Universal_Adapter", {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: false,
     args,
   });
-  await verifyContract(instance.address, args);
+  await hre.run("verify:verify", { address: instance.address, constructorArguments: args });
 };
 
 module.exports = func;

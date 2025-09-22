@@ -2,7 +2,6 @@ import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "./consts";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { verifyContract } from "../utils/utils.hre";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const contractName = "SpokePoolPeriphery";
@@ -27,7 +26,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: constructorArgs,
   });
 
-  await verifyContract(deployment.address, constructorArgs);
+  await hre.run("verify:verify", {
+    address: deployment.address,
+    constructorArguments: constructorArgs,
+  });
 };
 module.exports = func;
 func.tags = ["SpokePoolPeriphery"];
