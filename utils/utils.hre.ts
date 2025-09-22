@@ -4,7 +4,6 @@ import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import { BigNumber, getContractFactory, toBN } from "./utils";
-import {} from "@nomicfoundation/hardhat-verify";
 
 type unsafeAllowTypes = (
   | "delegatecall"
