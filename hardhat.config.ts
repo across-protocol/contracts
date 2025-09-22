@@ -251,10 +251,8 @@ const config: HardhatUserConfig = {
       companionNetworks: { l1: "mainnet" },
     },
     plasma: {
-      // chainId: CHAIN_IDs.PLASMA,
-      // url: getNodeUrl(CHAIN_IDs.PLASMA),
-      chainId: 9745,
-      url: getNodeUrl(9745),
+      chainId: CHAIN_IDs.PLASMA,
+      url: getNodeUrl(CHAIN_IDs.PLASMA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
