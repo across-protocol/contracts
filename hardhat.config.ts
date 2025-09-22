@@ -139,7 +139,7 @@ const config: HardhatUserConfig = {
         enabled: true,
       },
       suppressedErrors: ["sendtransfer"],
-      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler"],
+      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler", "SpokePoolVerifier"],
     },
   },
   networks: {
@@ -303,55 +303,35 @@ const config: HardhatUserConfig = {
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
-    apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY!,
-      sepolia: process.env.ETHERSCAN_API_KEY!,
-      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      optimisticSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
-      "arbitrum-sepolia": process.env.ARBITRUM_ETHERSCAN_API_KEY!,
-      polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
-      "polygon-amoy": process.env.POLYGON_ETHERSCAN_API_KEY!,
-      base: process.env.BASE_ETHERSCAN_API_KEY!,
-      "base-sepolia": process.env.BASE_ETHERSCAN_API_KEY!,
-      linea: process.env.LINEA_ETHERSCAN_API_KEY!,
-      scroll: process.env.SCROLL_ETHERSCAN_API_KEY!,
-      "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
-      "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      bsc: process.env.BNB_ETHERSCAN_API_KEY!,
-      hyperevm: process.env.ETHERSCAN_API_KEY!,
-      mode: "blockscout",
-      "mode-sepolia": "blockscout",
-      tatara: "blockscout",
-      lisk: "blockscout",
-      "lisk-sepolia": "blockscout",
-      redstone: "blockscout",
-      blast: process.env.BLAST_ETHERSCAN_API_KEY!,
-      "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
-      zora: "routescan",
-      worldchain: "blockscout",
-      ink: "blockscout",
-      soneium: "blockscout",
-      unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
-      "unichain-sepolia": process.env.UNICHAIN_ETHERSCAN_API_KEY!,
-      "bob-sepolia": "blockscout",
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
-        network: "base",
-        chainId: CHAIN_IDs.BASE,
+        network: "hyperevm",
+        chainId: CHAIN_IDs.HYPEREVM,
         urls: {
-          apiURL: "https://api.basescan.org/api",
-          browserURL: "https://basescan.org",
+          apiURL: "https://hyperevmscan.io/api",
+          browserURL: "https://hyperevmscan.io",
         },
       },
       {
-        network: "base-sepolia",
-        chainId: CHAIN_IDs.BASE_SEPOLIA,
+        network: "zksync",
+        chainId: CHAIN_IDs.ZK_SYNC,
         urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org",
+          apiURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
+          browserURL: "https://era.zksync.network/",
+        },
+      },
+    ],
+  },
+  blockscout: {
+    enabled: true,
+    customChains: [
+      {
+        network: "bob-sepolia",
+        chainId: CHAIN_IDs.BOB_SEPOLIA,
+        urls: {
+          apiURL: "https://bob-sepolia.explorer.gobob.xyz/api",
+          browserURL: "https://bob-sepolia.explorer.gobob.xyz",
         },
       },
       {
@@ -363,107 +343,11 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "soneium",
-        chainId: CHAIN_IDs.SONEIUM,
+        network: "lens",
+        chainId: CHAIN_IDs.LENS,
         urls: {
-          apiURL: "https://soneium.blockscout.com/api",
-          browserURL: "https://soneium.blockscout.com",
-        },
-      },
-      {
-        network: "linea",
-        chainId: CHAIN_IDs.LINEA,
-        urls: {
-          apiURL: "https://api.lineascan.build/api",
-          browserURL: "https://lineascan.build",
-        },
-      },
-      {
-        network: "sepolia",
-        chainId: CHAIN_IDs.SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.etherscan.io/api",
-          browserURL: "https://sepolia.etherscan.io",
-        },
-      },
-      {
-        network: "scroll",
-        chainId: CHAIN_IDs.SCROLL,
-        urls: {
-          apiURL: "https://api.scrollscan.com/api",
-          browserURL: "https://scrollscan.com",
-        },
-      },
-      {
-        network: "scroll-sepolia",
-        chainId: CHAIN_IDs.SCROLL_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.scrollscan.com/api",
-          browserURL: "https://api-sepolia.scrollscan.com",
-        },
-      },
-      {
-        network: "optimisticSepolia",
-        chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
-          browserURL: "https://sepolia-optimism.etherscan.io",
-        },
-      },
-      {
-        network: "polygon-zk-evm",
-        chainId: 1101,
-        urls: {
-          apiURL: "https://api-zkevm.polygonscan.com/api",
-          browserURL: "https://zkevm.polygonscan.com",
-        },
-      },
-      {
-        network: "polygon-zk-evm-testnet",
-        chainId: 1442,
-        urls: {
-          apiURL: "https://api-testnet-zkevm.polygonscan.com/api",
-          browserURL: "https://testnet-zkevm.polygonscan.com/",
-        },
-      },
-      {
-        network: "polygon-amoy",
-        chainId: CHAIN_IDs.POLYGON_AMOY,
-        urls: {
-          apiURL: "https://api-amoy.polygonscan.com/api",
-          browserURL: "https://amoy.polygonscan.com",
-        },
-      },
-      {
-        network: "arbitrum-sepolia",
-        chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.arbiscan.io/api",
-          browserURL: "https://sepolia.arbiscan.io",
-        },
-      },
-      {
-        network: "mode-sepolia",
-        chainId: CHAIN_IDs.MODE_SEPOLIA,
-        urls: {
-          apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
-          browserURL: "https://testnet.modescan.io",
-        },
-      },
-      {
-        network: "mode",
-        chainId: CHAIN_IDs.MODE,
-        urls: {
-          apiURL: "https://explorer.mode.network/api",
-          browserURL: "https://explorer.mode.network/",
-        },
-      },
-      {
-        network: "tatara",
-        chainId: CHAIN_IDs.TATARA,
-        urls: {
-          apiURL: "https://explorer.tatara.katana.network/api",
-          browserURL: "https://explorer.tatara.katana.network",
+          apiURL: "https://verify.lens.xyz/contract_verification",
+          browserURL: "https://explorer.lens.xyz/",
         },
       },
       {
@@ -483,6 +367,22 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "mode",
+        chainId: CHAIN_IDs.MODE,
+        urls: {
+          apiURL: "https://explorer.mode.network/api",
+          browserURL: "https://explorer.mode.network/",
+        },
+      },
+      {
+        network: "mode-sepolia",
+        chainId: CHAIN_IDs.MODE_SEPOLIA,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
+          browserURL: "https://testnet.modescan.io",
+        },
+      },
+      {
         network: "redstone",
         chainId: CHAIN_IDs.REDSTONE,
         urls: {
@@ -491,59 +391,19 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "blast",
-        chainId: CHAIN_IDs.BLAST,
+        network: "soneium",
+        chainId: CHAIN_IDs.SONEIUM,
         urls: {
-          apiURL: "https://api.blastscan.io/api",
-          browserURL: "https://blastscan.io",
+          apiURL: "https://soneium.blockscout.com/api",
+          browserURL: "https://soneium.blockscout.com",
         },
       },
       {
-        network: "blast-sepolia",
-        chainId: CHAIN_IDs.BLAST_SEPOLIA,
+        network: "tatara",
+        chainId: CHAIN_IDs.TATARA,
         urls: {
-          apiURL: "https://api-sepolia.blastscan.io/api",
-          browserURL: "https://sepolia.blastscan.io",
-        },
-      },
-      {
-        network: "worldchain",
-        chainId: CHAIN_IDs.WORLD_CHAIN,
-        urls: {
-          apiURL: "https://worldchain-mainnet.explorer.alchemy.com/api",
-          browserURL: "https://worldchain-mainnet.explorer.alchemy.com",
-        },
-      },
-      {
-        network: "zora",
-        chainId: CHAIN_IDs.ZORA,
-        urls: {
-          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
-          browserURL: "https://zorascan.xyz",
-        },
-      },
-      {
-        network: "unichain",
-        chainId: CHAIN_IDs.UNICHAIN,
-        urls: {
-          apiURL: "https://api.uniscan.xyz/api",
-          browserURL: "https://uniscan.xyz",
-        },
-      },
-      {
-        network: "unichain-sepolia",
-        chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.uniscan.xyz/api",
-          browserURL: "https://sepolia.uniscan.xyz",
-        },
-      },
-      {
-        network: "bob-sepolia",
-        chainId: CHAIN_IDs.BOB_SEPOLIA,
-        urls: {
-          apiURL: "https://bob-sepolia.explorer.gobob.xyz/api",
-          browserURL: "https://bob-sepolia.explorer.gobob.xyz",
+          apiURL: "https://explorer.tatara.katana.network/api",
+          browserURL: "https://explorer.tatara.katana.network",
         },
       },
     ],
