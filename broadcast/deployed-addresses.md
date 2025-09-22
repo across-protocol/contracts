@@ -640,6 +640,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `1619568`
 
+#### SpokePoolPeriphery
+
+- **SpokePoolPeriphery**: `0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1628438`
+
 #### MulticallHandler
 
 - **MulticallHandler**: `0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba`
