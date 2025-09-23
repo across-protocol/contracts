@@ -12,7 +12,7 @@ contract Constants is Script {
     string public file;
 
     constructor() {
-        file = vm.readFile("script/utils/constants.json");
+        file = vm.readFile("generated/constants.json");
     }
 
     function getChainId(string memory chainName) public view returns (uint256) {

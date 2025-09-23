@@ -108,8 +108,8 @@ function main() {
 
     const constants = generateConstantsJson();
 
-    // Write to script/utils/constants.json
-    const outputPath = path.join(__dirname, "./constants.json");
+    // Write to generated/constants.json
+    const outputPath = "generated/constants.json";
     const outputDir = path.dirname(outputPath);
 
     // Ensure the directory exists

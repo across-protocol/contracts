@@ -134,7 +134,7 @@
       "name": "HyperEVM",
       "family": 0,
       "nativeToken": "HYPE",
-      "publicRPC": "https://rpc.hyperliquid.xyz",
+      "publicRPC": "https://rpc.hyperliquid.xyz/evm",
       "blockExplorer": "https://hyperevmscan.io/",
       "cctpDomain": 19,
       "oftEid": 30367,
@@ -159,6 +159,16 @@
       "cctpDomain": 10,
       "oftEid": 40333,
       "hypDomainId": 1301
+    },
+    "1337": {
+      "name": "HyperCore",
+      "family": 0,
+      "nativeToken": "HYPE",
+      "publicRPC": "https://api.hyperliquid.xyz",
+      "blockExplorer": "https://app.hyperliquid.xyz/explorer",
+      "cctpDomain": -1,
+      "oftEid": -1,
+      "hypDomainId": -1
     },
     "1868": {
       "name": "Soneium",
@@ -199,6 +209,26 @@
       "cctpDomain": 6,
       "oftEid": 30184,
       "hypDomainId": 8453
+    },
+    "9745": {
+      "name": "Plasma",
+      "family": 0,
+      "nativeToken": "XPL",
+      "publicRPC": "https://rpc.plasma.to",
+      "blockExplorer": "https://plasmascan.to",
+      "cctpDomain": -1,
+      "oftEid": 30383,
+      "hypDomainId": -1
+    },
+    "9746": {
+      "name": "Plasma Testnet",
+      "family": 0,
+      "nativeToken": "XPL",
+      "publicRPC": "https://testnet-rpc.plasma.to/",
+      "blockExplorer": "https://testnet.plasmascan.to/",
+      "cctpDomain": -1,
+      "oftEid": -1,
+      "hypDomainId": -1
     },
     "34443": {
       "name": "Mode",
@@ -410,6 +440,7 @@
     "BSC": 56,
     "BOBA": 288,
     "HYPEREVM": 999,
+    "HYPERCORE": 1337,
     "INK": 57073,
     "LENS": 232,
     "LINEA": 59144,
@@ -417,6 +448,7 @@
     "MAINNET": 1,
     "MODE": 34443,
     "OPTIMISM": 10,
+    "PLASMA": 9745,
     "POLYGON": 137,
     "REDSTONE": 690,
     "SCROLL": 534352,
@@ -438,6 +470,7 @@
     "LISK_SEPOLIA": 4202,
     "MODE_SEPOLIA": 919,
     "OPTIMISM_SEPOLIA": 11155420,
+    "PLASMA_TESTNET": 9746,
     "POLYGON_AMOY": 80002,
     "SCROLL_SEPOLIA": 534351,
     "SEPOLIA": 11155111,
@@ -446,8 +479,8 @@
     "SOLANA_DEVNET": 133268194659241
   },
   "TESTNET_CHAIN_IDs": [
-    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 11155420, 80002, 534351, 11155111, 1301,
-    300, 133268194659241
+    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 11155420, 9746, 80002, 534351, 11155111,
+    1301, 300, 133268194659241
   ],
   "WETH": {
     "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -467,6 +500,7 @@
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
     "8453": "0x4200000000000000000000000000000000000006",
+    "9745": "0x9895D81bB462A195b4922ED7De0e3ACD007c32CB",
     "34443": "0x4200000000000000000000000000000000000006",
     "37111": "0xaA91D645D7a6C1aeaa5988e0547267B77d33fe16",
     "41455": "0xB3f0eE446723f4258862D949B4c9688e7e7d35d3",
@@ -506,6 +540,8 @@
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
     "8453": "0x4200000000000000000000000000000000000006",
+    "9745": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
+    "9746": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
     "34443": "0x4200000000000000000000000000000000000006",
     "37111": "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8",
     "41455": "0xb7Da55D7040ef9C887e20374D76A88F93A59119E",

@@ -32,7 +32,7 @@ fi
 
 echo "Running generate-constants-json on staged files ..."
 
-yarn generate-constants-json && yarn prettier --write script/utils/constants.json
+yarn generate-constants-json && yarn prettier --write generated/constants.json
 GENERATE_CONSTANTS_JSON_EXIT=$?
 if [ $GENERATE_CONSTANTS_JSON_EXIT -ne 0 ]; then
     echo "generate-constants-json encountered an error. Aborting the hook."
