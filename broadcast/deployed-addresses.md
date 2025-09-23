@@ -630,9 +630,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### SpokePool
 
-- **SpokePool**: `0x2271a5E74eA8A29764ab10523575b41AA52455f0`
+- **SpokePool**: `0x50039fAEfebef707cFD94D6d462fE6D10B39207a`
   - Transaction Hash: `Unknown`
-  - Block Number: `1623864`
+  - Block Number: `1710028`
 
 #### SpokePoolVerifier
 
