@@ -12,7 +12,7 @@ import { Ovm_WithdrawalHelper, IOvm_SpokePool } from "../../../../contracts/chai
 import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import { L2GatewayRouter } from "../../../../contracts/test/ArbitrumMocks.sol";
 import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
-import { Base_SpokePool } from "../../../../contracts/Base_SpokePool.sol";
+import { OP_SpokePool } from "../../../../contracts/OP_SpokePool.sol";
 import { Ovm_SpokePool } from "../../../../contracts/Ovm_SpokePool.sol";
 import { WithdrawalHelperBase } from "../../../../contracts/chain-adapters/l2/WithdrawalHelperBase.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
@@ -34,7 +34,7 @@ contract WithdrawalAdapterTest is Test {
     uint32 constant fillDeadlineBuffer = type(uint32).max;
     Arbitrum_WithdrawalHelper arbitrumWithdrawalHelper;
     Ovm_WithdrawalHelper ovmWithdrawalHelper;
-    Base_SpokePool ovmSpokePool;
+    OP_SpokePool ovmSpokePool;
 
     L2GatewayRouter arbBridge;
     MockBedrockL2StandardBridge ovmBridge;
@@ -87,7 +87,7 @@ contract WithdrawalAdapterTest is Test {
         // Construct the Ovm_SpokePool
         vm.startPrank(owner);
         arbBridge.setL2TokenAddress(address(l1Token), address(l2Token));
-        Base_SpokePool implementation = new Base_SpokePool(
+        OP_SpokePool implementation = new OP_SpokePool(
             address(l2Weth),
             fillDeadlineBuffer,
             fillDeadlineBuffer,
@@ -96,9 +96,9 @@ contract WithdrawalAdapterTest is Test {
         );
         address proxy = address(
             // The cross domain admin is set as the messenger so that we may set remote token mappings.
-            new ERC1967Proxy(address(implementation), abi.encodeCall(Base_SpokePool.initialize, (0, hubPool, owner)))
+            new ERC1967Proxy(address(implementation), abi.encodeCall(OP_SpokePool.initialize, (0, hubPool, owner)))
         );
-        ovmSpokePool = Base_SpokePool(payable(proxy));
+        ovmSpokePool = OP_SpokePool(payable(proxy));
         vm.stopPrank();
 
         // Set a custom token and bridge mapping in the spoke pool.
