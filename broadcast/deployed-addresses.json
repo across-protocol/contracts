@@ -614,9 +614,9 @@
           "block_number": 1552582
         },
         "SpokePool": {
-          "address": "0x9552a0a6624A23B848060AE5901659CDDa1f83f8",
+          "address": "0x50039fAEfebef707cFD94D6d462fE6D10B39207a",
           "transaction_hash": "Unknown",
-          "block_number": 1709319
+          "block_number": 1710028
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
