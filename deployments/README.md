@@ -155,7 +155,21 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 
 ## Lens mainnet (232)
 
-| Contract Name    | Address                                        |
-| ---------------- | ---------------------------------------------- |
-| Lens_SpokePool   | [0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12]() |
-| MulticallHandler | [0xc5939F59b3c9662377DdA53A08D5085b2d52b719]() |
+| Contract Name    | Address                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Lens_SpokePool   | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
+| MulticallHandler | [0xc5939F59b3c9662377DdA53A08D5085b2d52b719](https://explorer.lens.xyz/address/0xc5939F59b3c9662377DdA53A08D5085b2d52b719) |
+
+## HyperEVM mainnet (999)
+
+| Contract Name       | Address                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Universal_SpokePool | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io/address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
+| MulticallHandler    | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io/address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
+
+## Plasma mainnet (9745)
+
+| Contract Name       | Address                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Universal_SpokePool | [0x50039fAEfebef707cFD94D6d462fE6D10B39207a](https://plasmascan.to/address/0x50039fAEfebef707cFD94D6d462fE6D10B39207a) |
+| MulticallHandler    | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://plasmascan.to/address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
