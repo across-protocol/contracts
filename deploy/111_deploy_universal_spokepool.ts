@@ -1,10 +1,18 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { deployNewProxy, getSpokePoolDeploymentInfo } from "../utils/utils.hre";
-import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, ZERO_ADDRESS } from "./consts";
+import {
+  EXPECTED_SAFE_ADDRESS,
+  FILL_DEADLINE_BUFFER,
+  L2_ADDRESS_MAP,
+  QUOTE_TIME_BUFFER,
+  USDC,
+  ZERO_ADDRESS,
+} from "./consts";
 import { CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { getOftEid, toWei } from "../utils/utils";
 import { getDeployedAddress } from "../src/DeploymentUtils";
+import "@nomiclabs/hardhat-ethers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -53,7 +61,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // target address of the spoke pool. This is because the HubPool does not pass in the chainId when calling
   // relayMessage() on the Adapter. Therefore, if Universal SpokePools share the same address,
   // then a message designed to be sent to one chain could be sent to another's SpokePool.
-  await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
+  const { proxyAddress } = await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
+
+  const provider = hre.ethers.provider;
+  const safeCode = await provider.getCode(EXPECTED_SAFE_ADDRESS);
+  if (safeCode !== "0x" && proxyAddress) {
+    const factory = await hre.ethers.getContractFactory("Universal_SpokePool");
+    const contract = factory.attach(proxyAddress);
+
+    const owner = await contract.owner();
+    if (owner !== EXPECTED_SAFE_ADDRESS) {
+      await contract.transferOwnership(EXPECTED_SAFE_ADDRESS);
+      console.log("Transferred ownership to Expected Safe address:", EXPECTED_SAFE_ADDRESS);
+    } else {
+      console.log("Expected Safe address is already the owner of the Universal SpokePool");
+    }
+  }
 };
 module.exports = func;
 func.tags = ["UniversalSpokePool"];

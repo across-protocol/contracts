@@ -22,6 +22,9 @@ export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
 export const ZK_L2_GAS_LIMIT = 2000000;
 export const ZK_MAX_GASPRICE = "10000000000000"; // 10k gwei
 
+// Expected Safe address for Universal SpokePool
+export const EXPECTED_SAFE_ADDRESS = "0xB524735356985D2f267FA010D681f061DfF03715";
+
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
     finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
