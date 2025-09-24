@@ -31,7 +31,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
     }
 
     constructor() {
-        checkZkSyncChain(block.chainid);
+        checkZkStackChain(block.chainid);
     }
 
     /**
@@ -179,40 +179,31 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @return bool True if testnet
      */
     function isTestnet(uint256 chainId) internal view returns (bool) {
-        return
-            chainId == getChainId("SEPOLIA") ||
-            chainId == getChainId("ARBITRUM_SEPOLIA") ||
-            chainId == getChainId("OPTIMISM_SEPOLIA") ||
-            chainId == getChainId("BASE_SEPOLIA") ||
-            chainId == getChainId("POLYGON_AMOY") ||
-            chainId == getChainId("LENS_TESTNET") ||
-            chainId == getChainId("LINEA_SEPOLIA") ||
-            chainId == getChainId("SCROLL_SEPOLIA") ||
-            chainId == getChainId("UNICHAIN_SEPOLIA") ||
-            chainId == getChainId("BLAST_SEPOLIA") ||
-            chainId == getChainId("INK_SEPOLIA") ||
-            chainId == getChainId("LISK_SEPOLIA") ||
-            chainId == getChainId("MODE_SEPOLIA");
+        uint256[] memory testnetChainIds = getTestnetChainIds();
+        for (uint256 i = 0; i < testnetChainIds.length; i++) {
+            if (chainId == testnetChainIds[i]) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
-     * @notice Check if a chain ID is a ZkSync chain
+     * @notice Check if a chain ID is a ZkStack chain
      * @dev This function will revert if the chain ID is a ZkSync chain but the FOUNDRY_PROFILE is not zksync
      * @param chainId Chain ID to check
      */
-    function checkZkSyncChain(uint256 chainId) internal view {
-        bool isZkSyncChain = chainId == getChainId("ZK_SYNC") ||
-            chainId == getChainId("ZK_SYNC_SEPOLIA") ||
-            chainId == getChainId("LENS") ||
-            chainId == getChainId("LENS_TESTNET");
+    function checkZkStackChain(uint256 chainId) internal view {
+        bool isZkStackChain = keccak256(abi.encodePacked(getChainFamily(chainId))) ==
+            keccak256(abi.encodePacked("ZK_STACK"));
 
         string memory foundryProfile = vm.envOr("FOUNDRY_PROFILE", string("default"));
 
-        if (isZkSyncChain) {
+        if (isZkStackChain) {
             vm.assertEq(
                 foundryProfile,
                 string("zksync"),
-                "Chain is a ZkSync chain but FOUNDRY_PROFILE is not zksync. Use yarn forge-script-zksync to deploy"
+                "Chain is a ZkStack chain but FOUNDRY_PROFILE is not zksync. Use yarn forge-script-zksync to deploy"
             );
         }
     }

@@ -4,7 +4,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Import the constants from the TypeScript files
-import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
+import { CHAIN_IDs, PUBLIC_NETWORKS, TESTNET_CHAIN_IDs, TOKEN_SYMBOLS_MAP, ChainFamily } from "../../utils/constants";
 import {
   ZERO_ADDRESS,
   USDC,
@@ -34,15 +34,8 @@ import {
  *   "137": 137,
  * }
  */
-function convertChainIdsToObject(): { [key: string]: number } {
-  const result: { [key: string]: number } = {};
-  for (const [key, value] of Object.entries(CHAIN_IDs)) {
-    if (typeof value === "number") {
-      result[key] = value;
-    }
-  }
-  return result;
-}
+const convertChainIdsToObject = (): { [key: string]: number } =>
+  Object.fromEntries(Object.entries(CHAIN_IDs).map(([chainIdName, chainId]) => [chainIdName, chainId]));
 
 /**
  * Generate the wrapped native tokens for the public networks
@@ -81,6 +74,7 @@ function generateConstantsJson() {
   const constants = {
     PUBLIC_NETWORKS,
     CHAIN_IDs: convertChainIdsToObject(),
+    TESTNET_CHAIN_IDs: Object.values(TESTNET_CHAIN_IDs),
     WETH,
     WRAPPED_NATIVE_TOKENS: generateWrappedNativeTokens(),
     L2_ADDRESS_MAP,
@@ -93,6 +87,7 @@ function generateConstantsJson() {
     USDC,
     USDCe,
     WGHO,
+    CHAIN_FAMILIES: ChainFamily,
     OTHER_CONSTANTS: {
       ZERO_ADDRESS,
       ARBITRUM_MAX_SUBMISSION_COST,
@@ -113,8 +108,8 @@ function main() {
 
     const constants = generateConstantsJson();
 
-    // Write to script/utils/constants.json
-    const outputPath = path.join(__dirname, "./constants.json");
+    // Write to generated/constants.json
+    const outputPath = "generated/constants.json";
     const outputDir = path.dirname(outputPath);
 
     // Ensure the directory exists
@@ -122,7 +117,7 @@ function main() {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    fs.writeFileSync(outputPath, JSON.stringify(constants, null, 2));
+    fs.writeFileSync(outputPath, JSON.stringify(constants, null, 2) + "\n");
 
     console.log(`✅ Successfully generated constants.json at ${outputPath}`);
     console.log(`📊 Generated ${Object.keys(constants.CHAIN_IDs).length} chain IDs`);
