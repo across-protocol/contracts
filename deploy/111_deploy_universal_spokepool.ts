@@ -10,9 +10,11 @@ import {
   ZERO_ADDRESS,
 } from "./consts";
 import { CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils/constants";
-import { getOftEid, toWei } from "../utils/utils";
+import { getOftEid, toWei, predictedSafe } from "../utils/utils";
+import { getNodeUrl } from "../utils";
 import { getDeployedAddress } from "../src/DeploymentUtils";
 import "@nomiclabs/hardhat-ethers";
+import Safe from "@safe-global/protocol-kit";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -63,18 +65,31 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // then a message designed to be sent to one chain could be sent to another's SpokePool.
   const { proxyAddress } = await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
 
-  const provider = hre.ethers.provider;
-  const safeCode = await provider.getCode(EXPECTED_SAFE_ADDRESS);
-  if (safeCode !== "0x" && proxyAddress) {
-    const factory = await hre.ethers.getContractFactory("Universal_SpokePool");
-    const contract = factory.attach(proxyAddress);
+  const nodeUrl = getNodeUrl(spokeChainId);
 
-    const owner = await contract.owner();
-    if (owner !== EXPECTED_SAFE_ADDRESS) {
-      await contract.transferOwnership(EXPECTED_SAFE_ADDRESS);
-      console.log("Transferred ownership to Expected Safe address:", EXPECTED_SAFE_ADDRESS);
+  const protocolKit = await Safe.init({
+    provider: nodeUrl,
+    predictedSafe,
+  });
+
+  const existingProtocolKit = await protocolKit.connect({
+    safeAddress: EXPECTED_SAFE_ADDRESS,
+  });
+  const isDeployed = await existingProtocolKit.isSafeDeployed();
+  if (proxyAddress) {
+    if (isDeployed) {
+      const factory = await hre.ethers.getContractFactory("Universal_SpokePool");
+      const contract = factory.attach(proxyAddress);
+
+      const owner = await contract.owner();
+      if (owner !== EXPECTED_SAFE_ADDRESS) {
+        await (await contract.transferOwnership(EXPECTED_SAFE_ADDRESS)).wait();
+        console.log("Transferred ownership to Expected Safe address:", await contract.owner());
+      } else {
+        console.log("Expected Safe address is already the owner of the Universal SpokePool");
+      }
     } else {
-      console.log("Expected Safe address is already the owner of the Universal SpokePool");
+      console.log("Safe is not deployed, skipping ownership transfer");
     }
   }
 };
