@@ -9,8 +9,6 @@ const main = async () => {
   const externalPrograms = [
     { name: "message_transmitter", id: "CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd" },
     { name: "token_messenger_minter", id: "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3" },
-    { name: "message_transmitter_v2", id: "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC" },
-    { name: "token_messenger_minter_v2", id: "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe" },
   ];
 
   for (const program of externalPrograms) {
