@@ -536,6 +536,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `13992522`
 
+#### SpokePoolPeriphery
+
+- **SpokePoolPeriphery**: `0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb`
+  - Transaction Hash: `Unknown`
+  - Block Number: `15142204`
+
 ### Lisk (Chain ID: 1135)
 
 #### SpokePool
