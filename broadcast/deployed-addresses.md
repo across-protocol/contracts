@@ -872,6 +872,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `262177984`
 
+#### MessageTransmitterV2
+
+- **MessageTransmitterV2**: `CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC`
+  - Transaction Hash: `Unknown`
+  - Block Number: `343321624`
+
+#### TokenMessengerMinterV2
+
+- **TokenMessengerMinterV2**: `CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe`
+  - Transaction Hash: `Unknown`
+  - Block Number: `343322709`
+
 ## 🧪 Testnet Networks
 
 ### Mode Sepolia (Chain ID: 919)
@@ -1145,3 +1157,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **TokenMessengerMinter**: `CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3`
   - Transaction Hash: `Unknown`
   - Block Number: `277864039`
+
+#### MessageTransmitterV2
+
+- **MessageTransmitterV2**: `CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC`
+  - Transaction Hash: `Unknown`
+  - Block Number: `383716739`
+
+#### TokenMessengerMinterV2
+
+- **TokenMessengerMinterV2**: `CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe`
+  - Transaction Hash: `Unknown`
+  - Block Number: `383709630`

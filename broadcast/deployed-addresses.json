@@ -1042,6 +1042,16 @@
           "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
           "transaction_hash": "Unknown",
           "block_number": 277864039
+        },
+        "MessageTransmitterV2": {
+          "address": "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
+          "transaction_hash": "Unknown",
+          "block_number": 383716739
+        },
+        "TokenMessengerMinterV2": {
+          "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+          "transaction_hash": "Unknown",
+          "block_number": 383709630
         }
       }
     },
@@ -1067,6 +1077,16 @@
           "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
           "transaction_hash": "Unknown",
           "block_number": 262177984
+        },
+        "MessageTransmitterV2": {
+          "address": "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
+          "transaction_hash": "Unknown",
+          "block_number": 343321624
+        },
+        "TokenMessengerMinterV2": {
+          "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+          "transaction_hash": "Unknown",
+          "block_number": 343322709
         }
       }
     }
