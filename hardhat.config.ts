@@ -129,7 +129,13 @@ const config: HardhatUserConfig = {
         enabled: true,
       },
       suppressedErrors: ["sendtransfer"],
-      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler", "SpokePoolVerifier"],
+      contractsToCompile: [
+        "SpokePoolPeriphery",
+        "MulticallHandler",
+        "SpokePoolVerifier",
+        "ZkSync_SpokePool",
+        "Lens_SpokePool",
+      ],
     },
   },
   networks: {
@@ -245,6 +251,14 @@ const config: HardhatUserConfig = {
           browserURL: "https://era.zksync.network/",
         },
       },
+      {
+        network: "lens",
+        chainId: CHAIN_IDs.LENS,
+        urls: {
+          apiURL: "https://verify.lens.xyz/contract_verification",
+          browserURL: "https://explorer.lens.xyz/",
+        },
+      },
     ],
   },
   blockscout: {
@@ -264,14 +278,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.inkonchain.com/api",
           browserURL: "https://explorer.inkonchain.com",
-        },
-      },
-      {
-        network: "lens",
-        chainId: CHAIN_IDs.LENS,
-        urls: {
-          apiURL: "https://verify.lens.xyz/contract_verification",
-          browserURL: "https://explorer.lens.xyz/",
         },
       },
       {

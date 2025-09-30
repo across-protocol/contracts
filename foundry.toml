@@ -35,6 +35,9 @@ fs_permissions = [{ access = "read", path = "./"}]
 solc = "0.8.23"
 evm_version = "prague"
 
+[profile.zksync]
+src = "contracts/Lens_SpokePool.sol"
+
 [profile.zksync.zksync]
 compile = true
 fallback_oz = true
@@ -47,7 +50,7 @@ base = "${NODE_URL_8453}"
 bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
 ink = "${NODE_URL_57073}"
-lens = "${NODE_URL_262}"
+lens = "${NODE_URL_232}"
 linea = "${NODE_URL_59144}"
 lisk = "${NODE_URL_1135}"
 mode = "${NODE_URL_34443}"
