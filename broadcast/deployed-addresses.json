@@ -492,6 +492,11 @@
           "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba",
           "transaction_hash": "Unknown",
           "block_number": 13992522
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb",
+          "transaction_hash": "Unknown",
+          "block_number": 15142204
         }
       }
     },
