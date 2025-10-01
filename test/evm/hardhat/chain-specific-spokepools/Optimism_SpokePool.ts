@@ -77,10 +77,10 @@ describe("Optimism Spoke Pool", function () {
   });
 
   it("Only cross domain owner can set l1GasLimit", async function () {
-    await expect(optimismSpokePool.setL1GasLimit(1337)).to.be.reverted;
+    await expect(optimismSpokePool.setL1GasLimit(1342)).to.be.reverted;
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
-    await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1337);
-    expect(await optimismSpokePool.l1Gas()).to.equal(1337);
+    await optimismSpokePool.connect(crossDomainMessenger.wallet).setL1GasLimit(1342);
+    expect(await optimismSpokePool.l1Gas()).to.equal(1342);
   });
 
   it("Only cross domain owner can set token bridge address for L2 token", async function () {

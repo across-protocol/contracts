@@ -368,6 +368,11 @@
           "transaction_hash": "Unknown",
           "block_number": 4197027
         },
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "transaction_hash": "Unknown",
+          "block_number": 4419395
+        },
         "MulticallHandler": {
           "address": "0x1Ed0D59019a52870337b51DEe8190486a8663037",
           "transaction_hash": "Unknown",
@@ -397,6 +402,11 @@
           "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF",
           "transaction_hash": "Unknown",
           "block_number": 10352565
+        },
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "transaction_hash": "Unknown",
+          "block_number": 64765628
         },
         "MulticallHandler": {
           "address": "0x68d3806E57148D6c6793C78EbDDbc272fE605dbf",
@@ -483,6 +493,11 @@
           "transaction_hash": "Unknown",
           "block_number": 13937805
         },
+        "SpokePoolVerifier": {
+          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
+          "transaction_hash": "Unknown",
+          "block_number": 14459886
+        },
         "Helios": {
           "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5",
           "transaction_hash": "Unknown",
@@ -492,6 +507,11 @@
           "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba",
           "transaction_hash": "Unknown",
           "block_number": 13992522
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb",
+          "transaction_hash": "Unknown",
+          "block_number": 15142204
         }
       }
     },

@@ -424,6 +424,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `4197027`
 
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `4419395`
+
 #### MulticallHandler
 
 - **MulticallHandler**: `0x1Ed0D59019a52870337b51DEe8190486a8663037`
@@ -451,6 +457,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePool**: `0xE0B015E54d54fc84a6cB9B666099c46adE9335FF`
   - Transaction Hash: `Unknown`
   - Block Number: `10352565`
+
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `64765628`
 
 #### MulticallHandler
 
@@ -524,6 +536,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `13937805`
 
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `14459886`
+
 #### Helios
 
 - **Helios**: `0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5`
@@ -535,6 +553,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **MulticallHandler**: `0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba`
   - Transaction Hash: `Unknown`
   - Block Number: `13992522`
+
+#### SpokePoolPeriphery
+
+- **SpokePoolPeriphery**: `0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb`
+  - Transaction Hash: `Unknown`
+  - Block Number: `15142204`
 
 ### Lisk (Chain ID: 1135)
 
