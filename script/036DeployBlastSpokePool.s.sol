@@ -5,7 +5,6 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Blast_SpokePool } from "../contracts/Blast_SpokePool.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
@@ -35,7 +34,7 @@ contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWrappedNativeToken(info.spokeChainId);
+        address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get USDB and DAI addresses based on chain
         address usdb = getUSDBAddress(info.spokeChainId);
@@ -46,7 +45,7 @@ contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
 
         // Prepare constructor arguments for Blast_SpokePool
         bytes memory constructorArgs = abi.encode(
-            address(weth), // _wrappedNativeTokenAddress
+            weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
             address(0), // _l2Usdc
@@ -79,7 +78,7 @@ contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
         console.log("Chain ID:", info.spokeChainId);
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
-        console.log("WETH address:", address(weth));
+        console.log("WETH address:", weth);
         console.log("USDB address:", usdb);
         console.log("DAI address:", dai);
         console.log("Yield Recipient:", YIELD_RECIPIENT);
