@@ -23,6 +23,20 @@ import {
   L2_ADDRESS_MAP,
 } from "../../deploy/consts";
 
+const convertChainFamiliesEnumString = () => {
+  const publicNetworksWithEnum = Object.fromEntries(
+    Object.entries(PUBLIC_NETWORKS).map(([key, value]) => [
+      key,
+      {
+        ...value,
+        family: ChainFamily[value.family],
+      },
+    ])
+  );
+
+  return publicNetworksWithEnum;
+};
+
 /**
  * Convert the chain IDs object to the expected format
  * @returns { [key: string]: number }
@@ -72,7 +86,7 @@ function generateWrappedNativeTokens(): { [key: string]: string } {
 // Generate the constants.json structure
 function generateConstantsJson() {
   const constants = {
-    PUBLIC_NETWORKS,
+    PUBLIC_NETWORKS: convertChainFamiliesEnumString(),
     CHAIN_IDs: convertChainIdsToObject(),
     TESTNET_CHAIN_IDs: Object.values(TESTNET_CHAIN_IDs),
     WETH,
@@ -87,7 +101,6 @@ function generateConstantsJson() {
     USDC,
     USDCe,
     WGHO,
-    CHAIN_FAMILIES: ChainFamily,
     OTHER_CONSTANTS: {
       ZERO_ADDRESS,
       ARBITRUM_MAX_SUBMISSION_COST,

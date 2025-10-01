@@ -247,8 +247,7 @@ contract Constants is Script {
     }
 
     function getChainFamily(uint256 chainId) public view returns (string memory) {
-        uint256 family = vm.parseJsonUint(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".family"));
-        return vm.parseJsonString(file, string.concat(".CHAIN_FAMILIES.", vm.toString(family)));
+        return vm.parseJsonString(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".family"));
     }
 
     // Get WETH address for any supported chain
