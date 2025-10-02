@@ -15,7 +15,9 @@ remappings = [
     "@maticnetwork/=node_modules/@maticnetwork/",
     "@matterlabs/=node_modules/@matterlabs/",
     "@openzeppelin/=node_modules/@openzeppelin/",
+    "@openzeppelin-v5/=lib/openzeppelin-contracts/",
     "@scroll-tech/=node_modules/@scroll-tech/",
+    "@sp1-contracts/=lib/sp1-contracts/contracts/src/",
     "@uma/=node_modules/@uma/",
     "@uniswap/=node_modules/@uniswap/",
     "arb-bridge-eth/=node_modules/arb-bridge-eth/",
@@ -34,6 +36,14 @@ fs_permissions = [{ access = "read", path = "./"}]
 
 solc = "0.8.23"
 evm_version = "prague"
+
+[profile.helios]
+src = "contracts/sp1-helios/SP1Helios.sol"
+test = "contracts/sp1-helios/SP1Helios.sol"
+optimizer_runs = 1000000
+solc_version = "0.8.28"
+evm_version = "prague"
+via_ir = true
 
 [profile.zksync.zksync]
 compile = true
