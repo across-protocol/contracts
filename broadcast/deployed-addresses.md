@@ -248,9 +248,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Optimism_Adapter
 
-- **Optimism_Adapter**: `0x4ab872a1f5d25de960203b11d81348490f00f566`
-  - Transaction Hash: `0x26133831459a5bb8a1d8dc51724ab0847e6b0b607760c09fcbd597f145374a8a`
-  - Block Number: `23498423`
+- **Optimism_Adapter**: `0x3562e309c6c79626e5f0cf746fb5bf4f6b8eebe5`
+  - Transaction Hash: `0x2d4b2fc5de201b2cf2a4f369c458e86d7577e18ef3850b9d90061fea3d8a6b8f`
+  - Block Number: `23498500`
 
 #### Arbitrum_Adapter
 
