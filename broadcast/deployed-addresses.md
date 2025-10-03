@@ -390,6 +390,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `20205357`
 
+#### DoctorWho_SpokePool
+
+- **DoctorWho_SpokePool**: `0x1d82bfdb412415b3ed2514d5eb33574a3c94a72a`
+  - Transaction Hash: `0xd11b50621ee864671a6b953ec0f921577089bcf2b796fbed147aad67122daa90`
+  - Block Number: `28765348`
+
 ### Polygon (Chain ID: 137)
 
 #### MintableERC1155
@@ -697,6 +703,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
   - Block Number: `33154505`
+
+#### Base_SpokePool
+
+- **Base_SpokePool**: `0x2eb5def5cf9635f9d926788a26d424287a045b92`
+  - Transaction Hash: `0x6ec337bdf00c331fabbfb0e98862aa2b766c613b6d6002c44b53668b7240989c`
+  - Block Number: `36361964`
 
 ### Plasma (Chain ID: 9745)
 
