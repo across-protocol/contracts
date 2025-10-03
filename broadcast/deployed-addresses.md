@@ -264,6 +264,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0x8eb57df471fea74d5a69f59abbafb38d1f7c116f24b29b47a8251ee6bc6c9d75`
   - Block Number: `23498649`
 
+#### Base_Adapter
+
+- **Base_Adapter**: `0x799bdc55d91864b14b2ed63a34def5d502aa897f`
+  - Transaction Hash: `0xf9845ddc7ebcf5e00b6ee2073dfb8cf50a774161e1f4562cd5c11a5016f4bb64`
+  - Block Number: `23498763`
+
+#### DoctorWho_Adapter
+
+- **DoctorWho_Adapter**: `0x8956efa31572e1d7ed5c8e36772f214a57dfa0d1`
+  - Transaction Hash: `0x67979fe35fe433222cc4f1b7966084c65e4cd2dcecc6e0e3a7cd9970d0c77b75`
+  - Block Number: `23498783`
+
 #### PermissionSplitterProxy
 
 - **PermissionSplitterProxy**: `0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7`
