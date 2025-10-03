@@ -246,6 +246,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `22789839`
 
+#### Optimism_Adapter
+
+- **Optimism_Adapter**: `0x4ab872a1f5d25de960203b11d81348490f00f566`
+  - Transaction Hash: `0x26133831459a5bb8a1d8dc51724ab0847e6b0b607760c09fcbd597f145374a8a`
+  - Block Number: `23498423`
+
 #### PermissionSplitterProxy
 
 - **PermissionSplitterProxy**: `0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7`

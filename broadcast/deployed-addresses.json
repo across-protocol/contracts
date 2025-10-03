@@ -64,9 +64,9 @@
           "block_number": 14704307
         },
         "Optimism_Adapter": {
-          "address": "0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b",
-          "transaction_hash": "Unknown",
-          "block_number": 19915034
+          "address": "0x4ab872a1f5d25de960203b11d81348490f00f566",
+          "transaction_hash": "0x26133831459a5bb8a1d8dc51724ab0847e6b0b607760c09fcbd597f145374a8a",
+          "block_number": 23498423
         },
         "PolygonTokenBridger": {
           "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
