@@ -19,9 +19,9 @@
           "block_number": 23086526
         },
         "Arbitrum_Adapter": {
-          "address": "0x5eC9844936875E27eBF22172f4d92E107D35B57C",
-          "transaction_hash": "Unknown",
-          "block_number": 23086601
+          "address": "0xc0b6d2f794cc787c71f2ca5cecd57102c32379b3",
+          "transaction_hash": "0xedc397bdc758e28f61e8b35ddab220911ccfe605ddd3649d13223dc12bc137ef",
+          "block_number": 23498485
         },
         "Arbitrum_RescueAdapter": {
           "address": "0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375",
@@ -64,9 +64,9 @@
           "block_number": 14704307
         },
         "Optimism_Adapter": {
-          "address": "0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b",
-          "transaction_hash": "Unknown",
-          "block_number": 19915034
+          "address": "0x3562e309c6c79626e5f0cf746fb5bf4f6b8eebe5",
+          "transaction_hash": "0x2d4b2fc5de201b2cf2a4f369c458e86d7577e18ef3850b9d90061fea3d8a6b8f",
+          "block_number": 23498500
         },
         "PolygonTokenBridger": {
           "address": "0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57",
@@ -74,9 +74,9 @@
           "block_number": 14819539
         },
         "Polygon_Adapter": {
-          "address": "0xF71F1e20F75820b484F8A0959C2D9E5cdd89c9F0",
-          "transaction_hash": "Unknown",
-          "block_number": 23227800
+          "address": "0x537abe038c223066b50312474409924487d2e655",
+          "transaction_hash": "0x8eb57df471fea74d5a69f59abbafb38d1f7c116f24b29b47a8251ee6bc6c9d75",
+          "block_number": 23498649
         },
         "ZkSync_Adapter": {
           "address": "0xA374585E6062517Ee367ee5044946A6fBe17724f",
@@ -84,9 +84,9 @@
           "block_number": 22167105
         },
         "Base_Adapter": {
-          "address": "0xE1421233BF7158A19f89F17c9735F9cbd3D9529c",
-          "transaction_hash": "Unknown",
-          "block_number": 19915087
+          "address": "0x799bdc55d91864b14b2ed63a34def5d502aa897f",
+          "transaction_hash": "0xf9845ddc7ebcf5e00b6ee2073dfb8cf50a774161e1f4562cd5c11a5016f4bb64",
+          "block_number": 23498763
         },
         "Linea_Adapter": {
           "address": "0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787",
@@ -189,9 +189,9 @@
           "block_number": 22382942
         },
         "DoctorWho_Adapter": {
-          "address": "0xFADcC43096756e1527306FD92982FEbBe3c629Fa",
-          "transaction_hash": "Unknown",
-          "block_number": 21773451
+          "address": "0x8956efa31572e1d7ed5c8e36772f214a57dfa0d1",
+          "transaction_hash": "0x67979fe35fe433222cc4f1b7966084c65e4cd2dcecc6e0e3a7cd9970d0c77b75",
+          "block_number": 23498783
         },
         "Solana_Adapter": {
           "address": "0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3",
@@ -247,6 +247,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 137675818
+        },
+        "Optimism_SpokePool": {
+          "address": "0x21352b3495a6ee1bd2921bdb0a876fadc3a9245e",
+          "transaction_hash": "0xc2df23c0f90b79bb4d0cdc77984bce181b2a9e5f50216b21ce62c7e6608d206f",
+          "block_number": 141955483
         }
       }
     },
@@ -302,6 +307,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 20205357
+        },
+        "DoctorWho_SpokePool": {
+          "address": "0x1d82bfdb412415b3ed2514d5eb33574a3c94a72a",
+          "transaction_hash": "0xd11b50621ee864671a6b953ec0f921577089bcf2b796fbed147aad67122daa90",
+          "block_number": 28765348
         }
       }
     },
@@ -357,6 +367,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 73247089
+        },
+        "Polygon_SpokePool": {
+          "address": "0xf5264e9198f70ea2e0b16337cb4718afadbf0a4e",
+          "transaction_hash": "0x9409b476e65032b629ad607cd61f175c62172e329a1b78e8a8624de261a84d15",
+          "block_number": 77216750
         }
       }
     },
@@ -632,6 +647,11 @@
           "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E",
           "transaction_hash": "Unknown",
           "block_number": 33154505
+        },
+        "Base_SpokePool": {
+          "address": "0x2eb5def5cf9635f9d926788a26d424287a045b92",
+          "transaction_hash": "0x6ec337bdf00c331fabbfb0e98862aa2b766c613b6d6002c44b53668b7240989c",
+          "block_number": 36361964
         }
       }
     },
@@ -742,6 +762,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 351421618
+        },
+        "Arbitrum_SpokePool": {
+          "address": "0x33d52d76d617126648067401c106923e4a34dbe1",
+          "transaction_hash": "0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c",
+          "block_number": 385694983
         }
       }
     },

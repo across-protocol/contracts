@@ -21,13 +21,11 @@ contract DeployOptimismSpokePool is Script, Test, DeploymentUtils {
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0)); // Will use HUBPOOL_ADDRESS from env
 
-        console.log("HubPool address:", info.hubPool);
-
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get L2 addresses for Optimism
-        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
+        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
         vm.startBroadcast(deployerPrivateKey);
 

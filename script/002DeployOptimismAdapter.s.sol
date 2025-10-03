@@ -46,7 +46,7 @@ contract DeployOptimismAdapter is Script, Test, Constants {
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
             IERC20(getUSDCAddress(chainId)), // L1 USDC
-            ITokenMessenger(getL1Addresses(chainId).cctpTokenMessenger) // CCTP Token Messenger
+            ITokenMessenger(getL1Addresses(chainId).cctpV2TokenMessenger) // CCTP V2 Token Messenger
         );
 
         // Log the deployed addresses
@@ -56,7 +56,7 @@ contract DeployOptimismAdapter is Script, Test, Constants {
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);
         console.log("L1 USDC:", getUSDCAddress(chainId));
-        console.log("CCTP Token Messenger:", getL1Addresses(chainId).cctpTokenMessenger);
+        console.log("CCTP Token Messenger:", getL1Addresses(chainId).cctpV2TokenMessenger);
 
         vm.stopBroadcast();
     }

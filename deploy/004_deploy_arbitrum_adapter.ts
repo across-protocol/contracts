@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     L1_ADDRESS_MAP[chainId].l1ERC20GatewayRouter,
     l2RefundAddress,
     USDC[chainId],
-    L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+    L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
     adapterStore,
     oftDstEid,
     oftFeeCap,

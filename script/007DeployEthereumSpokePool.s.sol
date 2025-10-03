@@ -21,8 +21,6 @@ contract DeployEthereumSpokePool is Script, Test, DeploymentUtils {
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0)); // Will use HUBPOOL_ADDRESS from env
 
-        console.log("HubPool address:", info.hubPool);
-
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
 

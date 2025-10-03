@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     opStack.L1CrossDomainMessenger,
     opStack.L1StandardBridge,
     USDC[chainId],
-    L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+    L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
   ];
 
   const instance = await hre.deployments.deploy("Base_Adapter", {
