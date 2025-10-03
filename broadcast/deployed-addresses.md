@@ -258,6 +258,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0xedc397bdc758e28f61e8b35ddab220911ccfe605ddd3649d13223dc12bc137ef`
   - Block Number: `23498485`
 
+#### Polygon_Adapter
+
+- **Polygon_Adapter**: `0x537abe038c223066b50312474409924487d2e655`
+  - Transaction Hash: `0x8eb57df471fea74d5a69f59abbafb38d1f7c116f24b29b47a8251ee6bc6c9d75`
+  - Block Number: `23498649`
+
 #### PermissionSplitterProxy
 
 - **PermissionSplitterProxy**: `0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7`
@@ -307,6 +313,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `137675818`
+
+#### Optimism_SpokePool
+
+- **Optimism_SpokePool**: `0x21352b3495a6ee1bd2921bdb0a876fadc3a9245e`
+  - Transaction Hash: `0xc2df23c0f90b79bb4d0cdc77984bce181b2a9e5f50216b21ce62c7e6608d206f`
+  - Block Number: `141955483`
 
 ### BNB Smart Chain (Chain ID: 56)
 
@@ -769,6 +781,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `351421618`
+
+#### Arbitrum_SpokePool
+
+- **Arbitrum_SpokePool**: `0x33d52d76d617126648067401c106923e4a34dbe1`
+  - Transaction Hash: `0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c`
+  - Block Number: `385694983`
 
 ### Ink (Chain ID: 57073)
 

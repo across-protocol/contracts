@@ -74,9 +74,9 @@
           "block_number": 14819539
         },
         "Polygon_Adapter": {
-          "address": "0xF71F1e20F75820b484F8A0959C2D9E5cdd89c9F0",
-          "transaction_hash": "Unknown",
-          "block_number": 23227800
+          "address": "0x537abe038c223066b50312474409924487d2e655",
+          "transaction_hash": "0x8eb57df471fea74d5a69f59abbafb38d1f7c116f24b29b47a8251ee6bc6c9d75",
+          "block_number": 23498649
         },
         "ZkSync_Adapter": {
           "address": "0xA374585E6062517Ee367ee5044946A6fBe17724f",
@@ -247,6 +247,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 137675818
+        },
+        "Optimism_SpokePool": {
+          "address": "0x21352b3495a6ee1bd2921bdb0a876fadc3a9245e",
+          "transaction_hash": "0xc2df23c0f90b79bb4d0cdc77984bce181b2a9e5f50216b21ce62c7e6608d206f",
+          "block_number": 141955483
         }
       }
     },
@@ -742,6 +747,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "transaction_hash": "Unknown",
           "block_number": 351421618
+        },
+        "Arbitrum_SpokePool": {
+          "address": "0x33d52d76d617126648067401c106923e4a34dbe1",
+          "transaction_hash": "0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c",
+          "block_number": 385694983
         }
       }
     },
