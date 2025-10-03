@@ -440,6 +440,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `73247089`
 
+#### Polygon_SpokePool
+
+- **Polygon_SpokePool**: `0xf5264e9198f70ea2e0b16337cb4718afadbf0a4e`
+  - Transaction Hash: `0x9409b476e65032b629ad607cd61f175c62172e329a1b78e8a8624de261a84d15`
+  - Block Number: `77216750`
+
 ### Lens (Chain ID: 232)
 
 #### SpokePool
