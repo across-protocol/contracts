@@ -28,7 +28,7 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
 
         // Get L2 addresses for Arbitrum
         address l2GatewayRouter = getL2Address(info.spokeChainId, "l2GatewayRouter");
-        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
+        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
         vm.startBroadcast(deployerPrivateKey);
 

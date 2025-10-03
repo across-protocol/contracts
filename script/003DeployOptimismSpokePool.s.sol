@@ -27,7 +27,7 @@ contract DeployOptimismSpokePool is Script, Test, DeploymentUtils {
         address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get L2 addresses for Optimism
-        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
+        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
         vm.startBroadcast(deployerPrivateKey);
 
