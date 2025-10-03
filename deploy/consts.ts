@@ -84,6 +84,8 @@ export const OP_STACK_ADDRESS_MAP: {
 } = {
   [CHAIN_IDs.MAINNET]: {
     [CHAIN_IDs.BASE]: {
+      L1BlastBridge: ZERO_ADDRESS,
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
       L1StandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
     },
@@ -97,6 +99,8 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     },
     [CHAIN_IDs.UNICHAIN]: {
+      L1BlastBridge: ZERO_ADDRESS,
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
       L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
     },
