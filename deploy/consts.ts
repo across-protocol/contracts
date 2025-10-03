@@ -270,8 +270,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
   [CHAIN_IDs.UNICHAIN]: {
-    cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
-    cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
