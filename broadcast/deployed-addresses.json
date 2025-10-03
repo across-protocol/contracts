@@ -19,9 +19,9 @@
           "block_number": 23086526
         },
         "Arbitrum_Adapter": {
-          "address": "0x5eC9844936875E27eBF22172f4d92E107D35B57C",
-          "transaction_hash": "Unknown",
-          "block_number": 23086601
+          "address": "0xc0b6d2f794cc787c71f2ca5cecd57102c32379b3",
+          "transaction_hash": "0xedc397bdc758e28f61e8b35ddab220911ccfe605ddd3649d13223dc12bc137ef",
+          "block_number": 23498485
         },
         "Arbitrum_RescueAdapter": {
           "address": "0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375",

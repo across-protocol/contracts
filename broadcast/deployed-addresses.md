@@ -252,6 +252,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0x26133831459a5bb8a1d8dc51724ab0847e6b0b607760c09fcbd597f145374a8a`
   - Block Number: `23498423`
 
+#### Arbitrum_Adapter
+
+- **Arbitrum_Adapter**: `0xc0b6d2f794cc787c71f2ca5cecd57102c32379b3`
+  - Transaction Hash: `0xedc397bdc758e28f61e8b35ddab220911ccfe605ddd3649d13223dc12bc137ef`
+  - Block Number: `23498485`
+
 #### PermissionSplitterProxy
 
 - **PermissionSplitterProxy**: `0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7`
