@@ -6,8 +6,28 @@ on:
       - "master"
 env:
   NODE_VERSION: 20
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      svm: ${{ steps.filter.outputs.svm }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            svm:
+              - 'programs/**'
+              - 'src/**'
+              - 'scripts/svm/**'
+              - 'idls/**'
+              - 'test/svm/**'
   upload-svm-artifacts:
     name: Upload SVM artifacts
     runs-on: ubuntu-latest
@@ -78,6 +98,8 @@ jobs:
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -86,8 +108,15 @@ jobs:
           components: rustc, rustfmt
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Cache node_modules
+        id: modules-cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-mods-${{ hashFiles('yarn.lock') }}
+      - name: Install packages (Bun)
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: bun install --yarn
       - name: Lint js
         shell: bash
         run: yarn lint-js
@@ -112,8 +141,17 @@ jobs:
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Cache node_modules
+        id: modules-cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-mods-${{ hashFiles('yarn.lock') }}
+      - name: Install packages (Bun)
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: bun install --yarn
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -127,7 +165,10 @@ jobs:
         run: yarn test-evm-hardhat
   test-svm-verified:
     name: Test verified SVM build
-    needs: upload-svm-artifacts
+    needs:
+      - upload-svm-artifacts
+      - changes
+    if: needs.changes.outputs.svm == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -137,8 +178,17 @@ jobs:
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Cache node_modules
+        id: modules-cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-mods-${{ hashFiles('yarn.lock') }}
+      - name: Install packages (Bun)
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: bun install --yarn
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
@@ -180,8 +230,17 @@ jobs:
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Cache node_modules
+        id: modules-cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-mods-${{ hashFiles('yarn.lock') }}
+      - name: Install packages (Bun)
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: bun install --yarn
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -203,10 +262,26 @@ jobs:
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v1
+      - name: Cache node_modules
+        id: modules-cache
+        uses: actions/cache@v3
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ env.NODE_VERSION }}-mods-${{ hashFiles('yarn.lock') }}
+      - name: Install packages (Bun)
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: bun install --yarn
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+      - name: Cache Foundry deps
+        uses: actions/cache@v3
+        with:
+          path: |
+            lib
+            ~/.foundry/cache
+          key: ${{ runner.os }}-foundry-${{ hashFiles('foundry.toml', 'foundry.lock') }}
       - name: Install forge dependencies
         run: forge install
       - name: Inspect storage layouts
