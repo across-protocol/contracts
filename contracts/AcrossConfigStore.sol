@@ -15,6 +15,7 @@ contract AcrossConfigStore is Ownable, MultiCaller {
     // General dictionary where admin can associate variables with specific L1 tokens, like the Rate Model and Token
     // Transfer Thresholds.
     mapping(address => string) public l1TokenConfig;
+    uint256 x;
 
     // General dictionary where admin can store global variables like `MAX_POOL_REBALANCE_LEAF_SIZE` and
     // `MAX_RELAYER_REPAYMENT_LEAF_SIZE` that off-chain agents can query.
