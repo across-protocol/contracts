@@ -369,9 +369,9 @@
           "block_number": 73247089
         },
         "Polygon_SpokePool": {
-          "address": "0xf5264e9198f70ea2e0b16337cb4718afadbf0a4e",
-          "transaction_hash": "0x9409b476e65032b629ad607cd61f175c62172e329a1b78e8a8624de261a84d15",
-          "block_number": 77216750
+          "address": "0x8f7b21ff11006f0520b06074d36e39b6cd83cf29",
+          "transaction_hash": "0x92801b64851c27c614e68b66dc26ab6831c1f2b95f3f805bd8646d1747105685",
+          "block_number": 77338915
         }
       }
     },
