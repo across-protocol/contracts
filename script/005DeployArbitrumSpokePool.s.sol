@@ -21,14 +21,12 @@ contract DeployArbitrumSpokePool is Script, Test, DeploymentUtils {
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
-        console.log("HubPool address:", info.hubPool);
-
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
 
         // Get L2 addresses for Arbitrum
         address l2GatewayRouter = getL2Address(info.spokeChainId, "l2GatewayRouter");
-        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
+        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
         vm.startBroadcast(deployerPrivateKey);
 

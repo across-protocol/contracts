@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     MATIC[chainId],
     WETH[chainId],
     USDC[chainId],
-    L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
+    L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
     adapterStore,
     oftDstEid,
     oftFeeCap,

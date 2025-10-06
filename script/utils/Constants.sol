@@ -299,4 +299,14 @@ contract Constants is Script {
         string memory jsonPath = string(abi.encodePacked(".WGHO.", vm.toString(chainId)));
         return vm.parseJsonAddress(file, jsonPath);
     }
+
+    /**
+     * @notice Get WMATIC address for the given chain
+     * @param chainId The chain ID to get WMATIC address for
+     * @return The WMATIC address
+     */
+    function getWmaticAddress(uint256 chainId) public view returns (address) {
+        string memory jsonPath = string(abi.encodePacked(".WMATIC.", vm.toString(chainId)));
+        return vm.parseJsonAddress(file, jsonPath);
+    }
 }

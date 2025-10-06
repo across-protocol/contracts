@@ -59,7 +59,7 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
             ArbitrumL1ERC20GatewayLike(l1Addresses.l1ERC20GatewayRouter),
             l2RefundAddress,
             IERC20(getUSDCAddress(chainId)),
-            ITokenMessenger(l1Addresses.cctpTokenMessenger),
+            ITokenMessenger(l1Addresses.cctpV2TokenMessenger),
             l1Addresses.adapterStore, // This might need to be deployed first or set to address(0)
             oftDstEid,
             oftFeeCap
@@ -72,7 +72,7 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
         console.log("L1 ERC20 Gateway Router:", l1Addresses.l1ERC20GatewayRouter);
         console.log("L2 Refund Address:", l2RefundAddress);
         console.log("USDC Address:", getUSDCAddress(chainId));
-        console.log("CCTP Token Messenger:", l1Addresses.cctpTokenMessenger);
+        console.log("CCTP Token Messenger:", l1Addresses.cctpV2TokenMessenger);
         console.log("Adapter Store:", l1Addresses.adapterStore);
         console.log("OFT Destination EID:", oftDstEid);
         console.log("OFT Fee Cap:", oftFeeCap);

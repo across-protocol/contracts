@@ -11,6 +11,7 @@ import {
   USDCe,
   WETH,
   WGHO,
+  WMATIC,
   QUOTE_TIME_BUFFER,
   FILL_DEADLINE_BUFFER,
   ARBITRUM_MAX_SUBMISSION_COST,
@@ -101,6 +102,7 @@ function generateConstantsJson() {
     USDC,
     USDCe,
     WGHO,
+    WMATIC,
     OTHER_CONSTANTS: {
       ZERO_ADDRESS,
       ARBITRUM_MAX_SUBMISSION_COST,
