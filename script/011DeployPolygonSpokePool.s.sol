@@ -28,6 +28,9 @@ contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
         // Get L2 addresses for Polygon
         address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
+        // Fee cap of 22K POL is roughly equivalent to $5K at current POL price of ~0.23
+        uint256 oftFeeCap = 22000 ether;
+
         vm.startBroadcast(deployerPrivateKey);
 
         // Prepare constructor arguments for Polygon_SpokePool
@@ -38,7 +41,7 @@ contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
             getUSDCAddress(info.spokeChainId), // _usdc
             cctpTokenMessenger, // _cctpTokenMessenger
             getOftEid(info.hubChainId), // _oftDstEid
-            1 ether // _oftFeeCap
+            oftFeeCap // _oftFeeCap
         );
 
         // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
@@ -78,6 +81,7 @@ contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
         console.log("OFT EID", getOftEid(info.hubChainId));
+        console.log("OFT Fee Cap:", oftFeeCap);
 
         vm.stopBroadcast();
     }
