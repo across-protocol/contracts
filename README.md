@@ -61,9 +61,36 @@ yarn lint-fix
 
 ### EVM
 
+#### Hardhat
+
 ```shell
 NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --network mainnet
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
+```
+
+#### Foundry
+
+```shell
+forge build
+
+forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+
+```
+
+#### Foundry (ZKSync)
+
+To enable ZKSync support, the zksync fork of foundry must be installed (see [here](https://foundry-book.zksync.io/introduction/installation#using-foundryup-zksync) for instructions).
+
+Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
+
+```shell
+FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+```
+
+Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
+
+```shell
+yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
 ```
 
 ### SVM

@@ -12,10 +12,6 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
 
     const { ethers } = hre;
 
-    if (ethers.utils.getAddress(implementation) !== implementation) {
-      throw new Error(`Implementation address must be checksummed (${implementation})`);
-    }
-
     const artifact = await hre.artifacts.readArtifact("SpokePool");
 
     // @dev Any spoke pool's interface can be used here since they all should have the same upgradeTo function signature.

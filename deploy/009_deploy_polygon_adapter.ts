@@ -3,6 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 import { getOftEid, toWei } from "../utils/utils";
 import { L1_ADDRESS_MAP, USDC, WETH } from "./consts";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 
 const MATIC = TOKEN_SYMBOLS_MAP.MATIC.addresses;
 
@@ -14,6 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const oftDstEid = getOftEid(spokeChainId);
   const oftFeeCap = toWei("1"); // 1 eth transfer fee cap
+  const adapterStore = getDeployedAddress("AdapterStore", chainId);
 
   const args = [
     L1_ADDRESS_MAP[chainId].polygonRootChainManager,
@@ -23,8 +25,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     MATIC[chainId],
     WETH[chainId],
     USDC[chainId],
-    L1_ADDRESS_MAP[chainId].cctpTokenMessenger,
-    L1_ADDRESS_MAP[chainId].adapterStore,
+    L1_ADDRESS_MAP[chainId].cctpV2TokenMessenger,
+    adapterStore,
     oftDstEid,
     oftFeeCap,
   ];

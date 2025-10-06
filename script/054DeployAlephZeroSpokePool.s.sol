@@ -23,8 +23,6 @@ contract DeployAlephZeroSpokePool is Script, Test, DeploymentUtils {
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
-        console.log("HubPool address:", info.hubPool);
-
         // Get the appropriate addresses for this chain
         // TODO: Move this to constants.json
         address wazero = 0xb7Da55D7040ef9C887e20374D76A88F93A59119E;

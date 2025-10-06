@@ -10,6 +10,10 @@ import {
   SvmSpokeIdl,
   TokenMessengerMinterAnchor,
   TokenMessengerMinterIdl,
+  MessageTransmitterV2Anchor,
+  MessageTransmitterV2Idl,
+  TokenMessengerMinterV2Anchor,
+  TokenMessengerMinterV2Idl,
 } from "../assets";
 import { getSolanaChainId, isSolanaDevnet } from "./helpers";
 
@@ -58,4 +62,14 @@ export function getTokenMessengerMinterProgram(provider: AnchorProvider, options
 export function getMulticallHandlerProgram(provider: AnchorProvider, options?: ProgramOptions) {
   const id = resolveProgramId("MulticallHandler", provider, options);
   return getConnectedProgram<MulticallHandlerAnchor>(MulticallHandlerIdl, provider, id);
+}
+
+export function getMessageTransmitterV2Program(provider: AnchorProvider, options?: ProgramOptions) {
+  const id = resolveProgramId("MessageTransmitterV2", provider, options);
+  return getConnectedProgram<MessageTransmitterV2Anchor>(MessageTransmitterV2Idl, provider, id);
+}
+
+export function getTokenMessengerMinterV2Program(provider: AnchorProvider, options?: ProgramOptions) {
+  const id = resolveProgramId("TokenMessengerMinterV2", provider, options);
+  return getConnectedProgram<TokenMessengerMinterV2Anchor>(TokenMessengerMinterV2Idl, provider, id);
 }
