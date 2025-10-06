@@ -4,5 +4,17 @@
       "name": "v1.10.0",
       "rev": "8bbcf6e3f8f62f419e5429a0bd89331c85c37824"
     }
+  },
+  "lib/openzeppelin-contracts": {
+    "tag": {
+      "name": "v5.4.0",
+      "rev": "c64a1edb67b6e3f4a15cca8909c9482ad33a02b0"
+    }
+  },
+  "lib/sp1-contracts": {
+    "tag": {
+      "name": "v5.0.0",
+      "rev": "512b5e029abc27f6e46a3c7eba220dac83ecc306"
+    }
   }
 }

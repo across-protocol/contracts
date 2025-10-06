@@ -14,6 +14,7 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
+import "@nomicfoundation/hardhat-foundry";
 
 const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.
@@ -120,6 +121,10 @@ const config: HardhatUserConfig = {
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Bob_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/sp1-helios/SP1Helios.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.28",
+      },
     },
   },
   zksolc: {
