@@ -2,7 +2,7 @@
   "PUBLIC_NETWORKS": {
     "1": {
       "name": "Mainnet",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://eth.llamarpc.com",
       "blockExplorer": "https://etherscan.io",
@@ -12,7 +12,7 @@
     },
     "10": {
       "name": "Optimism",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.optimism.io",
       "blockExplorer": "https://optimistic.etherscan.io",
@@ -22,7 +22,7 @@
     },
     "56": {
       "name": "BNB Smart Chain",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "BNB",
       "publicRPC": "https://bsc-dataseed1.binance.org",
       "blockExplorer": "https://bscscan.com",
@@ -32,7 +32,7 @@
     },
     "130": {
       "name": "Unichain",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.unichain.org/",
       "blockExplorer": "https://uniscan.xyz",
@@ -42,7 +42,7 @@
     },
     "137": {
       "name": "Polygon",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "MATIC",
       "publicRPC": "https://polygon-rpc.com",
       "blockExplorer": "https://polygonscan.com",
@@ -52,7 +52,7 @@
     },
     "232": {
       "name": "Lens",
-      "family": 3,
+      "family": "ZK_STACK",
       "nativeToken": "WGHO",
       "publicRPC": "https://api.lens.matterhosted.dev",
       "blockExplorer": "https://explorer.lens.xyz",
@@ -62,7 +62,7 @@
     },
     "288": {
       "name": "Boba",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.boba.network",
       "blockExplorer": "https://blockexplorer.boba.network",
@@ -72,7 +72,7 @@
     },
     "300": {
       "name": "zkSync Sepolia",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.era.zksync.dev",
       "blockExplorer": "https://sepolia-era.zksync.network",
@@ -82,7 +82,7 @@
     },
     "324": {
       "name": "zkSync",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.era.zksync.io",
       "blockExplorer": "https://era.zksync.network",
@@ -92,7 +92,7 @@
     },
     "480": {
       "name": "World Chain",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://worldchain-mainnet.g.alchemy.com/public",
       "blockExplorer": "https://worldchain-mainnet-explorer.alchemy.com",
@@ -102,7 +102,7 @@
     },
     "690": {
       "name": "Redstone",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.redstonechain.com",
       "blockExplorer": "https://explorer.redstone.xyz",
@@ -112,7 +112,7 @@
     },
     "919": {
       "name": "Mode Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.mode.network",
       "blockExplorer": "https://sepolia.explorer.mode.network",
@@ -122,7 +122,7 @@
     },
     "998": {
       "name": "HyperEVM Testnet",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "HYPE",
       "publicRPC": "https://rpc.hyperliquid-testnet.xyz/evm",
       "blockExplorer": "https://testnet.purrsec.com/",
@@ -132,7 +132,7 @@
     },
     "999": {
       "name": "HyperEVM",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "HYPE",
       "publicRPC": "https://rpc.hyperliquid.xyz/evm",
       "blockExplorer": "https://hyperevmscan.io/",
@@ -142,7 +142,7 @@
     },
     "1135": {
       "name": "Lisk",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.api.lisk.com",
       "blockExplorer": "https://blockscout.lisk.com",
@@ -152,7 +152,7 @@
     },
     "1301": {
       "name": "Unichain Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.unichain.org",
       "blockExplorer": "https://sepolia.uniscan.xyz",
@@ -162,7 +162,7 @@
     },
     "1337": {
       "name": "HyperCore",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "HYPE",
       "publicRPC": "https://api.hyperliquid.xyz",
       "blockExplorer": "https://app.hyperliquid.xyz/explorer",
@@ -172,7 +172,7 @@
     },
     "1868": {
       "name": "Soneium",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.soneium.org",
       "blockExplorer": "https://soneium.blockscout.com",
@@ -182,7 +182,7 @@
     },
     "4202": {
       "name": "Lisk Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.sepolia-api.lisk.com",
       "blockExplorer": "https://sepolia-blockscout.lisk.com",
@@ -192,7 +192,7 @@
     },
     "5330": {
       "name": "Superseed",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.superseed.xyz",
       "blockExplorer": "",
@@ -202,7 +202,7 @@
     },
     "8453": {
       "name": "Base",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.base.org",
       "blockExplorer": "https://basescan.org",
@@ -212,7 +212,7 @@
     },
     "9745": {
       "name": "Plasma",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "XPL",
       "publicRPC": "https://rpc.plasma.to",
       "blockExplorer": "https://plasmascan.to",
@@ -222,7 +222,7 @@
     },
     "9746": {
       "name": "Plasma Testnet",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "XPL",
       "publicRPC": "https://testnet-rpc.plasma.to/",
       "blockExplorer": "https://testnet.plasmascan.to/",
@@ -232,7 +232,7 @@
     },
     "34443": {
       "name": "Mode",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.mode.network",
       "blockExplorer": "https://explorer.mode.network",
@@ -242,7 +242,7 @@
     },
     "37111": {
       "name": "Lens Sepolia",
-      "family": 3,
+      "family": "ZK_STACK",
       "nativeToken": "GRASS",
       "publicRPC": "https://rpc.testnet.lens.dev",
       "blockExplorer": "https://block-explorer.testnet.lens.dev",
@@ -252,7 +252,7 @@
     },
     "41455": {
       "name": "Aleph Zero",
-      "family": 2,
+      "family": "ORBIT",
       "nativeToken": "AZERO",
       "publicRPC": "https://rpc.alephzero.raas.gelato.cloud",
       "blockExplorer": "https://evm-explorer.alephzero.org",
@@ -262,7 +262,7 @@
     },
     "42161": {
       "name": "Arbitrum One",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://arb1.arbitrum.io/rpc",
       "blockExplorer": "https://arbiscan.io",
@@ -272,7 +272,7 @@
     },
     "57073": {
       "name": "Ink",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc-gel.inkonchain.com",
       "blockExplorer": "https://explorer.inkonchain.com",
@@ -282,7 +282,7 @@
     },
     "59144": {
       "name": "Linea",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.linea.build",
       "blockExplorer": "https://lineascan.build",
@@ -292,7 +292,7 @@
     },
     "80002": {
       "name": "Polygon Amoy",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "MATIC",
       "publicRPC": "https://rpc-amoy.polygon.technology",
       "blockExplorer": "https://amoy.polygonscan.com",
@@ -302,7 +302,7 @@
     },
     "81457": {
       "name": "Blast",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.blast.io",
       "blockExplorer": "https://blastscan.io",
@@ -312,7 +312,7 @@
     },
     "84532": {
       "name": "Base Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.base.org",
       "blockExplorer": "https://sepolia.basescan.org",
@@ -322,7 +322,7 @@
     },
     "129399": {
       "name": "Tatara",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.tatara.katanarpc.com/<apikey>",
       "blockExplorer": "https://explorer.tatara.katana.network",
@@ -332,7 +332,7 @@
     },
     "421614": {
       "name": "Arbitrum Sepolia",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia-rollup.arbitrum.io/rpc",
       "blockExplorer": "https://sepolia.arbiscan.io",
@@ -342,7 +342,7 @@
     },
     "534351": {
       "name": "Scroll Sepolia",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia-rpc.scroll.io",
       "blockExplorer": "https://sepolia.scrollscan.com",
@@ -352,7 +352,7 @@
     },
     "534352": {
       "name": "Scroll",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.scroll.io",
       "blockExplorer": "https://scrollscan.com",
@@ -362,7 +362,7 @@
     },
     "808813": {
       "name": "BOB Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://bob-sepolia.rpc.gobob.xyz",
       "blockExplorer": "https://bob-sepolia.explorer.gobob.xyz",
@@ -372,7 +372,7 @@
     },
     "7777777": {
       "name": "Zora",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://rpc.zora.energy",
       "blockExplorer": "https://zorascan.xyz",
@@ -382,7 +382,7 @@
     },
     "11155111": {
       "name": "Sepolia",
-      "family": 0,
+      "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.drpc.org",
       "blockExplorer": "https://sepolia.etherscan.io",
@@ -392,7 +392,7 @@
     },
     "11155420": {
       "name": "Optimism Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.optimism.io",
       "blockExplorer": "https://sepolia-optimism.etherscan.io",
@@ -402,7 +402,7 @@
     },
     "168587773": {
       "name": "Blast Sepolia",
-      "family": 1,
+      "family": "OP_STACK",
       "nativeToken": "ETH",
       "publicRPC": "https://sepolia.blast.io",
       "blockExplorer": "https://sepolia.blastscan.io",
@@ -412,7 +412,7 @@
     },
     "34268394551451": {
       "name": "Solana",
-      "family": 4,
+      "family": "SVM",
       "nativeToken": "SOL",
       "publicRPC": "https://api.mainnet-beta.solana.com",
       "blockExplorer": "https://solscan.io",
@@ -422,7 +422,7 @@
     },
     "133268194659241": {
       "name": "Solana Devnet",
-      "family": 4,
+      "family": "SVM",
       "nativeToken": "SOL",
       "publicRPC": "https://api.devnet.solana.com",
       "blockExplorer": "https://explorer.solana.com/?cluster=devnet",
@@ -478,6 +478,10 @@
     "ZK_SYNC_SEPOLIA": 300,
     "SOLANA_DEVNET": 133268194659241
   },
+  "TESTNET_CHAIN_IDs": [
+    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 11155420, 9746, 80002, 534351, 11155111,
+    1301, 300, 133268194659241
+  ],
   "WETH": {
     "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
     "10": "0x4200000000000000000000000000000000000006",
@@ -561,8 +565,7 @@
   },
   "L2_ADDRESS_MAP": {
     "10": {
-      "cctpTokenMessenger": "0x2B4069517957735bE00ceE0fadAE88a26365528f",
-      "cctpMessageTransmitter": "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -571,14 +574,12 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "130": {
-      "cctpTokenMessenger": "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
-      "cctpMessageTransmitter": "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "137": {
       "fxChild": "0x8397259c983751DAf40400790063935a11afa28a",
-      "cctpTokenMessenger": "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",
-      "cctpMessageTransmitter": "0xF3be9355363857F3e001be68856A2f96b4C39Ba9",
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -603,7 +604,7 @@
     },
     "999": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
-      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "1135": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -620,8 +621,7 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "8453": {
-      "cctpTokenMessenger": "0x1682Ae6375C4E4A97e4B583BC394c861A46D8962",
-      "cctpMessageTransmitter": "0xAD09780d193884d503182aD4588450C416D6F9D4",
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "uniswapV3SwapRouter": "0x2626664c2603336E57B271c5C0b26F421741e481",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -640,8 +640,7 @@
     },
     "42161": {
       "l2GatewayRouter": "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
-      "cctpTokenMessenger": "0x19330d10D9Cc8751218eaf51E8885D058642E08A",
-      "cctpMessageTransmitter": "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -716,6 +715,8 @@
       "l1AlephZeroInbox": "0x56D8EC76a421063e1907503aDd3794c395256AEb",
       "l1AlephZeroERC20GatewayRouter": "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
       "donationBox": "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
+      "adapterStore": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
+      "hubPoolStore": "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
       "zkBridgeHub": "0x303a465B659cBB0ab36eE643eA362c509EEb5213",
       "zkUsdcSharedBridge_232": "0xf553E6D903AA43420ED7e3bc2313bE9286A8F987",
       "zkUsdcSharedBridge_324": "0xD7f9f54194C633F36CCD5F3da84ad4a1c38cB2cB",
@@ -746,10 +747,14 @@
   "OP_STACK_ADDRESS_MAP": {
     "1": {
       "10": {
+        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
+        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1",
         "L1StandardBridge": "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1"
       },
       "130": {
+        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
+        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
         "L1StandardBridge": "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA"
       },
@@ -777,6 +782,8 @@
         "L1OpUSDCBridgeAdapter": "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb"
       },
       "8453": {
+        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
+        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
         "L1StandardBridge": "0x3154Cf16ccdb4C6d922629664174b904d80F2C35"
       },
@@ -869,6 +876,12 @@
   "WGHO": {
     "1": "0x1ff1dC3cB9eeDbC6Eb2d99C03b30A05cA625fB5a",
     "232": "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F"
+  },
+  "WMATIC": {
+    "1": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
+    "137": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    "80002": "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
+    "11155111": "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53"
   },
   "OTHER_CONSTANTS": {
     "ZERO_ADDRESS": "0x0000000000000000000000000000000000000000",

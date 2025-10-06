@@ -5,6 +5,7 @@ export {
   PUBLIC_NETWORKS,
   TESTNET_CHAIN_IDs,
   TOKEN_SYMBOLS_MAP,
+  ChainFamily,
 } from "@across-protocol/constants";
 
 export const FillStatus = {

@@ -1,7 +1,8 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
-import { CHAIN_IDs, PUBLIC_NETWORKS } from "./utils/constants";
+import { CHAIN_IDs } from "./utils/constants";
+import { getNodeUrl } from "./utils";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -13,17 +14,6 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
-
-const getNodeUrl = (chainId: number): string => {
-  let url = process.env[`NODE_URL_${chainId}`] ?? process.env.CUSTOM_NODE_URL;
-  if (url === undefined) {
-    // eslint-disable-next-line no-console
-    console.log(`No configured RPC provider for chain ${chainId}, reverting to public RPC.`);
-    url = PUBLIC_NETWORKS[chainId].publicRPC;
-  }
-
-  return url;
-};
 
 const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.

@@ -63,8 +63,10 @@
   },
   "999": {
     "SpokePool": { "address": "0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04", "blockNumber": 13937805 },
+    "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 14459886 },
     "Helios": { "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5", "blockNumber": 13934816 },
-    "MulticallHandler": { "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba", "blockNumber": 13992522 }
+    "MulticallHandler": { "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba", "blockNumber": 13992522 },
+    "SpokePoolPeriphery": { "address": "0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb", "blockNumber": 15142204 }
   },
   "137": {
     "MintableERC1155": { "address": "0xA15a90E7936A2F8B70E181E955760860D133e56B", "blockNumber": 40600414 },
@@ -86,12 +88,14 @@
   },
   "232": {
     "SpokePool": { "address": "0xb234cA484866c811d0e6D3318866F583781ED045", "blockNumber": 4197027 },
+    "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 4419395 },
     "MulticallHandler": { "address": "0x1Ed0D59019a52870337b51DEe8190486a8663037", "blockNumber": 3458452 },
     "SpokePoolPeriphery": { "address": "0x8A8cA9c4112c67b7Dae7dF7E89EA45D592362107", "blockNumber": 2884429 }
   },
   "288": { "SpokePool": { "address": "0xBbc6009fEfFc27ce705322832Cb2068F8C1e0A58", "blockNumber": 619993 } },
   "324": {
     "SpokePool": { "address": "0xE0B015E54d54fc84a6cB9B666099c46adE9335FF", "blockNumber": 10352565 },
+    "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 64765628 },
     "MulticallHandler": { "address": "0x68d3806E57148D6c6793C78EbDDbc272fE605dbf", "blockNumber": 63168917 },
     "SpokePoolPeriphery": { "address": "0x672b9ba0CE73b69b5F940362F0ee36AAA3F02986", "blockNumber": 62189304 }
   },
@@ -252,6 +256,14 @@
     "TokenMessengerMinter": {
       "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
       "blockNumber": 277864039
+    },
+    "MessageTransmitterV2": {
+      "address": "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
+      "blockNumber": 383716739
+    },
+    "TokenMessengerMinterV2": {
+      "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+      "blockNumber": 383709630
     }
   },
   "34268394551451": {
@@ -270,6 +282,14 @@
     "TokenMessengerMinter": {
       "address": "CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3",
       "blockNumber": 262177984
+    },
+    "MessageTransmitterV2": {
+      "address": "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC",
+      "blockNumber": 343321624
+    },
+    "TokenMessengerMinterV2": {
+      "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+      "blockNumber": 343322709
     }
   },
   "808813": {
