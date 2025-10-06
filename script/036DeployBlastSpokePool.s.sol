@@ -31,8 +31,6 @@ contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
-        console.log("HubPool address:", info.hubPool);
-
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
 
