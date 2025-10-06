@@ -4,3 +4,6 @@
 [submodule "lib/sp1-contracts"]
 	path = lib/sp1-contracts
 	url = https://github.com/succinctlabs/sp1-contracts
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
