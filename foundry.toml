@@ -38,7 +38,7 @@ solc = "0.8.23"
 evm_version = "prague"
 
 [profile.helios]
-src = "contracts/sp1-helios/SP1Helios.sol"
+src = "contracts/sp1-helios/"
 test = "contracts/sp1-helios/SP1Helios.sol"
 optimizer_runs = 1000000
 solc_version = "0.8.28"
