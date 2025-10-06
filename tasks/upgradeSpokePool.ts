@@ -4,7 +4,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
   .addParam("implementation", "New SpokePool implementation address")
   .setAction(async function (args, hre: HardhatRuntimeEnvironment) {
-    const { implementation, upgradeOnly } = args;
+    const { implementation } = args;
     if (!implementation) {
       console.log("Usage: yarn hardhat upgrade-spokepool --implementation <implementation>");
       return;
