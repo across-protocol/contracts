@@ -35,8 +35,6 @@ task("upgrade-spokepool", "Generate calldata to upgrade a SpokePool deployment")
     ]);
 
     calldata = spokePool.interface.encodeFunctionData("upgradeToAndCall", [implementation, data]);
-    console.log(`upgradeToAndCall bytes: `, calldata);
-
     console.log(
       `Call relaySpokePoolAdminFunction() with the params [<chainId>, ${calldata}] on the hub pool from the owner's account.`
     );
