@@ -13,6 +13,7 @@ typechain-types
 
 # Hardhat files
 cache
+cache_hardhat
 artifacts
 cache-zk
 artifacts-zk
