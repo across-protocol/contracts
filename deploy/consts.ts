@@ -287,6 +287,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.ZORA]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.WORLD_CHAIN]: {
@@ -310,9 +311,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.MODE_SEPOLIA]: {
-    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
-  },
-  [CHAIN_IDs.ZORA]: {
     cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
   },
 };
