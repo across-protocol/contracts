@@ -9,13 +9,13 @@ import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/039DeployModeSpokePool.s.sol:DeployModeSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/039DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        forge script script/039DeployModeSpokePool.s.sol:DeployModeSpokePool --rpc-url \
+//        forge script script/039DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url \
 //        $NODE_URL_1 --broadcast --verify --verifier blockscout --verifier-url https://explorer.mode.network/api
 
-contract DeployModeSpokePool is Script, Test, DeploymentUtils {
+contract DeployOPSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
