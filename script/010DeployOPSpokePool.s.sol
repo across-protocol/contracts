@@ -25,6 +25,8 @@ contract DeployModeSpokePool is Script, Test, DeploymentUtils {
 
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
+        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
+        address l2Usdc = getUSDCAddress(info.spokeChainId);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -33,8 +35,8 @@ contract DeployModeSpokePool is Script, Test, DeploymentUtils {
             weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
-            address(0), // _l2Usdc
-            address(0) // _cctpTokenMessenger
+            l2Usdc, // _l2Usdc
+            cctpTokenMessenger // _cctpTokenMessenger
         );
 
         // Initialize deposit counter to 1
