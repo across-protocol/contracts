@@ -35,31 +35,43 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     IL1StandardBridge public immutable L1_STANDARD_BRIDGE;
     IOpUSDCBridgeAdapter public immutable L1_OP_USDC_BRIDGE;
 
+    error InvalidBridgeConfig();
+
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
+     * @param _l1Usdc USDC address on L1.
      * @param _crossDomainMessenger XDomainMessenger Destination chain system contract.
      * @param _l1StandardBridge Standard bridge contract.
-     * @param _l1Usdc USDC address on L1.
+     * @param _l1USDCBridge OP USDC bridge contract.
+     * @param _cctpTokenMessenger CCTP token messenger contract.
+     * @param _recipientCircleDomainId Circle domain ID of the destination chain.
      */
     constructor(
         WETH9Interface _l1Weth,
         IERC20 _l1Usdc,
         address _crossDomainMessenger,
         IL1StandardBridge _l1StandardBridge,
-        IOpUSDCBridgeAdapter _l1USDCBridge
+        IOpUSDCBridgeAdapter _l1USDCBridge,
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _recipientCircleDomainId
     )
         CrossDomainEnabled(_crossDomainMessenger)
-        CircleCCTPAdapter(
-            _l1Usdc,
-            // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
-            ITokenMessenger(address(0)),
-            CircleDomainIds.UNINITIALIZED
-        )
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _recipientCircleDomainId)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
         L1_OP_USDC_BRIDGE = _l1USDCBridge;
+
+        address zero = address(0);
+        if (address(_l1Usdc) != zero) {
+            bool opUSDCBridgeDisabled = address(_l1USDCBridge) == zero;
+            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
+            // Bridged and Native USDC are mutually exclusive.
+            if (opUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
+                revert InvalidBridgeConfig();
+            }
+        }
     }
 
     /**
@@ -79,24 +91,17 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
-        } else if (l1Token == address(usdcToken)) {
-            if (_isCCTPEnabled()) {
-                _transferUsdc(to, amount);
-            } else {
-                // Use the relevant OP USDC bridge to received bridged USDC on L2.
-                IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
-                L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
-            }
+        } else if (l1Token == address(usdcToken) && _isCCTPEnabled()) {
+            _transferUsdc(to, amount);
+        } else if (l1Token == address(usdcToken) && address(L1_OP_USDC_BRIDGE) != address(0)) {
+            // Use the relevant OP USDC bridge to received bridged USDC on L2.
+            IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
+            L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_STANDARD_BRIDGE), amount);
             L1_STANDARD_BRIDGE.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
