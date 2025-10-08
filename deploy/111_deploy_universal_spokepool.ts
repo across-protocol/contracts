@@ -65,6 +65,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // then a message designed to be sent to one chain could be sent to another's SpokePool.
   const { proxyAddress } = await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
 
+  if (!proxyAddress) {
+    return;
+  }
+
   const nodeUrl = getNodeUrl(spokeChainId);
 
   const protocolKit = await Safe.init({
@@ -76,21 +80,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     safeAddress: EXPECTED_SAFE_ADDRESS,
   });
   const isDeployed = await existingProtocolKit.isSafeDeployed();
-  if (proxyAddress) {
-    if (isDeployed) {
-      const factory = await hre.ethers.getContractFactory("Universal_SpokePool");
-      const contract = factory.attach(proxyAddress);
 
-      const owner = await contract.owner();
-      if (owner !== EXPECTED_SAFE_ADDRESS) {
-        await (await contract.transferOwnership(EXPECTED_SAFE_ADDRESS)).wait();
-        console.log("Transferred ownership to Expected Safe address:", await contract.owner());
-      } else {
-        console.log("Expected Safe address is already the owner of the Universal SpokePool");
-      }
-    } else {
-      console.log("Safe is not deployed, skipping ownership transfer");
-    }
+  if (!isDeployed) {
+    throw new Error("Expected Safe address is not deployed, please deploy it first");
+  }
+
+  const factory = await hre.ethers.getContractFactory("Universal_SpokePool");
+  const contract = factory.attach(proxyAddress);
+
+  const owner = await contract.owner();
+  if (owner !== EXPECTED_SAFE_ADDRESS) {
+    await (await contract.transferOwnership(EXPECTED_SAFE_ADDRESS)).wait();
+    console.log("Transferred ownership to Expected Safe address:", await contract.owner());
+  } else {
+    console.log("Expected Safe address is already the owner of the Universal SpokePool");
   }
 };
 module.exports = func;
