@@ -152,8 +152,8 @@ jobs:
             svm:
               - 'programs/**'
               - 'scripts/svm/**'
-              - '/src/svm/**'
-              - '/test/svm/**'
+              - 'src/svm/**'
+              - 'test/svm/**'
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
