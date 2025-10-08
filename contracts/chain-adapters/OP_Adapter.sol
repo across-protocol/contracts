@@ -96,12 +96,14 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
-        } else if (l1Token == address(usdcToken) && _isCCTPEnabled()) {
-            _transferUsdc(to, amount);
-        } else if (l1Token == address(usdcToken) && address(L1_OP_USDC_BRIDGE) != address(0)) {
-            // Use the relevant OP USDC bridge to received bridged USDC on L2.
-            IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
-            L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
+        } else if (l1Token == address(usdcToken)) {
+            if (_isCCTPEnabled()) {
+                _transferUsdc(to, amount);
+            } else {
+                // Use the relevant OP USDC bridge to received bridged USDC on L2.
+                IERC20(l1Token).safeIncreaseAllowance(address(L1_OP_USDC_BRIDGE), amount);
+                L1_OP_USDC_BRIDGE.sendMessage(to, amount, L2_GAS_LIMIT);
+            }
         } else {
             IERC20(l1Token).safeIncreaseAllowance(address(L1_STANDARD_BRIDGE), amount);
             L1_STANDARD_BRIDGE.depositERC20To(l1Token, l2Token, to, amount, L2_GAS_LIMIT, "");
