@@ -12,9 +12,11 @@ import {
   toWei,
   getContractFactory,
   seedWallet,
+  toBN,
 } from "../../../../utils/utils";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
+import { ZERO_ADDRESS } from "@uma/common";
 
 let hubPool: Contract, adapter: Contract, weth: Contract, usdc: Contract, mockSpoke: Contract, timer: Contract;
 let l2Weth: string, l2Usdc: string;
@@ -63,7 +65,9 @@ describe("OP Adapter", function () {
       usdc.address,
       l1CrossDomainMessenger.address,
       l1StandardBridge.address,
-      opUSDCBridge.address
+      opUSDCBridge.address,
+      ZERO_ADDRESS,
+      toBN("322")
     );
     // Seed the HubPool some funds so it can send L1->L2 messages.
     await hubPool.connect(liquidityProvider).loadEthForL2Calls({ value: toWei("1") });
