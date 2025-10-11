@@ -2,15 +2,15 @@
 pragma solidity ^0.8.23;
 
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import { SponsoredOFTQuoteSignedParams } from "./SponsoredOftMintBurnStructs.sol";
+import { SignedQuoteParams } from "./Structs.sol";
 
-/// @notice Lib to check the signature for `SponsoredOFTQuoteSignedParams`.
-/// The signature is checked against a keccak hash of abi-encoded fields of `SponsoredOFTQuoteSignedParams`
-library SponsoredOFTQuoteSignLib {
+/// @notice Lib to check the signature for `SignedQuoteParams`.
+/// The signature is checked against a keccak hash of abi-encoded fields of `SignedQuoteParams`
+library QuoteSignLib {
     using ECDSA for bytes32;
 
-    /// @notice Compute the keccak of all `SponsoredOFTQuoteSignedParams` fields
-    function hash(SponsoredOFTQuoteSignedParams calldata p) internal pure returns (bytes32) {
+    /// @notice Compute the keccak of all `SignedQuoteParams` fields
+    function hash(SignedQuoteParams calldata p) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -29,10 +29,7 @@ library SponsoredOFTQuoteSignLib {
     }
 
     /// @notice Recover the signer for the given params and signature.
-    function recoverSigner(
-        SponsoredOFTQuoteSignedParams calldata p,
-        bytes calldata signature
-    ) internal pure returns (address) {
+    function recoverSigner(SignedQuoteParams calldata p, bytes calldata signature) internal pure returns (address) {
         bytes32 digest = hash(p);
         return digest.recover(signature);
     }
@@ -41,7 +38,7 @@ library SponsoredOFTQuoteSignLib {
     /// @notice Verify that `expectedSigner` signed `p` with `signature`.
     function verify(
         address expectedSigner,
-        SponsoredOFTQuoteSignedParams calldata p,
+        SignedQuoteParams calldata p,
         bytes calldata signature
     ) internal pure returns (bool) {
         return recoverSigner(p, signature) == expectedSigner;

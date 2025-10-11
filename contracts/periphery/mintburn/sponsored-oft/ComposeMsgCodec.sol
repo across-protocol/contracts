@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
-import { BytesLib } from "../../libraries/BytesLib.sol";
+import { BytesLib } from "../../../libraries/BytesLib.sol";
 
-/// @notice Codec for params passed in OFT compose message.
-library SponsoredOFTComposeCodec {
+/// @notice Codec for params passed in OFT `composeMsg`.
+library ComposeMsgCodec {
     uint256 internal constant NONCE_OFFSET = 0;
     uint256 internal constant DEADLINE_OFFSET = 32;
     uint256 internal constant MAX_SPONSORSHIP_AMOUNT_OFFSET = 64;
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 96;
     uint256 internal constant FINAL_TOKEN_OFFSET = 128;
 
-    /// @notice Encode params into bytes for OFT compose message.
     function _encode(
         bytes32 nonce,
         uint256 deadline,

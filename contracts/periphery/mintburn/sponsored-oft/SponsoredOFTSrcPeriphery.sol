@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import { SponsoredOFTQuote } from "./SponsoredOftMintBurnStructs.sol";
-import { SponsoredOFTQuoteSignLib } from "./SponsoredOFTQuoteSignLib.sol";
-import { SponsoredOFTComposeCodec } from "./SponsoredOFTComposeCodec.sol";
+import { Quote } from "./Structs.sol";
+import { QuoteSignLib } from "./QuoteSignLib.sol";
+import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 
-import { IOFT, SendParam, MessagingFee } from "../../interfaces/IOFT.sol";
-import { AddressToBytes32 } from "../../libraries/AddressConverters.sol";
-import { MinimalLZOptions } from "../../libraries/MinimalLZOptions.sol";
+import { IOFT, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
+import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
+import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
 
 // TODO: make Ownable and allow to change ApiPubKey and DstComposer
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
 // specific send events, checking the API signature and sending the transfer via OFT
-contract SrcPeripheryOFT {
+contract SponsoredOFTSrcPeriphery {
     // TODO: maybe just inline the function here? Feels more visible this way (no one can accidentally break this
     // contract by changing that function)
     using AddressToBytes32 for address;
@@ -39,9 +39,9 @@ contract SrcPeripheryOFT {
 
     // @dev The API recommended the user set some `msg.value` in order to pay OFT fee for this transfer. If it's not
     // enough to cover `fee.nativeFee`, we revert. If `msg.value > nativeFee`, `refundAddress` receives excess
-    function deposit(SponsoredOFTQuote calldata quote, bytes calldata signature) external payable {
+    function deposit(Quote calldata quote, bytes calldata signature) external payable {
         // Step 1: check that the quote is signed correctly
-        require(SponsoredOFTQuoteSignLib.verify(API_PUBKEY, quote.signedParams, signature), "Incorrect signature");
+        require(QuoteSignLib.verify(API_PUBKEY, quote.signedParams, signature), "Incorrect signature");
 
         // Step 2: check that the quote params make sense: e.g. quoteDeadline is not hit, quote nonce is unique
         require(quote.signedParams.deadline <= block.timestamp, "quote expired");
@@ -56,12 +56,12 @@ contract SrcPeripheryOFT {
     }
 
     function _buildOftTransfer(
-        SponsoredOFTQuote calldata quote
+        Quote calldata quote
     ) internal view returns (SendParam memory, MessagingFee memory, address) {
         // TODO? consider passing in composer as a part of quote
         bytes32 to = DST_COMPOSER.toBytes32();
 
-        bytes memory composeMsg = SponsoredOFTComposeCodec._encode(
+        bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
             quote.signedParams.deadline,
             quote.signedParams.maxSponsorshipAmount,
@@ -82,8 +82,9 @@ contract SrcPeripheryOFT {
             quote.signedParams.amountLD,
             extraOptions,
             composeMsg,
-            // @dev We're not passing `oftCmd` as a part of the quote from API. Instead, we just only support empty OFT
-            // commands from this contract directly
+            // TODO? might want to sign off on it being 0x instead of setting on the contract for more flexibility
+            // @dev Instead of passing `oftCmd` from the API, we're hardcoding to 0x here. In practice, this will
+            // probably not be a problem for any token we want to support
             EMPTY_MSG_BYTES
         );
 
