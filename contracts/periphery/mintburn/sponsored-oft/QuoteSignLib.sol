@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.23;
+
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { SignedQuoteParams } from "./Structs.sol";
+
+/// @notice Lib to check the signature for `SignedQuoteParams`.
+/// The signature is checked against a keccak hash of abi-encoded fields of `SignedQuoteParams`
+library QuoteSignLib {
+    using ECDSA for bytes32;
+
+    /// @notice Compute the keccak of all `SignedQuoteParams` fields
+    function hash(SignedQuoteParams calldata p) internal pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    p.srcEid,
+                    p.srcPeriphery,
+                    p.dstEid,
+                    p.to,
+                    p.amountLD,
+                    p.nonce,
+                    p.deadline,
+                    p.maxSponsorshipAmount,
+                    p.finalRecipient,
+                    p.finalToken
+                )
+            );
+    }
+
+    /// @notice Recover the signer for the given params and signature.
+    function recoverSigner(SignedQuoteParams calldata p, bytes calldata signature) internal pure returns (address) {
+        bytes32 digest = hash(p);
+        return digest.recover(signature);
+    }
+
+    // TODO: rename this perhaps. Or make it revert
+    /// @notice Verify that `expectedSigner` signed `p` with `signature`.
+    function verify(
+        address expectedSigner,
+        SignedQuoteParams calldata p,
+        bytes calldata signature
+    ) internal pure returns (bool) {
+        return recoverSigner(p, signature) == expectedSigner;
+    }
+}
