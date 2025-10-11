@@ -8,10 +8,14 @@ import { IOFT, SendParam, MessagingFee } from "../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../libraries/MinimalLZOptions.sol";
 
+// TODO: make Ownable and allow to change ApiPubKey and DstComposer
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
 // specific send events, checking the API signature and sending the transfer via OFT
 contract SrcPeripheryOFT {
+    // TODO: maybe just inline the function here? Feels more visible this way (no one can accidentally break this
+    // contract by changing that function)
     using AddressToBytes32 for address;
+    using MinimalLZOptions for bytes;
 
     // @notice Empty bytes array used for OFT messaging parameters
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
@@ -24,10 +28,17 @@ contract SrcPeripheryOFT {
 
     mapping(bytes32 => bool) public quoteNonces;
 
-    function deposit(SponsoredOFTQuote calldata quote, bytes calldata signature) external {
-        // TODO? tryVerify
+    // TODO: make Ownable and allow to change ApiPubKey and DstComposer
+    constructor(address token, address oftMessenger, address apiPubKey, address dstComposer) {
+        TOKEN = token;
+        OFT_MESSENGER = oftMessenger;
+        API_PUBKEY = apiPubKey;
+        DST_COMPOSER = dstComposer;
+    }
+
+    function deposit(SponsoredOFTQuote calldata quote, bytes calldata signature) external payable {
         // Step 1: check that the quote is signed correctly
-        SponsoredOFTQuoteSignLib.verify(API_PUBKEY, quote.signedParams, signature);
+        require(SponsoredOFTQuoteSignLib.verify(API_PUBKEY, quote.signedParams, signature), "Incorrect signature");
 
         // Step 2: check that the quote params make sense: e.g. quoteDeadline is not hit, quote nonce is unique
         require(quote.signedParams.deadline <= block.timestamp, "quote expired");
@@ -59,15 +70,11 @@ contract SrcPeripheryOFT {
             quote.signedParams.finalToken
         );
 
-        // Build LayerZero executor(gas) options for lzReceive + lzCompose
-        bytes memory extraOptions = MinimalLZOptions.newOptions();
-        extraOptions = MinimalLZOptions.addExecutorLzReceiveOption(extraOptions, uint128(50_000), uint128(0));
-        extraOptions = MinimalLZOptions.addExecutorLzComposeOption(
-            extraOptions,
-            uint16(0),
-            uint128(30_000),
-            uint128(0)
-        );
+        // TODO: test and see what real gas limits we need for both of these calls: lzReceive and lzCompose
+        bytes memory extraOptions = MinimalLZOptions
+            .newOptions()
+            .addExecutorLzReceiveOption(uint128(50_000), uint128(0))
+            .addExecutorLzComposeOption(uint16(0), uint128(200_000), uint128(0));
 
         // @dev we're enforcing empty oftCmd on source periphery, which in turn enforces in on dst, because dst will
         // check that the sender is this periphery contract

@@ -4,13 +4,12 @@ pragma solidity ^0.8.23;
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { SponsoredOFTQuoteSignedParams } from "./SponsoredOftMintBurnStructs.sol";
 
-/// @notice Raw keccak256-based signing lib for SponsoredOFTQuoteSignedParams.
-///         No EIP-191 or EIP-712 domain separation is applied by design so the
-///         same signature can be verified on multiple chains/contracts.
+/// @notice Lib to check the signature for `SponsoredOFTQuoteSignedParams`.
+/// The signature is checked against a keccak hash of abi-encoded fields of `SponsoredOFTQuoteSignedParams`
 library SponsoredOFTQuoteSignLib {
     using ECDSA for bytes32;
 
-    /// @notice Compute the raw keccak256 hash of the signed params using abi.encode.
+    /// @notice Compute the keccak of all `SponsoredOFTQuoteSignedParams` fields
     function hash(SponsoredOFTQuoteSignedParams calldata p) internal pure returns (bytes32) {
         return
             keccak256(
