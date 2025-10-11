@@ -59,8 +59,6 @@
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/abstract-signer": "5.7.0",
     "@ethersproject/bignumber": "5.7.0",
-    "@layerzerolabs/lz-evm-protocol-v2": "^3.0.139",
-    "@layerzerolabs/oapp-evm": "^0.3.2",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
     "@openzeppelin/foundry-upgrades": "^0.4.0",

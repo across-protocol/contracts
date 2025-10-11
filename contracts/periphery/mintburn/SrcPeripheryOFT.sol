@@ -6,7 +6,7 @@ import { SponsoredOFTQuoteSignLib } from "./SponsoredOFTQuoteSignLib.sol";
 import { SponsoredOFTComposeCodec } from "./SponsoredOFTComposeCodec.sol";
 import { IOFT, SendParam, MessagingFee } from "../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../libraries/AddressConverters.sol";
-import { OptionsBuilder } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { MinimalLZOptions } from "../../libraries/MinimalLZOptions.sol";
 
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
 // specific send events, checking the API signature and sending the transfer via OFT
@@ -59,10 +59,15 @@ contract SrcPeripheryOFT {
             quote.signedParams.finalToken
         );
 
-        // Build LayerZero executor options for receive + compose
-        bytes memory extraOptions = OptionsBuilder.newOptions();
-        extraOptions = OptionsBuilder.addExecutorLzReceiveOption(extraOptions, uint128(50_000), uint128(0));
-        extraOptions = OptionsBuilder.addExecutorLzComposeOption(extraOptions, uint16(0), uint128(30_000), uint128(0));
+        // Build LayerZero executor(gas) options for lzReceive + lzCompose
+        bytes memory extraOptions = MinimalLZOptions.newOptions();
+        extraOptions = MinimalLZOptions.addExecutorLzReceiveOption(extraOptions, uint128(50_000), uint128(0));
+        extraOptions = MinimalLZOptions.addExecutorLzComposeOption(
+            extraOptions,
+            uint16(0),
+            uint128(30_000),
+            uint128(0)
+        );
 
         // @dev we're enforcing empty oftCmd on source periphery, which in turn enforces in on dst, because dst will
         // check that the sender is this periphery contract
@@ -74,20 +79,15 @@ contract SrcPeripheryOFT {
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
             to,
-            /**
-             * _amount, _amount here specify `amountLD` and `minAmountLD`. Setting `minAmountLD` equal to `amountLD` protects us
-             * from any changes to the sent amount due to internal OFT contract logic, e.g. `_removeDust`. Meaning that if any
-             * dust is subtracted, the `.send()` should revert
-             */
             quote.signedParams.amountLD,
             quote.signedParams.amountLD,
-            /** extraOptions, composeMsg, oftCmd */
             extraOptions,
             composeMsg,
-            EMPTY_MSG_BYTES
+            EMPTY_MSG_BYTES // oftCmd
         );
 
-        // `false` in the 2nd param here refers to `bool _payInLzToken`. We will pay in native token, so set to `false`
+        // TODO: notice, we're calculating `MessagingFee` onchain, instead of relying on the values received by the API
+        // TODO: quote. I think API quote should instead provide some limits aroung this fee that the user picks / sees
         MessagingFee memory fee = IOFT(OFT_MESSENGER).quoteSend(sendParam, false);
 
         return (sendParam, fee, quote.unsignedParams.refundRecipient);

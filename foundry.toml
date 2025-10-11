@@ -18,7 +18,6 @@ remappings = [
     "@scroll-tech/=node_modules/@scroll-tech/",
     "@uma/=node_modules/@uma/",
     "@uniswap/=node_modules/@uniswap/",
-    "@layerzerolabs/=/node_modules/@layerzerolabs/",
     "arb-bridge-eth/=node_modules/arb-bridge-eth/",
     "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
     "arbos-precompiles/=node_modules/arbos-precompiles/",
