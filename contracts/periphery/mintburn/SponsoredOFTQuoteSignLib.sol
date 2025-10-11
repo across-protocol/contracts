@@ -37,6 +37,7 @@ library SponsoredOFTQuoteSignLib {
         return digest.recover(signature);
     }
 
+    // TODO: rename this perhaps. Or make it revert
     /// @notice Verify that `expectedSigner` signed `p` with `signature`.
     function verify(
         address expectedSigner,

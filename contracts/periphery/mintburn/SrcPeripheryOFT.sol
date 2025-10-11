@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import { SponsoredOFTQuote } from "./SponsoredOftMintBurnStructs.sol";
 import { SponsoredOFTQuoteSignLib } from "./SponsoredOFTQuoteSignLib.sol";
 import { SponsoredOFTComposeCodec } from "./SponsoredOFTComposeCodec.sol";
+
 import { IOFT, SendParam, MessagingFee } from "../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../libraries/MinimalLZOptions.sol";
@@ -36,6 +37,8 @@ contract SrcPeripheryOFT {
         DST_COMPOSER = dstComposer;
     }
 
+    // @dev The API recommended the user set some `msg.value` in order to pay OFT fee for this transfer. If it's not
+    // enough to cover `fee.nativeFee`, we revert. If `msg.value > nativeFee`, `refundAddress` receives excess
     function deposit(SponsoredOFTQuote calldata quote, bytes calldata signature) external payable {
         // Step 1: check that the quote is signed correctly
         require(SponsoredOFTQuoteSignLib.verify(API_PUBKEY, quote.signedParams, signature), "Incorrect signature");
@@ -45,17 +48,13 @@ contract SrcPeripheryOFT {
         require(quoteNonces[quote.signedParams.nonce] == false, "quote already used");
         quoteNonces[quote.signedParams.nonce] = true;
 
-        // Step 3: send oft transfer
-        // TODO: here, we're calculating fee on chain. What do the params from API mean then?
-        // TODO: maybe they can mean: maxNativeFeeUserIsWillingToPay (recommended by API, or manually configured by user)
-        // TODO: Then if the lzFee.nativeFee is too much, we revert here instead of on DST. There are still possibilities
-        // TODO: to revert on destination because of gas options
+        // Step 3: build oft send params from quote
         (SendParam memory sendParam, MessagingFee memory fee, address refundAddress) = _buildOftTransfer(quote);
+
+        // Step 4: send oft transfer
         IOFT(OFT_MESSENGER).send(sendParam, fee, refundAddress);
     }
 
-    // Helper function that converts the quote user should have received from the API and builds params to call
-    // OFT_MESSENGER.send with
     function _buildOftTransfer(
         SponsoredOFTQuote calldata quote
     ) internal view returns (SendParam memory, MessagingFee memory, address) {
@@ -76,13 +75,6 @@ contract SrcPeripheryOFT {
             .addExecutorLzReceiveOption(uint128(50_000), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(200_000), uint128(0));
 
-        // @dev we're enforcing empty oftCmd on source periphery, which in turn enforces in on dst, because dst will
-        // check that the sender is this periphery contract
-        // TODO: if we sign over oftCmd instead, then we can be more flexible in supporting different oftCmds if they're
-        // not harmful towards our transfer flow. But in reality we probably don't care about supporting those
-        // TODO: this check is sus
-        require(quote.unsignedParams.oftCmd.length == 0, "Custom oft cmd not supported");
-
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
             to,
@@ -90,11 +82,11 @@ contract SrcPeripheryOFT {
             quote.signedParams.amountLD,
             extraOptions,
             composeMsg,
-            EMPTY_MSG_BYTES // oftCmd
+            // @dev We're not passing `oftCmd` as a part of the quote from API. Instead, we just only support empty OFT
+            // commands from this contract directly
+            EMPTY_MSG_BYTES
         );
 
-        // TODO: notice, we're calculating `MessagingFee` onchain, instead of relying on the values received by the API
-        // TODO: quote. I think API quote should instead provide some limits aroung this fee that the user picks / sees
         MessagingFee memory fee = IOFT(OFT_MESSENGER).quoteSend(sendParam, false);
 
         return (sendParam, fee, quote.unsignedParams.refundRecipient);

@@ -29,12 +29,8 @@ struct SponsoredOFTQuoteSignedParams {
 // The rest of params that go into OFT.send() that we don't sign from the API side
 struct SponsoredOFTQuoteUnsignedParams {
     uint256 minAmountLD;
-    bytes extraOptions; // Gas options for lzReceive and lzCompose executions
-    // TODO: check that below is OK. Is USDT0 using 0x?
-    bytes oftCmd; // We're not signing off on this but instead we're checking that it's 0x
-    // TODO: actually, we may not want to pre-calc this in the API. We might give user a `msg.value` estimation and
-    // TODO: then we'll recalc in the contract atomically and use `refundRecipient` to refund if too big. Just so that
-    // TODO: we don't revert because of `messagingFee` being incorrect to the wei
-    MessagingFee messagingFee; // fees that we're including with our OFT call.
+    // TODO: should these just be set onchain or calculated offchain?
+    // TODO: feels like onchain is easier probably. Comment this out for now
+    // bytes extraOptions; // Gas options for lzReceive and lzCompose executions
     address refundRecipient; // recipient of extra msg.value passed into the OFT send on src chain
 }
