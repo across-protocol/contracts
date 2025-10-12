@@ -93,7 +93,23 @@ library SponsoredCCTPQuoteLib {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         bytes memory signature
     ) external view returns (bool) {
-        bytes32 typedDataHash = keccak256(abi.encode(quote));
+        bytes32 typedDataHash = keccak256(
+            abi.encode(
+                quote.sourceDomain,
+                quote.destinationDomain,
+                quote.mintRecipient,
+                quote.amount,
+                quote.burnToken,
+                quote.destinationCaller,
+                quote.maxFee,
+                quote.minFinalityThreshold,
+                quote.nonce,
+                quote.deadline,
+                quote.maxSponsoredAmount,
+                quote.finalRecipient,
+                quote.finalToken
+            )
+        );
         return SignatureChecker.isValidSignatureNow(signer, typedDataHash, signature);
     }
 }
