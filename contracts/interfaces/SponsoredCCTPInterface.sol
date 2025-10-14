@@ -7,6 +7,27 @@ pragma solidity ^0.8.0;
  * @custom:security-contact bugs@across.to
  */
 interface SponsoredCCTPInterface {
+    // Error thrown when the signature is invalid.
+    error InvalidSignature();
+
+    // Error thrown when the nonce is invalid.
+    error InvalidNonce();
+
+    // Error thrown when the deadline is invalid.
+    error InvalidDeadline();
+
+    event CCTPQuoteDeposited(
+        address indexed depositor,
+        address burnToken,
+        uint256 amount,
+        uint32 destinationDomain,
+        bytes32 mintRecipient,
+        bytes32 finalRecipient,
+        bytes32 finalToken,
+        bytes32 destinationCaller,
+        bytes32 nonce
+    );
+
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
         // The domain ID of the source chain.
