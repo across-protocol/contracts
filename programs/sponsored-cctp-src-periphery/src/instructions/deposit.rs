@@ -81,6 +81,8 @@ pub fn deposit(ctx: Context<Deposit>) -> Result<()> {
 
     // TODO: Validate the decoded SponsoredCCTPQuote parameters.
 
+    // TODO: Validate and update used nonces.
+
     // Invoke CCTPv2 to bridge user tokens.
     let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurnWithHook {
