@@ -5,6 +5,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // TODO: handle MIT / BUSL license
+// Note:
+// This library does not check if token recipient is activated on HyperCore
 
 interface ICoreWriter {
     function sendRawAction(bytes calldata data) external;
@@ -19,16 +21,6 @@ library HyperCoreLib {
         uint64 coreBalanceAssetBridge;
     }
 
-    struct LimitOrder {
-        uint32 asset;
-        bool isBuy;
-        uint64 limitPx1e8; // price scaled by 1e8
-        uint64 sz1e8; // size  scaled by 1e8
-        bool reduceOnly;
-        uint8 encodedTif; // 1 = ALO, 2 = GTC, 3 = IOC
-        uint128 cloid; // 0 => no client order id
-    }
-
     struct SpotBalance {
         uint64 total;
         uint64 hold; // Unused in this implementation
@@ -39,17 +31,26 @@ library HyperCoreLib {
         bool exists;
     }
 
+    // Precompile addresses
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
+
+    // CoreWriter action headers
+    bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
+    bytes4 public constant SPOT_SEND_HEADER = 0x01000006; // version=1, action=6
+    bytes4 public constant CANCEL_BY_CLOID_HEADER = 0x0100000B; // version=1, action=11
+
+    // Base asset bridge addresses
     address public constant BASE_ASSET_BRIDGE_ADDRESS = 0x2000000000000000000000000000000000000000;
     uint256 public constant BASE_ASSET_BRIDGE_ADDRESS_UINT256 = uint256(uint160(BASE_ASSET_BRIDGE_ADDRESS));
-    bytes4 public constant SPOT_SEND_HEADER = 0x01000006;
 
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
     error SpotBalancePrecompileCallFailed();
     error CoreUserExistsPrecompileCallFailed();
-    error CoreUserNotActivated();
+    error LimitPxIsZero();
+    error OrderSizeIsZero();
+    error InvalidTif();
 
     /**
      * @notice Transfer `amountEVMDecimals` of `erc20` from HyperEVM to `toHCAccount` on HyperCore.
@@ -70,63 +71,88 @@ library HyperCoreLib {
             amountEVMDecimals
         );
 
-        // TODO: removed check if user is not activated on HyperCore
-
         if (amounts.evm != 0) {
             // Transfer the tokens to this contract's address on HyperCore
             IERC20(erc20).safeTransfer(into_assetBridgeAddress(erc20HCIndex), amounts.evm);
 
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-            _submitCoreWriterTransfer(to, erc20HCIndex, amounts.core);
+            transferERC20OnHyperCore(erc20HCIndex, to, amounts.core);
+
+            return amounts.core;
         }
 
-        return amounts.core;
+        return 0;
     }
 
     /**
-     * @notice Transfers tokens on HyperCore using the CoreWriter precompile
-     * @param _to The address to receive tokens on HyperCore
-     * @param _coreIndex The core index of the token
-     * @param _coreAmount The amount to transfer on HyperCore
+     * @notice Transfers tokens from this contract on HyperCore to
+     * @notice the `to` address on HyperCore using the CoreWriter precompile
+     * @param erc20CoreIndex The core index of the token
+     * @param to The address to receive tokens on HyperCore
+     * @param coreAmount The amount to transfer on HyperCore
      */
-    function _submitCoreWriterTransfer(address _to, uint64 _coreIndex, uint64 _coreAmount) internal {
-        bytes memory action = abi.encode(_to, _coreIndex, _coreAmount);
+    function transferERC20OnHyperCore(uint64 erc20CoreIndex, address to, uint64 coreAmount) internal {
+        bytes memory action = abi.encode(to, erc20CoreIndex, coreAmount);
         bytes memory payload = abi.encodePacked(SPOT_SEND_HEADER, action);
-        /// Transfers HYPE tokens from the composer address on HyperCore to the _to via the SpotSend precompile
+
         ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(payload);
     }
 
-    // /**
-    //  * @notice Checks if the receiver's address is activated on HyperCore
-    //  * @notice To be overriden on FeeToken or other implementations since this can be used to activate tokens
-    //  * @dev Default behavior is to revert if the user's account is NOT activated
-    //  * @param _to The address to check
-    //  * @param _coreAmount The core amount to transfer
-    //  * @return The final core amount to transfer (same as _coreAmount in default impl)
-    //  */
-    // // TODO: clean this up, don't need this function probably
-    // function _getFinalCoreAmount(address _to, uint64 _coreAmount) internal view returns (uint64) {
-    //     if (!coreUserExists(_to)) revert CoreUserNotActivated();
-    //     return _coreAmount;
-    // }
+    /**
+     * @notice Submit a limit order on HyperCore.
+     * @dev Expects price & size already scaled by 1e8 per HyperCore spec.
+     * @param asset The asset index of the order
+     * @param isBuy Whether the order is a buy order
+     * @param limitPriceX1e8 The limit price of the order scaled by 1e8
+     * @param sizeX1e8 The size of the order scaled by 1e8
+     * @param reduceOnly If true, only reduce existing position rather than opening a new opposing order
+     * @param encodedTif Time-in-Force: 1 = ALO, 2 = GTC, 3 = IOC
+     * @param cloid The client order id of the order, 0 means no cloid
+     */
+    function submitLimitOrder(
+        uint32 asset,
+        bool isBuy,
+        uint64 limitPriceX1e8,
+        uint64 sizeX1e8,
+        bool reduceOnly,
+        uint8 encodedTif,
+        uint128 cloid
+    ) internal {
+        // Basic sanity checks
+        if (limitPriceX1e8 == 0) revert LimitPxIsZero();
+        if (sizeX1e8 == 0) revert OrderSizeIsZero();
+        if (!(encodedTif == 1 || encodedTif == 2 || encodedTif == 3)) revert InvalidTif();
+
+        // Encode the action payload
+        bytes memory action = abi.encode(asset, isBuy, limitPriceX1e8, sizeX1e8, reduceOnly, encodedTif, cloid);
+
+        // Prefix with the limit-order header
+        bytes memory payload = abi.encodePacked(LIMIT_ORDER_HEADER, action);
+
+        // Enqueue limit order to HyperCore via CoreWriter precompile
+        ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(payload);
+    }
 
     /**
-     * @notice Transfer `amountHCDecimals` of `erc20` from this contract on HyperCore to `to` on HyperCore.
+     * @notice Enqueue a cancel-order-by-CLOID for a given asset.
      */
-    function transferERC20OnHC(address to, uint64 erc20HCIndex, uint64 amountHCDecimals) internal {}
+    function cancelOrderByCloid(uint32 asset, uint128 cloid) internal {
+        bytes memory body = abi.encode(asset, cloid);
 
-    /**
-     * @notice Enqueue a limit order on HyperCore.
-     */
-    function enqueueLimitOrder(LimitOrder calldata order) internal {}
+        // Prefix with the cancel-by-cloid header
+        bytes memory data = abi.encodePacked(CANCEL_BY_CLOID_HEADER, body);
+
+        // Enqueue cancel order by CLOID to HyperCore via CoreWriter precompile
+        ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(data);
+    }
 
     /**
      * @notice Quotes the conversion of evm tokens to hypercore tokens
      * @param _coreIndexId The core index id of the token to transfer
      * @param _decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param _bridgeAddress The asset bridge address of the token to transfer
-     * @param _amountLD The number of tokens that the composer received (pre-dusted) that we are trying to send
-     * @return IHyperAssetAmount - The amount of tokens to send to HyperCore (scaled on evm), dust (to be refunded), and the swap amount (of the tokens scaled on hypercore)
+     * @param _amountLD The number of tokens that (pre-dusted) that we are trying to send
+     * @return HyperAssetAmount - The amount of tokens to send to HyperCore (scaled on evm), dust (to be refunded), and the swap amount (of the tokens scaled on hypercore)
      */
     function quoteHyperCoreAmount(
         uint64 _coreIndexId,
@@ -148,8 +174,17 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Checks if the user exists / has been activated on HyperCore.
+     */
+    function coreUserExists(address user) internal view returns (bool) {
+        (bool success, bytes memory result) = CORE_USER_EXISTS_PRECOMPILE_ADDRESS.staticcall(abi.encode(user));
+        if (!success) revert CoreUserExistsPrecompileCallFailed();
+        CoreUserExists memory _coreUserExists = abi.decode(result, (CoreUserExists));
+        return _coreUserExists.exists;
+    }
+
+    /**
      * @notice Converts a core index id to an asset bridge address
-     * @notice This function is called by the HyperLiquidComposer contract
      * @param _coreIndexId The core index id to convert
      * @return _assetBridgeAddress The asset bridge address
      */
@@ -168,7 +203,6 @@ library HyperCoreLib {
 
     /**
      * @notice Converts an amount and an asset to a evm amount and core amount
-     * @notice This function is called by the HyperLiquidComposer contract
      * @param _amount The amount to convert
      * @param _assetBridgeSupply The maximum amount transferable capped by the number of tokens located on the HyperCore's side of the asset bridge
      * @param _decimalDiff The decimal difference of evmDecimals - coreDecimals
@@ -256,12 +290,5 @@ library HyperCoreLib {
             /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
             amountCore = uint64(amountEVM * scale);
         }
-    }
-
-    function coreUserExists(address user) internal view returns (bool) {
-        (bool success, bytes memory result) = CORE_USER_EXISTS_PRECOMPILE_ADDRESS.staticcall(abi.encode(user));
-        if (!success) revert CoreUserExistsPrecompileCallFailed();
-        CoreUserExists memory _coreUserExists = abi.decode(result, (CoreUserExists));
-        return _coreUserExists.exists;
     }
 }
