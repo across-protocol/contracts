@@ -13,12 +13,12 @@ import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
 // specific send events, checking the API signature and sending the transfer via OFT
 contract SponsoredOFTSrcPeriphery {
-    // TODO: maybe just inline the function here? Feels more visible this way (no one can accidentally break this
-    // contract by changing that function)
+    // TODO: instead of using `AddressToBytes32`, maybe just inline the function here? Feels more visible this way (no
+    // one can accidentally break this contract by changing that function)
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
 
-    // @notice Empty bytes array used for OFT messaging parameters
+    // @dev gas savings.
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
 
     // TODO? which of these should be non-immutable?
@@ -28,6 +28,18 @@ contract SponsoredOFTSrcPeriphery {
     address public immutable DST_COMPOSER;
 
     mapping(bytes32 => bool) public quoteNonces;
+
+    // @dev This event is to be used for auxiliary information in concert with OftSent event to get relevant sponsored
+    // quote details
+    event AcrossSponsoredOFTSend(
+        bytes32 indexed quoteNonce,
+        address indexed originSender,
+        bytes32 indexed finalRecipient,
+        uint256 quoteDeadline,
+        uint256 maxSponsorshipBps,
+        bytes32 finalToken,
+        bytes sig
+    );
 
     // TODO: make Ownable and allow to change ApiPubKey and DstComposer
     constructor(address token, address oftMessenger, address apiPubKey, address dstComposer) {
@@ -41,7 +53,7 @@ contract SponsoredOFTSrcPeriphery {
     // enough to cover `fee.nativeFee`, we revert. If `msg.value > nativeFee`, `refundAddress` receives excess
     function deposit(Quote calldata quote, bytes calldata signature) external payable {
         // Step 1: check that the quote is signed correctly
-        require(QuoteSignLib.verify(API_PUBKEY, quote.signedParams, signature), "Incorrect signature");
+        require(QuoteSignLib.isSignatureValid(API_PUBKEY, quote.signedParams, signature), "Incorrect signature");
 
         // Step 2: check that the quote params make sense: e.g. quoteDeadline is not hit, quote nonce is unique
         require(quote.signedParams.deadline <= block.timestamp, "quote expired");
@@ -53,6 +65,18 @@ contract SponsoredOFTSrcPeriphery {
 
         // Step 4: send oft transfer
         IOFT(OFT_MESSENGER).send(sendParam, fee, refundAddress);
+
+        // Step 5: emit event with accepted quote details
+        emit AcrossSponsoredOFTSend(
+            quote.signedParams.nonce,
+            msg.sender,
+            quote.signedParams.finalRecipient,
+            quote.signedParams.deadline,
+            // TODO: this is not BPS
+            quote.signedParams.maxSponsorshipAmount,
+            quote.signedParams.finalToken,
+            signature
+        );
     }
 
     function _buildOftTransfer(

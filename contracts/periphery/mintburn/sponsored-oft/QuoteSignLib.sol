@@ -34,9 +34,8 @@ library QuoteSignLib {
         return digest.recover(signature);
     }
 
-    // TODO: rename this perhaps. Or make it revert
     /// @notice Verify that `expectedSigner` signed `p` with `signature`.
-    function verify(
+    function isSignatureValid(
         address expectedSigner,
         SignedQuoteParams calldata p,
         bytes calldata signature
