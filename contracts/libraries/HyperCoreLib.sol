@@ -178,7 +178,7 @@ library HyperCoreLib {
         // Basic sanity checks
         if (limitPriceX1e8 == 0) revert LimitPxIsZero();
         if (sizeX1e8 == 0) revert OrderSizeIsZero();
-        if (tif == Tif.None || uint8(tif) > uint8(Tif.IOC)) revert InvalidTif();
+        if (tif == Tif.None || uint8(tif) > uint8(type(Tif).max)) revert InvalidTif();
 
         // Encode the action
         bytes memory encodedAction = abi.encode(asset, isBuy, limitPriceX1e8, sizeX1e8, reduceOnly, uint8(tif), cloid);
