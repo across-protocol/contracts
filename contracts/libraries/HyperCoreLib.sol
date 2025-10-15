@@ -11,6 +11,14 @@ interface ICoreWriter {
 library HyperCoreLib {
     using SafeERC20 for IERC20;
 
+    // Time-in-Force order types
+    enum Tif {
+        None, // invalid
+        ALO, // Add Liquidity Only
+        GTC, // Good-Till-Cancel
+        IOC // Immediate-or-Cancel
+    }
+
     struct HyperAssetAmount {
         uint256 evm;
         uint64 core;
@@ -155,7 +163,7 @@ library HyperCoreLib {
      * @param limitPriceX1e8 The limit price of the order scaled by 1e8
      * @param sizeX1e8 The size of the order scaled by 1e8
      * @param reduceOnly If true, only reduce existing position rather than opening a new opposing order
-     * @param encodedTif Time-in-Force: 1 = ALO, 2 = GTC, 3 = IOC
+     * @param tif Time-in-Force: ALO, GTC, IOC (None invalid)
      * @param cloid The client order id of the order, 0 means no cloid
      */
     function submitLimitOrder(
@@ -164,16 +172,16 @@ library HyperCoreLib {
         uint64 limitPriceX1e8,
         uint64 sizeX1e8,
         bool reduceOnly,
-        uint8 encodedTif,
+        Tif tif,
         uint128 cloid
     ) internal {
         // Basic sanity checks
         if (limitPriceX1e8 == 0) revert LimitPxIsZero();
         if (sizeX1e8 == 0) revert OrderSizeIsZero();
-        if (!(encodedTif == 1 || encodedTif == 2 || encodedTif == 3)) revert InvalidTif();
+        if (tif == Tif.None || uint8(tif) > uint8(Tif.IOC)) revert InvalidTif();
 
         // Encode the action
-        bytes memory encodedAction = abi.encode(asset, isBuy, limitPriceX1e8, sizeX1e8, reduceOnly, encodedTif, cloid);
+        bytes memory encodedAction = abi.encode(asset, isBuy, limitPriceX1e8, sizeX1e8, reduceOnly, uint8(tif), cloid);
 
         // Prefix with the limit-order header
         bytes memory data = abi.encodePacked(LIMIT_ORDER_HEADER, encodedAction);
