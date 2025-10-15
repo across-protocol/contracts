@@ -2,9 +2,15 @@ use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
+    error::{CommonError, SvmError},
+    event::CCTPQuoteDeposited,
     message_transmitter_v2::program::MessageTransmitterV2,
-    token_messenger_minter_v2::{cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2},
-    State,
+    state::State,
+    token_messenger_minter_v2::{
+        self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
+        types::DepositForBurnWithHookParams,
+    },
+    utils::{get_current_time, SponsoredCCTPQuote, QUOTE_DATA_LENGTH},
 };
 
 #[event_cpi]
@@ -27,6 +33,8 @@ pub struct Deposit<'info> {
     )]
     pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
 
+    // Mint key is not checked against the quoted burn_token here to avoid the overhead of deserializing and parsing the
+    // quote. Instead this check is performed in the instruction handler.
     #[account(mut, mint::token_program = token_program)]
     pub mint: InterfaceAccount<'info, Mint>,
 
@@ -75,15 +83,41 @@ pub struct Deposit<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// TODO: Add SponsoredCCTPQuote and signature parameters.
-pub fn deposit(ctx: Context<Deposit>) -> Result<()> {
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct DepositParams {
+    pub quote: [u8; QUOTE_DATA_LENGTH],
+    pub signature: [u8; 65],
+}
+
+pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
+    let state = &mut ctx.accounts.state;
+    let current_time = get_current_time(state)?;
+
+    let quote = SponsoredCCTPQuote::new(&params.quote);
+
     // TODO: Validate the signature of SponsoredCCTPQuote matches expected signer.
 
-    // TODO: Validate the decoded SponsoredCCTPQuote parameters.
+    let amount = quote.amount()?;
+    let destination_domain = quote.destination_domain()?;
+    let mint_recipient = quote.mint_recipient()?;
+    let burn_token = quote.burn_token()?;
+    let destination_caller = quote.destination_caller()?;
+    let max_fee = quote.max_fee()?;
+    let min_finality_threshold = quote.min_finality_threshold()?;
+    let hook_data = quote.hook_data();
+
+    if burn_token != ctx.accounts.mint.key() {
+        return err!(SvmError::InvalidMint);
+    }
+    if quote.deadline()? < current_time {
+        return err!(CommonError::InvalidDeadline);
+    }
 
     // TODO: Validate and update used nonces.
 
     // Invoke CCTPv2 to bridge user tokens.
+    // TODO: Confirm it is acceptable to burn tokens on behalf of the user and have the signer address show up as
+    // messageSender on the destination chain.
     let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurnWithHook {
         owner: ctx.accounts.signer.to_account_info(),
@@ -105,12 +139,29 @@ pub fn deposit(ctx: Context<Deposit>) -> Result<()> {
         event_authority: ctx.accounts.cctp_event_authority.to_account_info(),
         program: ctx.accounts.token_messenger_minter_program.to_account_info(),
     };
+    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+    let params = DepositForBurnWithHookParams {
+        amount,
+        destination_domain,
+        mint_recipient,
+        destination_caller,
+        max_fee,
+        min_finality_threshold,
+        hook_data,
+    };
+    token_messenger_minter_v2::cpi::deposit_for_burn_with_hook(cpi_ctx, params)?;
 
-    // TODO: Get required parameters from SponsoredCCTPQuote and CPI deposit_for_burn_with_hook with user signatures.
-    // Note that this would burn tokens on behalf of the user and show the signer address as messageSender on the
-    // destination chain.
-
-    // TODO: Emit event.
+    emit_cpi!(CCTPQuoteDeposited {
+        depositor: ctx.accounts.signer.key(),
+        burn_token,
+        amount,
+        destination_domain,
+        mint_recipient,
+        final_recipient: quote.final_recipient()?,
+        final_token: quote.final_token()?,
+        destination_caller,
+        nonce: quote.nonce()?,
+    });
 
     Ok(())
 }

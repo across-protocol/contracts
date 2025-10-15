@@ -109,6 +109,8 @@ impl<'a> SponsoredCCTPQuote<'a> {
         Self::decode_to_u32(self.get_field_word(SponsoredCCTPQuoteFields::MinFinalityThreshold))
     }
 
+    // TODO: Consider if we could instead use u128 and have this constrained also in EVM to uint128. This would make
+    // the reading of logs easier.
     pub fn nonce(&self) -> Result<[u8; 32]> {
         // Wrap in Result just to have consistency with decoding other field types that might error.
         Ok(*self.get_field_word(SponsoredCCTPQuoteFields::Nonce))
@@ -130,12 +132,13 @@ impl<'a> SponsoredCCTPQuote<'a> {
         Self::decode_to_pubkey(self.get_field_word(SponsoredCCTPQuoteFields::FinalToken))
     }
 
-    pub fn hook_data(&self) -> &[u8; HOOK_DATA_LENGTH] {
+    pub fn hook_data(&self) -> Vec<u8> {
         // Safe: HOOK_DATA_START and HOOK_DATA_END are derived from SponsoredCCTPQuoteFields, so this should always be
         // in-bounds.
         let data_slice = &self.data[HOOK_DATA_START..HOOK_DATA_END];
         // Safe: data_slice is exactly HOOK_DATA_LENGTH bytes long, so we can convert it to &[u8; HOOK_DATA_LENGTH].
-        <&[u8; HOOK_DATA_LENGTH]>::try_from(data_slice).unwrap()
+        let hook_data_bytes = <&[u8; HOOK_DATA_LENGTH]>::try_from(data_slice).unwrap();
+        hook_data_bytes.to_vec()
     }
 
     fn get_field_word(&self, field: SponsoredCCTPQuoteFields) -> &[u8; 32] {

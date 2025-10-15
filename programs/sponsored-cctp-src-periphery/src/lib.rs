@@ -8,12 +8,14 @@ declare_program!(token_messenger_minter_v2);
 
 pub mod constants;
 pub mod error;
+pub mod event;
 mod instructions;
 pub mod state;
 pub mod utils;
 
 pub use constants::*;
 pub use error::*;
+pub use event::*;
 use instructions::*;
 pub use state::*;
 
@@ -25,8 +27,7 @@ pub mod sponsored_cctp_src_periphery {
         instructions::initialize(ctx, seed)
     }
 
-    // TODO: Add SponsoredCCTPQuote and signature parameters.
-    pub fn deposit(ctx: Context<Deposit>) -> Result<()> {
-        instructions::deposit(ctx)
+    pub fn deposit(ctx: Context<Deposit>, params: DepositParams) -> Result<()> {
+        instructions::deposit(ctx, &params)
     }
 }

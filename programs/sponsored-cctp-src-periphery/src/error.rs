@@ -1,5 +1,12 @@
 use anchor_lang::prelude::*;
 
+// Common Errors with EVM SponsoredCCTPPeriphery.
+#[error_code]
+pub enum CommonError {
+    #[msg("Invalid quote deadline")]
+    InvalidDeadline,
+}
+
 // SVM specific errors.
 #[error_code]
 pub enum SvmError {
@@ -7,8 +14,8 @@ pub enum SvmError {
     CannotSetCurrentTime,
     #[msg("Seed must be 0 in production")]
     InvalidProductionSeed,
-    #[msg("Invalid SponsoredCCTPQuote data length")]
-    InvalidQuoteDataLength,
+    #[msg("Invalid mint key")]
+    InvalidMint,
 }
 
 // EVM decoding errors.
