@@ -37,11 +37,25 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
         ) {
             // send the received funds to the final recipient on CORE
             IERC20(quote.finalToken.toAddress()).transfer(quote.finalRecipient.toAddress(), quote.amount);
-            emit SponsoredMessageReceived(quote.finalRecipient, quote.finalToken, quote.amount);
+            emit SponsoredMintAndWithdraw(
+                quote.nonce,
+                quote.finalRecipient,
+                quote.finalToken,
+                quote.amount,
+                quote.deadline,
+                quote.maxBpsToSponsor
+            );
         } else {
             // send the received + fee to the final recipient on CORE
             IERC20(quote.finalToken.toAddress()).transfer(quote.finalRecipient.toAddress(), quote.amount + feeExecuted);
-            emit SponsoredMessageReceived(quote.finalRecipient, quote.finalToken, quote.amount + feeExecuted);
+            emit SponsoredMintAndWithdraw(
+                quote.nonce,
+                quote.finalRecipient,
+                quote.finalToken,
+                quote.amount + feeExecuted,
+                quote.deadline,
+                quote.maxBpsToSponsor
+            );
         }
     }
 

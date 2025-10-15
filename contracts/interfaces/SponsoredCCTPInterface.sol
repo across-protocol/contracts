@@ -26,7 +26,14 @@ interface SponsoredCCTPInterface {
         bytes signature
     );
 
-    event SponsoredMessageReceived(bytes32 indexed finalRecipient, bytes32 indexed finalToken, uint256 amount);
+    event SponsoredMintAndWithdraw(
+        bytes32 indexed quoteNonce,
+        bytes32 indexed finalRecipient,
+        bytes32 indexed finalToken,
+        uint256 finalAmount,
+        uint256 quoteDeadline,
+        uint256 maxBpsToSponsor
+    );
 
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
