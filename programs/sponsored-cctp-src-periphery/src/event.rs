@@ -12,3 +12,9 @@ pub struct CCTPQuoteDeposited {
     pub destination_caller: Pubkey,
     pub nonce: [u8; 32],
 }
+
+#[event]
+pub struct QuoteSignerSet {
+    pub old_quote_signer: Pubkey,
+    pub new_quote_signer: Pubkey,
+}

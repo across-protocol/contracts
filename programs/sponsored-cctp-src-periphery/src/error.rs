@@ -10,6 +10,10 @@ pub enum CommonError {
 // SVM specific errors.
 #[error_code]
 pub enum SvmError {
+    #[msg("Only the upgrade authority can call this instruction")]
+    NotUpgradeAuthority,
+    #[msg("Invalid program data account")]
+    InvalidProgramData,
     #[msg("Cannot set time if not in test mode")]
     CannotSetCurrentTime,
     #[msg("Seed must be 0 in production")]

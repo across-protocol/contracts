@@ -143,7 +143,7 @@ impl<'a> SponsoredCCTPQuote<'a> {
 
     fn get_field_word(&self, field: SponsoredCCTPQuoteFields) -> &[u8; 32] {
         let start = field.start();
-        let end: usize = field.end();
+        let end = field.end();
         // Safe: start and end are derived from SponsoredCCTPQuoteFields, so this should always be in-bounds.
         let data_slice = &self.data[start..end];
         // Safe: data_slice is exactly 32 bytes long, so we can convert it to &[u8; 32].

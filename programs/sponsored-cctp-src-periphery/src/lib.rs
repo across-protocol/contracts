@@ -23,11 +23,15 @@ pub use state::*;
 pub mod sponsored_cctp_src_periphery {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>, seed: u64) -> Result<()> {
-        instructions::initialize(ctx, seed)
+    pub fn initialize(ctx: Context<Initialize>, params: InitializeParams) -> Result<()> {
+        instructions::initialize(ctx, &params)
     }
 
     pub fn deposit(ctx: Context<Deposit>, params: DepositParams) -> Result<()> {
         instructions::deposit(ctx, &params)
+    }
+
+    pub fn set_quote_signer(ctx: Context<SetQuoteSigner>, params: SetQuoteSignerParams) -> Result<()> {
+        instructions::set_quote_signer(ctx, &params)
     }
 }
