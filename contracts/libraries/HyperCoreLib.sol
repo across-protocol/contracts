@@ -30,10 +30,22 @@ library HyperCoreLib {
         bool exists;
     }
 
+    struct TokenInfo {
+        string name;
+        uint64[] spots;
+        uint64 deployerTradingFeeShare;
+        address deployer;
+        address evmContract;
+        uint8 szDecimals;
+        uint8 weiDecimals;
+        int8 evmExtraWeiDecimals;
+    }
+
     // Precompile addresses
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
+    address constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
 
     // CoreWriter action headers
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
@@ -47,6 +59,7 @@ library HyperCoreLib {
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
     error SpotBalancePrecompileCallFailed();
     error CoreUserExistsPrecompileCallFailed();
+    error TokenInfoPrecompileCallFailed();
     error LimitPxIsZero();
     error OrderSizeIsZero();
     error InvalidTif();
@@ -182,6 +195,16 @@ library HyperCoreLib {
         if (!success) revert CoreUserExistsPrecompileCallFailed();
         CoreUserExists memory _coreUserExists = abi.decode(result, (CoreUserExists));
         return _coreUserExists.exists;
+    }
+
+    /**
+     * @notice Get the info of the specified token on HyperCore.
+     */
+    function tokenInfo(uint32 token) internal view returns (TokenInfo memory) {
+        (bool success, bytes memory result) = TOKEN_INFO_PRECOMPILE_ADDRESS.staticcall(abi.encode(token));
+        if (!success) revert TokenInfoPrecompileCallFailed();
+        TokenInfo memory _tokenInfo = abi.decode(result, (TokenInfo));
+        return _tokenInfo;
     }
 
     /**
