@@ -21,7 +21,7 @@ library QuoteSignLib {
                     p.amountLD,
                     p.nonce,
                     p.deadline,
-                    p.maxSponsorshipAmount,
+                    p.maxBpsToSponsor,
                     p.finalRecipient,
                     p.finalToken
                 )

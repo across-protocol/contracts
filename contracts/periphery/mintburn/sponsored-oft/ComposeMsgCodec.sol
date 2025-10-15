@@ -13,11 +13,11 @@ library ComposeMsgCodec {
     function _encode(
         bytes32 nonce,
         uint256 deadline,
-        uint256 maxSponsorshipAmount,
+        uint256 maxBpsToSponsor,
         bytes32 finalRecipient,
         bytes32 finalToken
     ) internal pure returns (bytes memory) {
-        return abi.encode(nonce, deadline, maxSponsorshipAmount, finalRecipient, finalToken);
+        return abi.encode(nonce, deadline, maxBpsToSponsor, finalRecipient, finalToken);
     }
 
     function _getNonce(bytes memory data) internal pure returns (bytes32 v) {
@@ -28,7 +28,7 @@ library ComposeMsgCodec {
         return BytesLib.toUint256(data, DEADLINE_OFFSET);
     }
 
-    function _getMaxSponsorshipAmount(bytes memory data) internal pure returns (uint256 v) {
+    function _getMaxBpsToSponsor(bytes memory data) internal pure returns (uint256 v) {
         return BytesLib.toUint256(data, MAX_SPONSORSHIP_AMOUNT_OFFSET);
     }
 

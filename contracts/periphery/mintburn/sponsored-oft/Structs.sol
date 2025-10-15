@@ -19,7 +19,7 @@ struct SignedQuoteParams {
     // From `composeMsg`
     bytes32 nonce; // quote nonce
     uint256 deadline; // quote deadline
-    uint256 maxSponsorshipAmount; // max amount to sponsor for 1:1. in dst chain decimals (chain that Composer lives on)
+    uint256 maxBpsToSponsor; // max bps (of sent amount) to sponsor for 1:1
     bytes32 finalRecipient; // user address on destination
     bytes32 finalToken; // final token we want to receive (might be different from OFT token we're sending)
 }

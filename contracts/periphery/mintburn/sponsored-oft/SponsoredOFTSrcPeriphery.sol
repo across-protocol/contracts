@@ -9,7 +9,7 @@ import { IOFT, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
 
-// TODO: make Ownable and allow to change ApiPubKey and DstComposer
+// TODO? make Ownable and allow to change ApiPubKey and DstComposer. For Phase0, can keep it like this and just redeploy
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
 // specific send events, checking the API signature and sending the transfer via OFT
 contract SponsoredOFTSrcPeriphery {
@@ -31,12 +31,12 @@ contract SponsoredOFTSrcPeriphery {
 
     // @dev This event is to be used for auxiliary information in concert with OftSent event to get relevant sponsored
     // quote details
-    event AcrossSponsoredOFTSend(
+    event SponsoredOFTSend(
         bytes32 indexed quoteNonce,
         address indexed originSender,
         bytes32 indexed finalRecipient,
         uint256 quoteDeadline,
-        uint256 maxSponsorshipBps,
+        uint256 maxBpsToSponsor,
         bytes32 finalToken,
         bytes sig
     );
@@ -67,13 +67,12 @@ contract SponsoredOFTSrcPeriphery {
         IOFT(OFT_MESSENGER).send(sendParam, fee, refundAddress);
 
         // Step 5: emit event with accepted quote details
-        emit AcrossSponsoredOFTSend(
+        emit SponsoredOFTSend(
             quote.signedParams.nonce,
             msg.sender,
             quote.signedParams.finalRecipient,
             quote.signedParams.deadline,
-            // TODO: this is not BPS
-            quote.signedParams.maxSponsorshipAmount,
+            quote.signedParams.maxBpsToSponsor,
             quote.signedParams.finalToken,
             signature
         );
@@ -88,11 +87,13 @@ contract SponsoredOFTSrcPeriphery {
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
             quote.signedParams.deadline,
-            quote.signedParams.maxSponsorshipAmount,
+            quote.signedParams.maxBpsToSponsor,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken
         );
 
+        // TODO? For better flexibility, this can be set by the caller instead. However, writing a lib for this on the
+        // API side is probably trickier.
         // TODO: test and see what real gas limits we need for both of these calls: lzReceive and lzCompose
         bytes memory extraOptions = MinimalLZOptions
             .newOptions()
@@ -102,6 +103,7 @@ contract SponsoredOFTSrcPeriphery {
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
             to,
+            // @dev We currently don't OFT sends that take fees in sent token, so set `minAmountLD = amountLD`
             quote.signedParams.amountLD,
             quote.signedParams.amountLD,
             extraOptions,
