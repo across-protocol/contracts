@@ -34,10 +34,9 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
         bytes memory hookData = abi.encode(
             quote.nonce,
             quote.deadline,
-            quote.maxSponsoredAmount,
+            quote.maxBpsToSponsor,
             quote.finalRecipient,
-            quote.finalToken,
-            signature
+            quote.finalToken
         );
 
         cctpTokenMessenger.depositForBurnWithHook(
@@ -51,16 +50,14 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             hookData
         );
 
-        emit CCTPQuoteDeposited(
+        emit SponsoredDepositForBurn(
+            quote.nonce,
             msg.sender,
-            quote.burnToken,
-            quote.amount,
-            quote.destinationDomain,
-            quote.mintRecipient,
             quote.finalRecipient,
+            quote.deadline,
+            quote.maxBpsToSponsor,
             quote.finalToken,
-            quote.destinationCaller,
-            quote.nonce
+            signature
         );
     }
 

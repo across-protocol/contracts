@@ -16,19 +16,17 @@ interface SponsoredCCTPInterface {
     // Error thrown when the deadline is invalid.
     error InvalidDeadline();
 
-    event CCTPQuoteDeposited(
-        address indexed depositor,
-        address burnToken,
-        uint256 amount,
-        uint32 destinationDomain,
-        bytes32 mintRecipient,
-        bytes32 finalRecipient,
+    event SponsoredDepositForBurn(
+        bytes32 indexed quoteNonce,
+        address indexed originSender,
+        bytes32 indexed finalRecipient,
+        uint256 quoteDeadline,
+        uint256 maxBpsToSponsor,
         bytes32 finalToken,
-        bytes32 destinationCaller,
-        bytes32 nonce
+        bytes signature
     );
 
-    event CCTPQuoteReceived(bytes32 indexed finalRecipient, bytes32 indexed finalToken, uint256 amount);
+    event SponsoredMessageReceived(bytes32 indexed finalRecipient, bytes32 indexed finalToken, uint256 amount);
 
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
@@ -52,8 +50,8 @@ interface SponsoredCCTPInterface {
         bytes32 nonce;
         // Timestamp of the quote after which it can no longer be used.
         uint256 deadline;
-        // MaxSponsoredAmount is the maximum amount that can be sponsored for the quote.
-        uint256 maxSponsoredAmount;
+        // The maximum basis points of the amount that can be sponsored.
+        uint256 maxBpsToSponsor;
         // The final recipient of the sponsored deposit. This is needed as the mintRecipient will be the
         // handler contract address instead of the final recipient.
         bytes32 finalRecipient;

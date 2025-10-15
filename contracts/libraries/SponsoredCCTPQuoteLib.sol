@@ -32,8 +32,7 @@ library SponsoredCCTPQuoteLib {
     uint8 private constant HOOK_DATA_INDEX = 228;
 
     function getDespoitForBurnData(
-        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
-        bytes memory signature
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
     )
         external
         pure
@@ -58,20 +57,15 @@ library SponsoredCCTPQuoteLib {
         hookData = abi.encode(
             quote.nonce,
             quote.deadline,
-            quote.maxSponsoredAmount,
+            quote.maxBpsToSponsor,
             quote.finalRecipient,
-            quote.finalToken,
-            signature
+            quote.finalToken
         );
     }
 
     function getSponsoredCCTPQuoteData(
         bytes calldata message
-    )
-        external
-        pure
-        returns (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted, bytes memory signature)
-    {
+    ) external pure returns (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) {
         quote.sourceDomain = message.toUint32(SOURCE_DOMAIN_INDEX);
         quote.destinationDomain = message.toUint32(DESTINATION_DOMAIN_INDEX);
         bytes memory messageBody = message.slice(MESSAGE_BODY_INDEX, message.length);
@@ -84,8 +78,10 @@ library SponsoredCCTPQuoteLib {
         feeExecuted = messageBody.toUint256(FEE_EXECUTED_INDEX);
 
         bytes memory hookData = messageBody.slice(HOOK_DATA_INDEX, messageBody.length);
-        (quote.nonce, quote.deadline, quote.maxSponsoredAmount, quote.finalRecipient, quote.finalToken, signature) = abi
-            .decode(hookData, (bytes32, uint256, uint256, bytes32, bytes32, bytes));
+        (quote.nonce, quote.deadline, quote.maxBpsToSponsor, quote.finalRecipient, quote.finalToken) = abi.decode(
+            hookData,
+            (bytes32, uint256, uint256, bytes32, bytes32)
+        );
     }
 
     function validateSignature(
@@ -105,7 +101,7 @@ library SponsoredCCTPQuoteLib {
                 quote.minFinalityThreshold,
                 quote.nonce,
                 quote.deadline,
-                quote.maxSponsoredAmount,
+                quote.maxBpsToSponsor,
                 quote.finalRecipient,
                 quote.finalToken
             )

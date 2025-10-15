@@ -23,28 +23,25 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
         signer = _signer;
     }
 
-    function receiveMessage(bytes memory message, bytes memory attestation) external {
+    function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
-        (
-            SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
-            uint256 feeExecuted,
-            bytes memory signature
-        ) = SponsoredCCTPQuoteLib.getSponsoredCCTPQuoteData(message);
+        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
+            .getSponsoredCCTPQuoteData(message);
 
         if (
             !SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) ||
             usedNonces[quote.nonce] ||
             quote.deadline < block.timestamp ||
-            quote.maxSponsoredAmount == 0
+            quote.maxBpsToSponsor == 0
         ) {
             // send the received funds to the final recipient on CORE
             IERC20(quote.finalToken.toAddress()).transfer(quote.finalRecipient.toAddress(), quote.amount);
-            emit CCTPQuoteReceived(quote.finalRecipient, quote.finalToken, quote.amount);
+            emit SponsoredMessageReceived(quote.finalRecipient, quote.finalToken, quote.amount);
         } else {
             // send the received + fee to the final recipient on CORE
             IERC20(quote.finalToken.toAddress()).transfer(quote.finalRecipient.toAddress(), quote.amount + feeExecuted);
-            emit CCTPQuoteReceived(quote.finalRecipient, quote.finalToken, quote.amount + feeExecuted);
+            emit SponsoredMessageReceived(quote.finalRecipient, quote.finalToken, quote.amount + feeExecuted);
         }
     }
 
