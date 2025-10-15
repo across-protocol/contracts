@@ -36,7 +36,7 @@ library HyperCoreLib {
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @return amountCore The amount credited on Core in Core units (post conversion)
      */
-    function transferERC20ToCore(
+    function transferERC20EVMToCore(
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         address to,
@@ -56,7 +56,7 @@ library HyperCoreLib {
             IERC20(erc20EVMAddress).safeTransfer(erc20CoreIndex.into_assetBridgeAddress(), amounts.evm);
 
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-            transferERC20OnCore(erc20CoreIndex, to, amounts.core);
+            transferERC20CoreToCore(erc20CoreIndex, to, amounts.core);
 
             return amounts.core;
         }
@@ -65,7 +65,7 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Transfer `amountEVM` of `erc20` from this address on HyperEVM to this address on HyperCore.
+     * @notice Bridges `amountEVM` of `erc20` from this address on HyperEVM to this address on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @dev The decimal difference is evmDecimals - coreDecimals
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
@@ -74,7 +74,7 @@ library HyperCoreLib {
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @return amountCore The amount credited on Core in Core units (post conversion)
      */
-    function transferERC20ToSelfCore(
+    function transferERC20EVMToSelfOnCore(
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         uint256 amountEVM,
@@ -99,13 +99,12 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Transfers tokens from this contract on HyperCore to
-     * @notice the `to` address on HyperCore using the CoreWriter precompile
-     * @param erc20CoreIndex The core index of the token
+     * @notice Transfers tokens from this contract on HyperCore to the `to` address on HyperCore
+     * @param erc20CoreIndex The HyperCore index id of the token
      * @param to The address to receive tokens on HyperCore
      * @param amountCore The amount to transfer on HyperCore
      */
-    function transferERC20OnCore(uint64 erc20CoreIndex, address to, uint64 amountCore) internal {
+    function transferERC20CoreToCore(uint64 erc20CoreIndex, address to, uint64 amountCore) internal {
         bytes memory action = abi.encode(to, erc20CoreIndex, amountCore);
         bytes memory payload = abi.encodePacked(SPOT_SEND_HEADER, action);
 
@@ -149,6 +148,8 @@ library HyperCoreLib {
 
     /**
      * @notice Enqueue a cancel-order-by-CLOID for a given asset.
+     * @param asset The asset index of the order
+     * @param cloid The client order id of the order
      */
     function cancelOrderByCloid(uint32 asset, uint128 cloid) internal {
         // Encode the action
