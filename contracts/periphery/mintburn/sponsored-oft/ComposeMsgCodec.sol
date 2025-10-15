@@ -9,6 +9,7 @@ library ComposeMsgCodec {
     uint256 internal constant MAX_SPONSORSHIP_AMOUNT_OFFSET = 64;
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 96;
     uint256 internal constant FINAL_TOKEN_OFFSET = 128;
+    uint256 internal constant COMPOSE_MSG_BYTE_LENGTH = 160;
 
     function _encode(
         bytes32 nonce,
@@ -38,5 +39,9 @@ library ComposeMsgCodec {
 
     function _getFinalToken(bytes memory data) internal pure returns (bytes32 v) {
         return BytesLib.toBytes32(data, FINAL_TOKEN_OFFSET);
+    }
+
+    function _isValidComposeMsgBytelength(bytes memory data) internal pure returns (bool valid) {
+        valid = data.length == COMPOSE_MSG_BYTE_LENGTH;
     }
 }
