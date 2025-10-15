@@ -90,7 +90,7 @@ pub struct DepositParams {
 }
 
 pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
-    let state = &mut ctx.accounts.state;
+    let state = &ctx.accounts.state;
     let current_time = get_current_time(state)?;
 
     let quote = SponsoredCCTPQuote::new(&params.quote);
@@ -111,6 +111,9 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     }
     if quote.deadline()? < current_time {
         return err!(CommonError::InvalidDeadline);
+    }
+    if quote.source_domain()? != state.local_domain {
+        return err!(CommonError::InvalidSourceDomain);
     }
 
     // TODO: Validate and update used nonces.

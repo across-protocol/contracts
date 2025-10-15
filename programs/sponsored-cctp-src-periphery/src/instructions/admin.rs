@@ -39,6 +39,7 @@ pub struct Initialize<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeParams {
     pub seed: u64,
+    pub local_domain: u32,
     pub quote_signer: Pubkey,
 }
 
@@ -48,6 +49,9 @@ pub fn initialize(ctx: Context<Initialize>, params: &InitializeParams) -> Result
     // Set seed and initialize current time. Both enable testing functionality and are no-ops in production.
     set_seed(state, params.seed)?;
     initialize_current_time(state)?;
+
+    // Set immutable local CCTP domain.
+    state.local_domain = params.local_domain;
 
     // Set and log initial quote signer.
     state.quote_signer = params.quote_signer;

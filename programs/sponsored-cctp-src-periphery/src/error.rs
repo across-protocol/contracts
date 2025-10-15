@@ -5,6 +5,8 @@ use anchor_lang::prelude::*;
 pub enum CommonError {
     #[msg("Invalid quote deadline")]
     InvalidDeadline,
+    #[msg("Invalid source domain")]
+    InvalidSourceDomain,
 }
 
 // SVM specific errors.
