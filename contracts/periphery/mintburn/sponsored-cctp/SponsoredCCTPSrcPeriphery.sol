@@ -1,21 +1,22 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 
-contract SponsoredCCTPPeriphery is SponsoredCCTPInterface {
+contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
     ITokenMessengerV2 public immutable cctpTokenMessenger;
 
     address public signer;
 
     mapping(bytes32 => bool) public usedNonces;
 
-    constructor(ITokenMessengerV2 _cctpTokenMessenger, address _signer) {
-        cctpTokenMessenger = _cctpTokenMessenger;
+    constructor(address _cctpTokenMessenger, address _signer) {
+        cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
         signer = _signer;
     }
 
@@ -61,5 +62,9 @@ contract SponsoredCCTPPeriphery is SponsoredCCTPInterface {
             quote.destinationCaller,
             quote.nonce
         );
+    }
+
+    function setSigner(address _signer) external onlyOwner {
+        signer = _signer;
     }
 }

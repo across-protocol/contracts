@@ -59,6 +59,7 @@ soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
+hyperevm = "${NODE_URL_999}"
 
 
 [etherscan]

@@ -61,26 +61,6 @@ contract Constants is Script {
         address zkUsdcSharedBridge_324;
     }
 
-    // L2 Address Map
-    struct L2Addresses {
-        address l2GatewayRouter;
-        address fxChild;
-        address cctpTokenMessenger;
-        address cctpMessageTransmitter;
-        address uniswapV3SwapRouter;
-        address helios;
-        address zkErc20Bridge;
-        address zkUSDCBridge;
-        address lineaMessageService;
-        address cctpV2TokenMessenger;
-        address lineaTokenBridge;
-        address scrollERC20GatewayRouter;
-        address scrollGasPriceOracle;
-        address scrollMessenger;
-        address l2Weth;
-        address polygonZkEvmBridge;
-    }
-
     // OP Stack Address Map
     struct OpStackAddresses {
         address L1CrossDomainMessenger;
