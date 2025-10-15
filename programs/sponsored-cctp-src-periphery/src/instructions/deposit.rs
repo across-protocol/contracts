@@ -10,7 +10,7 @@ use crate::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
     },
-    utils::{get_current_time, SponsoredCCTPQuote, QUOTE_DATA_LENGTH},
+    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, QUOTE_DATA_LENGTH, QUOTE_SIGNATURE_LENGTH},
 };
 
 #[event_cpi]
@@ -86,16 +86,18 @@ pub struct Deposit<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositParams {
     pub quote: [u8; QUOTE_DATA_LENGTH],
-    pub signature: [u8; 65],
+    pub signature: [u8; QUOTE_SIGNATURE_LENGTH],
 }
 
 pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     let state = &ctx.accounts.state;
-    let current_time = get_current_time(state)?;
+
+    if state.quote_signer == Pubkey::default() {
+        return err!(CommonError::QuoteSignerNotSet);
+    }
 
     let quote = SponsoredCCTPQuote::new(&params.quote);
-
-    // TODO: Validate the signature of SponsoredCCTPQuote matches expected signer.
+    validate_signature(state.quote_signer, &quote, &params.signature)?;
 
     let amount = quote.amount()?;
     let destination_domain = quote.destination_domain()?;
@@ -109,7 +111,8 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     if burn_token != ctx.accounts.mint.key() {
         return err!(SvmError::InvalidMint);
     }
-    if quote.deadline()? < current_time {
+
+    if quote.deadline()? < get_current_time(state)? {
         return err!(CommonError::InvalidDeadline);
     }
     if quote.source_domain()? != state.local_domain {
