@@ -83,13 +83,13 @@ library HyperCoreLib {
         HyperAssetAmount memory amounts = quoteHyperCoreAmount(
             erc20CoreIndex,
             decimalDiff,
-            into_assetBridgeAddress(erc20CoreIndex),
+            toAssetBridgeAddress(erc20CoreIndex),
             amountEVM
         );
 
         if (amounts.evm != 0) {
             // Transfer the tokens to this contract's address on HyperCore
-            IERC20(erc20EVMAddress).safeTransfer(into_assetBridgeAddress(erc20CoreIndex), amounts.evm);
+            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amounts.evm);
 
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
             transferERC20CoreToCore(erc20CoreIndex, to, amounts.core);
@@ -120,13 +120,13 @@ library HyperCoreLib {
         HyperAssetAmount memory amounts = quoteHyperCoreAmount(
             erc20CoreIndex,
             decimalDiff,
-            into_assetBridgeAddress(erc20CoreIndex),
+            toAssetBridgeAddress(erc20CoreIndex),
             amountEVM
         );
 
         if (amounts.evm != 0) {
             // Transfer the tokens to this contract's address on HyperCore
-            IERC20(erc20EVMAddress).safeTransfer(into_assetBridgeAddress(erc20CoreIndex), amounts.evm);
+            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amounts.evm);
 
             return amounts.core;
         }
@@ -250,7 +250,7 @@ library HyperCoreLib {
         address bridgeAddress,
         uint256 amountEVM
     ) internal view returns (HyperAssetAmount memory) {
-        return into_hyperAssetAmount(amountEVM, spotBalance(bridgeAddress, erc20CoreIndex), decimalDiff);
+        return toHyperAssetAmount(amountEVM, spotBalance(bridgeAddress, erc20CoreIndex), decimalDiff);
     }
 
     /**
@@ -258,7 +258,7 @@ library HyperCoreLib {
      * @param erc20CoreIndex The core token index id to convert
      * @return assetBridgeAddress The asset bridge address
      */
-    function into_assetBridgeAddress(uint64 erc20CoreIndex) internal pure returns (address) {
+    function toAssetBridgeAddress(uint64 erc20CoreIndex) internal pure returns (address) {
         return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
     }
 
@@ -267,7 +267,7 @@ library HyperCoreLib {
      * @param assetBridgeAddress The asset bridge address to convert
      * @return erc20CoreIndex The core token index id
      */
-    function into_tokenId(address assetBridgeAddress) internal pure returns (uint64) {
+    function toTokenId(address assetBridgeAddress) internal pure returns (uint64) {
         return uint64(uint160(assetBridgeAddress) - BASE_ASSET_BRIDGE_ADDRESS_UINT256);
     }
 
@@ -278,7 +278,7 @@ library HyperCoreLib {
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @return HyperAssetAmount The evm amount and core amount
      */
-    function into_hyperAssetAmount(
+    function toHyperAssetAmount(
         uint256 amountEVMPreDusted,
         uint64 assetBridgeSupplyCore,
         int8 decimalDiff
@@ -289,13 +289,13 @@ library HyperCoreLib {
         /// @dev HyperLiquid decimal conversion: Scale EVM (u256,evmDecimals) -> Core (u64,coreDecimals)
         /// @dev Core amount is guaranteed to be within u64 range.
         if (decimalDiff > 0) {
-            (amountEVM, amountCore) = into_hyperAssetAmount_decimal_difference_gt_zero(
+            (amountEVM, amountCore) = toHyperAssetAmountDecimalDifferenceGtZero(
                 amountEVMPreDusted,
                 assetBridgeSupplyCore,
                 uint8(decimalDiff)
             );
         } else {
-            (amountEVM, amountCore) = into_hyperAssetAmount_decimal_difference_leq_zero(
+            (amountEVM, amountCore) = toHyperAssetAmountDecimalDifferenceLeqZero(
                 amountEVMPreDusted,
                 assetBridgeSupplyCore,
                 uint8(-1 * decimalDiff)
@@ -314,7 +314,7 @@ library HyperCoreLib {
      * @return amountEVM The EVM amount
      * @return amountCore The core amount
      */
-    function into_hyperAssetAmount_decimal_difference_gt_zero(
+    function toHyperAssetAmountDecimalDifferenceGtZero(
         uint256 amountEVMPreDusted,
         uint64 maxTransferableAmountCore,
         uint8 decimalDiff
@@ -343,7 +343,7 @@ library HyperCoreLib {
      * @return amountEVM The EVM amount
      * @return amountCore The core amount
      */
-    function into_hyperAssetAmount_decimal_difference_leq_zero(
+    function toHyperAssetAmountDecimalDifferenceLeqZero(
         uint256 amountEVMPreDusted,
         uint64 maxTransferableAmountCore,
         uint8 decimalDiff
