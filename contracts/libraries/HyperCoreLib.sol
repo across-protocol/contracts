@@ -26,9 +26,8 @@ library HyperCoreLib {
     error InvalidTif();
 
     /**
-     * @notice Transfer `amountEVM` of `erc20` from HyperEVM to `to` on HyperCore.
+     * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
-     * @dev The decimal difference is evmDecimals - coreDecimals
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
      * @param erc20CoreIndex The HyperCore index id of the token to transfer
      * @param to The address to receive tokens on HyperCore
