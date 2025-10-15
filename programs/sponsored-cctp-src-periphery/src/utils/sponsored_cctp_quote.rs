@@ -59,9 +59,9 @@ const _: () = {
 };
 
 pub const QUOTE_DATA_LENGTH: usize = SponsoredCCTPQuoteFields::TOTAL_BYTES;
-pub const QUOTE_HOOK_DATA_START: usize = SponsoredCCTPQuoteFields::Nonce.start();
-pub const QUOTE_HOOK_DATA_END: usize = SponsoredCCTPQuoteFields::FinalToken.end();
-pub const QUOTE_HOOK_DATA_LENGTH: usize = QUOTE_HOOK_DATA_END - QUOTE_HOOK_DATA_START;
+pub const HOOK_DATA_START: usize = SponsoredCCTPQuoteFields::Nonce.start();
+pub const HOOK_DATA_END: usize = SponsoredCCTPQuoteFields::FinalToken.end();
+pub const HOOK_DATA_LENGTH: usize = HOOK_DATA_END - HOOK_DATA_START;
 
 pub struct SponsoredCCTPQuote<'a> {
     data: &'a [u8; QUOTE_DATA_LENGTH],
@@ -130,13 +130,12 @@ impl<'a> SponsoredCCTPQuote<'a> {
         Self::decode_to_pubkey(self.get_field_word(SponsoredCCTPQuoteFields::FinalToken))
     }
 
-    pub fn quote_hook_data(&self) -> &[u8; QUOTE_HOOK_DATA_LENGTH] {
-        // Safe: QUOTE_HOOK_DATA_START and QUOTE_HOOK_DATA_END are derived from SponsoredCCTPQuoteFields, so this
-        // should always be in-bounds.
-        let data_slice = &self.data[QUOTE_HOOK_DATA_START..QUOTE_HOOK_DATA_END];
-        // Safe: data_slice is exactly QUOTE_HOOK_DATA_LENGTH bytes long, so we can convert it to
-        // &[u8; QUOTE_HOOK_DATA_LENGTH].
-        <&[u8; QUOTE_HOOK_DATA_LENGTH]>::try_from(data_slice).unwrap()
+    pub fn hook_data(&self) -> &[u8; HOOK_DATA_LENGTH] {
+        // Safe: HOOK_DATA_START and HOOK_DATA_END are derived from SponsoredCCTPQuoteFields, so this should always be
+        // in-bounds.
+        let data_slice = &self.data[HOOK_DATA_START..HOOK_DATA_END];
+        // Safe: data_slice is exactly HOOK_DATA_LENGTH bytes long, so we can convert it to &[u8; HOOK_DATA_LENGTH].
+        <&[u8; HOOK_DATA_LENGTH]>::try_from(data_slice).unwrap()
     }
 
     fn get_field_word(&self, field: SponsoredCCTPQuoteFields) -> &[u8; 32] {
