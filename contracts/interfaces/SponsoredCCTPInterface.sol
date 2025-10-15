@@ -46,7 +46,7 @@ interface SponsoredCCTPInterface {
         // The amount that the user pays on the source chain.
         uint256 amount;
         // The token that will be burned on the source chain.
-        address burnToken;
+        bytes32 burnToken;
         // The caller of the destination chain.
         bytes32 destinationCaller;
         // Maximum fee to pay on the destination domain, specified in units of burnToken

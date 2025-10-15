@@ -27,26 +27,30 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
         if (usedNonces[quote.nonce]) revert InvalidNonce();
         if (quote.deadline < block.timestamp) revert InvalidDeadline();
 
-        IERC20(quote.burnToken).transferFrom(msg.sender, address(this), quote.amount);
-        IERC20(quote.burnToken).approve(address(cctpTokenMessenger), quote.amount);
+        (
+            uint256 amount,
+            uint32 destinationDomain,
+            bytes32 mintRecipient,
+            address burnToken,
+            bytes32 destinationCaller,
+            uint256 maxFee,
+            uint32 minFinalityThreshold,
+            bytes memory hookData
+        ) = SponsoredCCTPQuoteLib.getDespoitForBurnData(quote);
+
+        IERC20(burnToken).transferFrom(msg.sender, address(this), amount);
+        IERC20(burnToken).approve(address(cctpTokenMessenger), amount);
 
         usedNonces[quote.nonce] = true;
-        bytes memory hookData = abi.encode(
-            quote.nonce,
-            quote.deadline,
-            quote.maxBpsToSponsor,
-            quote.finalRecipient,
-            quote.finalToken
-        );
 
         cctpTokenMessenger.depositForBurnWithHook(
-            quote.amount,
-            quote.destinationDomain,
-            quote.mintRecipient,
-            quote.burnToken,
-            quote.destinationCaller,
-            quote.maxFee,
-            quote.minFinalityThreshold,
+            amount,
+            destinationDomain,
+            mintRecipient,
+            burnToken,
+            destinationCaller,
+            maxFee,
+            minFinalityThreshold,
             hookData
         );
 

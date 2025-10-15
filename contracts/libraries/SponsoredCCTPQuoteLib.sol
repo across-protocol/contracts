@@ -50,7 +50,7 @@ library SponsoredCCTPQuoteLib {
         amount = quote.amount;
         destinationDomain = quote.destinationDomain;
         mintRecipient = quote.mintRecipient;
-        burnToken = quote.burnToken;
+        burnToken = quote.burnToken.toAddress();
         destinationCaller = quote.destinationCaller;
         maxFee = quote.maxFee;
         minFinalityThreshold = quote.minFinalityThreshold;
@@ -71,7 +71,7 @@ library SponsoredCCTPQuoteLib {
         bytes memory messageBody = message.slice(MESSAGE_BODY_INDEX, message.length);
         quote.mintRecipient = messageBody.toBytes32(MINT_RECIPIENT_INDEX);
         quote.amount = messageBody.toUint256(AMOUNT_INDEX);
-        quote.burnToken = messageBody.toBytes32(BURN_TOKEN_INDEX).toAddress();
+        quote.burnToken = messageBody.toBytes32(BURN_TOKEN_INDEX);
         quote.destinationCaller = messageBody.toBytes32(DESTINATION_CALLER_INDEX);
         quote.minFinalityThreshold = messageBody.toUint32(MIN_FINALITY_THRESHOLD_INDEX);
         quote.maxFee = messageBody.toUint256(MAX_FEE_INDEX);
