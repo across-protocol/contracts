@@ -29,6 +29,12 @@ library HyperCoreLib {
      * @notice Transfer `amountEVM` of `erc20` from HyperEVM to `to` on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @dev The decimal difference is evmDecimals - coreDecimals
+     * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
+     * @param erc20CoreIndex The HyperCore index id of the token to transfer
+     * @param to The address to receive tokens on HyperCore
+     * @param amountEVM The amount to transfer on HyperEVM
+     * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
+     * @return amountCore The amount credited on Core in Core units (post conversion)
      */
     function transferERC20ToCore(
         address erc20EVMAddress,
@@ -51,6 +57,40 @@ library HyperCoreLib {
 
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
             transferERC20OnCore(erc20CoreIndex, to, amounts.core);
+
+            return amounts.core;
+        }
+
+        return 0;
+    }
+
+    /**
+     * @notice Transfer `amountEVM` of `erc20` from this address on HyperEVM to this address on HyperCore.
+     * @dev Returns the amount credited on Core in Core units (post conversion).
+     * @dev The decimal difference is evmDecimals - coreDecimals
+     * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
+     * @param erc20CoreIndex The HyperCore index id of the token to transfer
+     * @param amountEVM The amount to transfer on HyperEVM
+     * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
+     * @return amountCore The amount credited on Core in Core units (post conversion)
+     */
+    function transferERC20ToSelfCore(
+        address erc20EVMAddress,
+        uint64 erc20CoreIndex,
+        uint256 amountEVM,
+        int8 decimalDiff
+    ) internal returns (uint64 amountCore) {
+        // if the transfer amount exceeds the bridge balance, this wil revert
+        HyperCoreHelperLib.HyperAssetAmount memory amounts = HyperCoreHelperLib.quoteHyperCoreAmount(
+            erc20CoreIndex,
+            decimalDiff,
+            erc20CoreIndex.into_assetBridgeAddress(),
+            amountEVM
+        );
+
+        if (amounts.evm != 0) {
+            // Transfer the tokens to this contract's address on HyperCore
+            IERC20(erc20EVMAddress).safeTransfer(erc20CoreIndex.into_assetBridgeAddress(), amounts.evm);
 
             return amounts.core;
         }
