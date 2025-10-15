@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { HyperLiquidHelperLib } from "./HyperLiquidHelperLib.sol";
+import { HyperCoreHelperLib } from "./HyperCoreHelperLib.sol";
 
 interface ICoreWriter {
     function sendRawAction(bytes calldata data) external;
@@ -11,7 +11,7 @@ interface ICoreWriter {
 
 library HyperCoreLib {
     using SafeERC20 for IERC20;
-    using HyperLiquidHelperLib for *;
+    using HyperCoreHelperLib for *;
 
     // Precompile addresses
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
@@ -38,7 +38,7 @@ library HyperCoreLib {
         int8 decimalDiff
     ) internal returns (uint64 amountCore) {
         // if the transfer amount exceeds the bridge balance, this wil revert
-        HyperLiquidHelperLib.HyperAssetAmount memory amounts = HyperLiquidHelperLib.quoteHyperCoreAmount(
+        HyperCoreHelperLib.HyperAssetAmount memory amounts = HyperCoreHelperLib.quoteHyperCoreAmount(
             erc20CoreIndex,
             decimalDiff,
             erc20CoreIndex.into_assetBridgeAddress(),

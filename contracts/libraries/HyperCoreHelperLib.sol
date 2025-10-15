@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-library HyperLiquidHelperLib {
+library HyperCoreHelperLib {
     struct HyperAssetAmount {
         uint256 evm;
         uint64 core;
@@ -86,7 +86,7 @@ library HyperLiquidHelperLib {
         int8 decimalDiff,
         address bridgeAddress,
         uint256 amountEVM
-    ) internal view returns (HyperLiquidHelperLib.HyperAssetAmount memory) {
+    ) internal view returns (HyperAssetAmount memory) {
         return into_hyperAssetAmount(amountEVM, spotBalance(bridgeAddress, erc20CoreIndex), decimalDiff);
     }
 
