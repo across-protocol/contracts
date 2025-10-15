@@ -1,6 +1,6 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, solana_program::keccak};
 
-use ::{crate::error::DataDecodingError, anchor_lang::solana_program::keccak};
+use crate::error::DataDecodingError;
 
 // Macro to define the SponsoredCCTPQuote fields as an enum with associated constants for ordinal, start, end, count,
 // and total bytes.
