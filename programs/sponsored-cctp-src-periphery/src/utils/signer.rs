@@ -32,7 +32,7 @@ fn recover_signer(quote_hash: &[u8; 32], quote_signature: &[u8; QUOTE_SIGNATURE_
         return err!(QuoteSignatureError::InvalidSignatureSValue);
     }
 
-    // Recover quote signer's public .
+    // Recover quote signer's public key.
     let public_key = secp256k1_recover(quote_hash, recovery_id, &quote_signature[0..QUOTE_SIGNATURE_LENGTH - 1])
         .map_err(|err| match err {
             Secp256k1RecoverError::InvalidHash => QuoteSignatureError::InvalidQuoteHash,
