@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
@@ -12,6 +13,7 @@ import { SwapHandler } from "../SwapHandler.sol";
 import { CoreTokenInfo } from "../Structs.sol";
 
 contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
+    using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
@@ -80,7 +82,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
                 quote.maxBpsToSponsor
             );
         } else {
-            _queueLimitOrder(finalToken, finalRecipient, finalAmount);
+            _queueLimitOrder(quote.finalToken.toAddress(), quote.finalRecipient.toAddress(), quote.amount);
         }
     }
 
@@ -109,7 +111,20 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
         return accountActivated ? 0 : 10 ** IERC20Metadata(token).decimals();
     }
 
-    function _queueLimitOrder(address token, address recipient, uint256 amount) internal {}
+    function _queueLimitOrder(address token, address recipient, uint256 amount) internal {
+        IERC20Metadata(token).safeTransfer(tokenCoreInfo[token].swapHandler, amount);
+        // TODO: get the limit price from the quote
+        uint64 limitPriceX1e8 = 10;
+        uint64 sizeX1e8 = uint64(amount);
+
+        SwapHandler(tokenCoreInfo[token].swapHandler).swap(
+            tokenCoreInfo[token],
+            recipient,
+            amount,
+            limitPriceX1e8,
+            sizeX1e8
+        );
+    }
 
     // Only used for testing
     function sweepErc20(address token, address to, uint256 amount) external onlyOwner {
