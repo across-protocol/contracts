@@ -31,7 +31,6 @@ contract HyperCoreForwarder is Ownable {
     struct PendingSwap {
         address finalRecipient;
         address finalToken;
-        uint64 finalTokenHCoreId;
         // @dev totalCoreAmountToForwardToUser = minCoreAmountFromLO + sponsoredCoreAmountPreFunded always.
         // ! When offchain bot is updating a limit order associated with this Pending Order, it's a responsibility of
         // the function ~.updateLimitOrderPrice() to make sure we NEVER DECREASE the `totalCoreAmountToForwardToUser`
@@ -320,8 +319,6 @@ contract HyperCoreForwarder is Ownable {
         pendingSwaps[quoteNonce] = PendingSwap({
             finalRecipient: finalUser,
             finalToken: finalToken,
-            // TODO: maybe this is not required. Depdends on the finalization stage
-            finalTokenHCoreId: finalCoreTokenInfo.coreIndex,
             minCoreAmountFromLO: minOutCore,
             sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
             limitOrderCloid: cloid
