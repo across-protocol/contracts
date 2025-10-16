@@ -16,6 +16,9 @@ interface SponsoredCCTPInterface {
     // Error thrown when the deadline is invalid.
     error InvalidDeadline();
 
+    // Error thrown when the source domain is invalid.
+    error InvalidSourceDomain();
+
     event SponsoredDepositForBurn(
         bytes32 indexed quoteNonce,
         address indexed originSender,

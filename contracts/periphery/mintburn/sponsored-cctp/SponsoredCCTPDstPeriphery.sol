@@ -18,8 +18,9 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
     mapping(bytes32 => bool) public usedNonces;
 
-    mapping(bytes32 => uint64) public tokenCoreIndexes;
-    mapping(bytes32 => int8) public tokenDecimalDiffs;
+    mapping(address => uint64) public tokenCoreIndexes;
+
+    mapping(address => int8) public tokenDecimalDiffs;
 
     constructor(address _cctpMessageTransmitter, address _signer) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
@@ -29,17 +30,18 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
+        // If the hook data is invalid we cannot process the message and therefore we return
+        // in this case the funds will be kept in this contract
+        if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
+            return;
+        }
+
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
-        if (quote.burnToken == quote.finalToken) {
+        if (_isQuoteEligibleForSwap(quote, signature)) {
             uint256 finalAmount = quote.amount;
-            if (
-                !SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) ||
-                usedNonces[quote.nonce] ||
-                quote.deadline < block.timestamp ||
-                quote.maxBpsToSponsor == 0
-            ) {
+            if (!_isQuoteValid(quote, signature)) {
                 // send the received funds to the final recipient on CORE
                 finalAmount = quote.amount;
             } else {
@@ -49,10 +51,10 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
             HyperCoreLib.transferERC20ToCore(
                 quote.finalToken.toAddress(),
-                tokenCoreIndexes[quote.finalToken],
+                tokenCoreIndexes[quote.finalToken.toAddress()],
                 quote.finalRecipient.toAddress(),
                 finalAmount,
-                tokenDecimalDiffs[quote.finalToken]
+                tokenDecimalDiffs[quote.finalToken.toAddress()]
             );
 
             emit SponsoredMintAndWithdraw(
@@ -72,9 +74,27 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
         signer = _signer;
     }
 
-    function setTokenCoreIndexes(bytes32 token, uint64 coreIndex, int8 decimalDiff) external onlyOwner {
+    function setTokenCoreIndexes(address token, uint64 coreIndex, int8 decimalDiff) external onlyOwner {
         tokenCoreIndexes[token] = coreIndex;
         tokenDecimalDiffs[token] = decimalDiff;
+    }
+
+    function _isQuoteEligibleForSwap(
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
+        bytes memory signature
+    ) internal view returns (bool) {
+        return quote.burnToken != quote.finalToken && _isQuoteValid(quote, signature);
+    }
+
+    function _isQuoteValid(
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
+        bytes memory signature
+    ) internal view returns (bool) {
+        return
+            SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) &&
+            !usedNonces[quote.nonce] &&
+            quote.deadline >= block.timestamp &&
+            quote.maxBpsToSponsor > 0;
     }
 
     // Only used for testing

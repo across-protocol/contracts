@@ -11,12 +11,15 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
     ITokenMessengerV2 public immutable cctpTokenMessenger;
 
+    uint32 public immutable sourceDomain;
+
     address public signer;
 
     mapping(bytes32 => bool) public usedNonces;
 
-    constructor(address _cctpTokenMessenger, address _signer) {
+    constructor(address _cctpTokenMessenger, uint32 _sourceDomain, address _signer) {
         cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
+        sourceDomain = _sourceDomain;
         signer = _signer;
     }
 
@@ -26,6 +29,7 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
         if (!SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature)) revert InvalidSignature();
         if (usedNonces[quote.nonce]) revert InvalidNonce();
         if (quote.deadline < block.timestamp) revert InvalidDeadline();
+        if (quote.sourceDomain != sourceDomain) revert InvalidSourceDomain();
 
         (
             uint256 amount,
