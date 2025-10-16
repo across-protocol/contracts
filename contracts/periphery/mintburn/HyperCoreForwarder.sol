@@ -83,6 +83,8 @@ contract HyperCoreForwarder is Ownable {
         address finalToken
     );
 
+    event SwapFinalized(bytes32 quoteNonce, uint64 amountCore, address user, address finalToken);
+
     modifier onlyExistingToken(address evmTokenAddress) {
         // TODO: does this work?
         require(coreTokenInfos[evmTokenAddress].tokenInfo.evmContract != address(0), "Unknown token");
@@ -328,6 +330,46 @@ contract HyperCoreForwarder is Ownable {
         cloidToQuoteNonce[cloid] = quoteNonce;
 
         emit SwapFlowInitialized(quoteNonce, amountLD, totalEVMAmountToSponsor, finalUser, finalToken);
+    }
+
+    function _finalizePendingSwaps(address finalToken, uint256 maxToProcess) internal {
+        CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
+        FinalTokenParams memory finalTokenParam = finalTokenParams[finalToken];
+
+        require(address(finalTokenParam.swapHandler) != address(0), "Final token not registered");
+
+        uint256 head = pendingQueueHead[finalToken];
+        bytes32[] storage queue = pendingQueue[finalToken];
+        if (head >= queue.length || maxToProcess == 0) return;
+
+        // Note: `availableCore` is the SwapHandler's Core balance for `finalToken`, which monotonically increases
+        uint64 availableCore = HyperCoreLib.spotBalance(address(finalTokenParam.swapHandler), coreTokenInfo.coreIndex);
+        uint256 processed = 0;
+
+        while (head < queue.length && processed < maxToProcess) {
+            bytes32 nonce = queue[head];
+
+            PendingSwap storage pendingSwap = pendingSwaps[nonce];
+            uint64 totalAmountToForwardToUser = pendingSwap.minCoreAmountFromLO +
+                pendingSwap.sponsoredCoreAmountPreFunded;
+            if (availableCore < totalAmountToForwardToUser) {
+                break;
+            }
+
+            finalTokenParam.swapHandler.transferFundsToUserOnCore(
+                finalTokenParam.assetIndex,
+                pendingSwap.finalRecipient,
+                totalAmountToForwardToUser
+            );
+
+            emit SwapFinalized(nonce, totalAmountToForwardToUser, pendingSwap.finalRecipient, pendingSwap.finalToken);
+
+            availableCore -= totalAmountToForwardToUser;
+
+            delete pendingSwaps[nonce];
+            head += 1;
+            processed += 1;
+        }
     }
 
     function getEVMAmountToCoverCoreAmount(uint64 coreAmount) internal pure returns (uint256 evmAmount) {

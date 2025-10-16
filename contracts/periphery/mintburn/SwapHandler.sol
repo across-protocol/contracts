@@ -35,6 +35,10 @@ contract SwapHandler {
         HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
     }
 
+    function transferFundsToUserOnCore(uint64 erc20CoreIndex, address to, uint64 amountCore) external {
+        HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore);
+    }
+
     function submitLimitOrder(
         FinalTokenParams memory finalTokenParams,
         uint64 limitPriceX1e8,
