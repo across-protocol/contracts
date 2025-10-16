@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
@@ -10,7 +10,7 @@ import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenParams } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 
-contract HyperCoreForwarder is Ownable {
+contract HyperCoreForwarder is AccessControl {
     using SafeERC20 for IERC20;
 
     uint256 public constant CORE_DECIMALS = 8;
@@ -20,13 +20,16 @@ contract HyperCoreForwarder is Ownable {
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
 
+    // Roles
+    bytes32 public constant LIMIT_ORDER_UPDATER_ROLE = keccak256("LIMIT_ORDER_UPDATER_ROLE");
+
+    /// @notice The donation box contract.
+    DonationBox public immutable donationBox;
+
     /// @notice A mapping of token addresses to their core token info.
     mapping(address => CoreTokenInfo) public coreTokenInfos;
 
     mapping(address => FinalTokenParams) public finalTokenParams;
-
-    /// @notice The donation box contract.
-    DonationBox public immutable donationBox;
 
     struct PendingSwap {
         address finalRecipient;
@@ -84,8 +87,16 @@ contract HyperCoreForwarder is Ownable {
 
     event SwapFinalized(bytes32 quoteNonce, uint64 amountCore, address user, address finalToken);
 
+    /**************************************
+     *            MODIFIERS               *
+     **************************************/
+
+    modifier onlyDefaultAdmin() {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not default admin");
+        _;
+    }
+
     modifier onlyExistingToken(address evmTokenAddress) {
-        // TODO: does this work?
         require(coreTokenInfos[evmTokenAddress].tokenInfo.evmContract != address(0), "Unknown token");
         _;
     }
@@ -94,14 +105,33 @@ contract HyperCoreForwarder is Ownable {
         donationBox = DonationBox(_donationBox);
     }
 
+    function setCoreTokenInfo(
+        address finalToken,
+        uint32 coreIndex,
+        bool canBeUsedForAccountActivation,
+        uint256 accountActivationFee
+    ) external onlyDefaultAdmin {
+        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
+        require(tokenInfo.evmContract == finalToken, "Token mismatch");
+
+        coreTokenInfos[finalToken] = CoreTokenInfo({
+            tokenInfo: tokenInfo,
+            coreIndex: coreIndex,
+            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
+            accountActivationFee: accountActivationFee,
+            // TODO: convert this to core units using utils from HyperCoreLib
+            accountActivationFeeCore: uint64(accountActivationFee)
+        });
+    }
+
     function setFinalTokenParams(
         address finalToken,
         uint32 assetIndex,
         bool isBuy,
         uint32 feePpm,
         uint32 suggestedSlippageBps
-    ) external onlyExistingToken(finalToken) onlyOwner {
-        CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
+    ) external onlyExistingToken(finalToken) onlyDefaultAdmin {
+        CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
 
         SwapHandler swapHandler = finalTokenParams[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
@@ -129,7 +159,7 @@ contract HyperCoreForwarder is Ownable {
                     coreTokenInfo.tokenInfo.evmExtraWeiDecimals
                 );
             } catch {
-                revert("DonationBoxInsufficientFunds");
+                emit DonationBoxInsufficientFunds(finalToken, accountActivationFee);
             }
         }
     }
