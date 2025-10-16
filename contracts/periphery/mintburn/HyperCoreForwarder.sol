@@ -203,73 +203,32 @@ contract HyperCoreForwarder is Ownable {
             amountLD
         );
         uint64 coreAmountIn = uint64(quoted.core);
-        // TODO: this relies on the fact that all tokens have the same 8 decimals on HCore
-        uint64 userFullAmountOut = coreAmountIn;
-
-        uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenParam.assetIndex);
-        uint64 discountedPrice = uint64((spotX1e8 * (BPS_SCALAR - finalTokenParam.suggestedSlippageBps)) / BPS_SCALAR);
-
-        uint64 feeX1e8 = uint64(uint256(finalTokenParam.feePpm) * 10 ** (CORE_DECIMALS - PPM_DECIMALS));
-        uint64 sponsorFloorX1e8 = uint64(
-            CORE_SCALAR - (maxBpsToSponsor * 10 ** (CORE_DECIMALS - BPS_DECIMALS)) + feeX1e8
-        );
-        uint64 limitPriceX1e8 = discountedPrice > sponsorFloorX1e8 ? discountedPrice : sponsorFloorX1e8;
-        // TODO: figure out if need to convert price for isBuy = false
-
-        // maxBpsToSponsor = 2.4
-        // fee = 1.4
-        // price = 1
-
-        // 1 - 2.4 + 1.4 = 1 - 1bps
-        // 100 * (1 - 1bps - 1.4bps) = 100 * (1 - 2.4bps)
-        // Compute expected minimum out accounting for price and fee:
-        // minOutCore = coreAmountIn * limitPrice * (1 - fee)
-        uint256 minOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / CORE_SCALAR;
-        minOut = (minOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
-        uint64 minOutCore = uint64(minOut);
-
-        // uint64 swapAmountToSponsor =
-
-        // TODO: finish the rest/everthing
-    }
-
-    function _initiateSwapFlow2(
-        uint256 amountLD,
-        bytes32 quoteNonce,
-        address initialToken,
-        address finalUser,
-        address finalToken,
-        uint256 maxBpsToSponsor
-    ) internal {
-        require(address(finalTokenParams[finalToken].swapHandler) != address(0), "Final token not registered");
-
-        CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
-        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
-        FinalTokenParams memory finalTokenParam = finalTokenParams[finalToken];
-
-        // Quote to ensure bridge capacity and get exact core credit for input token
-        HyperCoreLib.HyperAssetAmount memory quoted = HyperCoreLib.quoteHyperCoreAmount(
-            initialCoreTokenInfo.coreIndex,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            // TODO: this check is only for the amountLD and doesn't include sponsored amount
-            HyperCoreLib.toAssetBridgeAddress(initialCoreTokenInfo.coreIndex),
-            amountLD
-        );
-        uint64 coreAmountIn = uint64(quoted.core);
 
         // X1e8 = Hyperliquid price units
         uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenParam.assetIndex);
-        // TODO: figure out if need to convert price for isBuy = false
-        // discounted limit price based on configured `suggestedSlippageBps`
-        uint64 limitPriceX1e8 = uint64((spotX1e8 * (BPS_SCALAR - finalTokenParam.suggestedSlippageBps)) / BPS_SCALAR);
+        // Directional limit price for faster fills: buy above spot, sell below spot
+        uint256 adjBps = finalTokenParam.isBuy
+            ? (BPS_SCALAR + finalTokenParam.suggestedSlippageBps)
+            : (BPS_SCALAR - finalTokenParam.suggestedSlippageBps);
+        uint64 limitPriceX1e8 = uint64((uint256(spotX1e8) * adjBps) / BPS_SCALAR);
 
-        uint256 minOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / CORE_SCALAR;
-        minOut = (minOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
-        uint64 minOutCore = uint64(minOut);
+        // Compute min expected out on Core in final token units
+        // - If buying, finalToken is base: baseOut = quoteIn / price, less fee
+        // - If selling, finalToken is quote: quoteOut = baseIn * price, less fee
+        uint64 minOutCore;
+        if (finalTokenParam.isBuy) {
+            uint256 grossBaseOut = (uint256(coreAmountIn) * CORE_SCALAR) / uint256(limitPriceX1e8);
+            uint256 netBaseOut = (grossBaseOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
+            minOutCore = uint64(netBaseOut);
+        } else {
+            uint256 grossQuoteOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / CORE_SCALAR;
+            uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
+            minOutCore = uint64(netQuoteOut);
+        }
 
         uint64 accountCreationFee = HyperCoreLib.coreUserExists(finalUser)
-            ? uint64(finalCoreTokenInfo.accountActivationFeeCore)
-            : 0;
+            ? 0
+            : uint64(finalCoreTokenInfo.accountActivationFeeCore);
 
         // @dev the user has no HyperCore account and we can't sponsor its creation; fall back to sending user funds on
         // HyperEVM
@@ -298,21 +257,48 @@ contract HyperCoreForwarder is Ownable {
             }
         }
 
-        uint256 evmAmountToSwapHandler = totalEVMAmountToSponsor + quoted.evm;
-        // TODO! check that the `evmAmountToSwapHandler` is OKAY to transfer RE bridge requirements. If not, just forward user the amount on HyperEVM?
-
         // Transfer funds to SwapHandler @ core
         SwapHandler swapHandler = finalTokenParam.swapHandler;
-        IERC20(finalToken).safeTransfer(address(swapHandler), evmAmountToSwapHandler);
-        swapHandler.transferFundsToSelfOnCore(
-            finalToken,
-            finalCoreTokenInfo.coreIndex,
-            evmAmountToSwapHandler,
-            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
 
-        // TODO! How the hell is size calculated?
-        uint64 sizeX1e8 = coreAmountIn;
+        // 1. Fund SwapHandler @ core with `initialToken`: use it for the trade
+        if (quoted.evm > 0) {
+            IERC20(initialToken).safeTransfer(address(swapHandler), quoted.evm);
+            swapHandler.transferFundsToSelfOnCore(
+                initialToken,
+                initialCoreTokenInfo.coreIndex,
+                quoted.evm,
+                initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+        }
+
+        // 2. Fund SwapHandler @ core with `finalToken`: use that for sponsorship
+        if (totalEVMAmountToSponsor > 0) {
+            IERC20(finalToken).safeTransfer(address(swapHandler), totalEVMAmountToSponsor);
+            swapHandler.transferFundsToSelfOnCore(
+                finalToken,
+                finalCoreTokenInfo.coreIndex,
+                totalEVMAmountToSponsor,
+                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+        }
+
+        // Order size in 1e8 units. Ensure we never spend more than coreAmountIn on the quote side for buys.
+        uint64 sizeX1e8;
+        if (finalTokenParam.isBuy) {
+            // Buying: calculate base asset amount we're safe to set when initial token is quote asset
+            uint256 pxWithFeeX1e8 = (uint256(limitPriceX1e8) * (PPM_SCALAR + finalTokenParam.feePpm)) / PPM_SCALAR;
+            sizeX1e8 = uint64((uint256(coreAmountIn) * CORE_SCALAR) / pxWithFeeX1e8);
+        } else {
+            // Selling: sell exactly `coreAmountIn` of base asset
+            sizeX1e8 = coreAmountIn;
+        }
+
+        // TODO: leave this check?
+        // If computed size rounds to zero, fall back
+        if (sizeX1e8 == 0) {
+            sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
+            return;
+        }
         uint128 cloid = ++nextCloid;
         swapHandler.submitLimitOrder(finalTokenParam, limitPriceX1e8, sizeX1e8, cloid);
 
