@@ -19,12 +19,6 @@ library HyperCoreLib {
         IOC // Immediate-or-Cancel
     }
 
-    struct HyperAssetAmount {
-        uint256 evm;
-        uint64 core;
-        uint64 coreBalanceAssetBridge;
-    }
-
     struct SpotBalance {
         uint64 total;
         uint64 hold; // Unused in this implementation
@@ -80,7 +74,8 @@ library HyperCoreLib {
      * @param to The address to receive tokens on HyperCore
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
-     * @return amountCore The amount credited on Core in Core units (post conversion)
+     * @return amountEVMSent The amount sent on HyperEVM
+     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
     function transferERC20EVMToCore(
         address erc20EVMAddress,
@@ -88,26 +83,19 @@ library HyperCoreLib {
         address to,
         uint256 amountEVM,
         int8 decimalDiff
-    ) internal returns (uint64 amountCore) {
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         // if the transfer amount exceeds the bridge balance, this wil revert
-        HyperAssetAmount memory amounts = quoteHyperCoreAmount(
-            erc20CoreIndex,
-            decimalDiff,
-            toAssetBridgeAddress(erc20CoreIndex),
-            amountEVM
-        );
+        (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
-        if (amounts.evm != 0) {
+        if (_amountEVMToSend != 0) {
             // Transfer the tokens to this contract's address on HyperCore
-            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amounts.evm);
+            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
 
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-            transferERC20CoreToCore(erc20CoreIndex, to, amounts.core);
-
-            return amounts.core;
+            transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive);
         }
 
-        return 0;
+        return (_amountEVMToSend, _amountCoreToReceive);
     }
 
     /**
@@ -118,30 +106,23 @@ library HyperCoreLib {
      * @param erc20CoreIndex The HyperCore index id of the token to transfer
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
-     * @return amountCore The amount credited on Core in Core units (post conversion)
+     * @return amountEVMSent The amount sent on HyperEVM
+     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
     function transferERC20EVMToSelfOnCore(
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         uint256 amountEVM,
         int8 decimalDiff
-    ) internal returns (uint64 amountCore) {
-        // if the transfer amount exceeds the bridge balance, this wil revert
-        HyperAssetAmount memory amounts = quoteHyperCoreAmount(
-            erc20CoreIndex,
-            decimalDiff,
-            toAssetBridgeAddress(erc20CoreIndex),
-            amountEVM
-        );
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+        (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
-        if (amounts.evm != 0) {
+        if (_amountEVMToSend != 0) {
             // Transfer the tokens to this contract's address on HyperCore
-            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amounts.evm);
-
-            return amounts.core;
+            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
         }
 
-        return 0;
+        return (_amountEVMToSend, _amountCoreToReceive);
     }
 
     /**
@@ -257,24 +238,6 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Quotes the conversion of evm tokens to hypercore tokens
-     * @param erc20CoreIndex The HyperCore index id of the token to transfer
-     * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
-     * @param bridgeAddress The asset bridge address of the token to transfer
-     * @param amountEVM The number of tokens that (pre-dusted) that we are trying to send
-     * @return HyperAssetAmount The amount of tokens to send to HyperCore (scaled on evm),
-     * dust (to be refunded), and the swap amount (of the tokens scaled on hypercore)
-     */
-    function quoteHyperCoreAmount(
-        uint64 erc20CoreIndex,
-        int8 decimalDiff,
-        address bridgeAddress,
-        uint256 amountEVM
-    ) internal view returns (HyperAssetAmount memory) {
-        return toHyperAssetAmount(amountEVM, spotBalance(bridgeAddress, erc20CoreIndex), decimalDiff);
-    }
-
-    /**
      * @notice Converts a core index id to an asset bridge address
      * @param erc20CoreIndex The core token index id to convert
      * @return assetBridgeAddress The asset bridge address
@@ -293,124 +256,65 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Returns an amount to send on HyperEVM to receive AT LEAST the amountCoreDesired on HyperCore
-     * @param amountCoreDesired The minimum amount desired to receive on HyperCore
+     * @notice Returns an amount to send on HyperEVM to receive AT LEAST the minimumCoreReceiveAmount on HyperCore
+     * @param minimumCoreReceiveAmount The minimum amount desired to receive on HyperCore
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
-     * @return amountEVMToSend The amount to send on HyperEVM to receive at least amountCoreDesired on HyperCore
+     * @return amountEVMToSend The amount to send on HyperEVM to receive at least minimumCoreReceiveAmount on HyperCore
      * @return amountCoreToReceive The amount that will be received on core if the amountEVMToSend is sent from HyperEVM
      */
-    function minimumCoreAmountToAmounts(
-        uint64 amountCoreDesired,
+    function minimumCoreReceiveAmountToAmounts(
+        uint64 minimumCoreReceiveAmount,
         int8 decimalDiff
     ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         if (decimalDiff == 0) {
             // Same decimals between HyperEVM and HyperCore
-            amountEVMToSend = uint256(amountCoreDesired);
-            amountCoreToReceive = amountCoreDesired;
+            amountEVMToSend = uint256(minimumCoreReceiveAmount);
+            amountCoreToReceive = minimumCoreReceiveAmount;
         } else if (decimalDiff > 0) {
             // EVM token has more decimals than Core
             // Scale up to represent the same value in higher-precision EVM units
-            amountEVMToSend = uint256(amountCoreDesired) * (10 ** uint8(decimalDiff));
-            amountCoreToReceive = amountCoreDesired;
+            amountEVMToSend = uint256(minimumCoreReceiveAmount) * (10 ** uint8(decimalDiff));
+            amountCoreToReceive = minimumCoreReceiveAmount;
         } else {
             // Core token has more decimals than EVM
             // Scale down, rounding UP to avoid shortfall on Core
             uint256 scaleDivisor = 10 ** uint8(-decimalDiff);
-            amountEVMToSend = (uint256(amountCoreDesired) + scaleDivisor - 1) / scaleDivisor; // ceil division
+            amountEVMToSend = (uint256(minimumCoreReceiveAmount) + scaleDivisor - 1) / scaleDivisor; // ceil division
             amountCoreToReceive = uint64(amountEVMToSend * scaleDivisor);
         }
     }
 
     /**
-     * @notice Converts an amount and an asset to a evm amount and core amount
-     * @param amountEVMPreDusted The amount to convert
-     * @param assetBridgeSupplyCore The maximum amount transferable capped by the number of tokens located on the HyperCore's side of the asset bridge
+     * @notice Converts a maximum EVM amount to send into an EVM amount to send to avoid loss to dust,
+     * @notice and the corresponding amount that will be recieved on Core.
+     * @param maximumEVMSendAmount The maximum amount to send on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
-     * @return HyperAssetAmount The evm amount and core amount
+     * @return amountEVMToSend The amount to send on HyperEVM
+     * @return amountCoreToReceive The amount that will be received on HyperCore if the amountEVMToSend is sent
      */
-    function toHyperAssetAmount(
-        uint256 amountEVMPreDusted,
-        uint64 assetBridgeSupplyCore,
+    function maximumEVMSendAmountToAmounts(
+        uint256 maximumEVMSendAmount,
         int8 decimalDiff
-    ) internal pure returns (HyperAssetAmount memory) {
-        uint256 amountEVM;
-        uint64 amountCore;
-
+    ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         /// @dev HyperLiquid decimal conversion: Scale EVM (u256,evmDecimals) -> Core (u64,coreDecimals)
         /// @dev Core amount is guaranteed to be within u64 range.
-        if (decimalDiff > 0) {
-            (amountEVM, amountCore) = toHyperAssetAmountDecimalDifferenceGtZero(
-                amountEVMPreDusted,
-                assetBridgeSupplyCore,
-                uint8(decimalDiff)
-            );
+        if (decimalDiff == 0) {
+            amountEVMToSend = maximumEVMSendAmount;
+            amountCoreToReceive = uint64(amountEVMToSend);
+        } else if (decimalDiff > 0) {
+            // EVM token has more decimals than Core
+            uint256 scale = 10 ** uint8(decimalDiff);
+            amountEVMToSend = maximumEVMSendAmount - (maximumEVMSendAmount % scale); // Safe: dustAmount = maximumEVMSendAmount % scale, so dust <= maximumEVMSendAmount
+
+            /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
+            amountCoreToReceive = uint64(amountEVMToSend / scale);
         } else {
-            (amountEVM, amountCore) = toHyperAssetAmountDecimalDifferenceLeqZero(
-                amountEVMPreDusted,
-                assetBridgeSupplyCore,
-                uint8(-1 * decimalDiff)
-            );
-        }
-
-        return HyperAssetAmount({ evm: amountEVM, core: amountCore, coreBalanceAssetBridge: assetBridgeSupplyCore });
-    }
-
-    /**
-     * @notice Computes hyperAssetAmount when EVM decimals > Core decimals
-     * @notice Reverts if the transfers amount exceeds the asset bridge balance
-     * @param amountEVMPreDusted The amount to convert
-     * @param maxTransferableAmountCore The maximum transferrable amount capped by the asset bridge has range [0,u64.max]
-     * @param decimalDiff The decimal difference between HyperEVM and HyperCore
-     * @return amountEVM The EVM amount
-     * @return amountCore The core amount
-     */
-    function toHyperAssetAmountDecimalDifferenceGtZero(
-        uint256 amountEVMPreDusted,
-        uint64 maxTransferableAmountCore,
-        uint8 decimalDiff
-    ) internal pure returns (uint256 amountEVM, uint64 amountCore) {
-        uint256 scale = 10 ** decimalDiff;
-        uint256 maxTransferableAmountEVM = maxTransferableAmountCore * scale;
-
-        unchecked {
-            /// @dev Strip out dust from _amount so that _amount and maxEvmAmountFromCoreMax have a maximum of _decimalDiff starting 0s
-            amountEVM = amountEVMPreDusted - (amountEVMPreDusted % scale); // Safe: dustAmount = amountEVMPreDusted % scale, so dust <= amountEVMPreDusted
-
-            if (amountEVM > maxTransferableAmountEVM)
-                revert TransferAmtExceedsAssetBridgeBalance(amountEVM, maxTransferableAmountEVM);
+            // Core token has more decimals than EVM
+            uint256 scale = 10 ** uint8(-1 * decimalDiff);
+            amountEVMToSend = maximumEVMSendAmount;
 
             /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
-            amountCore = uint64(amountEVM / scale);
-        }
-    }
-
-    /**
-     * @notice Computes hyperAssetAmount when EVM decimals < Core decimals and 0
-     * @notice Reverts if the transfers amount exceeds the asset bridge balance
-     * @param amountEVMPreDusted The amount to convert
-     * @param maxTransferableAmountCore The maximum transferrable amount capped by the asset bridge
-     * @param decimalDiff The decimal difference between HyperEVM and HyperCore
-     * @return amountEVM The EVM amount
-     * @return amountCore The core amount
-     */
-    function toHyperAssetAmountDecimalDifferenceLeqZero(
-        uint256 amountEVMPreDusted,
-        uint64 maxTransferableAmountCore,
-        uint8 decimalDiff
-    ) internal pure returns (uint256 amountEVM, uint64 amountCore) {
-        uint256 scale = 10 ** decimalDiff;
-        uint256 maxTransferableAmountEVM = maxTransferableAmountCore / scale;
-
-        unchecked {
-            amountEVM = amountEVMPreDusted;
-
-            /// @dev When `Core > EVM` there will be no opening dust to strip out since all tokens in evm can be represented on core
-            /// @dev Safe: Bound amountEvm to the range of [0, evmscaled u64.max]
-            if (amountEVMPreDusted > maxTransferableAmountEVM)
-                revert TransferAmtExceedsAssetBridgeBalance(amountEVM, maxTransferableAmountEVM);
-
-            /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
-            amountCore = uint64(amountEVM * scale);
+            amountCoreToReceive = uint64(amountEVMToSend * scale);
         }
     }
 }
