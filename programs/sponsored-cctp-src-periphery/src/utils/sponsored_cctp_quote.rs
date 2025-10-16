@@ -40,7 +40,7 @@ define_quote_fields!(
     MinFinalityThreshold,
     Nonce,
     Deadline,
-    MaxSponsoredAmount,
+    MaxBpsToSponsor,
     FinalRecipient,
     FinalToken
 );
@@ -48,12 +48,9 @@ define_quote_fields!(
 // Compile-time guarantees that these 5 fields passed in hookData are contiguous and ordered.
 const _: () = {
     assert!((SponsoredCCTPQuoteFields::Deadline as usize) == (SponsoredCCTPQuoteFields::Nonce as usize) + 1);
+    assert!((SponsoredCCTPQuoteFields::MaxBpsToSponsor as usize) == (SponsoredCCTPQuoteFields::Deadline as usize) + 1);
     assert!(
-        (SponsoredCCTPQuoteFields::MaxSponsoredAmount as usize) == (SponsoredCCTPQuoteFields::Deadline as usize) + 1
-    );
-    assert!(
-        (SponsoredCCTPQuoteFields::FinalRecipient as usize)
-            == (SponsoredCCTPQuoteFields::MaxSponsoredAmount as usize) + 1
+        (SponsoredCCTPQuoteFields::FinalRecipient as usize) == (SponsoredCCTPQuoteFields::MaxBpsToSponsor as usize) + 1
     );
     assert!((SponsoredCCTPQuoteFields::FinalToken as usize) == (SponsoredCCTPQuoteFields::FinalRecipient as usize) + 1);
 };
@@ -117,8 +114,8 @@ impl<'a> SponsoredCCTPQuote<'a> {
         Self::decode_to_u32(self.get_field_word(SponsoredCCTPQuoteFields::Deadline))
     }
 
-    pub fn max_sponsored_amount(&self) -> Result<u64> {
-        Self::decode_to_u64(self.get_field_word(SponsoredCCTPQuoteFields::MaxSponsoredAmount))
+    pub fn max_bps_to_sponsor(&self) -> Result<u64> {
+        Self::decode_to_u64(self.get_field_word(SponsoredCCTPQuoteFields::MaxBpsToSponsor))
     }
 
     pub fn final_recipient(&self) -> Result<Pubkey> {
