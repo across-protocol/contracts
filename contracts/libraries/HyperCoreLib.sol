@@ -52,8 +52,9 @@ library HyperCoreLib {
 
     // Precompile addresses
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
+    address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
-    address constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
+    address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
 
     // CoreWriter action headers
@@ -68,6 +69,7 @@ library HyperCoreLib {
     error SpotBalancePrecompileCallFailed();
     error CoreUserExistsPrecompileCallFailed();
     error TokenInfoPrecompileCallFailed();
+    error SpotPxPrecompileCallFailed();
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
 
     /**
@@ -229,6 +231,17 @@ library HyperCoreLib {
         if (!success) revert CoreUserExistsPrecompileCallFailed();
         CoreUserExists memory _coreUserExists = abi.decode(result, (CoreUserExists));
         return _coreUserExists.exists;
+    }
+
+    /**
+     * @notice Get the spot price of the specified asset on HyperCore.
+     * @param index The asset index to get the spot price of
+     * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
+     */
+    function spotPx(uint32 index) external view returns (uint64) {
+        (bool success, bytes memory result) = SPOT_PX_PRECOMPILE_ADDRESS.staticcall(abi.encode(index));
+        if (!success) revert SpotPxPrecompileCallFailed();
+        return abi.decode(result, (uint64));
     }
 
     /**
