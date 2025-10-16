@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
-import { MarketParams } from "./Structs.sol";
+import { FinalTokenParams } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 
 contract HyperCoreForwarder is Ownable {
@@ -16,17 +16,38 @@ contract HyperCoreForwarder is Ownable {
     uint256 public constant CORE_DECIMALS = 8;
     uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
-    uint256 public constant CORE_DECIMALS_POWER = 10 ** CORE_DECIMALS;
-    uint256 public constant BPS_DIVISOR = 10 ** BPS_DECIMALS;
-    uint256 public constant PPM_DIVISOR = 10 ** PPM_DECIMALS;
+    uint256 public constant CORE_SCALAR = 10 ** CORE_DECIMALS;
+    uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
+    uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
 
     /// @notice A mapping of token addresses to their core token info.
     mapping(address => CoreTokenInfo) public coreTokenInfos;
 
-    mapping(address => MarketParams) public finalTokenParams;
+    mapping(address => FinalTokenParams) public finalTokenParams;
 
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
+
+    // Pending swap queue per final token (FCFS)
+    struct PendingSwap {
+        address user;
+        address finalToken;
+        uint256 amountInEVM; // amount of `oftToken` bridged for this order (EVM units)
+        uint64 coreAmountIn; // starting token amount credited on Core (x1e8)
+        uint64 minOutCore; // minimum final token amount on Core required to settle (post fee)
+        uint128 cloid; // client order id associated with the placed limit order
+    }
+
+    // quoteNonce => pending swap details
+    mapping(bytes32 => PendingSwap) public pendingSwaps;
+    // finalToken => queue of quote nonces
+    mapping(address => bytes32[]) public pendingQueue;
+    // finalToken => current head index in queue
+    mapping(address => uint256) public pendingQueueHead;
+
+    uint128 public nextCloid;
+
+    mapping(uint128 => bytes32) public cloidToQuoteNonce;
 
     /// @notice Emitted when the donation box is insufficient funds.
     event DonationBoxInsufficientFunds(address token, uint256 amount);
@@ -36,6 +57,22 @@ contract HyperCoreForwarder is Ownable {
         bytes32 quoteNonce,
         uint256 finalAmount,
         uint256 amountSponsored,
+        address finalRecipient,
+        address finalToken
+    );
+
+    event SwapFlowInitialized(
+        bytes32 quoteNonce,
+        uint256 receivedTokensEvm,
+        uint256 sponsoredTokensEvm,
+        address finalRecipient,
+        address finalToken
+    );
+
+    event FallbackHyperEVMFlowExecuted(
+        bytes32 quoteNonce,
+        uint256 receivedTokensEvm,
+        uint256 sponsoredTokensEvm,
         address finalRecipient,
         address finalToken
     );
@@ -64,7 +101,7 @@ contract HyperCoreForwarder is Ownable {
             swapHandler = new SwapHandler();
         }
 
-        finalTokenParams[finalToken] = MarketParams({
+        finalTokenParams[finalToken] = FinalTokenParams({
             assetIndex: assetIndex,
             isBuy: isBuy,
             feePpm: feePpm,
@@ -100,7 +137,7 @@ contract HyperCoreForwarder is Ownable {
     ) internal {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        uint256 maxFee = (amount * maxBpsToSponsor) / BPS_DIVISOR;
+        uint256 maxFee = (amount * maxBpsToSponsor) / BPS_SCALAR;
         uint256 accountActivationFee = _getAccountActivationFee(finalToken, finalRecipient);
         uint256 amountToSponsor = extraFeesToSponsor + accountActivationFee;
         if (amountToSponsor > maxFee) {
@@ -148,7 +185,7 @@ contract HyperCoreForwarder is Ownable {
 
         CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
-        MarketParams memory finalTokenParam = finalTokenParams[finalToken];
+        FinalTokenParams memory finalTokenParam = finalTokenParams[finalToken];
 
         // Quote to ensure bridge capacity and get exact core credit for input token
         HyperCoreLib.HyperAssetAmount memory quoted = HyperCoreLib.quoteHyperCoreAmount(
@@ -159,15 +196,15 @@ contract HyperCoreForwarder is Ownable {
             amountLD
         );
         uint64 coreAmountIn = uint64(quoted.core);
+        // TODO: this relies on the fact that all tokens have the same 8 decimals on HCore
+        uint64 userFullAmountOut = coreAmountIn;
 
         uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenParam.assetIndex);
-        uint64 discountedPrice = uint64(
-            (spotX1e8 * (BPS_DIVISOR - finalTokenParam.suggestedSlippageBps)) / BPS_DIVISOR
-        );
+        uint64 discountedPrice = uint64((spotX1e8 * (BPS_SCALAR - finalTokenParam.suggestedSlippageBps)) / BPS_SCALAR);
 
         uint64 feeX1e8 = uint64(uint256(finalTokenParam.feePpm) * 10 ** (CORE_DECIMALS - PPM_DECIMALS));
         uint64 sponsorFloorX1e8 = uint64(
-            CORE_DECIMALS_POWER - (maxBpsToSponsor * 10 ** (CORE_DECIMALS - BPS_DECIMALS)) + feeX1e8
+            CORE_SCALAR - (maxBpsToSponsor * 10 ** (CORE_DECIMALS - BPS_DECIMALS)) + feeX1e8
         );
         uint64 limitPriceX1e8 = discountedPrice > sponsorFloorX1e8 ? discountedPrice : sponsorFloorX1e8;
         // TODO: figure out if need to convert price for isBuy = false
@@ -180,10 +217,127 @@ contract HyperCoreForwarder is Ownable {
         // 100 * (1 - 1bps - 1.4bps) = 100 * (1 - 2.4bps)
         // Compute expected minimum out accounting for price and fee:
         // minOutCore = coreAmountIn * limitPrice * (1 - fee)
-        uint256 minOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / CORE_DECIMALS_POWER;
-        minOut = (minOut * (PPM_DIVISOR - finalTokenParam.feePpm)) / PPM_DIVISOR;
+        uint256 minOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / CORE_SCALAR;
+        minOut = (minOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
         uint64 minOutCore = uint64(minOut);
 
+        // uint64 swapAmountToSponsor =
+
         // TODO: finish the rest/everthing
+    }
+
+    function _initiateSwapFlow2(
+        uint256 amountLD,
+        bytes32 quoteNonce,
+        address initialToken,
+        address finalUser,
+        address finalToken,
+        uint256 maxBpsToSponsor
+    ) internal {
+        require(address(finalTokenParams[finalToken].swapHandler) != address(0), "Final token not registered");
+
+        CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
+        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
+        FinalTokenParams memory finalTokenParam = finalTokenParams[finalToken];
+
+        // Quote to ensure bridge capacity and get exact core credit for input token
+        HyperCoreLib.HyperAssetAmount memory quoted = HyperCoreLib.quoteHyperCoreAmount(
+            initialCoreTokenInfo.coreIndex,
+            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            // TODO: this check is only for the amountLD and doesn't include sponsored amount
+            HyperCoreLib.toAssetBridgeAddress(initialCoreTokenInfo.coreIndex),
+            amountLD
+        );
+        uint64 coreAmountIn = uint64(quoted.core);
+
+        // X1e8 = Hyperliquid price units
+        uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenParam.assetIndex);
+        // TODO: figure out if need to convert price for isBuy = false
+        // discounted limit price based on configured `suggestedSlippageBps`
+        uint64 limitPriceX1e8 = uint64((spotX1e8 * (BPS_SCALAR - finalTokenParam.suggestedSlippageBps)) / BPS_SCALAR);
+
+        uint256 minOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / CORE_SCALAR;
+        minOut = (minOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
+        uint64 minOutCore = uint64(minOut);
+
+        uint64 accountCreationFee = HyperCoreLib.coreUserExists(finalUser)
+            ? uint64(finalCoreTokenInfo.accountActivationFeeCore)
+            : 0;
+
+        // @dev the user has no HyperCore account and we can't sponsor its creation; fall back to sending user funds on
+        // HyperEVM
+        if (accountCreationFee > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
+            sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
+            return;
+        }
+
+        uint64 oneToOneSendAmount = quoted.core + accountCreationFee;
+        uint64 totalCoreAmountToSponsor = oneToOneSendAmount - minOutCore;
+        uint64 allowedCoreAmountToSponsor = uint64((uint256(quoted.core) * maxBpsToSponsor) / BPS_SCALAR);
+
+        if (totalCoreAmountToSponsor > allowedCoreAmountToSponsor) {
+            // TODO: here, different behavior is possible. E.g. just revert the swap part and do a simple transfer instead
+            totalCoreAmountToSponsor = allowedCoreAmountToSponsor;
+        }
+
+        uint256 totalEVMAmountToSponsor = getEVMAmountToCoverCoreAmount(totalCoreAmountToSponsor);
+        if (totalEVMAmountToSponsor > 0) {
+            try donationBox.withdraw(IERC20(finalToken), totalEVMAmountToSponsor) {
+                // success, we have totalEVMAmountToSponsor + quoted.evm on balance. Will send that to SwapHandler
+            } catch {
+                // TODO: a better event
+                emit DonationBoxInsufficientFunds(finalToken, totalEVMAmountToSponsor);
+                totalEVMAmountToSponsor = 0;
+            }
+        }
+
+        uint256 evmAmountToSwapHandler = totalEVMAmountToSponsor + quoted.evm;
+        // TODO! check that the `evmAmountToSwapHandler` is OKAY to transfer RE bridge requirements. If not, just forward user the amount on HyperEVM?
+
+        // Transfer funds to SwapHandler @ core
+        SwapHandler swapHandler = finalTokenParam.swapHandler;
+        IERC20(finalToken).safeTransfer(address(swapHandler), evmAmountToSwapHandler);
+        swapHandler.transferFundsToSelfOnCore(
+            finalToken,
+            finalCoreTokenInfo.coreIndex,
+            evmAmountToSwapHandler,
+            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+
+        // TODO! How the hell is size calculated?
+        uint64 sizeX1e8 = coreAmountIn;
+        uint128 cloid = ++nextCloid;
+        swapHandler.submitLimitOrder(finalTokenParam, limitPriceX1e8, sizeX1e8, cloid);
+
+        // TODO: are these state updates valid?
+        pendingSwaps[quoteNonce] = PendingSwap({
+            user: finalUser,
+            finalToken: finalToken,
+            amountInEVM: amountLD,
+            coreAmountIn: coreAmountIn,
+            minOutCore: minOutCore,
+            cloid: cloid
+        });
+        pendingQueue[finalToken].push(quoteNonce);
+        cloidToQuoteNonce[cloid] = quoteNonce;
+
+        emit SwapFlowInitialized(quoteNonce, amountLD, totalEVMAmountToSponsor, finalUser, finalToken);
+    }
+
+    function getEVMAmountToCoverCoreAmount(uint64 coreAmount) internal returns (uint256 evmAmount) {
+        // TODO! use Taylor's function from HyperCoreLib once ready
+        return coreAmount / 100;
+    }
+
+    // @dev should be used for rare cases where we can't proceed with our normal HyperCore flows: either there are
+    // no funds in the spot bridge, or e.g. we can't pay for account creation for the user for some reason
+    function sendUserFundsOnHyperEVM(
+        bytes32 quoteNonce,
+        uint256 amountLD,
+        address finalUser,
+        address finalToken
+    ) internal {
+        IERC20(finalToken).safeTransfer(finalUser, amountLD);
+        emit FallbackHyperEVMFlowExecuted(quoteNonce, amountLD, 0, finalUser, finalToken);
     }
 }

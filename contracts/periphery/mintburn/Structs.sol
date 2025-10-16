@@ -14,9 +14,10 @@ struct CoreTokenInfo {
     bool canBeUsedForAccountActivation;
     // The account activation fee for the token.
     uint256 accountActivationFee;
+    uint64 accountActivationFeeCore;
 }
 
-struct MarketParams {
+struct FinalTokenParams {
     uint32 assetIndex;
     bool isBuy;
     uint32 feePpm; // e.g. 1.4 bps = 140 ppm
