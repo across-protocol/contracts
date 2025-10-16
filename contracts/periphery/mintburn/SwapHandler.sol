@@ -16,6 +16,15 @@ contract SwapHandler {
         _;
     }
 
+    function activateCoreAccount(
+        address erc20EVMAddress,
+        uint64 erc20CoreIndex,
+        uint256 amountEVM,
+        int8 decimalDiff
+    ) external onlyParentHandler {
+        HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
+    }
+
     function submitLimitOrder(
         CoreTokenInfo memory coreTokenInfo,
         address recipient,

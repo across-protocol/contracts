@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
+import { SwapHandler } from "./SwapHandler.sol";
 
 // Info about the token on HyperCore.
 struct CoreTokenInfo {
@@ -13,6 +14,14 @@ struct CoreTokenInfo {
     bool canBeUsedForAccountActivation;
     // The account activation fee for the token.
     uint256 accountActivationFee;
+}
+
+struct MarketParams {
+    uint32 assetIndex;
+    bool isBuy;
+    uint32 feePpm; // e.g. 1.4 bps = 140 ppm
+    uint32 suggestedSlippageBps;
+    SwapHandler swapHandler;
 }
 
 // struct

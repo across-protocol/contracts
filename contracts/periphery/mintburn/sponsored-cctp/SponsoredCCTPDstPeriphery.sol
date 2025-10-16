@@ -13,7 +13,7 @@ import { SwapHandler } from "../SwapHandler.sol";
 import { CoreTokenInfo, LimitOrder } from "../Structs.sol";
 import { HyperCoreForwarder } from "../HyperCoreForwarder.sol";
 
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCoreForwarder {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -28,18 +28,19 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     /// @notice A mapping of used nonces to prevent replay attacks.
     mapping(bytes32 => bool) public usedNonces;
 
-    /// @notice A mapping of token addresses to their core token info.
-    mapping(address => CoreTokenInfo) public coreTokenInfos;
-
     /// @notice A mapping of token addresses to their swap handler address.
     mapping(address => address) public swapHandlers;
 
     LimitOrder[] public limitOrdersQueued;
 
-    constructor(address _cctpMessageTransmitter, address _signer, address _hyperCoreForwarder) {
+    constructor(
+        address _cctpMessageTransmitter,
+        address _signer,
+        address _hyperCoreForwarder,
+        address _donationBox
+    ) HyperCoreForwarder(_donationBox) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
-        hyperCoreForwarder = HyperCoreForwarder(_hyperCoreForwarder);
     }
 
     function setSigner(address _signer) external onlyOwner {
@@ -75,7 +76,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
         if (!_isQuoteValid(quote, signature)) {
             // If the quote is not valid, we execute a simple transfer regardless of the final token
-            hyperCoreForwarder.executeSimpleTransferToCore(
+            _executeSimpleTransferToCore(
                 quote.amount,
                 quote.nonce,
                 0, // No basis points to sponsor
@@ -84,7 +85,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
                 0 // No extra fees to sponsor
             );
         } else if (quote.burnToken != quote.finalToken) {
-            hyperCoreForwarder.executeSimpleTransferToCore(
+            _executeSimpleTransferToCore(
                 quote.amount,
                 quote.nonce,
                 quote.maxBpsToSponsor,
@@ -146,6 +147,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
     // Only used for testing
     function sweepErc20(address token, address to, uint256 amount) external onlyOwner {
+        // TODO: pull from donation box as well?
         IERC20Metadata(token).transfer(to, amount);
     }
 }
