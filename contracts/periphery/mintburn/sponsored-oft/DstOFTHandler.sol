@@ -25,7 +25,27 @@ contract SwapHandler {
         _;
     }
 
-    // TODO: all the functions for interactions with `HyperCoreLib` that we might want
+    /**
+     * @notice Submit a limit order on HyperCore from this SwapHandler's Core address.
+     */
+    function submitLimitOrder(
+        uint32 assetIndex,
+        bool isBuy,
+        uint64 limitPriceX1e8,
+        uint64 sizeX1e8,
+        bool reduceOnly,
+        HyperCoreLib.Tif tif,
+        uint128 cloid
+    ) external onlyParentHandler {
+        HyperCoreLib.submitLimitOrder(assetIndex, isBuy, limitPriceX1e8, sizeX1e8, reduceOnly, tif, cloid);
+    }
+
+    /**
+     * @notice Return `amountCore` of `tokenCoreIndex` from this SwapHandler's Core address to parent handler on Core.
+     */
+    function returnFinalTokenToParent(uint64 tokenCoreIndex, uint64 amountCore) external onlyParentHandler {
+        HyperCoreLib.transferERC20CoreToCore(tokenCoreIndex, parentHandler, amountCore);
+    }
 }
 
 contract DstOFTHandler is ILayerZeroComposer, AccessControl {
@@ -69,10 +89,34 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
     // @dev finalTokenEvmAddress => swapHandler. Used to isolate swap actions to different accounts
     mapping(address => SwapHandler) swapHandlers;
 
+    // Per-finalToken HyperCore market params against `oftToken`
+    struct MarketParams {
+        uint32 assetIndexAgainstOft;
+        bool isBuyAgainstOft;
+    }
+    mapping(address => MarketParams) public marketParamsByFinalToken;
+
+    // Pending swap queue per final token (FCFS)
+    struct PendingSwap {
+        address user;
+        address finalToken;
+        uint256 amountInEVM; // amount of `oftToken` bridged for this order (EVM units)
+        uint64 minOutCore; // minimum final token amount on Core required to settle
+        uint128 cloid; // client order id associated with the placed limit order
+    }
+
+    // quoteNonce => pending swap details
+    mapping(bytes32 => PendingSwap) public pendingSwaps;
+    // finalToken => queue of quote nonces
+    mapping(address => bytes32[]) public pendingQueue;
+    // finalToken => current head index in queue
+    mapping(address => uint256) public pendingQueueHead;
+
     error AuthorizedPeripheryNotSet(uint32 _srcEid);
 
     event FallbackSponsorshipTokenSet(address evmTokenAddress);
     event FinalTokenRegistered(address evmTokenAddress);
+    event SwapHandlerDeployed(address finalToken, address handler);
     event SimpleHcoreTransfer(
         bytes32 quoteNonce,
         uint256 amount,
@@ -81,6 +125,16 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         address finalToken
     );
     event DonationBoxInsufficientFunds(address token, uint256 requested);
+    event PendingSwapEnqueued(
+        bytes32 quoteNonce,
+        address user,
+        address finalToken,
+        uint256 amountInEVM,
+        uint64 minOutCore
+    );
+    event LimitOrderSubmitted(bytes32 quoteNonce, uint64 limitPriceX1e8, uint64 sizeX1e8);
+    event SwapFinalized(bytes32 quoteNonce, uint64 amountCore, address user, address finalToken);
+    event MarketParamsUpdated(address finalToken, uint32 assetIndexAgainstOft, bool isBuyAgainstOft);
 
     // TODO: on construction, we should populate the `tokens` mapping with at least info about the USDT0
     // TODO: then we should have a function like `addAuthorizedFinalToken` that will add a token to the tokens
@@ -136,12 +190,40 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
 
     // @dev config admin calls this function to add support for an additional token that can be a final token of swap flow
     function registerNewFinalToken(
-        address evmTokenAddress
+        address evmTokenAddress,
+        uint32 assetIndexAgainstOft,
+        bool isBuyAgainstOft
     ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
         // TODO: there has to be some unregister call too. But we then have to have the ability to withdraw all tokens form the SwapHandler ...
         require(registeredFinalTokens[evmTokenAddress] == false, "Already registered");
-        // TODO! Create a new SwapHandler contract
+        // Create a new SwapHandler contract for this final token
+        SwapHandler handler = new SwapHandler();
+        swapHandlers[evmTokenAddress] = handler;
+        emit SwapHandlerDeployed(evmTokenAddress, address(handler));
         registeredFinalTokens[evmTokenAddress] = true;
+        marketParamsByFinalToken[evmTokenAddress] = MarketParams({
+            assetIndexAgainstOft: assetIndexAgainstOft,
+            isBuyAgainstOft: isBuyAgainstOft
+        });
+        emit MarketParamsUpdated(evmTokenAddress, assetIndexAgainstOft, isBuyAgainstOft);
+        emit FinalTokenRegistered(evmTokenAddress);
+
+        // Pre-initialize SwapHandler Core account by sending a small amount from DonationBox to the handler on Core.
+        uint256 initAmountWei = tokens[evmTokenAddress].accountCreationAmount;
+        if (initAmountWei > 0) {
+            try donationBox.withdraw(IERC20(tokens[evmTokenAddress].tokenInfo.evmContract), initAmountWei) {
+                // Bridge to the SwapHandler Core account
+                HyperCoreLib.transferERC20EVMToCore(
+                    tokens[evmTokenAddress].tokenInfo.evmContract,
+                    tokens[evmTokenAddress].hCoreTokenIndex,
+                    address(handler),
+                    initAmountWei,
+                    tokens[evmTokenAddress].tokenInfo.evmExtraWeiDecimals
+                );
+            } catch {
+                revert("DonationBoxInsufficientFunds");
+            }
+        }
     }
 
     /**
@@ -177,11 +259,11 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         address finalRecipient = _composeMsg._getFinalRecipient().toAddress();
         address finalToken = _composeMsg._getFinalToken().toAddress();
         uint256 maxBpsToSponsor = _composeMsg._getMaxBpsToSponsor();
+        uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
         if (finalToken == oftToken) {
-            uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
             _executeSimpleHCoreTransferFlow(_amountLD, quoteNonce, maxBpsToSponsor, finalRecipient, finalToken);
         } else {
-            _initializeSwapFlow();
+            _initializeSwapFlow(_amountLD, quoteNonce, finalRecipient, finalToken);
         }
     }
 
@@ -229,8 +311,126 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         emit SimpleHcoreTransfer(quoteNonce, amountLD, amountToSponsor, finalUser, finalToken);
     }
 
-    function _initializeSwapFlow() internal {
-        // TODO! :D
+    function _initializeSwapFlow(uint256 amountLD, bytes32 quoteNonce, address finalUser, address finalToken) internal {
+        require(registeredFinalTokens[finalToken], "Final token not registered");
+        require(address(swapHandlers[finalToken]) != address(0), "No SwapHandler");
+
+        // Bridge the OFT tokens from this contract on HyperEVM to the SwapHandler on HyperCore
+        TokenInfo memory oftTokenInfo = tokens[oftToken];
+        HyperCoreLib.transferERC20EVMToCore(
+            oftTokenInfo.tokenInfo.evmContract,
+            oftTokenInfo.hCoreTokenIndex,
+            address(swapHandlers[finalToken]),
+            amountLD,
+            oftTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+
+        // TODO! Compute this based on the LimitOrder price we're about to submit + HyperLiquid Market pair fees. Can we load these fees on demand?
+        // TODO! We can't really have incorrect values here .. If we do, we might never be able to settle some user orders until we top up
+        // TODO! the swap handler by admin action probably _AND_ update the market params by hand. Hopium that 1.4 bps will not change anytime soon
+        uint64 minOutCore = HyperCoreLib.convertEvmToCoreNoBridge(
+            amountLD,
+            tokens[finalToken].tokenInfo.evmExtraWeiDecimals
+        );
+
+        // Enqueue pending swap with computed minOutCore
+        pendingSwaps[quoteNonce] = PendingSwap({
+            user: finalUser,
+            finalToken: finalToken,
+            amountInEVM: amountLD,
+            minOutCore: minOutCore,
+            cloid: 0
+        });
+        pendingQueue[finalToken].push(quoteNonce);
+        emit PendingSwapEnqueued(quoteNonce, finalUser, finalToken, amountLD, minOutCore);
+
+        // Submit a placeholder limit order on behalf of the SwapHandler (price=1.0, GTC)
+        MarketParams memory mp = marketParamsByFinalToken[finalToken];
+        require(mp.assetIndexAgainstOft != 0, "Market params unset");
+        SwapHandler handler = swapHandlers[finalToken];
+        uint64 limitPriceX1e8 = 1e8; // 1.0
+        uint64 sizeX1e8 = minOutCore; // MVP approximation
+        handler.submitLimitOrder(
+            mp.assetIndexAgainstOft,
+            mp.isBuyAgainstOft,
+            limitPriceX1e8,
+            sizeX1e8,
+            false,
+            HyperCoreLib.Tif.GTC,
+            0
+        );
+        emit LimitOrderSubmitted(quoteNonce, limitPriceX1e8, sizeX1e8);
+    }
+
+    // TODO: trusted actor can cancel+replace existing limit orders per CLOID.
+
+    /**
+     * @notice FCFS settlement: transfers finalToken from SwapHandler on Core to users when sufficient balance exists.
+     * @param finalToken The EVM address of the final token for which to settle the queue.
+     * @param maxToProcess Max number of orders to try to settle in this call (gas guard).
+     */
+    function finalizePendingUserSwaps(address finalToken, uint256 maxToProcess) external {
+        require(registeredFinalTokens[finalToken], "Final token not registered");
+        TokenInfo memory finalTokenInfo = tokens[finalToken];
+        SwapHandler handler = swapHandlers[finalToken];
+        require(address(handler) != address(0), "No SwapHandler");
+
+        uint256 head = pendingQueueHead[finalToken];
+        bytes32[] storage queue = pendingQueue[finalToken];
+        if (head >= queue.length || maxToProcess == 0) return;
+
+        // Note: `availableCore` is the SwapHandler's Core balance for `finalToken`, which monotonically increases
+        uint64 availableCore = HyperCoreLib.spotBalance(address(handler), finalTokenInfo.hCoreTokenIndex);
+        uint256 processed = 0;
+
+        while (head < queue.length && processed < maxToProcess) {
+            bytes32 nonce = queue[head];
+            PendingSwap storage ps = pendingSwaps[nonce];
+            if (availableCore < ps.minOutCore) {
+                break;
+            }
+
+            // 1) Pull tokens back from SwapHandler to parent handler on Core
+            handler.returnFinalTokenToParent(finalTokenInfo.hCoreTokenIndex, ps.minOutCore);
+
+            // 2) Top up 1:1 from DonationBox on EVM to parent handler on Core (best-effort)
+            uint256 topUpEvmAmount = HyperCoreLib.convertCoreToEvmCeil(
+                ps.minOutCore,
+                finalTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+            if (topUpEvmAmount > 0) {
+                try donationBox.withdraw(IERC20(finalTokenInfo.tokenInfo.evmContract), topUpEvmAmount) {
+                    HyperCoreLib.transferERC20EVMToCore(
+                        finalTokenInfo.tokenInfo.evmContract,
+                        finalTokenInfo.hCoreTokenIndex,
+                        address(this),
+                        topUpEvmAmount,
+                        finalTokenInfo.tokenInfo.evmExtraWeiDecimals
+                    );
+                } catch {
+                    emit DonationBoxInsufficientFunds(finalTokenInfo.tokenInfo.evmContract, topUpEvmAmount);
+                }
+            }
+
+            // 3) Send the full amount to the user on Core from the parent handler
+            HyperCoreLib.transferERC20CoreToCore(finalTokenInfo.hCoreTokenIndex, ps.user, ps.minOutCore);
+
+            emit SwapFinalized(nonce, ps.minOutCore, ps.user, ps.finalToken);
+
+            availableCore -= ps.minOutCore;
+
+            // Pop from queue
+            delete pendingSwaps[nonce];
+            head += 1;
+            processed += 1;
+        }
+
+        // Advance head and compact array if we've exhausted a large prefix
+        if (head != pendingQueueHead[finalToken]) {
+            pendingQueueHead[finalToken] = head;
+        }
+
+        // No truncation/compaction: we keep the queue as [head, queue.length)
     }
 
     // @dev Checks that _message came from the authorized src periphery contract stored in `authorizedSrcPeripheryContracts`
@@ -272,6 +472,21 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         if (evmTokenAddress == fallbackSponsorshipToken && !tokens[evmTokenAddress].canBeUsedForAccountCreationFee) {
             fallbackSponsorshipToken = address(0);
         }
+    }
+
+    /**
+     * @notice Set per-token trading params for swapping against `oftToken` on HyperCore.
+     */
+    function updateTokenTradingParams(
+        address evmTokenAddress,
+        uint32 marketAssetIndexAgainstOft,
+        bool isBuyAgainstOft
+    ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
+        marketParamsByFinalToken[evmTokenAddress] = MarketParams({
+            assetIndexAgainstOft: marketAssetIndexAgainstOft,
+            isBuyAgainstOft: isBuyAgainstOft
+        });
+        emit MarketParamsUpdated(evmTokenAddress, marketAssetIndexAgainstOft, isBuyAgainstOft);
     }
 
     function _getTokenInfoChecked(

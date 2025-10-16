@@ -371,4 +371,47 @@ library HyperCoreLib {
             amountCore = uint64(amountEVM * scale);
         }
     }
+
+    // -------------------------
+    // Pure conversion utilities
+    // -------------------------
+
+    /**
+     * @notice Convert an EVM-denominated amount to Core units without consulting bridge balances.
+     * @dev decimalDiff = evmDecimals - coreDecimals. Floors when EVM has more decimals than Core.
+     */
+    function convertEvmToCoreNoBridge(uint256 amountEvm, int8 decimalDiff) internal pure returns (uint64 amountCore) {
+        if (amountEvm == 0) return 0;
+        if (decimalDiff > 0) {
+            uint256 scale = 10 ** uint8(uint8(decimalDiff));
+            return uint64(amountEvm / scale);
+        } else if (decimalDiff < 0) {
+            uint256 scale = 10 ** uint8(uint8(-decimalDiff));
+            uint256 v = amountEvm * scale;
+            return uint64(v);
+        } else {
+            return uint64(amountEvm);
+        }
+    }
+
+    /**
+     * @notice Convert a Core-denominated amount to EVM units, rounding up when needed so that
+     *         convertEvmToCoreNoBridge(result, decimalDiff) >= amountCore.
+     */
+    function convertCoreToEvmCeil(uint64 amountCore, int8 decimalDiff) internal pure returns (uint256 amountEvm) {
+        if (amountCore == 0) return 0;
+        if (decimalDiff > 0) {
+            uint256 scale = 10 ** uint8(uint8(decimalDiff));
+            return uint256(amountCore) * scale;
+        } else if (decimalDiff < 0) {
+            uint256 scale = 10 ** uint8(uint8(-decimalDiff));
+            return _ceilDiv(amountCore, scale);
+        } else {
+            return uint256(amountCore);
+        }
+    }
+
+    function _ceilDiv(uint256 a, uint256 b) private pure returns (uint256) {
+        return a == 0 ? 0 : (a - 1) / b + 1;
+    }
 }
