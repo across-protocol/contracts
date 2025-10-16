@@ -93,6 +93,7 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
     struct MarketParams {
         uint32 assetIndexAgainstOft;
         bool isBuyAgainstOft;
+        uint32 feePpm; // e.g. 1.4 bps = 140 ppm
     }
     mapping(address => MarketParams) public marketParamsByFinalToken;
 
@@ -101,7 +102,8 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         address user;
         address finalToken;
         uint256 amountInEVM; // amount of `oftToken` bridged for this order (EVM units)
-        uint64 minOutCore; // minimum final token amount on Core required to settle
+        uint64 coreAmountIn; // starting token amount credited on Core (x1e8)
+        uint64 minOutCore; // minimum final token amount on Core required to settle (post fee)
         uint128 cloid; // client order id associated with the placed limit order
     }
 
@@ -111,6 +113,9 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
     mapping(address => bytes32[]) public pendingQueue;
     // finalToken => current head index in queue
     mapping(address => uint256) public pendingQueueHead;
+
+    uint128 public nextCloid;
+    mapping(uint128 => bytes32) public cloidToQuoteNonce;
 
     error AuthorizedPeripheryNotSet(uint32 _srcEid);
 
@@ -134,7 +139,7 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
     );
     event LimitOrderSubmitted(bytes32 quoteNonce, uint64 limitPriceX1e8, uint64 sizeX1e8);
     event SwapFinalized(bytes32 quoteNonce, uint64 amountCore, address user, address finalToken);
-    event MarketParamsUpdated(address finalToken, uint32 assetIndexAgainstOft, bool isBuyAgainstOft);
+    event MarketParamsUpdated(address finalToken, uint32 assetIndexAgainstOft, bool isBuyAgainstOft, uint32 feePpm);
 
     // TODO: on construction, we should populate the `tokens` mapping with at least info about the USDT0
     // TODO: then we should have a function like `addAuthorizedFinalToken` that will add a token to the tokens
@@ -181,6 +186,7 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         _updateTokenInfo(evmTokenAddress, hCoreTokenIndex, canBeUsedForAccountCreationFee, sponsorAmountWei);
     }
 
+    // TODO: perhaps remove this?
     function setFallbackSponsorshipToken(
         address evmTokenAddress
     ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
@@ -188,11 +194,30 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         fallbackSponsorshipToken = evmTokenAddress;
     }
 
+    // TODO: check this for finalToken existence?
+    /**
+     * @notice Set per-token trading params for swapping against `oftToken` on HyperCore.
+     */
+    function updateTokenMarketInfo(
+        address evmTokenAddress,
+        uint32 marketAssetIndexAgainstOft,
+        bool isBuyAgainstOft,
+        uint32 feePpm
+    ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
+        marketParamsByFinalToken[evmTokenAddress] = MarketParams({
+            assetIndexAgainstOft: marketAssetIndexAgainstOft,
+            isBuyAgainstOft: isBuyAgainstOft,
+            feePpm: feePpm
+        });
+        emit MarketParamsUpdated(evmTokenAddress, marketAssetIndexAgainstOft, isBuyAgainstOft, feePpm);
+    }
+
     // @dev config admin calls this function to add support for an additional token that can be a final token of swap flow
     function registerNewFinalToken(
         address evmTokenAddress,
         uint32 assetIndexAgainstOft,
-        bool isBuyAgainstOft
+        bool isBuyAgainstOft,
+        uint32 feePpm
     ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
         // TODO: there has to be some unregister call too. But we then have to have the ability to withdraw all tokens form the SwapHandler ...
         require(registeredFinalTokens[evmTokenAddress] == false, "Already registered");
@@ -203,9 +228,10 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         registeredFinalTokens[evmTokenAddress] = true;
         marketParamsByFinalToken[evmTokenAddress] = MarketParams({
             assetIndexAgainstOft: assetIndexAgainstOft,
-            isBuyAgainstOft: isBuyAgainstOft
+            isBuyAgainstOft: isBuyAgainstOft,
+            feePpm: feePpm
         });
-        emit MarketParamsUpdated(evmTokenAddress, assetIndexAgainstOft, isBuyAgainstOft);
+        emit MarketParamsUpdated(evmTokenAddress, assetIndexAgainstOft, isBuyAgainstOft, feePpm);
         emit FinalTokenRegistered(evmTokenAddress);
 
         // Pre-initialize SwapHandler Core account by sending a small amount from DonationBox to the handler on Core.
@@ -263,7 +289,7 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         if (finalToken == oftToken) {
             _executeSimpleHCoreTransferFlow(_amountLD, quoteNonce, maxBpsToSponsor, finalRecipient, finalToken);
         } else {
-            _initializeSwapFlow(_amountLD, quoteNonce, finalRecipient, finalToken);
+            _initializeSwapFlow(_amountLD, quoteNonce, finalRecipient, finalToken, maxBpsToSponsor);
         }
     }
 
@@ -311,45 +337,74 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         emit SimpleHcoreTransfer(quoteNonce, amountLD, amountToSponsor, finalUser, finalToken);
     }
 
-    function _initializeSwapFlow(uint256 amountLD, bytes32 quoteNonce, address finalUser, address finalToken) internal {
+    function _initializeSwapFlow(
+        uint256 amountLD,
+        bytes32 quoteNonce,
+        address finalUser,
+        address finalToken,
+        uint256 maxBpsToSponsor
+    ) internal {
         require(registeredFinalTokens[finalToken], "Final token not registered");
         require(address(swapHandlers[finalToken]) != address(0), "No SwapHandler");
 
         // Bridge the OFT tokens from this contract on HyperEVM to the SwapHandler on HyperCore
         TokenInfo memory oftTokenInfo = tokens[oftToken];
+        // Quote to ensure bridge capacity and get exact core credit for input token
+        HyperCoreLib.HyperAssetAmount memory quoted = HyperCoreLib.quoteHyperCoreAmount(
+            oftTokenInfo.hCoreTokenIndex,
+            oftTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            HyperCoreLib.toAssetBridgeAddress(oftTokenInfo.hCoreTokenIndex),
+            amountLD
+        );
+        uint64 coreAmountIn = uint64(quoted.core);
+        // Execute the transfer now (EVM -> SwapHandler Core)
         HyperCoreLib.transferERC20EVMToCore(
             oftTokenInfo.tokenInfo.evmContract,
             oftTokenInfo.hCoreTokenIndex,
             address(swapHandlers[finalToken]),
-            amountLD,
+            quoted.evm,
             oftTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
         // TODO! Compute this based on the LimitOrder price we're about to submit + HyperLiquid Market pair fees. Can we load these fees on demand?
         // TODO! We can't really have incorrect values here .. If we do, we might never be able to settle some user orders until we top up
         // TODO! the swap handler by admin action probably _AND_ update the market params by hand. Hopium that 1.4 bps will not change anytime soon
-        uint64 minOutCore = HyperCoreLib.convertEvmToCoreNoBridge(
-            amountLD,
-            tokens[finalToken].tokenInfo.evmExtraWeiDecimals
-        );
+        // Compute limit price using: max(spot-2bps, 1.0 - maxBpsToSponsor + fee)
+        MarketParams memory mp = marketParamsByFinalToken[finalToken];
+        require(mp.assetIndexAgainstOft != 0, "Market params unset");
+        uint64 spotX1e8 = HyperCoreLib.spotPx(mp.assetIndexAgainstOft);
+        require(spotX1e8 != 0, "Spot px unset");
+        uint64 priceMinus2bps = uint64((uint256(spotX1e8) * 9998) / 10000);
+        // sponsorship floor = 1.0 - maxBpsToSponsor + fee
+        uint64 feeX1e8 = uint64(uint256(mp.feePpm) * 100); // ppm -> x1e8
+        uint64 sponsorFloorX1e8 = uint64(1e8 - (maxBpsToSponsor * 1e4) + feeX1e8);
+        uint64 limitPriceX1e8 = priceMinus2bps > sponsorFloorX1e8 ? priceMinus2bps : sponsorFloorX1e8;
 
-        // Enqueue pending swap with computed minOutCore
+        // Compute expected minimum out accounting for price and fee:
+        // minOutCore = coreAmountIn * limitPrice * (1 - fee)
+        uint256 minOut = (uint256(coreAmountIn) * uint256(limitPriceX1e8)) / 1e8;
+        minOut = (minOut * (1_000_000 - mp.feePpm)) / 1_000_000;
+        uint64 minOutCore = uint64(minOut);
+
+        // Enqueue pending swap with computed in/out amounts
         pendingSwaps[quoteNonce] = PendingSwap({
             user: finalUser,
             finalToken: finalToken,
             amountInEVM: amountLD,
+            coreAmountIn: coreAmountIn,
             minOutCore: minOutCore,
             cloid: 0
         });
         pendingQueue[finalToken].push(quoteNonce);
         emit PendingSwapEnqueued(quoteNonce, finalUser, finalToken, amountLD, minOutCore);
 
-        // Submit a placeholder limit order on behalf of the SwapHandler (price=1.0, GTC)
-        MarketParams memory mp = marketParamsByFinalToken[finalToken];
-        require(mp.assetIndexAgainstOft != 0, "Market params unset");
+        // Submit limit order on behalf of the SwapHandler
         SwapHandler handler = swapHandlers[finalToken];
-        uint64 limitPriceX1e8 = 1e8; // 1.0
-        uint64 sizeX1e8 = minOutCore; // MVP approximation
+        // TODO: is the size calculated correctly here?
+        // size: use minOutCore as size in quote units (x1e8)
+        uint64 sizeX1e8 = minOutCore;
+        uint128 cloid = ++nextCloid;
+        cloidToQuoteNonce[cloid] = quoteNonce;
         handler.submitLimitOrder(
             mp.assetIndexAgainstOft,
             mp.isBuyAgainstOft,
@@ -357,7 +412,7 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
             sizeX1e8,
             false,
             HyperCoreLib.Tif.GTC,
-            0
+            cloid
         );
         emit LimitOrderSubmitted(quoteNonce, limitPriceX1e8, sizeX1e8);
     }
@@ -433,6 +488,8 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         // No truncation/compaction: we keep the queue as [head, queue.length)
     }
 
+    // Internal functions
+
     // @dev Checks that _message came from the authorized src periphery contract stored in `authorizedSrcPeripheryContracts`
     function _requireAuthorizedPeriphery(bytes calldata _message) internal view {
         // Decode the source endpoint ID (originating chain)
@@ -452,8 +509,6 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         require(authorizedPeriphery == _composeFrom, "Src periphery not authorized");
     }
 
-    // Internal functions
-
     function _updateTokenInfo(
         address evmTokenAddress,
         uint32 hCoreTokenIndex,
@@ -472,21 +527,6 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         if (evmTokenAddress == fallbackSponsorshipToken && !tokens[evmTokenAddress].canBeUsedForAccountCreationFee) {
             fallbackSponsorshipToken = address(0);
         }
-    }
-
-    /**
-     * @notice Set per-token trading params for swapping against `oftToken` on HyperCore.
-     */
-    function updateTokenTradingParams(
-        address evmTokenAddress,
-        uint32 marketAssetIndexAgainstOft,
-        bool isBuyAgainstOft
-    ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
-        marketParamsByFinalToken[evmTokenAddress] = MarketParams({
-            assetIndexAgainstOft: marketAssetIndexAgainstOft,
-            isBuyAgainstOft: isBuyAgainstOft
-        });
-        emit MarketParamsUpdated(evmTokenAddress, marketAssetIndexAgainstOft, isBuyAgainstOft);
     }
 
     function _getTokenInfoChecked(

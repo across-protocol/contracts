@@ -52,6 +52,7 @@ library HyperCoreLib {
 
     // Precompile addresses
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
+    address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
     address constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
@@ -68,6 +69,7 @@ library HyperCoreLib {
     error SpotBalancePrecompileCallFailed();
     error CoreUserExistsPrecompileCallFailed();
     error TokenInfoPrecompileCallFailed();
+    error SpotPricePrecompileCallFailed();
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
 
     /**
@@ -241,6 +243,15 @@ library HyperCoreLib {
         if (!success) revert TokenInfoPrecompileCallFailed();
         TokenInfo memory _tokenInfo = abi.decode(result, (TokenInfo));
         return _tokenInfo;
+    }
+
+    /**
+     * @notice Get the current spot price for a given market asset index, scaled by 1e8.
+     */
+    function spotPx(uint32 assetIndex) internal view returns (uint64) {
+        (bool success, bytes memory result) = SPOT_PX_PRECOMPILE_ADDRESS.staticcall(abi.encode(assetIndex));
+        if (!success) revert SpotPricePrecompileCallFailed();
+        return abi.decode(result, (uint64));
     }
 
     /**
