@@ -21,7 +21,8 @@ contract SwapHandler {
         address recipient,
         uint256 amount,
         uint64 limitPriceX1e8,
-        uint64 sizeX1e8
+        uint64 sizeX1e8,
+        uint128 cloid
     ) external onlyParentHandler {
         HyperCoreLib.transferERC20EVMToCore(
             coreTokenInfo.evmContract,
@@ -39,7 +40,7 @@ contract SwapHandler {
             sizeX1e8,
             false,
             HyperCoreLib.Tif.GTC,
-            0
+            cloid
         );
     }
 }

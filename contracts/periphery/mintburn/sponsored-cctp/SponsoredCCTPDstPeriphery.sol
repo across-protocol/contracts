@@ -10,7 +10,7 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { SwapHandler } from "../SwapHandler.sol";
-import { CoreTokenInfo } from "../Structs.sol";
+import { CoreTokenInfo, LimitOrder } from "../Structs.sol";
 
 contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     using SafeERC20 for IERC20Metadata;
@@ -23,6 +23,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     mapping(bytes32 => bool) public usedNonces;
 
     mapping(address => CoreTokenInfo) public tokenCoreInfo;
+
+    LimitOrder[] public limitOrdersQueued;
 
     constructor(address _cctpMessageTransmitter, address _signer) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
@@ -122,7 +124,11 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
             recipient,
             amount,
             limitPriceX1e8,
-            sizeX1e8
+            sizeX1e8,
+            uint128(limitOrdersQueued.length)
+        );
+        limitOrdersQueued.push(
+            LimitOrder({ cloid: uint128(limitOrdersQueued.length), limitPriceX1e8: limitPriceX1e8, sizeX1e8: sizeX1e8 })
         );
     }
 
