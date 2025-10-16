@@ -8,6 +8,7 @@ import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT } from "../../../interfaces/IOFT.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 // Contract to hold funds for swaps. We have one SwapHandler per finalToken. Used for separation of funds for different
 // flows
@@ -26,9 +27,12 @@ contract SwapHandler {
     // TODO: all the functions for interactions with `HyperCoreLib` that we might want
 }
 
-contract DstOFTHandler is ILayerZeroComposer {
+contract DstOFTHandler is ILayerZeroComposer, AccessControl {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
+
+    // Roles
+    bytes32 public constant LIMIT_ORDER_UPDATER_ROLE = keccak256("LIMIT_ORDER_UPDATER_ROLE");
 
     address public immutable endpoint;
     address public immutable oft;
@@ -93,11 +97,16 @@ contract DstOFTHandler is ILayerZeroComposer {
 
         endpoint = _endpoint;
         oft = _oft;
+        oftToken = _oftToken;
         donationBox = new DonationBox();
+
+        // AccessControl setup
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setRoleAdmin(LIMIT_ORDER_UPDATER_ROLE, DEFAULT_ADMIN_ROLE);
     }
 
-    modifier onlyConfigAdmin() {
-        // TODO! AccessControl
+    modifier onlyDefaultAdmin() {
+        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not default admin");
         _;
     }
 
@@ -112,13 +121,13 @@ contract DstOFTHandler is ILayerZeroComposer {
         uint32 hCoreTokenIndex,
         bool canBeUsedForAccountCreationFee,
         uint256 sponsorAmountWei
-    ) external onlyConfigAdmin {
+    ) external onlyDefaultAdmin {
         _updateTokenInfo(evmTokenAddress, hCoreTokenIndex, canBeUsedForAccountCreationFee, sponsorAmountWei);
     }
 
     function setFallbackSponsorshipToken(
         address evmTokenAddress
-    ) external onlyConfigAdmin onlyExistingToken(evmTokenAddress) {
+    ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
         require(tokens[evmTokenAddress].canBeUsedForAccountCreationFee, "canBeUsedForAccountCreationFee = false");
         fallbackSponsorshipToken = evmTokenAddress;
     }
@@ -126,7 +135,7 @@ contract DstOFTHandler is ILayerZeroComposer {
     // @dev config admin calls this function to add support for an additional token that can be a final token of swap flow
     function registerNewFinalToken(
         address evmTokenAddress
-    ) external onlyConfigAdmin onlyExistingToken(evmTokenAddress) {
+    ) external onlyDefaultAdmin onlyExistingToken(evmTokenAddress) {
         // TODO: there has to be some unregister call too. But we then have to have the ability to withdraw all tokens form the SwapHandler ...
         require(registeredFinalTokens[evmTokenAddress] == false, "Already registered");
         // TODO! Create a new SwapHandler contract
@@ -196,6 +205,7 @@ contract DstOFTHandler is ILayerZeroComposer {
             if (maxAmtToSponsor <= sponsorAmtRequired) {
                 amountToSponsor = sponsorAmtRequired;
             }
+            // TODO: try to pull sponsored amount from donation box. emit event if DonationBox doesn't have the tokens.
         }
 
         HyperCoreLib.transferERC20EVMToCore(
