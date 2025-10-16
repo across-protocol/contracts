@@ -28,14 +28,20 @@ contract HyperCoreForwarder is Ownable {
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
 
-    // Pending swap queue per final token (FCFS)
     struct PendingSwap {
-        address user;
+        address finalRecipient;
         address finalToken;
-        uint256 amountInEVM; // amount of `oftToken` bridged for this order (EVM units)
-        uint64 coreAmountIn; // starting token amount credited on Core (x1e8)
-        uint64 minOutCore; // minimum final token amount on Core required to settle (post fee)
-        uint128 cloid; // client order id associated with the placed limit order
+        uint64 finalTokenHCoreId;
+        // @dev totalCoreAmountToForwardToUser = minCoreAmountFromLO + sponsoredCoreAmountPreFunded always.
+        // ! When offchain bot is updating a limit order associated with this Pending Order, it's a responsibility of
+        // the function ~.updateLimitOrderPrice() to make sure we NEVER DECREASE the `totalCoreAmountToForwardToUser`
+        // even for the already "completed" PendingSwaps. The reason is, the settlement of ALL orders depends on the
+        // consistency of the `totalCoreAmountToForwardToUser`.
+        // As a side note, if we're calling .updateLimitOrderPrice() for the unfinalized user order, we may decrease
+        // the `totalCoreAmountToForwardToUser`. If it's finalized, we can't (other orders depend on it)
+        uint64 minCoreAmountFromLO;
+        uint64 sponsoredCoreAmountPreFunded;
+        uint128 limitOrderCloid;
     }
 
     // quoteNonce => pending swap details
@@ -309,14 +315,14 @@ contract HyperCoreForwarder is Ownable {
         uint128 cloid = ++nextCloid;
         swapHandler.submitLimitOrder(finalTokenParam, limitPriceX1e8, sizeX1e8, cloid);
 
-        // TODO: are these state updates valid?
         pendingSwaps[quoteNonce] = PendingSwap({
-            user: finalUser,
+            finalRecipient: finalUser,
             finalToken: finalToken,
-            amountInEVM: amountLD,
-            coreAmountIn: coreAmountIn,
-            minOutCore: minOutCore,
-            cloid: cloid
+            // TODO: maybe this is not required. Depdends on the finalization stage
+            finalTokenHCoreId: finalCoreTokenInfo.coreIndex,
+            minCoreAmountFromLO: minOutCore,
+            sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
+            limitOrderCloid: cloid
         });
         pendingQueue[finalToken].push(quoteNonce);
         cloidToQuoteNonce[cloid] = quoteNonce;
@@ -324,7 +330,7 @@ contract HyperCoreForwarder is Ownable {
         emit SwapFlowInitialized(quoteNonce, amountLD, totalEVMAmountToSponsor, finalUser, finalToken);
     }
 
-    function getEVMAmountToCoverCoreAmount(uint64 coreAmount) internal returns (uint256 evmAmount) {
+    function getEVMAmountToCoverCoreAmount(uint64 coreAmount) internal pure returns (uint256 evmAmount) {
         // TODO! use Taylor's function from HyperCoreLib once ready
         return coreAmount / 100;
     }
