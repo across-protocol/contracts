@@ -15,7 +15,8 @@ import {
 export async function sendTransactionWithLookupTable(
   connection: Connection,
   instructions: TransactionInstruction[],
-  sender: Keypair
+  sender: Keypair,
+  additionalSigners: Keypair[] = []
 ): Promise<{ txSignature: string; lookupTableAddress: PublicKey }> {
   // Maximum number of accounts that can be added to Address Lookup Table (ALT) in a single transaction.
   const maxExtendedAccounts = 30;
@@ -78,7 +79,7 @@ export async function sendTransactionWithLookupTable(
   );
 
   // Sign and submit the versioned transaction.
-  versionedTx.sign([sender]);
+  versionedTx.sign([sender, ...additionalSigners]);
   const txSignature = await connection.sendTransaction(versionedTx);
 
   // Confirm the versioned transaction

@@ -57,6 +57,9 @@ findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts
 nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
 squadsIdlUpgrade = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/squadsIdlUpgrade.ts"
 
+[test]
+upgradeable = true
+
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
 
@@ -85,3 +88,28 @@ address = "Afgq3BHEfCE7d78D2XE9Bfyu2ieDqvE24xX8KDwreBms"
 ### Circle Token Messenger Minter PDA -- Ethereum Remote Token Messenger
 [[test.validator.clone]]
 address = "Hazwi3jFQtLKc2ughi7HFXPkpDeso7DQaMR9Ks4afh3j"
+
+### Forked Circle MessageTransmitterV2 Program
+[[test.validator.clone]]
+address = "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC"
+
+### Forked Circle TokenMessengerMinterV2 Program
+[[test.validator.clone]]
+address = "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe"
+
+### Forked Circle MessageTransmitterV2 PDA -- Message Transmitter Config
+[[test.validator.clone]]
+address = "W1k5ijkaSTo5iA5zChNpfzcy796fLhkBxfmJuR8W8HU"
+
+### Forked Circle TokenMessengerMinterV2 PDA -- Token Messenger
+[[test.validator.clone]]
+address = "AawthJCGRmggpfv9MMWV6Jmo9cue4gL9wUZgRBShg58W"
+
+### Circle TokenMessengerMinterV2 PDA -- Ethereum Remote Token Messenger
+[[test.validator.clone]]
+address = "3EzN2mcmdfSNGXRCAixSpTteK6ywdmFDZZWvkMnznFt9"
+
+### Circle TokenMessengerMinterV2 PDA -- Token Minter (Modified with token_controller set to test wallet)
+[[test.validator.account]]
+address = "E1bQJ8eMMn3zmeSewW3HQ8zmJr7KR75JonbwAtWx2bux"
+filename = "test/svm/accounts/token_minter_v2.json"
