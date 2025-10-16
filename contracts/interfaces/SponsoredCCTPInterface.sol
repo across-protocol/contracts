@@ -38,6 +38,13 @@ interface SponsoredCCTPInterface {
         uint256 maxBpsToSponsor
     );
 
+    event SimpleTansferToCore(
+        address indexed finalToken,
+        address indexed finalRecipient,
+        uint256 finalAmount,
+        uint256 maxAmountToSponsor
+    );
+
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
         // The domain ID of the source chain.

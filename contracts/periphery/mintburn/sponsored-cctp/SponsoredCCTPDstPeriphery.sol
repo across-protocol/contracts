@@ -16,13 +16,20 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
+    /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
 
+    /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
 
+    /// @notice A mapping of used nonces to prevent replay attacks.
     mapping(bytes32 => bool) public usedNonces;
 
-    mapping(address => CoreTokenInfo) public tokenCoreInfo;
+    /// @notice A mapping of token addresses to their core token info.
+    mapping(address => CoreTokenInfo) public coreTokenInfos;
+
+    /// @notice A mapping of token addresses to their swap handler address.
+    mapping(address => address) public swapHandlers;
 
     LimitOrder[] public limitOrdersQueued;
 
@@ -35,18 +42,26 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
         signer = _signer;
     }
 
-    function setCoreTokenInfo(address token, CoreTokenInfo memory coreTokenInfo) external onlyOwner {
-        tokenCoreInfo[token] = coreTokenInfo;
-        if (tokenCoreInfo[token].swapHandler == address(0)) {
-            tokenCoreInfo[token].swapHandler = address(new SwapHandler());
-        }
+    function setCoreTokenInfo(
+        address evmContract,
+        uint32 erc20CoreIndex,
+        bool canBeUsedForAccountActivation,
+        uint256 accountActivationFee
+    ) external onlyOwner {
+        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(erc20CoreIndex);
+        coreTokenInfos[evmContract] = CoreTokenInfo({
+            tokenInfo: tokenInfo,
+            coreIndex: erc20CoreIndex,
+            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
+            accountActivationFee: accountActivationFee
+        });
     }
 
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
-        // If the hook data is invalid we cannot process the message and therefore we return
-        // in this case the funds will be kept in this contract
+        // If the hook data is invalid we cannot process the message and therefore we return.
+        // In this case the funds will be kept in this contract
         if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
             return;
         }
@@ -54,38 +69,35 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
-        if (_isQuoteEligibleForSwap(quote, signature)) {
-            uint256 finalAmount = quote.amount;
-            address finalRecipient = quote.finalRecipient.toAddress();
-            address finalToken = quote.finalToken.toAddress();
-
-            if (!_isQuoteValid(quote, signature)) {
-                // send the received funds to the final recipient on CORE
-                finalAmount = quote.amount;
-            } else {
-                // send the received + fee to the final recipient on CORE
-                finalAmount = quote.amount + feeExecuted + _getAccountActivationFee(finalToken, finalRecipient);
-            }
-
-            HyperCoreLib.transferERC20EVMToCore(
-                finalToken,
-                tokenCoreInfo[finalToken].coreIndex,
-                finalRecipient,
-                finalAmount,
-                tokenCoreInfo[finalToken].decimalDiff
+        if (!_isQuoteValid(quote, signature)) {
+            // If the quote is not valid, we execute a simple transfer regardless of the final token
+            _executeSimpleTransfer(
+                quote.amount,
+                quote.finalRecipient.toAddress(),
+                quote.burnToken.toAddress(),
+                feeExecuted,
+                0 // No basis points to sponsor
             );
-
-            emit SponsoredMintAndWithdraw(
-                quote.nonce,
-                quote.finalRecipient,
-                quote.finalToken,
-                finalAmount,
-                quote.deadline,
+        } else if (quote.burnToken != quote.finalToken) {
+            _executeSimpleTransfer(
+                quote.amount,
+                quote.finalRecipient.toAddress(),
+                quote.finalToken.toAddress(),
+                feeExecuted,
                 quote.maxBpsToSponsor
             );
         } else {
             _queueLimitOrder(quote.finalToken.toAddress(), quote.finalRecipient.toAddress(), quote.amount);
         }
+
+        emit SponsoredMintAndWithdraw(
+            quote.nonce,
+            quote.finalRecipient,
+            quote.finalToken,
+            quote.amount,
+            quote.deadline,
+            quote.maxBpsToSponsor
+        );
     }
 
     function _isQuoteEligibleForSwap(
@@ -109,18 +121,47 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     function _getAccountActivationFee(address token, address recipient) internal view returns (uint256) {
         bool accountActivated = HyperCoreLib.coreUserExists(recipient);
 
-        // fee for account activation is 1 token
-        return accountActivated ? 0 : 10 ** IERC20Metadata(token).decimals();
+        // TODO: handle the case where the token can't be used for account activation
+        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFee;
+    }
+
+    function _executeSimpleTransfer(
+        uint256 amount,
+        address finalRecipient,
+        address finalToken,
+        uint256 feeExecuted,
+        uint256 maxBpsToSponsor
+    ) internal {
+        uint256 maxFee = (amount * maxBpsToSponsor) / 10000;
+        uint256 accountActivationFee = _getAccountActivationFee(finalToken, finalRecipient);
+        uint256 maxAmountToSponsor = feeExecuted + accountActivationFee;
+        if (maxAmountToSponsor > maxFee) {
+            maxAmountToSponsor = maxFee;
+        }
+
+        uint256 finalAmount = amount + maxAmountToSponsor;
+
+        // TODO: pull funds from donation box
+
+        HyperCoreLib.transferERC20EVMToCore(
+            finalToken,
+            coreTokenInfos[finalToken].coreIndex,
+            finalRecipient,
+            finalAmount,
+            coreTokenInfos[finalToken].tokenInfo.evmExtraWeiDecimals
+        );
+
+        emit SimpleTansferToCore(finalToken, finalRecipient, finalAmount, maxAmountToSponsor);
     }
 
     function _queueLimitOrder(address token, address recipient, uint256 amount) internal {
-        IERC20Metadata(token).safeTransfer(tokenCoreInfo[token].swapHandler, amount);
+        // TODO: send the funds to the swap handler before queuing the limit order
         // TODO: get the limit price from the quote
         uint64 limitPriceX1e8 = 10;
         uint64 sizeX1e8 = uint64(amount);
 
-        SwapHandler(tokenCoreInfo[token].swapHandler).swap(
-            tokenCoreInfo[token],
+        SwapHandler(swapHandlers[token]).submitLimitOrder(
+            coreTokenInfos[token],
             recipient,
             amount,
             limitPriceX1e8,

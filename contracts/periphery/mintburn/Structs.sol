@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
+
 // Info about the token on HyperCore.
 struct CoreTokenInfo {
-    // The EVM contract address of the token.
-    address evmContract;
+    // The token info on HyperCore.
+    HyperCoreLib.TokenInfo tokenInfo;
     // The HyperCore index id of the token.
     uint64 coreIndex;
-    // The decimal difference of evmDecimals - coreDecimals.
-    int8 decimalDiff;
-    // The asset index of the token on HyperCore.
-    uint32 assetIndex;
-    // Whether the order is a buy order.
-    bool isBuy;
-    // The swap handler contract address.
-    address swapHandler;
+    // Whether the token can be used for account activation fee.
+    bool canBeUsedForAccountActivation;
+    // The account activation fee for the token.
+    uint256 accountActivationFee;
 }
+
+// struct
 
 struct LimitOrder {
     // The client order id of the order.

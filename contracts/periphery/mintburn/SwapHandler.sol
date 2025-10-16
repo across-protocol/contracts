@@ -16,7 +16,7 @@ contract SwapHandler {
         _;
     }
 
-    function swap(
+    function submitLimitOrder(
         CoreTokenInfo memory coreTokenInfo,
         address recipient,
         uint256 amount,
@@ -24,23 +24,6 @@ contract SwapHandler {
         uint64 sizeX1e8,
         uint128 cloid
     ) external onlyParentHandler {
-        HyperCoreLib.transferERC20EVMToCore(
-            coreTokenInfo.evmContract,
-            coreTokenInfo.coreIndex,
-            recipient,
-            amount,
-            coreTokenInfo.decimalDiff
-        );
-
-        // Submit the limit order to HyperCore
-        HyperCoreLib.submitLimitOrder(
-            coreTokenInfo.assetIndex,
-            coreTokenInfo.isBuy,
-            limitPriceX1e8,
-            sizeX1e8,
-            false,
-            HyperCoreLib.Tif.GTC,
-            cloid
-        );
+        // TODO: queue the limit order on the core side
     }
 }
