@@ -9,6 +9,7 @@ import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT } from "../../../interfaces/IOFT.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // Contract to hold funds for swaps. We have one SwapHandler per finalToken. Used for separation of funds for different
 // flows
@@ -79,6 +80,7 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
         address finalUser,
         address finalToken
     );
+    event DonationBoxInsufficientFunds(address token, uint256 requested);
 
     // TODO: on construction, we should populate the `tokens` mapping with at least info about the USDT0
     // TODO: then we should have a function like `addAuthorizedFinalToken` that will add a token to the tokens
@@ -205,7 +207,15 @@ contract DstOFTHandler is ILayerZeroComposer, AccessControl {
             if (maxAmtToSponsor <= sponsorAmtRequired) {
                 amountToSponsor = sponsorAmtRequired;
             }
-            // TODO: try to pull sponsored amount from donation box. emit event if DonationBox doesn't have the tokens.
+            // Try to pull entire sponsored amount from donation box. If it fails, sponsor none.
+            if (amountToSponsor != 0) {
+                try donationBox.withdraw(IERC20(oftTokenInfo.tokenInfo.evmContract), amountToSponsor) {
+                    // success: full sponsorship amount withdrawn to this contract
+                } catch {
+                    emit DonationBoxInsufficientFunds(oftTokenInfo.tokenInfo.evmContract, amountToSponsor);
+                    amountToSponsor = 0;
+                }
+            }
         }
 
         HyperCoreLib.transferERC20EVMToCore(
