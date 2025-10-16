@@ -11,6 +11,7 @@ import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { SwapHandler } from "../SwapHandler.sol";
 import { CoreTokenInfo, LimitOrder } from "../Structs.sol";
+import { HyperCoreForwarder } from "../HyperCoreForwarder.sol";
 
 contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     using SafeERC20 for IERC20Metadata;
@@ -18,6 +19,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    HyperCoreForwarder public immutable hyperCoreForwarder;
 
     /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
@@ -33,9 +36,10 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
     LimitOrder[] public limitOrdersQueued;
 
-    constructor(address _cctpMessageTransmitter, address _signer) {
+    constructor(address _cctpMessageTransmitter, address _signer, address _hyperCoreForwarder) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
+        hyperCoreForwarder = HyperCoreForwarder(_hyperCoreForwarder);
     }
 
     function setSigner(address _signer) external onlyOwner {
@@ -71,20 +75,22 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
         if (!_isQuoteValid(quote, signature)) {
             // If the quote is not valid, we execute a simple transfer regardless of the final token
-            _executeSimpleTransfer(
+            hyperCoreForwarder.executeSimpleTransferToCore(
                 quote.amount,
+                quote.nonce,
+                0, // No basis points to sponsor
                 quote.finalRecipient.toAddress(),
                 quote.burnToken.toAddress(),
-                feeExecuted,
-                0 // No basis points to sponsor
+                0 // No extra fees to sponsor
             );
         } else if (quote.burnToken != quote.finalToken) {
-            _executeSimpleTransfer(
+            hyperCoreForwarder.executeSimpleTransferToCore(
                 quote.amount,
+                quote.nonce,
+                quote.maxBpsToSponsor,
                 quote.finalRecipient.toAddress(),
                 quote.finalToken.toAddress(),
-                feeExecuted,
-                quote.maxBpsToSponsor
+                feeExecuted
             );
         } else {
             _queueLimitOrder(quote.finalToken.toAddress(), quote.finalRecipient.toAddress(), quote.amount);
@@ -118,42 +124,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
             quote.maxBpsToSponsor > 0;
     }
 
-    function _getAccountActivationFee(address token, address recipient) internal view returns (uint256) {
-        bool accountActivated = HyperCoreLib.coreUserExists(recipient);
-
-        // TODO: handle the case where the token can't be used for account activation
-        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFee;
-    }
-
-    function _executeSimpleTransfer(
-        uint256 amount,
-        address finalRecipient,
-        address finalToken,
-        uint256 feeExecuted,
-        uint256 maxBpsToSponsor
-    ) internal {
-        uint256 maxFee = (amount * maxBpsToSponsor) / 10000;
-        uint256 accountActivationFee = _getAccountActivationFee(finalToken, finalRecipient);
-        uint256 maxAmountToSponsor = feeExecuted + accountActivationFee;
-        if (maxAmountToSponsor > maxFee) {
-            maxAmountToSponsor = maxFee;
-        }
-
-        uint256 finalAmount = amount + maxAmountToSponsor;
-
-        // TODO: pull funds from donation box
-
-        HyperCoreLib.transferERC20EVMToCore(
-            finalToken,
-            coreTokenInfos[finalToken].coreIndex,
-            finalRecipient,
-            finalAmount,
-            coreTokenInfos[finalToken].tokenInfo.evmExtraWeiDecimals
-        );
-
-        emit SimpleTansferToCore(finalToken, finalRecipient, finalAmount, maxAmountToSponsor);
-    }
-
+    // TODO: move this to the HyperCoreForwarder
     function _queueLimitOrder(address token, address recipient, uint256 amount) internal {
         // TODO: send the funds to the swap handler before queuing the limit order
         // TODO: get the limit price from the quote
