@@ -293,6 +293,35 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Returns an amount to send on HyperEVM to receive AT LEAST the amountCoreDesired on HyperCore
+     * @param amountCoreDesired The minimum amount desired to receive on HyperCore
+     * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
+     * @return amountEVMToSend The amount to send on HyperEVM to receive at least amountCoreDesired on HyperCore
+     * @return amountCoreToReceive The amount that will be received on core if the amountEVMToSend is sent from HyperEVM
+     */
+    function minimumCoreAmountToAmounts(
+        uint64 amountCoreDesired,
+        int8 decimalDiff
+    ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
+        if (decimalDiff == 0) {
+            // Same decimals between HyperEVM and HyperCore
+            amountEVMToSend = uint256(amountCoreDesired);
+            amountCoreToReceive = amountCoreDesired;
+        } else if (decimalDiff > 0) {
+            // EVM token has more decimals than Core
+            // Scale up to represent the same value in higher-precision EVM units
+            amountEVMToSend = uint256(amountCoreDesired) * (10 ** uint8(decimalDiff));
+            amountCoreToReceive = amountCoreDesired;
+        } else {
+            // Core token has more decimals than EVM
+            // Scale down, rounding UP to avoid shortfall on Core
+            uint256 scaleDivisor = 10 ** uint8(-decimalDiff);
+            amountEVMToSend = (uint256(amountCoreDesired) + scaleDivisor - 1) / scaleDivisor; // ceil division
+            amountCoreToReceive = uint64(amountEVMToSend * scaleDivisor);
+        }
+    }
+
+    /**
      * @notice Converts an amount and an asset to a evm amount and core amount
      * @param amountEVMPreDusted The amount to convert
      * @param assetBridgeSupplyCore The maximum amount transferable capped by the number of tokens located on the HyperCore's side of the asset bridge
