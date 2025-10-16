@@ -12,6 +12,7 @@ import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
 // TODO? make Ownable and allow to change ApiPubKey and DstComposer. For Phase0, can keep it like this and just redeploy
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
 // specific send events, checking the API signature and sending the transfer via OFT
+// TODO! Make this pausable
 contract SponsoredOFTSrcPeriphery {
     // TODO: instead of using `AddressToBytes32`, maybe just inline the function here? Feels more visible this way (no
     // one can accidentally break this contract by changing that function)

@@ -6,6 +6,8 @@ import { OFTComposeMsgCodec } from "../../../libraries/OFTComposeMsgCodec.sol";
 import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
+import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
+import { IOFT } from "../../../interfaces/IOFT.sol";
 
 // Contract to hold funds for swaps. We have one SwapHandler per finalToken. Used for separation of funds for different
 // flows
@@ -25,12 +27,18 @@ contract SwapHandler {
 }
 
 contract DstOFTHandler is ILayerZeroComposer {
-    address public immutable USDT0;
-    address public immutable USDC;
-    address public immutable USDH;
+    using ComposeMsgCodec for bytes;
+    using Bytes32ToAddress for bytes32;
 
     address public immutable endpoint;
-    address public immutable oApp;
+    address public immutable oft;
+    address public immutable oftToken;
+
+    // TODO: if finalToken of a TX cannot be used as a fee token for account creation, use this tokens
+    // TODO: make settable
+    address public fallbackSponsorshipToken;
+    // @dev Only these tokens are allowed to be a finalToken of the swap flow
+    mapping(address => bool) public registeredFinalTokens;
 
     // @dev `donationBox` holds the funds we use for sponsorship. It serves as a convenient separator for user funds /
     // sponsorship funds
@@ -41,20 +49,88 @@ contract DstOFTHandler is ILayerZeroComposer {
     // @dev This will only work for EVM senders. We don't support SVM senders for OFT at this point
     mapping(uint64 => address) authorizedSrcPeripheryContracts;
 
+    mapping(bytes32 => bool) quoteNonces;
+
     struct TokenInfo {
+        HyperCoreLib.TokenInfo tokenInfo;
+        uint32 hCoreTokenIndex;
         bool canBeUsedForAccountCreationFee;
-        uint256 accountCreationAmount; // depends on decimals?
+        uint256 accountCreationAmount; // @dev in EVM wei
     }
 
-    // TODO: some tokenInfo mapping here .. Look in HyperCoreLib
+    // @dev evmTokenAddress => TokenInfo
     mapping(address => TokenInfo) tokens;
+
+    // @dev finalTokenEvmAddress => swapHandler. Used to isolate swap actions to different accounts
+    mapping(address => SwapHandler) swapHandlers;
 
     error AuthorizedPeripheryNotSet(uint32 _srcEid);
 
-    constructor(address _endpoint, address _oApp) {
+    event FallbackSponsorshipTokenSet(address evmTokenAddress);
+    event FinalTokenRegistered(address evmTokenAddress);
+    event SimpleHcoreTransfer(
+        bytes32 quoteNonce,
+        uint256 amount,
+        uint256 sponsoredAmount,
+        address finalUser,
+        address finalToken
+    );
+
+    // TODO: on construction, we should populate the `tokens` mapping with at least info about the USDT0
+    // TODO: then we should have a function like `addAuthorizedFinalToken` that will add a token to the tokens
+    constructor(
+        address _endpoint,
+        address _oft,
+        address _oftToken,
+        uint32 _oftTokenHCoreId,
+        bool _canBeUsedForAccountCreationFee,
+        uint256 _sponsorAmountWei
+    ) {
+        require(_oftToken == IOFT(_oft).token(), "oft, oftToken mistmatch");
+
+        HyperCoreLib.TokenInfo memory tokenInfo = _getTokenInfoChecked(_oftToken, _oftTokenHCoreId);
+        tokens[_oftToken] = TokenInfo(tokenInfo, _oftTokenHCoreId, _canBeUsedForAccountCreationFee, _sponsorAmountWei);
+
         endpoint = _endpoint;
-        oApp = _oApp;
+        oft = _oft;
         donationBox = new DonationBox();
+    }
+
+    modifier onlyConfigAdmin() {
+        // TODO! AccessControl
+        _;
+    }
+
+    modifier onlyExistingToken(address evmTokenAddress) {
+        // TODO: does this work?
+        require(tokens[evmTokenAddress].tokenInfo.evmContract != address(0), "Unknown token");
+        _;
+    }
+
+    function updateTokenInfo(
+        address evmTokenAddress,
+        uint32 hCoreTokenIndex,
+        bool canBeUsedForAccountCreationFee,
+        uint256 sponsorAmountWei
+    ) external onlyConfigAdmin {
+        _updateTokenInfo(evmTokenAddress, hCoreTokenIndex, canBeUsedForAccountCreationFee, sponsorAmountWei);
+    }
+
+    function setFallbackSponsorshipToken(
+        address evmTokenAddress
+    ) external onlyConfigAdmin onlyExistingToken(evmTokenAddress) {
+        require(tokens[evmTokenAddress].canBeUsedForAccountCreationFee, "canBeUsedForAccountCreationFee = false");
+        fallbackSponsorshipToken = evmTokenAddress;
+    }
+
+    // @dev config admin calls this function to add support for an additional token that can be a final token of swap flow
+    function registerNewFinalToken(
+        address evmTokenAddress
+    ) external onlyConfigAdmin onlyExistingToken(evmTokenAddress) {
+        // TODO: there has to be some unregister call too. But we then have to have the ability to withdraw all tokens form the SwapHandler ...
+        require(registeredFinalTokens[evmTokenAddress] == false, "Already registered");
+        // TODO! Create a new SwapHandler contract
+        registeredFinalTokens[evmTokenAddress] = true;
     }
 
     /**
@@ -70,7 +146,7 @@ contract DstOFTHandler is ILayerZeroComposer {
         address /* _executor */,
         bytes calldata /* _extraData */
     ) external payable override {
-        require(_oApp == oApp, "ComposedReceiver: Invalid OApp");
+        require(_oApp == oft, "ComposedReceiver: Invalid OApp");
         require(msg.sender == endpoint, "ComposedReceiver: Unauthorized sender");
         _requireAuthorizedPeriphery(_message);
 
@@ -81,30 +157,60 @@ contract DstOFTHandler is ILayerZeroComposer {
         // admin to withdraw up to that amount. Nice-to-have IMO but not a req.
         // @dev If `_composeMsg` is not formatted the way we expect, just revert this call instead of potentially
         // blackholing the money. If the funds landed into this Handler, they'll have to be rescued via _adminRescueERC20()
-        require(ComposeMsgCodec._isValidComposeMsgBytelength(_composeMsg), "_composeMsg incorrectly formatted");
+        require(_composeMsg._isValidComposeMsgBytelength(), "_composeMsg incorrectly formatted");
 
-        // TODO:
-        // - finalToken == USDT0? send to HCore to user
-        // - else, start swap flow ..
+        bytes32 quoteNonce = _composeMsg._getNonce();
+        require(!quoteNonces[quoteNonce], "Nonce already used");
+        quoteNonces[quoteNonce] = true;
 
-        // Decode the amount in local decimals being transferred
-        // uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
+        address finalRecipient = _composeMsg._getFinalRecipient().toAddress();
+        address finalToken = _composeMsg._getFinalToken().toAddress();
+        uint256 maxBpsToSponsor = _composeMsg._getMaxBpsToSponsor();
+        if (finalToken == oftToken) {
+            uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
+            _executeSimpleHCoreTransferFlow(_amountLD, quoteNonce, maxBpsToSponsor, finalRecipient, finalToken);
+        } else {
+            _initializeSwapFlow();
+        }
     }
 
-    // TODO: what token to return this `amount` in? we can return USDC first. `finalToken` should also be Okay ...
-    // TODO: perhaps rely on some quote params here
-    function _estimateBridgeSponsorshipAmount(
+    function _executeSimpleHCoreTransferFlow(
+        uint256 amountLD,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
         address finalUser,
         address finalToken
-    ) internal returns (bool needsSponsorship, uint256 amount) {
+    ) internal {
+        TokenInfo memory oftTokenInfo = tokens[oftToken];
+
         bool userHasHCoreAccount = HyperCoreLib.coreUserExists(finalUser);
-        if (!userHasHCoreAccount) {
-            TokenInfo memory token = tokens[finalToken];
-            require(token.canBeUsedForAccountCreationFee, "wrong account creation fee token");
-            return (true, token.accountCreationAmount);
-        } else {
-            return (false, 0);
+
+        // TODO? Consider including fallbackSponsorshipToken logic in here. We'd need to send the 1 of fallback token
+        // first and then the next transfer second: it's unclear whether or not HCore would respect submission order
+        uint256 amountToSponsor = 0;
+        // @dev If we're able to sponsor the user account creation in the `oftToken` and the account creation fee is
+        // less than max fee we're willing to pay, sponsor account creation
+        if (!userHasHCoreAccount && oftTokenInfo.canBeUsedForAccountCreationFee) {
+            uint256 maxAmtToSponsor = (amountLD * maxBpsToSponsor) / 10_000;
+            uint256 sponsorAmtRequired = oftTokenInfo.accountCreationAmount;
+            if (maxAmtToSponsor <= sponsorAmtRequired) {
+                amountToSponsor = sponsorAmtRequired;
+            }
         }
+
+        HyperCoreLib.transferERC20EVMToCore(
+            oftTokenInfo.tokenInfo.evmContract,
+            oftTokenInfo.hCoreTokenIndex,
+            finalUser,
+            amountLD + amountToSponsor,
+            oftTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+
+        emit SimpleHcoreTransfer(quoteNonce, amountLD, amountToSponsor, finalUser, finalToken);
+    }
+
+    function _initializeSwapFlow() internal {
+        // TODO! :D
     }
 
     // @dev Checks that _message came from the authorized src periphery contract stored in `authorizedSrcPeripheryContracts`
@@ -124,5 +230,35 @@ contract DstOFTHandler is ILayerZeroComposer {
         // @dev If the message is not from the authorized periphery contract, we cannot ensure the shape of _composeMsg
         // @dev _composeMsg is where the `finalRecipient` resides. These funds have to be rescued via _adminRescueERC20()
         require(authorizedPeriphery == _composeFrom, "Src periphery not authorized");
+    }
+
+    // Internal functions
+
+    function _updateTokenInfo(
+        address evmTokenAddress,
+        uint32 hCoreTokenIndex,
+        bool canBeUsedForAccountCreationFee,
+        uint256 sponsorAmountWei
+    ) internal {
+        HyperCoreLib.TokenInfo memory tokenInfo = _getTokenInfoChecked(evmTokenAddress, hCoreTokenIndex);
+        tokens[evmTokenAddress] = TokenInfo(
+            tokenInfo,
+            hCoreTokenIndex,
+            canBeUsedForAccountCreationFee,
+            sponsorAmountWei
+        );
+        // @dev if we're updating token info for a current `fallbackSponsorshipToken`, make sure that `canBeUsedForAccountCreationFee`
+        // stays true. Otherwise, unset `fallbackSponsorshipToken`
+        if (evmTokenAddress == fallbackSponsorshipToken && !tokens[evmTokenAddress].canBeUsedForAccountCreationFee) {
+            fallbackSponsorshipToken = address(0);
+        }
+    }
+
+    function _getTokenInfoChecked(
+        address evmTokenAddress,
+        uint32 hcoreTokenIndex
+    ) internal view returns (HyperCoreLib.TokenInfo memory tokenInfo) {
+        tokenInfo = HyperCoreLib.tokenInfo(hcoreTokenIndex);
+        require(tokenInfo.evmContract == evmTokenAddress, "Wrong token id");
     }
 }
