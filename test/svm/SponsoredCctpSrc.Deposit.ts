@@ -219,7 +219,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     messageSentEventData = Keypair.generate();
   });
 
-  it.only("Sponsored CCTP deposit", async () => {
+  it("Sponsored CCTP deposit", async () => {
     const nonce = crypto.randomBytes(32);
     const deadline = Math.floor(Date.now() / 1000) + 3600;
 
