@@ -2,12 +2,14 @@
 pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
+import { SwapHandler } from "../SwapHandler.sol";
+import { CoreTokenInfo } from "../Structs.sol";
 
 contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
     using Bytes32ToAddress for bytes32;
@@ -18,13 +20,22 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
     mapping(bytes32 => bool) public usedNonces;
 
-    mapping(address => uint64) public tokenCoreIndexes;
-
-    mapping(address => int8) public tokenDecimalDiffs;
+    mapping(address => CoreTokenInfo) public tokenCoreInfo;
 
     constructor(address _cctpMessageTransmitter, address _signer) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
+    }
+
+    function setSigner(address _signer) external onlyOwner {
+        signer = _signer;
+    }
+
+    function setCoreTokenInfo(address token, CoreTokenInfo memory coreTokenInfo) external onlyOwner {
+        tokenCoreInfo[token] = coreTokenInfo;
+        if (tokenCoreInfo[token].swapHandler == address(0)) {
+            tokenCoreInfo[token].swapHandler = address(new SwapHandler());
+        }
     }
 
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
@@ -41,20 +52,23 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
 
         if (_isQuoteEligibleForSwap(quote, signature)) {
             uint256 finalAmount = quote.amount;
+            address finalRecipient = quote.finalRecipient.toAddress();
+            address finalToken = quote.finalToken.toAddress();
+
             if (!_isQuoteValid(quote, signature)) {
                 // send the received funds to the final recipient on CORE
                 finalAmount = quote.amount;
             } else {
                 // send the received + fee to the final recipient on CORE
-                finalAmount = quote.amount + feeExecuted;
+                finalAmount = quote.amount + feeExecuted + _getAccountActivationFee(finalToken, finalRecipient);
             }
 
-            HyperCoreLib.transferERC20ToCore(
-                quote.finalToken.toAddress(),
-                tokenCoreIndexes[quote.finalToken.toAddress()],
-                quote.finalRecipient.toAddress(),
+            HyperCoreLib.transferERC20EVMToCore(
+                finalToken,
+                tokenCoreInfo[finalToken].coreIndex,
+                finalRecipient,
                 finalAmount,
-                tokenDecimalDiffs[quote.finalToken.toAddress()]
+                tokenCoreInfo[finalToken].decimalDiff
             );
 
             emit SponsoredMintAndWithdraw(
@@ -66,17 +80,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
                 quote.maxBpsToSponsor
             );
         } else {
-            // TODO: swap the finalToken to the burnToken
+            _queueLimitOrder(finalToken, finalRecipient, finalAmount);
         }
-    }
-
-    function setSigner(address _signer) external onlyOwner {
-        signer = _signer;
-    }
-
-    function setTokenCoreIndexes(address token, uint64 coreIndex, int8 decimalDiff) external onlyOwner {
-        tokenCoreIndexes[token] = coreIndex;
-        tokenDecimalDiffs[token] = decimalDiff;
     }
 
     function _isQuoteEligibleForSwap(
@@ -97,8 +102,17 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable {
             quote.maxBpsToSponsor > 0;
     }
 
+    function _getAccountActivationFee(address token, address recipient) internal view returns (uint256) {
+        bool accountActivated = HyperCoreLib.coreUserExists(recipient);
+
+        // fee for account activation is 1 token
+        return accountActivated ? 0 : 10 ** IERC20Metadata(token).decimals();
+    }
+
+    function _queueLimitOrder(address token, address recipient, uint256 amount) internal {}
+
     // Only used for testing
     function sweepErc20(address token, address to, uint256 amount) external onlyOwner {
-        IERC20(token).transfer(to, amount);
+        IERC20Metadata(token).transfer(to, amount);
     }
 }
