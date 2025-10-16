@@ -10,7 +10,7 @@ pub struct CCTPQuoteDeposited {
     pub final_recipient: Pubkey,
     pub final_token: Pubkey,
     pub destination_caller: Pubkey,
-    pub nonce: [u8; 32],
+    pub nonce: Pubkey, // // Nonce is bytes32 random value, but it is more readable in logs expressed as Pubkey.
 }
 
 #[event]
