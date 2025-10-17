@@ -1,19 +1,15 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
-import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
-import { SwapHandler } from "../SwapHandler.sol";
-import { CoreTokenInfo, LimitOrder } from "../Structs.sol";
 import { HyperCoreForwarder } from "../HyperCoreForwarder.sol";
 
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCoreForwarder {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -47,7 +43,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCore
         signer = _signer;
     }
 
-    function setSigner(address _signer) external onlyOwner {
+    function setSigner(address _signer) external onlyDefaultAdmin {
         signer = _signer;
     }
 
@@ -104,7 +100,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCore
     }
 
     // Only used for testing
-    function sweepErc20(address token, address to, uint256 amount) external onlyOwner {
+    function sweepErc20(address token, address to, uint256 amount) external onlyDefaultAdmin {
         // TODO: pull from donation box as well?
         IERC20Metadata(token).transfer(to, amount);
     }
