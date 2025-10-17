@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
@@ -19,6 +19,8 @@ contract HyperCoreForwarder is AccessControl {
     uint256 public constant CORE_SCALAR = 10 ** CORE_DECIMALS;
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
+
+    uint256 public constant BRIDGE_BALANCE_BUFFER_EVM = 10 ** 9; // 1,000,000,000 (1 billion)
 
     // Roles
     bytes32 public constant LIMIT_ORDER_UPDATER_ROLE = keccak256("LIMIT_ORDER_UPDATER_ROLE");
@@ -248,6 +250,19 @@ contract HyperCoreForwarder is AccessControl {
 
         uint256 finalAmount = amount + amountToSponsor;
 
+        // If there are no funds left on the destination side of the bridge, the funds will be lost in the
+        // bridge. To prevent this, we add a buffer to the final amount.
+        uint256 finalTokenDecimals = IERC20Metadata(finalToken).decimals();
+        uint256 finalAmountWithBuffer = finalAmount + BRIDGE_BALANCE_BUFFER_EVM * 10 ** finalTokenDecimals;
+        HyperCoreLib.isAmountSafeToBridge(
+            finalRecipient,
+            coreTokenInfo.coreIndex,
+            finalAmountWithBuffer,
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+
+        // There is a slim chance that by the time we get here, the balance of the bridge changes
+        // and the funds are lost.
         HyperCoreLib.transferERC20EVMToCore(
             finalToken,
             coreTokenInfo.coreIndex,

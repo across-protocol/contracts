@@ -67,6 +67,31 @@ library HyperCoreLib {
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
 
     /**
+     * @notice Checks if the provided amount is safe to bridge by verifying the spot balance
+     * @param account The account to check the balance for
+     * @param token The token index to check
+     * @param amountToBridgeEVM The amount to bridge (in EVM units)
+     * @dev Reverts with TransferAmtExceedsAssetBridgeBalance if insufficient balance
+     */
+    function isAmountSafeToBridge(
+        address account,
+        uint64 token,
+        uint256 amountToBridgeEVM,
+        int8 decimalDiff
+    ) internal view {
+        (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+            amountToBridgeEVM,
+            decimalDiff
+        );
+
+        uint64 bridgeBalanceCore = spotBalance(account, token);
+
+        if (bridgeBalanceCore < amountCoreToReceive) {
+            revert TransferAmtExceedsAssetBridgeBalance(amountEVMToSend, bridgeBalanceCore);
+        }
+    }
+
+    /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
