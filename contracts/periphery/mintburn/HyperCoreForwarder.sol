@@ -67,13 +67,23 @@ contract HyperCoreForwarder is AccessControl {
     /// @notice Emitted when a simple transfer to core is executed.
     event SimpleTransferFlowCompleted(
         bytes32 indexed quoteNonce,
+        address indexed finalRecipient,
+        address indexed finalToken,
         // All amounts are in finalToken
         uint256 evmAmountReceived,
         uint256 evmAmountSponsored,
         uint256 evmAmountTransferred,
-        uint64 coreAmountTransferred,
+        uint64 coreAmountTransferred
+    );
+
+    event FallbackHyperEVMFlowCompleted(
+        bytes32 indexed quoteNonce,
         address indexed finalRecipient,
-        address indexed finalToken
+        address indexed finalToken,
+        // All amounts are in finalToken
+        uint256 evmAmountReceived,
+        uint256 evmAmountSponsored,
+        uint256 evmAmountTransferred
     );
 
     event SwapFlowInitialized(
@@ -85,14 +95,6 @@ contract HyperCoreForwarder is AccessControl {
     );
 
     event SwapFlowCompleted(bytes32 quoteNonce, uint64 amountCore, address user, address finalToken);
-
-    event FallbackHyperEVMFlowCompleted(
-        bytes32 quoteNonce,
-        uint256 receivedTokensEvm,
-        uint256 sponsoredTokensEvm,
-        address finalRecipient,
-        address finalToken
-    );
 
     event CancelledLimitOrder(bytes32 quoteNonce, uint32 asset, uint128 cloid);
 
@@ -245,9 +247,7 @@ contract HyperCoreForwarder is AccessControl {
                 extraFeesToSponsor
             );
         } else {
-            // @dev Notice, swap flow doesn't use `extraFeesToSponsor` because it's sponsorship is calculated based on
-            // the swap output amount anyway. So we don't have to sponsor the extra fees separately (like CCTP bridge fees)
-            _initiateSwapFlow(amount, quoteNonce, finalRecipient, finalToken, maxBpsToSponsor);
+            _initiateSwapFlow(amount, quoteNonce, finalRecipient, finalToken, maxBpsToSponsor, extraFeesToSponsor);
         }
     }
 
@@ -291,7 +291,7 @@ contract HyperCoreForwarder is AccessControl {
         // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
         // fall back to sending user funds on HyperEVM.
         if (!isSafe || (accountCreationFee > 0 && !coreTokenInfo.canBeUsedForAccountActivation)) {
-            _sendUserFundsOnHyperEVM(quoteNonce, quotedEvmAmount, finalRecipient, finalToken);
+            _sendUserFundsOnHyperEVM(quoteNonce, amount, amountToSponsor, finalAmount, finalRecipient, finalToken);
             return;
         }
 
@@ -307,12 +307,12 @@ contract HyperCoreForwarder is AccessControl {
 
         emit SimpleTransferFlowCompleted(
             quoteNonce,
+            finalRecipient,
+            finalToken,
             amount,
             amountToSponsor,
             quotedEvmAmount,
-            quotedCoreAmount,
-            finalRecipient,
-            finalToken
+            quotedCoreAmount
         );
     }
 
@@ -327,7 +327,8 @@ contract HyperCoreForwarder is AccessControl {
         bytes32 quoteNonce,
         address finalUser,
         address finalToken,
-        uint256 maxBpsToSponsor
+        uint256 maxBpsToSponsor,
+        uint256 extraBridgingFeesCharged
     ) internal {
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
 
@@ -337,8 +338,10 @@ contract HyperCoreForwarder is AccessControl {
         CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
 
+        uint256 totalEvmBridgedAmount = amountLD + extraBridgingFeesCharged;
         (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-            amountLD,
+            // Sponsorship bps are calculated based on the full bridged amount, which is `amountLD` + `extraBridgingFeesCharged`
+            totalEvmBridgedAmount,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
@@ -371,7 +374,19 @@ contract HyperCoreForwarder is AccessControl {
         // @dev the user has no HyperCore account and we can't sponsor its creation; fall back to sending user funds on
         // HyperEVM
         if (accountCreationFee > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
-            _sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
+            uint256 maxEvmAmountToSponsor = (totalEvmBridgedAmount * maxBpsToSponsor) / BPS_SCALAR;
+            uint256 evmAmountToSponsor = extraBridgingFeesCharged > maxEvmAmountToSponsor
+                ? maxEvmAmountToSponsor
+                : extraBridgingFeesCharged;
+
+            _sendUserFundsOnHyperEVM(
+                quoteNonce,
+                amountLD,
+                evmAmountToSponsor,
+                amountLD + evmAmountToSponsor,
+                finalUser,
+                finalToken
+            );
             return;
         }
 
@@ -438,7 +453,7 @@ contract HyperCoreForwarder is AccessControl {
         // TODO: leave this check?
         // If computed size rounds to zero, fall back
         if (sizeX1e8 == 0) {
-            _sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
+            _sendUserFundsOnHyperEVM(quoteNonce, amountLD, 0, amountLD, finalUser, finalToken);
             return;
         }
         uint128 cloid = ++nextCloid;
@@ -625,12 +640,21 @@ contract HyperCoreForwarder is AccessControl {
      */
     function _sendUserFundsOnHyperEVM(
         bytes32 quoteNonce,
-        uint256 amountLD,
+        uint256 evmAmountReceived,
+        uint256 evmSponsoredAmount,
+        uint256 totalEvmAmountToSend,
         address finalUser,
         address finalToken
     ) internal {
-        IERC20(finalToken).safeTransfer(finalUser, amountLD);
-        emit FallbackHyperEVMFlowCompleted(quoteNonce, amountLD, 0, finalUser, finalToken);
+        IERC20(finalToken).safeTransfer(finalUser, totalEvmAmountToSend);
+        emit FallbackHyperEVMFlowCompleted(
+            quoteNonce,
+            finalUser,
+            finalToken,
+            evmAmountReceived,
+            evmSponsoredAmount,
+            totalEvmAmountToSend
+        );
     }
 
     function _setCoreTokenInfo(
