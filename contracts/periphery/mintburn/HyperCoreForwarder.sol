@@ -393,7 +393,7 @@ contract HyperCoreForwarder is AccessControl {
         }
     }
 
-    event CancelledLimitOrder(uint32 asset, uint128 cloid, bytes32 quoteNonce);
+    event CancelledLimitOrder(bytes32 quoteNonce, uint32 asset, uint128 cloid);
 
     function cancelLimitOrderByCloid(uint32 cloid) external onlyLimitOrderUpdater returns (bytes32 quoteNonce) {
         quoteNonce = cloidToQuoteNonce[cloid];
@@ -407,20 +407,64 @@ contract HyperCoreForwarder is AccessControl {
         // associated limit order is present
         delete pendingSwap.limitOrderCloid;
 
-        emit CancelledLimitOrder(finalTokenParam.assetIndex, cloid, quoteNonce);
+        emit CancelledLimitOrder(quoteNonce, finalTokenParam.assetIndex, cloid);
     }
 
-    // !!! @dev This function is sensitive. It requires the offchain bot to synchronize the state well. The offchain
-    // bot is responsible to ONLY resubmit orders that have been cancelled with the EXACT SAME amount to trade that
-    // the order has been cancelled with. Based on the new expected core out amount, we need to pull some funds from
-    // the donationBox and
-    function submitNewLimitOrder(bytes32 quoteNonce, uint64 priceX1e8, uint64 sizeX1e8) external onlyLimitOrderUpdater {
+    event UpdatedLimitOrder(
+        bytes32 quoteNonce,
+        uint64 priceX1e8,
+        uint64 sizeX1e8,
+        uint64 oldPriceX1e8,
+        uint64 oldSizeX1e8Left
+    );
+
+    /**
+     * @notice This function is to be used in situations when the limit order that's on the books has become stale and
+     * we want to speed up the execution.
+     * @dev This function should be called as a second step after the `cancelLimitOrderByCloid` was already called and
+     * the order was fully cancelled. It is the responsibility of this function's caller to supply oldPriceX1e8 and
+     * oldSizeX1e8Left associated with the previous cancelled order. They act as a safeguarding policy that don't allow
+     * to spend more tokens then the previous limit order wanted to spend to protect the accounting assumptions of the
+     * current contract. Although the values provided as still fully trusted.
+     * @dev This functions chooses to ignore the `maxBpsToSponsor` param as it is supposed to be
+     * used only in rare cases. We choose to pay for the adjusted limit order price completely.
+     * @param quoteNonce quote nonce is used to uniquely identify user order (PendingSwap)
+     * @param priceX1e8 price to set for new limit order
+     * @param sizeX1e8 size to set for new limit order
+     * @param oldPriceX1e8 price that was set for the cancelled order
+     * @param oldSizeX1e8Left size that was remaining on the order that was cancelled
+     */
+    function submitNewLimitOrder(
+        bytes32 quoteNonce,
+        uint64 priceX1e8,
+        uint64 sizeX1e8,
+        uint64 oldPriceX1e8,
+        uint64 oldSizeX1e8Left
+    ) external onlyLimitOrderUpdater {
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
         require(pendingSwap.limitOrderCloid == 0, "Cannot resubmit LO for non-empty cloid");
 
         address finalToken = pendingSwap.finalToken;
         FinalTokenParams storage finalTokenParam = finalTokenParams[finalToken];
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
+
+        // Enforce that the new order does not require more tokens than the remaining budget of the previous order
+        if (finalTokenParam.isBuy) {
+            // New required quote with fee, rounded up
+            // notionalCore = ceil(size * price / 1e8)
+            uint256 notionalCore = (uint256(sizeX1e8) * uint256(priceX1e8) + CORE_SCALAR - 1) / CORE_SCALAR;
+            uint256 requiredQuoteWithFeeCore = (notionalCore * (PPM_SCALAR + finalTokenParam.feePpm) + PPM_SCALAR - 1) /
+                PPM_SCALAR;
+
+            // Old remaining budget in quote with fee, rounded down
+            uint256 oldNotionalCore = (uint256(oldSizeX1e8Left) * uint256(oldPriceX1e8)) / CORE_SCALAR;
+            uint256 oldBudgetWithFeeCore = (oldNotionalCore * (PPM_SCALAR + finalTokenParam.feePpm)) / PPM_SCALAR;
+
+            require(requiredQuoteWithFeeCore <= oldBudgetWithFeeCore, "ExceedsRemainingQuoteBudget");
+        } else {
+            // Selling base: ensure we don't sell more base than remaining
+            require(sizeX1e8 <= oldSizeX1e8Left, "ExceedsRemainingBaseSize");
+        }
 
         uint128 cloid = ++nextCloid;
         SwapHandler swapHandler = finalTokenParam.swapHandler;
@@ -467,6 +511,8 @@ contract HyperCoreForwarder is AccessControl {
                 revert("DonationBoxInsufficientFunds");
             }
         }
+
+        emit UpdatedLimitOrder(quoteNonce, priceX1e8, sizeX1e8, oldPriceX1e8, oldSizeX1e8Left);
     }
 
     function getEVMAmountToCoverCoreAmount(uint64 coreAmount) internal pure returns (uint256 evmAmount) {
