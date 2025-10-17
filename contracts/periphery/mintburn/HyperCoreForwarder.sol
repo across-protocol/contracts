@@ -231,15 +231,12 @@ contract HyperCoreForwarder is AccessControl {
         CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
         FinalTokenParams memory finalTokenParam = finalTokenParams[finalToken];
 
-        // Quote to ensure bridge capacity and get exact core credit for input token
-        HyperCoreLib.HyperAssetAmount memory quoted = HyperCoreLib.quoteHyperCoreAmount(
-            initialCoreTokenInfo.coreIndex,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            // TODO: this check is only for the amountLD and doesn't include sponsored amount
-            HyperCoreLib.toAssetBridgeAddress(initialCoreTokenInfo.coreIndex),
-            amountLD
+        (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+            amountLD,
+            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
-        uint64 coreAmountIn = uint64(quoted.core);
+
+        uint64 coreAmountIn = uint64(quotedCoreAmount);
 
         // X1e8 = Hyperliquid price units
         uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenParam.assetIndex);
@@ -274,9 +271,9 @@ contract HyperCoreForwarder is AccessControl {
             return;
         }
 
-        uint64 oneToOneSendAmount = quoted.core + accountCreationFee;
+        uint64 oneToOneSendAmount = quotedCoreAmount + accountCreationFee;
         uint64 totalCoreAmountToSponsor = oneToOneSendAmount - minOutCore;
-        uint64 allowedCoreAmountToSponsor = uint64((uint256(quoted.core) * maxBpsToSponsor) / BPS_SCALAR);
+        uint64 allowedCoreAmountToSponsor = uint64((uint256(quotedCoreAmount) * maxBpsToSponsor) / BPS_SCALAR);
 
         if (totalCoreAmountToSponsor > allowedCoreAmountToSponsor) {
             // TODO: here, different behavior is possible. E.g. just revert the swap part and do a simple transfer instead
@@ -298,12 +295,12 @@ contract HyperCoreForwarder is AccessControl {
         SwapHandler swapHandler = finalTokenParam.swapHandler;
 
         // 1. Fund SwapHandler @ core with `initialToken`: use it for the trade
-        if (quoted.evm > 0) {
-            IERC20(initialToken).safeTransfer(address(swapHandler), quoted.evm);
+        if (quotedEvmAmount > 0) {
+            IERC20(initialToken).safeTransfer(address(swapHandler), quotedEvmAmount);
             swapHandler.transferFundsToSelfOnCore(
                 initialToken,
                 initialCoreTokenInfo.coreIndex,
-                quoted.evm,
+                quotedEvmAmount,
                 initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
