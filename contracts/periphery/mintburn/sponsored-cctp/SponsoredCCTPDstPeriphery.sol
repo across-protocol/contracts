@@ -95,8 +95,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
         return
             SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) &&
             !usedNonces[quote.nonce] &&
-            quote.deadline >= block.timestamp &&
-            quote.maxBpsToSponsor > 0;
+            quote.deadline >= block.timestamp;
     }
 
     // Only used for testing
