@@ -74,8 +74,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreForwarder {
         address /* _executor */,
         bytes calldata /* _extraData */
     ) external payable override {
-        require(_oApp == ioft, "ComposedReceiver: Invalid OApp");
-        require(msg.sender == oftEndpoint, "ComposedReceiver: Unauthorized endpoint sender");
+        require(_oApp == ioft, "Invalid OApp");
+        require(msg.sender == oftEndpoint, "Unauthorized endpoint sender");
         _requireAuthorizedPeriphery(_message);
 
         // Decode the actual `composeMsg` payload to extract the recipient address
