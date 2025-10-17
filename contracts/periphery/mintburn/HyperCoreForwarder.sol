@@ -254,24 +254,27 @@ contract HyperCoreForwarder is AccessControl {
         // bridge. To prevent this, we add a buffer to the final amount.
         uint256 finalTokenDecimals = IERC20Metadata(finalToken).decimals();
         uint256 finalAmountWithBuffer = finalAmount + BRIDGE_BALANCE_BUFFER_EVM * 10 ** finalTokenDecimals;
-        HyperCoreLib.isAmountSafeToBridge(
+        bool isSafe = HyperCoreLib.isAmountSafeToBridge(
             finalRecipient,
             coreTokenInfo.coreIndex,
             finalAmountWithBuffer,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        // There is a slim chance that by the time we get here, the balance of the bridge changes
-        // and the funds are lost.
-        HyperCoreLib.transferERC20EVMToCore(
-            finalToken,
-            coreTokenInfo.coreIndex,
-            finalRecipient,
-            finalAmount,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
-
-        emit SimpleTransferFlowCompleted(quoteNonce, finalAmount, amountToSponsor, finalRecipient, finalToken);
+        if (isSafe) {
+            // There is a slim chance that by the time we get here, the balance of the bridge changes
+            // and the funds are lost.
+            HyperCoreLib.transferERC20EVMToCore(
+                finalToken,
+                coreTokenInfo.coreIndex,
+                finalRecipient,
+                finalAmount,
+                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+            emit SimpleTransferFlowCompleted(quoteNonce, finalAmount, amountToSponsor, finalRecipient, finalToken);
+        } else {
+            _sendUserFundsOnHyperEVM(quoteNonce, finalAmount, finalRecipient, finalToken);
+        }
     }
 
     function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
@@ -333,7 +336,7 @@ contract HyperCoreForwarder is AccessControl {
         // @dev the user has no HyperCore account and we can't sponsor its creation; fall back to sending user funds on
         // HyperEVM
         if (accountCreationFee > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
-            sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
+            _sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
             return;
         }
 
@@ -400,7 +403,7 @@ contract HyperCoreForwarder is AccessControl {
         // TODO: leave this check?
         // If computed size rounds to zero, fall back
         if (sizeX1e8 == 0) {
-            sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
+            _sendUserFundsOnHyperEVM(quoteNonce, amountLD, finalUser, finalToken);
             return;
         }
         uint128 cloid = ++nextCloid;
@@ -585,7 +588,7 @@ contract HyperCoreForwarder is AccessControl {
      * @notice Should be used for rare cases where we can't proceed with our normal HyperCore flows: either there are
      * no funds in the spot bridge, or e.g. we can't pay for account creation for the user for some reason
      */
-    function sendUserFundsOnHyperEVM(
+    function _sendUserFundsOnHyperEVM(
         bytes32 quoteNonce,
         uint256 amountLD,
         address finalUser,

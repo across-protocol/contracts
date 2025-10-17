@@ -71,24 +71,19 @@ library HyperCoreLib {
      * @param account The account to check the balance for
      * @param token The token index to check
      * @param amountToBridgeEVM The amount to bridge (in EVM units)
-     * @dev Reverts with TransferAmtExceedsAssetBridgeBalance if insufficient balance
+     * @return isSafe True if the amount is safe to bridge, false otherwise
      */
     function isAmountSafeToBridge(
         address account,
         uint64 token,
         uint256 amountToBridgeEVM,
         int8 decimalDiff
-    ) internal view {
-        (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-            amountToBridgeEVM,
-            decimalDiff
-        );
+    ) internal view returns (bool) {
+        (, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(amountToBridgeEVM, decimalDiff);
 
         uint64 bridgeBalanceCore = spotBalance(account, token);
 
-        if (bridgeBalanceCore < amountCoreToReceive) {
-            revert TransferAmtExceedsAssetBridgeBalance(amountEVMToSend, bridgeBalanceCore);
-        }
+        return bridgeBalanceCore >= amountCoreToReceive;
     }
 
     /**
