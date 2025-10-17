@@ -235,9 +235,11 @@ contract HyperCoreForwarder is AccessControl {
     ) internal {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
+        uint64 accountCreationFee = HyperCoreLib.coreUserExists(finalRecipient)
+            ? 0
+            : uint64(coreTokenInfo.accountActivationFeeCore);
         uint256 maxFee = (amount * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, finalRecipient);
-        uint256 amountToSponsor = extraFeesToSponsor + accountActivationFee;
+        uint256 amountToSponsor = extraFeesToSponsor + accountCreationFee;
         if (amountToSponsor > maxFee) {
             amountToSponsor = maxFee;
         }
@@ -261,20 +263,23 @@ contract HyperCoreForwarder is AccessControl {
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        if (isSafe) {
-            // There is a slim chance that by the time we get here, the balance of the bridge changes
-            // and the funds are lost.
-            HyperCoreLib.transferERC20EVMToCore(
-                finalToken,
-                coreTokenInfo.coreIndex,
-                finalRecipient,
-                finalAmount,
-                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-            );
-            emit SimpleTransferFlowCompleted(quoteNonce, finalAmount, amountToSponsor, finalRecipient, finalToken);
-        } else {
+        // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
+        // fall back to sending user funds on HyperEVM.
+        if (!isSafe || (accountCreationFee > 0 && !coreTokenInfo.canBeUsedForAccountActivation)) {
             _sendUserFundsOnHyperEVM(quoteNonce, finalAmount, finalRecipient, finalToken);
+            return;
         }
+
+        // There is a slim chance that by the time we get here, the balance of the bridge changes
+        // and the funds are lost.
+        HyperCoreLib.transferERC20EVMToCore(
+            finalToken,
+            coreTokenInfo.coreIndex,
+            finalRecipient,
+            finalAmount,
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+        emit SimpleTransferFlowCompleted(quoteNonce, finalAmount, amountToSponsor, finalRecipient, finalToken);
     }
 
     function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
