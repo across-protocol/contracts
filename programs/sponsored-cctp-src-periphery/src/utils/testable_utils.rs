@@ -10,7 +10,12 @@ pub struct SetCurrentTime<'info> {
     pub signer: Signer<'info>,
 }
 
-pub fn set_current_time(ctx: Context<SetCurrentTime>, _new_time: u32) -> Result<()> {
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct SetCurrentTimeParams {
+    pub new_time: u32,
+}
+
+pub fn set_current_time(ctx: Context<SetCurrentTime>, _params: SetCurrentTimeParams) -> Result<()> {
     let _state = &mut ctx.accounts.state;
 
     #[cfg(not(feature = "test"))]
@@ -20,7 +25,7 @@ pub fn set_current_time(ctx: Context<SetCurrentTime>, _new_time: u32) -> Result<
 
     #[cfg(feature = "test")]
     {
-        _state.current_time = _new_time;
+        _state.current_time = _params.new_time;
         Ok(())
     }
 }

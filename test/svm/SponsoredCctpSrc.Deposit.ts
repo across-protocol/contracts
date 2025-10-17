@@ -277,6 +277,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     await provider.connection.requestAirdrop(rentFund, 1_000_000_000); // 1 SOL
   };
 
+  const getUsedNonce = (nonce: Buffer): PublicKey => {
+    const [usedNonce] = PublicKey.findProgramAddressSync([Buffer.from("used_nonce"), nonce], program.programId);
+    return usedNonce;
+  };
+
   before(async () => {
     await provider.connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
 
@@ -297,6 +302,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
   it("Sponsored CCTP deposit", async () => {
     const nonce = crypto.randomBytes(32);
+    const usedNonce = getUsedNonce(nonce);
     const deadline = Math.floor(Date.now() / 1000) + 3600;
 
     const quoteData: SponsoredCCTPQuote = {
@@ -321,6 +327,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       payer: depositor.publicKey,
       state,
       rentFund,
+      usedNonce,
       depositorTokenAccount,
       mint: burnToken,
       tokenMessengerMinterDenylistAccount,
@@ -402,5 +409,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(message.messageBody.maxFee.toString(), maxFee.toString(), "Invalid maxFee");
     const expectedHookData = getHookDataFromQuote(quoteData);
     assert.isTrue(message.messageBody.hookData.equals(expectedHookData), "Invalid hookData");
+
+    const usedNonceData = await program.account.usedNonce.fetch(usedNonce);
+    assert.strictEqual(usedNonceData.quoteDeadline, deadline, "Invalid quote deadline");
   });
 });

@@ -8,3 +8,9 @@ pub struct State {
     pub quote_signer: Pubkey, // The authorized signer for sponsored CCTP quotes.
     pub current_time: u32, // Only used in testable mode, else set to 0 on mainnet.
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct UsedNonce {
+    pub quote_deadline: u32, // Quote deadline is used to determine when it is safe to close the nonce account.
+}

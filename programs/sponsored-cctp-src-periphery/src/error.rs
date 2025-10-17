@@ -26,6 +26,8 @@ pub enum SvmError {
     InvalidMint,
     #[msg("Amount must be greater than 0")]
     AmountNotPositive,
+    #[msg("The quote deadline has not passed!")]
+    QuoteDeadlineNotPassed,
 }
 
 // EVM decoding errors.

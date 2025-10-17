@@ -1,33 +1,46 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{prelude::*, system_program};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams;
 use crate::{
     error::{CommonError, SvmError},
-    event::{CCTPQuoteDeposited, ReclaimedEventAccount},
+    event::{CCTPQuoteDeposited, ReclaimedEventAccount, ReclaimedUsedNonceAccount},
     message_transmitter_v2::{self, program::MessageTransmitterV2},
-    state::State,
+    state::{State, UsedNonce},
     token_messenger_minter_v2::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
     },
-    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, QUOTE_DATA_LENGTH, QUOTE_SIGNATURE_LENGTH},
+    utils::{
+        get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START, QUOTE_DATA_LENGTH,
+        QUOTE_SIGNATURE_LENGTH,
+    },
 };
 
 #[event_cpi]
 #[derive(Accounts)]
+#[instruction(params: DepositParams)]
 pub struct Deposit<'info> {
     #[account(mut)]
     pub signer: Signer<'info>, // TODO: Consider if we need delegation flow similar as in SVM Spoke program.
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
 
     #[account(mut, seeds = [b"rent_fund"], bump)]
     pub rent_fund: SystemAccount<'info>,
+
+    #[account(
+        init, // This enforces that a given quote nonce can be used only once.
+        payer = signer,
+        space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE,
+        seeds = [
+            b"used_nonce",
+            &params.quote[NONCE_START..NONCE_END], // Using quote nonce as seed to create a unique nonce account.
+        ],
+        bump
+    )]
+    pub used_nonce: Account<'info, UsedNonce>,
 
     #[account(
         mut,
@@ -94,6 +107,9 @@ pub struct DepositParams {
 }
 
 pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
+    // Repay user for used_nonce account creation as the rent_fund account will receive its balance upon closing.
+    refund_used_nonce(&ctx)?;
+
     let state = &ctx.accounts.state;
 
     if state.quote_signer == Pubkey::default() {
@@ -116,14 +132,16 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         return err!(SvmError::InvalidMint);
     }
 
-    if quote.deadline()? < get_current_time(state)? {
+    let quote_deadline = quote.deadline()?;
+    if quote_deadline < get_current_time(state)? {
         return err!(CommonError::InvalidDeadline);
     }
     if quote.source_domain()? != state.local_domain {
         return err!(CommonError::InvalidSourceDomain);
     }
 
-    // TODO: Validate and update used nonces.
+    // Record the quote deadline as it should be safe to close the used_nonce account after this time.
+    ctx.accounts.used_nonce.quote_deadline = quote_deadline;
 
     // Invoke CCTPv2 to bridge user tokens.
     // TODO: Confirm it is acceptable to burn tokens on behalf of the user and have the signer address show up as
@@ -177,6 +195,26 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     Ok(())
 }
 
+fn refund_used_nonce(ctx: &Context<Deposit>) -> Result<()> {
+    let anchor_rent = Rent::get()?;
+    let space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE;
+
+    // Actual cost for the user might have been lower if somebody had pre-funded the used_nonce account, but that should
+    // be of no concern as the rent_fund account will receive the whole balance upon its closure.
+    let lamports = anchor_rent.minimum_balance(space);
+
+    let cpi_accounts = system_program::Transfer {
+        from: ctx.accounts.rent_fund.to_account_info(),
+        to: ctx.accounts.signer.to_account_info(),
+    };
+    let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
+    let cpi_context =
+        CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
+    system_program::transfer(cpi_context, lamports)?;
+
+    Ok(())
+}
+
 #[event_cpi]
 #[derive(Accounts)]
 pub struct ReclaimEventAccount<'info> {
@@ -207,6 +245,43 @@ pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &Reclaim
     message_transmitter_v2::cpi::reclaim_event_account(cpi_ctx, params.clone())?;
 
     emit_cpi!(ReclaimedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });
+
+    Ok(())
+}
+
+#[event_cpi]
+#[derive(Accounts)]
+#[instruction(params: ReclaimUsedNonceAccountParams)]
+pub struct ReclaimUsedNonceAccount<'info> {
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    pub state: Account<'info, State>,
+
+    #[account(mut, seeds = [b"rent_fund"], bump)]
+    pub rent_fund: SystemAccount<'info>,
+
+    #[account(
+        mut,
+        close = rent_fund,
+        seeds = [b"used_nonce",&params.nonce.as_ref()],
+        bump
+    )]
+    pub used_nonce: Account<'info, UsedNonce>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct ReclaimUsedNonceAccountParams {
+    pub nonce: Pubkey,
+}
+
+pub fn reclaim_used_nonce_account(
+    ctx: Context<ReclaimUsedNonceAccount>,
+    params: &ReclaimUsedNonceAccountParams,
+) -> Result<()> {
+    if ctx.accounts.used_nonce.quote_deadline >= get_current_time(&ctx.accounts.state)? {
+        return err!(SvmError::QuoteDeadlineNotPassed);
+    }
+
+    emit_cpi!(ReclaimedUsedNonceAccount { nonce: params.nonce, used_nonce: ctx.accounts.used_nonce.key() });
 
     Ok(())
 }

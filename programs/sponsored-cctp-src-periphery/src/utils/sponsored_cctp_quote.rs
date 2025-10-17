@@ -56,9 +56,13 @@ const _: () = {
 };
 
 pub const QUOTE_DATA_LENGTH: usize = SponsoredCCTPQuoteFields::TOTAL_BYTES;
+
 pub const HOOK_DATA_START: usize = SponsoredCCTPQuoteFields::Nonce.start();
 pub const HOOK_DATA_END: usize = SponsoredCCTPQuoteFields::FinalToken.end();
 pub const HOOK_DATA_LENGTH: usize = HOOK_DATA_END - HOOK_DATA_START;
+
+pub const NONCE_START: usize = SponsoredCCTPQuoteFields::Nonce.start();
+pub const NONCE_END: usize = SponsoredCCTPQuoteFields::Nonce.end();
 
 pub struct SponsoredCCTPQuote<'a> {
     data: &'a [u8; QUOTE_DATA_LENGTH],

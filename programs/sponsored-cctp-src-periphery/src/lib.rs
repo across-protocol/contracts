@@ -16,6 +16,7 @@ pub use error::*;
 pub use event::*;
 use instructions::*;
 pub use state::*;
+use utils::*;
 
 #[program]
 pub mod sponsored_cctp_src_periphery {
@@ -39,5 +40,16 @@ pub mod sponsored_cctp_src_periphery {
 
     pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: ReclaimEventAccountParams) -> Result<()> {
         instructions::reclaim_event_account(ctx, &params)
+    }
+
+    pub fn reclaim_used_nonce_account(
+        ctx: Context<ReclaimUsedNonceAccount>,
+        params: ReclaimUsedNonceAccountParams,
+    ) -> Result<()> {
+        instructions::reclaim_used_nonce_account(ctx, &params)
+    }
+
+    pub fn set_current_time(ctx: Context<SetCurrentTime>, params: SetCurrentTimeParams) -> Result<()> {
+        utils::set_current_time(ctx, params)
     }
 }
