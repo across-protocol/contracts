@@ -61,6 +61,9 @@ contract HyperCoreForwarder is AccessControl {
     /// @notice Emitted when the donation box is insufficient funds.
     event DonationBoxInsufficientFunds(address token, uint256 amount);
 
+    /// @notice Emitted when the donation box is insufficient funds and we can't proceed.
+    error DonationBoxInsufficientFundsError(address token, uint256 amount);
+
     /// @notice Emitted when a simple transfer to core is executed.
     event SimpleTransferFlowCompleted(
         bytes32 quoteNonce,
@@ -180,18 +183,14 @@ contract HyperCoreForwarder is AccessControl {
         uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, address(swapHandler));
 
         if (accountActivationFee > 0) {
-            try donationBox.withdraw(IERC20(finalToken), accountActivationFee) {
-                IERC20(finalToken).safeTransfer(address(swapHandler), accountActivationFee);
-                // Bridge to the SwapHandler Core account
-                swapHandler.activateCoreAccount(
-                    finalToken,
-                    coreTokenInfo.coreIndex,
-                    accountActivationFee,
-                    coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-                );
-            } catch {
-                emit DonationBoxInsufficientFunds(finalToken, accountActivationFee);
-            }
+            _getFromDonationBox(finalToken, accountActivationFee);
+            IERC20(finalToken).safeTransfer(address(swapHandler), accountActivationFee);
+            swapHandler.activateCoreAccount(
+                finalToken,
+                coreTokenInfo.coreIndex,
+                accountActivationFee,
+                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
         }
     }
 
@@ -242,10 +241,7 @@ contract HyperCoreForwarder is AccessControl {
         }
 
         if (amountToSponsor > 0) {
-            try donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), amountToSponsor) {
-                // success: full sponsorship amount withdrawn to this contract
-            } catch {
-                emit DonationBoxInsufficientFunds(coreTokenInfo.tokenInfo.evmContract, amountToSponsor);
+            if (!_tryGetFromDonationBox(coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
                 amountToSponsor = 0;
             }
         }
@@ -341,11 +337,8 @@ contract HyperCoreForwarder is AccessControl {
         );
 
         if (totalEVMAmountToSponsor > 0) {
-            try donationBox.withdraw(IERC20(finalToken), totalEVMAmountToSponsor) {
-                // success, we have totalEVMAmountToSponsor + quoted.evm on balance. Will send that to SwapHandler
-            } catch {
-                // TODO? Consider emitting a different event
-                emit DonationBoxInsufficientFunds(finalToken, totalEVMAmountToSponsor);
+            // On success, we have totalEVMAmountToSponsor + quoted.evm on balance. Otherwise, set sponsored amts to 0
+            if (!_tryGetFromDonationBox(finalToken, totalEVMAmountToSponsor)) {
                 totalEVMAmountToSponsor = 0;
                 totalCoreAmountToSponsor = 0;
             }
@@ -555,19 +548,15 @@ contract HyperCoreForwarder is AccessControl {
                 coreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
 
-            try donationBox.withdraw(IERC20(finalToken), deltaEvmAmount) {
-                IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
-                // TODO: check the bridge balance first, otherwise revert
-                swapHandler.transferFundsToSelfOnCore(
-                    finalToken,
-                    coreTokenInfo.coreIndex,
-                    deltaEvmAmount,
-                    coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-                );
-            } catch {
-                emit DonationBoxInsufficientFunds(finalToken, deltaEvmAmount);
-                revert("DonationBoxInsufficientFunds");
-            }
+            _getFromDonationBox(finalToken, deltaEvmAmount);
+            IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
+            // TODO: check the bridge balance first, otherwise revert
+            swapHandler.transferFundsToSelfOnCore(
+                finalToken,
+                coreTokenInfo.coreIndex,
+                deltaEvmAmount,
+                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
 
             pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
             pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + delta;
@@ -612,5 +601,22 @@ contract HyperCoreForwarder is AccessControl {
             accountActivationFeeEVM: accountActivationFeeEVM,
             accountActivationFeeCore: accountActivationFeeCore
         });
+    }
+
+    /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful
+    function _getFromDonationBox(address token, uint256 amount) internal {
+        if (!_tryGetFromDonationBox(token, amount)) {
+            revert DonationBoxInsufficientFundsError(token, amount);
+        }
+    }
+
+    /// @notice Tries to get `amount` of `token` from donationBox. Returns false on failure
+    function _tryGetFromDonationBox(address token, uint256 amount) internal returns (bool success) {
+        try donationBox.withdraw(IERC20(token), amount) {
+            success = true;
+        } catch {
+            emit DonationBoxInsufficientFunds(token, amount);
+            success = false;
+        }
     }
 }
