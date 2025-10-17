@@ -219,7 +219,7 @@ library HyperCoreLib {
      * @param index The asset index to get the spot price of
      * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
      */
-    function spotPx(uint32 index) external view returns (uint64) {
+    function spotPx(uint32 index) internal view returns (uint64) {
         (bool success, bytes memory result) = SPOT_PX_PRECOMPILE_ADDRESS.staticcall(abi.encode(index));
         if (!success) revert SpotPxPrecompileCallFailed();
         return abi.decode(result, (uint64));
@@ -235,6 +235,26 @@ library HyperCoreLib {
         if (!success) revert TokenInfoPrecompileCallFailed();
         TokenInfo memory _tokenInfo = abi.decode(result, (TokenInfo));
         return _tokenInfo;
+    }
+
+    /**
+     * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
+     * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
+     * @param erc20CoreIndex The HyperCore index id of the token
+     * @param coreAmount The amount that the bridging should result in on HyperCore
+     * @param coreBufferAmount The minimum buffer amount that should remain on HyperCore after bridging
+     * @return True if the bridge has enough balance to safely bridge the amount, false otherwise
+     */
+    function isCoreAmountSafeToBridge(
+        uint64 erc20CoreIndex,
+        uint64 coreAmount,
+        uint64 coreBufferAmount
+    ) internal view returns (bool) {
+        address bridgeAddress = toAssetBridgeAddress(erc20CoreIndex);
+        uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
+
+        // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
+        return currentBridgeBalance >= coreAmount + coreBufferAmount;
     }
 
     /**
