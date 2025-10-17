@@ -66,9 +66,10 @@ library SponsoredCCTPQuoteLib {
         );
     }
 
-    function validateMessage(bytes memory message) internal pure returns (bool) {
+    function validateMessage(bytes memory message) internal view returns (bool) {
         return
             message.length == MSG_BYTES_LENGTH &&
+            message.toBytes32(MESSAGE_BODY_INDEX + MINT_RECIPIENT_INDEX).toAddress() != address(this) &&
             message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 4).isValidAddress() &&
             message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 5).isValidAddress();
     }

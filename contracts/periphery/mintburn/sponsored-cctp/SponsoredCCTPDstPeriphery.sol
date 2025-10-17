@@ -50,7 +50,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
-        // If the hook data is invalid we cannot process the message and therefore we return.
+        // If the hook data is invalid or the mint recipient is not this contract we cannot process the message and therefore we return.
         // In this case the funds will be kept in this contract
         if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
             return;
