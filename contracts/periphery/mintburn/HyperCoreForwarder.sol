@@ -36,6 +36,9 @@ contract HyperCoreForwarder is AccessControl {
     /// @notice All operations performed in this contract are relative to this baseToken
     address immutable baseToken;
 
+    uint256 public minDelayBetweenFinalizations = 1 hours;
+    uint256 public lastFinalizationTime;
+
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct PendingSwap {
         address finalRecipient;
@@ -44,6 +47,7 @@ contract HyperCoreForwarder is AccessControl {
         uint64 minCoreAmountFromLO;
         uint64 sponsoredCoreAmountPreFunded;
         uint128 limitOrderCloid;
+        bool isFinalized;
     }
 
     // quoteNonce => pending swap details
@@ -170,6 +174,10 @@ contract HyperCoreForwarder is AccessControl {
     /**************************************
      *      CONFIGURATION FUNCTIONS       *
      **************************************/
+
+    function setMinDelayBetweenFinalizations(uint256 minDelay) external onlyDefaultAdmin {
+        minDelayBetweenFinalizations = minDelay;
+    }
 
     // TODO: do we allow unsetting the core token info?
     function setCoreTokenInfo(
@@ -479,7 +487,8 @@ contract HyperCoreForwarder is AccessControl {
             finalToken: finalToken,
             minCoreAmountFromLO: minOutCore,
             sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
-            limitOrderCloid: cloid
+            limitOrderCloid: cloid,
+            isFinalized: false
         });
         pendingQueue[finalToken].push(quoteNonce);
         cloidToQuoteNonce[cloid] = quoteNonce;
@@ -487,11 +496,13 @@ contract HyperCoreForwarder is AccessControl {
         emit SwapFlowInitialized(quoteNonce, amountLD, totalEVMAmountToSponsor, finalUser, finalToken);
     }
 
-    function _finalizePendingSwaps(address finalToken, uint256 maxToProcess) internal {
+    function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external onlyLimitOrderUpdater {
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
 
         require(address(finalTokenInfo.swapHandler) != address(0), "Final token not registered");
+        require(block.timestamp >= lastFinalizationTime + minDelayBetweenFinalizations, "Min delay not reached");
+        lastFinalizationTime = block.timestamp;
 
         uint256 head = pendingQueueHead[finalToken];
         bytes32[] storage queue = pendingQueue[finalToken];
@@ -507,7 +518,7 @@ contract HyperCoreForwarder is AccessControl {
             PendingSwap storage pendingSwap = pendingSwaps[nonce];
             uint64 totalAmountToForwardToUser = pendingSwap.minCoreAmountFromLO +
                 pendingSwap.sponsoredCoreAmountPreFunded;
-            if (availableCore < totalAmountToForwardToUser) {
+            if (pendingSwap.isFinalized || availableCore < totalAmountToForwardToUser) {
                 break;
             }
 
@@ -528,9 +539,12 @@ contract HyperCoreForwarder is AccessControl {
 
             // ! @dev Don't delete `pendingSwaps` state because that is used for accounting calculations
             // delete pendingSwaps[nonce];
+            pendingSwap.isFinalized = true;
             head += 1;
             processed += 1;
         }
+
+        pendingQueueHead[finalToken] = head;
     }
 
     function cancelLimitOrderByCloid(uint32 cloid) external onlyLimitOrderUpdater returns (bytes32 quoteNonce) {
@@ -740,6 +754,15 @@ contract HyperCoreForwarder is AccessControl {
     }
 
     function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyFundsSweeper {
+        // We first want to make sure there are not pending limit orders for this token
+        uint256 head = pendingQueueHead[token];
+        if (head < pendingQueue[token].length) {
+            revert("Cannot sweep on core if there are pending limit orders");
+        }
+
+        //  We also want to make sure the min delay between finalizations has been reached
+        require(block.timestamp >= lastFinalizationTime + minDelayBetweenFinalizations, "Min delay not reached");
+
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
     }
