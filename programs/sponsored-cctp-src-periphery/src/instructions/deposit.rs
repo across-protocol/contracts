@@ -1,10 +1,11 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
+pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams;
 use crate::{
     error::{CommonError, SvmError},
-    event::CCTPQuoteDeposited,
-    message_transmitter_v2::program::MessageTransmitterV2,
+    event::{CCTPQuoteDeposited, ReclaimedEventAccount},
+    message_transmitter_v2::{self, program::MessageTransmitterV2},
     state::State,
     token_messenger_minter_v2::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
@@ -24,6 +25,9 @@ pub struct Deposit<'info> {
 
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
+
+    #[account(mut, seeds = [b"rent_fund"], bump)]
+    pub rent_fund: SystemAccount<'info>,
 
     #[account(
         mut,
@@ -127,7 +131,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurnWithHook {
         owner: ctx.accounts.signer.to_account_info(),
-        event_rent_payer: ctx.accounts.payer.to_account_info(),
+        event_rent_payer: ctx.accounts.rent_fund.to_account_info(),
         sender_authority_pda: ctx.accounts.token_messenger_minter_sender_authority.to_account_info(),
         burn_token_account: ctx.accounts.depositor_token_account.to_account_info(),
         denylist_account: ctx.accounts.token_messenger_minter_denylist_account.to_account_info(),
@@ -145,7 +149,8 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         event_authority: ctx.accounts.cctp_event_authority.to_account_info(),
         program: ctx.accounts.token_messenger_minter_program.to_account_info(),
     };
-    let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+    let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, rent_fund_seeds);
     let params = DepositForBurnWithHookParams {
         amount,
         destination_domain,
@@ -168,6 +173,40 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         destination_caller,
         nonce: quote.nonce()?,
     });
+
+    Ok(())
+}
+
+#[event_cpi]
+#[derive(Accounts)]
+pub struct ReclaimEventAccount<'info> {
+    #[account(mut, seeds = [b"rent_fund"], bump)]
+    pub rent_fund: SystemAccount<'info>,
+
+    /// CHECK: MessageTransmitter is checked in CCTP. Seeds must be ["message_transmitter"] (CCTP TokenMessengerMinterV2
+    // program).
+    #[account(mut)]
+    pub message_transmitter: UncheckedAccount<'info>,
+
+    /// CHECK: MessageSent is checked in CCTP, must be the same account as in Deposit instruction.
+    #[account(mut)]
+    pub message_sent_event_data: UncheckedAccount<'info>,
+
+    pub message_transmitter_program: Program<'info, MessageTransmitterV2>,
+}
+
+pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &ReclaimEventAccountParams) -> Result<()> {
+    let cpi_program = ctx.accounts.message_transmitter_program.to_account_info();
+    let cpi_accounts = message_transmitter_v2::cpi::accounts::ReclaimEventAccount {
+        payee: ctx.accounts.rent_fund.to_account_info(),
+        message_transmitter: ctx.accounts.message_transmitter.to_account_info(),
+        message_sent_event_data: ctx.accounts.message_sent_event_data.to_account_info(),
+    };
+    let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
+    let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, rent_fund_seeds);
+    message_transmitter_v2::cpi::reclaim_event_account(cpi_ctx, params.clone())?;
+
+    emit_cpi!(ReclaimedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });
 
     Ok(())
 }

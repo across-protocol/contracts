@@ -25,11 +25,19 @@ pub mod sponsored_cctp_src_periphery {
         instructions::initialize(ctx, &params)
     }
 
+    pub fn set_quote_signer(ctx: Context<SetQuoteSigner>, params: SetQuoteSignerParams) -> Result<()> {
+        instructions::set_quote_signer(ctx, &params)
+    }
+
+    pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: WithdrawRentFundParams) -> Result<()> {
+        instructions::withdraw_rent_fund(ctx, &params)
+    }
+
     pub fn deposit(ctx: Context<Deposit>, params: DepositParams) -> Result<()> {
         instructions::deposit(ctx, &params)
     }
 
-    pub fn set_quote_signer(ctx: Context<SetQuoteSigner>, params: SetQuoteSignerParams) -> Result<()> {
-        instructions::set_quote_signer(ctx, &params)
+    pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: ReclaimEventAccountParams) -> Result<()> {
+        instructions::reclaim_event_account(ctx, &params)
     }
 }

@@ -1,8 +1,11 @@
-use anchor_lang::prelude::*;
+use anchor_lang::{
+    prelude::*,
+    system_program::{self, Transfer},
+};
 
 use crate::{
     error::SvmError,
-    event::QuoteSignerSet,
+    event::{QuoteSignerSet, WithdrawnRentFund},
     program,
     state::State,
     utils::{initialize_current_time, set_seed},
@@ -92,6 +95,53 @@ pub fn set_quote_signer(ctx: Context<SetQuoteSigner>, params: &SetQuoteSignerPar
     let old_quote_signer = state.quote_signer;
     state.quote_signer = params.quote_signer;
     emit_cpi!(QuoteSignerSet { old_quote_signer, new_quote_signer: params.quote_signer });
+
+    Ok(())
+}
+
+#[event_cpi]
+#[derive(Accounts)]
+pub struct WithdrawRentFund<'info> {
+    #[account(
+        mut,
+        address = program_data.upgrade_authority_address.unwrap_or_default() @ SvmError::NotUpgradeAuthority
+    )]
+    pub signer: Signer<'info>,
+
+    #[account(mut, seeds = [b"rent_fund"], bump)]
+    pub rent_fund: SystemAccount<'info>,
+
+    /// CHECK: Upgrade authority can withdraw from rent_fund to any account.
+    #[account(mut)]
+    pub recipient: UncheckedAccount<'info>,
+
+    #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
+    pub program_data: Account<'info, ProgramData>,
+
+    // This is duplicate of program account added by event_cpi, but we need it to access its programdata_address.
+    pub this_program: Program<'info, program::SponsoredCctpSrcPeriphery>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct WithdrawRentFundParams {
+    pub amount: u64,
+}
+
+pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: &WithdrawRentFundParams) -> Result<()> {
+    if params.amount == 0 {
+        return err!(SvmError::AmountNotPositive);
+    }
+
+    let cpi_accounts =
+        Transfer { from: ctx.accounts.rent_fund.to_account_info(), to: ctx.accounts.recipient.to_account_info() };
+    let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
+    let cpi_ctx =
+        CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
+    system_program::transfer(cpi_ctx, params.amount)?;
+
+    emit_cpi!(WithdrawnRentFund { amount: params.amount, recipient: ctx.accounts.recipient.key() });
 
     Ok(())
 }

@@ -61,7 +61,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     remoteTokenMessenger: PublicKey,
     tokenMinter: PublicKey,
     localToken: PublicKey,
-    cctpEventAuthority: PublicKey;
+    cctpEventAuthority: PublicKey,
+    rentFund: PublicKey;
 
   const getDenyList = (user: PublicKey): PublicKey => {
     const [denyList] = PublicKey.findProgramAddressSync(
@@ -230,6 +231,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       tokenProgram,
       SystemProgram.programId,
       eventAuthority,
+      rentFund,
     ];
 
     // Create instructions for creating and extending the ALT.
@@ -270,10 +272,17 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     lookupTableAccount = fetchedLookupTableAccount;
   };
 
+  const setupRentFund = async () => {
+    rentFund = findProgramAddress("rent_fund", program.programId).publicKey;
+    await provider.connection.requestAirdrop(rentFund, 1_000_000_000); // 1 SOL
+  };
+
   before(async () => {
     await provider.connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
 
     setupCctpAccounts();
+
+    await setupRentFund();
   });
 
   beforeEach(async () => {
@@ -311,6 +320,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       signer: depositor.publicKey,
       payer: depositor.publicKey,
       state,
+      rentFund,
       depositorTokenAccount,
       mint: burnToken,
       tokenMessengerMinterDenylistAccount,

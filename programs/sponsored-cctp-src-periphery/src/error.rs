@@ -24,6 +24,8 @@ pub enum SvmError {
     InvalidProductionSeed,
     #[msg("Invalid mint key")]
     InvalidMint,
+    #[msg("Amount must be greater than 0")]
+    AmountNotPositive,
 }
 
 // EVM decoding errors.

@@ -1,6 +1,18 @@
 use anchor_lang::prelude::*;
 
 #[event]
+pub struct QuoteSignerSet {
+    pub old_quote_signer: Pubkey,
+    pub new_quote_signer: Pubkey,
+}
+
+#[event]
+pub struct WithdrawnRentFund {
+    pub amount: u64,
+    pub recipient: Pubkey,
+}
+
+#[event]
 pub struct CCTPQuoteDeposited {
     pub depositor: Pubkey,
     pub burn_token: Pubkey,
@@ -14,7 +26,6 @@ pub struct CCTPQuoteDeposited {
 }
 
 #[event]
-pub struct QuoteSignerSet {
-    pub old_quote_signer: Pubkey,
-    pub new_quote_signer: Pubkey,
+pub struct ReclaimedEventAccount {
+    pub message_sent_event_data: Pubkey,
 }
