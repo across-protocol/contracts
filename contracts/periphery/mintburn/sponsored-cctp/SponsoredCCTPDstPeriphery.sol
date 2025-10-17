@@ -20,46 +20,35 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCore
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
 
-    HyperCoreForwarder public immutable hyperCoreForwarder;
-
     /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
 
     /// @notice A mapping of used nonces to prevent replay attacks.
     mapping(bytes32 => bool) public usedNonces;
 
-    /// @notice A mapping of token addresses to their swap handler address.
-    mapping(address => address) public swapHandlers;
-
-    LimitOrder[] public limitOrdersQueued;
-
     constructor(
         address _cctpMessageTransmitter,
         address _signer,
-        address _hyperCoreForwarder,
-        address _donationBox
-    ) HyperCoreForwarder(_donationBox) {
+        address _donationBox,
+        address _baseToken,
+        uint32 _coreIndex,
+        bool _canBeUsedForAccountActivation,
+        uint64 _accountActivationFeeCore
+    )
+        HyperCoreForwarder(
+            _donationBox,
+            _baseToken,
+            _coreIndex,
+            _canBeUsedForAccountActivation,
+            _accountActivationFeeCore
+        )
+    {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
     }
 
     function setSigner(address _signer) external onlyOwner {
         signer = _signer;
-    }
-
-    function setCoreTokenInfo(
-        address evmContract,
-        uint32 erc20CoreIndex,
-        bool canBeUsedForAccountActivation,
-        uint256 accountActivationFee
-    ) external onlyOwner {
-        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(erc20CoreIndex);
-        coreTokenInfos[evmContract] = CoreTokenInfo({
-            tokenInfo: tokenInfo,
-            coreIndex: erc20CoreIndex,
-            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
-            accountActivationFee: accountActivationFee
-        });
     }
 
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
@@ -74,28 +63,17 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCore
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
-        if (!_isQuoteValid(quote, signature)) {
-            // If the quote is not valid, we execute a simple transfer regardless of the final token
-            _executeSimpleTransferToCore(
-                quote.amount,
-                quote.nonce,
-                0, // No basis points to sponsor
-                quote.finalRecipient.toAddress(),
-                quote.burnToken.toAddress(),
-                0 // No extra fees to sponsor
-            );
-        } else if (quote.burnToken != quote.finalToken) {
-            _executeSimpleTransferToCore(
-                quote.amount,
-                quote.nonce,
-                quote.maxBpsToSponsor,
-                quote.finalRecipient.toAddress(),
-                quote.finalToken.toAddress(),
-                feeExecuted
-            );
-        } else {
-            _queueLimitOrder(quote.finalToken.toAddress(), quote.finalRecipient.toAddress(), quote.amount);
-        }
+        bool isQuoteValid = _isQuoteValid(quote, signature);
+        _executeFlow(
+            quote.amount,
+            quote.nonce,
+            // If the quote is invalid we don't sponsor the flow or the extra fees
+            isQuoteValid ? quote.maxBpsToSponsor : 0,
+            quote.finalRecipient.toAddress(),
+            // If the quote is invalid we don't want to swap, so we use the base token as the final token
+            isQuoteValid ? quote.finalToken.toAddress() : baseToken,
+            isQuoteValid ? feeExecuted : 0
+        );
 
         emit SponsoredMintAndWithdraw(
             quote.nonce,
@@ -123,26 +101,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, Ownable, HyperCore
             !usedNonces[quote.nonce] &&
             quote.deadline >= block.timestamp &&
             quote.maxBpsToSponsor > 0;
-    }
-
-    // TODO: move this to the HyperCoreForwarder
-    function _queueLimitOrder(address token, address recipient, uint256 amount) internal {
-        // TODO: send the funds to the swap handler before queuing the limit order
-        // TODO: get the limit price from the quote
-        uint64 limitPriceX1e8 = 10;
-        uint64 sizeX1e8 = uint64(amount);
-
-        SwapHandler(swapHandlers[token]).submitLimitOrder(
-            coreTokenInfos[token],
-            recipient,
-            amount,
-            limitPriceX1e8,
-            sizeX1e8,
-            uint128(limitOrdersQueued.length)
-        );
-        limitOrdersQueued.push(
-            LimitOrder({ cloid: uint128(limitOrdersQueued.length), limitPriceX1e8: limitPriceX1e8, sizeX1e8: sizeX1e8 })
-        );
     }
 
     // Only used for testing
