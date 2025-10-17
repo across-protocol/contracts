@@ -160,6 +160,16 @@ contract HyperCoreForwarder is AccessControl {
     }
 
     // TODO: do we allow unsetting the params?
+    /**
+     * @notice Sets the parameters for a final token.
+     * @dev This function deploys a new SwapHandler contract if one is not already set. If the final token
+     * can't be used for account activation, the handler will be left unactivated and would need to be activated by the caller.
+     * @param finalToken The address of the final token.
+     * @param assetIndex The index of the asset in the Hyperliquid market.
+     * @param isBuy Whether the final token is a buy or a sell.
+     * @param feePpm The fee in parts per million.
+     * @param suggestedSlippageBps The suggested slippage in basis points.
+     */
     function setFinalTokenParams(
         address finalToken,
         uint32 assetIndex,
@@ -184,7 +194,7 @@ contract HyperCoreForwarder is AccessControl {
 
         uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, address(swapHandler));
 
-        if (accountActivationFee > 0) {
+        if (accountActivationFee > 0 && coreTokenInfo.canBeUsedForAccountActivation) {
             _getFromDonationBox(finalToken, accountActivationFee);
             IERC20(finalToken).safeTransfer(address(swapHandler), accountActivationFee);
             swapHandler.activateCoreAccount(
@@ -235,9 +245,7 @@ contract HyperCoreForwarder is AccessControl {
     ) internal {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        uint64 accountCreationFee = HyperCoreLib.coreUserExists(finalRecipient)
-            ? 0
-            : uint64(coreTokenInfo.accountActivationFeeCore);
+        uint256 accountCreationFee = _getAccountActivationFeeEVM(finalToken, finalRecipient);
         uint256 maxFee = (amount * maxBpsToSponsor) / BPS_SCALAR;
         uint256 amountToSponsor = extraFeesToSponsor + accountCreationFee;
         if (amountToSponsor > maxFee) {
@@ -270,7 +278,7 @@ contract HyperCoreForwarder is AccessControl {
             return;
         }
 
-        // There is a slim chance that by the time we get here, the balance of the bridge changes
+        // There is a very slim chance that by the time we get here, the balance of the bridge changes
         // and the funds are lost.
         HyperCoreLib.transferERC20EVMToCore(
             finalToken,
@@ -285,8 +293,6 @@ contract HyperCoreForwarder is AccessControl {
     function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
         bool accountActivated = HyperCoreLib.coreUserExists(recipient);
 
-        // TODO: handle the case where the token can't be used for account activation
-        // TODO: I think this should be handled by the caller.
         return accountActivated ? 0 : coreTokenInfos[token].accountActivationFeeEVM;
     }
 
@@ -334,9 +340,7 @@ contract HyperCoreForwarder is AccessControl {
             minOutCore = uint64(netQuoteOut);
         }
 
-        uint64 accountCreationFee = HyperCoreLib.coreUserExists(finalUser)
-            ? 0
-            : uint64(finalCoreTokenInfo.accountActivationFeeCore);
+        uint64 accountCreationFee = uint64(_getAccountActivationFeeEVM(finalToken, finalUser));
 
         // @dev the user has no HyperCore account and we can't sponsor its creation; fall back to sending user funds on
         // HyperEVM
