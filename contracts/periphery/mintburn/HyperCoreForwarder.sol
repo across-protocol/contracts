@@ -29,18 +29,16 @@ contract HyperCoreForwarder is AccessControl {
     /// @notice A mapping of token addresses to their core token info.
     mapping(address => CoreTokenInfo) public coreTokenInfos;
 
+    /// @notice A mapping of token address to additional relevan info for final tokens, like Hyperliquid market params
     mapping(address => FinalTokenParams) public finalTokenParams;
+
+    /// @notice All operations performed in this contract are relative to this baseToken
+    address immutable baseToken;
 
     struct PendingSwap {
         address finalRecipient;
         address finalToken;
         // @dev totalCoreAmountToForwardToUser = minCoreAmountFromLO + sponsoredCoreAmountPreFunded always.
-        // ! When offchain bot is updating a limit order associated with this Pending Order, it's a responsibility of
-        // the function ~.updateLimitOrderPrice() to make sure we NEVER DECREASE the `totalCoreAmountToForwardToUser`
-        // even for the already "completed" PendingSwaps. The reason is, the settlement of ALL orders depends on the
-        // consistency of the `totalCoreAmountToForwardToUser`.
-        // As a side note, if we're calling .updateLimitOrderPrice() for the unfinalized user order, we may decrease
-        // the `totalCoreAmountToForwardToUser`. If it's finalized, we can't (other orders depend on it)
         uint64 minCoreAmountFromLO;
         uint64 sponsoredCoreAmountPreFunded;
         uint128 limitOrderCloid;
@@ -106,35 +104,44 @@ contract HyperCoreForwarder is AccessControl {
         _;
     }
 
-    constructor(address _donationBox) {
+    /**
+     *
+     * @param _donationBox Sponsorship funds live here
+     * @param _baseToken Main token used with this Forwarder
+     * @param _coreIndex HCore index of baseToken
+     * @param _canBeUsedForAccountActivation Whether or not baseToken can be used for account activation fee on HCore
+     * @param _accountActivationFeeCore Fee amount to pay for account activation
+     */
+    constructor(
+        address _donationBox,
+        address _baseToken,
+        uint32 _coreIndex,
+        bool _canBeUsedForAccountActivation,
+        uint64 _accountActivationFeeCore
+    ) {
         donationBox = DonationBox(_donationBox);
         // @dev initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
         nextCloid = 1;
+
+        _setCoreTokenInfo(_baseToken, _coreIndex, _canBeUsedForAccountActivation, _accountActivationFeeCore);
+        baseToken = _baseToken;
     }
 
+    /**************************************
+     *      CONFIGURATION FUNCTIONS       *
+     **************************************/
+
+    // TODO: do we allow unsetting the core token info?
     function setCoreTokenInfo(
-        address finalToken,
+        address token,
         uint32 coreIndex,
         bool canBeUsedForAccountActivation,
         uint64 accountActivationFeeCore
     ) external onlyDefaultAdmin {
-        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
-        require(tokenInfo.evmContract == finalToken, "Token mismatch");
-
-        (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-            accountActivationFeeCore,
-            tokenInfo.evmExtraWeiDecimals
-        );
-
-        coreTokenInfos[finalToken] = CoreTokenInfo({
-            tokenInfo: tokenInfo,
-            coreIndex: coreIndex,
-            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
-            accountActivationFeeEVM: accountActivationFeeEVM,
-            accountActivationFeeCore: accountActivationFeeCore
-        });
+        _setCoreTokenInfo(token, coreIndex, canBeUsedForAccountActivation, accountActivationFeeCore);
     }
 
+    // TODO: do we allow unsetting the params?
     function setFinalTokenParams(
         address finalToken,
         uint32 assetIndex,
@@ -175,7 +182,36 @@ contract HyperCoreForwarder is AccessControl {
         }
     }
 
-    function _executeSimpleTransferToCore(
+    /**
+     * @notice This function is to be called by an inheriting contract. It is to be called after the child contract
+     * checked the API signature and made sure that the params passed here have been verified by either the underlying
+     * bridge mechanics, or API signaure, or both.
+     */
+    function _executeFlow(
+        uint256 amount,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
+        address finalRecipient,
+        address finalToken,
+        uint256 extraFeesToSponsor
+    ) internal {
+        if (finalToken == baseToken) {
+            _executeSimpleTransferFlow(
+                amount,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                finalToken,
+                extraFeesToSponsor
+            );
+        } else {
+            // @dev Notice, swap flow doesn't use `extraFeesToSponsor` because it's sponsorship is calculated based on
+            // the swap output amount anyway. So we don't have to sponsor the extra fees separately (like CCTP bridge fees)
+            _initiateSwapFlow(amount, quoteNonce, finalRecipient, finalToken, maxBpsToSponsor);
+        }
+    }
+
+    function _executeSimpleTransferFlow(
         uint256 amount,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
@@ -225,13 +261,13 @@ contract HyperCoreForwarder is AccessControl {
     function _initiateSwapFlow(
         uint256 amountLD,
         bytes32 quoteNonce,
-        address initialToken,
         address finalUser,
         address finalToken,
         uint256 maxBpsToSponsor
     ) internal {
         require(address(finalTokenParams[finalToken].swapHandler) != address(0), "Final token not registered");
 
+        address initialToken = baseToken;
         CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
         FinalTokenParams memory finalTokenParam = finalTokenParams[finalToken];
@@ -281,18 +317,23 @@ contract HyperCoreForwarder is AccessControl {
         uint64 allowedCoreAmountToSponsor = uint64((uint256(quotedCoreAmount) * maxBpsToSponsor) / BPS_SCALAR);
 
         if (totalCoreAmountToSponsor > allowedCoreAmountToSponsor) {
-            // TODO: here, different behavior is possible. E.g. just revert the swap part and do a simple transfer instead
             totalCoreAmountToSponsor = allowedCoreAmountToSponsor;
         }
 
-        uint256 totalEVMAmountToSponsor = getEVMAmountToCoverCoreAmount(totalCoreAmountToSponsor);
+        uint256 totalEVMAmountToSponsor;
+        (totalEVMAmountToSponsor, totalCoreAmountToSponsor) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            totalCoreAmountToSponsor,
+            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+
         if (totalEVMAmountToSponsor > 0) {
             try donationBox.withdraw(IERC20(finalToken), totalEVMAmountToSponsor) {
                 // success, we have totalEVMAmountToSponsor + quoted.evm on balance. Will send that to SwapHandler
             } catch {
-                // TODO: a better event
+                // TODO? Consider emitting a different event
                 emit DonationBoxInsufficientFunds(finalToken, totalEVMAmountToSponsor);
                 totalEVMAmountToSponsor = 0;
+                totalCoreAmountToSponsor = 0;
             }
         }
 
@@ -496,10 +537,13 @@ contract HyperCoreForwarder is AccessControl {
 
         // Keep totalCoreAmountToForwardToUser constant by topping up sponsorship by the decrease in minOut
         uint64 delta = oldMinCoreAmountFromLO - newMinCoreAmountFromLO;
-        pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
-        pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + delta;
         if (delta > 0) {
-            uint256 deltaEvmAmount = getEVMAmountToCoverCoreAmount(delta);
+            uint256 deltaEvmAmount;
+            (deltaEvmAmount, delta) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+                delta,
+                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+
             try donationBox.withdraw(IERC20(finalToken), deltaEvmAmount) {
                 IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
                 swapHandler.transferFundsToSelfOnCore(
@@ -512,14 +556,12 @@ contract HyperCoreForwarder is AccessControl {
                 emit DonationBoxInsufficientFunds(finalToken, deltaEvmAmount);
                 revert("DonationBoxInsufficientFunds");
             }
+
+            pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
+            pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + delta;
         }
 
         emit UpdatedLimitOrder(quoteNonce, priceX1e8, sizeX1e8, oldPriceX1e8, oldSizeX1e8Left);
-    }
-
-    function getEVMAmountToCoverCoreAmount(uint64 coreAmount) internal pure returns (uint256 evmAmount) {
-        // TODO! use Taylor's function from HyperCoreLib once ready
-        return coreAmount / 100;
     }
 
     // @dev should be used for rare cases where we can't proceed with our normal HyperCore flows: either there are
@@ -532,5 +574,28 @@ contract HyperCoreForwarder is AccessControl {
     ) internal {
         IERC20(finalToken).safeTransfer(finalUser, amountLD);
         emit FallbackHyperEVMFlowExecuted(quoteNonce, amountLD, 0, finalUser, finalToken);
+    }
+
+    function _setCoreTokenInfo(
+        address token,
+        uint32 coreIndex,
+        bool canBeUsedForAccountActivation,
+        uint64 accountActivationFeeCore
+    ) internal {
+        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
+        require(tokenInfo.evmContract == token, "Token mismatch");
+
+        (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            accountActivationFeeCore,
+            tokenInfo.evmExtraWeiDecimals
+        );
+
+        coreTokenInfos[token] = CoreTokenInfo({
+            tokenInfo: tokenInfo,
+            coreIndex: coreIndex,
+            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
+            accountActivationFeeEVM: accountActivationFeeEVM,
+            accountActivationFeeCore: accountActivationFeeCore
+        });
     }
 }
