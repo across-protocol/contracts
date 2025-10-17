@@ -36,7 +36,9 @@ contract HyperCoreForwarder is AccessControl {
     /// @notice All operations performed in this contract are relative to this baseToken
     address immutable baseToken;
 
+    /// @notice The minimum delay between finalizations of pending swaps.
     uint256 public minDelayBetweenFinalizations = 1 hours;
+    /// @notice The time of the last finalization of pending swaps.
     uint256 public lastFinalizationTime;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
@@ -56,6 +58,11 @@ contract HyperCoreForwarder is AccessControl {
     mapping(address => bytes32[]) public pendingQueue;
     // finalToken => current head index in queue
     mapping(address => uint256) public pendingQueueHead;
+
+    /// @notice The cumulative amount of funds sponsored for each final token.
+    mapping(address => uint256) public cumulativeSponsoredAmount;
+    /// @notice The cumulative amount of activation fees sponsored for each final token.
+    mapping(address => uint256) public cumulativeSponsoredActivationFee;
 
     /// @notice Used for uniquely identifying Limit Orders this contract submits. Monotonically increasing
     uint128 public nextCloid;
@@ -298,6 +305,10 @@ contract HyperCoreForwarder is AccessControl {
         }
 
         uint256 finalAmount = amount + amountToSponsor;
+
+        cumulativeSponsoredAmount[finalToken] += amountToSponsor;
+        // @dev only count the activation fee if it was sponsored
+        cumulativeSponsoredActivationFee[finalToken] += (amountToSponsor > 0 ? accountCreationFee : 0);
 
         (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             finalAmount,
@@ -647,6 +658,7 @@ contract HyperCoreForwarder is AccessControl {
 
             _getFromDonationBox(finalToken, deltaEvmAmount);
             IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
+            cumulativeSponsoredAmount[finalToken] += deltaEvmAmount;
             // TODO: check the bridge balance first, otherwise revert
             swapHandler.transferFundsToSelfOnCore(
                 finalToken,
