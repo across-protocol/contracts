@@ -427,17 +427,31 @@ contract HyperCoreForwarder is AccessControl {
         swapHandler.submitLimitOrder(finalTokenParam, priceX1e8, sizeX1e8, cloid);
         pendingSwap.limitOrderCloid = cloid;
 
-        // TODO! calculate new `newMinCoreAmountFromLO` based on the new price. In a simple case, we don't take size
-        // into account, only price. This means we might forward a little more of sponsorship funds than we need, but
-        // that's okay
-        uint64 newMinCoreAmountFromLO = pendingSwap.minCoreAmountFromLO;
-        if (pendingSwap.minCoreAmountFromLO <= newMinCoreAmountFromLO) {
-            // @dev This call is aimed at stale orders. We shouldn't resubmit with better price than we had before
-            // TODO: alternatively, just set delta to 0 and let this go through.
+        // Recalculate the expected minimum out on Core (in final token units, 1e8 scaling)
+        // Respect buy/sell semantics:
+        // - If buying, final token is base: minOut ~= size (conservatively minus fee)
+        // - If selling, final token is quote: minOut = size * price (minus fee)
+        uint64 oldMinCoreAmountFromLO = pendingSwap.minCoreAmountFromLO;
+        uint64 newMinCoreAmountFromLO;
+        if (finalTokenParam.isBuy) {
+            // Conservative: subtract fee from base received
+            uint256 netBaseOut = (uint256(sizeX1e8) * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
+            newMinCoreAmountFromLO = uint64(netBaseOut);
+        } else {
+            uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(priceX1e8)) / CORE_SCALAR;
+            uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenParam.feePpm)) / PPM_SCALAR;
+            newMinCoreAmountFromLO = uint64(netQuoteOut);
+        }
+
+        // Do not allow improving minOut (would require clawing back sponsorship)
+        if (newMinCoreAmountFromLO > oldMinCoreAmountFromLO) {
             revert("Can't resubmit with better price");
         }
 
-        uint64 delta = pendingSwap.minCoreAmountFromLO - newMinCoreAmountFromLO;
+        // Keep totalCoreAmountToForwardToUser constant by topping up sponsorship by the decrease in minOut
+        uint64 delta = oldMinCoreAmountFromLO - newMinCoreAmountFromLO;
+        pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
+        pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + delta;
         if (delta > 0) {
             uint256 deltaEvmAmount = getEVMAmountToCoverCoreAmount(delta);
             try donationBox.withdraw(IERC20(finalToken), deltaEvmAmount) {
