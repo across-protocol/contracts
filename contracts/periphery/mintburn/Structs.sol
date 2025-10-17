@@ -18,15 +18,18 @@ struct CoreTokenInfo {
     uint64 accountActivationFeeCore;
 }
 
-struct FinalTokenParams {
+struct FinalTokenInfo {
+    // The index of the market where we're going to swap baseToken -> finalToken
     uint32 assetIndex;
+    // To go baseToken -> finalToken, do we have to enqueue a buy or a sell?
     bool isBuy;
-    uint32 feePpm; // e.g. 1.4 bps = 140 ppm
+    // The fee Hyperliquid charges for Limit orders in the market; in parts per million, e.g. 1.4 bps = 140 ppm
+    uint32 feePpm;
+    // When enqueuing a limit order, use this to set a price "a bit worse than market" for faster execution
     uint32 suggestedSlippageBps;
+    // Contract where the accounting for all baseToken -> finalToken accounting happens. One pre finalToken
     SwapHandler swapHandler;
 }
-
-// struct
 
 struct LimitOrder {
     // The client order id of the order.

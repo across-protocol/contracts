@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
-import { FinalTokenParams } from "./Structs.sol";
+import { FinalTokenInfo } from "./Structs.sol";
 
 contract SwapHandler {
     address public immutable parentHandler;
@@ -40,14 +40,14 @@ contract SwapHandler {
     }
 
     function submitLimitOrder(
-        FinalTokenParams memory finalTokenParams,
+        FinalTokenInfo memory finalTokenInfo,
         uint64 limitPriceX1e8,
         uint64 sizeX1e8,
         uint128 cloid
     ) external onlyParentHandler {
         HyperCoreLib.submitLimitOrder(
-            finalTokenParams.assetIndex,
-            finalTokenParams.isBuy,
+            finalTokenInfo.assetIndex,
+            finalTokenInfo.isBuy,
             limitPriceX1e8,
             sizeX1e8,
             false,
