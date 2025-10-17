@@ -20,8 +20,6 @@ contract HyperCoreForwarder is AccessControl {
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
 
-    uint256 public constant BRIDGE_BALANCE_BUFFER_EVM = 10 ** 9; // 1,000,000,000 (1 billion)
-
     // Roles
     bytes32 public constant LIMIT_ORDER_UPDATER_ROLE = keccak256("LIMIT_ORDER_UPDATER_ROLE");
 
@@ -68,11 +66,14 @@ contract HyperCoreForwarder is AccessControl {
 
     /// @notice Emitted when a simple transfer to core is executed.
     event SimpleTransferFlowCompleted(
-        bytes32 quoteNonce,
-        uint256 finalAmount,
-        uint256 amountSponsored,
-        address finalRecipient,
-        address finalToken
+        bytes32 indexed quoteNonce,
+        // All amounts are in finalToken
+        uint256 evmAmountReceived,
+        uint256 evmAmountSponsored,
+        uint256 evmAmountTransferred,
+        uint64 coreAmountTransferred,
+        address indexed finalRecipient,
+        address indexed finalToken
     );
 
     event SwapFlowInitialized(
@@ -129,19 +130,27 @@ contract HyperCoreForwarder is AccessControl {
      * @param _coreIndex HCore index of baseToken
      * @param _canBeUsedForAccountActivation Whether or not baseToken can be used for account activation fee on HCore
      * @param _accountActivationFeeCore Fee amount to pay for account activation
+     * @param _bridgeSafetyBufferCore Buffer to use the availability of Bridge funds on core side when bridging this token
      */
     constructor(
         address _donationBox,
         address _baseToken,
         uint32 _coreIndex,
         bool _canBeUsedForAccountActivation,
-        uint64 _accountActivationFeeCore
+        uint64 _accountActivationFeeCore,
+        uint64 _bridgeSafetyBufferCore
     ) {
         donationBox = DonationBox(_donationBox);
         // @dev initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
         nextCloid = 1;
 
-        _setCoreTokenInfo(_baseToken, _coreIndex, _canBeUsedForAccountActivation, _accountActivationFeeCore);
+        _setCoreTokenInfo(
+            _baseToken,
+            _coreIndex,
+            _canBeUsedForAccountActivation,
+            _accountActivationFeeCore,
+            _bridgeSafetyBufferCore
+        );
         baseToken = _baseToken;
     }
 
@@ -154,9 +163,16 @@ contract HyperCoreForwarder is AccessControl {
         address token,
         uint32 coreIndex,
         bool canBeUsedForAccountActivation,
-        uint64 accountActivationFeeCore
+        uint64 accountActivationFeeCore,
+        uint64 bridgeSafetyBufferCore
     ) external onlyDefaultAdmin {
-        _setCoreTokenInfo(token, coreIndex, canBeUsedForAccountActivation, accountActivationFeeCore);
+        _setCoreTokenInfo(
+            token,
+            coreIndex,
+            canBeUsedForAccountActivation,
+            accountActivationFeeCore,
+            bridgeSafetyBufferCore
+        );
     }
 
     // TODO: do we allow unsetting the params?
@@ -260,21 +276,22 @@ contract HyperCoreForwarder is AccessControl {
 
         uint256 finalAmount = amount + amountToSponsor;
 
-        // If there are no funds left on the destination side of the bridge, the funds will be lost in the
-        // bridge. To prevent this, we add a buffer to the final amount.
-        uint256 finalTokenDecimals = IERC20Metadata(finalToken).decimals();
-        uint256 finalAmountWithBuffer = finalAmount + BRIDGE_BALANCE_BUFFER_EVM * 10 ** finalTokenDecimals;
-        bool isSafe = HyperCoreLib.isAmountSafeToBridge(
-            finalRecipient,
-            coreTokenInfo.coreIndex,
-            finalAmountWithBuffer,
+        (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+            finalAmount,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+        // If there are no funds left on the destination side of the bridge, the funds will be lost in the
+        // bridge. We check send safety via `isCoreAmountSafeToBridge`
+        bool isSafe = HyperCoreLib.isCoreAmountSafeToBridge(
+            coreTokenInfo.coreIndex,
+            quotedCoreAmount,
+            coreTokenInfo.bridgeSafetyBufferCore
         );
 
         // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
         // fall back to sending user funds on HyperEVM.
         if (!isSafe || (accountCreationFee > 0 && !coreTokenInfo.canBeUsedForAccountActivation)) {
-            _sendUserFundsOnHyperEVM(quoteNonce, finalAmount, finalRecipient, finalToken);
+            _sendUserFundsOnHyperEVM(quoteNonce, quotedEvmAmount, finalRecipient, finalToken);
             return;
         }
 
@@ -284,10 +301,19 @@ contract HyperCoreForwarder is AccessControl {
             finalToken,
             coreTokenInfo.coreIndex,
             finalRecipient,
-            finalAmount,
+            quotedEvmAmount,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
-        emit SimpleTransferFlowCompleted(quoteNonce, finalAmount, amountToSponsor, finalRecipient, finalToken);
+
+        emit SimpleTransferFlowCompleted(
+            quoteNonce,
+            amount,
+            amountToSponsor,
+            quotedEvmAmount,
+            quotedCoreAmount,
+            finalRecipient,
+            finalToken
+        );
     }
 
     function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
@@ -611,7 +637,8 @@ contract HyperCoreForwarder is AccessControl {
         address token,
         uint32 coreIndex,
         bool canBeUsedForAccountActivation,
-        uint64 accountActivationFeeCore
+        uint64 accountActivationFeeCore,
+        uint64 bridgeSafetyBufferCore
     ) internal {
         HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
         require(tokenInfo.evmContract == token, "Token mismatch");
@@ -626,7 +653,8 @@ contract HyperCoreForwarder is AccessControl {
             coreIndex: coreIndex,
             canBeUsedForAccountActivation: canBeUsedForAccountActivation,
             accountActivationFeeEVM: accountActivationFeeEVM,
-            accountActivationFeeCore: accountActivationFeeCore
+            accountActivationFeeCore: accountActivationFeeCore,
+            bridgeSafetyBufferCore: bridgeSafetyBufferCore
         });
     }
 

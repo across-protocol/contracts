@@ -67,26 +67,6 @@ library HyperCoreLib {
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
 
     /**
-     * @notice Checks if the provided amount is safe to bridge by verifying the spot balance
-     * @param account The account to check the balance for
-     * @param token The token index to check
-     * @param amountToBridgeEVM The amount to bridge (in EVM units)
-     * @return isSafe True if the amount is safe to bridge, false otherwise
-     */
-    function isAmountSafeToBridge(
-        address account,
-        uint64 token,
-        uint256 amountToBridgeEVM,
-        int8 decimalDiff
-    ) internal view returns (bool) {
-        (, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(amountToBridgeEVM, decimalDiff);
-
-        uint64 bridgeBalanceCore = spotBalance(account, token);
-
-        return bridgeBalanceCore >= amountCoreToReceive;
-    }
-
-    /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
@@ -255,6 +235,26 @@ library HyperCoreLib {
         if (!success) revert TokenInfoPrecompileCallFailed();
         TokenInfo memory _tokenInfo = abi.decode(result, (TokenInfo));
         return _tokenInfo;
+    }
+
+    /**
+     * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
+     * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
+     * @param erc20CoreIndex The HyperCore index id of the token
+     * @param coreAmount The amount that the bridging should result in on HyperCore
+     * @param coreBufferAmount The minimum buffer amount that should remain on HyperCore after bridging
+     * @return True if the bridge has enough balance to safely bridge the amount, false otherwise
+     */
+    function isCoreAmountSafeToBridge(
+        uint64 erc20CoreIndex,
+        uint64 coreAmount,
+        uint64 coreBufferAmount
+    ) internal view returns (bool) {
+        address bridgeAddress = toAssetBridgeAddress(erc20CoreIndex);
+        uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
+
+        // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
+        return currentBridgeBalance >= coreAmount + coreBufferAmount;
     }
 
     /**

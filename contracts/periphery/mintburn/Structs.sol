@@ -16,6 +16,8 @@ struct CoreTokenInfo {
     uint256 accountActivationFeeEVM;
     // The account activation fee for the token on Core.
     uint64 accountActivationFeeCore;
+    // Bridge buffer to use when checking safety of bridging evm -> core. In core units
+    uint64 bridgeSafetyBufferCore;
 }
 
 struct FinalTokenInfo {
