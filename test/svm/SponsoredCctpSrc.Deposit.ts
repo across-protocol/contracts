@@ -1,7 +1,15 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program, workspace } from "@coral-xyz/anchor";
 import { createMint, getOrCreateAssociatedTokenAccount, mintTo, TOKEN_PROGRAM_ID, getAccount } from "@solana/spl-token";
-import { Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  AddressLookupTableAccount,
+  AddressLookupTableProgram,
+  Keypair,
+  PublicKey,
+  sendAndConfirmTransaction,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
 import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
@@ -11,7 +19,7 @@ import { program, provider, initializeState, owner, createQuoteSigner } from "./
 import { SponsoredCCTPQuote } from "./SponsoredCctpSrc.types";
 import {
   findProgramAddress,
-  sendTransactionWithLookupTable,
+  sendTransactionWithExistingLookupTable,
   readEventsUntilFound,
   decodeMessageSentDataV2,
 } from "../../src/svm/web3-v1";
@@ -41,6 +49,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
   let localDomain: number;
   let messageSentEventData: Keypair;
+  let lookupTableAccount: AddressLookupTableAccount;
   let state: PublicKey,
     tokenProgram: PublicKey,
     burnToken: PublicKey,
@@ -204,6 +213,63 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     cctpEventAuthority = findProgramAddress("__event_authority", tokenMessengerMinterV2Program.programId).publicKey;
   };
 
+  const setupLookupTable = async () => {
+    // These accounts should be the same for all deposits that have the same burnToken.
+    const eventAuthority = findProgramAddress("__event_authority", program.programId).publicKey;
+    const lookupAddresses = [
+      state,
+      burnToken,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      messageTransmitterV2Program.programId,
+      tokenMessengerMinterV2Program.programId,
+      tokenProgram,
+      SystemProgram.programId,
+      eventAuthority,
+    ];
+
+    // Create instructions for creating and extending the ALT.
+    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
+      authority: owner,
+      payer: owner,
+      recentSlot: await provider.connection.getSlot(),
+    });
+
+    // Submit the ALT creation transaction
+    await sendAndConfirmTransaction(provider.connection, new Transaction().add(lookupTableInstruction), [payer], {
+      commitment: "confirmed",
+      skipPreflight: true,
+    });
+
+    // Extend the ALT with all accounts.
+    const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+      lookupTable: lookupTableAddress,
+      authority: owner,
+      payer: owner,
+      addresses: lookupAddresses,
+    });
+
+    await sendAndConfirmTransaction(provider.connection, new Transaction().add(extendInstruction), [payer], {
+      commitment: "confirmed",
+      skipPreflight: true,
+    });
+
+    // Wait for slot to advance. ALTs only active after slot advance.
+    const initialSlot = await provider.connection.getSlot();
+    while ((await provider.connection.getSlot()) === initialSlot) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    // Fetch the AddressLookupTableAccount.
+    const fetchedLookupTableAccount = (await provider.connection.getAddressLookupTable(lookupTableAddress)).value;
+    if (fetchedLookupTableAccount === null) throw new Error("AddressLookupTableAccount not fetched");
+    lookupTableAccount = fetchedLookupTableAccount;
+  };
+
   before(async () => {
     await provider.connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
 
@@ -215,6 +281,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupBurnToken();
+    await setupLookupTable();
 
     messageSentEventData = Keypair.generate();
   });
@@ -259,9 +326,13 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       program: program.programId,
     };
     const depositIx = await program.methods.deposit({ quote, signature }).accounts(depositAccounts).instruction();
-    const { txSignature } = await sendTransactionWithLookupTable(provider.connection, [depositIx], depositor, [
-      messageSentEventData,
-    ]);
+    const txSignature = await sendTransactionWithExistingLookupTable(
+      provider.connection,
+      [depositIx],
+      lookupTableAccount,
+      depositor,
+      [messageSentEventData]
+    );
 
     const depositorTokenAmount = (await getAccount(provider.connection, depositorTokenAccount)).amount;
     const expectedDepositorTokenAmount = seedBalance - BigInt(burnAmount.toString());
