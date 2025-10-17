@@ -13,7 +13,7 @@ struct CoreTokenInfo {
     // Whether the token can be used for account activation fee.
     bool canBeUsedForAccountActivation;
     // The account activation fee for the token.
-    uint256 accountActivationFee;
+    uint256 accountActivationFeeEVM;
     // The account activation fee for the token on Core.
     uint64 accountActivationFeeCore;
 }

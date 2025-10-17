@@ -116,18 +116,22 @@ contract HyperCoreForwarder is AccessControl {
         address finalToken,
         uint32 coreIndex,
         bool canBeUsedForAccountActivation,
-        uint256 accountActivationFee
+        uint64 accountActivationFeeCore
     ) external onlyDefaultAdmin {
         HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
         require(tokenInfo.evmContract == finalToken, "Token mismatch");
+
+        (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            accountActivationFeeCore,
+            tokenInfo.evmExtraWeiDecimals
+        );
 
         coreTokenInfos[finalToken] = CoreTokenInfo({
             tokenInfo: tokenInfo,
             coreIndex: coreIndex,
             canBeUsedForAccountActivation: canBeUsedForAccountActivation,
-            accountActivationFee: accountActivationFee,
-            // TODO: convert this to core units using utils from HyperCoreLib
-            accountActivationFeeCore: uint64(accountActivationFee)
+            accountActivationFeeEVM: accountActivationFeeEVM,
+            accountActivationFeeCore: accountActivationFeeCore
         });
     }
 
@@ -153,7 +157,7 @@ contract HyperCoreForwarder is AccessControl {
             suggestedSlippageBps: suggestedSlippageBps
         });
 
-        uint256 accountActivationFee = _getAccountActivationFee(finalToken, address(swapHandler));
+        uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, address(swapHandler));
 
         if (accountActivationFee > 0) {
             try donationBox.withdraw(IERC20(finalToken), accountActivationFee) {
@@ -182,7 +186,7 @@ contract HyperCoreForwarder is AccessControl {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
         uint256 maxFee = (amount * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 accountActivationFee = _getAccountActivationFee(finalToken, finalRecipient);
+        uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, finalRecipient);
         uint256 amountToSponsor = extraFeesToSponsor + accountActivationFee;
         if (amountToSponsor > maxFee) {
             amountToSponsor = maxFee;
@@ -210,11 +214,12 @@ contract HyperCoreForwarder is AccessControl {
         emit SimpleTransferToCore(quoteNonce, finalAmount, amountToSponsor, finalRecipient, finalToken);
     }
 
-    function _getAccountActivationFee(address token, address recipient) internal view returns (uint256) {
+    function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
         bool accountActivated = HyperCoreLib.coreUserExists(recipient);
 
         // TODO: handle the case where the token can't be used for account activation
-        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFee;
+        // TODO: I think this should be handled by the caller.
+        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFeeEVM;
     }
 
     function _initiateSwapFlow(
