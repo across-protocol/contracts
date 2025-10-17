@@ -238,10 +238,10 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Checks if an amount is safe to bridge from HyperCore to HyperEVM
+     * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
      * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
      * @param erc20CoreIndex The HyperCore index id of the token
-     * @param coreAmount The amount that the brdiging should result in on HyperCore
+     * @param coreAmount The amount that the bridging should result in on HyperCore
      * @param coreBufferAmount The minimum buffer amount that should remain on HyperCore after bridging
      * @return True if the bridge has enough balance to safely bridge the amount, false otherwise
      */
