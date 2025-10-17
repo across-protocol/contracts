@@ -29,14 +29,16 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
         address _baseToken,
         uint32 _coreIndex,
         bool _canBeUsedForAccountActivation,
-        uint64 _accountActivationFeeCore
+        uint64 _accountActivationFeeCore,
+        uint64 _bridgeSafetyBufferCore
     )
         HyperCoreForwarder(
             _donationBox,
             _baseToken,
             _coreIndex,
             _canBeUsedForAccountActivation,
-            _accountActivationFeeCore
+            _accountActivationFeeCore,
+            _bridgeSafetyBufferCore
         )
     {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
@@ -96,11 +98,5 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
             SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) &&
             !usedNonces[quote.nonce] &&
             quote.deadline >= block.timestamp;
-    }
-
-    // Only used for testing
-    function sweepErc20(address token, address to, uint256 amount) external onlyDefaultAdmin {
-        // TODO: pull from donation box as well?
-        IERC20Metadata(token).transfer(to, amount);
     }
 }

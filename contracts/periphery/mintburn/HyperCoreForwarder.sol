@@ -22,6 +22,7 @@ contract HyperCoreForwarder is AccessControl {
 
     // Roles
     bytes32 public constant LIMIT_ORDER_UPDATER_ROLE = keccak256("LIMIT_ORDER_UPDATER_ROLE");
+    bytes32 public constant FUNDS_SWEEPER_ROLE = keccak256("FUNDS_SWEEPER_ROLE");
 
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
@@ -118,6 +119,11 @@ contract HyperCoreForwarder is AccessControl {
         _;
     }
 
+    modifier onlyFundsSweeper() {
+        require(hasRole(FUNDS_SWEEPER_ROLE, msg.sender), "Not funds sweeper");
+        _;
+    }
+
     modifier onlyExistingToken(address evmTokenAddress) {
         require(coreTokenInfos[evmTokenAddress].tokenInfo.evmContract != address(0), "Unknown token");
         _;
@@ -152,6 +158,11 @@ contract HyperCoreForwarder is AccessControl {
             _bridgeSafetyBufferCore
         );
         baseToken = _baseToken;
+
+        // AccessControl setup
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setRoleAdmin(LIMIT_ORDER_UPDATER_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(FUNDS_SWEEPER_ROLE, DEFAULT_ADMIN_ROLE);
     }
 
     /**************************************
@@ -221,6 +232,10 @@ contract HyperCoreForwarder is AccessControl {
             );
         }
     }
+
+    /**************************************
+     *            FLOW FUNCTIONS          *
+     **************************************/
 
     /**
      * @notice This function is to be called by an inheriting contract. It is to be called after the child contract
@@ -673,5 +688,35 @@ contract HyperCoreForwarder is AccessControl {
             emit DonationBoxInsufficientFunds(token, amount);
             success = false;
         }
+    }
+
+    /**************************************
+     *            SWEEP FUNCTIONS         *
+     **************************************/
+
+    function sweepErc20(address token, uint256 amount) external onlyFundsSweeper {
+        IERC20(token).safeTransfer(msg.sender, amount);
+    }
+
+    function sweepErc20FromDonationBox(address token, uint256 amount) external onlyFundsSweeper {
+        bool success = _tryGetFromDonationBox(token, amount);
+        if (success) {
+            IERC20(token).safeTransfer(msg.sender, amount);
+        }
+    }
+
+    function sweepERC20FromSwapHandler(address token, uint256 amount) external onlyFundsSweeper {
+        SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
+        swapHandler.sweepErc20(token, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
+    }
+
+    function sweepOnCore(address token, uint64 amount) external onlyFundsSweeper {
+        HyperCoreLib.transferERC20CoreToCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
+    }
+
+    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyFundsSweeper {
+        SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
+        swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
     }
 }
