@@ -55,4 +55,8 @@ contract SwapHandler {
             cloid
         );
     }
+
+    function cancelOrderByCloid(uint32 assetIndex, uint128 cloid) external onlyParentHandler {
+        HyperCoreLib.cancelOrderByCloid(assetIndex, cloid);
+    }
 }

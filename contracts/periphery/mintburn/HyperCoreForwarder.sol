@@ -96,6 +96,11 @@ contract HyperCoreForwarder is AccessControl {
         _;
     }
 
+    modifier onlyLimitOrderUpdater() {
+        require(hasRole(LIMIT_ORDER_UPDATER_ROLE, msg.sender), "Not limit order updater");
+        _;
+    }
+
     modifier onlyExistingToken(address evmTokenAddress) {
         require(coreTokenInfos[evmTokenAddress].tokenInfo.evmContract != address(0), "Unknown token");
         _;
@@ -103,6 +108,8 @@ contract HyperCoreForwarder is AccessControl {
 
     constructor(address _donationBox) {
         donationBox = DonationBox(_donationBox);
+        // @dev initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
+        nextCloid = 1;
     }
 
     function setCoreTokenInfo(
@@ -379,9 +386,72 @@ contract HyperCoreForwarder is AccessControl {
 
             availableCore -= totalAmountToForwardToUser;
 
-            delete pendingSwaps[nonce];
+            // ! @dev Don't delete `pendingSwaps` state because that is used for accounting calculations
+            // delete pendingSwaps[nonce];
             head += 1;
             processed += 1;
+        }
+    }
+
+    event CancelledLimitOrder(uint32 asset, uint128 cloid, bytes32 quoteNonce);
+
+    function cancelLimitOrderByCloid(uint32 cloid) external onlyLimitOrderUpdater returns (bytes32 quoteNonce) {
+        quoteNonce = cloidToQuoteNonce[cloid];
+        PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
+
+        address finalTokenAddress = pendingSwap.finalToken;
+        FinalTokenParams memory finalTokenParam = finalTokenParams[finalTokenAddress];
+
+        finalTokenParam.swapHandler.cancelOrderByCloid(finalTokenParam.assetIndex, pendingSwap.limitOrderCloid);
+        // @dev clear out the cloid. `submitNewLimitOrder` function requires that this is empty. Means that no tracked
+        // associated limit order is present
+        delete pendingSwap.limitOrderCloid;
+
+        emit CancelledLimitOrder(finalTokenParam.assetIndex, cloid, quoteNonce);
+    }
+
+    // !!! @dev This function is sensitive. It requires the offchain bot to synchronize the state well. The offchain
+    // bot is responsible to ONLY resubmit orders that have been cancelled with the EXACT SAME amount to trade that
+    // the order has been cancelled with. Based on the new expected core out amount, we need to pull some funds from
+    // the donationBox and
+    function submitNewLimitOrder(bytes32 quoteNonce, uint64 priceX1e8, uint64 sizeX1e8) external onlyLimitOrderUpdater {
+        PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
+        require(pendingSwap.limitOrderCloid == 0, "Cannot resubmit LO for non-empty cloid");
+
+        address finalToken = pendingSwap.finalToken;
+        FinalTokenParams storage finalTokenParam = finalTokenParams[finalToken];
+        CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
+
+        uint128 cloid = ++nextCloid;
+        SwapHandler swapHandler = finalTokenParam.swapHandler;
+        swapHandler.submitLimitOrder(finalTokenParam, priceX1e8, sizeX1e8, cloid);
+        pendingSwap.limitOrderCloid = cloid;
+
+        // TODO! calculate new `newMinCoreAmountFromLO` based on the new price. In a simple case, we don't take size
+        // into account, only price. This means we might forward a little more of sponsorship funds than we need, but
+        // that's okay
+        uint64 newMinCoreAmountFromLO = pendingSwap.minCoreAmountFromLO;
+        if (pendingSwap.minCoreAmountFromLO <= newMinCoreAmountFromLO) {
+            // @dev This call is aimed at stale orders. We shouldn't resubmit with better price than we had before
+            // TODO: alternatively, just set delta to 0 and let this go through.
+            revert("Can't resubmit with better price");
+        }
+
+        uint64 delta = pendingSwap.minCoreAmountFromLO - newMinCoreAmountFromLO;
+        if (delta > 0) {
+            uint256 deltaEvmAmount = getEVMAmountToCoverCoreAmount(delta);
+            try donationBox.withdraw(IERC20(finalToken), deltaEvmAmount) {
+                IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
+                swapHandler.transferFundsToSelfOnCore(
+                    finalToken,
+                    coreTokenInfo.coreIndex,
+                    deltaEvmAmount,
+                    coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                );
+            } catch {
+                emit DonationBoxInsufficientFunds(finalToken, deltaEvmAmount);
+                revert("DonationBoxInsufficientFunds");
+            }
         }
     }
 
