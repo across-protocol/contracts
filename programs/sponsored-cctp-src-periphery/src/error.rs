@@ -1,16 +1,14 @@
 use anchor_lang::prelude::*;
 
-// Common Errors with EVM SponsoredCCTPPeriphery.
+// Common Errors with EVM SponsoredCCTPSrcPeriphery.
 #[error_code]
 pub enum CommonError {
+    #[msg("Invalid quote signature")]
+    InvalidSignature,
     #[msg("Invalid quote deadline")]
     InvalidDeadline,
     #[msg("Invalid source domain")]
     InvalidSourceDomain,
-    #[msg("Quote signer is not set")]
-    QuoteSignerNotSet,
-    #[msg("Invalid quote signature")]
-    InvalidSignature,
 }
 
 // SVM specific errors.

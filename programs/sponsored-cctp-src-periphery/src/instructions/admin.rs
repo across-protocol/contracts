@@ -87,7 +87,7 @@ pub struct SetSignerParams {
     pub new_signer: Pubkey,
 }
 
-// This also allows setting the quote signer to Pubkey::default() to effectively disable deposits.
+// Setting the quote signer to invalid address, including Pubkey::default(), would effectively disable deposits.
 pub fn set_signer(ctx: Context<SetSigner>, params: &SetSignerParams) -> Result<()> {
     let state = &mut ctx.accounts.state;
 

@@ -109,10 +109,6 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
 
     let state = &ctx.accounts.state;
 
-    if state.signer == Pubkey::default() {
-        return err!(CommonError::QuoteSignerNotSet);
-    }
-
     let quote = SponsoredCCTPQuote::new(&params.quote)?;
     validate_signature(state.signer, &quote, &params.signature)?;
 
