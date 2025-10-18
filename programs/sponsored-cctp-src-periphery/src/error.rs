@@ -44,10 +44,14 @@ pub enum DataDecodingError {
 pub enum QuoteSignatureError {
     #[msg("Invalid quote signature")]
     InvalidSignature,
+    #[msg("Invalid signature length")]
+    InvalidSignatureLength,
     #[msg("Invalid signature recovery id")]
     InvalidSignatureRecoveryId,
     #[msg("Invalid signature s value")]
     InvalidSignatureSValue,
     #[msg("Invalid quote hash")]
     InvalidQuoteHash,
+    #[msg("Invalid quote data length")]
+    InvalidQuoteDataLength,
 }

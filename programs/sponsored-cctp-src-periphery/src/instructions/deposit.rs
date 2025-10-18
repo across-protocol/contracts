@@ -11,10 +11,7 @@ use crate::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
     },
-    utils::{
-        get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START, QUOTE_DATA_LENGTH,
-        QUOTE_SIGNATURE_LENGTH,
-    },
+    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START},
 };
 
 #[event_cpi]
@@ -102,8 +99,8 @@ pub struct Deposit<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositParams {
-    pub quote: [u8; QUOTE_DATA_LENGTH],
-    pub signature: [u8; QUOTE_SIGNATURE_LENGTH],
+    pub quote: Vec<u8>,
+    pub signature: Vec<u8>,
 }
 
 pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
@@ -116,7 +113,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         return err!(CommonError::QuoteSignerNotSet);
     }
 
-    let quote = SponsoredCCTPQuote::new(&params.quote);
+    let quote = SponsoredCCTPQuote::new(&params.quote)?;
     validate_signature(state.quote_signer, &quote, &params.signature)?;
 
     let amount = quote.amount()?;
@@ -169,7 +166,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     };
     let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
     let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, rent_fund_seeds);
-    let params = DepositForBurnWithHookParams {
+    let cpi_params = DepositForBurnWithHookParams {
         amount,
         destination_domain,
         mint_recipient,
@@ -178,7 +175,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         min_finality_threshold,
         hook_data,
     };
-    token_messenger_minter_v2::cpi::deposit_for_burn_with_hook(cpi_ctx, params)?;
+    token_messenger_minter_v2::cpi::deposit_for_burn_with_hook(cpi_ctx, cpi_params)?;
 
     emit_cpi!(CCTPQuoteDeposited {
         depositor: ctx.accounts.signer.key(),
@@ -190,6 +187,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         final_token: quote.final_token()?,
         destination_caller,
         nonce: quote.nonce()?,
+        signature: params.signature.clone(),
     });
 
     Ok(())

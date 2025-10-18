@@ -23,6 +23,7 @@ pub struct CCTPQuoteDeposited {
     pub final_token: Pubkey,
     pub destination_caller: Pubkey,
     pub nonce: Pubkey, // Nonce is bytes32 random value, but it is more readable in logs expressed as Pubkey.
+    pub signature: Vec<u8>,
 }
 
 #[event]

@@ -75,7 +75,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const signSponsoredCCTPQuote = async (
     signer: ethers.Wallet,
     quoteData: SponsoredCCTPQuote
-  ): Promise<{ quote: number[]; signature: number[] }> => {
+  ): Promise<{ quote: Buffer; signature: Buffer }> => {
     const encodedHexString = ethers.utils.defaultAbiCoder.encode(
       [
         "uint32",
@@ -108,13 +108,13 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.finalToken,
       ]
     );
-    const encodedQuote = Array.from(Buffer.from(ethers.utils.arrayify(encodedHexString)));
+    const encodedQuote = Buffer.from(ethers.utils.arrayify(encodedHexString));
 
     const digest = ethers.utils.keccak256(encodedHexString);
 
     // Create simple ECDSA signature over the ABI encoded quote data hash.
     const signatureHexString = ethers.utils.joinSignature(signer._signingKey().signDigest(digest));
-    const signature = Array.from(Buffer.from(ethers.utils.arrayify(signatureHexString)));
+    const signature = Buffer.from(ethers.utils.arrayify(signatureHexString));
 
     return { quote: encodedQuote, signature };
   };
