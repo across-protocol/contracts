@@ -15,9 +15,11 @@ import { SwapHandler } from "./SwapHandler.sol";
 contract HyperCoreForwarder is AccessControl {
     using SafeERC20 for IERC20;
 
+    // TODO! This is incorrect. Core decimals are not fixed to 8.
     uint256 public constant CORE_DECIMALS = 8;
     uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
+    // TODO! This is incorrect
     uint256 public constant CORE_SCALAR = 10 ** CORE_DECIMALS;
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
@@ -40,8 +42,8 @@ contract HyperCoreForwarder is AccessControl {
 
     /// @notice The minimum delay between finalizations of pending swaps.
     uint256 public minDelayBetweenFinalizations = 1 hours;
-    /// @notice The time of the last finalization of pending swaps.
-    uint256 public lastFinalizationTime;
+    /// @notice The time of the last finalization of pending swaps per final token.
+    mapping(address finalToken => uint256 lastFinalizationTime) lastFinalizationTime;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct PendingSwap {
@@ -109,7 +111,9 @@ contract HyperCoreForwarder is AccessControl {
         uint256 evmAmountReceived,
         // Two below in finalToken
         uint256 evmAmountSponsored,
-        uint64 targetCoreAmountToTransfer
+        uint64 targetCoreAmountToTransfer,
+        uint32 asset,
+        uint128 cloid
     );
 
     event SwapFlowCompleted(
@@ -131,6 +135,8 @@ contract HyperCoreForwarder is AccessControl {
         uint64 oldSizeX1e8Left
     );
 
+    event BetterPricedLOSubmitted(bytes32 quoteNonce, uint64 oldPriceX1e8, uint64 priceX1e8);
+
     event SwapFlowFallbackTooExpensive(
         bytes32 quoteNonce,
         // Based on minimum out requirements for sponsored / non-sponsored flows
@@ -139,12 +145,12 @@ contract HyperCoreForwarder is AccessControl {
         uint64 maxCoreAmountToSponsor
     );
 
-    event SwapFlowFallbackDonationBox(bytes32 quoteNonce, address finalToken, uint256 totalEVMAmountToSponsor);
+    event SwapFlowFallbackDonationBox(bytes32 quoteNonce, address indexed finalToken, uint256 totalEVMAmountToSponsor);
 
     event SwapFlowFallbackUnsafeToBridge(
         bytes32 quoteNonce,
         bool initTokenUnsafe,
-        address finalToken,
+        address indexed finalToken,
         bool finalTokenUnsafe
     );
 
@@ -398,12 +404,6 @@ contract HyperCoreForwarder is AccessControl {
         );
     }
 
-    function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
-        bool accountActivated = HyperCoreLib.coreUserExists(recipient);
-
-        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFeeEVM;
-    }
-
     function _initiateSwapFlow(
         // In initialToken
         uint256 amountLD,
@@ -489,6 +489,7 @@ contract HyperCoreForwarder is AccessControl {
         // - If selling, finalToken is quote: quoteOut = baseIn * price, less fee
         // Amount we are GUARANTEED to receive as a result of the enqueued limit order in `finalToken`
         uint64 minLimitOutCore;
+        // TODO!  When buying, the resulting sizeX1e8 needs to be quantized according to szDecimals
         uint64 sizeX1e8;
         if (finalTokenInfo.isBuy) {
             // `amountLDCoreEquivalent` of "quote asset" of the market
@@ -626,7 +627,9 @@ contract HyperCoreForwarder is AccessControl {
             finalToken,
             amountLD,
             totalEVMAmountToSponsor,
-            finalCoreSendAmount
+            finalCoreSendAmount,
+            finalTokenInfo.assetIndex,
+            cloid
         );
     }
 
@@ -635,8 +638,11 @@ contract HyperCoreForwarder is AccessControl {
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
 
         require(address(finalTokenInfo.swapHandler) != address(0), "Final token not registered");
-        require(block.timestamp >= lastFinalizationTime + minDelayBetweenFinalizations, "Min delay not reached");
-        lastFinalizationTime = block.timestamp;
+        require(
+            block.timestamp >= lastFinalizationTime[finalToken] + minDelayBetweenFinalizations,
+            "Min delay not reached"
+        );
+        lastFinalizationTime[finalToken] = block.timestamp;
 
         uint256 head = pendingQueueHead[finalToken];
         bytes32[] storage queue = pendingQueue[finalToken];
@@ -672,8 +678,8 @@ contract HyperCoreForwarder is AccessControl {
 
             availableCore -= totalAmountToForwardToUser;
 
-            // ! @dev Don't delete `pendingSwaps` state because that is used for accounting calculations
-            // delete pendingSwaps[nonce];
+            // We don't delete `pendingSwaps` state, because we might require it for accounting purposes if we need to
+            // update the associated limit order
             pendingSwap.isFinalized = true;
             head += 1;
             processed += 1;
@@ -685,9 +691,7 @@ contract HyperCoreForwarder is AccessControl {
     function cancelLimitOrderByCloid(uint32 cloid) external onlyLimitOrderUpdater returns (bytes32 quoteNonce) {
         quoteNonce = cloidToQuoteNonce[cloid];
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
-
-        address finalTokenAddress = pendingSwap.finalToken;
-        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalTokenAddress];
+        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[pendingSwap.finalToken];
 
         finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, pendingSwap.limitOrderCloid);
         // @dev clear out the cloid. `submitUpdatedLimitOrder` function requires that this is empty. Means that no tracked
@@ -716,6 +720,7 @@ contract HyperCoreForwarder is AccessControl {
     function submitUpdatedLimitOrder(
         bytes32 quoteNonce,
         uint64 priceX1e8,
+        // TODO: calculate the `sizeX1e8` from priceX1e8 , oldPriceX1e8 , oldSizeX1e8Left
         uint64 sizeX1e8,
         uint64 oldPriceX1e8,
         uint64 oldSizeX1e8Left
@@ -757,36 +762,44 @@ contract HyperCoreForwarder is AccessControl {
         uint64 oldMinCoreAmountFromLO = pendingSwap.minCoreAmountFromLO;
         uint64 newMinCoreAmountFromLO;
         if (finalTokenInfo.isBuy) {
+            // TODO: on HyperLiquid, when setting size to some X, is fee subtracted from the quote or the base? I'd imagine
+            // TODO: that you just have to pay more, but you still get the size.
+            // TODO! Does it affect also our _initiateSwapFlow caclulation? Yes it does
             // Conservative: subtract fee from base received
             uint256 netBaseOut = (uint256(sizeX1e8) * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
             newMinCoreAmountFromLO = uint64(netBaseOut);
         } else {
+            // TODO! When selling, I'd also expect fees to be subtracted from the quote, so this is correct
             uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(priceX1e8)) / CORE_SCALAR;
             uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
             newMinCoreAmountFromLO = uint64(netQuoteOut);
         }
 
-        // Do not allow improving minOut (would require clawing back sponsorship)
+        uint64 sponsorDeltaCore;
         if (newMinCoreAmountFromLO > oldMinCoreAmountFromLO) {
-            revert("Can't resubmit with better price");
+            // This should generally not happen. If we cancelled the limit order, it means it wasn't being filled fast
+            // enough, so we will be submitting with worse price. But this is interesting to track
+            emit BetterPricedLOSubmitted(quoteNonce, oldPriceX1e8, priceX1e8);
+            sponsorDeltaCore = 0;
+        } else {
+            // Keep total core amounts from all pending limit orders constant by sponsoring the difference
+            sponsorDeltaCore = oldMinCoreAmountFromLO - newMinCoreAmountFromLO;
         }
 
-        // Keep totalCoreAmountToForwardToUser constant by topping up sponsorship by the decrease in minOut
-        uint64 delta = oldMinCoreAmountFromLO - newMinCoreAmountFromLO;
-        if (delta > 0) {
-            uint256 deltaEvmAmount;
-            (deltaEvmAmount, delta) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-                delta,
+        if (sponsorDeltaCore > 0) {
+            uint256 sponsorDeltaEvm;
+            (sponsorDeltaEvm, sponsorDeltaCore) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+                sponsorDeltaCore,
                 finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
             );
 
-            _getFromDonationBox(finalToken, deltaEvmAmount);
-            IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
-            cumulativeSponsoredAmount[finalToken] += deltaEvmAmount;
+            _getFromDonationBox(finalToken, sponsorDeltaEvm);
+            IERC20(finalToken).safeTransfer(address(swapHandler), sponsorDeltaEvm);
+            cumulativeSponsoredAmount[finalToken] += sponsorDeltaEvm;
             if (
                 HyperCoreLib.isCoreAmountSafeToBridge(
                     finalTokenCoreInfo.coreIndex,
-                    delta,
+                    sponsorDeltaCore,
                     finalTokenCoreInfo.bridgeSafetyBufferCore
                 )
             ) {
@@ -796,12 +809,12 @@ contract HyperCoreForwarder is AccessControl {
             swapHandler.transferFundsToSelfOnCore(
                 finalToken,
                 finalTokenCoreInfo.coreIndex,
-                deltaEvmAmount,
+                sponsorDeltaEvm,
                 finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
             );
 
             pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
-            pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + delta;
+            pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + sponsorDeltaCore;
         }
 
         emit UpdatedLimitOrder(quoteNonce, priceX1e8, sizeX1e8, oldPriceX1e8, oldSizeX1e8Left);
@@ -874,6 +887,12 @@ contract HyperCoreForwarder is AccessControl {
         }
     }
 
+    function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
+        bool accountActivated = HyperCoreLib.coreUserExists(recipient);
+
+        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFeeEVM;
+    }
+
     /**************************************
      *            SWEEP FUNCTIONS         *
      **************************************/
@@ -899,6 +918,7 @@ contract HyperCoreForwarder is AccessControl {
         HyperCoreLib.transferERC20CoreToCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 
+    // TODO: this has to be permissioned to be done by some bot account. Or permissionless, but send money to e.g. donationBox
     function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyFundsSweeper {
         // We first want to make sure there are not pending limit orders for this token
         uint256 head = pendingQueueHead[token];
@@ -907,7 +927,7 @@ contract HyperCoreForwarder is AccessControl {
         }
 
         //  We also want to make sure the min delay between finalizations has been reached
-        require(block.timestamp >= lastFinalizationTime + minDelayBetweenFinalizations, "Min delay not reached");
+        require(block.timestamp >= lastFinalizationTime[token] + minDelayBetweenFinalizations, "Min delay not reached");
 
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);

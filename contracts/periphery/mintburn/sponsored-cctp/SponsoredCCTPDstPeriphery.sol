@@ -99,6 +99,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
         return
             SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) &&
             !usedNonces[quote.nonce] &&
+            // TODO: allow a configurable buffer here. An honest user could have submitted on source chain and CCTP just
+            // TODO: took some time.
             quote.deadline >= block.timestamp;
     }
 }
