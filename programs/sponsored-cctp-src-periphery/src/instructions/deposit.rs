@@ -99,8 +99,8 @@ pub struct Deposit<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositParams {
-    pub quote: Vec<u8>,
-    pub signature: Vec<u8>,
+    pub quote: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
+    pub signature: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
 }
 
 pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
