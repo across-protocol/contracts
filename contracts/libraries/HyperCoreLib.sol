@@ -337,4 +337,19 @@ library HyperCoreLib {
             amountCoreToReceive = uint64(amountEVMToSend * scale);
         }
     }
+
+    function convertCoreDecimalsSimple(
+        uint64 amountDecimalsFrom,
+        uint8 decimalsFrom,
+        uint8 decimalsTo
+    ) internal pure returns (uint64) {
+        if (decimalsFrom == decimalsTo) {
+            return amountDecimalsFrom;
+        } else if (decimalsFrom < decimalsTo) {
+            return uint64(amountDecimalsFrom * 10 ** (decimalsTo - decimalsFrom));
+        } else {
+            // round down
+            return uint64(amountDecimalsFrom / 10 ** (decimalsFrom - decimalsTo));
+        }
+    }
 }

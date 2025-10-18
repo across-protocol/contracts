@@ -15,12 +15,11 @@ import { SwapHandler } from "./SwapHandler.sol";
 contract HyperCoreForwarder is AccessControl {
     using SafeERC20 for IERC20;
 
-    // TODO! This is incorrect. Core decimals are not fixed to 8.
-    uint256 public constant CORE_DECIMALS = 8;
+    // TODO: Not sure if WIRE_DECIMALS / SCALAR are even useful
+    uint256 public constant WIRE_DECIMALS = 8;
     uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
-    // TODO! This is incorrect
-    uint256 public constant CORE_SCALAR = 10 ** CORE_DECIMALS;
+    uint256 public constant WIRE_SCALAR = 10 ** WIRE_DECIMALS;
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
 
@@ -406,7 +405,7 @@ contract HyperCoreForwarder is AccessControl {
 
     function _initiateSwapFlow(
         // In initialToken
-        uint256 amountLD,
+        uint256 amountInEVM,
         bytes32 quoteNonce,
         address finalUser,
         address finalToken,
@@ -414,7 +413,7 @@ contract HyperCoreForwarder is AccessControl {
         // `maxUserSlippageBps` here means how much token user receives compared to a 1 to 1
         uint256 maxUserSlippageBps,
         // In initialToken
-        uint256 extraBridgingFeesCharged
+        uint256 extraBridgingFeesEVM
     ) internal {
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
         require(address(finalTokenInfo.swapHandler) != address(0), "Final token not registered");
@@ -425,30 +424,30 @@ contract HyperCoreForwarder is AccessControl {
 
         bool isSponsoredFlow = maxBpsToSponsor > 0;
         // In initialToken
-        (uint256 amountLDEVMToSend, uint64 amountLDCoreEquivalent) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-            amountLD,
+        (, uint64 amountInEquivalentCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+            amountInEVM,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
         // In finalToken
-        uint64 coreAccountActivationFee = HyperCoreLib.coreUserExists(finalUser)
+        uint64 accountActivationFeeCore = HyperCoreLib.coreUserExists(finalUser)
             ? 0
             : finalCoreTokenInfo.accountActivationFeeCore;
 
         // In initialToken
-        uint256 totalEvmBridgedAmount = amountLD + extraBridgingFeesCharged;
+        uint256 totalAmountBridgedEVM = amountInEVM + extraBridgingFeesEVM;
         // The user has no HyperCore account and we can't sponsor its creation; fall back to sending funds on HyperEVM
-        if (coreAccountActivationFee > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
+        if (accountActivationFeeCore > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
             // Both in initialToken
-            uint256 maxEvmAmountToSponsor = (totalEvmBridgedAmount * maxBpsToSponsor) / BPS_SCALAR;
-            uint256 evmAmountToSponsor = extraBridgingFeesCharged > maxEvmAmountToSponsor
-                ? maxEvmAmountToSponsor
-                : extraBridgingFeesCharged;
+            uint256 maxAmountToSponsorEVM = (totalAmountBridgedEVM * maxBpsToSponsor) / BPS_SCALAR;
+            uint256 amountToSponsorEVM = extraBridgingFeesEVM > maxAmountToSponsorEVM
+                ? maxAmountToSponsorEVM
+                : extraBridgingFeesEVM;
 
             _fallbackHyperEVMFlow(
                 quoteNonce,
-                amountLD,
-                evmAmountToSponsor,
-                amountLD + evmAmountToSponsor,
+                amountInEVM,
+                amountToSponsorEVM,
+                amountInEVM + amountToSponsorEVM,
                 finalUser,
                 initialToken
             );
@@ -456,25 +455,27 @@ contract HyperCoreForwarder is AccessControl {
         }
 
         // Both in finalToken
-        uint64 minAllowableCoreAmountToForward;
-        uint64 maxCoreAmountToSponsor;
+        uint64 minAllowableAmountToForwardCore;
+        uint64 maxAmountToSponsorCore;
         if (isSponsoredFlow) {
             // toCore(totalEvmBridgedAmount) + coreAccountActivationFee
-            // Notice! This conversion converts `totalEvmBridgedAmount` in initialToken into core amount in finalToken.
-            // `feelessCoreAmount` is equivalent for initialToken and for the finalToken. Both are stables and have 8
-            // decimals on HCore
-            (, uint64 feelessCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-                totalEvmBridgedAmount,
+            (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+                totalAmountBridgedEVM,
                 initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
-            maxCoreAmountToSponsor = uint64((feelessCoreAmount * maxBpsToSponsor) / BPS_SCALAR);
-            minAllowableCoreAmountToForward = feelessCoreAmount + coreAccountActivationFee;
+            uint64 feelessAmountCoreFinalToken = HyperCoreLib.convertCoreDecimalsSimple(
+                feelessAmountCoreInitialToken,
+                initialCoreTokenInfo.tokenInfo.weiDecimals,
+                finalCoreTokenInfo.tokenInfo.weiDecimals
+            );
+            maxAmountToSponsorCore = uint64((feelessAmountCoreFinalToken * maxBpsToSponsor) / BPS_SCALAR);
+            minAllowableAmountToForwardCore = feelessAmountCoreFinalToken + accountActivationFeeCore;
         } else {
-            // toCore(amountLD) - slippage + coreAccountActivationFee
-            maxCoreAmountToSponsor = 0;
-            minAllowableCoreAmountToForward =
-                uint64((amountLDCoreEquivalent * (BPS_SCALAR - maxUserSlippageBps)) / BPS_SCALAR) +
-                coreAccountActivationFee;
+            // toCore(amountInEquivalentCore) - slippage + coreAccountActivationFee
+            maxAmountToSponsorCore = 0;
+            minAllowableAmountToForwardCore =
+                uint64((amountInEquivalentCore * (BPS_SCALAR - maxUserSlippageBps)) / BPS_SCALAR) +
+                accountActivationFeeCore;
         }
 
         uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenInfo.assetIndex);
@@ -484,43 +485,29 @@ contract HyperCoreForwarder is AccessControl {
             : (BPS_SCALAR - finalTokenInfo.suggestedSlippageBps);
         uint64 limitPriceX1e8 = uint64((uint256(spotX1e8) * adjBps) / BPS_SCALAR);
 
-        // Compute min expected out on Core in final token units
-        // - If buying, finalToken is base: baseOut = quoteIn / price, less fee
-        // - If selling, finalToken is quote: quoteOut = baseIn * price, less fee
-        // Amount we are GUARANTEED to receive as a result of the enqueued limit order in `finalToken`
-        uint64 minLimitOutCore;
-        // TODO!  When buying, the resulting sizeX1e8 needs to be quantized according to szDecimals
-        uint64 sizeX1e8;
-        if (finalTokenInfo.isBuy) {
-            // `amountLDCoreEquivalent` of "quote asset" of the market
-            // floor(quote * 1e8 / price)
-            uint64 grossBaseOut = uint64((amountLDCoreEquivalent * CORE_SCALAR) / limitPriceX1e8);
-            // floor(grossBaseOut * (1e6 - ppmFee) / 1e6)
-            uint64 netBaseOut = uint64((grossBaseOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR);
-            minLimitOutCore = uint64(netBaseOut);
-            sizeX1e8 = minLimitOutCore;
-        } else {
-            // When selling, size is the amount in. In "base asset" of the market
-            sizeX1e8 = amountLDCoreEquivalent;
-            // floor(base * price / 1e8)
-            uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(limitPriceX1e8)) / CORE_SCALAR;
-            // floor(grossQuoteOut * (1e6 - ppmFee) / 1e6)
-            uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
-            minLimitOutCore = uint64(netQuoteOut);
-        }
+        (uint64 sizeX1e8, uint64 tokensToSendCore, uint64 minAmountOutCore) = _calculateLimitOrderAmounts(
+            amountInEquivalentCore,
+            limitPriceX1e8,
+            initialCoreTokenInfo,
+            finalCoreTokenInfo,
+            finalTokenInfo
+        );
 
-        uint64 requiredCoreAmountToSponsor = minLimitOutCore < minAllowableCoreAmountToForward
-            ? minAllowableCoreAmountToForward - minLimitOutCore
+        // Amount we are GUARANTEED to receive as a result of the enqueued limit order in `finalToken`
+        uint64 minLimitOutCore = minAmountOutCore;
+
+        uint64 requiredCoreAmountToSponsor = minLimitOutCore < minAllowableAmountToForwardCore
+            ? minAllowableAmountToForwardCore - minLimitOutCore
             : 0;
 
-        if (requiredCoreAmountToSponsor > maxCoreAmountToSponsor) {
+        if (requiredCoreAmountToSponsor > maxAmountToSponsorCore) {
             // We can't provide the required slippage in a swap flow, try simple transfer flow instead
-            _executeSimpleTransferFlow(amountLD, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesCharged);
-            emit SwapFlowFallbackTooExpensive(quoteNonce, requiredCoreAmountToSponsor, maxCoreAmountToSponsor);
+            _executeSimpleTransferFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesEVM);
+            emit SwapFlowFallbackTooExpensive(quoteNonce, requiredCoreAmountToSponsor, maxAmountToSponsorCore);
             return;
         }
 
-        uint64 finalCoreSendAmount = isSponsoredFlow ? minAllowableCoreAmountToForward : minLimitOutCore;
+        uint64 finalCoreSendAmount = isSponsoredFlow ? minAllowableAmountToForwardCore : minLimitOutCore;
         uint64 totalSponsoredOnCore = finalCoreSendAmount - minLimitOutCore;
 
         uint256 totalEVMAmountToSponsor = 0;
@@ -535,16 +522,16 @@ contract HyperCoreForwarder is AccessControl {
             // On success, we have totalEVMAmountToSponsor + quoted.evm on balance. Otherwise, set sponsored amts to 0
             if (!_tryGetFromDonationBox(finalToken, totalEVMAmountToSponsor)) {
                 // We can't provide the required `totalEVMAmountToSponsor` in a swap flow, try simple transfer flow instead
-                _executeSimpleTransferFlow(amountLD, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesCharged);
+                _executeSimpleTransferFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesEVM);
                 emit SwapFlowFallbackDonationBox(quoteNonce, finalToken, totalEVMAmountToSponsor);
                 return;
             }
         }
 
-        // Check that we can safely bridge to HCore
+        // Check that we can safely bridge to HCore (for the trade amount actually needed)
         bool isSafeToBridgeMainToken = HyperCoreLib.isCoreAmountSafeToBridge(
             initialCoreTokenInfo.coreIndex,
-            amountLDCoreEquivalent,
+            tokensToSendCore,
             initialCoreTokenInfo.bridgeSafetyBufferCore
         );
         bool isSafeTobridgeSponsorshipFunds = HyperCoreLib.isCoreAmountSafeToBridge(
@@ -555,16 +542,16 @@ contract HyperCoreForwarder is AccessControl {
 
         if (!isSafeToBridgeMainToken || !isSafeTobridgeSponsorshipFunds) {
             // Both in initialToken
-            uint256 maxEvmAmountToSponsor = (totalEvmBridgedAmount * maxBpsToSponsor) / BPS_SCALAR;
-            uint256 evmAmountToSponsor = extraBridgingFeesCharged > maxEvmAmountToSponsor
+            uint256 maxEvmAmountToSponsor = (totalAmountBridgedEVM * maxBpsToSponsor) / BPS_SCALAR;
+            uint256 evmAmountToSponsor = extraBridgingFeesEVM > maxEvmAmountToSponsor
                 ? maxEvmAmountToSponsor
-                : extraBridgingFeesCharged;
+                : extraBridgingFeesEVM;
 
             _fallbackHyperEVMFlow(
                 quoteNonce,
-                amountLD,
+                amountInEVM,
                 evmAmountToSponsor,
-                amountLD + evmAmountToSponsor,
+                amountInEVM + evmAmountToSponsor,
                 finalUser,
                 initialToken
             );
@@ -583,17 +570,21 @@ contract HyperCoreForwarder is AccessControl {
         SwapHandler swapHandler = finalTokenInfo.swapHandler;
 
         // 1. Fund SwapHandler @ core with `initialToken`: use it for the trade
-        IERC20(initialToken).safeTransfer(address(swapHandler), amountLDEVMToSend);
+        (uint256 evmToSendForTrade, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            tokensToSendCore,
+            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+        IERC20(initialToken).safeTransfer(address(swapHandler), evmToSendForTrade);
         swapHandler.transferFundsToSelfOnCore(
             initialToken,
             initialCoreTokenInfo.coreIndex,
-            amountLDEVMToSend,
+            evmToSendForTrade,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
         // 2. Fund SwapHandler @ core with `finalToken`: use that for sponsorship
         if (totalEVMAmountToSponsor > 0) {
-            cumulativeSponsoredActivationFee[finalToken] += coreAccountActivationFee > 0
+            cumulativeSponsoredActivationFee[finalToken] += accountActivationFeeCore > 0
                 ? finalCoreTokenInfo.accountActivationFeeEVM
                 : 0;
             cumulativeSponsoredAmount[finalToken] += totalEVMAmountToSponsor;
@@ -625,7 +616,7 @@ contract HyperCoreForwarder is AccessControl {
             quoteNonce,
             finalUser,
             finalToken,
-            amountLD,
+            amountInEVM,
             totalEVMAmountToSponsor,
             finalCoreSendAmount,
             finalTokenInfo.assetIndex,
@@ -736,12 +727,12 @@ contract HyperCoreForwarder is AccessControl {
         if (finalTokenInfo.isBuy) {
             // New required quote with fee, rounded up
             // notionalCore = ceil(size * price / 1e8)
-            uint256 notionalCore = (uint256(sizeX1e8) * uint256(priceX1e8) + CORE_SCALAR - 1) / CORE_SCALAR;
+            uint256 notionalCore = (uint256(sizeX1e8) * uint256(priceX1e8) + WIRE_SCALAR - 1) / WIRE_SCALAR;
             uint256 requiredQuoteWithFeeCore = (notionalCore * (PPM_SCALAR + finalTokenInfo.feePpm) + PPM_SCALAR - 1) /
                 PPM_SCALAR;
 
             // Old remaining budget in quote with fee, rounded down
-            uint256 oldNotionalCore = (uint256(oldSizeX1e8Left) * uint256(oldPriceX1e8)) / CORE_SCALAR;
+            uint256 oldNotionalCore = (uint256(oldSizeX1e8Left) * uint256(oldPriceX1e8)) / WIRE_SCALAR;
             uint256 oldBudgetWithFeeCore = (oldNotionalCore * (PPM_SCALAR + finalTokenInfo.feePpm)) / PPM_SCALAR;
 
             require(requiredQuoteWithFeeCore <= oldBudgetWithFeeCore, "ExceedsRemainingQuoteBudget");
@@ -762,15 +753,13 @@ contract HyperCoreForwarder is AccessControl {
         uint64 oldMinCoreAmountFromLO = pendingSwap.minCoreAmountFromLO;
         uint64 newMinCoreAmountFromLO;
         if (finalTokenInfo.isBuy) {
-            // TODO: on HyperLiquid, when setting size to some X, is fee subtracted from the quote or the base? I'd imagine
-            // TODO: that you just have to pay more, but you still get the size.
-            // TODO! Does it affect also our _initiateSwapFlow caclulation? Yes it does
+            // TODO! Change this calculation. It's probably wrong RE weiDecimals, szDecimals, wireDecimals(8)
             // Conservative: subtract fee from base received
             uint256 netBaseOut = (uint256(sizeX1e8) * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
             newMinCoreAmountFromLO = uint64(netBaseOut);
         } else {
-            // TODO! When selling, I'd also expect fees to be subtracted from the quote, so this is correct
-            uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(priceX1e8)) / CORE_SCALAR;
+            // TODO! When selling, I'd also expect fees to be subtracted from the quote, so this is correct. But no trust
+            uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(priceX1e8)) / WIRE_SCALAR;
             uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
             newMinCoreAmountFromLO = uint64(netQuoteOut);
         }
@@ -931,5 +920,125 @@ contract HyperCoreForwarder is AccessControl {
 
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
+    }
+
+    /**************************************
+     *   INTERNAL CALCULATION FUNCTIONS   *
+     **************************************/
+    function _calculateLimitOrderAmounts(
+        uint64 amountInEquivalentCore,
+        uint64 limitPriceX1e8,
+        CoreTokenInfo memory initialCoreTokenInfo,
+        CoreTokenInfo memory finalCoreTokenInfo,
+        FinalTokenInfo memory finalTokenInfo
+    ) internal pure returns (uint64 sizeX1e8, uint64 tokensToSendCore, uint64 minAmountOutCore) {
+        if (amountInEquivalentCore == 0 || limitPriceX1e8 == 0) {
+            return (0, 0, 0);
+        }
+
+        // Helpers
+        uint8 baseSzDecimals = finalTokenInfo.isBuy
+            ? finalCoreTokenInfo.tokenInfo.szDecimals
+            : initialCoreTokenInfo.tokenInfo.szDecimals;
+        uint8 baseWeiDecimals = finalTokenInfo.isBuy
+            ? finalCoreTokenInfo.tokenInfo.weiDecimals
+            : initialCoreTokenInfo.tokenInfo.weiDecimals;
+        uint8 quoteSzDecimals = finalTokenInfo.isBuy
+            ? initialCoreTokenInfo.tokenInfo.szDecimals
+            : finalCoreTokenInfo.tokenInfo.szDecimals;
+        uint8 quoteWeiDecimals = finalTokenInfo.isBuy
+            ? initialCoreTokenInfo.tokenInfo.weiDecimals
+            : finalCoreTokenInfo.tokenInfo.weiDecimals;
+
+        // Scaling factors
+        uint256 scaleBase = 10 ** uint256(uint8(baseWeiDecimals - baseSzDecimals)); // core-units per 1.0 of sz base
+        uint256 scaleQuote = 10 ** uint256(uint8(quoteWeiDecimals - quoteSzDecimals)); // core-units per 1.0 of sz quote
+        uint256 stepX1e8 = baseSzDecimals >= 8 ? 1 : 10 ** uint256(uint8(8 - baseSzDecimals)); // min increment for sizeX1e8
+
+        if (finalTokenInfo.isBuy) {
+            // We buy base (final token) using quote (initial token)
+            // Budget in quote core units
+            uint256 budgetQuoteCore = uint256(amountInEquivalentCore);
+
+            // Per-lot quote notional in core units: floor((stepX1e8 * pxX1e8 / 1e16) * scaleQuote)
+            uint256 perLotQuoteNotionalCore = ((stepX1e8 * uint256(limitPriceX1e8)) * scaleQuote) /
+                (WIRE_SCALAR * WIRE_SCALAR);
+
+            if (perLotQuoteNotionalCore == 0) {
+                return (0, 0, 0);
+            }
+
+            // Add fee on quote: ceil(notional * (1e6 + fee) / 1e6)
+            uint256 feeNumerator = PPM_SCALAR + uint256(finalTokenInfo.feePpm);
+            uint256 perLotQuoteWithFee = (perLotQuoteNotionalCore * feeNumerator + PPM_SCALAR - 1) / PPM_SCALAR;
+            if (perLotQuoteWithFee == 0) {
+                return (0, 0, 0);
+            }
+
+            // Max lots we can afford under conservative per-lot estimate
+            uint256 mLots = budgetQuoteCore / perLotQuoteWithFee;
+            if (mLots == 0) {
+                return (0, 0, 0);
+            }
+
+            // Proposed size and exact required quote with fee for that size
+            uint256 proposedSizeX1e8 = mLots * stepX1e8;
+            // Exact notional in quote core units for proposed size
+            uint256 exactNotionalQuoteCore = ((proposedSizeX1e8 * uint256(limitPriceX1e8)) * scaleQuote) /
+                (WIRE_SCALAR * WIRE_SCALAR);
+            uint256 exactQuoteWithFee = (exactNotionalQuoteCore * feeNumerator + PPM_SCALAR - 1) / PPM_SCALAR;
+
+            // If exact requirement exceeds budget due to rounding differences, step down a few lots conservatively
+            uint256 safetyCounter = 0;
+            while (exactQuoteWithFee > budgetQuoteCore && mLots > 0 && safetyCounter < 8) {
+                unchecked {
+                    mLots -= 1;
+                    safetyCounter++;
+                }
+                proposedSizeX1e8 = mLots * stepX1e8;
+                exactNotionalQuoteCore =
+                    ((proposedSizeX1e8 * uint256(limitPriceX1e8)) * scaleQuote) /
+                    (WIRE_SCALAR * WIRE_SCALAR);
+                exactQuoteWithFee = (exactNotionalQuoteCore * feeNumerator + PPM_SCALAR - 1) / PPM_SCALAR;
+            }
+
+            if (mLots == 0) {
+                return (0, 0, 0);
+            }
+
+            // sizeX1e8 is quantized already
+            sizeX1e8 = uint64(proposedSizeX1e8);
+            tokensToSendCore = uint64(exactQuoteWithFee); // quote we need to fund on Core (includes fee)
+
+            // Minimum amount out in final token (base) on Core.
+            // Convert size (sz units) to core units of base: floor(sizeX1e8 * scaleBase / 1e8)
+            uint256 baseCore = (proposedSizeX1e8 * scaleBase) / WIRE_SCALAR;
+            // TODO: we don't need to subtract this
+            // Conservative: subtract fee proportion from base received
+            uint256 baseOutNet = (baseCore * (PPM_SCALAR - uint256(finalTokenInfo.feePpm))) / PPM_SCALAR;
+            minAmountOutCore = uint64(baseOutNet);
+        } else {
+            // We sell base (initial token) to receive quote (final token)
+            // Determine maximum lots we can sell from available base core units
+            uint256 availableBaseCore = uint256(amountInEquivalentCore);
+            uint256 mLots = availableBaseCore / scaleBase;
+            if (mLots == 0) {
+                return (0, 0, 0);
+            }
+
+            uint256 proposedSizeX1e8 = mLots * stepX1e8;
+            sizeX1e8 = uint64(proposedSizeX1e8);
+
+            // How many base core units this size actually consumes (<= available)
+            uint256 baseUsedCore = mLots * scaleBase;
+            tokensToSendCore = uint64(baseUsedCore);
+
+            // Quote out in core units for the proposed size (before fee):
+            uint256 quoteNotionalCore = ((proposedSizeX1e8 * uint256(limitPriceX1e8)) * scaleQuote) /
+                (WIRE_SCALAR * WIRE_SCALAR);
+            // Apply fee on the amount received (conservative):
+            uint256 quoteOutNet = (quoteNotionalCore * (PPM_SCALAR - uint256(finalTokenInfo.feePpm))) / PPM_SCALAR;
+            minAmountOutCore = uint64(quoteOutNet);
+        }
     }
 }
