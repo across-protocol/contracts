@@ -91,8 +91,12 @@ pub struct SetSignerParams {
 pub fn set_signer(ctx: Context<SetSigner>, params: &SetSignerParams) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // Set and log old/new quote signer.
     let old_signer = state.signer;
+    if params.new_signer == old_signer {
+        return err!(SvmError::SignerUnchanged);
+    }
+
+    // Set and log old/new quote signer.
     state.signer = params.new_signer;
     emit_cpi!(SignerSet { old_signer, new_signer: params.new_signer });
 
