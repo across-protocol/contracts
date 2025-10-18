@@ -112,12 +112,19 @@ contract HyperCoreForwarder is AccessControl {
         uint64 targetCoreAmountToTransfer
     );
 
-    event SwapFlowCompleted(bytes32 quoteNonce, uint64 amountCore, address user, address finalToken);
+    event SwapFlowCompleted(
+        bytes32 indexed quoteNonce,
+        address indexed finalRecipient,
+        address indexed finalToken,
+        // Two below in finalToken
+        uint256 coreAmountSponsored,
+        uint64 coreAmountTransferred
+    );
 
-    event CancelledLimitOrder(bytes32 quoteNonce, uint32 asset, uint128 cloid);
+    event CancelledLimitOrder(bytes32 indexed quoteNonce, uint32 indexed asset, uint128 cloid);
 
     event UpdatedLimitOrder(
-        bytes32 quoteNonce,
+        bytes32 indexed quoteNonce,
         uint64 priceX1e8,
         uint64 sizeX1e8,
         uint64 oldPriceX1e8,
@@ -358,7 +365,7 @@ contract HyperCoreForwarder is AccessControl {
         // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
         // fall back to sending user funds on HyperEVM.
         if (!isSafe || (accountCreationFee > 0 && !coreTokenInfo.canBeUsedForAccountActivation)) {
-            _sendUserFundsOnHyperEVM(quoteNonce, amount, amountToSponsor, finalAmount, finalRecipient, finalToken);
+            _fallbackHyperEVMFlow(quoteNonce, amount, amountToSponsor, finalAmount, finalRecipient, finalToken);
             emit SimpleTransferFallback(
                 quoteNonce,
                 isSafe,
@@ -435,7 +442,7 @@ contract HyperCoreForwarder is AccessControl {
                 ? maxEvmAmountToSponsor
                 : extraBridgingFeesCharged;
 
-            _sendUserFundsOnHyperEVM(
+            _fallbackHyperEVMFlow(
                 quoteNonce,
                 amountLD,
                 evmAmountToSponsor,
@@ -550,7 +557,7 @@ contract HyperCoreForwarder is AccessControl {
                 ? maxEvmAmountToSponsor
                 : extraBridgingFeesCharged;
 
-            _sendUserFundsOnHyperEVM(
+            _fallbackHyperEVMFlow(
                 quoteNonce,
                 amountLD,
                 evmAmountToSponsor,
@@ -583,6 +590,11 @@ contract HyperCoreForwarder is AccessControl {
 
         // 2. Fund SwapHandler @ core with `finalToken`: use that for sponsorship
         if (totalEVMAmountToSponsor > 0) {
+            cumulativeSponsoredActivationFee[finalToken] += coreAccountActivationFee > 0
+                ? finalCoreTokenInfo.accountActivationFeeEVM
+                : 0;
+            cumulativeSponsoredAmount[finalToken] += totalEVMAmountToSponsor;
+
             IERC20(finalToken).safeTransfer(address(swapHandler), totalEVMAmountToSponsor);
             swapHandler.transferFundsToSelfOnCore(
                 finalToken,
@@ -650,9 +662,10 @@ contract HyperCoreForwarder is AccessControl {
 
             emit SwapFlowCompleted(
                 nonce,
-                totalAmountToForwardToUser,
                 pendingSwap.finalRecipient,
-                pendingSwap.finalToken
+                pendingSwap.finalToken,
+                pendingSwap.sponsoredCoreAmountPreFunded,
+                totalAmountToForwardToUser
             );
 
             availableCore -= totalAmountToForwardToUser;
@@ -710,7 +723,7 @@ contract HyperCoreForwarder is AccessControl {
 
         address finalToken = pendingSwap.finalToken;
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
-        CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
+        CoreTokenInfo memory finalTokenCoreInfo = coreTokenInfos[finalToken];
 
         // Enforce that the new order does not require more tokens than the remaining budget of the previous order
         if (finalTokenInfo.isBuy) {
@@ -762,18 +775,27 @@ contract HyperCoreForwarder is AccessControl {
             uint256 deltaEvmAmount;
             (deltaEvmAmount, delta) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
                 delta,
-                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
             );
 
             _getFromDonationBox(finalToken, deltaEvmAmount);
             IERC20(finalToken).safeTransfer(address(swapHandler), deltaEvmAmount);
             cumulativeSponsoredAmount[finalToken] += deltaEvmAmount;
-            // TODO: check the bridge balance first, otherwise revert
+            if (
+                HyperCoreLib.isCoreAmountSafeToBridge(
+                    finalTokenCoreInfo.coreIndex,
+                    delta,
+                    finalTokenCoreInfo.bridgeSafetyBufferCore
+                )
+            ) {
+                // Can't add required sponsored funds to balance out the accounting. Have to revert
+                revert("Bridging is unsafe");
+            }
             swapHandler.transferFundsToSelfOnCore(
                 finalToken,
-                coreTokenInfo.coreIndex,
+                finalTokenCoreInfo.coreIndex,
                 deltaEvmAmount,
-                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
             );
 
             pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
@@ -788,7 +810,7 @@ contract HyperCoreForwarder is AccessControl {
      * @notice Should be used for rare cases where we can't proceed with our normal HyperCore flows: either there are
      * no funds in the spot bridge, or e.g. we can't pay for account creation for the user for some reason
      */
-    function _sendUserFundsOnHyperEVM(
+    function _fallbackHyperEVMFlow(
         bytes32 quoteNonce,
         uint256 evmAmountReceived,
         uint256 evmSponsoredAmount,
@@ -797,6 +819,7 @@ contract HyperCoreForwarder is AccessControl {
         address finalToken
     ) internal {
         IERC20(finalToken).safeTransfer(finalUser, totalEvmAmountToSend);
+        cumulativeSponsoredAmount[finalToken] += evmSponsoredAmount;
         emit FallbackHyperEVMFlowCompleted(
             quoteNonce,
             finalUser,
