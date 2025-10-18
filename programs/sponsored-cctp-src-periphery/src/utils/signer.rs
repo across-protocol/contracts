@@ -1,13 +1,10 @@
 use anchor_lang::{
     prelude::*,
-    solana_program::{
-        keccak,
-        secp256k1_recover::{secp256k1_recover, Secp256k1RecoverError},
-    },
+    solana_program::{keccak, secp256k1_recover::secp256k1_recover},
 };
 use libsecp256k1::Signature as EVMSignature;
 
-use crate::{error::QuoteSignatureError, utils::SponsoredCCTPQuote};
+use crate::{error::CommonError, utils::SponsoredCCTPQuote};
 
 pub const QUOTE_SIGNATURE_LENGTH: usize = 65;
 
@@ -19,30 +16,26 @@ fn recover_signer(quote_hash: &[u8; 32], quote_signature: &[u8]) -> Result<Pubke
     // secp256k1_recover doesn't validate input parameters lengths, so check the signature. No need to check hash as it
     // is fixed size array.
     if quote_signature.len() != QUOTE_SIGNATURE_LENGTH {
-        return err!(QuoteSignatureError::InvalidSignatureLength);
+        return err!(CommonError::InvalidSignature);
     }
 
     // Extract and validate recovery id from the signature.
     let ethereum_recovery_id = quote_signature[QUOTE_SIGNATURE_LENGTH - 1];
     if !(27..=30).contains(&ethereum_recovery_id) {
-        return err!(QuoteSignatureError::InvalidSignatureRecoveryId);
+        return err!(CommonError::InvalidSignature);
     }
     let recovery_id = ethereum_recovery_id - 27;
 
     // Reject high-s value signatures to prevent malleability.
     let signature = EVMSignature::parse_standard_slice(&quote_signature[0..QUOTE_SIGNATURE_LENGTH - 1])
-        .map_err(|_| QuoteSignatureError::InvalidSignature)?;
+        .map_err(|_| CommonError::InvalidSignature)?;
     if signature.s.is_high() {
-        return err!(QuoteSignatureError::InvalidSignatureSValue);
+        return err!(CommonError::InvalidSignature);
     }
 
     // Recover quote signer's public key.
     let public_key = secp256k1_recover(quote_hash, recovery_id, &quote_signature[0..QUOTE_SIGNATURE_LENGTH - 1])
-        .map_err(|err| match err {
-            Secp256k1RecoverError::InvalidHash => QuoteSignatureError::InvalidQuoteHash,
-            Secp256k1RecoverError::InvalidRecoveryId => QuoteSignatureError::InvalidSignatureRecoveryId,
-            Secp256k1RecoverError::InvalidSignature => QuoteSignatureError::InvalidSignature,
-        })?;
+        .map_err(|_| CommonError::InvalidSignature)?;
 
     // Hash public key and return last 20 bytes (EVM address) as Pubkey.
     let mut address = keccak::hash(public_key.to_bytes().as_slice()).to_bytes();
@@ -60,7 +53,7 @@ pub fn validate_signature(
 ) -> Result<()> {
     let recovered_signer = recover_signer(&quote.hash(), quote_signature)?;
     if recovered_signer != expected_signer {
-        return err!(QuoteSignatureError::InvalidSignature);
+        return err!(CommonError::InvalidSignature);
     }
 
     Ok(())

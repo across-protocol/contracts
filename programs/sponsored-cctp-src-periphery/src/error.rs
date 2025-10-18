@@ -9,6 +9,8 @@ pub enum CommonError {
     InvalidSourceDomain,
     #[msg("Quote signer is not set")]
     QuoteSignerNotSet,
+    #[msg("Invalid quote signature")]
+    InvalidSignature,
 }
 
 // SVM specific errors.
@@ -28,6 +30,8 @@ pub enum SvmError {
     AmountNotPositive,
     #[msg("The quote deadline has not passed!")]
     QuoteDeadlineNotPassed,
+    #[msg("Invalid quote data length")]
+    InvalidQuoteDataLength,
 }
 
 // EVM decoding errors.
@@ -37,21 +41,4 @@ pub enum DataDecodingError {
     CannotDecodeToU32,
     #[msg("Cannot decode to u64")]
     CannotDecodeToU64,
-}
-
-// Quote signature errors.
-#[error_code]
-pub enum QuoteSignatureError {
-    #[msg("Invalid quote signature")]
-    InvalidSignature,
-    #[msg("Invalid signature length")]
-    InvalidSignatureLength,
-    #[msg("Invalid signature recovery id")]
-    InvalidSignatureRecoveryId,
-    #[msg("Invalid signature s value")]
-    InvalidSignatureSValue,
-    #[msg("Invalid quote hash")]
-    InvalidQuoteHash,
-    #[msg("Invalid quote data length")]
-    InvalidQuoteDataLength,
 }
