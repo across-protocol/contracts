@@ -26,8 +26,8 @@ pub mod sponsored_cctp_src_periphery {
         instructions::initialize(ctx, &params)
     }
 
-    pub fn set_quote_signer(ctx: Context<SetQuoteSigner>, params: SetQuoteSignerParams) -> Result<()> {
-        instructions::set_quote_signer(ctx, &params)
+    pub fn set_signer(ctx: Context<SetSigner>, params: SetSignerParams) -> Result<()> {
+        instructions::set_signer(ctx, &params)
     }
 
     pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: WithdrawRentFundParams) -> Result<()> {

@@ -291,7 +291,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   });
 
   beforeEach(async () => {
-    ({ state, localDomain } = await initializeState({ quoteSigner: quoteSignerPubkey }));
+    ({ state, localDomain } = await initializeState({ signer: quoteSignerPubkey }));
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupBurnToken();

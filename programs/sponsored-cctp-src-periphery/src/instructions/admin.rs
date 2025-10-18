@@ -5,7 +5,7 @@ use anchor_lang::{
 
 use crate::{
     error::SvmError,
-    event::{QuoteSignerSet, WithdrawnRentFund},
+    event::{SignerSet, WithdrawnRentFund},
     program,
     state::State,
     utils::{initialize_current_time, set_seed},
@@ -43,7 +43,7 @@ pub struct Initialize<'info> {
 pub struct InitializeParams {
     pub seed: u64,
     pub local_domain: u32,
-    pub quote_signer: Pubkey,
+    pub signer: Pubkey,
 }
 
 pub fn initialize(ctx: Context<Initialize>, params: &InitializeParams) -> Result<()> {
@@ -57,15 +57,15 @@ pub fn initialize(ctx: Context<Initialize>, params: &InitializeParams) -> Result
     state.local_domain = params.local_domain;
 
     // Set and log initial quote signer.
-    state.quote_signer = params.quote_signer;
-    emit_cpi!(QuoteSignerSet { old_quote_signer: Pubkey::default(), new_quote_signer: params.quote_signer });
+    state.signer = params.signer;
+    emit_cpi!(SignerSet { old_signer: Pubkey::default(), new_signer: params.signer });
 
     Ok(())
 }
 
 #[event_cpi]
 #[derive(Accounts)]
-pub struct SetQuoteSigner<'info> {
+pub struct SetSigner<'info> {
     #[account(
         mut,
         address = program_data.upgrade_authority_address.unwrap_or_default() @ SvmError::NotUpgradeAuthority
@@ -83,18 +83,18 @@ pub struct SetQuoteSigner<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct SetQuoteSignerParams {
-    pub quote_signer: Pubkey,
+pub struct SetSignerParams {
+    pub new_signer: Pubkey,
 }
 
 // This also allows setting the quote signer to Pubkey::default() to effectively disable deposits.
-pub fn set_quote_signer(ctx: Context<SetQuoteSigner>, params: &SetQuoteSignerParams) -> Result<()> {
+pub fn set_signer(ctx: Context<SetSigner>, params: &SetSignerParams) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
     // Set and log old/new quote signer.
-    let old_quote_signer = state.quote_signer;
-    state.quote_signer = params.quote_signer;
-    emit_cpi!(QuoteSignerSet { old_quote_signer, new_quote_signer: params.quote_signer });
+    let old_signer = state.signer;
+    state.signer = params.new_signer;
+    emit_cpi!(SignerSet { old_signer, new_signer: params.new_signer });
 
     Ok(())
 }

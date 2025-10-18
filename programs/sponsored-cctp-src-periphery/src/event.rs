@@ -1,9 +1,9 @@
 use anchor_lang::prelude::*;
 
 #[event]
-pub struct QuoteSignerSet {
-    pub old_quote_signer: Pubkey,
-    pub new_quote_signer: Pubkey,
+pub struct SignerSet {
+    pub old_signer: Pubkey,
+    pub new_signer: Pubkey,
 }
 
 #[event]
