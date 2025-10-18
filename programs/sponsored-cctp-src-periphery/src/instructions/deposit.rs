@@ -47,9 +47,11 @@ pub struct Deposit<'info> {
     )]
     pub depositor_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    // Mint key is not checked against the quoted burn_token here to avoid the overhead of deserializing and parsing the
-    // quote. Instead this check is performed in the instruction handler.
-    #[account(mut, mint::token_program = token_program)]
+    #[account(
+        mut,
+        constraint = mint.key() == SponsoredCCTPQuote::new(&params.quote)?.burn_token()? @ SvmError::InvalidMint,
+        mint::token_program = token_program,
+    )]
     pub mint: InterfaceAccount<'info, Mint>,
 
     /// CHECK: denylist PDA, checked in CCTP. Seeds must be ["denylist_account", signer.key()] (CCTP
@@ -123,15 +125,10 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     let amount = quote.amount()?;
     let destination_domain = quote.destination_domain()?;
     let mint_recipient = quote.mint_recipient()?;
-    let burn_token = quote.burn_token()?;
     let destination_caller = quote.destination_caller()?;
     let max_fee = quote.max_fee()?;
     let min_finality_threshold = quote.min_finality_threshold()?;
     let hook_data = quote.hook_data();
-
-    if burn_token != ctx.accounts.mint.key() {
-        return err!(SvmError::InvalidMint);
-    }
 
     // Record the quote deadline as it should be safe to close the used_nonce account after this time.
     ctx.accounts.used_nonce.quote_deadline = quote_deadline;
