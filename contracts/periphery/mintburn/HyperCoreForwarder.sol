@@ -721,6 +721,12 @@ contract HyperCoreForwarder is AccessControl {
      * @param oldSizeX1e8Left size that was remaining on the order that was cancelled
      */
     function submitUpdatedLimitOrder(
+        // old order with some price and some out amount expectations: pendingSwaps (minAmountOutCore, totalSponsoredCore)
+        // new order with some price and new amount expectations. minAmountOutCore2, totalSponsoredCore + (minAmountOutCore2 - minAmountOutCore)
+        // oldPriceX1e8, oldSizeX1e8Left -> partial Limit order that we cancelled
+        // how much tokens that we sent in are still there for us to trade?
+        // priceX1e8: sz ?
+        // partialBudgetRemaining
         bytes32 quoteNonce,
         uint64 priceX1e8,
         uint64 oldPriceX1e8,
@@ -803,7 +809,8 @@ contract HyperCoreForwarder is AccessControl {
                 finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
             );
 
-            pendingSwap.minCoreAmountFromLO = guaranteedCoreOut;
+            uint64 fullOldGuranteedOut = pendingSwap.minCoreAmountFromLO;
+            pendingSwap.minCoreAmountFromLO = fullOldGuranteedOut + guaranteedCoreOut - guaranteedCoreOutOld;
             pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + sponsorDeltaCore;
         }
 
