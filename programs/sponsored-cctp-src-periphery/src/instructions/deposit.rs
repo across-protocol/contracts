@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams;
 use crate::{
     error::{CommonError, SvmError},
-    event::{CCTPQuoteDeposited, ReclaimedEventAccount, ReclaimedUsedNonceAccount},
+    event::{ReclaimedEventAccount, ReclaimedUsedNonceAccount, SponsoredDepositForBurn},
     message_transmitter_v2::{self, program::MessageTransmitterV2},
     state::{State, UsedNonce},
     token_messenger_minter_v2::{
@@ -177,16 +177,13 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     };
     token_messenger_minter_v2::cpi::deposit_for_burn_with_hook(cpi_ctx, cpi_params)?;
 
-    emit_cpi!(CCTPQuoteDeposited {
-        depositor: ctx.accounts.signer.key(),
-        burn_token,
-        amount,
-        destination_domain,
-        mint_recipient,
+    emit_cpi!(SponsoredDepositForBurn {
+        quote_nonce: quote.nonce()?.to_vec(),
+        origin_sender: ctx.accounts.signer.key(),
         final_recipient: quote.final_recipient()?,
+        quote_deadline: quote.deadline()?,
+        max_bps_to_sponsor: quote.max_bps_to_sponsor()?,
         final_token: quote.final_token()?,
-        destination_caller,
-        nonce: quote.nonce()?.to_vec(),
         signature: params.signature.clone(),
     });
 

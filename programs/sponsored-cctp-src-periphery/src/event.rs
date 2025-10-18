@@ -13,16 +13,13 @@ pub struct WithdrawnRentFund {
 }
 
 #[event]
-pub struct CCTPQuoteDeposited {
-    pub depositor: Pubkey,
-    pub burn_token: Pubkey,
-    pub amount: u64,
-    pub destination_domain: u32,
-    pub mint_recipient: Pubkey,
+pub struct SponsoredDepositForBurn {
+    pub quote_nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
+    pub origin_sender: Pubkey,
     pub final_recipient: Pubkey,
+    pub quote_deadline: u32,
+    pub max_bps_to_sponsor: u64,
     pub final_token: Pubkey,
-    pub destination_caller: Pubkey,
-    pub nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
     pub signature: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
 }
 
