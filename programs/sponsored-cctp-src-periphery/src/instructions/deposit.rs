@@ -112,6 +112,14 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     let quote = SponsoredCCTPQuote::new(&params.quote)?;
     validate_signature(state.signer, &quote, &params.signature)?;
 
+    let quote_deadline = quote.deadline()?;
+    if quote_deadline < get_current_time(state)? {
+        return err!(CommonError::InvalidDeadline);
+    }
+    if quote.source_domain()? != state.local_domain {
+        return err!(CommonError::InvalidSourceDomain);
+    }
+
     let amount = quote.amount()?;
     let destination_domain = quote.destination_domain()?;
     let mint_recipient = quote.mint_recipient()?;
@@ -123,14 +131,6 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
 
     if burn_token != ctx.accounts.mint.key() {
         return err!(SvmError::InvalidMint);
-    }
-
-    let quote_deadline = quote.deadline()?;
-    if quote_deadline < get_current_time(state)? {
-        return err!(CommonError::InvalidDeadline);
-    }
-    if quote.source_domain()? != state.local_domain {
-        return err!(CommonError::InvalidSourceDomain);
     }
 
     // Record the quote deadline as it should be safe to close the used_nonce account after this time.
