@@ -67,6 +67,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
             quote.nonce,
             // If the quote is invalid we don't sponsor the flow or the extra fees
             isQuoteValid ? quote.maxBpsToSponsor : 0,
+            // TODO: maxUserSlippageBps. Zero for sponsored flows. Has to be parsed for non-sponsored flows
+            0,
             quote.finalRecipient.toAddress(),
             // If the quote is invalid we don't want to swap, so we use the base token as the final token
             isQuoteValid ? quote.finalToken.toAddress() : baseToken,

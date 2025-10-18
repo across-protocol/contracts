@@ -34,7 +34,11 @@ contract SwapHandler {
         HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
     }
 
-    function transferFundsToUserOnCore(uint64 erc20CoreIndex, address to, uint64 amountCore) external {
+    function transferFundsToUserOnCore(
+        uint64 erc20CoreIndex,
+        address to,
+        uint64 amountCore
+    ) external onlyParentHandler {
         HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore);
     }
 

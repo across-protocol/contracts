@@ -223,7 +223,10 @@ contract HyperCoreForwarder is AccessControl {
         minDelayBetweenFinalizations = minDelay;
     }
 
-    // TODO: do we allow unsetting the core token info?
+    /**
+     * @notice Setting core token info to incorrect values can lead to loss of funds. Should NEVER be unset while the
+     * finalTokenParams are not unset
+     */
     function setCoreTokenInfo(
         address token,
         uint32 coreIndex,
@@ -240,7 +243,6 @@ contract HyperCoreForwarder is AccessControl {
         );
     }
 
-    // TODO: do we allow unsetting the params?
     /**
      * @notice Sets the parameters for a final token.
      * @dev This function deploys a new SwapHandler contract if one is not already set. If the final token

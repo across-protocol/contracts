@@ -32,12 +32,3 @@ struct FinalTokenInfo {
     // Contract where the accounting for all baseToken -> finalToken accounting happens. One pre finalToken
     SwapHandler swapHandler;
 }
-
-struct LimitOrder {
-    // The client order id of the order.
-    uint128 cloid;
-    // The limit price of the order scaled by 1e8.
-    uint64 limitPriceX1e8;
-    // The size of the order scaled by 1e8.
-    uint64 sizeX1e8;
-}
