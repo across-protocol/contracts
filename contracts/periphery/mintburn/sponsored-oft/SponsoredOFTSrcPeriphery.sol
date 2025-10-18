@@ -8,7 +8,7 @@ import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 // TODO? make Ownable and allow to change ApiPubKey and DstComposer. For Phase0, can keep it like this and just redeploy
 // This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
@@ -94,17 +94,15 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.nonce,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
+            quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken
         );
 
-        // TODO? For better flexibility, this can be set by the caller instead. However, writing a lib for this on the
-        // API side is probably trickier.
-        // TODO: test and see what real gas limits we need for both of these calls: lzReceive and lzCompose
         bytes memory extraOptions = MinimalLZOptions
             .newOptions()
-            .addExecutorLzReceiveOption(uint128(50_000), uint128(0))
-            .addExecutorLzComposeOption(uint16(0), uint128(200_000), uint128(0));
+            .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
+            .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
         if (quote.signedParams.dstEid != DST_EID) {
             revert("Incorrect dstEid");

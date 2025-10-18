@@ -20,6 +20,9 @@ struct SignedQuoteParams {
     bytes32 nonce; // quote nonce
     uint256 deadline; // quote deadline
     uint256 maxBpsToSponsor; // max bps (of sent amount) to sponsor for 1:1
+    uint256 lzReceiveGasLimit; // gas limit for the OFT send
+    uint256 lzComposeGasLimit; // gas limit for the OFT send
+    uint256 maxUserSlippageBps; // slippage tolerance for the swap on the destination
     bytes32 finalRecipient; // user address on destination
     bytes32 finalToken; // final token we want to receive (might be different from OFT token we're sending)
 }

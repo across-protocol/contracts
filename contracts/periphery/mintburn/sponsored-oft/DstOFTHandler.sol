@@ -93,6 +93,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreForwarder {
         address finalRecipient = _composeMsg._getFinalRecipient().toAddress();
         address finalToken = _composeMsg._getFinalToken().toAddress();
         uint256 maxBpsToSponsor = _composeMsg._getMaxBpsToSponsor();
+        // TODO: pass this into the _executeFlow
+        uint256 maxUserSlippageBps = _composeMsg._getMaxUserSlippageBps();
         uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
 
         _executeFlow(_amountLD, quoteNonce, maxBpsToSponsor, finalRecipient, finalToken, EXTRA_FEES_TO_SPONSOR);
