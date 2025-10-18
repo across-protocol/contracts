@@ -8,3 +8,4 @@ export * from "./programConnectors";
 export * from "./constants";
 export * from "./helpers";
 export * from "./cctpHelpers";
+export * from "./cctpV2Helpers";

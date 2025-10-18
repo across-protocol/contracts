@@ -4,6 +4,7 @@ import * as MessageTransmitterClient from "./MessageTransmitter";
 import * as TokenMessengerMinterClient from "./TokenMessengerMinter";
 import * as MessageTransmitterV2Client from "./MessageTransmitterV2";
 import * as TokenMessengerMinterV2Client from "./TokenMessengerMinterV2";
+import * as SponsoredCctpSrcPeripheryClient from "./SponsoredCctpSrcPeriphery";
 
 export {
   MulticallHandlerClient,
@@ -12,4 +13,5 @@ export {
   TokenMessengerMinterClient,
   MessageTransmitterV2Client,
   TokenMessengerMinterV2Client,
+  SponsoredCctpSrcPeripheryClient,
 };
