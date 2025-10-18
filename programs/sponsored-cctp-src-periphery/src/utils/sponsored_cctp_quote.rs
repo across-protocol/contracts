@@ -114,8 +114,8 @@ impl<'a> SponsoredCCTPQuote<'a> {
         Self::decode_to_u32(self.get_field_word(SponsoredCCTPQuoteFields::MinFinalityThreshold))
     }
 
-    pub fn nonce(&self) -> Result<Pubkey> {
-        Self::decode_to_pubkey(self.get_field_word(SponsoredCCTPQuoteFields::Nonce))
+    pub fn nonce(&self) -> Result<[u8; 32]> {
+        Self::decode_to_bytes32(self.get_field_word(SponsoredCCTPQuoteFields::Nonce))
     }
 
     pub fn deadline(&self) -> Result<u32> {
@@ -173,5 +173,10 @@ impl<'a> SponsoredCCTPQuote<'a> {
     fn decode_to_pubkey(data: &[u8; 32]) -> Result<Pubkey> {
         // Wrap in Result just to have consistency with decoding other field types that might error.
         Ok(Pubkey::from(*data))
+    }
+
+    fn decode_to_bytes32(data: &[u8; 32]) -> Result<[u8; 32]> {
+        // Wrap in Result just to have consistency with decoding other field types that might error.
+        Ok(*data)
     }
 }

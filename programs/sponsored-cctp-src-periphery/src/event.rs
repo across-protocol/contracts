@@ -22,7 +22,7 @@ pub struct CCTPQuoteDeposited {
     pub final_recipient: Pubkey,
     pub final_token: Pubkey,
     pub destination_caller: Pubkey,
-    pub nonce: Pubkey, // Nonce is bytes32 random value, but it is more readable in logs expressed as Pubkey.
+    pub nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
     pub signature: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
 }
 
@@ -33,6 +33,6 @@ pub struct ReclaimedEventAccount {
 
 #[event]
 pub struct ReclaimedUsedNonceAccount {
-    pub nonce: Pubkey, // Nonce is bytes32 random value, but it is more readable in logs expressed as Pubkey.
+    pub nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
     pub used_nonce: Pubkey, // PDA derived from above nonce that got closed.
 }

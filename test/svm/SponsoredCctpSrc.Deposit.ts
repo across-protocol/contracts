@@ -382,7 +382,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       new PublicKey(destinationCaller).toString(),
       "Invalid destinationCaller"
     );
-    assert.strictEqual(ethers.utils.hexlify(event.nonce.toBuffer()), ethers.utils.hexlify(nonce), "Invalid nonce");
+    assert.strictEqual(ethers.utils.hexlify(event.nonce), ethers.utils.hexlify(nonce), "Invalid nonce");
 
     const message = decodeMessageSentDataV2(
       (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message

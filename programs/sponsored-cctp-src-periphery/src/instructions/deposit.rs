@@ -186,7 +186,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         final_recipient: quote.final_recipient()?,
         final_token: quote.final_token()?,
         destination_caller,
-        nonce: quote.nonce()?,
+        nonce: quote.nonce()?.to_vec(),
         signature: params.signature.clone(),
     });
 
@@ -268,7 +268,7 @@ pub struct ReclaimUsedNonceAccount<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct ReclaimUsedNonceAccountParams {
-    pub nonce: Pubkey,
+    pub nonce: [u8; 32],
 }
 
 pub fn reclaim_used_nonce_account(
@@ -279,7 +279,7 @@ pub fn reclaim_used_nonce_account(
         return err!(SvmError::QuoteDeadlineNotPassed);
     }
 
-    emit_cpi!(ReclaimedUsedNonceAccount { nonce: params.nonce, used_nonce: ctx.accounts.used_nonce.key() });
+    emit_cpi!(ReclaimedUsedNonceAccount { nonce: params.nonce.to_vec(), used_nonce: ctx.accounts.used_nonce.key() });
 
     Ok(())
 }
