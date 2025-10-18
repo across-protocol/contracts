@@ -61,26 +61,6 @@ contract Constants is Script {
         address zkUsdcSharedBridge_324;
     }
 
-    // L2 Address Map
-    struct L2Addresses {
-        address l2GatewayRouter;
-        address fxChild;
-        address cctpTokenMessenger;
-        address cctpMessageTransmitter;
-        address uniswapV3SwapRouter;
-        address helios;
-        address zkErc20Bridge;
-        address zkUSDCBridge;
-        address lineaMessageService;
-        address cctpV2TokenMessenger;
-        address lineaTokenBridge;
-        address scrollERC20GatewayRouter;
-        address scrollGasPriceOracle;
-        address scrollMessenger;
-        address l2Weth;
-        address polygonZkEvmBridge;
-    }
-
     // OP Stack Address Map
     struct OpStackAddresses {
         address L1CrossDomainMessenger;
@@ -222,20 +202,20 @@ contract Constants is Script {
     }
 
     // Circle domain IDs mapping
-    function getCircleDomainId(uint256 chainId) public view returns (uint256) {
-        int256 cctpDomain = _getCctpDomain(chainId);
+    function getCircleDomainId(uint256 chainId) public view returns (uint32) {
+        int32 cctpDomain = _getCctpDomain(chainId);
         if (cctpDomain == -1) {
             revert("Circle domain ID not found");
         }
-        return uint256(cctpDomain);
+        return uint32(cctpDomain);
     }
 
     function hasCctpDomain(uint256 chainId) public view returns (bool) {
         return _getCctpDomain(chainId) != -1;
     }
 
-    function _getCctpDomain(uint256 chainId) internal view returns (int256) {
-        return vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain"));
+    function _getCctpDomain(uint256 chainId) internal view returns (int32) {
+        return int32(vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain")));
     }
 
     function getOftEid(uint256 chainId) public view returns (uint256) {
