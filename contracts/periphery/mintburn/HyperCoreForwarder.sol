@@ -15,7 +15,7 @@ import { SwapHandler } from "./SwapHandler.sol";
 contract HyperCoreForwarder is AccessControl {
     using SafeERC20 for IERC20;
 
-    // TODO: Not sure if WIRE_DECIMALS / SCALAR are even useful
+    // TODO? Not sure if WIRE_DECIMALS / SCALAR are even useful. Decide if use later
     uint256 public constant WIRE_DECIMALS = 8;
     uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
@@ -24,7 +24,7 @@ contract HyperCoreForwarder is AccessControl {
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
 
     // Roles
-    bytes32 public constant LIMIT_ORDER_UPDATER_ROLE = keccak256("LIMIT_ORDER_UPDATER_ROLE");
+    bytes32 public constant PERMISSIONED_BOT_ROLE = keccak256("PERMISSIONED_BOT_ROLE");
     bytes32 public constant FUNDS_SWEEPER_ROLE = keccak256("FUNDS_SWEEPER_ROLE");
 
     /// @notice The donation box contract.
@@ -169,8 +169,8 @@ contract HyperCoreForwarder is AccessControl {
         _;
     }
 
-    modifier onlyLimitOrderUpdater() {
-        require(hasRole(LIMIT_ORDER_UPDATER_ROLE, msg.sender), "Not limit order updater");
+    modifier onlyPermissionedBot() {
+        require(hasRole(PERMISSIONED_BOT_ROLE, msg.sender), "Not limit order updater");
         _;
     }
 
@@ -216,7 +216,7 @@ contract HyperCoreForwarder is AccessControl {
 
         // AccessControl setup
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setRoleAdmin(LIMIT_ORDER_UPDATER_ROLE, DEFAULT_ADMIN_ROLE);
+        _setRoleAdmin(PERMISSIONED_BOT_ROLE, DEFAULT_ADMIN_ROLE);
         _setRoleAdmin(FUNDS_SWEEPER_ROLE, DEFAULT_ADMIN_ROLE);
     }
 
@@ -435,8 +435,6 @@ contract HyperCoreForwarder is AccessControl {
 
         // In initialToken
         uint256 totalAmountBridgedEVM = amountInEVM + extraBridgingFeesEVM;
-        // TODO: we may want to delete this branch alltogether, but we then can only support tokens with
-        // TODO: `canBeUsedForAccountActivation` = true so then have to remove `canBeUsedForAccountActivation` configurability
         // The user has no HyperCore account and we can't sponsor its creation; fall back to sending funds on HyperEVM
         if (accountActivationFeeCore > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
             // Both in initialToken
@@ -637,7 +635,7 @@ contract HyperCoreForwarder is AccessControl {
         );
     }
 
-    function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external onlyLimitOrderUpdater {
+    function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external {
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
 
@@ -692,7 +690,7 @@ contract HyperCoreForwarder is AccessControl {
         pendingQueueHead[finalToken] = head;
     }
 
-    function cancelLimitOrderByCloid(uint32 cloid) external onlyLimitOrderUpdater returns (bytes32 quoteNonce) {
+    function cancelLimitOrderByCloid(uint32 cloid) external onlyPermissionedBot returns (bytes32 quoteNonce) {
         quoteNonce = cloidToQuoteNonce[cloid];
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[pendingSwap.finalToken];
@@ -731,7 +729,7 @@ contract HyperCoreForwarder is AccessControl {
         uint64 priceX1e8,
         uint64 oldPriceX1e8,
         uint64 oldSizeX1e8Left
-    ) external onlyLimitOrderUpdater {
+    ) external onlyPermissionedBot {
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
         require(pendingSwap.limitOrderCloid == 0, "Cannot resubmit LO for non-empty cloid");
 
@@ -919,8 +917,8 @@ contract HyperCoreForwarder is AccessControl {
      *    LIMIT ORDER CALCULATION UTILS   *
      **************************************/
 
-    // TODO: this has to be permissioned to be done by some bot account. Or permissionless, but send money to e.g. donationBox
-    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyFundsSweeper {
+    // TODO? Alternative flow: make this permissionless, send money SwapHandler @ core -> DonationBox @ core => DonationBox pulls money from Core to Self (needs DonationBox code change)
+    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyPermissionedBot {
         // We first want to make sure there are not pending limit orders for this token
         uint256 head = pendingQueueHead[token];
         if (head < pendingQueue[token].length) {
@@ -1000,7 +998,7 @@ contract HyperCoreForwarder is AccessControl {
         }
     }
 
-    // TODO: make immutable / add safety checks
+    // TODO: make immutable
     // px_f = px / 10 ** px_d
     uint8 constant PX_D = 8;
     function _calcLOAmountsBuy(
@@ -1022,6 +1020,7 @@ contract HyperCoreForwarder is AccessControl {
         minAmountOutCore = outBaseNet;
     }
 
+    // TODO: add PX_D
     function _calcLOAmountsSell(
         uint64 baseBudget,
         uint64 pxX1e8,
@@ -1031,15 +1030,11 @@ contract HyperCoreForwarder is AccessControl {
         uint8 szDecimalsBase,
         uint64 feePpm
     ) internal pure returns (uint64 szX1e8, uint64 tokensToSendCore, uint64 minAmountOutCore) {
-        // TODO: negatives
         uint64 sz = uint64(baseBudget / 10 ** (weiDecimalsBase - szDecimalsBase));
-        // TODO: negatives
-        uint64 px = uint64((pxX1e8 * 10 ** (szDecimalsQuote - szDecimalsBase)) / 10 ** 8);
+        uint64 px = uint64((pxX1e8 * 10 ** szDecimalsQuote) / 10 ** (8 + szDecimalsBase));
 
-        // TODO: negatives
         uint64 outQuoteGross = uint64(px * sz * 10 ** (weiDecimalsQuote - szDecimalsQuote));
         uint64 outQuoteNet = uint64((outQuoteGross * (PPM_SCALAR - feePpm)) / PPM_SCALAR);
-        // TODO: negatives
         szX1e8 = uint64((sz * 10 ** 8 * 10 ** (weiDecimalsBase - szDecimalsBase)) / 10 ** weiDecimalsBase);
         tokensToSendCore = baseBudget;
         minAmountOutCore = outQuoteNet;
