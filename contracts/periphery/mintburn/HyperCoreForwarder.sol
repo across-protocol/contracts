@@ -717,15 +717,12 @@ contract HyperCoreForwarder is AccessControl {
      * used only in rare cases. We choose to pay for the adjusted limit order price completely.
      * @param quoteNonce quote nonce is used to uniquely identify user order (PendingSwap)
      * @param priceX1e8 price to set for new limit order
-     * @param sizeX1e8 size to set for new limit order
      * @param oldPriceX1e8 price that was set for the cancelled order
      * @param oldSizeX1e8Left size that was remaining on the order that was cancelled
      */
     function submitUpdatedLimitOrder(
         bytes32 quoteNonce,
         uint64 priceX1e8,
-        // TODO: calculate the `sizeX1e8` from priceX1e8 , oldPriceX1e8 , oldSizeX1e8Left
-        uint64 sizeX1e8,
         uint64 oldPriceX1e8,
         uint64 oldSizeX1e8Left
     ) external onlyLimitOrderUpdater {
@@ -734,60 +731,51 @@ contract HyperCoreForwarder is AccessControl {
 
         address finalToken = pendingSwap.finalToken;
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
+        CoreTokenInfo memory initialTokenInfo = coreTokenInfos[finalToken];
         CoreTokenInfo memory finalTokenCoreInfo = coreTokenInfos[finalToken];
 
-        // Enforce that the new order does not require more tokens than the remaining budget of the previous order
-        if (finalTokenInfo.isBuy) {
-            // New required quote with fee, rounded up
-            // notionalCore = ceil(size * price / 1e8)
-            uint256 notionalCore = (uint256(sizeX1e8) * uint256(priceX1e8) + WIRE_SCALAR - 1) / WIRE_SCALAR;
-            uint256 requiredQuoteWithFeeCore = (notionalCore * (PPM_SCALAR + finalTokenInfo.feePpm) + PPM_SCALAR - 1) /
-                PPM_SCALAR;
+        // Remaining budget of tokens attributable to the "old limit order" (now cancelled)
+        uint64 coreBudgetRemaining = _calcRemainingLOBudget(
+            oldPriceX1e8,
+            oldSizeX1e8Left,
+            finalTokenInfo.isBuy,
+            finalTokenInfo.feePpm,
+            initialTokenInfo,
+            finalTokenCoreInfo
+        );
+        (uint64 szX1e8, , uint64 guaranteedCoreOut) = _calcLOAmounts(
+            coreBudgetRemaining,
+            priceX1e8,
+            finalTokenInfo.isBuy,
+            finalTokenInfo.feePpm,
+            initialTokenInfo,
+            finalTokenCoreInfo
+        );
 
-            // Old remaining budget in quote with fee, rounded down
-            uint256 oldNotionalCore = (uint256(oldSizeX1e8Left) * uint256(oldPriceX1e8)) / WIRE_SCALAR;
-            uint256 oldBudgetWithFeeCore = (oldNotionalCore * (PPM_SCALAR + finalTokenInfo.feePpm)) / PPM_SCALAR;
-
-            require(requiredQuoteWithFeeCore <= oldBudgetWithFeeCore, "ExceedsRemainingQuoteBudget");
-        } else {
-            // Selling base: ensure we don't sell more base than remaining
-            require(sizeX1e8 <= oldSizeX1e8Left, "ExceedsRemainingBaseSize");
-        }
-
-        uint128 cloid = ++nextCloid;
-        SwapHandler swapHandler = finalTokenInfo.swapHandler;
-        swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
-        pendingSwap.limitOrderCloid = cloid;
-
-        // Recalculate the expected minimum out on Core (in final token units, 1e8 scaling)
-        // Respect buy/sell semantics:
-        // - If buying, final token is base: minOut ~= size (conservatively minus fee)
-        // - If selling, final token is quote: minOut = size * price (minus fee)
-        uint64 oldMinCoreAmountFromLO = pendingSwap.minCoreAmountFromLO;
-        uint64 newMinCoreAmountFromLO;
-        if (finalTokenInfo.isBuy) {
-            // TODO! Change this calculation. It's probably wrong RE weiDecimals, szDecimals, wireDecimals(8)
-            // Conservative: subtract fee from base received
-            uint256 netBaseOut = (uint256(sizeX1e8) * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
-            newMinCoreAmountFromLO = uint64(netBaseOut);
-        } else {
-            // TODO! When selling, I'd also expect fees to be subtracted from the quote, so this is correct. But no trust
-            uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(priceX1e8)) / WIRE_SCALAR;
-            uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
-            newMinCoreAmountFromLO = uint64(netQuoteOut);
-        }
+        (, , uint64 guaranteedCoreOutOld) = _calcLOAmounts(
+            coreBudgetRemaining,
+            oldPriceX1e8,
+            finalTokenInfo.isBuy,
+            finalTokenInfo.feePpm,
+            initialTokenInfo,
+            finalTokenCoreInfo
+        );
 
         uint64 sponsorDeltaCore;
-        if (newMinCoreAmountFromLO > oldMinCoreAmountFromLO) {
-            // This should generally not happen. If we cancelled the limit order, it means it wasn't being filled fast
-            // enough, so we will be submitting with worse price. But this is interesting to track
-            emit BetterPricedLOSubmitted(quoteNonce, oldPriceX1e8, priceX1e8);
-            sponsorDeltaCore = 0;
+        if (guaranteedCoreOut < guaranteedCoreOutOld) {
+            sponsorDeltaCore = guaranteedCoreOutOld - guaranteedCoreOut;
         } else {
-            // Keep total core amounts from all pending limit orders constant by sponsoring the difference
-            sponsorDeltaCore = oldMinCoreAmountFromLO - newMinCoreAmountFromLO;
+            sponsorDeltaCore = 0;
+            emit BetterPricedLOSubmitted(quoteNonce, oldPriceX1e8, priceX1e8);
         }
 
+        // Submit new Limit Order
+        uint128 cloid = ++nextCloid;
+        SwapHandler swapHandler = finalTokenInfo.swapHandler;
+        swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, szX1e8, cloid);
+        pendingSwap.limitOrderCloid = cloid;
+
+        // Send extra sponsorship money to cover for the guaranteed amount out difference
         if (sponsorDeltaCore > 0) {
             uint256 sponsorDeltaEvm;
             (sponsorDeltaEvm, sponsorDeltaCore) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
@@ -815,11 +803,11 @@ contract HyperCoreForwarder is AccessControl {
                 finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
             );
 
-            pendingSwap.minCoreAmountFromLO = newMinCoreAmountFromLO;
+            pendingSwap.minCoreAmountFromLO = guaranteedCoreOut;
             pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + sponsorDeltaCore;
         }
 
-        emit UpdatedLimitOrder(quoteNonce, priceX1e8, sizeX1e8, oldPriceX1e8, oldSizeX1e8Left);
+        emit UpdatedLimitOrder(quoteNonce, priceX1e8, szX1e8, oldPriceX1e8, oldSizeX1e8Left);
     }
 
     /**
@@ -937,6 +925,33 @@ contract HyperCoreForwarder is AccessControl {
 
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
+    }
+
+    function _calcRemainingLOBudget(
+        uint64 pxX1e8,
+        uint64 szX1e8,
+        bool isBuy,
+        uint64 feePpm,
+        CoreTokenInfo memory tokenHave,
+        CoreTokenInfo memory tokenWant
+    ) internal pure returns (uint64 budget) {
+        CoreTokenInfo memory _quoteToken = isBuy ? tokenHave : tokenWant;
+        CoreTokenInfo memory _baseToken = isBuy ? tokenWant : tokenHave;
+
+        if (isBuy) {
+            // We have quoteTokens. Estimate how many quoteTokens we are GUARANTEED to have had to enqueue the LO in the first place (proportional)
+            // qTR is quote tokens real. qTD quote token decimals.
+            // szX1e8 * pxX1e8 / 10 ** 8 = qTX1e8Net
+            // qTR * 10 ** 8 * (10 ** 6 - feePpm) / (10 ** 6 * 10 ** qTD) = qTX1e8Net
+            // qTR = szX1e8 * pxX1e8 * 10 ** 6 * 10 ** qTD / (10 ** 8 * 10 ** 8 * (10 ** 6 - feePpm))
+            budget = uint64(
+                (uint256(szX1e8) * uint256(pxX1e8) * PPM_SCALAR * 10 ** (_quoteToken.tokenInfo.weiDecimals)) /
+                    (10 ** 16 * (PPM_SCALAR - feePpm))
+            );
+        } else {
+            // We have baseTokens. Convert `szX1e8` to base token budget. A simple decimals conversion here
+            budget = uint64((szX1e8 * 10 ** (_baseToken.tokenInfo.weiDecimals)) / 10 ** 8);
+        }
     }
 
     /**
