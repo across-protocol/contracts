@@ -124,6 +124,30 @@ contract HyperCoreForwarder is AccessControl {
         uint64 oldSizeX1e8Left
     );
 
+    event SwapFlowFallbackTooExpensive(
+        bytes32 quoteNonce,
+        // Based on minimum out requirements for sponsored / non-sponsored flows
+        uint64 requiredCoreAmountToSponsor,
+        // Based on maxBpsToSponsor
+        uint64 maxCoreAmountToSponsor
+    );
+
+    event SwapFlowFallbackDonationBox(bytes32 quoteNonce, address finalToken, uint256 totalEVMAmountToSponsor);
+
+    event SwapFlowFallbackUnsafeToBridge(
+        bytes32 quoteNonce,
+        bool initTokenUnsafe,
+        address finalToken,
+        bool finalTokenUnsafe
+    );
+
+    event SimpleTransferFallback(
+        bytes32 quoteNonce,
+        bool isBridgeSafe,
+        uint256 accountCreationFee,
+        bool tokenCanBeUsedForAccountActivation
+    );
+
     /**************************************
      *            MODIFIERS               *
      **************************************/
@@ -275,14 +299,7 @@ contract HyperCoreForwarder is AccessControl {
         uint256 extraFeesToSponsor
     ) internal {
         if (finalToken == baseToken) {
-            _executeSimpleTransferFlow(
-                amount,
-                quoteNonce,
-                maxBpsToSponsor,
-                finalRecipient,
-                finalToken,
-                extraFeesToSponsor
-            );
+            _executeSimpleTransferFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
         } else {
             _initiateSwapFlow(
                 amount,
@@ -301,16 +318,17 @@ contract HyperCoreForwarder is AccessControl {
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        address finalToken,
         uint256 extraFeesToSponsor
     ) internal {
+        address finalToken = baseToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
         uint256 accountCreationFee = _getAccountActivationFeeEVM(finalToken, finalRecipient);
-        uint256 maxFee = (amount * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 amountToSponsor = extraFeesToSponsor + accountCreationFee;
-        if (amountToSponsor > maxFee) {
-            amountToSponsor = maxFee;
+        uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
+        uint256 totalUserFeesEvm = extraFeesToSponsor + accountCreationFee;
+        uint256 amountToSponsor = totalUserFeesEvm;
+        if (amountToSponsor > maxEvmAmountToSponsor) {
+            amountToSponsor = maxEvmAmountToSponsor;
         }
 
         if (amountToSponsor > 0) {
@@ -322,8 +340,8 @@ contract HyperCoreForwarder is AccessControl {
         uint256 finalAmount = amount + amountToSponsor;
 
         cumulativeSponsoredAmount[finalToken] += amountToSponsor;
-        // @dev only count the activation fee if it was sponsored
-        cumulativeSponsoredActivationFee[finalToken] += (amountToSponsor > 0 ? accountCreationFee : 0);
+        // Record a propotional amount used to sponsor account creation
+        cumulativeSponsoredActivationFee[finalToken] += (amountToSponsor * accountCreationFee) / totalUserFeesEvm;
 
         (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             finalAmount,
@@ -341,6 +359,12 @@ contract HyperCoreForwarder is AccessControl {
         // fall back to sending user funds on HyperEVM.
         if (!isSafe || (accountCreationFee > 0 && !coreTokenInfo.canBeUsedForAccountActivation)) {
             _sendUserFundsOnHyperEVM(quoteNonce, amount, amountToSponsor, finalAmount, finalRecipient, finalToken);
+            emit SimpleTransferFallback(
+                quoteNonce,
+                isSafe,
+                accountCreationFee,
+                coreTokenInfo.canBeUsedForAccountActivation
+            );
             return;
         }
 
@@ -455,38 +479,39 @@ contract HyperCoreForwarder is AccessControl {
         // - If buying, finalToken is base: baseOut = quoteIn / price, less fee
         // - If selling, finalToken is quote: quoteOut = baseIn * price, less fee
         // Amount we are GUARANTEED to receive as a result of the enqueued limit order in `finalToken`
-        uint64 minOutCore;
+        uint64 minLimitOutCore;
         uint64 sizeX1e8;
         if (finalTokenInfo.isBuy) {
-            // amountLDCoreEquivalent of quote
-            // TODO: floor this
+            // `amountLDCoreEquivalent` of "quote asset" of the market
+            // floor(quote * 1e8 / price)
             uint64 grossBaseOut = uint64((amountLDCoreEquivalent * CORE_SCALAR) / limitPriceX1e8);
-            // TODO: floor this
+            // floor(grossBaseOut * (1e6 - ppmFee) / 1e6)
             uint64 netBaseOut = uint64((grossBaseOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR);
-            minOutCore = uint64(netBaseOut);
-            sizeX1e8 = minOutCore;
+            minLimitOutCore = uint64(netBaseOut);
+            sizeX1e8 = minLimitOutCore;
         } else {
-            // When selling, size is the amount in. In `BaseToken` of the pair
+            // When selling, size is the amount in. In "base asset" of the market
             sizeX1e8 = amountLDCoreEquivalent;
-            // TODO: floor this
+            // floor(base * price / 1e8)
             uint256 grossQuoteOut = (uint256(sizeX1e8) * uint256(limitPriceX1e8)) / CORE_SCALAR;
-            // TODO: floor this
+            // floor(grossQuoteOut * (1e6 - ppmFee) / 1e6)
             uint256 netQuoteOut = (grossQuoteOut * (PPM_SCALAR - finalTokenInfo.feePpm)) / PPM_SCALAR;
-            minOutCore = uint64(netQuoteOut);
+            minLimitOutCore = uint64(netQuoteOut);
         }
 
-        uint64 requiredCoreAmountToSponsor = minOutCore < minAllowableCoreAmountToForward
-            ? minAllowableCoreAmountToForward - minOutCore
+        uint64 requiredCoreAmountToSponsor = minLimitOutCore < minAllowableCoreAmountToForward
+            ? minAllowableCoreAmountToForward - minLimitOutCore
             : 0;
 
         if (requiredCoreAmountToSponsor > maxCoreAmountToSponsor) {
-            // TODO: fallback to simpleTokenSend flow (which is still not guaranteed to uphold this, but wcyd). Maybe for simpleTransferFlow
-            // TODO: we also include a fallback to send-on-evm if the account creation fee puts us over the `maxCoreAmountToSponsor` line
+            // We can't provide the required slippage in a swap flow, try simple transfer flow instead
+            _executeSimpleTransferFlow(amountLD, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesCharged);
+            emit SwapFlowFallbackTooExpensive(quoteNonce, requiredCoreAmountToSponsor, maxCoreAmountToSponsor);
             return;
         }
 
-        uint64 finalCoreSendAmount = isSponsoredFlow ? minAllowableCoreAmountToForward : minOutCore;
-        uint64 totalSponsoredOnCore = finalCoreSendAmount - minOutCore;
+        uint64 finalCoreSendAmount = isSponsoredFlow ? minAllowableCoreAmountToForward : minLimitOutCore;
+        uint64 totalSponsoredOnCore = finalCoreSendAmount - minLimitOutCore;
 
         uint256 totalEVMAmountToSponsor = 0;
         if (totalSponsoredOnCore > 0) {
@@ -499,9 +524,10 @@ contract HyperCoreForwarder is AccessControl {
         if (totalEVMAmountToSponsor > 0) {
             // On success, we have totalEVMAmountToSponsor + quoted.evm on balance. Otherwise, set sponsored amts to 0
             if (!_tryGetFromDonationBox(finalToken, totalEVMAmountToSponsor)) {
-                // TODO: if accountCreationFee was zero, send this user down a simpleTransferFlow,
-                // TODO: else, send on HyperEVM (but what if there was an extraBridgeFee? Try to cover it, and worst case just transfer what we can.)
-                revert("Unexpected DonationBox shortage");
+                // We can't provide the required `totalEVMAmountToSponsor` in a swap flow, try simple transfer flow instead
+                _executeSimpleTransferFlow(amountLD, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesCharged);
+                emit SwapFlowFallbackDonationBox(quoteNonce, finalToken, totalEVMAmountToSponsor);
+                return;
             }
         }
 
@@ -518,7 +544,28 @@ contract HyperCoreForwarder is AccessControl {
         );
 
         if (!isSafeToBridgeMainToken || !isSafeTobridgeSponsorshipFunds) {
-            // TODO: send baseToken on HyperEVM
+            // Both in initialToken
+            uint256 maxEvmAmountToSponsor = (totalEvmBridgedAmount * maxBpsToSponsor) / BPS_SCALAR;
+            uint256 evmAmountToSponsor = extraBridgingFeesCharged > maxEvmAmountToSponsor
+                ? maxEvmAmountToSponsor
+                : extraBridgingFeesCharged;
+
+            _sendUserFundsOnHyperEVM(
+                quoteNonce,
+                amountLD,
+                evmAmountToSponsor,
+                amountLD + evmAmountToSponsor,
+                finalUser,
+                initialToken
+            );
+
+            emit SwapFlowFallbackUnsafeToBridge(
+                quoteNonce,
+                isSafeToBridgeMainToken,
+                finalToken,
+                isSafeTobridgeSponsorshipFunds
+            );
+
             return;
         }
 
@@ -551,7 +598,7 @@ contract HyperCoreForwarder is AccessControl {
         pendingSwaps[quoteNonce] = PendingSwap({
             finalRecipient: finalUser,
             finalToken: finalToken,
-            minCoreAmountFromLO: minOutCore,
+            minCoreAmountFromLO: minLimitOutCore,
             sponsoredCoreAmountPreFunded: totalSponsoredOnCore,
             limitOrderCloid: cloid,
             isFinalized: false
