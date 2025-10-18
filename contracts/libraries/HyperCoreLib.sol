@@ -67,6 +67,26 @@ library HyperCoreLib {
     error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
 
     /**
+     * @notice Checks if the provided amount is safe to bridge by verifying the spot balance
+     * @param account The account to check the balance for
+     * @param token The token index to check
+     * @param amountToBridgeEVM The amount to bridge (in EVM units)
+     * @return isSafe True if the amount is safe to bridge, false otherwise
+     */
+    function isAmountSafeToBridge(
+        address account,
+        uint64 token,
+        uint256 amountToBridgeEVM,
+        int8 decimalDiff
+    ) internal view returns (bool) {
+        (, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(amountToBridgeEVM, decimalDiff);
+
+        uint64 bridgeBalanceCore = spotBalance(account, token);
+
+        return bridgeBalanceCore >= amountCoreToReceive;
+    }
+
+    /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
@@ -336,5 +356,48 @@ library HyperCoreLib {
             /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
             amountCoreToReceive = uint64(amountEVMToSend * scale);
         }
+    }
+
+    // -------------------------
+    // Pure conversion utilities
+    // -------------------------
+
+    /**
+     * @notice Convert an EVM-denominated amount to Core units without consulting bridge balances.
+     * @dev decimalDiff = evmDecimals - coreDecimals. Floors when EVM has more decimals than Core.
+     */
+    function convertEvmToCoreNoBridge(uint256 amountEvm, int8 decimalDiff) internal pure returns (uint64 amountCore) {
+        if (amountEvm == 0) return 0;
+        if (decimalDiff > 0) {
+            uint256 scale = 10 ** uint8(uint8(decimalDiff));
+            return uint64(amountEvm / scale);
+        } else if (decimalDiff < 0) {
+            uint256 scale = 10 ** uint8(uint8(-decimalDiff));
+            uint256 v = amountEvm * scale;
+            return uint64(v);
+        } else {
+            return uint64(amountEvm);
+        }
+    }
+
+    /**
+     * @notice Convert a Core-denominated amount to EVM units, rounding up when needed so that
+     *         convertEvmToCoreNoBridge(result, decimalDiff) >= amountCore.
+     */
+    function convertCoreToEvmCeil(uint64 amountCore, int8 decimalDiff) internal pure returns (uint256 amountEvm) {
+        if (amountCore == 0) return 0;
+        if (decimalDiff > 0) {
+            uint256 scale = 10 ** uint8(uint8(decimalDiff));
+            return uint256(amountCore) * scale;
+        } else if (decimalDiff < 0) {
+            uint256 scale = 10 ** uint8(uint8(-decimalDiff));
+            return _ceilDiv(amountCore, scale);
+        } else {
+            return uint256(amountCore);
+        }
+    }
+
+    function _ceilDiv(uint256 a, uint256 b) private pure returns (uint256) {
+        return a == 0 ? 0 : (a - 1) / b + 1;
     }
 }
