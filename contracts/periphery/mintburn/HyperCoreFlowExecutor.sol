@@ -56,6 +56,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 minCoreAmountFromLO;
         uint64 sponsoredCoreAmountPreFunded;
         uint128 limitOrderCloid;
+        // TODO? This seems to not be required
         bool isFinalized;
     }
 
