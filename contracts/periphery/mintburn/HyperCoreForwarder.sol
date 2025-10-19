@@ -10,11 +10,16 @@ import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 
-// ! This contract can only work with equivalent tokens. baseToken should be equivalent to other finalTokens. E.g. both
-// ! are stablecoins
-contract HyperCoreForwarder is AccessControl {
+/**
+ * @title HyperCoreFlowExecutor
+ * @notice Contract handling HyperCore interactions for trasnfer-to-core or swap-with-core actions after stablecoin bridge transactions
+ * @dev This contract is designed to work with stablecoins. baseToken and every finalToken should all be stablecoins.
+ * @custom:security-contact bugs@across.to
+ */
+contract HyperCoreFlowExecutor is AccessControl {
     using SafeERC20 for IERC20;
 
+    // Common decimals scalars
     uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
@@ -39,7 +44,7 @@ contract HyperCoreForwarder is AccessControl {
     address immutable baseToken;
 
     /// @notice The minimum delay between finalizations of pending swaps.
-    uint256 public minDelayBetweenFinalizations = 1 hours;
+    uint256 public minDelayBetweenFinalizations = 1 minutes;
     /// @notice The time of the last finalization of pending swaps per final token.
     mapping(address finalToken => uint256 lastFinalizationTime) lastFinalizationTime;
 
@@ -54,11 +59,11 @@ contract HyperCoreForwarder is AccessControl {
         bool isFinalized;
     }
 
-    // quoteNonce => pending swap details
-    mapping(bytes32 => PendingSwap) public pendingSwaps;
-    // finalToken => queue of quote nonces
-    mapping(address => bytes32[]) public pendingQueue;
-    // finalToken => current head index in queue
+    /// @notice A mapping containing the pending state between initializing the swap flow and finalizing it
+    mapping(bytes32 quoteNonce => PendingSwap pendingSwap) public pendingSwaps;
+    /// @notice A FCFS queue of pending swap flows to be executed. Per finalToken
+    mapping(address finalToken => bytes32[] quoteNonces) public pendingQueue;
+    /// @notice An index of the first unexecuted pending swap flow. Or equal to pendingQueue length if currently empty
     mapping(address => uint256) public pendingQueueHead;
 
     /// @notice The cumulative amount of funds sponsored for each final token.
@@ -90,6 +95,7 @@ contract HyperCoreForwarder is AccessControl {
         uint64 coreAmountTransferred
     );
 
+    /// @notice Emitted upon successful completion of fallback HyperEVM flow
     event FallbackHyperEVMFlowCompleted(
         bytes32 indexed quoteNonce,
         address indexed finalRecipient,
@@ -100,7 +106,7 @@ contract HyperCoreForwarder is AccessControl {
         uint256 evmAmountTransferred
     );
 
-    /// @notice Emitted when a swap flow is initialized.
+    /// @notice Emitted when a swap flow is initialized
     event SwapFlowInitialized(
         bytes32 indexed quoteNonce,
         address indexed finalRecipient,
@@ -114,6 +120,7 @@ contract HyperCoreForwarder is AccessControl {
         uint128 cloid
     );
 
+    /// @notice Emitted upon successful completion of swap flow
     event SwapFlowCompleted(
         bytes32 indexed quoteNonce,
         address indexed finalRecipient,
@@ -123,18 +130,23 @@ contract HyperCoreForwarder is AccessControl {
         uint64 coreAmountTransferred
     );
 
-    event CancelledLimitOrder(bytes32 indexed quoteNonce, uint32 indexed asset, uint128 cloid);
+    /// @notice Emitted upon cancelling a Limit order associated with an active swap flow
+    event CancelledLimitOrder(bytes32 indexed quoteNonce, uint32 indexed asset, uint128 indexed cloid);
 
-    event UpdatedLimitOrder(
+    /// @notice Emitted upon submitting a new Limit order in place of a cancelled one
+    event ReplacedOldLimitOrder(
         bytes32 indexed quoteNonce,
+        uint128 indexed cloid,
         uint64 priceX1e8,
         uint64 sizeX1e8,
         uint64 oldPriceX1e8,
         uint64 oldSizeX1e8Left
     );
 
+    /// @notice Emitted when the replacing Limit order has better price than the old one
     event BetterPricedLOSubmitted(bytes32 indexed quoteNonce, uint64 oldPriceX1e8, uint64 priceX1e8);
 
+    /// @notice Emitted from the swap flow when falling back to the other flow becase the cost is to high compared to sponsored settings
     event SwapFlowFallbackTooExpensive(
         bytes32 indexed quoteNonce,
         // Based on minimum out requirements for sponsored / non-sponsored flows
@@ -143,12 +155,14 @@ contract HyperCoreForwarder is AccessControl {
         uint64 maxCoreAmountToSponsor
     );
 
+    /// @notice Emitted from the swap flow when falling back to the other flow becase donation box doesn't have enough funds to sponsor the flow
     event SwapFlowFallbackDonationBox(
         bytes32 indexed quoteNonce,
         address indexed finalToken,
         uint256 totalEVMAmountToSponsor
     );
 
+    /// @notice Emitted from the swap flow when falling back to the other flow becase bridging to core was unsafe (spot bridge didn't have enough funds)
     event SwapFlowFallbackUnsafeToBridge(
         bytes32 indexed quoteNonce,
         bool initTokenUnsafe,
@@ -156,12 +170,14 @@ contract HyperCoreForwarder is AccessControl {
         bool finalTokenUnsafe
     );
 
+    /// @notice Emitted from the swap flow when falling back to the other flow becase it's impossible to pay account activation fee in final token
     event SwapFlowFallbackAccountActivation(bytes32 indexed quoteNonce, address finalToken);
 
+    /// @notice Emitted from the simple transfer flow if either bridging is unsafe, or we couldn't pay for account activation in final token
     event SimpleTransferFallback(
         bytes32 indexed quoteNonce,
         bool isBridgeSafe,
-        uint256 accountCreationFee,
+        bool haveToPayForCoreAccountActivation,
         bool tokenCanBeUsedForAccountActivation
     );
 
@@ -229,12 +245,24 @@ contract HyperCoreForwarder is AccessControl {
      *      CONFIGURATION FUNCTIONS       *
      **************************************/
 
+    /**
+     *
+     * @notice Set a minimum safe delay in seconds between consecutive calls to finalize pending swap flows. The reason
+     * for this delay is that the transfers we're sending out of the SwapHandler's account to the user take a couple of
+     * seconds to land on chain + balance read from the finalization function is of stale data (also a couple seconds stale).
+     * If the delay is too small, a collision could happen where we would try to send out funds to the user that are already
+     * "in-flight"(pending orders are about to be executed) to fill another user's order. This could be mitigated if we had
+     * a unique account per order (in the next implementation iteration).
+     * @param minDelay minimum delay to set, in seconds
+     */
     function setMinDelayBetweenFinalizations(uint256 minDelay) external onlyDefaultAdmin {
         minDelayBetweenFinalizations = minDelay;
     }
 
     /**
-     * @notice Setting core token info to incorrect values can lead to loss of funds. Should NEVER be unset while the
+     * @notice Set or update information for the token to use it in this contract
+     * @dev To be able to use the token in the swap flow, FinalTokenInfo has to be set as well
+     * @dev Setting core token info to incorrect values can lead to loss of funds. Should NEVER be unset while the
      * finalTokenParams are not unset
      */
     function setCoreTokenInfo(
@@ -263,7 +291,7 @@ contract HyperCoreForwarder is AccessControl {
      * @param feePpm The fee in parts per million.
      * @param suggestedDiscountBps The suggested slippage in basis points.
      */
-    function setFinalTokenParams(
+    function setFinalTokenInfo(
         address finalToken,
         uint32 assetIndex,
         bool isBuy,
@@ -332,6 +360,8 @@ contract HyperCoreForwarder is AccessControl {
         }
     }
 
+    /// @notice Execute a simple transfer flow in which we transfer `baseToken` to the user on HyperCore after receiving
+    /// an amount of baseToken from the user on HyperEVM
     function _executeSimpleTransferFlow(
         uint256 amount,
         bytes32 quoteNonce,
@@ -342,7 +372,11 @@ contract HyperCoreForwarder is AccessControl {
         address finalToken = baseToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        uint256 accountCreationFee = _getAccountActivationFeeEVM(finalToken, finalRecipient);
+        bool haveToPayForCoreAccountActivation = !HyperCoreLib.coreUserExists(finalRecipient);
+        // Record `accountCreationFee` as zero if we can't use final token for account activation
+        uint256 accountCreationFee = haveToPayForCoreAccountActivation && coreTokenInfo.canBeUsedForAccountActivation
+            ? coreTokenInfo.accountActivationFeeEVM
+            : 0;
         uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
         uint256 totalUserFeesEvm = extraFeesToSponsor + accountCreationFee;
         uint256 amountToSponsor = totalUserFeesEvm;
@@ -376,12 +410,12 @@ contract HyperCoreForwarder is AccessControl {
 
         // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
         // fall back to sending user funds on HyperEVM.
-        if (!isSafe || (accountCreationFee > 0 && !coreTokenInfo.canBeUsedForAccountActivation)) {
+        if (!isSafe || (haveToPayForCoreAccountActivation && !coreTokenInfo.canBeUsedForAccountActivation)) {
             _fallbackHyperEVMFlow(quoteNonce, amount, amountToSponsor, finalAmount, finalRecipient, finalToken);
             emit SimpleTransferFallback(
                 quoteNonce,
                 isSafe,
-                accountCreationFee,
+                haveToPayForCoreAccountActivation,
                 coreTokenInfo.canBeUsedForAccountActivation
             );
             return;
@@ -408,6 +442,8 @@ contract HyperCoreForwarder is AccessControl {
         );
     }
 
+    /// @notice initialized swap flow to eventually forward `finalToken` to the user, starting from `baseToken` (received
+    /// from a user bridge transaction)
     function _initiateSwapFlow(
         // In initialToken
         uint256 amountInEVM,
@@ -634,6 +670,7 @@ contract HyperCoreForwarder is AccessControl {
         );
     }
 
+    /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponsing SwapHandler has enough balance
     function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external {
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
@@ -689,13 +726,16 @@ contract HyperCoreForwarder is AccessControl {
         pendingQueueHead[finalToken] = head;
     }
 
-    function cancelLimitOrderByCloid(uint32 cloid) external onlyPermissionedBot returns (bytes32 quoteNonce) {
+    /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
+    /// be used for stale limit orders to speed up executing user transactions
+    function cancelLimitOrderByCloid(uint128 cloid) external onlyPermissionedBot returns (bytes32 quoteNonce) {
         quoteNonce = cloidToQuoteNonce[cloid];
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[pendingSwap.finalToken];
 
-        finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, pendingSwap.limitOrderCloid);
-        // @dev clear out the cloid. `submitUpdatedLimitOrder` function requires that this is empty. Means that no tracked
+        // Here, cloid == pendingSwap.limitOrderCloid
+        finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, cloid);
+        // Clear out the cloid. `submitUpdatedLimitOrder` function requires that this is empty. Means that no tracked
         // associated limit order is present
         delete pendingSwap.limitOrderCloid;
 
@@ -811,7 +851,7 @@ contract HyperCoreForwarder is AccessControl {
             pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + sponsorDeltaCore;
         }
 
-        emit UpdatedLimitOrder(quoteNonce, priceX1e8, szX1e8, oldPriceX1e8, oldSizeX1e8Left);
+        emit ReplacedOldLimitOrder(quoteNonce, cloid, priceX1e8, szX1e8, oldPriceX1e8, oldSizeX1e8Left);
     }
 
     /**
