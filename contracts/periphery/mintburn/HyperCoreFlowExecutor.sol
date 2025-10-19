@@ -56,8 +56,6 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 minCoreAmountFromLO;
         uint64 sponsoredCoreAmountPreFunded;
         uint128 limitOrderCloid;
-        // TODO? This seems to not be required
-        bool isFinalized;
     }
 
     /// @notice A mapping containing the pending state between initializing the swap flow and finalizing it
@@ -387,8 +385,7 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         // Record `accountCreationFee` as zero if we can't use final token for account activation
         uint256 accountCreationFee = coreUserAccountExists ? 0 : coreTokenInfo.accountActivationFeeEVM;
-        // TODO?: this should be based only on amount
-        uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
+        uint256 maxEvmAmountToSponsor = (amount * maxBpsToSponsor) / BPS_SCALAR;
         uint256 totalUserFeesEvm = extraFeesToSponsor + accountCreationFee;
         uint256 amountToSponsor = totalUserFeesEvm;
         if (amountToSponsor > maxEvmAmountToSponsor) {
@@ -630,8 +627,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             finalToken: finalToken,
             minCoreAmountFromLO: guaranteedLOOut,
             sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
-            limitOrderCloid: cloid,
-            isFinalized: false
+            limitOrderCloid: cloid
         });
         pendingQueue[finalToken].push(quoteNonce);
         cloidToQuoteNonce[cloid] = quoteNonce;
@@ -674,7 +670,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             PendingSwap storage pendingSwap = pendingSwaps[nonce];
             uint64 totalAmountToForwardToUser = pendingSwap.minCoreAmountFromLO +
                 pendingSwap.sponsoredCoreAmountPreFunded;
-            if (pendingSwap.isFinalized || availableCore < totalAmountToForwardToUser) {
+            if (availableCore < totalAmountToForwardToUser) {
                 break;
             }
 
@@ -696,7 +692,6 @@ contract HyperCoreFlowExecutor is AccessControl {
 
             // We don't delete `pendingSwaps` state, because we might require it for accounting purposes if we need to
             // update the associated limit order
-            pendingSwap.isFinalized = true;
             head += 1;
             processed += 1;
         }

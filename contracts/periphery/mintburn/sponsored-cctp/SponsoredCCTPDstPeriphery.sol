@@ -74,7 +74,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         }
 
         _executeFlow(
-            quote.amount,
+            // We subtract the feeExecuted from the `amount` as the `amount` is the what the user pays on the source chain.
+            quote.amount - feeExecuted,
             quote.nonce,
             // If the quote is invalid we don't sponsor the flow or the extra fees
             isQuoteValid ? quote.maxBpsToSponsor : 0,

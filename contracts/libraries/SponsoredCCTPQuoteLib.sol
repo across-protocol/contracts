@@ -106,7 +106,8 @@ library SponsoredCCTPQuoteLib {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         bytes memory signature
     ) internal view returns (bool) {
-        bytes32 typedDataHash = keccak256(
+        // Need to split the hash into two parts to avoid stack too deep error
+        bytes32 hash1 = keccak256(
             abi.encode(
                 quote.sourceDomain,
                 quote.destinationDomain,
@@ -115,7 +116,12 @@ library SponsoredCCTPQuoteLib {
                 quote.burnToken,
                 quote.destinationCaller,
                 quote.maxFee,
-                quote.minFinalityThreshold,
+                quote.minFinalityThreshold
+            )
+        );
+
+        bytes32 hash2 = keccak256(
+            abi.encode(
                 quote.nonce,
                 quote.deadline,
                 quote.maxBpsToSponsor,
@@ -124,6 +130,8 @@ library SponsoredCCTPQuoteLib {
                 quote.finalToken
             )
         );
+
+        bytes32 typedDataHash = keccak256(abi.encode(hash1, hash2));
         return SignatureChecker.isValidSignatureNow(signer, typedDataHash, signature);
     }
 }
