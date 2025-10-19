@@ -261,14 +261,14 @@ contract HyperCoreForwarder is AccessControl {
      * @param assetIndex The index of the asset in the Hyperliquid market.
      * @param isBuy Whether the final token is a buy or a sell.
      * @param feePpm The fee in parts per million.
-     * @param suggestedSlippageBps The suggested slippage in basis points.
+     * @param suggestedDiscountBps The suggested slippage in basis points.
      */
     function setFinalTokenParams(
         address finalToken,
         uint32 assetIndex,
         bool isBuy,
         uint32 feePpm,
-        uint32 suggestedSlippageBps
+        uint32 suggestedDiscountBps
     ) external onlyExistingToken(finalToken) onlyDefaultAdmin {
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
 
@@ -282,7 +282,7 @@ contract HyperCoreForwarder is AccessControl {
             isBuy: isBuy,
             feePpm: feePpm,
             swapHandler: swapHandler,
-            suggestedSlippageBps: suggestedSlippageBps
+            suggestedDiscountBps: suggestedDiscountBps
         });
 
         uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, address(swapHandler));
@@ -485,14 +485,7 @@ contract HyperCoreForwarder is AccessControl {
                 accountActivationFeeCore;
         }
 
-        // TODO: _getSuggestedPriceX1e8(..)
-        uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenInfo.assetIndex);
-        // Directional limit price for faster fills: buy above spot, sell below spot
-        uint256 adjBps = finalTokenInfo.isBuy
-            ? (BPS_SCALAR + finalTokenInfo.suggestedSlippageBps)
-            : (BPS_SCALAR - finalTokenInfo.suggestedSlippageBps);
-        uint64 limitPriceX1e8 = uint64((uint256(spotX1e8) * adjBps) / BPS_SCALAR);
-
+        uint64 limitPriceX1e8 = _getSuggestedPriceX1e8(finalTokenInfo);
         (uint64 sizeX1e8, uint64 tokensToSendCore, uint64 guaranteedLOOut) = _calcLOAmounts(
             amountInEquivalentCore,
             limitPriceX1e8,
@@ -919,10 +912,6 @@ contract HyperCoreForwarder is AccessControl {
         HyperCoreLib.transferERC20CoreToCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 
-    /**************************************
-     *    LIMIT ORDER CALCULATION UTILS   *
-     **************************************/
-
     // TODO? Alternative flow: make this permissionless, send money SwapHandler @ core -> DonationBox @ core => DonationBox pulls money from Core to Self (needs DonationBox code change)
     function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyPermissionedBot {
         // We first want to make sure there are not pending limit orders for this token
@@ -938,6 +927,23 @@ contract HyperCoreForwarder is AccessControl {
         swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
     }
 
+    /// @notice Reads the current spot price from HyperLiquid and applies a configured suggested discount for faster execution
+    function _getSuggestedPriceX1e8(
+        FinalTokenInfo memory finalTokenInfo
+    ) internal view returns (uint64 limitPriceX1e8) {
+        uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenInfo.assetIndex);
+        // Buy above spot, sell below spot
+        uint256 adjBps = finalTokenInfo.isBuy
+            ? (BPS_SCALAR + finalTokenInfo.suggestedDiscountBps)
+            : (BPS_SCALAR - finalTokenInfo.suggestedDiscountBps);
+        limitPriceX1e8 = uint64((uint256(spotX1e8) * adjBps) / BPS_SCALAR);
+    }
+
+    /**************************************
+     *    LIMIT ORDER CALCULATION UTILS   *
+     **************************************/
+
+    /// @notice Given the size and price of a limit order, returns the remaining `budget` that Limit order expects to spend
     function _calcRemainingLOBudget(
         uint64 pxX1e8,
         uint64 szX1e8,
@@ -966,7 +972,8 @@ contract HyperCoreForwarder is AccessControl {
     }
 
     /**
-     * @notice The purpose of this function is best described by its return params
+     * @notice The purpose of this function is best described by its return params. Given a budget and a price, determines
+     * size to set, tokens to send, and min amount received.
      * @return szX1e8 size value to supply when sending a limit order to HyperCore
      * @return coreToSend the number of tokens to send for this trade to suceed; <= coreBudget
      * @return guaranteedCoreOut the ABSOLUTE MINIMUM that we're guaranteed to receive when the limit order fully settles

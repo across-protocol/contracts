@@ -28,7 +28,7 @@ struct FinalTokenInfo {
     // The fee Hyperliquid charges for Limit orders in the market; in parts per million, e.g. 1.4 bps = 140 ppm
     uint32 feePpm;
     // When enqueuing a limit order, use this to set a price "a bit worse than market" for faster execution
-    uint32 suggestedSlippageBps;
+    uint32 suggestedDiscountBps;
     // Contract where the accounting for all baseToken -> finalToken accounting happens. One pre finalToken
     SwapHandler swapHandler;
 }
