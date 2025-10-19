@@ -293,16 +293,16 @@ contract HyperCoreFlowExecutor is AccessControl {
      * @param isBuy Whether the final token is a buy or a sell.
      * @param feePpm The fee in parts per million.
      * @param suggestedDiscountBps The suggested slippage in basis points.
+     * @param accountActivationFeeToken A token to pay account activation fee in. Only used if adding a new final token
      */
     function setFinalTokenInfo(
         address finalToken,
         uint32 assetIndex,
         bool isBuy,
         uint32 feePpm,
-        uint32 suggestedDiscountBps
-    ) external onlyExistingToken(finalToken) onlyDefaultAdmin {
-        CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
-
+        uint32 suggestedDiscountBps,
+        address accountActivationFeeToken
+    ) external onlyExistingToken(finalToken) onlyExistingToken(accountActivationFeeToken) onlyDefaultAdmin {
         SwapHandler swapHandler = finalTokenInfos[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
             swapHandler = new SwapHandler();
@@ -316,16 +316,18 @@ contract HyperCoreFlowExecutor is AccessControl {
             suggestedDiscountBps: suggestedDiscountBps
         });
 
-        uint256 accountActivationFee = _getAccountActivationFeeEVM(finalToken, address(swapHandler));
+        uint256 accountActivationFee = _getAccountActivationFeeEVM(accountActivationFeeToken, address(swapHandler));
+        if (accountActivationFee > 0) {
+            CoreTokenInfo memory accountActivationTokenInfo = coreTokenInfos[accountActivationFeeToken];
+            require(accountActivationTokenInfo.canBeUsedForAccountActivation, "account activation fee token error");
 
-        if (accountActivationFee > 0 && coreTokenInfo.canBeUsedForAccountActivation) {
-            _getFromDonationBox(finalToken, accountActivationFee);
-            IERC20(finalToken).safeTransfer(address(swapHandler), accountActivationFee);
+            _getFromDonationBox(accountActivationFeeToken, accountActivationFee);
+            IERC20(accountActivationFeeToken).safeTransfer(address(swapHandler), accountActivationFee);
             swapHandler.activateCoreAccount(
-                finalToken,
-                coreTokenInfo.coreIndex,
+                accountActivationFeeToken,
+                accountActivationTokenInfo.coreIndex,
                 accountActivationFee,
-                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                accountActivationTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
     }
@@ -542,10 +544,6 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 totalCoreAmountToSponsor = finalCoreSendAmount > guaranteedLOOut
             ? finalCoreSendAmount - guaranteedLOOut
             : 0;
-
-        // TODO: _finalizeInitSwapFlow(..);
-
-        // ACTUAL TOKEN SENDING BEGINS HERE. BEFORE, ALL WAS CALCULATIONS
 
         uint256 totalEVMAmountToSponsor = 0;
         if (totalCoreAmountToSponsor > 0) {
