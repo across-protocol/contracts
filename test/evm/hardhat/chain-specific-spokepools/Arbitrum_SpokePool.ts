@@ -26,8 +26,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/contracts/interfaces/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
+} from "../../../../typechain/contracts/interfaces/IOFT.sol/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT.sol/IOFT__factory";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract, l2UsdtContract: Contract;
