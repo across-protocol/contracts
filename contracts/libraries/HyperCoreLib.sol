@@ -239,7 +239,7 @@ library HyperCoreLib {
      * @param index The asset index to get the spot price of
      * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
      */
-    function spotPx(uint32 index) external view returns (uint64) {
+    function spotPx(uint32 index) internal view returns (uint64) {
         (bool success, bytes memory result) = SPOT_PX_PRECOMPILE_ADDRESS.staticcall(abi.encode(index));
         if (!success) revert SpotPxPrecompileCallFailed();
         return abi.decode(result, (uint64));
