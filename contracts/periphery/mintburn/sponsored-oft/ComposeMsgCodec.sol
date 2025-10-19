@@ -6,7 +6,7 @@ import { BytesLib } from "../../../libraries/BytesLib.sol";
 library ComposeMsgCodec {
     uint256 internal constant NONCE_OFFSET = 0;
     uint256 internal constant DEADLINE_OFFSET = 32;
-    uint256 internal constant MAX_SPONSORSHIP_AMOUNT_OFFSET = 64;
+    uint256 internal constant MAX_BPS_TO_SPONSOR_OFFSET = 64;
     uint256 internal constant MAX_USER_SLIPPAGE_BPS_OFFSET = 96;
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 128;
     uint256 internal constant FINAL_TOKEN_OFFSET = 160;
@@ -32,7 +32,7 @@ library ComposeMsgCodec {
     }
 
     function _getMaxBpsToSponsor(bytes memory data) internal pure returns (uint256 v) {
-        return BytesLib.toUint256(data, MAX_SPONSORSHIP_AMOUNT_OFFSET);
+        return BytesLib.toUint256(data, MAX_BPS_TO_SPONSOR_OFFSET);
     }
 
     function _getMaxUserSlippageBps(bytes memory data) internal pure returns (uint256 v) {

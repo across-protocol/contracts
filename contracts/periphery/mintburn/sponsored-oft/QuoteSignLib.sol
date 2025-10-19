@@ -22,7 +22,9 @@ library QuoteSignLib {
                     p.deadline,
                     p.maxBpsToSponsor,
                     p.finalRecipient,
-                    p.finalToken
+                    p.finalToken,
+                    p.lzReceiveGasLimit,
+                    p.lzComposeGasLimit
                 )
             );
     }

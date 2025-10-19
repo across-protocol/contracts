@@ -20,7 +20,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
 
-    bytes public constant EMPTY_MSG_BYTES = new bytes(0);
+    bytes public constant EMPTY_OFT_COMMAND = new bytes(0);
 
     /// @notice Token that's being sent by an OFT bridge
     address public immutable TOKEN;
@@ -48,13 +48,28 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         bytes sig
     );
 
-    constructor(address _token, address _oftMessenger, address _signer, uint32 _srcEid) {
+    /// @notice Thrown when the source eid of the ioft messenger does not match the src eid supplied
+    error IncorrectSrcEid();
+    /// @notice Thrown when the supplied token does not match the supplied ioft messenger
+    error TokenIOFTMismatch();
+    /// @notice Thrown when the signer for quote does not match `signer`
+    error IncorrectSignature();
+    /// @notice Thrown if Quote has expired
+    error QuoteExpired();
+    /// @notice Thrown if Quote nonce was already used
+    error NonceAlreadyUsed();
+
+    constructor(address _token, address _oftMessenger, uint32 _srcEid, address _signer) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
-        require(IOFT(_oftMessenger).token() == _token, "Incorrect token <> ioft relationship");
-        signer = _signer;
-        require(IOAppCore(_oftMessenger).endpoint().eid() == _srcEid, "Incorrect srcEid");
         SRC_EID = _srcEid;
+        if (IOAppCore(_oftMessenger).endpoint().eid() != _srcEid) {
+            revert IncorrectSrcEid();
+        }
+        if (IOFT(_oftMessenger).token() != _token) {
+            revert TokenIOFTMismatch();
+        }
+        signer = _signer;
     }
 
     /// @notice Main entrypoint function to start the user flow
@@ -98,20 +113,20 @@ contract SponsoredOFTSrcPeriphery is Ownable {
 
         bytes memory extraOptions = MinimalLZOptions
             .newOptions()
-            .addExecutorLzReceiveOption(uint128(quote.unsignedParams.lzReceiveGasLimit), uint128(0))
-            .addExecutorLzComposeOption(uint16(0), uint128(quote.unsignedParams.lzComposeGasLimit), uint128(0));
+            .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
+            .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
             quote.signedParams.destinationHandler,
-            // @dev We currently don't OFT sends that take fees in sent token, so set `minAmountLD = amountLD`
+            // Only support OFT sends that don't take fees in sent token. Set `minAmountLD = amountLD` to enforce this
             quote.signedParams.amountLD,
             quote.signedParams.amountLD,
             extraOptions,
             composeMsg,
             // TODO? Is this an issue for ~classic tokens like USDT0?
             // Only support empty OFT commands
-            EMPTY_MSG_BYTES
+            EMPTY_OFT_COMMAND
         );
 
         MessagingFee memory fee = IOFT(OFT_MESSENGER).quoteSend(sendParam, false);
@@ -120,10 +135,18 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     }
 
     function _validateQuote(Quote calldata quote, bytes calldata signature) internal view {
-        require(QuoteSignLib.isSignatureValid(signer, quote.signedParams, signature), "incorrect signature");
-        require(quote.signedParams.deadline <= block.timestamp, "quote expired");
-        require(quote.signedParams.srcEid == SRC_EID, "incorrect src eid");
-        require(quoteNonces[quote.signedParams.nonce] == false, "quote nonce already used");
+        if (!QuoteSignLib.isSignatureValid(signer, quote.signedParams, signature)) {
+            revert IncorrectSignature();
+        }
+        if (quote.signedParams.deadline < block.timestamp) {
+            revert QuoteExpired();
+        }
+        if (quote.signedParams.srcEid != SRC_EID) {
+            revert IncorrectSrcEid();
+        }
+        if (quoteNonces[quote.signedParams.nonce]) {
+            revert NonceAlreadyUsed();
+        }
     }
 
     function setSigner(address _newSigner) external onlyOwner {

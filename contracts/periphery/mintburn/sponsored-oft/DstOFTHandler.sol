@@ -7,10 +7,11 @@ import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
-import { IOFT } from "../../../interfaces/IOFT.sol";
+import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
+import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
+
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
@@ -22,8 +23,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
     /// require our src handler to ensure that it is. We don't sponsor extra bridge fees in this handler
     uint256 public constant EXTRA_FEES_TO_SPONSOR = 0;
 
-    address public immutable oftEndpoint;
-    address public immutable ioft;
+    address public immutable OFT_ENDPOINT_ADDRESS;
+    address public immutable IOFT_ADDRESS;
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
@@ -33,9 +34,22 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
     /// but I guess better safe than sorry
     mapping(bytes32 quoteNonce => bool used) usedNonces;
 
-    /// @notice Emitted when trying to call lzCompose from a source periphery that's not been configured in
-    /// `authorizedSrcPeripheryContracts`
+    /// @notice Thrown when trying to call lzCompose from a source periphery that's not been configured in `authorizedSrcPeripheryContracts`
     error AuthorizedPeripheryNotSet(uint32 _srcEid);
+    /// @notice Thrown when source chain recipient is not authorized periphery contract
+    error UnauthorizedSrcPeriphery(uint32 _srcEid);
+    /// @notice Thrown when the supplied token does not match the supplied ioft messenger
+    error TokenIOFTMismatch();
+    /// @notice Thrown when the supplied ioft address does not match the supplied endpoint address
+    error IOFTEndpointMismatch();
+    /// @notice Thrown if Quote nonce was already used
+    error NonceAlreadyUsed();
+    /// @notice Thrown if supplied OApp is not configured ioft
+    error InvalidOApp();
+    /// @notice Thrown if called by an unauthorized endpoint
+    error UnauthorizedEndpoint();
+    /// @notice Thrown when supplied _composeMsg format is unexpected
+    error InvalidComposeMsgFormat();
 
     constructor(
         address _oftEndpoint,
@@ -57,10 +71,15 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         )
     {
         // baseToken is assigned on `HyperCoreFlowExecutor` creation
-        require(baseToken == IOFT(_ioft).token(), "IOFT doesn't match the baseToken");
+        if (baseToken != IOFT(_ioft).token()) {
+            revert TokenIOFTMismatch();
+        }
 
-        oftEndpoint = _oftEndpoint;
-        ioft = _ioft;
+        OFT_ENDPOINT_ADDRESS = _oftEndpoint;
+        IOFT_ADDRESS = _ioft;
+        if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
+            revert IOFTEndpointMismatch();
+        }
     }
 
     /**
@@ -76,30 +95,32 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         address /* _executor */,
         bytes calldata /* _extraData */
     ) external payable override {
-        require(_oApp == ioft, "Invalid OApp");
-        require(msg.sender == oftEndpoint, "Unauthorized endpoint sender");
-        _requireAuthorizedPeriphery(_message);
+        _requireAuthorizedMessage(_oApp, _message);
 
         // Decode the actual `composeMsg` payload to extract the recipient address
-        bytes memory _composeMsg = OFTComposeMsgCodec.composeMsg(_message);
+        bytes memory composeMsg = OFTComposeMsgCodec.composeMsg(_message);
 
         // This check is a safety mechanism against blackholing funds. The funds were sent by the authorized periphery
         // contract, but if the length is unexpected, we require funds be rescued, this is not a situation we aim to
         // revover from in `lzCompose` call
-        require(_composeMsg._isValidComposeMsgBytelength(), "_composeMsg incorrectly formatted");
+        if (composeMsg._isValidComposeMsgBytelength() == false) {
+            revert InvalidComposeMsgFormat();
+        }
 
-        bytes32 quoteNonce = _composeMsg._getNonce();
-        require(!usedNonces[quoteNonce], "Nonce already used");
+        bytes32 quoteNonce = composeMsg._getNonce();
+        if (usedNonces[quoteNonce]) {
+            revert NonceAlreadyUsed();
+        }
         usedNonces[quoteNonce] = true;
 
-        address finalRecipient = _composeMsg._getFinalRecipient().toAddress();
-        address finalToken = _composeMsg._getFinalToken().toAddress();
-        uint256 maxBpsToSponsor = _composeMsg._getMaxBpsToSponsor();
-        uint256 maxUserSlippageBps = _composeMsg._getMaxUserSlippageBps();
-        uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
+        uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
+        uint256 maxBpsToSponsor = composeMsg._getMaxBpsToSponsor();
+        uint256 maxUserSlippageBps = composeMsg._getMaxUserSlippageBps();
+        address finalRecipient = composeMsg._getFinalRecipient().toAddress();
+        address finalToken = composeMsg._getFinalToken().toAddress();
 
         _executeFlow(
-            _amountLD,
+            amountLD,
             quoteNonce,
             maxBpsToSponsor,
             maxUserSlippageBps,
@@ -107,6 +128,17 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
             finalToken,
             EXTRA_FEES_TO_SPONSOR
         );
+    }
+
+    /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
+    function _requireAuthorizedMessage(address _oApp, bytes calldata _message) internal view {
+        if (_oApp != IOFT_ADDRESS) {
+            revert InvalidOApp();
+        }
+        if (msg.sender != OFT_ENDPOINT_ADDRESS) {
+            revert UnauthorizedEndpoint();
+        }
+        _requireAuthorizedPeriphery(_message);
     }
 
     /// @dev Checks that _message came from the authorized src periphery contract stored in `authorizedSrcPeripheryContracts`
@@ -122,6 +154,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
 
         // We don't allow arbitrary src chain callers. If such a caller does send a message to this handler, the funds
         // will remain in this contract and will have to be rescued by an admin rescue function
-        require(authorizedPeriphery == _composeFromBytes32, "Src periphery not authorized");
+        if (authorizedPeriphery != _composeFromBytes32) {
+            revert UnauthorizedSrcPeriphery(_srcEid);
+        }
     }
 }
