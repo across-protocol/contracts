@@ -490,30 +490,18 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         // In initialToken
         uint256 totalAmountBridgedEVM = amountInEVM + extraBridgingFeesEVM;
-        // All in finalToken
+        // In finalToken
         uint64 accountActivationFeeCore = coreUserAccountExists ? 0 : finalCoreTokenInfo.accountActivationFeeCore;
-        uint64 minAllowableAmountToForwardCore;
-        uint64 maxAmountToSponsorCore;
-        if (isSponsoredFlow) {
-            // toCore(totalEvmBridgedAmount) + coreAccountActivationFee
-            (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-                totalAmountBridgedEVM,
-                initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
-            );
-            uint64 feelessAmountCoreFinalToken = HyperCoreLib.convertCoreDecimalsSimple(
-                feelessAmountCoreInitialToken,
-                initialCoreTokenInfo.tokenInfo.weiDecimals,
-                finalCoreTokenInfo.tokenInfo.weiDecimals
-            );
-            maxAmountToSponsorCore = uint64((feelessAmountCoreFinalToken * maxBpsToSponsor) / BPS_SCALAR);
-            minAllowableAmountToForwardCore = feelessAmountCoreFinalToken + accountActivationFeeCore;
-        } else {
-            // toCore(amountInEquivalentCore) - slippage + coreAccountActivationFee
-            maxAmountToSponsorCore = 0;
-            minAllowableAmountToForwardCore =
-                uint64((amountInEquivalentCore * (BPS_SCALAR - maxUserSlippageBps)) / BPS_SCALAR) +
-                accountActivationFeeCore;
-        }
+        // In finalToken
+        (uint64 minAllowableAmountToForwardCore, uint64 maxAmountToSponsorCore) = _calculateAllowableAmountsForFlow(
+            totalAmountBridgedEVM,
+            initialCoreTokenInfo,
+            finalCoreTokenInfo,
+            isSponsoredFlow,
+            maxBpsToSponsor,
+            maxUserSlippageBps,
+            accountActivationFeeCore
+        );
 
         uint64 limitPriceX1e8 = _getSuggestedPriceX1e8(finalTokenInfo);
         (uint64 sizeX1e8, uint64 tokensToSendCore, uint64 guaranteedLOOut) = _calcLOAmounts(
@@ -907,6 +895,37 @@ contract HyperCoreFlowExecutor is AccessControl {
         bool accountActivated = HyperCoreLib.coreUserExists(recipient);
 
         return accountActivated ? 0 : coreTokenInfos[token].accountActivationFeeEVM;
+    }
+
+    function _calculateAllowableAmountsForFlow(
+        uint256 totalAmountBridgedEVM,
+        CoreTokenInfo memory initialCoreTokenInfo,
+        CoreTokenInfo memory finalCoreTokenInfo,
+        bool isSponsoredFlow,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
+        uint64 accountActivationFeeCore
+    ) internal pure returns (uint64 minAllowableAmountToForwardCore, uint64 maxAmountToSponsorCore) {
+        (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+            totalAmountBridgedEVM,
+            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+        uint64 feelessAmountCoreFinalToken = HyperCoreLib.convertCoreDecimalsSimple(
+            feelessAmountCoreInitialToken,
+            initialCoreTokenInfo.tokenInfo.weiDecimals,
+            finalCoreTokenInfo.tokenInfo.weiDecimals
+        );
+        if (isSponsoredFlow) {
+            // toCore(totalEvmBridgedAmount) + coreAccountActivationFee
+            maxAmountToSponsorCore = uint64((feelessAmountCoreFinalToken * maxBpsToSponsor) / BPS_SCALAR);
+            minAllowableAmountToForwardCore = feelessAmountCoreFinalToken + accountActivationFeeCore;
+        } else {
+            // toCore(amountInEquivalentCore) - slippage + coreAccountActivationFee
+            maxAmountToSponsorCore = 0;
+            minAllowableAmountToForwardCore =
+                uint64((feelessAmountCoreFinalToken * (BPS_SCALAR - maxUserSlippageBps)) / BPS_SCALAR) +
+                accountActivationFeeCore;
+        }
     }
 
     /**************************************
