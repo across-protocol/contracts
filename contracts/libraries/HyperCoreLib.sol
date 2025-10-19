@@ -45,6 +45,7 @@ library HyperCoreLib {
     uint256 public constant BASE_ASSET_BRIDGE_ADDRESS_UINT256 = uint256(uint160(BASE_ASSET_BRIDGE_ADDRESS));
 
     // Precompile addresses
+    // TODO: maybe we should be using https://github.com/hyperliquid-dev/hyper-evm-lib instead?
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
     address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
@@ -219,7 +220,7 @@ library HyperCoreLib {
      * @param index The asset index to get the spot price of
      * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
      */
-    function spotPx(uint32 index) external view returns (uint64) {
+    function spotPx(uint32 index) internal view returns (uint64) {
         (bool success, bytes memory result) = SPOT_PX_PRECOMPILE_ADDRESS.staticcall(abi.encode(index));
         if (!success) revert SpotPxPrecompileCallFailed();
         return abi.decode(result, (uint64));

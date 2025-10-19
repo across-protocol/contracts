@@ -56,6 +56,7 @@ interface SponsoredCCTPInterface {
         // The recipient of the minted USDC on the destination chain.
         bytes32 mintRecipient;
         // The amount that the user pays on the source chain.
+        // TODO: rename this to indicate source amount
         uint256 amount;
         // The token that will be burned on the source chain.
         bytes32 burnToken;

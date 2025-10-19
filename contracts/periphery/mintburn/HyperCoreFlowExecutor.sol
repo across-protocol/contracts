@@ -883,6 +883,8 @@ contract HyperCoreFlowExecutor is AccessControl {
             accountActivationFeeCore: accountActivationFeeCore,
             bridgeSafetyBufferCore: bridgeSafetyBufferCore
         });
+
+        // TODO: emit event? maybe not if we are over limit
     }
 
     /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful
