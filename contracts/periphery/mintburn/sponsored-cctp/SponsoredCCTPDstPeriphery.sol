@@ -7,9 +7,9 @@ import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfac
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
-import { HyperCoreForwarder } from "../HyperCoreForwarder.sol";
+import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -32,7 +32,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreForwarder
         uint64 _accountActivationFeeCore,
         uint64 _bridgeSafetyBufferCore
     )
-        HyperCoreForwarder(
+        HyperCoreFlowExecutor(
             _donationBox,
             _baseToken,
             _coreIndex,

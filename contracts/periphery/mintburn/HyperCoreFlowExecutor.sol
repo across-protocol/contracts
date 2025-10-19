@@ -181,6 +181,9 @@ contract HyperCoreFlowExecutor is AccessControl {
         bool tokenCanBeUsedForAccountActivation
     );
 
+    /// @notice Emitted from the simple transfer flow when bridging to core is not safe
+    event SimpleTransferFlowFallbackBridge(bytes32 quoteNonce);
+
     /**************************************
      *            MODIFIERS               *
      **************************************/
@@ -372,11 +375,16 @@ contract HyperCoreFlowExecutor is AccessControl {
         address finalToken = baseToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        bool haveToPayForCoreAccountActivation = !HyperCoreLib.coreUserExists(finalRecipient);
+        bool coreUserAccountExists = HyperCoreLib.coreUserExists(finalRecipient);
+        bool impossibleToForwardToCore = !coreUserAccountExists && !coreTokenInfo.canBeUsedForAccountActivation;
+
+        if (impossibleToForwardToCore) {
+            _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            return;
+        }
+
         // Record `accountCreationFee` as zero if we can't use final token for account activation
-        uint256 accountCreationFee = haveToPayForCoreAccountActivation && coreTokenInfo.canBeUsedForAccountActivation
-            ? coreTokenInfo.accountActivationFeeEVM
-            : 0;
+        uint256 accountCreationFee = coreUserAccountExists ? 0 : coreTokenInfo.accountActivationFeeEVM;
         uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
         uint256 totalUserFeesEvm = extraFeesToSponsor + accountCreationFee;
         uint256 amountToSponsor = totalUserFeesEvm;
@@ -385,16 +393,12 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
 
         if (amountToSponsor > 0) {
-            if (!_tryGetFromDonationBox(coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
+            if (!_availableInDonationBox(coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
                 amountToSponsor = 0;
             }
         }
 
         uint256 finalAmount = amount + amountToSponsor;
-
-        cumulativeSponsoredAmount[finalToken] += amountToSponsor;
-        // Record a propotional amount used to sponsor account creation
-        cumulativeSponsoredActivationFee[finalToken] += (amountToSponsor * accountCreationFee) / totalUserFeesEvm;
 
         (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             finalAmount,
@@ -410,16 +414,20 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
         // fall back to sending user funds on HyperEVM.
-        if (!isSafe || (haveToPayForCoreAccountActivation && !coreTokenInfo.canBeUsedForAccountActivation)) {
-            _fallbackHyperEVMFlow(quoteNonce, amount, amountToSponsor, finalAmount, finalRecipient, finalToken);
-            emit SimpleTransferFallback(
-                quoteNonce,
-                isSafe,
-                haveToPayForCoreAccountActivation,
-                coreTokenInfo.canBeUsedForAccountActivation
-            );
+        if (!isSafe) {
+            _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            emit SimpleTransferFlowFallbackBridge(quoteNonce);
             return;
         }
+
+        if (amountToSponsor > 0) {
+            // This will succeed because we checked the balance earlier
+            _getFromDonationBox(coreTokenInfo.tokenInfo.evmContract, amountToSponsor);
+        }
+
+        cumulativeSponsoredAmount[finalToken] += amountToSponsor;
+        // Record a propotional amount used to sponsor account creation
+        cumulativeSponsoredActivationFee[finalToken] += (amountToSponsor * accountCreationFee) / totalUserFeesEvm;
 
         // There is a very slim chance that by the time we get here, the balance of the bridge changes
         // and the funds are lost.
@@ -469,35 +477,20 @@ contract HyperCoreFlowExecutor is AccessControl {
             amountInEVM,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
-        // In finalToken
-        uint64 accountActivationFeeCore = HyperCoreLib.coreUserExists(finalUser)
-            ? 0
-            : finalCoreTokenInfo.accountActivationFeeCore;
 
-        // In initialToken
-        uint256 totalAmountBridgedEVM = amountInEVM + extraBridgingFeesEVM;
-        // The user has no HyperCore account and we can't sponsor its creation; fall back to sending funds on HyperEVM
-        if (accountActivationFeeCore > 0 && !finalCoreTokenInfo.canBeUsedForAccountActivation) {
-            // Both in initialToken
-            uint256 maxAmountToSponsorEVM = (totalAmountBridgedEVM * maxBpsToSponsor) / BPS_SCALAR;
-            uint256 amountToSponsorEVM = extraBridgingFeesEVM > maxAmountToSponsorEVM
-                ? maxAmountToSponsorEVM
-                : extraBridgingFeesEVM;
+        bool coreUserAccountExists = HyperCoreLib.coreUserExists(finalUser);
+        bool impossibleToForwardToCore = !coreUserAccountExists && !finalCoreTokenInfo.canBeUsedForAccountActivation;
 
-            _fallbackHyperEVMFlow(
-                quoteNonce,
-                amountInEVM,
-                amountToSponsorEVM,
-                amountInEVM + amountToSponsorEVM,
-                finalUser,
-                initialToken
-            );
-
+        if (impossibleToForwardToCore) {
+            _fallbackHyperEVMFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesEVM);
             emit SwapFlowFallbackAccountActivation(quoteNonce, finalToken);
             return;
         }
 
-        // Both in finalToken
+        // In initialToken
+        uint256 totalAmountBridgedEVM = amountInEVM + extraBridgingFeesEVM;
+        // All in finalToken
+        uint64 accountActivationFeeCore = coreUserAccountExists ? 0 : finalCoreTokenInfo.accountActivationFeeCore;
         uint64 minAllowableAmountToForwardCore;
         uint64 maxAmountToSponsorCore;
         if (isSponsoredFlow) {
@@ -563,8 +556,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
 
         if (totalEVMAmountToSponsor > 0) {
-            // On success, we have totalEVMAmountToSponsor + quoted.evm on balance. Otherwise, set sponsored amts to 0
-            if (!_tryGetFromDonationBox(finalToken, totalEVMAmountToSponsor)) {
+            if (!_availableInDonationBox(finalToken, totalEVMAmountToSponsor)) {
                 // We can't provide the required `totalEVMAmountToSponsor` in a swap flow, try simple transfer flow instead
                 _executeSimpleTransferFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesEVM);
                 emit SwapFlowFallbackDonationBox(quoteNonce, finalToken, totalEVMAmountToSponsor);
@@ -585,30 +577,13 @@ contract HyperCoreFlowExecutor is AccessControl {
         );
 
         if (!isSafeToBridgeMainToken || !isSafeTobridgeSponsorshipFunds) {
-            // TODO: create _fallbackHyperEVMFlowFromSwap(..) and calculate the values below in there
-
-            // Both in initialToken
-            uint256 maxEvmAmountToSponsor = (totalAmountBridgedEVM * maxBpsToSponsor) / BPS_SCALAR;
-            uint256 evmAmountToSponsor = extraBridgingFeesEVM > maxEvmAmountToSponsor
-                ? maxEvmAmountToSponsor
-                : extraBridgingFeesEVM;
-
-            _fallbackHyperEVMFlow(
-                quoteNonce,
-                amountInEVM,
-                evmAmountToSponsor,
-                amountInEVM + evmAmountToSponsor,
-                finalUser,
-                initialToken
-            );
-
+            _fallbackHyperEVMFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalUser, extraBridgingFeesEVM);
             emit SwapFlowFallbackUnsafeToBridge(
                 quoteNonce,
                 isSafeToBridgeMainToken,
                 finalToken,
                 isSafeTobridgeSponsorshipFunds
             );
-
             return;
         }
 
@@ -620,6 +595,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             tokensToSendCore,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
+        // Here, we're sending amount that is <= amountInEVM (came from user's bridge transaction)
         IERC20(initialToken).safeTransfer(address(swapHandler), evmToSendForTrade);
         swapHandler.transferFundsToSelfOnCore(
             initialToken,
@@ -630,11 +606,9 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         // 2. Fund SwapHandler @ core with `finalToken`: use that for sponsorship
         if (totalEVMAmountToSponsor > 0) {
-            cumulativeSponsoredActivationFee[finalToken] += accountActivationFeeCore > 0
-                ? finalCoreTokenInfo.accountActivationFeeEVM
-                : 0;
-            cumulativeSponsoredAmount[finalToken] += totalEVMAmountToSponsor;
-
+            // We checked that this amount is in donationBox before
+            _getFromDonationBox(finalToken, totalEVMAmountToSponsor);
+            // These funds just came from donationBox
             IERC20(finalToken).safeTransfer(address(swapHandler), totalEVMAmountToSponsor);
             swapHandler.transferFundsToSelfOnCore(
                 finalToken,
@@ -642,6 +616,10 @@ contract HyperCoreFlowExecutor is AccessControl {
                 totalEVMAmountToSponsor,
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
+            cumulativeSponsoredActivationFee[finalToken] += accountActivationFeeCore > 0
+                ? finalCoreTokenInfo.accountActivationFeeEVM
+                : 0;
+            cumulativeSponsoredAmount[finalToken] += totalEVMAmountToSponsor;
         }
 
         uint128 cloid = ++nextCloid;
@@ -854,28 +832,36 @@ contract HyperCoreFlowExecutor is AccessControl {
         emit ReplacedOldLimitOrder(quoteNonce, cloid, priceX1e8, szX1e8, oldPriceX1e8, oldSizeX1e8Left);
     }
 
-    /**
-     *
-     * @notice Should be used for rare cases where we can't proceed with our normal HyperCore flows: either there are
-     * no funds in the spot bridge, or e.g. we can't pay for account creation for the user for some reason
-     */
+    /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
     function _fallbackHyperEVMFlow(
+        uint256 amount,
         bytes32 quoteNonce,
-        uint256 evmAmountReceived,
-        uint256 evmSponsoredAmount,
-        uint256 totalEvmAmountToSend,
-        address finalUser,
-        address finalToken
+        uint256 maxBpsToSponsor,
+        address finalRecipient,
+        uint256 extraFeesToSponsor
     ) internal {
-        IERC20(finalToken).safeTransfer(finalUser, totalEvmAmountToSend);
-        cumulativeSponsoredAmount[finalToken] += evmSponsoredAmount;
+        address finalToken = baseToken;
+        uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
+        uint256 sponsorshipFundsToForward = extraFeesToSponsor > maxEvmAmountToSponsor
+            ? maxEvmAmountToSponsor
+            : extraFeesToSponsor;
+
+        if (!_availableInDonationBox(baseToken, sponsorshipFundsToForward)) {
+            sponsorshipFundsToForward = 0;
+        }
+        if (sponsorshipFundsToForward > 0) {
+            _getFromDonationBox(baseToken, sponsorshipFundsToForward);
+        }
+        uint256 totalAmountToForward = amount + sponsorshipFundsToForward;
+        IERC20(finalToken).safeTransfer(finalRecipient, totalAmountToForward);
+        cumulativeSponsoredAmount[finalToken] += sponsorshipFundsToForward;
         emit FallbackHyperEVMFlowCompleted(
             quoteNonce,
-            finalUser,
+            finalRecipient,
             finalToken,
-            evmAmountReceived,
-            evmSponsoredAmount,
-            totalEvmAmountToSend
+            amount,
+            sponsorshipFundsToForward,
+            totalAmountToForward
         );
     }
 
@@ -906,18 +892,17 @@ contract HyperCoreFlowExecutor is AccessControl {
 
     /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful
     function _getFromDonationBox(address token, uint256 amount) internal {
-        if (!_tryGetFromDonationBox(token, amount)) {
+        if (!_availableInDonationBox(token, amount)) {
             revert DonationBoxInsufficientFundsError(token, amount);
         }
+        donationBox.withdraw(IERC20(token), amount);
     }
 
-    /// @notice Tries to get `amount` of `token` from donationBox. Returns false on failure
-    function _tryGetFromDonationBox(address token, uint256 amount) internal returns (bool success) {
-        try donationBox.withdraw(IERC20(token), amount) {
-            success = true;
-        } catch {
+    /// @notice Checks if `amount` of `token` is available to withdraw from donationBox
+    function _availableInDonationBox(address token, uint256 amount) internal returns (bool available) {
+        available = IERC20(token).balanceOf(address(donationBox)) >= amount;
+        if (!available) {
             emit DonationBoxInsufficientFunds(token, amount);
-            success = false;
         }
     }
 
@@ -936,10 +921,8 @@ contract HyperCoreFlowExecutor is AccessControl {
     }
 
     function sweepErc20FromDonationBox(address token, uint256 amount) external onlyFundsSweeper {
-        bool success = _tryGetFromDonationBox(token, amount);
-        if (success) {
-            IERC20(token).safeTransfer(msg.sender, amount);
-        }
+        _getFromDonationBox(token, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 
     function sweepERC20FromSwapHandler(address token, uint256 amount) external onlyFundsSweeper {
