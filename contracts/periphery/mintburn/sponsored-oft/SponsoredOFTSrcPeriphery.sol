@@ -43,6 +43,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         bytes32 indexed finalRecipient,
         uint256 quoteDeadline,
         uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
         bytes32 finalToken,
         bytes sig
     );
@@ -77,6 +78,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.finalRecipient,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
+            quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalToken,
             signature
         );
