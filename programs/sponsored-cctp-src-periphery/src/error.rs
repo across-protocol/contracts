@@ -28,8 +28,6 @@ pub enum SvmError {
     AmountNotPositive,
     #[msg("The quote deadline has not passed!")]
     QuoteDeadlineNotPassed,
-    #[msg("Invalid quote data length")]
-    InvalidQuoteDataLength,
     #[msg("New signer unchanged")]
     SignerUnchanged,
 }

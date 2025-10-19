@@ -75,7 +75,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const signSponsoredCCTPQuote = async (
     signer: ethers.Wallet,
     quoteData: SponsoredCCTPQuote
-  ): Promise<{ quote: Buffer; signature: Buffer }> => {
+  ): Promise<{ quote: number[]; signature: number[] }> => {
     const encodedHexString = ethers.utils.defaultAbiCoder.encode(
       [
         "uint32",
@@ -108,13 +108,13 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.finalToken,
       ]
     );
-    const encodedQuote = Buffer.from(ethers.utils.arrayify(encodedHexString));
+    const encodedQuote = Array.from(Buffer.from(ethers.utils.arrayify(encodedHexString)));
 
     const digest = ethers.utils.keccak256(encodedHexString);
 
     // Create simple ECDSA signature over the ABI encoded quote data hash.
     const signatureHexString = ethers.utils.joinSignature(signer._signingKey().signDigest(digest));
-    const signature = Buffer.from(ethers.utils.arrayify(signatureHexString));
+    const signature = Array.from(Buffer.from(ethers.utils.arrayify(signatureHexString)));
 
     return { quote: encodedQuote, signature };
   };
@@ -373,7 +373,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(event.maxBpsToSponsor.toString(), maxBpsToSponsor.toString(), "Invalid maxBpsToSponsor");
     assert.strictEqual(event.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.strictEqual(event.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
-    assert.isTrue(event.signature.equals(signature), "Invalid signature");
+    assert.isTrue(event.signature.equals(Buffer.from(signature)), "Invalid signature");
 
     const message = decodeMessageSentDataV2(
       (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message

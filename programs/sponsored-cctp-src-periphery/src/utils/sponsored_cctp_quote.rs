@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::keccak};
 
-use crate::error::{DataDecodingError, SvmError};
+use crate::error::DataDecodingError;
 
 // Macro to define the SponsoredCCTPQuote fields as an enum with associated constants for ordinal, start, end, count,
 // and total bytes.
@@ -65,16 +65,12 @@ pub const NONCE_START: usize = SponsoredCCTPQuoteFields::Nonce.start();
 pub const NONCE_END: usize = SponsoredCCTPQuoteFields::Nonce.end();
 
 pub struct SponsoredCCTPQuote<'a> {
-    data: &'a [u8],
+    data: &'a [u8; QUOTE_DATA_LENGTH],
 }
 
 impl<'a> SponsoredCCTPQuote<'a> {
-    pub fn new(quote_bytes: &'a [u8]) -> Result<Self> {
-        if quote_bytes.len() != QUOTE_DATA_LENGTH {
-            return err!(SvmError::InvalidQuoteDataLength);
-        }
-
-        Ok(Self { data: quote_bytes })
+    pub fn new(quote_bytes: &'a [u8; QUOTE_DATA_LENGTH]) -> Self {
+        Self { data: quote_bytes }
     }
 
     /// Returns Keccak hash of the encoded quote data.

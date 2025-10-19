@@ -11,7 +11,10 @@ use crate::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
     },
-    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START},
+    utils::{
+        get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START, QUOTE_DATA_LENGTH,
+        QUOTE_SIGNATURE_LENGTH,
+    },
 };
 
 #[event_cpi]
@@ -33,7 +36,7 @@ pub struct Deposit<'info> {
         space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE,
         seeds = [
             b"used_nonce",
-            &params.quote[NONCE_START..NONCE_END], // Using quote nonce as seed to create a unique nonce account.
+            &params.quote[NONCE_START..NONCE_END], // Safe to use as quote is fixed length.
         ],
         bump
     )]
@@ -49,7 +52,7 @@ pub struct Deposit<'info> {
 
     #[account(
         mut,
-        constraint = mint.key() == SponsoredCCTPQuote::new(&params.quote)?.burn_token()? @ SvmError::InvalidMint,
+        constraint = mint.key() == SponsoredCCTPQuote::new(&params.quote).burn_token()? @ SvmError::InvalidMint,
         mint::token_program = token_program,
     )]
     pub mint: InterfaceAccount<'info, Mint>,
@@ -101,8 +104,8 @@ pub struct Deposit<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositParams {
-    pub quote: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
-    pub signature: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
+    pub quote: [u8; QUOTE_DATA_LENGTH],
+    pub signature: [u8; QUOTE_SIGNATURE_LENGTH],
 }
 
 pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
@@ -111,7 +114,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
 
     let state = &ctx.accounts.state;
 
-    let quote = SponsoredCCTPQuote::new(&params.quote)?;
+    let quote = SponsoredCCTPQuote::new(&params.quote);
     validate_signature(state.signer, &quote, &params.signature)?;
 
     let quote_deadline = quote.deadline()?;
@@ -177,7 +180,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
         quote_deadline: quote.deadline()?,
         max_bps_to_sponsor: quote.max_bps_to_sponsor()?,
         final_token: quote.final_token()?,
-        signature: params.signature.clone(),
+        signature: params.signature.to_vec(),
     });
 
     Ok(())
