@@ -15,13 +15,12 @@ import { SwapHandler } from "./SwapHandler.sol";
 contract HyperCoreForwarder is AccessControl {
     using SafeERC20 for IERC20;
 
-    // TODO? Not sure if WIRE_DECIMALS / SCALAR are even useful. Decide if use later
-    uint256 public constant WIRE_DECIMALS = 8;
     uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
-    uint256 public constant WIRE_SCALAR = 10 ** WIRE_DECIMALS;
     uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
+    // Decimals to use for Price calculations in limit order-related calculation functions
+    uint8 public constant PX_D = 8;
 
     // Roles
     bytes32 public constant PERMISSIONED_BOT_ROLE = keccak256("PERMISSIONED_BOT_ROLE");
@@ -134,27 +133,33 @@ contract HyperCoreForwarder is AccessControl {
         uint64 oldSizeX1e8Left
     );
 
-    event BetterPricedLOSubmitted(bytes32 quoteNonce, uint64 oldPriceX1e8, uint64 priceX1e8);
+    event BetterPricedLOSubmitted(bytes32 indexed quoteNonce, uint64 oldPriceX1e8, uint64 priceX1e8);
 
     event SwapFlowFallbackTooExpensive(
-        bytes32 quoteNonce,
+        bytes32 indexed quoteNonce,
         // Based on minimum out requirements for sponsored / non-sponsored flows
         uint64 requiredCoreAmountToSponsor,
         // Based on maxBpsToSponsor
         uint64 maxCoreAmountToSponsor
     );
 
-    event SwapFlowFallbackDonationBox(bytes32 quoteNonce, address indexed finalToken, uint256 totalEVMAmountToSponsor);
+    event SwapFlowFallbackDonationBox(
+        bytes32 indexed quoteNonce,
+        address indexed finalToken,
+        uint256 totalEVMAmountToSponsor
+    );
 
     event SwapFlowFallbackUnsafeToBridge(
-        bytes32 quoteNonce,
+        bytes32 indexed quoteNonce,
         bool initTokenUnsafe,
         address indexed finalToken,
         bool finalTokenUnsafe
     );
 
+    event SwapFlowFallbackAccountActivation(bytes32 indexed quoteNonce, address finalToken);
+
     event SimpleTransferFallback(
-        bytes32 quoteNonce,
+        bytes32 indexed quoteNonce,
         bool isBridgeSafe,
         uint256 accountCreationFee,
         bool tokenCanBeUsedForAccountActivation
@@ -452,7 +457,7 @@ contract HyperCoreForwarder is AccessControl {
                 initialToken
             );
 
-            // TODO: emit event.
+            emit SwapFlowFallbackAccountActivation(quoteNonce, finalToken);
             return;
         }
 
@@ -512,17 +517,18 @@ contract HyperCoreForwarder is AccessControl {
         }
 
         uint64 finalCoreSendAmount = isSponsoredFlow ? minAllowableAmountToForwardCore : guaranteedLOOut;
-        // TODO: this can be negative ... Check for zero
-        uint64 totalSponsoredOnCore = finalCoreSendAmount - guaranteedLOOut;
+        uint64 totalCoreAmountToSponsor = finalCoreSendAmount > guaranteedLOOut
+            ? finalCoreSendAmount - guaranteedLOOut
+            : 0;
 
         // TODO: _finalizeInitSwapFlow(..);
 
         // ACTUAL TOKEN SENDING BEGINS HERE. BEFORE, ALL WAS CALCULATIONS
 
         uint256 totalEVMAmountToSponsor = 0;
-        if (totalSponsoredOnCore > 0) {
+        if (totalCoreAmountToSponsor > 0) {
             (totalEVMAmountToSponsor, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-                totalSponsoredOnCore,
+                totalCoreAmountToSponsor,
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
@@ -545,7 +551,7 @@ contract HyperCoreForwarder is AccessControl {
         );
         bool isSafeTobridgeSponsorshipFunds = HyperCoreLib.isCoreAmountSafeToBridge(
             finalCoreTokenInfo.coreIndex,
-            totalSponsoredOnCore,
+            totalCoreAmountToSponsor,
             finalCoreTokenInfo.bridgeSafetyBufferCore
         );
 
@@ -616,7 +622,7 @@ contract HyperCoreForwarder is AccessControl {
             finalRecipient: finalUser,
             finalToken: finalToken,
             minCoreAmountFromLO: guaranteedLOOut,
-            sponsoredCoreAmountPreFunded: totalSponsoredOnCore,
+            sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
             limitOrderCloid: cloid,
             isFinalized: false
         });
@@ -998,9 +1004,6 @@ contract HyperCoreForwarder is AccessControl {
         }
     }
 
-    // TODO: make immutable
-    // px_f = px / 10 ** px_d
-    uint8 constant PX_D = 8;
     function _calcLOAmountsBuy(
         uint64 quoteBudget,
         uint64 pxX1e8,
