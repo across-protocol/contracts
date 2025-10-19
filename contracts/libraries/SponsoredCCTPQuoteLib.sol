@@ -31,8 +31,8 @@ library SponsoredCCTPQuoteLib {
     uint256 private constant FEE_EXECUTED_INDEX = 164;
     uint256 private constant HOOK_DATA_INDEX = 228;
 
-    // Total length of the message body (message body + hook data + 5 32-byte fields in hook data)
-    uint256 private constant MSG_BYTES_LENGTH = 536;
+    // Total length of the message body (message body + hook data + 6 32-byte fields in hook data)
+    uint256 private constant MSG_BYTES_LENGTH = 568;
 
     function getDespoitForBurnData(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
@@ -70,9 +70,10 @@ library SponsoredCCTPQuoteLib {
     function validateMessage(bytes memory message) internal view returns (bool) {
         return
             message.length == MSG_BYTES_LENGTH &&
-            message.toBytes32(MESSAGE_BODY_INDEX + MINT_RECIPIENT_INDEX).toAddress() != address(this) &&
-            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 4).isValidAddress() &&
-            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 5).isValidAddress();
+            message.toBytes32(MESSAGE_BODY_INDEX + MINT_RECIPIENT_INDEX).toAddress() == address(this) &&
+            // 5 & 6 here are the indices of the finalRecipient and finalToken in the hook data
+            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 5).isValidAddress() &&
+            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 6).isValidAddress();
     }
 
     function getSponsoredCCTPQuoteData(

@@ -182,9 +182,6 @@ contract HyperCoreFlowExecutor is AccessControl {
         bool tokenCanBeUsedForAccountActivation
     );
 
-    /// @notice Emitted from the simple transfer flow when bridging to core is not safe
-    event SimpleTransferFlowFallbackBridge(bytes32 quoteNonce);
-
     /**************************************
      *            MODIFIERS               *
      **************************************/
@@ -381,6 +378,8 @@ contract HyperCoreFlowExecutor is AccessControl {
         bool coreUserAccountExists = HyperCoreLib.coreUserExists(finalRecipient);
         bool impossibleToForwardToCore = !coreUserAccountExists && !coreTokenInfo.canBeUsedForAccountActivation;
 
+        // If the user has no HyperCore account and we can't sponsor its creation,
+        // fall back to sending user funds on HyperEVM
         if (impossibleToForwardToCore) {
             _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
             return;
@@ -388,6 +387,7 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         // Record `accountCreationFee` as zero if we can't use final token for account activation
         uint256 accountCreationFee = coreUserAccountExists ? 0 : coreTokenInfo.accountActivationFeeEVM;
+        // TODO?: this should be based only on amount
         uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
         uint256 totalUserFeesEvm = extraFeesToSponsor + accountCreationFee;
         uint256 amountToSponsor = totalUserFeesEvm;
@@ -415,11 +415,10 @@ contract HyperCoreFlowExecutor is AccessControl {
             coreTokenInfo.bridgeSafetyBufferCore
         );
 
-        // If the amount is not safe to bridge or the user has no HyperCore account and we can't sponsor its creation;
+        // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
         // fall back to sending user funds on HyperEVM.
         if (!isSafe) {
             _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
-            emit SimpleTransferFlowFallbackBridge(quoteNonce);
             return;
         }
 
@@ -429,8 +428,10 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
 
         cumulativeSponsoredAmount[finalToken] += amountToSponsor;
-        // Record a propotional amount used to sponsor account creation
-        cumulativeSponsoredActivationFee[finalToken] += (amountToSponsor * accountCreationFee) / totalUserFeesEvm;
+        // Record the amount used to sponsor account creation
+        cumulativeSponsoredActivationFee[finalToken] += amountToSponsor < accountCreationFee
+            ? amountToSponsor
+            : accountCreationFee;
 
         // There is a very slim chance that by the time we get here, the balance of the bridge changes
         // and the funds are lost.

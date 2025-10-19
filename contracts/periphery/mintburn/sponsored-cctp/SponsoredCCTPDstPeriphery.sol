@@ -69,6 +69,10 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             .getSponsoredCCTPQuoteData(message);
 
         bool isQuoteValid = _isQuoteValid(quote, signature);
+        if (isQuoteValid) {
+            usedNonces[quote.nonce] = true;
+        }
+
         _executeFlow(
             quote.amount,
             quote.nonce,
@@ -90,13 +94,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             quote.maxBpsToSponsor,
             quote.maxUserSlippageBps
         );
-    }
-
-    function _isQuoteEligibleForSwap(
-        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
-        bytes memory signature
-    ) internal view returns (bool) {
-        return quote.burnToken != quote.finalToken && _isQuoteValid(quote, signature);
     }
 
     function _isQuoteValid(
