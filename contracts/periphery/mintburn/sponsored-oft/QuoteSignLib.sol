@@ -15,9 +15,8 @@ library QuoteSignLib {
             keccak256(
                 abi.encode(
                     p.srcEid,
-                    p.srcPeriphery,
                     p.dstEid,
-                    p.to,
+                    p.destinationHandler,
                     p.amountLD,
                     p.nonce,
                     p.deadline,

@@ -5,37 +5,38 @@ import { Quote } from "./Structs.sol";
 import { QuoteSignLib } from "./QuoteSignLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 
-import { IOFT, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
+import { IOFT, IOAppCore, IEndpoint, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-// TODO? make Ownable and allow to change ApiPubKey and DstComposer. For Phase0, can keep it like this and just redeploy
-// This contract is to be used on source chain to route OFT sends through it. It's responsible for emitting an Across-
-// specific send events, checking the API signature and sending the transfer via OFT
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
+/// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
+/// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge
 contract SponsoredOFTSrcPeriphery is Ownable {
-    // TODO: instead of using `AddressToBytes32`, maybe just inline the function here? Feels more visible this way (no
-    // one can accidentally break this contract by changing that function)
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
+    using SafeERC20 for IERC20;
 
     bytes public constant EMPTY_MSG_BYTES = new bytes(0);
 
+    /// @notice Token that's being sent by an OFT bridge
     address public immutable TOKEN;
+    /// @notice OFT contract to interact with to initiate the bridge
     address public immutable OFT_MESSENGER;
-    // Destination endpoint id. Immutable because we only support one `dstHandler`
-    uint32 public immutable DST_EID;
 
-    // Signer public key to check the sig against. Signed off by Across API
+    /// @notice Source endpoint id
+    uint32 public immutable SRC_EID;
+
+    /// @notice Signer public key to check the signed quote against
     address public signer;
 
-    // Destination handler address
-    address public dstHandler;
-
+    /// @notice A mapping to enforce only a single usage per quote
     mapping(bytes32 => bool) public quoteNonces;
 
-    // @dev This event is to be used for auxiliary information in concert with OftSent event to get relevant sponsored
-    // quote details
+    /// @notice Event with auxiliary information. To be used in concert with OftSent event to get relevant quote details
     event SponsoredOFTSend(
         bytes32 indexed quoteNonce,
         address indexed originSender,
@@ -46,34 +47,30 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         bytes sig
     );
 
-    constructor(address _token, address _oftMessenger, address _signer, address _dstHandler, uint32 _dstEid) {
+    constructor(address _token, address _oftMessenger, address _signer, uint32 _srcEid) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
+        require(IOFT(_oftMessenger).token() == _token, "Incorrect token <> ioft relationship");
         signer = _signer;
-        dstHandler = _dstHandler;
-        DST_EID = _dstEid;
+        require(IOAppCore(_oftMessenger).endpoint().eid() == _srcEid, "Incorrect srcEid");
+        SRC_EID = _srcEid;
     }
 
-    // @dev The API recommended the user set some `msg.value` in order to pay OFT fee for this transfer. If it's not
-    // enough to cover `fee.nativeFee`, we revert. If `msg.value > nativeFee`, `refundAddress` receives excess
+    /// @notice Main entrypoint function to start the user flow
     function deposit(Quote calldata quote, bytes calldata signature) external payable {
-        // Step 1: check that the quote is signed correctly
-        require(QuoteSignLib.isSignatureValid(signer, quote.signedParams, signature), "Incorrect signature");
-
-        // Step 2: check that the quote params make sense: e.g. quoteDeadline is not hit, quote nonce is unique
-        require(quote.signedParams.deadline <= block.timestamp, "quote expired");
-        require(quoteNonces[quote.signedParams.nonce] == false, "quote already used");
+        // Step 1: validate quote and mark quote nonce used
+        _validateQuote(quote, signature);
         quoteNonces[quote.signedParams.nonce] = true;
 
-        // Step 3: build oft send params from quote
+        // Step 2: build oft send params from quote
         (SendParam memory sendParam, MessagingFee memory fee, address refundAddress) = _buildOftTransfer(quote);
 
-        // TODO: pull tokens from sender and approve the OFT_MESSENGER
+        // Step 3: pull tokens from user and apporove OFT messenger
+        IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
+        IERC20(TOKEN).forceApprove(address(OFT_MESSENGER), quote.signedParams.amountLD);
 
-        // Step 4: send oft transfer
+        // Step 4: send oft transfer and emit event with auxiliary data
         IOFT(OFT_MESSENGER).send(sendParam, fee, refundAddress);
-
-        // Step 5: emit event with accepted quote details
         emit SponsoredOFTSend(
             quote.signedParams.nonce,
             msg.sender,
@@ -88,37 +85,30 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     function _buildOftTransfer(
         Quote calldata quote
     ) internal view returns (SendParam memory, MessagingFee memory, address) {
-        bytes32 to = dstHandler.toBytes32();
-
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
-            quote.signedParams.maxUserSlippageBps,
+            quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken
         );
 
         bytes memory extraOptions = MinimalLZOptions
             .newOptions()
-            .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
-            .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
-
-        if (quote.signedParams.dstEid != DST_EID) {
-            revert("Incorrect dstEid");
-        }
+            .addExecutorLzReceiveOption(uint128(quote.unsignedParams.lzReceiveGasLimit), uint128(0))
+            .addExecutorLzComposeOption(uint16(0), uint128(quote.unsignedParams.lzComposeGasLimit), uint128(0));
 
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
-            to,
+            quote.signedParams.destinationHandler,
             // @dev We currently don't OFT sends that take fees in sent token, so set `minAmountLD = amountLD`
             quote.signedParams.amountLD,
             quote.signedParams.amountLD,
             extraOptions,
             composeMsg,
-            // TODO? might want to sign off on it being 0x instead of setting on the contract for more flexibility
-            // @dev Instead of passing `oftCmd` from the API, we're hardcoding to 0x here. In practice, this will
-            // probably not be a problem for any token we want to support
+            // TODO? Is this an issue for ~classic tokens like USDT0?
+            // Only support empty OFT commands
             EMPTY_MSG_BYTES
         );
 
@@ -127,11 +117,14 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         return (sendParam, fee, quote.unsignedParams.refundRecipient);
     }
 
-    function setSigner(address _newSigner) external onlyOwner {
-        signer = _newSigner;
+    function _validateQuote(Quote calldata quote, bytes calldata signature) internal view {
+        require(QuoteSignLib.isSignatureValid(signer, quote.signedParams, signature), "incorrect signature");
+        require(quote.signedParams.deadline <= block.timestamp, "quote expired");
+        require(quote.signedParams.srcEid == SRC_EID, "incorrect src eid");
+        require(quoteNonces[quote.signedParams.nonce] == false, "quote nonce already used");
     }
 
-    function setDstHandler(address _newDstHandler) external onlyOwner {
-        dstHandler = _newDstHandler;
+    function setSigner(address _newSigner) external onlyOwner {
+        signer = _newSigner;
     }
 }
