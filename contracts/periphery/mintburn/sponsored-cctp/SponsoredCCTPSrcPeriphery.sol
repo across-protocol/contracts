@@ -64,6 +64,7 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             quote.finalRecipient,
             quote.deadline,
             quote.maxBpsToSponsor,
+            quote.maxUserSlippageBps,
             quote.finalToken,
             signature
         );

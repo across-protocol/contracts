@@ -61,6 +61,7 @@ library SponsoredCCTPQuoteLib {
             quote.nonce,
             quote.deadline,
             quote.maxBpsToSponsor,
+            quote.maxUserSlippageBps,
             quote.finalRecipient,
             quote.finalToken
         );
@@ -89,10 +90,14 @@ library SponsoredCCTPQuoteLib {
         feeExecuted = messageBody.toUint256(FEE_EXECUTED_INDEX);
 
         bytes memory hookData = messageBody.slice(HOOK_DATA_INDEX, messageBody.length);
-        (quote.nonce, quote.deadline, quote.maxBpsToSponsor, quote.finalRecipient, quote.finalToken) = abi.decode(
-            hookData,
-            (bytes32, uint256, uint256, bytes32, bytes32)
-        );
+        (
+            quote.nonce,
+            quote.deadline,
+            quote.maxBpsToSponsor,
+            quote.maxUserSlippageBps,
+            quote.finalRecipient,
+            quote.finalToken
+        ) = abi.decode(hookData, (bytes32, uint256, uint256, uint256, bytes32, bytes32));
     }
 
     function validateSignature(
@@ -113,6 +118,7 @@ library SponsoredCCTPQuoteLib {
                 quote.nonce,
                 quote.deadline,
                 quote.maxBpsToSponsor,
+                quote.maxUserSlippageBps,
                 quote.finalRecipient,
                 quote.finalToken
             )

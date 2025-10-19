@@ -19,6 +19,9 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
 
+    /// @notice Allow a buffer for quote deadline validation. CCTP transfer might have taken a while to finalize
+    uint256 public quoteDeadlineBuffer = 30 minutes;
+
     /// @notice A mapping of used nonces to prevent replay attacks.
     mapping(bytes32 => bool) public usedNonces;
 
@@ -49,6 +52,10 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         signer = _signer;
     }
 
+    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external onlyDefaultAdmin {
+        quoteDeadlineBuffer = _quoteDeadlineBuffer;
+    }
+
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
@@ -67,8 +74,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             quote.nonce,
             // If the quote is invalid we don't sponsor the flow or the extra fees
             isQuoteValid ? quote.maxBpsToSponsor : 0,
-            // TODO: maxUserSlippageBps. Zero for sponsored flows. Has to be parsed for non-sponsored flows
-            0,
+            quote.maxUserSlippageBps,
             quote.finalRecipient.toAddress(),
             // If the quote is invalid we don't want to swap, so we use the base token as the final token
             isQuoteValid ? quote.finalToken.toAddress() : baseToken,
@@ -81,7 +87,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             quote.finalToken,
             quote.amount,
             quote.deadline,
-            quote.maxBpsToSponsor
+            quote.maxBpsToSponsor,
+            quote.maxUserSlippageBps
         );
     }
 
@@ -99,8 +106,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         return
             SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) &&
             !usedNonces[quote.nonce] &&
-            // TODO: allow a configurable buffer here. An honest user could have submitted on source chain and CCTP just
-            // TODO: took some time.
-            quote.deadline >= block.timestamp;
+            quote.deadline + quoteDeadlineBuffer >= block.timestamp;
     }
 }

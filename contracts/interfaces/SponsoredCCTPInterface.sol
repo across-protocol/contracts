@@ -25,6 +25,7 @@ interface SponsoredCCTPInterface {
         bytes32 indexed finalRecipient,
         uint256 quoteDeadline,
         uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
         bytes32 finalToken,
         bytes signature
     );
@@ -35,7 +36,8 @@ interface SponsoredCCTPInterface {
         bytes32 indexed finalToken,
         uint256 finalAmount,
         uint256 quoteDeadline,
-        uint256 maxBpsToSponsor
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps
     );
 
     event SimpleTansferToCore(
@@ -69,6 +71,8 @@ interface SponsoredCCTPInterface {
         uint256 deadline;
         // The maximum basis points of the amount that can be sponsored.
         uint256 maxBpsToSponsor;
+        // Slippage tolerance for the fees on the destination. Used in swap flow, enforced on destination
+        uint256 maxUserSlippageBps;
         // The final recipient of the sponsored deposit. This is needed as the mintRecipient will be the
         // handler contract address instead of the final recipient.
         bytes32 finalRecipient;
