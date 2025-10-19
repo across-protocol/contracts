@@ -1052,22 +1052,22 @@ contract HyperCoreFlowExecutor is AccessControl {
         minAmountOutCore = outBaseNet;
     }
 
-    // TODO: add PX_D
     function _calcLOAmountsSell(
         uint64 baseBudget,
         uint64 pxX1e8,
-        uint8 weiDecimalsQuote,
-        uint8 szDecimalsQuote,
-        uint8 weiDecimalsBase,
-        uint8 szDecimalsBase,
+        uint8 quoteD,
+        uint8 quoteSz,
+        uint8 baseD,
+        uint8 baseSz,
         uint64 feePpm
     ) internal pure returns (uint64 szX1e8, uint64 tokensToSendCore, uint64 minAmountOutCore) {
-        uint64 sz = uint64(baseBudget / 10 ** (weiDecimalsBase - szDecimalsBase));
-        uint64 px = uint64((pxX1e8 * 10 ** szDecimalsQuote) / 10 ** (8 + szDecimalsBase));
+        uint64 sz = uint64(baseBudget / 10 ** (baseD - baseSz));
+        uint256 px = (pxX1e8 * 10 ** (PX_D + quoteSz)) / 10 ** (8 + baseSz);
 
-        uint64 outQuoteGross = uint64(px * sz * 10 ** (weiDecimalsQuote - szDecimalsQuote));
+        // quoteD >= quoteSz always
+        uint64 outQuoteGross = uint64((px * sz * 10 ** (quoteD - quoteSz)) / 10 ** PX_D);
         uint64 outQuoteNet = uint64((outQuoteGross * (PPM_SCALAR - feePpm)) / PPM_SCALAR);
-        szX1e8 = uint64((sz * 10 ** 8 * 10 ** (weiDecimalsBase - szDecimalsBase)) / 10 ** weiDecimalsBase);
+        szX1e8 = uint64((sz * 10 ** 8) / 10 ** baseSz);
         tokensToSendCore = baseBudget;
         minAmountOutCore = outQuoteNet;
     }
