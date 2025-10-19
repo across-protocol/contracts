@@ -258,6 +258,26 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Checks if an amount is safe to bridge from HyperEVM to HyperCore
+     * @dev Verifies that the asset bridge has sufficient balance to cover the amount plus a buffer
+     * @param erc20CoreIndex The HyperCore index id of the token
+     * @param coreAmount The amount that the bridging should result in on HyperCore
+     * @param coreBufferAmount The minimum buffer amount that should remain on HyperCore after bridging
+     * @return True if the bridge has enough balance to safely bridge the amount, false otherwise
+     */
+    function isCoreAmountSafeToBridge(
+        uint64 erc20CoreIndex,
+        uint64 coreAmount,
+        uint64 coreBufferAmount
+    ) internal view returns (bool) {
+        address bridgeAddress = toAssetBridgeAddress(erc20CoreIndex);
+        uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
+
+        // Return true if currentBridgeBalance >= coreAmount + coreBufferAmount
+        return currentBridgeBalance >= coreAmount + coreBufferAmount;
+    }
+
+    /**
      * @notice Converts a core index id to an asset bridge address
      * @param erc20CoreIndex The core token index id to convert
      * @return assetBridgeAddress The asset bridge address
@@ -335,6 +355,21 @@ library HyperCoreLib {
 
             /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
             amountCoreToReceive = uint64(amountEVMToSend * scale);
+        }
+    }
+
+    function convertCoreDecimalsSimple(
+        uint64 amountDecimalsFrom,
+        uint8 decimalsFrom,
+        uint8 decimalsTo
+    ) internal pure returns (uint64) {
+        if (decimalsFrom == decimalsTo) {
+            return amountDecimalsFrom;
+        } else if (decimalsFrom < decimalsTo) {
+            return uint64(amountDecimalsFrom * 10 ** (decimalsTo - decimalsFrom));
+        } else {
+            // round down
+            return uint64(amountDecimalsFrom / 10 ** (decimalsFrom - decimalsTo));
         }
     }
 

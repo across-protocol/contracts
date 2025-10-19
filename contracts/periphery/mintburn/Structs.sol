@@ -16,6 +16,8 @@ struct CoreTokenInfo {
     uint256 accountActivationFeeEVM;
     // The account activation fee for the token on Core.
     uint64 accountActivationFeeCore;
+    // Bridge buffer to use when checking safety of bridging evm -> core. In core units
+    uint64 bridgeSafetyBufferCore;
 }
 
 struct FinalTokenInfo {
@@ -26,16 +28,7 @@ struct FinalTokenInfo {
     // The fee Hyperliquid charges for Limit orders in the market; in parts per million, e.g. 1.4 bps = 140 ppm
     uint32 feePpm;
     // When enqueuing a limit order, use this to set a price "a bit worse than market" for faster execution
-    uint32 suggestedSlippageBps;
+    uint32 suggestedDiscountBps;
     // Contract where the accounting for all baseToken -> finalToken accounting happens. One pre finalToken
     SwapHandler swapHandler;
-}
-
-struct LimitOrder {
-    // The client order id of the order.
-    uint128 cloid;
-    // The limit price of the order scaled by 1e8.
-    uint64 limitPriceX1e8;
-    // The size of the order scaled by 1e8.
-    uint64 sizeX1e8;
 }

@@ -10,11 +10,11 @@ import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT } from "../../../interfaces/IOFT.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { HyperCoreForwarder } from "../HyperCoreForwarder.sol";
+import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreForwarder {
+contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
 
@@ -44,17 +44,19 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreForwarder {
         address _baseToken,
         uint32 _coreIndex,
         bool _canBeUsedForAccountActivation,
-        uint64 _accountActivationFeeCore
+        uint64 _accountActivationFeeCore,
+        uint64 _bridgeSafetyBufferCore
     )
-        HyperCoreForwarder(
+        HyperCoreFlowExecutor(
             _donationBox,
             _baseToken,
             _coreIndex,
             _canBeUsedForAccountActivation,
-            _accountActivationFeeCore
+            _accountActivationFeeCore,
+            _bridgeSafetyBufferCore
         )
     {
-        // baseToken is assigned on `HyperCoreForwarder` creation
+        // baseToken is assigned on `HyperCoreFlowExecutor` creation
         require(baseToken == IOFT(_ioft).token(), "IOFT doesn't match the baseToken");
 
         oftEndpoint = _oftEndpoint;
@@ -93,11 +95,18 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreForwarder {
         address finalRecipient = _composeMsg._getFinalRecipient().toAddress();
         address finalToken = _composeMsg._getFinalToken().toAddress();
         uint256 maxBpsToSponsor = _composeMsg._getMaxBpsToSponsor();
-        // TODO: pass this into the _executeFlow
         uint256 maxUserSlippageBps = _composeMsg._getMaxUserSlippageBps();
         uint256 _amountLD = OFTComposeMsgCodec.amountLD(_message);
 
-        _executeFlow(_amountLD, quoteNonce, maxBpsToSponsor, finalRecipient, finalToken, EXTRA_FEES_TO_SPONSOR);
+        _executeFlow(
+            _amountLD,
+            quoteNonce,
+            maxBpsToSponsor,
+            maxUserSlippageBps,
+            finalRecipient,
+            finalToken,
+            EXTRA_FEES_TO_SPONSOR
+        );
     }
 
     /// @dev Checks that _message came from the authorized src periphery contract stored in `authorizedSrcPeripheryContracts`
