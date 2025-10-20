@@ -7,6 +7,7 @@ import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfac
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
+import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
 
@@ -170,5 +171,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         );
     }
 
-    // Note: _executeArbitraryActionFlow() is inherited from ArbitraryActionFlowExecutor
+    function _getDonationBox() internal view override(ArbitraryActionFlowExecutor) returns (DonationBox) {
+        return donationBox;
+    }
 }

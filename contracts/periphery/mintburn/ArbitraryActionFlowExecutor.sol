@@ -3,26 +3,10 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 
-/**
- * @title IMulticallHandler
- * @notice Interface for MulticallHandler contract
- */
-interface IMulticallHandler {
-    struct Call {
-        address target;
-        bytes callData;
-        uint256 value;
-    }
-
-    struct Instructions {
-        Call[] calls;
-        address fallbackRecipient;
-    }
-
-    function handleV3AcrossMessage(address token, uint256 amount, address relayer, bytes memory message) external;
-    function drainLeftoverTokens(address token, address payable destination) external;
-}
+// Import MulticallHandler
+import { MulticallHandler } from "../../handlers/MulticallHandler.sol";
 
 /**
  * @title ArbitraryActionFlowExecutor
@@ -80,12 +64,20 @@ abstract contract ArbitraryActionFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
+        DonationBox donationBox = _getDonationBox();
+        uint256 amountIn = amount;
+        if (IERC20(initialToken).balanceOf(address(donationBox)) >= extraFeesToSponsor) {
+            // Funds are available, so use them to sponsor the fee.
+            donationBox.withdraw(IERC20(initialToken), extraFeesToSponsor);
+            amountIn += extraFeesToSponsor;
+        }
+
         // Snapshot balances
         uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
         uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
 
         // Transfer tokens to MulticallHandler
-        IERC20(initialToken).safeTransfer(multicallHandler, amount);
+        IERC20(initialToken).safeTransfer(multicallHandler, amountIn);
 
         // Decompress calls: add value: 0 to each call and wrap in Instructions
         // We encode Instructions with calls and a drainLeftoverTokens call at the end
@@ -99,14 +91,19 @@ abstract contract ArbitraryActionFlowExecutor {
         );
 
         // Execute via MulticallHandler
-        IMulticallHandler(multicallHandler).handleV3AcrossMessage(initialToken, amount, address(this), instructions);
+        MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(
+            initialToken,
+            amountIn,
+            address(this),
+            instructions
+        );
 
         uint256 finalAmount;
 
         // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
         if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
             finalToken = initialToken;
-            finalAmount = amount;
+            finalAmount = amountIn;
         } else {
             uint256 finalBalance = IERC20(finalToken).balanceOf(address(this));
             if (finalBalance >= finalAmountSnapshot) {
@@ -127,7 +124,7 @@ abstract contract ArbitraryActionFlowExecutor {
                 quoteNonce,
                 maxBpsToSponsor,
                 finalRecipient,
-                extraFeesToSponsor,
+                0, // Sponsorship already done on input.
                 finalToken
             );
         } else {
@@ -136,7 +133,7 @@ abstract contract ArbitraryActionFlowExecutor {
                 quoteNonce,
                 maxBpsToSponsor,
                 finalRecipient,
-                extraFeesToSponsor,
+                0, // Sponsorship already done on input.
                 finalToken
             );
         }
@@ -154,11 +151,11 @@ abstract contract ArbitraryActionFlowExecutor {
         uint256 callCount = compressedCalls.length;
 
         // Create Call[] array with value: 0 for each call, plus one for drainLeftoverTokens
-        IMulticallHandler.Call[] memory calls = new IMulticallHandler.Call[](callCount + 1);
+        MulticallHandler.Call[] memory calls = new MulticallHandler.Call[](callCount + 1);
 
         // Decompress: add value: 0 to each call
         for (uint256 i = 0; i < callCount; ++i) {
-            calls[i] = IMulticallHandler.Call({
+            calls[i] = MulticallHandler.Call({
                 target: compressedCalls[i].target,
                 callData: compressedCalls[i].callData,
                 value: 0
@@ -166,10 +163,10 @@ abstract contract ArbitraryActionFlowExecutor {
         }
 
         // Add final call to drain leftover tokens back to this contract
-        calls[callCount] = IMulticallHandler.Call({
+        calls[callCount] = MulticallHandler.Call({
             target: multicallHandler,
             callData: abi.encodeWithSelector(
-                IMulticallHandler.drainLeftoverTokens.selector,
+                MulticallHandler.drainLeftoverTokens.selector,
                 finalToken,
                 fallbackRecipient
             ),
@@ -177,7 +174,7 @@ abstract contract ArbitraryActionFlowExecutor {
         });
 
         // Build Instructions struct
-        IMulticallHandler.Instructions memory instructions = IMulticallHandler.Instructions({
+        MulticallHandler.Instructions memory instructions = MulticallHandler.Instructions({
             calls: calls,
             fallbackRecipient: fallbackRecipient
         });
@@ -210,6 +207,12 @@ abstract contract ArbitraryActionFlowExecutor {
         uint256 extraFeesToSponsor,
         address finalToken
     ) internal virtual;
+
+    /**
+     * @notice Get the donation box instance
+     * @dev Must be implemented by contracts that inherit from this contract
+     */
+    function _getDonationBox() internal view virtual returns (DonationBox);
 
     /// @notice Allow contract to receive native tokens for arbitrary action execution
     receive() external payable virtual {}

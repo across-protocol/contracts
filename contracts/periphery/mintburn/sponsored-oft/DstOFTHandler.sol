@@ -234,5 +234,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         );
     }
 
-    // Note: _executeArbitraryActionFlow() is inherited from ArbitraryActionFlowExecutor
+    function _getDonationBox() internal view override returns (DonationBox) {
+        return donationBox;
+    }
 }
