@@ -182,6 +182,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
         final_recipient: quote.final_recipient()?,
         quote_deadline,
         max_bps_to_sponsor: quote.max_bps_to_sponsor()?,
+        max_user_slippage_bps: quote.max_user_slippage_bps()?,
         final_token: quote.final_token()?,
         signature: params.signature.to_vec(),
     });

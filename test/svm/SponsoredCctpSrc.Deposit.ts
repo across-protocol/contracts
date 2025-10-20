@@ -46,6 +46,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const maxFee = 100;
   const minFinalityThreshold = 5;
   const maxBpsToSponsor = 500;
+  const maxUserSlippageBps = 1000;
 
   let sourceDomain: number;
   let messageSentEventData: Keypair;
@@ -89,6 +90,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         "bytes32",
         "uint256",
         "uint256",
+        "uint256",
         "bytes32",
         "bytes32",
       ],
@@ -104,6 +106,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.nonce,
         quoteData.deadline,
         quoteData.maxBpsToSponsor,
+        quoteData.maxUserSlippageBps,
         quoteData.finalRecipient,
         quoteData.finalToken,
       ]
@@ -121,8 +124,15 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
   const getHookDataFromQuote = (quoteData: SponsoredCCTPQuote): Buffer => {
     const encodedHexString = ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "bytes32", "bytes32"],
-      [quoteData.nonce, quoteData.deadline, quoteData.maxBpsToSponsor, quoteData.finalRecipient, quoteData.finalToken]
+      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32"],
+      [
+        quoteData.nonce,
+        quoteData.deadline,
+        quoteData.maxBpsToSponsor,
+        quoteData.maxUserSlippageBps,
+        quoteData.finalRecipient,
+        quoteData.finalToken,
+      ]
     );
 
     return Buffer.from(ethers.utils.arrayify(encodedHexString));
@@ -317,6 +327,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       nonce: ethers.utils.hexlify(nonce),
       deadline,
       maxBpsToSponsor,
+      maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
     };
@@ -375,6 +386,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     );
     assert.strictEqual(depositEvent.quoteDeadline.toString(), deadline.toString(), "Invalid quoteDeadline");
     assert.strictEqual(depositEvent.maxBpsToSponsor.toString(), maxBpsToSponsor.toString(), "Invalid maxBpsToSponsor");
+    assert.strictEqual(
+      depositEvent.maxUserSlippageBps.toString(),
+      maxUserSlippageBps.toString(),
+      "Invalid maxUserSlippageBps"
+    );
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.isTrue(depositEvent.signature.equals(Buffer.from(signature)), "Invalid signature");

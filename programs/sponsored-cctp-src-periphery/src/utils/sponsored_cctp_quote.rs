@@ -41,6 +41,7 @@ define_quote_fields!(
     Nonce,
     Deadline,
     MaxBpsToSponsor,
+    MaxUserSlippageBps,
     FinalRecipient,
     FinalToken
 );
@@ -50,7 +51,12 @@ const _: () = {
     assert!((SponsoredCCTPQuoteFields::Deadline as usize) == (SponsoredCCTPQuoteFields::Nonce as usize) + 1);
     assert!((SponsoredCCTPQuoteFields::MaxBpsToSponsor as usize) == (SponsoredCCTPQuoteFields::Deadline as usize) + 1);
     assert!(
-        (SponsoredCCTPQuoteFields::FinalRecipient as usize) == (SponsoredCCTPQuoteFields::MaxBpsToSponsor as usize) + 1
+        (SponsoredCCTPQuoteFields::MaxUserSlippageBps as usize)
+            == (SponsoredCCTPQuoteFields::MaxBpsToSponsor as usize) + 1
+    );
+    assert!(
+        (SponsoredCCTPQuoteFields::FinalRecipient as usize)
+            == (SponsoredCCTPQuoteFields::MaxUserSlippageBps as usize) + 1
     );
     assert!((SponsoredCCTPQuoteFields::FinalToken as usize) == (SponsoredCCTPQuoteFields::FinalRecipient as usize) + 1);
 };
@@ -120,6 +126,10 @@ impl<'a> SponsoredCCTPQuote<'a> {
 
     pub fn max_bps_to_sponsor(&self) -> Result<u64> {
         Self::decode_to_u64(self.get_field_word(SponsoredCCTPQuoteFields::MaxBpsToSponsor))
+    }
+
+    pub fn max_user_slippage_bps(&self) -> Result<u64> {
+        Self::decode_to_u64(self.get_field_word(SponsoredCCTPQuoteFields::MaxUserSlippageBps))
     }
 
     pub fn final_recipient(&self) -> Result<Pubkey> {

@@ -19,6 +19,7 @@ pub struct SponsoredDepositForBurn {
     pub final_recipient: Pubkey,
     pub quote_deadline: i64,
     pub max_bps_to_sponsor: u64,
+    pub max_user_slippage_bps: u64,
     pub final_token: Pubkey,
     pub signature: Vec<u8>, // This is fixed length, but using Vec so it is shown as encoded data blob in explorers.
 }

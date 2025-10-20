@@ -12,6 +12,7 @@ export interface SponsoredCCTPQuote {
   nonce: string; // bytes32
   deadline: ethers.BigNumberish; // uint256
   maxBpsToSponsor: ethers.BigNumberish; // uint256
+  maxUserSlippageBps: ethers.BigNumberish; // uint256
   finalRecipient: string; // bytes32
   finalToken: string; // bytes32
 }
