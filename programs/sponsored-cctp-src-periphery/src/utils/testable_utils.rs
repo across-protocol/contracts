@@ -12,7 +12,7 @@ pub struct SetCurrentTime<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SetCurrentTimeParams {
-    pub new_time: u32,
+    pub new_time: i64,
 }
 
 pub fn set_current_time(ctx: Context<SetCurrentTime>, _params: SetCurrentTimeParams) -> Result<()> {
@@ -33,16 +33,16 @@ pub fn set_current_time(ctx: Context<SetCurrentTime>, _params: SetCurrentTimePar
 pub fn initialize_current_time(_state: &mut State) -> Result<()> {
     #[cfg(feature = "test")]
     {
-        _state.current_time = Clock::get()?.unix_timestamp as u32;
+        _state.current_time = Clock::get()?.unix_timestamp;
     }
 
     Ok(())
 }
 
-pub fn get_current_time(_state: &State) -> Result<u32> {
+pub fn get_current_time(_state: &State) -> Result<i64> {
     #[cfg(not(feature = "test"))]
     {
-        Ok(Clock::get()?.unix_timestamp as u32)
+        Ok(Clock::get()?.unix_timestamp)
     }
 
     #[cfg(feature = "test")]

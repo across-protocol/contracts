@@ -303,7 +303,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   it("Sponsored CCTP deposit", async () => {
     const nonce = crypto.randomBytes(32);
     const usedNonce = getUsedNonce(nonce);
-    const deadline = Math.floor(Date.now() / 1000) + 3600;
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
 
     const quoteData: SponsoredCCTPQuote = {
       sourceDomain: localDomain,
@@ -369,7 +369,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       new PublicKey(finalRecipient).toString(),
       "Invalid finalRecipient"
     );
-    assert.strictEqual(event.quoteDeadline, deadline, "Invalid quoteDeadline");
+    assert.strictEqual(event.quoteDeadline.toString(), deadline.toString(), "Invalid quoteDeadline");
     assert.strictEqual(event.maxBpsToSponsor.toString(), maxBpsToSponsor.toString(), "Invalid maxBpsToSponsor");
     assert.strictEqual(event.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.strictEqual(event.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
@@ -402,6 +402,6 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.isTrue(message.messageBody.hookData.equals(expectedHookData), "Invalid hookData");
 
     const usedNonceData = await program.account.usedNonce.fetch(usedNonce);
-    assert.strictEqual(usedNonceData.quoteDeadline, deadline, "Invalid quote deadline");
+    assert.strictEqual(usedNonceData.quoteDeadline.toString(), deadline.toString(), "Invalid quote deadline");
   });
 });

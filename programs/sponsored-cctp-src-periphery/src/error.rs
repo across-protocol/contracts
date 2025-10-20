@@ -39,4 +39,6 @@ pub enum DataDecodingError {
     CannotDecodeToU32,
     #[msg("Cannot decode to u64")]
     CannotDecodeToU64,
+    #[msg("Cannot decode to i64")]
+    CannotDecodeToI64,
 }

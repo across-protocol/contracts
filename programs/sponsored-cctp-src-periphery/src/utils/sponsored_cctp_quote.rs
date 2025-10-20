@@ -114,8 +114,8 @@ impl<'a> SponsoredCCTPQuote<'a> {
         Self::decode_to_bytes32(self.get_field_word(SponsoredCCTPQuoteFields::Nonce))
     }
 
-    pub fn deadline(&self) -> Result<u32> {
-        Self::decode_to_u32(self.get_field_word(SponsoredCCTPQuoteFields::Deadline))
+    pub fn deadline(&self) -> Result<i64> {
+        Self::decode_to_i64(self.get_field_word(SponsoredCCTPQuoteFields::Deadline))
     }
 
     pub fn max_bps_to_sponsor(&self) -> Result<u64> {
@@ -164,6 +164,15 @@ impl<'a> SponsoredCCTPQuote<'a> {
             return err!(DataDecodingError::CannotDecodeToU64);
         }
         Ok(l_value as u64)
+    }
+
+    fn decode_to_i64(data: &[u8; 32]) -> Result<i64> {
+        let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
+        let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
+        if h_value > 0 || l_value > (i64::MAX as u128) {
+            return err!(DataDecodingError::CannotDecodeToI64);
+        }
+        Ok(l_value as i64)
     }
 
     fn decode_to_pubkey(data: &[u8; 32]) -> Result<Pubkey> {
