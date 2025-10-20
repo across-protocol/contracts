@@ -4,7 +4,7 @@ use crate::state::State;
 
 #[derive(Accounts)]
 pub struct SetCurrentTime<'info> {
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(mut, seeds = [b"state"], bump)]
     pub state: Account<'info, State>,
 
     pub signer: Signer<'info>,
@@ -49,14 +49,4 @@ pub fn get_current_time(_state: &State) -> Result<i64> {
     {
         Ok(_state.current_time)
     }
-}
-
-pub fn set_seed(_state: &mut State, _seed: u64) -> Result<()> {
-    // Seed should only be used in tests to enable fresh state between deployments. In production always set to 0.
-    #[cfg(not(feature = "test"))]
-    if _seed != 0 {
-        return err!(crate::error::SvmError::InvalidProductionSeed);
-    }
-    _state.seed = _seed;
-    Ok(())
 }

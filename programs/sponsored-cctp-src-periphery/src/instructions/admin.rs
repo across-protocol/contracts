@@ -8,7 +8,7 @@ use crate::{
     event::{SignerSet, WithdrawnRentFund},
     program,
     state::State,
-    utils::{initialize_current_time, set_seed},
+    utils::initialize_current_time,
 };
 
 #[event_cpi]
@@ -21,13 +21,7 @@ pub struct Initialize<'info> {
     )]
     pub signer: Signer<'info>,
 
-    #[account(
-        init,
-        payer = signer,
-        space = State::DISCRIMINATOR.len() + State::INIT_SPACE,
-        seeds = [b"state", params.seed.to_le_bytes().as_ref()],
-        bump
-    )]
+    #[account(init, payer = signer, space = State::DISCRIMINATOR.len() + State::INIT_SPACE, seeds = [b"state"], bump)]
     pub state: Account<'info, State>,
 
     #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
@@ -41,7 +35,6 @@ pub struct Initialize<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct InitializeParams {
-    pub seed: u64,
     pub source_domain: u32,
     pub signer: Pubkey,
 }
@@ -49,8 +42,7 @@ pub struct InitializeParams {
 pub fn initialize(ctx: Context<Initialize>, params: &InitializeParams) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
-    // Set seed and initialize current time. Both enable testing functionality and are no-ops in production.
-    set_seed(state, params.seed)?;
+    // Set current time in test mode (no-op in production).
     initialize_current_time(state)?;
 
     // Set immutable source CCTP domain.
@@ -72,7 +64,7 @@ pub struct SetSigner<'info> {
     )]
     pub signer: Signer<'info>,
 
-    #[account(mut, seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    #[account(mut, seeds = [b"state"], bump)]
     pub state: Account<'info, State>,
 
     #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]

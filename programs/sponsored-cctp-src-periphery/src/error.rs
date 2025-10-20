@@ -20,8 +20,6 @@ pub enum SvmError {
     InvalidProgramData,
     #[msg("Cannot set time if not in test mode")]
     CannotSetCurrentTime,
-    #[msg("Seed must be 0 in production")]
-    InvalidProductionSeed,
     #[msg("Invalid burn_token key")]
     InvalidBurnToken,
     #[msg("Amount must be greater than 0")]

@@ -11,8 +11,6 @@ export const program = anchor.workspace.SponsoredCctpSrcPeriphery as Program<Spo
 export const owner = provider.wallet.publicKey;
 const solanaDomain = 5; // CCTP domain.
 
-const randomSeed = new BN(randomBytes(8).toString("hex"), 16); // Default to random u64 seed.
-
 export function createQuoteSigner(): { quoteSigner: ethers.Wallet; quoteSignerPubkey: PublicKey } {
   const quoteSigner = ethers.Wallet.createRandom();
   const quoteSignerPubkey = evmAddressToPublicKey(quoteSigner.address);
@@ -28,16 +26,15 @@ export function getProgramData(): PublicKey {
 }
 
 export async function initializeState({
-  seed = randomSeed,
   sourceDomain = solanaDomain,
   signer = PublicKey.default,
 }: { seed?: BN; sourceDomain?: number; signer?: PublicKey } = {}) {
-  const seeds = [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)];
+  const seeds = [Buffer.from("state")];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
   const programData = getProgramData();
   await program.methods
-    .initialize({ seed, sourceDomain, signer })
+    .initialize({ sourceDomain, signer })
     .accounts({ program: program.programId, programData })
     .rpc();
-  return { programData, state, seed, sourceDomain, signer };
+  return { programData, state, sourceDomain, signer };
 }
