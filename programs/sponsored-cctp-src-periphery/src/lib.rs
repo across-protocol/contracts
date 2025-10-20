@@ -6,16 +6,13 @@ declare_id!("3xGkdXunLALbrKxuouchngkUpThU2oyNjJpBECV4bkEC");
 declare_program!(message_transmitter_v2);
 declare_program!(token_messenger_minter_v2);
 
-pub mod error;
-pub mod event;
+mod error;
+mod event;
 mod instructions;
-pub mod state;
-pub mod utils;
+mod state;
+mod utils;
 
-pub use error::*;
-pub use event::*;
 use instructions::*;
-pub use state::*;
 use utils::*;
 
 #[program]
