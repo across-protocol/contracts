@@ -11,6 +11,19 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use utils::*;
 
+/// # Across Sponsored CCTP Source Periphery
+///
+/// This program exposes a minimal interface for initiating Circle CCTPv2 token burns from Solana to an EVM
+/// destination, sponsored by Across. It validates an EVM-signed quote authorizing the burn, records a per-quote
+/// nonce to prevent replay within the quote deadline, and performs a CPI into Circle's CCTPv2 programs to burn
+/// the user's tokens and emit a message for the destination chain. It also includes administration utilities for
+/// setting the trusted quote signer, funding and reclaiming rent from transient accounts, and simple test-only
+/// time controls to support deterministic tests.
+///
+/// External programs are referenced via generated IDLs (see `idls/`) and must be generated with
+/// `anchor run generateExternalTypes` prior to building.
+///
+/// For any issues, please reach out to bugs@across.to.
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
     name: "Across Sponsored CCTP Source Periphery",
@@ -32,26 +45,118 @@ declare_program!(token_messenger_minter_v2);
 pub mod sponsored_cctp_src_periphery {
     use super::*;
 
+    /// Initializes immutable program state and sets the trusted EVM quote signer.
+    ///
+    /// This can only be called once by the upgrade authority. It stores the local CCTP source domain and the
+    /// quote `signer` that must authorize sponsored deposits.
+    ///
+    /// Required Accounts:
+    /// - signer (Signer, Writable): Must be the program upgrade authority.
+    /// - state (Writable): Program state PDA. Seed: ["state"].
+    /// - program_data (Account): Program data account to verify the upgrade authority.
+    /// - this_program (Program): This program account, used to resolve `programdata_address`.
+    /// - system_program (Program): System program for account creation.
+    ///
+    /// Parameters:
+    /// - source_domain: CCTP domain for this chain (e.g., 5 for Solana).
+    /// - signer: EVM address (encoded as `Pubkey`) authorized to sign sponsored quotes.
     pub fn initialize(ctx: Context<Initialize>, params: InitializeParams) -> Result<()> {
         instructions::initialize(ctx, &params)
     }
 
+    /// Updates the trusted EVM quote signer.
+    ///
+    /// Only callable by the upgrade authority. Setting this to an invalid address (including `Pubkey::default()`) will
+    /// effectively disable deposits.
+    ///
+    /// Required Accounts:
+    /// - signer (Signer, Writable): Must be the program upgrade authority.
+    /// - state (Writable): Program state PDA. Seed: ["state"].
+    /// - program_data (Account): Program data account to verify the upgrade authority.
+    /// - this_program (Program): This program account, used to resolve `programdata_address`.
+    ///
+    /// Parameters:
+    /// - new_signer: New EVM signer address (encoded as `Pubkey`).
     pub fn set_signer(ctx: Context<SetSigner>, params: SetSignerParams) -> Result<()> {
         instructions::set_signer(ctx, &params)
     }
 
+    /// Withdraws lamports from the rent fund PDA to an arbitrary recipient.
+    ///
+    /// The rent fund is used to sponsor temporary account creation (e.g., CCTP event accounts or per-quote nonce PDAs).
+    /// Only callable by the upgrade authority.
+    ///
+    /// Required Accounts:
+    /// - signer (Signer, Writable): Must be the program upgrade authority.
+    /// - rent_fund (SystemAccount, Writable): PDA holding lamports used for rent sponsorship. Seed: ["rent_fund"].
+    /// - recipient (UncheckedAccount, Writable): Destination account for the withdrawn lamports.
+    /// - program_data (Account): Program data account to verify the upgrade authority.
+    /// - this_program (Program): This program account, used to resolve `programdata_address`.
+    /// - system_program (Program): System program for transfers.
+    ///
+    /// Parameters:
+    /// - amount: Amount of lamports to transfer to the recipient.
     pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: WithdrawRentFundParams) -> Result<()> {
         instructions::withdraw_rent_fund(ctx, &params)
     }
 
+    /// Verifies a sponsored CCTP quote, records its nonce, and burns the user's tokens via CCTPv2.
+    ///
+    /// On success, this emits the CCTP MessageSent event and logs a `SponsoredDepositForBurn` event for observability.
+    /// The user's depositor ATA is burned directly (via CPI) and a message is emitted to the destination domain.
+    /// The rent cost for the per-quote `used_nonce` PDA is refunded to the signer from the `rent_fund`.
+    ///
+    /// Required Accounts:
+    /// - signer (Signer, Writable): The user authorizing the burn.
+    /// - state (Account): Program state PDA. Seed: ["state"].
+    /// - rent_fund (SystemAccount, Writable): PDA used to sponsor rent and event accounts. Seed: ["rent_fund"].
+    /// - used_nonce (Account, Writable, Init): Per-quote nonce PDA. Seed: ["used_nonce", nonce].
+    /// - depositor_token_account (InterfaceAccount<TokenAccount>, Writable): Signer ATA of the burn token.
+    /// - burn_token (InterfaceAccount<Mint>, Mutable): Mint of the token to burn. Must match quote.burn_token.
+    /// - denylist_account (Unchecked): CCTP denylist PDA, validated within CCTP.
+    /// - token_messenger_minter_sender_authority (Unchecked): CCTP sender authority PDA.
+    /// - message_transmitter (Unchecked, Mutable): CCTP MessageTransmitter account.
+    /// - token_messenger (Unchecked): CCTP TokenMessenger account.
+    /// - remote_token_messenger (Unchecked): Remote TokenMessenger account for destination domain.
+    /// - token_minter (Unchecked): CCTP TokenMinter account.
+    /// - local_token (Unchecked, Mutable): Local token account (CCTP).
+    /// - cctp_event_authority (Unchecked): CCTP event authority account.
+    /// - message_sent_event_data (Signer, Mutable): Fresh account to store CCTP MessageSent event data.
+    /// - message_transmitter_program (Program): CCTPv2 MessageTransmitter program.
+    /// - token_messenger_minter_program (Program): CCTPv2 TokenMessengerMinter program.
+    /// - token_program (Interface): SPL token program.
+    /// - system_program (Program): System program.
+    ///
+    /// Parameters:
+    /// - quote: ABI-encoded quote bytes (fixed length) containing burn parameters and hook data.
+    /// - signature: 65-byte EVM signature authorizing the quote by the trusted signer.
     pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: DepositForBurnParams) -> Result<()> {
         instructions::deposit_for_burn(ctx, &params)
     }
 
+    /// Reclaims the CCTP `MessageSent` event account, returning rent to the rent fund.
+    ///
+    /// Required Accounts:
+    /// - rent_fund (SystemAccount, Writable): PDA to receive reclaimed lamports. Seed: ["rent_fund"].
+    /// - message_transmitter (Unchecked, Mutable): CCTP MessageTransmitter account.
+    /// - message_sent_event_data (Unchecked, Mutable): The event account created during `deposit_for_burn`.
+    /// - message_transmitter_program (Program): CCTPv2 MessageTransmitter program.
+    ///
+    /// Parameters:
+    /// - params: Parameters required by CCTP to reclaim the event account.
     pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: ReclaimEventAccountParams) -> Result<()> {
         instructions::reclaim_event_account(ctx, &params)
     }
 
+    /// Closes a `used_nonce` PDA once its quote deadline has passed, returning rent to the rent fund.
+    ///
+    /// Required Accounts:
+    /// - state (Account): Program state PDA. Seed: ["state"]. Used to fetch current time.
+    /// - rent_fund (SystemAccount, Writable): PDA receiving lamports upon close. Seed: ["rent_fund"].
+    /// - used_nonce (Account, Writable, Close=rent_fund): PDA to close. Seed: ["used_nonce", nonce].
+    ///
+    /// Parameters:
+    /// - params.nonce: The 32-byte nonce identifying the PDA to close.
     pub fn reclaim_used_nonce_account(
         ctx: Context<ReclaimUsedNonceAccount>,
         params: UsedNonceAccountParams,
@@ -59,10 +164,32 @@ pub mod sponsored_cctp_src_periphery {
         instructions::reclaim_used_nonce_account(ctx, &params)
     }
 
+    /// Sets the current time in test mode. No-op on mainnet builds.
+    ///
+    /// Required Accounts:
+    /// - state (Writable): Program state PDA. Seed: ["state"].
+    /// - signer (Signer): Any signer. Only enabled when built with `--features test`.
+    ///
+    /// Parameters:
+    /// - new_time: New unix timestamp to set for tests.
     pub fn set_current_time(ctx: Context<SetCurrentTime>, params: SetCurrentTimeParams) -> Result<()> {
         utils::set_current_time(ctx, params)
     }
 
+    /// Returns whether a `used_nonce` PDA can be closed now and the timestamp after which it can be closed.
+    ///
+    /// This is a convenience "view" helper for off-chain systems to determine when rent can be reclaimed for a
+    /// specific quote nonce.
+    ///
+    /// Required Accounts:
+    /// - state (Account): Program state PDA. Seed: ["state"].
+    /// - used_nonce (Account): The `used_nonce` PDA. Seed: ["used_nonce", nonce].
+    ///
+    /// Parameters:
+    /// - _params.nonce: The 32-byte nonce identifying the PDA to check.
+    ///
+    /// Returns:
+    /// - UsedNonceCloseInfo { can_close_after, can_close_now }
     pub fn get_used_nonce_close_info(
         ctx: Context<GetUsedNonceCloseInfo>,
         _params: UsedNonceAccountParams,
