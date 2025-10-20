@@ -188,6 +188,15 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint256 evmAmount
     );
 
+    /// @notice Emitted whenever a new CoreTokenInfo is configured
+    event SetCoreTokenInfo(
+        address indexed token,
+        uint32 coreIndex,
+        bool canBeUsedForAccountActivation,
+        uint64 accountActivationFeeCore,
+        uint64 bridgeSafetyBufferCore
+    );
+
     /**************************************
      *            MODIFIERS               *
      **************************************/
@@ -248,8 +257,11 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 _accountActivationFeeCore,
         uint64 _bridgeSafetyBufferCore
     ) {
+        // Handler core account must be prefunded to prevent loss of funds. Predict address -> fund -> deploy
+        require(HyperCoreLib.coreUserExists(address(this)), "Handler @ core doesn't exist");
+
         donationBox = DonationBox(_donationBox);
-        // @dev initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
+        // Initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
         nextCloid = 1;
 
         _setCoreTokenInfo(
@@ -314,7 +326,8 @@ contract HyperCoreFlowExecutor is AccessControl {
     ) external onlyExistingCoreToken(finalToken) onlyExistingCoreToken(accountActivationFeeToken) onlyDefaultAdmin {
         SwapHandler swapHandler = finalTokenInfos[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
-            swapHandler = new SwapHandler();
+            bytes32 salt = _swapHandlerSalt(finalToken);
+            swapHandler = new SwapHandler{ salt: salt }();
         }
 
         finalTokenInfos[finalToken] = FinalTokenInfo({
@@ -325,21 +338,21 @@ contract HyperCoreFlowExecutor is AccessControl {
             suggestedDiscountBps: suggestedDiscountBps
         });
 
-        // TODO: this activation flow seems broken. Can a smart contract activate its core account by doing an EVM -> Core transfer?
-        uint256 accountActivationFee = _getAccountActivationFeeEVM(accountActivationFeeToken, address(swapHandler));
-        if (accountActivationFee > 0) {
-            CoreTokenInfo memory accountActivationTokenInfo = coreTokenInfos[accountActivationFeeToken];
-            require(accountActivationTokenInfo.canBeUsedForAccountActivation, "account activation fee token error");
+        // We don't allow SwapHandler accounts to be uninitiated. That could lead to loss of funds. They instead should
+        // be pre-funded using `predictSwapHandler` to predict their address
+        require(HyperCoreLib.coreUserExists(address(swapHandler)), "SwapHandler @ core doesn't exist");
+    }
 
-            _getFromDonationBox(accountActivationFeeToken, accountActivationFee);
-            IERC20(accountActivationFeeToken).safeTransfer(address(swapHandler), accountActivationFee);
-            swapHandler.activateCoreAccount(
-                accountActivationFeeToken,
-                accountActivationTokenInfo.coreIndex,
-                accountActivationFee,
-                accountActivationTokenInfo.tokenInfo.evmExtraWeiDecimals
-            );
-        }
+    /// @notice Predicts the deterministic address of a SwapHandler for a given finalToken using CREATE2
+    function predictSwapHandler(address finalToken) public view returns (address) {
+        bytes32 salt = _swapHandlerSalt(finalToken);
+        bytes32 initCodeHash = keccak256(type(SwapHandler).creationCode);
+        return address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, initCodeHash)))));
+    }
+
+    /// @notice Returns the salt to use when creating a SwapHandler via CREATE2
+    function _swapHandlerSalt(address finalToken) internal view returns (bytes32) {
+        return keccak256(abi.encodePacked(address(this), finalToken));
     }
 
     /**************************************
@@ -350,9 +363,11 @@ contract HyperCoreFlowExecutor is AccessControl {
      * @notice This function is to be called by an inheriting contract. It is to be called after the child contract
      * checked the API signature and made sure that the params passed here have been verified by either the underlying
      * bridge mechanics, or API signaure, or both.
+     * @param amountInEVM The real token amount to be used in this flow execution
+     * @param extraFeesToSponsor Any fees subtracted from the user up until this point (e.g. CCTP bridging fees)
      */
     function _executeFlow(
-        uint256 amount,
+        uint256 amountInEVM,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
@@ -362,7 +377,7 @@ contract HyperCoreFlowExecutor is AccessControl {
     ) internal {
         if (finalToken == baseToken) {
             _executeSimpleTransferFlow(
-                amount,
+                amountInEVM,
                 quoteNonce,
                 maxBpsToSponsor,
                 finalRecipient,
@@ -371,7 +386,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             );
         } else {
             _initiateSwapFlow(
-                amount,
+                amountInEVM,
                 quoteNonce,
                 finalRecipient,
                 finalToken,
@@ -385,11 +400,11 @@ contract HyperCoreFlowExecutor is AccessControl {
     /// @notice Execute a simple transfer flow in which we transfer `finalToken` to the user on HyperCore after receiving
     /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(
-        uint256 amount,
+        uint256 amountInEVM,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor,
+        uint256 extraBridgingFeesEVM,
         address finalToken
     ) internal virtual {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
@@ -401,11 +416,11 @@ contract HyperCoreFlowExecutor is AccessControl {
                 revert AccountNotActivated(finalRecipient);
             } else {
                 _fallbackHyperEVMFlow(
-                    amount,
+                    amountInEVM,
                     quoteNonce,
                     maxBpsToSponsor,
                     finalRecipient,
-                    extraFeesToSponsor,
+                    extraBridgingFeesEVM,
                     finalToken
                 );
                 emit SimpleTransferFallbackAccountActivation(quoteNonce);
@@ -413,8 +428,8 @@ contract HyperCoreFlowExecutor is AccessControl {
             }
         }
 
-        uint256 maxEvmAmountToSponsor = (amount * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 amountToSponsor = extraFeesToSponsor;
+        uint256 maxEvmAmountToSponsor = ((amountInEVM + extraBridgingFeesEVM) * maxBpsToSponsor) / BPS_SCALAR;
+        uint256 amountToSponsor = extraBridgingFeesEVM;
         if (amountToSponsor > maxEvmAmountToSponsor) {
             amountToSponsor = maxEvmAmountToSponsor;
         }
@@ -425,7 +440,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             }
         }
 
-        uint256 finalAmount = amount + amountToSponsor;
+        uint256 finalAmount = amountInEVM + amountToSponsor;
         (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             finalAmount,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
@@ -441,7 +456,14 @@ contract HyperCoreFlowExecutor is AccessControl {
         // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
         // fall back to sending user funds on HyperEVM.
         if (!isSafe) {
-            _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor, finalToken);
+            _fallbackHyperEVMFlow(
+                amountInEVM,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                extraBridgingFeesEVM,
+                finalToken
+            );
             emit SimpleTransferFallbackUnsafeToBridge(quoteNonce);
             return;
         }
@@ -467,7 +489,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             quoteNonce,
             finalRecipient,
             finalToken,
-            amount,
+            amountInEVM,
             amountToSponsor,
             quotedEvmAmount,
             quotedCoreAmount
@@ -951,7 +973,13 @@ contract HyperCoreFlowExecutor is AccessControl {
             bridgeSafetyBufferCore: bridgeSafetyBufferCore
         });
 
-        // TODO: emit event? maybe not if we are over limit
+        emit SetCoreTokenInfo(
+            token,
+            coreIndex,
+            canBeUsedForAccountActivation,
+            accountActivationFeeCore,
+            bridgeSafetyBufferCore
+        );
     }
 
     /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful
