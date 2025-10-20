@@ -94,8 +94,9 @@ abstract contract ArbitraryActionFlowExecutor {
             address(this) // Send leftover tokens back to this contract
         );
 
-        // Snapshot initialToken balance
-        uint256 initialAmount = IERC20(initialToken).balanceOf(address(this));
+        // Snapshot balances
+        uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
+        uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
 
         // Execute via MulticallHandler
         IMulticallHandler(multicallHandler).handleV3AcrossMessage(initialToken, amount, address(this), instructions);
@@ -103,12 +104,18 @@ abstract contract ArbitraryActionFlowExecutor {
         uint256 finalAmount;
 
         // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
-        if (initialAmount == IERC20(initialToken).balanceOf(address(this))) {
+        if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
             finalToken = initialToken;
             finalAmount = amount;
         } else {
-            // This means the swap did happen, so we check the balance of the output token and send it.
-            finalAmount = IERC20(finalToken).balanceOf(address(this));
+            uint256 finalBalance = IERC20(finalToken).balanceOf(address(this));
+            if (finalBalance >= finalAmountSnapshot) {
+                // This means the swap did happen, so we check the balance of the output token and send it.
+                finalAmount = finalBalance - finalAmountSnapshot;
+            } else {
+                // If we somehow lost final tokens, just set the finalAmount to 0.
+                finalAmount = 0;
+            }
         }
 
         emit ArbitraryActionsExecuted(quoteNonce, callCount, finalAmount);
