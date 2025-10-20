@@ -138,9 +138,10 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
     // Record the quote deadline as it should be safe to close the used_nonce account after this time.
     ctx.accounts.used_nonce.quote_deadline = quote_deadline;
 
-    // Invoke CCTPv2 to bridge user tokens.
-    // TODO: Confirm it is acceptable to burn tokens on behalf of the user and have the signer address show up as
-    // messageSender on the destination chain.
+    // Invoke CCTPv2 to bridge user tokens. This burns user tokens directly by inheriting the signer privileges. The
+    // side effect is that the user signer address will show up as messageSender on the destination chain, not the
+    // authority of this program. Thus is still acceptable in the current flow where SponsoredCCTPDstPeriphery contract
+    // on the destination chain revalidates the quote signature.
     let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurnWithHook {
         owner: ctx.accounts.signer.to_account_info(),
