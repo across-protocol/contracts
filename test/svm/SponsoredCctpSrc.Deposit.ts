@@ -47,7 +47,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const minFinalityThreshold = 5;
   const maxBpsToSponsor = 500;
 
-  let localDomain: number;
+  let sourceDomain: number;
   let messageSentEventData: Keypair;
   let lookupTableAccount: AddressLookupTableAccount;
   let state: PublicKey,
@@ -291,7 +291,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   });
 
   beforeEach(async () => {
-    ({ state, localDomain } = await initializeState({ signer: quoteSignerPubkey }));
+    ({ state, sourceDomain } = await initializeState({ signer: quoteSignerPubkey }));
 
     tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
     await setupBurnToken();
@@ -306,7 +306,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
 
     const quoteData: SponsoredCCTPQuote = {
-      sourceDomain: localDomain,
+      sourceDomain,
       destinationDomain: remoteDomain.toNumber(),
       mintRecipient: ethers.utils.hexlify(mintRecipient),
       amount: burnAmount,

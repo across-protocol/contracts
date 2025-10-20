@@ -121,7 +121,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     if quote_deadline < get_current_time(state)? {
         return err!(CommonError::InvalidDeadline);
     }
-    if quote.source_domain()? != state.local_domain {
+    if quote.source_domain()? != state.source_domain {
         return err!(CommonError::InvalidSourceDomain);
     }
 

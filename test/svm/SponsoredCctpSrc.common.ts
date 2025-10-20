@@ -29,15 +29,15 @@ export function getProgramData(): PublicKey {
 
 export async function initializeState({
   seed = randomSeed,
-  localDomain = solanaDomain,
+  sourceDomain = solanaDomain,
   signer = PublicKey.default,
-}: { seed?: BN; localDomain?: number; signer?: PublicKey } = {}) {
+}: { seed?: BN; sourceDomain?: number; signer?: PublicKey } = {}) {
   const seeds = [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
   const programData = getProgramData();
   await program.methods
-    .initialize({ seed, localDomain, signer })
+    .initialize({ seed, sourceDomain, signer })
     .accounts({ program: program.programId, programData })
     .rpc();
-  return { programData, state, seed, localDomain, signer };
+  return { programData, state, seed, sourceDomain, signer };
 }
