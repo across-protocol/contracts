@@ -242,7 +242,7 @@ pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &Reclaim
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(params: ReclaimUsedNonceAccountParams)]
+#[instruction(params: UsedNonceAccountParams)]
 pub struct ReclaimUsedNonceAccount<'info> {
     #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
     pub state: Account<'info, State>,
@@ -250,23 +250,18 @@ pub struct ReclaimUsedNonceAccount<'info> {
     #[account(mut, seeds = [b"rent_fund"], bump)]
     pub rent_fund: SystemAccount<'info>,
 
-    #[account(
-        mut,
-        close = rent_fund,
-        seeds = [b"used_nonce",&params.nonce.as_ref()],
-        bump
-    )]
+    #[account(mut,close = rent_fund, seeds = [b"used_nonce",&params.nonce.as_ref()], bump)]
     pub used_nonce: Account<'info, UsedNonce>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct ReclaimUsedNonceAccountParams {
+pub struct UsedNonceAccountParams {
     pub nonce: [u8; 32],
 }
 
 pub fn reclaim_used_nonce_account(
     ctx: Context<ReclaimUsedNonceAccount>,
-    params: &ReclaimUsedNonceAccountParams,
+    params: &UsedNonceAccountParams,
 ) -> Result<()> {
     if ctx.accounts.used_nonce.quote_deadline >= get_current_time(&ctx.accounts.state)? {
         return err!(SvmError::QuoteDeadlineNotPassed);
@@ -275,4 +270,27 @@ pub fn reclaim_used_nonce_account(
     emit_cpi!(ReclaimedUsedNonceAccount { nonce: params.nonce.to_vec(), used_nonce: ctx.accounts.used_nonce.key() });
 
     Ok(())
+}
+
+#[derive(Accounts)]
+#[instruction(_params: UsedNonceAccountParams)]
+pub struct GetUsedNonceCloseInfo<'info> {
+    #[account(seeds = [b"state", state.seed.to_le_bytes().as_ref()], bump)]
+    pub state: Account<'info, State>,
+
+    #[account(seeds = [b"used_nonce", &_params.nonce.as_ref()], bump)]
+    pub used_nonce: Account<'info, UsedNonce>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct UsedNonceCloseInfo {
+    pub can_close_after: i64,
+    pub can_close_now: bool,
+}
+
+pub fn get_used_nonce_close_info(ctx: Context<GetUsedNonceCloseInfo>) -> Result<UsedNonceCloseInfo> {
+    let can_close_after = ctx.accounts.used_nonce.quote_deadline;
+    let can_close_now = can_close_after < get_current_time(&ctx.accounts.state)?;
+
+    Ok(UsedNonceCloseInfo { can_close_after, can_close_now })
 }

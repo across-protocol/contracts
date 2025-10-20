@@ -44,12 +44,19 @@ pub mod sponsored_cctp_src_periphery {
 
     pub fn reclaim_used_nonce_account(
         ctx: Context<ReclaimUsedNonceAccount>,
-        params: ReclaimUsedNonceAccountParams,
+        params: UsedNonceAccountParams,
     ) -> Result<()> {
         instructions::reclaim_used_nonce_account(ctx, &params)
     }
 
     pub fn set_current_time(ctx: Context<SetCurrentTime>, params: SetCurrentTimeParams) -> Result<()> {
         utils::set_current_time(ctx, params)
+    }
+
+    pub fn get_used_nonce_close_info(
+        ctx: Context<GetUsedNonceCloseInfo>,
+        _params: UsedNonceAccountParams,
+    ) -> Result<UsedNonceCloseInfo> {
+        instructions::get_used_nonce_close_info(ctx)
     }
 }

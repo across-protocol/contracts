@@ -401,7 +401,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const expectedHookData = getHookDataFromQuote(quoteData);
     assert.isTrue(message.messageBody.hookData.equals(expectedHookData), "Invalid hookData");
 
-    const usedNonceData = await program.account.usedNonce.fetch(usedNonce);
-    assert.strictEqual(usedNonceData.quoteDeadline.toString(), deadline.toString(), "Invalid quote deadline");
+    const usedNonceCloseInfo = await program.methods
+      .getUsedNonceCloseInfo({ nonce: Array.from(nonce) })
+      .accounts({ state })
+      .view();
+    assert.strictEqual(usedNonceCloseInfo.canCloseAfter.toString(), deadline.toString(), "Invalid canCloseAfter");
+    assert.isFalse(usedNonceCloseInfo.canCloseNow, "Used nonce should not be closable now");
   });
 });
