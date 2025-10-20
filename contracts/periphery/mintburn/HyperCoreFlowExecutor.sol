@@ -625,7 +625,6 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         require(address(finalTokenInfo.swapHandler) != address(0), "Final token not registered");
         require(lastPullFundsBlock[finalToken] < block.number, "Can't finalize twice in the same block");
-        lastPullFundsBlock[finalToken] = block.number;
 
         uint256 head = pendingQueueHead[finalToken];
         bytes32[] storage queue = pendingQueue[finalToken];
@@ -668,6 +667,10 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
 
         pendingQueueHead[finalToken] = head;
+
+        if (processed > 0) {
+            lastPullFundsBlock[finalToken] = block.number;
+        }
     }
 
     /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
@@ -718,7 +721,7 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         address finalToken = pendingSwap.finalToken;
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
-        CoreTokenInfo memory initialTokenInfo = coreTokenInfos[finalToken];
+        CoreTokenInfo memory initialTokenInfo = coreTokenInfos[baseToken];
         CoreTokenInfo memory finalTokenCoreInfo = coreTokenInfos[finalToken];
 
         // Remaining budget of tokens attributable to the "old limit order" (now cancelled)
