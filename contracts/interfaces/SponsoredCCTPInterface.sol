@@ -47,6 +47,16 @@ interface SponsoredCCTPInterface {
         uint256 maxAmountToSponsor
     );
 
+    // Execution modes for the sponsored CCTP flow
+    enum ExecutionMode {
+        // Send to core and perform swap (if needed) there.
+        DirectToCore,
+        // Execute arbitrary actions (like a swap) on HyperEVM, then transfer to HyperCore
+        ArbitraryActionsToCore,
+        // Execute arbitrary actions on HyperEVM only (no HyperCore transfer)
+        ArbitraryActionsToEVM
+    }
+
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
         // The domain ID of the source chain.
@@ -80,5 +90,9 @@ interface SponsoredCCTPInterface {
         // The final token that final recipient will receive. This is needed as it can be different from the burnToken
         // in which case we perform a swap on the destination chain.
         bytes32 finalToken;
+        // Execution mode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
+        uint8 executionMode;
+        // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
+        bytes actionData;
     }
 }

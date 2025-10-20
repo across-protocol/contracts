@@ -78,7 +78,9 @@ contract CreateSponsoredDeposit is Script {
             finalRecipient: finalRecipient.toBytes32(),
             finalToken: finalToken.toBytes32(),
             lzReceiveGasLimit: lzReceiveGasLimit,
-            lzComposeGasLimit: lzComposeGasLimit
+            lzComposeGasLimit: lzComposeGasLimit,
+            executionMode: 0, // DirectToCore mode
+            actionData: "" // Empty for DirectToCore mode
         });
 
         UnsignedQuoteParams memory unsignedParams = UnsignedQuoteParams({
@@ -115,7 +117,9 @@ contract CreateSponsoredDeposit is Script {
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
-            quote.signedParams.finalToken
+            quote.signedParams.finalToken,
+            quote.signedParams.executionMode,
+            quote.signedParams.actionData
         );
 
         bytes memory extraOptions = MinimalLZOptions

@@ -3,6 +3,16 @@ pragma solidity ^0.8.23;
 
 import { SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 
+/// @notice Execution modes for the sponsored OFT flow
+enum ExecutionMode {
+    // Send to core and perform swap (if needed) there.
+    DirectToCore,
+    // Execute arbitrary actions (like a swap) on HyperEVM, then transfer to HyperCore
+    ArbitraryActionsToCore,
+    // Execute arbitrary actions on HyperEVM only (no HyperCore transfer)
+    ArbitraryActionsToEVM
+}
+
 /// @notice A structure with all the relevant information about a particular sponsored bridging flow order
 struct Quote {
     SignedQuoteParams signedParams;
@@ -25,6 +35,9 @@ struct SignedQuoteParams {
     // Signed gas limits for destination-side LZ execution
     uint256 lzReceiveGasLimit; // gas limit for `lzReceive` call on destination side
     uint256 lzComposeGasLimit; // gas limit for `lzCompose` call on destination side
+    // Execution mode and action data
+    uint8 executionMode; // ExecutionMode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
+    bytes actionData; // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
 }
 
 /// @notice Unsigned params of the sponsored bridging flow quote: user is free to choose these

@@ -24,7 +24,9 @@ library QuoteSignLib {
                     p.finalRecipient,
                     p.finalToken,
                     p.lzReceiveGasLimit,
-                    p.lzComposeGasLimit
+                    p.lzComposeGasLimit,
+                    p.executionMode,
+                    keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
                 )
             );
     }
