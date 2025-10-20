@@ -202,14 +202,16 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraFeesToSponsor,
+        address finalToken
     ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
         HyperCoreFlowExecutor._executeSimpleTransferFlow(
             finalAmount,
             quoteNonce,
             maxBpsToSponsor,
             finalRecipient,
-            extraFeesToSponsor
+            extraFeesToSponsor,
+            finalToken
         );
     }
 
@@ -219,14 +221,16 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraFeesToSponsor,
+        address finalToken
     ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
         HyperCoreFlowExecutor._fallbackHyperEVMFlow(
             finalAmount,
             quoteNonce,
             maxBpsToSponsor,
             finalRecipient,
-            extraFeesToSponsor
+            extraFeesToSponsor,
+            finalToken
         );
     }
 

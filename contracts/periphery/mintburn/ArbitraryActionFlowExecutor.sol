@@ -122,9 +122,23 @@ abstract contract ArbitraryActionFlowExecutor {
 
         // Route to appropriate destination based on transferToCore flag
         if (transferToCore) {
-            _executeSimpleTransferFlow(finalAmount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            _executeSimpleTransferFlow(
+                finalAmount,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                extraFeesToSponsor,
+                finalToken
+            );
         } else {
-            _fallbackHyperEVMFlow(finalAmount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            _fallbackHyperEVMFlow(
+                finalAmount,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                extraFeesToSponsor,
+                finalToken
+            );
         }
     }
 
@@ -180,7 +194,8 @@ abstract contract ArbitraryActionFlowExecutor {
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraFeesToSponsor,
+        address finalToken
     ) internal virtual;
 
     /**
@@ -192,7 +207,8 @@ abstract contract ArbitraryActionFlowExecutor {
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraFeesToSponsor,
+        address finalToken
     ) internal virtual;
 
     /// @notice Allow contract to receive native tokens for arbitrary action execution

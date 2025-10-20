@@ -362,7 +362,14 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint256 extraFeesToSponsor
     ) internal {
         if (finalToken == baseToken) {
-            _executeSimpleTransferFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            _executeSimpleTransferFlow(
+                amount,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                extraFeesToSponsor,
+                finalToken
+            );
         } else {
             _initiateSwapFlow(
                 amount,
@@ -376,16 +383,16 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
     }
 
-    /// @notice Execute a simple transfer flow in which we transfer `baseToken` to the user on HyperCore after receiving
-    /// an amount of baseToken from the user on HyperEVM
+    /// @notice Execute a simple transfer flow in which we transfer `finalToken` to the user on HyperCore after receiving
+    /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(
         uint256 amount,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraFeesToSponsor,
+        address finalToken
     ) internal virtual {
-        address finalToken = baseToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
         bool isSponsoredFlow = maxBpsToSponsor > 0;
@@ -394,7 +401,14 @@ contract HyperCoreFlowExecutor is AccessControl {
             if (isSponsoredFlow) {
                 revert AccountNotActivated(finalRecipient);
             } else {
-                _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+                _fallbackHyperEVMFlow(
+                    amount,
+                    quoteNonce,
+                    maxBpsToSponsor,
+                    finalRecipient,
+                    extraFeesToSponsor,
+                    finalToken
+                );
                 emit SimpleTransferFallbackAccountActivation(quoteNonce);
                 return;
             }
@@ -428,7 +442,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
         // fall back to sending user funds on HyperEVM.
         if (!isSafe) {
-            _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor, finalToken);
             emit SimpleTransferFallbackUnsafeToBridge(quoteNonce);
             return;
         }
@@ -493,7 +507,14 @@ contract HyperCoreFlowExecutor is AccessControl {
             if (isSponsoredFlow) {
                 revert AccountNotActivated(finalRecipient);
             } else {
-                _fallbackHyperEVMFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalRecipient, extraBridgingFeesEVM);
+                _fallbackHyperEVMFlow(
+                    amountInEVM,
+                    quoteNonce,
+                    maxBpsToSponsor,
+                    finalRecipient,
+                    extraBridgingFeesEVM,
+                    initialToken
+                );
                 emit SwapFlowFallbackAccountActivation(quoteNonce);
                 return;
             }
@@ -526,7 +547,14 @@ contract HyperCoreFlowExecutor is AccessControl {
             minAllowableAmountToForwardCore - guaranteedLOOut > maxAmountToSponsorCore
         ) {
             // We can't provide the required slippage in a swap flow, try simple transfer flow instead
-            _executeSimpleTransferFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalRecipient, extraBridgingFeesEVM);
+            _executeSimpleTransferFlow(
+                amountInEVM,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                extraBridgingFeesEVM,
+                initialToken
+            );
             emit SwapFlowFallbackTooExpensive(
                 quoteNonce,
                 minAllowableAmountToForwardCore - guaranteedLOOut,
@@ -556,7 +584,8 @@ contract HyperCoreFlowExecutor is AccessControl {
                     quoteNonce,
                     maxBpsToSponsor,
                     finalRecipient,
-                    extraBridgingFeesEVM
+                    extraBridgingFeesEVM,
+                    initialToken
                 );
                 emit SwapFlowFallbackDonationBox(quoteNonce, finalToken, totalEVMAmountToSponsor);
                 return;
@@ -576,7 +605,14 @@ contract HyperCoreFlowExecutor is AccessControl {
         );
 
         if (!isSafeToBridgeMainToken || !isSafeTobridgeSponsorshipFunds) {
-            _fallbackHyperEVMFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalRecipient, extraBridgingFeesEVM);
+            _fallbackHyperEVMFlow(
+                amountInEVM,
+                quoteNonce,
+                maxBpsToSponsor,
+                finalRecipient,
+                extraBridgingFeesEVM,
+                initialToken
+            );
             emit SwapFlowFallbackUnsafeToBridge(
                 quoteNonce,
                 isSafeToBridgeMainToken,
@@ -865,9 +901,9 @@ contract HyperCoreFlowExecutor is AccessControl {
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraFeesToSponsor,
+        address finalToken
     ) internal virtual {
-        address finalToken = baseToken;
         uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
         uint256 sponsorshipFundsToForward = extraFeesToSponsor > maxEvmAmountToSponsor
             ? maxEvmAmountToSponsor
