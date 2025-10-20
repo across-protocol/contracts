@@ -223,7 +223,7 @@ pub struct ReclaimEventAccount<'info> {
     #[account(mut)]
     pub message_transmitter: UncheckedAccount<'info>,
 
-    /// CHECK: MessageSent is checked in CCTP, must be the same account as in Deposit instruction.
+    /// CHECK: MessageSent is checked in CCTP, must be the same account as in DepositForBurn.
     #[account(mut)]
     pub message_sent_event_data: UncheckedAccount<'info>,
 
