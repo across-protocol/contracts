@@ -13,7 +13,7 @@ import { BPS_DECIMALS, BPS_SCALAR } from "./Constants.sol";
 
 /**
  * @title HyperCoreFlowExecutor
- * @notice Contract handling HyperCore interactions for trasnfer-to-core or swap-with-core actions after stablecoin bridge transactions
+ * @notice Contract handling HyperCore interactions for transfer-to-core or swap-with-core actions after stablecoin bridge transactions
  * @dev This contract is designed to work with stablecoins. baseToken and every finalToken should all be stablecoins.
  * @custom:security-contact bugs@across.to
  */
