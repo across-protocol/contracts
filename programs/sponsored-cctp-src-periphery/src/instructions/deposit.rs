@@ -22,7 +22,7 @@ use crate::{
 #[instruction(params: DepositForBurnParams)]
 pub struct DepositForBurn<'info> {
     #[account(mut)]
-    pub signer: Signer<'info>, // TODO: Consider if we need delegation flow similar as in SVM Spoke program.
+    pub signer: Signer<'info>,
 
     #[account(seeds = [b"state"], bump)]
     pub state: Account<'info, State>,

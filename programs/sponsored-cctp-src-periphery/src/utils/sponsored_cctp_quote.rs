@@ -46,7 +46,7 @@ define_quote_fields!(
     FinalToken
 );
 
-// Compile-time guarantees that these 5 fields passed in hookData are contiguous and ordered.
+// Compile-time guarantees that these 6 fields passed in hookData are contiguous and ordered.
 const _: () = {
     assert!((SponsoredCCTPQuoteFields::Deadline as usize) == (SponsoredCCTPQuoteFields::Nonce as usize) + 1);
     assert!((SponsoredCCTPQuoteFields::MaxBpsToSponsor as usize) == (SponsoredCCTPQuoteFields::Deadline as usize) + 1);
