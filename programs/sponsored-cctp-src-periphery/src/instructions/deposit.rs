@@ -31,7 +31,7 @@ pub struct DepositForBurn<'info> {
     pub rent_fund: SystemAccount<'info>,
 
     #[account(
-        init, // This enforces that a given quote nonce can be used only once.
+        init, // Enforces that a given quote nonce can be used only once during the quote deadline.
         payer = signer,
         space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE,
         seeds = [
