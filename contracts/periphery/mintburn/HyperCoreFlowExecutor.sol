@@ -43,10 +43,9 @@ contract HyperCoreFlowExecutor is AccessControl {
     /// @notice All operations performed in this contract are relative to this baseToken
     address immutable baseToken;
 
-    /// @notice The minimum delay between finalizations of pending swaps.
-    uint256 public minDelayBetweenFinalizations = 1 minutes;
-    /// @notice The time of the last finalization of pending swaps per final token.
-    mapping(address finalToken => uint256 lastFinalizationTime) lastFinalizationTime;
+    /// @notice The block number of the last funds pull action per final token: either as a part of finalizing pending swaps,
+    /// or an admin funds pull
+    mapping(address finalToken => uint256 lastPullFundsBlock) lastPullFundsBlock;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct PendingSwap {
@@ -245,20 +244,6 @@ contract HyperCoreFlowExecutor is AccessControl {
      **************************************/
 
     /**
-     *
-     * @notice Set a minimum safe delay in seconds between consecutive calls to finalize pending swap flows. The reason
-     * for this delay is that the transfers we're sending out of the SwapHandler's account to the user take a couple of
-     * seconds to land on chain + balance read from the finalization function is of stale data (also a couple seconds stale).
-     * If the delay is too small, a collision could happen where we would try to send out funds to the user that are already
-     * "in-flight"(pending orders are about to be executed) to fill another user's order. This could be mitigated if we had
-     * a unique account per order (in the next implementation iteration).
-     * @param minDelay minimum delay to set, in seconds
-     */
-    function setMinDelayBetweenFinalizations(uint256 minDelay) external onlyDefaultAdmin {
-        minDelayBetweenFinalizations = minDelay;
-    }
-
-    /**
      * @notice Set or update information for the token to use it in this contract
      * @dev To be able to use the token in the swap flow, FinalTokenInfo has to be set as well
      * @dev Setting core token info to incorrect values can lead to loss of funds. Should NEVER be unset while the
@@ -312,6 +297,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             suggestedDiscountBps: suggestedDiscountBps
         });
 
+        // TODO: this activation flow seems broken. Can a smart contract activate its core account by doing an EVM -> Core transfer?
         uint256 accountActivationFee = _getAccountActivationFeeEVM(accountActivationFeeToken, address(swapHandler));
         if (accountActivationFee > 0) {
             CoreTokenInfo memory accountActivationTokenInfo = coreTokenInfos[accountActivationFeeToken];
@@ -638,11 +624,8 @@ contract HyperCoreFlowExecutor is AccessControl {
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
 
         require(address(finalTokenInfo.swapHandler) != address(0), "Final token not registered");
-        require(
-            block.timestamp >= lastFinalizationTime[finalToken] + minDelayBetweenFinalizations,
-            "Min delay not reached"
-        );
-        lastFinalizationTime[finalToken] = block.timestamp;
+        require(lastPullFundsBlock[finalToken] < block.number, "Can't finalize twice in the same block");
+        lastPullFundsBlock[finalToken] = block.number;
 
         uint256 head = pendingQueueHead[finalToken];
         bytes32[] storage queue = pendingQueue[finalToken];
@@ -791,7 +774,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             IERC20(finalToken).safeTransfer(address(swapHandler), sponsorDeltaEvm);
             cumulativeSponsoredAmount[finalToken] += sponsorDeltaEvm;
             if (
-                HyperCoreLib.isCoreAmountSafeToBridge(
+                !HyperCoreLib.isCoreAmountSafeToBridge(
                     finalTokenCoreInfo.coreIndex,
                     sponsorDeltaCore,
                     finalTokenCoreInfo.bridgeSafetyBufferCore
@@ -959,8 +942,9 @@ contract HyperCoreFlowExecutor is AccessControl {
             revert("Cannot sweep on core if there are pending limit orders");
         }
 
-        //  We also want to make sure the min delay between finalizations has been reached
-        require(block.timestamp >= lastFinalizationTime[token] + minDelayBetweenFinalizations, "Min delay not reached");
+        // Prevent pulling fantom funds (e.g. if finalizePendingSwaps reads stale balance because of this fund pull)
+        require(lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
+        lastPullFundsBlock[token] = block.number;
 
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
