@@ -909,11 +909,11 @@ contract HyperCoreFlowExecutor is AccessControl {
             ? maxEvmAmountToSponsor
             : extraFeesToSponsor;
 
-        if (!_availableInDonationBox(baseToken, sponsorshipFundsToForward)) {
+        if (!_availableInDonationBox(finalToken, sponsorshipFundsToForward)) {
             sponsorshipFundsToForward = 0;
         }
         if (sponsorshipFundsToForward > 0) {
-            _getFromDonationBox(baseToken, sponsorshipFundsToForward);
+            _getFromDonationBox(finalToken, sponsorshipFundsToForward);
         }
         uint256 totalAmountToForward = amount + sponsorshipFundsToForward;
         IERC20(finalToken).safeTransfer(finalRecipient, totalAmountToForward);
