@@ -162,6 +162,7 @@ const config: HardhatUserConfig = {
     // gasPrice: 3e8, // 0.3 GWEI
     // gasMultiplier: 4.0,
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
     "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),

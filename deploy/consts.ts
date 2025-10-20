@@ -184,6 +184,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.ARBITRUM]: {
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -193,6 +194,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.HYPEREVM]: {
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.PLASMA]: {
@@ -201,6 +203,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -218,6 +221,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.OPTIMISM]: {
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -229,6 +233,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.BASE]: {
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -256,6 +261,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
     permit2: "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768", // PancakeSwap Permit2
   },
@@ -277,6 +283,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.UNICHAIN]: {
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.UNICHAIN_SEPOLIA]: {

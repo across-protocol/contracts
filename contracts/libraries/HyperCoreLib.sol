@@ -45,6 +45,7 @@ library HyperCoreLib {
     uint256 public constant BASE_ASSET_BRIDGE_ADDRESS_UINT256 = uint256(uint160(BASE_ASSET_BRIDGE_ADDRESS));
 
     // Precompile addresses
+    // TODO: maybe we should be using https://github.com/hyperliquid-dev/hyper-evm-lib instead?
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
     address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
@@ -335,6 +336,21 @@ library HyperCoreLib {
 
             /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
             amountCoreToReceive = uint64(amountEVMToSend * scale);
+        }
+    }
+
+    function convertCoreDecimalsSimple(
+        uint64 amountDecimalsFrom,
+        uint8 decimalsFrom,
+        uint8 decimalsTo
+    ) internal pure returns (uint64) {
+        if (decimalsFrom == decimalsTo) {
+            return amountDecimalsFrom;
+        } else if (decimalsFrom < decimalsTo) {
+            return uint64(amountDecimalsFrom * 10 ** (decimalsTo - decimalsFrom));
+        } else {
+            // round down
+            return uint64(amountDecimalsFrom / 10 ** (decimalsFrom - decimalsTo));
         }
     }
 }
