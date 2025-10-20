@@ -67,32 +67,20 @@ abstract contract ArbitraryActionFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
-        // Calculate maximum amount to sponsor based on maxBpsToSponsor
-        uint256 maxEvmAmountToSponsor = (amount * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 amountToSponsor = extraFeesToSponsor;
-        if (amountToSponsor > maxEvmAmountToSponsor) {
-            amountToSponsor = maxEvmAmountToSponsor;
-        }
+        // Calculate bps to sponsor based on maxBpsToSponsor
 
-        // Check if funds are available in donation box
-        if (amountToSponsor > 0) {
-            DonationBox donationBox = _getDonationBox();
-            if (IERC20(initialToken).balanceOf(address(donationBox)) < amountToSponsor) {
-                amountToSponsor = 0;
-            } else {
-                // Funds are available, so use them to sponsor
-                donationBox.withdraw(IERC20(initialToken), amountToSponsor);
-            }
+        // Total amount to sponsor is the extra fees to sponsor, ceiling division.
+        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_SCALAR) + amount - 1) / amount;
+        if (bpsToSponsor > maxBpsToSponsor) {
+            bpsToSponsor = maxBpsToSponsor;
         }
-
-        uint256 amountIn = amount + amountToSponsor;
 
         // Snapshot balances
         uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
         uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
 
         // Transfer tokens to MulticallHandler
-        IERC20(initialToken).safeTransfer(multicallHandler, amountIn);
+        IERC20(initialToken).safeTransfer(multicallHandler, amount);
 
         // Decompress calls: add value: 0 to each call and wrap in Instructions
         // We encode Instructions with calls and a drainLeftoverTokens call at the end
@@ -108,7 +96,7 @@ abstract contract ArbitraryActionFlowExecutor {
         // Execute via MulticallHandler
         MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(
             initialToken,
-            amountIn,
+            amount,
             address(this),
             instructions
         );
@@ -118,7 +106,7 @@ abstract contract ArbitraryActionFlowExecutor {
         // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
         if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
             finalToken = initialToken;
-            finalAmount = amountIn;
+            finalAmount = amount;
         } else {
             uint256 finalBalance = IERC20(finalToken).balanceOf(address(this));
             if (finalBalance >= finalAmountSnapshot) {
@@ -127,6 +115,17 @@ abstract contract ArbitraryActionFlowExecutor {
             } else {
                 // If we somehow lost final tokens, just set the finalAmount to 0.
                 finalAmount = 0;
+            }
+        }
+
+        // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
+        uint256 amountToSponsor = ((finalAmount * bpsToSponsor) + BPS_SCALAR - 1) / BPS_SCALAR;
+        if (amountToSponsor > 0) {
+            DonationBox donationBox = _getDonationBox();
+            if (IERC20(finalToken).balanceOf(address(donationBox)) < amountToSponsor) {
+                amountToSponsor = 0;
+            } else {
+                donationBox.withdraw(IERC20(finalToken), amountToSponsor);
             }
         }
 
@@ -139,7 +138,7 @@ abstract contract ArbitraryActionFlowExecutor {
                 quoteNonce,
                 maxBpsToSponsor,
                 finalRecipient,
-                0, // Sponsorship already done on input.
+                amountToSponsor,
                 finalToken
             );
         } else {
@@ -148,7 +147,7 @@ abstract contract ArbitraryActionFlowExecutor {
                 quoteNonce,
                 maxBpsToSponsor,
                 finalRecipient,
-                0, // Sponsorship already done on input.
+                amountToSponsor,
                 finalToken
             );
         }
