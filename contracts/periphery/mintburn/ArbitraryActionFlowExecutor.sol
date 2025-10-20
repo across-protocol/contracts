@@ -80,6 +80,10 @@ abstract contract ArbitraryActionFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
+        // Snapshot balances
+        uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
+        uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
+
         // Transfer tokens to MulticallHandler
         IERC20(initialToken).safeTransfer(multicallHandler, amount);
 
@@ -93,10 +97,6 @@ abstract contract ArbitraryActionFlowExecutor {
             finalToken,
             address(this) // Send leftover tokens back to this contract
         );
-
-        // Snapshot balances
-        uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
-        uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
 
         // Execute via MulticallHandler
         IMulticallHandler(multicallHandler).handleV3AcrossMessage(initialToken, amount, address(this), instructions);
