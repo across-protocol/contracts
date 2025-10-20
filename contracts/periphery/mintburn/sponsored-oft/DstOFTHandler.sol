@@ -6,7 +6,7 @@ import { OFTComposeMsgCodec } from "../../../libraries/OFTComposeMsgCodec.sol";
 import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
-import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 
@@ -18,6 +18,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
+    using AddressToBytes32 for address;
 
     /// @notice We expect bridge amount that comes through to this Handler to be 1:1 with the src send amount, and we
     /// require our src handler to ensure that it is. We don't sponsor extra bridge fees in this handler
@@ -28,11 +29,14 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
-    mapping(uint64 eid => bytes32 authorizedSrcPeriphery) authorizedSrcPeripheryContracts;
+    mapping(uint64 eid => bytes32 authorizedSrcPeriphery) public authorizedSrcPeripheryContracts;
 
     /// @notice A mapping used for nonce uniqueness checks. Our src periphery and LZ should have prevented this already,
     /// but I guess better safe than sorry
     mapping(bytes32 quoteNonce => bool used) usedNonces;
+
+    /// @notice Emitted when a new authorized src periphery is configured
+    event SetAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery);
 
     /// @notice Thrown when trying to call lzCompose from a source periphery that's not been configured in `authorizedSrcPeripheryContracts`
     error AuthorizedPeripheryNotSet(uint32 _srcEid);
@@ -80,6 +84,11 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
             revert IOFTEndpointMismatch();
         }
+    }
+
+    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external onlyDefaultAdmin {
+        authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
+        emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
 
     /**

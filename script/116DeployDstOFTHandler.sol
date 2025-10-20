@@ -17,7 +17,6 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-        address deployer = vm.addr(deployerPrivateKey);
 
         vm.startBroadcast(deployerPrivateKey);
 

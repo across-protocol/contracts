@@ -86,7 +86,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         IERC20(TOKEN).forceApprove(address(OFT_MESSENGER), quote.signedParams.amountLD);
 
         // Step 4: send oft transfer and emit event with auxiliary data
-        IOFT(OFT_MESSENGER).send(sendParam, fee, refundAddress);
+        IOFT(OFT_MESSENGER).send{ value: msg.value }(sendParam, fee, refundAddress);
         emit SponsoredOFTSend(
             quote.signedParams.nonce,
             msg.sender,
