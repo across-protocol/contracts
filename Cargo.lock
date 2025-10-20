@@ -2614,6 +2614,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "libsecp256k1 0.7.2",
+ "solana-security-txt",
 ]
 
 [[package]]

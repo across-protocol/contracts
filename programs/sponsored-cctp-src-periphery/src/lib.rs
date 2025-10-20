@@ -1,21 +1,32 @@
 #![allow(unexpected_cfgs)]
 
-use anchor_lang::prelude::*;
-
-declare_id!("3xGkdXunLALbrKxuouchngkUpThU2oyNjJpBECV4bkEC");
-
-// External programs from idls directory (requires anchor run generateExternalTypes).
-declare_program!(message_transmitter_v2);
-declare_program!(token_messenger_minter_v2);
-
 mod error;
 mod event;
 mod instructions;
 mod state;
 mod utils;
 
+use anchor_lang::prelude::*;
+
 use instructions::*;
 use utils::*;
+
+#[cfg(not(feature = "no-entrypoint"))]
+solana_security_txt::security_txt! {
+    name: "Across Sponsored CCTP Source Periphery",
+    project_url: "https://across.to",
+    contacts: "email:bugs@across.to",
+    policy: "https://docs.across.to/resources/bug-bounty",
+    preferred_languages: "en",
+    source_code: "https://github.com/across-protocol/contracts/tree/master/programs/sponsored-cctp-src-periphery",
+    auditors: "OpenZeppelin"
+}
+
+declare_id!("3xGkdXunLALbrKxuouchngkUpThU2oyNjJpBECV4bkEC");
+
+// External programs from idls directory (requires anchor run generateExternalTypes).
+declare_program!(message_transmitter_v2);
+declare_program!(token_messenger_minter_v2);
 
 #[program]
 pub mod sponsored_cctp_src_periphery {
