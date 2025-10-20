@@ -10,7 +10,9 @@ library ComposeMsgCodec {
     uint256 internal constant MAX_USER_SLIPPAGE_BPS_OFFSET = 96;
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 128;
     uint256 internal constant FINAL_TOKEN_OFFSET = 160;
-    uint256 internal constant COMPOSE_MSG_BYTE_LENGTH = 192;
+    uint256 internal constant EXECUTION_MODE_OFFSET = 192;
+    // Minimum length without actionData (192 bytes + 32 bytes for executionMode + 32 bytes for actionData length)
+    uint256 internal constant MIN_COMPOSE_MSG_BYTE_LENGTH = 192;
 
     function _encode(
         bytes32 nonce,
@@ -18,9 +20,21 @@ library ComposeMsgCodec {
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
         bytes32 finalRecipient,
-        bytes32 finalToken
+        bytes32 finalToken,
+        uint8 executionMode,
+        bytes memory actionData
     ) internal pure returns (bytes memory) {
-        return abi.encode(nonce, deadline, maxBpsToSponsor, maxUserSlippageBps, finalRecipient, finalToken);
+        return
+            abi.encode(
+                nonce,
+                deadline,
+                maxBpsToSponsor,
+                maxUserSlippageBps,
+                finalRecipient,
+                finalToken,
+                executionMode,
+                actionData
+            );
     }
 
     function _getNonce(bytes memory data) internal pure returns (bytes32 v) {
@@ -47,7 +61,24 @@ library ComposeMsgCodec {
         return BytesLib.toBytes32(data, FINAL_TOKEN_OFFSET);
     }
 
+    function _getExecutionMode(bytes memory data) internal pure returns (uint8 v) {
+        (, , , , , , uint8 executionMode, ) = abi.decode(
+            data,
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes)
+        );
+        return executionMode;
+    }
+
+    function _getActionData(bytes memory data) internal pure returns (bytes memory v) {
+        (, , , , , , , bytes memory actionData) = abi.decode(
+            data,
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes)
+        );
+        return actionData;
+    }
+
     function _isValidComposeMsgBytelength(bytes memory data) internal pure returns (bool valid) {
-        valid = data.length == COMPOSE_MSG_BYTE_LENGTH;
+        // Message must be at least the minimum length (can be longer due to variable actionData)
+        valid = data.length >= MIN_COMPOSE_MSG_BYTE_LENGTH;
     }
 }

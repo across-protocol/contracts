@@ -6,19 +6,23 @@ import { OFTComposeMsgCodec } from "../../../libraries/OFTComposeMsgCodec.sol";
 import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
+import { ExecutionMode } from "./Structs.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
+import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
+contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
+    using SafeERC20 for IERC20;
 
     /// @notice We expect bridge amount that comes through to this Handler to be 1:1 with the src send amount, and we
     /// require our src handler to ensure that it is. We don't sponsor extra bridge fees in this handler
@@ -63,7 +67,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         uint32 _coreIndex,
         bool _canBeUsedForAccountActivation,
         uint64 _accountActivationFeeCore,
-        uint64 _bridgeSafetyBufferCore
+        uint64 _bridgeSafetyBufferCore,
+        address _multicallHandler
     )
         HyperCoreFlowExecutor(
             _donationBox,
@@ -73,6 +78,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
             _accountActivationFeeCore,
             _bridgeSafetyBufferCore
         )
+        ArbitraryActionFlowExecutor(_multicallHandler)
     {
         // baseToken is assigned on `HyperCoreFlowExecutor` creation
         if (baseToken != IOFT(_ioft).token()) {
@@ -127,16 +133,38 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         uint256 maxUserSlippageBps = composeMsg._getMaxUserSlippageBps();
         address finalRecipient = composeMsg._getFinalRecipient().toAddress();
         address finalToken = composeMsg._getFinalToken().toAddress();
+        uint8 executionMode = composeMsg._getExecutionMode();
+        bytes memory actionData = composeMsg._getActionData();
 
-        _executeFlow(
-            amountLD,
-            quoteNonce,
-            maxBpsToSponsor,
-            maxUserSlippageBps,
-            finalRecipient,
-            finalToken,
-            EXTRA_FEES_TO_SPONSOR
-        );
+        // Route to appropriate execution based on executionMode
+        if (
+            executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
+            executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM)
+        ) {
+            // Execute arbitrary actions flow
+            _executeArbitraryActionFlow(
+                amountLD,
+                quoteNonce,
+                maxBpsToSponsor,
+                baseToken, // initialToken
+                finalRecipient,
+                finalToken,
+                actionData,
+                executionMode == uint8(ExecutionMode.ArbitraryActionsToCore),
+                EXTRA_FEES_TO_SPONSOR
+            );
+        } else {
+            // Execute standard HyperCore flow (default)
+            _executeFlow(
+                amountLD,
+                quoteNonce,
+                maxBpsToSponsor,
+                maxUserSlippageBps,
+                finalRecipient,
+                finalToken,
+                EXTRA_FEES_TO_SPONSOR
+            );
+        }
     }
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
@@ -167,4 +195,40 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
             revert UnauthorizedSrcPeriphery(_srcEid);
         }
     }
+
+    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
+    function _executeSimpleTransferFlow(
+        uint256 finalAmount,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
+        address finalRecipient,
+        uint256 extraFeesToSponsor
+    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
+        HyperCoreFlowExecutor._executeSimpleTransferFlow(
+            finalAmount,
+            quoteNonce,
+            maxBpsToSponsor,
+            finalRecipient,
+            extraFeesToSponsor
+        );
+    }
+
+    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
+    function _fallbackHyperEVMFlow(
+        uint256 finalAmount,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
+        address finalRecipient,
+        uint256 extraFeesToSponsor
+    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
+        HyperCoreFlowExecutor._fallbackHyperEVMFlow(
+            finalAmount,
+            quoteNonce,
+            maxBpsToSponsor,
+            finalRecipient,
+            extraFeesToSponsor
+        );
+    }
+
+    // Note: _executeArbitraryActionFlow() is inherited from ArbitraryActionFlowExecutor
 }

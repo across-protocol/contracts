@@ -8,8 +8,9 @@ import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
+import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
 
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -33,7 +34,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         uint32 _coreIndex,
         bool _canBeUsedForAccountActivation,
         uint64 _accountActivationFeeCore,
-        uint64 _bridgeSafetyBufferCore
+        uint64 _bridgeSafetyBufferCore,
+        address _multicallHandler
     )
         HyperCoreFlowExecutor(
             _donationBox,
@@ -43,6 +45,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             _accountActivationFeeCore,
             _bridgeSafetyBufferCore
         )
+        ArbitraryActionFlowExecutor(_multicallHandler)
     {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
@@ -73,18 +76,40 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             usedNonces[quote.nonce] = true;
         }
 
-        _executeFlow(
-            // We subtract the feeExecuted from the `amount` as the `amount` is the what the user pays on the source chain.
-            quote.amount - feeExecuted,
-            quote.nonce,
-            // If the quote is invalid we don't sponsor the flow or the extra fees
-            isQuoteValid ? quote.maxBpsToSponsor : 0,
-            quote.maxUserSlippageBps,
-            quote.finalRecipient.toAddress(),
-            // If the quote is invalid we don't want to swap, so we use the base token as the final token
-            isQuoteValid ? quote.finalToken.toAddress() : baseToken,
-            isQuoteValid ? feeExecuted : 0
-        );
+        uint256 amountAfterFees = quote.amount - feeExecuted;
+
+        // Route to appropriate execution based on executionMode
+        if (
+            isQuoteValid &&
+            (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
+                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
+        ) {
+            // Execute arbitrary actions flow
+            _executeArbitraryActionFlow(
+                amountAfterFees,
+                quote.nonce,
+                quote.maxBpsToSponsor,
+                baseToken, // initialToken
+                quote.finalRecipient.toAddress(),
+                quote.finalToken.toAddress(),
+                quote.actionData,
+                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore),
+                feeExecuted
+            );
+        } else {
+            // Execute standard HyperCore flow (default)
+            _executeFlow(
+                amountAfterFees,
+                quote.nonce,
+                // If the quote is invalid we don't sponsor the flow or the extra fees
+                isQuoteValid ? quote.maxBpsToSponsor : 0,
+                quote.maxUserSlippageBps,
+                quote.finalRecipient.toAddress(),
+                // If the quote is invalid we don't want to swap, so we use the base token as the final token
+                isQuoteValid ? quote.finalToken.toAddress() : baseToken,
+                isQuoteValid ? feeExecuted : 0
+            );
+        }
 
         emit SponsoredMintAndWithdraw(
             quote.nonce,
@@ -106,4 +131,40 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             !usedNonces[quote.nonce] &&
             quote.deadline + quoteDeadlineBuffer >= block.timestamp;
     }
+
+    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
+    function _executeSimpleTransferFlow(
+        uint256 finalAmount,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
+        address finalRecipient,
+        uint256 extraFeesToSponsor
+    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
+        HyperCoreFlowExecutor._executeSimpleTransferFlow(
+            finalAmount,
+            quoteNonce,
+            maxBpsToSponsor,
+            finalRecipient,
+            extraFeesToSponsor
+        );
+    }
+
+    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
+    function _fallbackHyperEVMFlow(
+        uint256 finalAmount,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
+        address finalRecipient,
+        uint256 extraFeesToSponsor
+    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
+        HyperCoreFlowExecutor._fallbackHyperEVMFlow(
+            finalAmount,
+            quoteNonce,
+            maxBpsToSponsor,
+            finalRecipient,
+            extraFeesToSponsor
+        );
+    }
+
+    // Note: _executeArbitraryActionFlow() is inherited from ArbitraryActionFlowExecutor
 }

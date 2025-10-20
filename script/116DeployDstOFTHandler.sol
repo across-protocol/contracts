@@ -28,6 +28,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
         bool canBeUsedForAccountActivation = true;
         uint64 accountActivationFeeCore = 100000000;
         uint64 bridgeSafetyBufferCore = 1_000_000_000_00000000; // 1billion USDC (8 decimals)
+        address multicallHandler = getL2Address(block.chainid, "multicallHandler");
 
         DonationBox donationBox = new DonationBox();
 
@@ -39,7 +40,8 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
             coreIndex,
             canBeUsedForAccountActivation,
             accountActivationFeeCore,
-            bridgeSafetyBufferCore
+            bridgeSafetyBufferCore,
+            multicallHandler
         );
         console.log("DstOFTHandler deployed to:", address(dstOFTHandler));
 

@@ -108,7 +108,9 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
-            quote.signedParams.finalToken
+            quote.signedParams.finalToken,
+            quote.signedParams.executionMode,
+            quote.signedParams.actionData
         );
 
         bytes memory extraOptions = MinimalLZOptions

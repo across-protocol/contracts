@@ -31,8 +31,8 @@ library SponsoredCCTPQuoteLib {
     uint256 private constant FEE_EXECUTED_INDEX = 164;
     uint256 private constant HOOK_DATA_INDEX = 228;
 
-    // Total length of the message body (message body + hook data + 6 32-byte fields in hook data)
-    uint256 private constant MSG_BYTES_LENGTH = 568;
+    // Minimum length of the message body (can be longer due to variable actionData)
+    uint256 private constant MIN_MSG_BYTES_LENGTH = 568;
 
     function getDespoitForBurnData(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
@@ -63,17 +63,34 @@ library SponsoredCCTPQuoteLib {
             quote.maxBpsToSponsor,
             quote.maxUserSlippageBps,
             quote.finalRecipient,
-            quote.finalToken
+            quote.finalToken,
+            quote.executionMode,
+            quote.actionData
         );
     }
 
     function validateMessage(bytes memory message) internal view returns (bool) {
-        return
-            message.length == MSG_BYTES_LENGTH &&
-            message.toBytes32(MESSAGE_BODY_INDEX + MINT_RECIPIENT_INDEX).toAddress() == address(this) &&
-            // 4 & 5 here are the indices of the finalRecipient and finalToken in the hook data
-            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 4).isValidAddress() &&
-            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 5).isValidAddress();
+        // Message must be at least the minimum length (can be longer due to variable actionData)
+        if (message.length < MIN_MSG_BYTES_LENGTH) {
+            return false;
+        }
+
+        // Mint recipient should be this contract
+        if (message.toBytes32(MESSAGE_BODY_INDEX + MINT_RECIPIENT_INDEX).toAddress() != address(this)) {
+            return false;
+        }
+
+        // Validate that finalRecipient and finalToken addresses are valid
+        bytes memory messageBody = message.slice(MESSAGE_BODY_INDEX, message.length);
+        bytes memory hookData = messageBody.slice(HOOK_DATA_INDEX, messageBody.length);
+
+        // Decode to check address validity
+        (, , , , bytes32 finalRecipient, bytes32 finalToken, , ) = abi.decode(
+            hookData,
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes)
+        );
+
+        return finalRecipient.isValidAddress() && finalToken.isValidAddress();
     }
 
     function getSponsoredCCTPQuoteData(
@@ -98,8 +115,10 @@ library SponsoredCCTPQuoteLib {
             quote.maxBpsToSponsor,
             quote.maxUserSlippageBps,
             quote.finalRecipient,
-            quote.finalToken
-        ) = abi.decode(hookData, (bytes32, uint256, uint256, uint256, bytes32, bytes32));
+            quote.finalToken,
+            quote.executionMode,
+            quote.actionData
+        ) = abi.decode(hookData, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes));
     }
 
     function validateSignature(
@@ -128,7 +147,9 @@ library SponsoredCCTPQuoteLib {
                 quote.maxBpsToSponsor,
                 quote.maxUserSlippageBps,
                 quote.finalRecipient,
-                quote.finalToken
+                quote.finalToken,
+                quote.executionMode,
+                keccak256(quote.actionData) // Hash the actionData to keep signature size reasonable
             )
         );
 

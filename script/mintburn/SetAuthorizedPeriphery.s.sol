@@ -19,7 +19,7 @@ contract SetAuthorizedPeriphery is Script {
         address dstHandlerAddress = 0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0;
         // --- END CONFIG ---
 
-        DstOFTHandler dstHandler = DstOFTHandler(dstHandlerAddress);
+        DstOFTHandler dstHandler = DstOFTHandler(payable(dstHandlerAddress));
 
         vm.startBroadcast(deployerPrivateKey);
 

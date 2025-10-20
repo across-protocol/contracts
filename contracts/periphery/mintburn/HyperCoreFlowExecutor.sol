@@ -384,7 +384,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint256 maxBpsToSponsor,
         address finalRecipient,
         uint256 extraFeesToSponsor
-    ) internal {
+    ) internal virtual {
         address finalToken = baseToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
@@ -866,7 +866,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint256 maxBpsToSponsor,
         address finalRecipient,
         uint256 extraFeesToSponsor
-    ) internal {
+    ) internal virtual {
         address finalToken = baseToken;
         uint256 maxEvmAmountToSponsor = ((amount + extraFeesToSponsor) * maxBpsToSponsor) / BPS_SCALAR;
         uint256 sponsorshipFundsToForward = extraFeesToSponsor > maxEvmAmountToSponsor
