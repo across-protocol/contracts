@@ -364,9 +364,11 @@ contract HyperCoreFlowExecutor is AccessControl {
      * @notice This function is to be called by an inheriting contract. It is to be called after the child contract
      * checked the API signature and made sure that the params passed here have been verified by either the underlying
      * bridge mechanics, or API signaure, or both.
+     * @param amountInEVM The real token amount to be used in this flow execution
+     * @param extraFeesToSponsor Any fees subtracted from the user up until this point (e.g. CCTP bridging fees)
      */
     function _executeFlow(
-        uint256 amount,
+        uint256 amountInEVM,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
@@ -375,10 +377,10 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint256 extraFeesToSponsor
     ) internal {
         if (finalToken == baseToken) {
-            _executeSimpleTransferFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            _executeSimpleTransferFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
         } else {
             _initiateSwapFlow(
-                amount,
+                amountInEVM,
                 quoteNonce,
                 finalRecipient,
                 finalToken,
@@ -392,11 +394,11 @@ contract HyperCoreFlowExecutor is AccessControl {
     /// @notice Execute a simple transfer flow in which we transfer `baseToken` to the user on HyperCore after receiving
     /// an amount of baseToken from the user on HyperEVM
     function _executeSimpleTransferFlow(
-        uint256 amount,
+        uint256 amountInEVM,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address finalRecipient,
-        uint256 extraFeesToSponsor
+        uint256 extraBridgingFeesEVM
     ) internal {
         address finalToken = baseToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
@@ -407,14 +409,14 @@ contract HyperCoreFlowExecutor is AccessControl {
             if (isSponsoredFlow) {
                 revert AccountNotActivated(finalRecipient);
             } else {
-                _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+                _fallbackHyperEVMFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalRecipient, extraBridgingFeesEVM);
                 emit SimpleTransferFallbackAccountActivation(quoteNonce);
                 return;
             }
         }
 
-        uint256 maxEvmAmountToSponsor = (amount * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 amountToSponsor = extraFeesToSponsor;
+        uint256 maxEvmAmountToSponsor = ((amountInEVM + extraBridgingFeesEVM) * maxBpsToSponsor) / BPS_SCALAR;
+        uint256 amountToSponsor = extraBridgingFeesEVM;
         if (amountToSponsor > maxEvmAmountToSponsor) {
             amountToSponsor = maxEvmAmountToSponsor;
         }
@@ -425,7 +427,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             }
         }
 
-        uint256 finalAmount = amount + amountToSponsor;
+        uint256 finalAmount = amountInEVM + amountToSponsor;
         (uint256 quotedEvmAmount, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             finalAmount,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
@@ -441,7 +443,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
         // fall back to sending user funds on HyperEVM.
         if (!isSafe) {
-            _fallbackHyperEVMFlow(amount, quoteNonce, maxBpsToSponsor, finalRecipient, extraFeesToSponsor);
+            _fallbackHyperEVMFlow(amountInEVM, quoteNonce, maxBpsToSponsor, finalRecipient, extraBridgingFeesEVM);
             emit SimpleTransferFallbackUnsafeToBridge(quoteNonce);
             return;
         }
@@ -467,7 +469,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             quoteNonce,
             finalRecipient,
             finalToken,
-            amount,
+            amountInEVM,
             amountToSponsor,
             quotedEvmAmount,
             quotedCoreAmount
