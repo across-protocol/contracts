@@ -34,8 +34,8 @@ pub mod sponsored_cctp_src_periphery {
         instructions::withdraw_rent_fund(ctx, &params)
     }
 
-    pub fn deposit(ctx: Context<Deposit>, params: DepositParams) -> Result<()> {
-        instructions::deposit(ctx, &params)
+    pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: DepositForBurnParams) -> Result<()> {
+        instructions::deposit_for_burn(ctx, &params)
     }
 
     pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: ReclaimEventAccountParams) -> Result<()> {

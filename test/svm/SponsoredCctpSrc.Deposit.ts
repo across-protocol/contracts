@@ -342,7 +342,10 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       messageSentEventData: messageSentEventData.publicKey,
       program: program.programId,
     };
-    const depositIx = await program.methods.deposit({ quote, signature }).accounts(depositAccounts).instruction();
+    const depositIx = await program.methods
+      .depositForBurn({ quote, signature })
+      .accounts(depositAccounts)
+      .instruction();
     const txSignature = await sendTransactionWithExistingLookupTable(
       provider.connection,
       [depositIx],

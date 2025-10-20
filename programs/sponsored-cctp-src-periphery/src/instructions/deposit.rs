@@ -19,8 +19,8 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-#[instruction(params: DepositParams)]
-pub struct Deposit<'info> {
+#[instruction(params: DepositForBurnParams)]
+pub struct DepositForBurn<'info> {
     #[account(mut)]
     pub signer: Signer<'info>, // TODO: Consider if we need delegation flow similar as in SVM Spoke program.
 
@@ -103,12 +103,12 @@ pub struct Deposit<'info> {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct DepositParams {
+pub struct DepositForBurnParams {
     pub quote: [u8; QUOTE_DATA_LENGTH],
     pub signature: [u8; QUOTE_SIGNATURE_LENGTH],
 }
 
-pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
+pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnParams) -> Result<()> {
     // Repay user for used_nonce account creation as the rent_fund account will receive its balance upon closing.
     refund_used_nonce(&ctx)?;
 
@@ -186,7 +186,7 @@ pub fn deposit(ctx: Context<Deposit>, params: &DepositParams) -> Result<()> {
     Ok(())
 }
 
-fn refund_used_nonce(ctx: &Context<Deposit>) -> Result<()> {
+fn refund_used_nonce(ctx: &Context<DepositForBurn>) -> Result<()> {
     let anchor_rent = Rent::get()?;
     let space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE;
 
