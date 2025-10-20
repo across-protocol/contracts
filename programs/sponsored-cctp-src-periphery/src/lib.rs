@@ -11,19 +11,6 @@ use anchor_lang::prelude::*;
 use instructions::*;
 use utils::*;
 
-/// # Across Sponsored CCTP Source Periphery
-///
-/// This program exposes a minimal interface for initiating Circle CCTPv2 token burns from Solana to an EVM
-/// destination, sponsored by Across. It validates an EVM-signed quote authorizing the burn, records a per-quote
-/// nonce to prevent replay within the quote deadline, and performs a CPI into Circle's CCTPv2 programs to burn
-/// the user's tokens and emit a message for the destination chain. It also includes administration utilities for
-/// setting the trusted quote signer, funding and reclaiming rent from transient accounts, and simple test-only
-/// time controls to support deterministic tests.
-///
-/// External programs are referenced via generated IDLs (see `idls/`) and must be generated with
-/// `anchor run generateExternalTypes` prior to building.
-///
-/// For any issues, please reach out to bugs@across.to.
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
     name: "Across Sponsored CCTP Source Periphery",
@@ -40,6 +27,11 @@ declare_id!("3xGkdXunLALbrKxuouchngkUpThU2oyNjJpBECV4bkEC");
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter_v2);
 declare_program!(token_messenger_minter_v2);
+
+/// # Across Sponsored CCTP Source Periphery
+///
+/// Source chain periphery program for users to interact with to start a sponsored or a non-sponsored flow that allows
+/// custom Accross-supported flows on destination chain. Uses Circle's CCTPv2 as an underlying bridge
 
 #[program]
 pub mod sponsored_cctp_src_periphery {
@@ -100,11 +92,14 @@ pub mod sponsored_cctp_src_periphery {
         instructions::withdraw_rent_fund(ctx, &params)
     }
 
-    /// Verifies a sponsored CCTP quote, records its nonce, and burns the user's tokens via CCTPv2.
+    /// Verifies a sponsored CCTP quote, records its nonce, and burns the user's tokens via CCTPv2 with hook data.
     ///
-    /// On success, this emits the CCTP MessageSent event and logs a `SponsoredDepositForBurn` event for observability.
-    /// The user's depositor ATA is burned directly (via CPI) and a message is emitted to the destination domain.
-    /// The rent cost for the per-quote `used_nonce` PDA is refunded to the signer from the `rent_fund`.
+    /// The user's depositor ATA is burned via `deposit_for_burn_with_hook` CPI on the CCTPv2. The rent cost for the
+    /// per-quote `used_nonce` PDA is refunded to the signer from the `rent_fund` and `rent_fund` also funds the
+    /// creation of CCTP `MessageSent` event account.
+    /// On success, this emits a `SponsoredDepositForBurn` event to be consumed by offchain infrastructure. This also
+    /// emits a `CreatedEventAccount` event containing the address of the created CCTP `MessageSent` event account that
+    /// can be reclaimed later using the `reclaim_event_account` instruction.
     ///
     /// Required Accounts:
     /// - signer (Signer, Writable): The user authorizing the burn.
@@ -130,6 +125,11 @@ pub mod sponsored_cctp_src_periphery {
     /// Parameters:
     /// - quote: ABI-encoded quote bytes (fixed length) containing burn parameters and hook data.
     /// - signature: 65-byte EVM signature authorizing the quote by the trusted signer.
+    ///
+    /// Notes:
+    /// - The upgrade authority must have set the valid EVM signer for this instruction to succeed.
+    /// - The operator of this program must have funded the `rent_fund` PDA with sufficient lamports to cover
+    ///   rent for the `used_nonce` PDA and the CCTP `MessageSent` event account.
     pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: DepositForBurnParams) -> Result<()> {
         instructions::deposit_for_burn(ctx, &params)
     }
@@ -144,6 +144,11 @@ pub mod sponsored_cctp_src_periphery {
     ///
     /// Parameters:
     /// - params: Parameters required by CCTP to reclaim the event account.
+    ///
+    /// Notes:
+    /// - This can only be called after the CCTP attestation service has processed the message and sufficient time has
+    ///   passed since the `MessageSent` event was created. The operator can track the closable accounts from the
+    ///   emitted `CreatedEventAccount` events and using the `EVENT_ACCOUNT_WINDOW_SECONDS` set in CCTP program.
     pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: ReclaimEventAccountParams) -> Result<()> {
         instructions::reclaim_event_account(ctx, &params)
     }
@@ -157,23 +162,16 @@ pub mod sponsored_cctp_src_periphery {
     ///
     /// Parameters:
     /// - params.nonce: The 32-byte nonce identifying the PDA to close.
+    ///
+    /// Notes:
+    /// - This can only be called after the quote's deadline has passed. The operator can track closable `used_nonce`
+    ///   accounts from the emitted `SponsoredDepositForBurn` events (`quote_nonce` and `quote_deadline`) and using the
+    ///   `get_used_nonce_close_info` helper.
     pub fn reclaim_used_nonce_account(
         ctx: Context<ReclaimUsedNonceAccount>,
         params: UsedNonceAccountParams,
     ) -> Result<()> {
         instructions::reclaim_used_nonce_account(ctx, &params)
-    }
-
-    /// Sets the current time in test mode. No-op on mainnet builds.
-    ///
-    /// Required Accounts:
-    /// - state (Writable): Program state PDA. Seed: ["state"].
-    /// - signer (Signer): Any signer. Only enabled when built with `--features test`.
-    ///
-    /// Parameters:
-    /// - new_time: New unix timestamp to set for tests.
-    pub fn set_current_time(ctx: Context<SetCurrentTime>, params: SetCurrentTimeParams) -> Result<()> {
-        utils::set_current_time(ctx, params)
     }
 
     /// Returns whether a `used_nonce` PDA can be closed now and the timestamp after which it can be closed.
@@ -195,5 +193,17 @@ pub mod sponsored_cctp_src_periphery {
         _params: UsedNonceAccountParams,
     ) -> Result<UsedNonceCloseInfo> {
         instructions::get_used_nonce_close_info(ctx)
+    }
+
+    /// Sets the current time in test mode. No-op on mainnet builds.
+    ///
+    /// Required Accounts:
+    /// - state (Writable): Program state PDA. Seed: ["state"].
+    /// - signer (Signer): Any signer. Only enabled when built with `--features test`.
+    ///
+    /// Parameters:
+    /// - new_time: New unix timestamp to set for tests.
+    pub fn set_current_time(ctx: Context<SetCurrentTime>, params: SetCurrentTimeParams) -> Result<()> {
+        utils::set_current_time(ctx, params)
     }
 }
