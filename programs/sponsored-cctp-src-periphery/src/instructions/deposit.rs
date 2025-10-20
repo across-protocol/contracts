@@ -112,7 +112,7 @@ pub struct DepositForBurnParams {
 
 pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnParams) -> Result<()> {
     // Repay user for used_nonce account creation as the rent_fund account will receive its balance upon closing.
-    refund_used_nonce(&ctx)?;
+    refund_used_nonce_creation(&ctx)?;
 
     let state = &ctx.accounts.state;
 
@@ -189,7 +189,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
     Ok(())
 }
 
-fn refund_used_nonce(ctx: &Context<DepositForBurn>) -> Result<()> {
+fn refund_used_nonce_creation(ctx: &Context<DepositForBurn>) -> Result<()> {
     let anchor_rent = Rent::get()?;
     let space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE;
 
