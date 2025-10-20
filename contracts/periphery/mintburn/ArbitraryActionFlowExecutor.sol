@@ -8,6 +8,9 @@ import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 // Import MulticallHandler
 import { MulticallHandler } from "../../handlers/MulticallHandler.sol";
 
+// Import constants
+import { BPS_SCALAR } from "./Constants.sol";
+
 /**
  * @title ArbitraryActionFlowExecutor
  * @notice Base contract for executing arbitrary action sequences using MulticallHandler
@@ -64,13 +67,25 @@ abstract contract ArbitraryActionFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
-        DonationBox donationBox = _getDonationBox();
-        uint256 amountIn = amount;
-        if (IERC20(initialToken).balanceOf(address(donationBox)) >= extraFeesToSponsor) {
-            // Funds are available, so use them to sponsor the fee.
-            donationBox.withdraw(IERC20(initialToken), extraFeesToSponsor);
-            amountIn += extraFeesToSponsor;
+        // Calculate maximum amount to sponsor based on maxBpsToSponsor
+        uint256 maxEvmAmountToSponsor = (amount * maxBpsToSponsor) / BPS_SCALAR;
+        uint256 amountToSponsor = extraFeesToSponsor;
+        if (amountToSponsor > maxEvmAmountToSponsor) {
+            amountToSponsor = maxEvmAmountToSponsor;
         }
+
+        // Check if funds are available in donation box
+        if (amountToSponsor > 0) {
+            DonationBox donationBox = _getDonationBox();
+            if (IERC20(initialToken).balanceOf(address(donationBox)) < amountToSponsor) {
+                amountToSponsor = 0;
+            } else {
+                // Funds are available, so use them to sponsor
+                donationBox.withdraw(IERC20(initialToken), amountToSponsor);
+            }
+        }
+
+        uint256 amountIn = amount + amountToSponsor;
 
         // Snapshot balances
         uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));

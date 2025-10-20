@@ -9,6 +9,7 @@ import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
+import { BPS_DECIMALS, BPS_SCALAR } from "./Constants.sol";
 
 /**
  * @title HyperCoreFlowExecutor
@@ -20,9 +21,7 @@ contract HyperCoreFlowExecutor is AccessControl {
     using SafeERC20 for IERC20;
 
     // Common decimals scalars
-    uint256 public constant BPS_DECIMALS = 4;
     uint256 public constant PPM_DECIMALS = 6;
-    uint256 public constant BPS_SCALAR = 10 ** BPS_DECIMALS;
     uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
     // Decimals to use for Price calculations in limit order-related calculation functions
     uint8 public constant PX_D = 8;
