@@ -189,6 +189,15 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint256 evmAmount
     );
 
+    /// @notice Emitted whenever a new CoreTokenInfo is configured
+    event SetCoreTokenInfo(
+        address indexed token,
+        uint32 coreIndex,
+        bool canBeUsedForAccountActivation,
+        uint64 accountActivationFeeCore,
+        uint64 bridgeSafetyBufferCore
+    );
+
     /**************************************
      *            MODIFIERS               *
      **************************************/
@@ -920,7 +929,13 @@ contract HyperCoreFlowExecutor is AccessControl {
             bridgeSafetyBufferCore: bridgeSafetyBufferCore
         });
 
-        // TODO: emit event? maybe not if we are over limit
+        emit SetCoreTokenInfo(
+            token,
+            coreIndex,
+            canBeUsedForAccountActivation,
+            accountActivationFeeCore,
+            bridgeSafetyBufferCore
+        );
     }
 
     /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful

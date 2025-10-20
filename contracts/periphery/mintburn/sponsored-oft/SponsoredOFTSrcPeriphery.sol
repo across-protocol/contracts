@@ -41,6 +41,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         bytes32 indexed quoteNonce,
         address indexed originSender,
         bytes32 indexed finalRecipient,
+        bytes32 destinationHandler,
         uint256 quoteDeadline,
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
@@ -91,6 +92,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.nonce,
             msg.sender,
             quote.signedParams.finalRecipient,
+            quote.signedParams.destinationHandler,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
@@ -124,7 +126,6 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.amountLD,
             extraOptions,
             composeMsg,
-            // TODO? Is this an issue for ~classic tokens like USDT0?
             // Only support empty OFT commands
             EMPTY_OFT_COMMAND
         );
