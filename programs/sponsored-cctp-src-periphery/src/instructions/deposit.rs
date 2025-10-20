@@ -256,7 +256,7 @@ pub struct ReclaimUsedNonceAccount<'info> {
     #[account(mut, seeds = [b"rent_fund"], bump)]
     pub rent_fund: SystemAccount<'info>,
 
-    #[account(mut,close = rent_fund, seeds = [b"used_nonce",&params.nonce.as_ref()], bump)]
+    #[account(mut,close = rent_fund, seeds = [b"used_nonce", &params.nonce.as_ref()], bump)]
     pub used_nonce: Account<'info, UsedNonce>,
 }
 
