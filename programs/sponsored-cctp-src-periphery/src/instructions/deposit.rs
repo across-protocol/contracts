@@ -140,7 +140,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
 
     // Invoke CCTPv2 to bridge user tokens. This burns user tokens directly by inheriting the signer privileges. The
     // side effect is that the user signer address will show up as messageSender on the destination chain, not the
-    // authority of this program. Thus is still acceptable in the current flow where SponsoredCCTPDstPeriphery contract
+    // authority of this program. This is still acceptable in the current flow where SponsoredCCTPDstPeriphery contract
     // on the destination chain revalidates the quote signature.
     let cpi_program = ctx.accounts.token_messenger_minter_program.to_account_info();
     let cpi_accounts = DepositForBurnWithHook {
