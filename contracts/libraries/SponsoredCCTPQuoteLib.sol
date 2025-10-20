@@ -71,9 +71,9 @@ library SponsoredCCTPQuoteLib {
         return
             message.length == MSG_BYTES_LENGTH &&
             message.toBytes32(MESSAGE_BODY_INDEX + MINT_RECIPIENT_INDEX).toAddress() == address(this) &&
-            // 5 & 6 here are the indices of the finalRecipient and finalToken in the hook data
-            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 5).isValidAddress() &&
-            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 6).isValidAddress();
+            // 4 & 5 here are the indices of the finalRecipient and finalToken in the hook data
+            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 4).isValidAddress() &&
+            message.toBytes32(MESSAGE_BODY_INDEX + HOOK_DATA_INDEX + 32 * 5).isValidAddress();
     }
 
     function getSponsoredCCTPQuoteData(
@@ -81,12 +81,13 @@ library SponsoredCCTPQuoteLib {
     ) internal pure returns (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) {
         quote.sourceDomain = message.toUint32(SOURCE_DOMAIN_INDEX);
         quote.destinationDomain = message.toUint32(DESTINATION_DOMAIN_INDEX);
+        quote.destinationCaller = message.toBytes32(DESTINATION_CALLER_INDEX);
+        quote.minFinalityThreshold = message.toUint32(MIN_FINALITY_THRESHOLD_INDEX);
+
         bytes memory messageBody = message.slice(MESSAGE_BODY_INDEX, message.length);
         quote.mintRecipient = messageBody.toBytes32(MINT_RECIPIENT_INDEX);
         quote.amount = messageBody.toUint256(AMOUNT_INDEX);
         quote.burnToken = messageBody.toBytes32(BURN_TOKEN_INDEX);
-        quote.destinationCaller = messageBody.toBytes32(DESTINATION_CALLER_INDEX);
-        quote.minFinalityThreshold = messageBody.toUint32(MIN_FINALITY_THRESHOLD_INDEX);
         quote.maxFee = messageBody.toUint256(MAX_FEE_INDEX);
         feeExecuted = messageBody.toUint256(FEE_EXECUTED_INDEX);
 
