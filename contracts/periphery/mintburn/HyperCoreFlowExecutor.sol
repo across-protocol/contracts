@@ -700,7 +700,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         );
     }
 
-    /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponsing SwapHandler has enough balance
+    /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponding SwapHandler has enough balance
     function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
