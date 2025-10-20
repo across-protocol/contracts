@@ -36,6 +36,9 @@ abstract contract ArbitraryActionFlowExecutor {
     /// @notice Error thrown when final balance is insufficient
     error InsufficientFinalBalance(address token, uint256 expected, uint256 actual);
 
+    uint256 constant BPS_PRECISION_DECIMALS = 12;
+    uint256 constant BPS_PRECISION = BPS_SCALAR * (10 ** BPS_PRECISION_DECIMALS);
+
     constructor(address _multicallHandler) {
         multicallHandler = _multicallHandler;
     }
@@ -67,13 +70,12 @@ abstract contract ArbitraryActionFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
-        // Calculate bps to sponsor based on maxBpsToSponsor
-
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
         uint256 totalAmount = amount + extraFeesToSponsor;
-        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_SCALAR) + totalAmount - 1) / totalAmount;
-        if (bpsToSponsor > maxBpsToSponsor) {
-            bpsToSponsor = maxBpsToSponsor;
+        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_PRECISION) + totalAmount - 1) / totalAmount;
+        uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** BPS_PRECISION_DECIMALS);
+        if (bpsToSponsor > maxBpsToSponsorAdjusted) {
+            bpsToSponsor = maxBpsToSponsorAdjusted;
         }
 
         // Snapshot balances
@@ -120,8 +122,8 @@ abstract contract ArbitraryActionFlowExecutor {
         }
 
         // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
-        uint256 bpsToSponsorAdjusted = BPS_SCALAR - bpsToSponsor;
-        uint256 amountToSponsor = (((finalAmount * BPS_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
+        uint256 bpsToSponsorAdjusted = BPS_PRECISION - bpsToSponsor;
+        uint256 amountToSponsor = (((finalAmount * BPS_PRECISION) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
             finalAmount;
         if (amountToSponsor > 0) {
             DonationBox donationBox = _getDonationBox();
