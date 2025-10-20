@@ -11,8 +11,8 @@ library ComposeMsgCodec {
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 128;
     uint256 internal constant FINAL_TOKEN_OFFSET = 160;
     uint256 internal constant EXECUTION_MODE_OFFSET = 192;
-    // Minimum length without actionData (192 bytes + 32 bytes for executionMode + 32 bytes for actionData length)
-    uint256 internal constant MIN_COMPOSE_MSG_BYTE_LENGTH = 192;
+    // Minimum length with empty actionData: 7 regular params (32 bytes each) and 1 dynamic byte array (minumum 64 bytes)
+    uint256 internal constant MIN_COMPOSE_MSG_BYTE_LENGTH = 288;
 
     function _encode(
         bytes32 nonce,
