@@ -14,21 +14,6 @@ library BytesLib {
      **************************************/
 
     /**
-     * @notice Reads a uint16 from a bytes array at a given start index
-     * @param _bytes The bytes array to convert
-     * @param _start The start index of the uint16
-     * @return result The uint16 result
-     */
-    function toUint16(bytes memory _bytes, uint256 _start) internal pure returns (uint16 result) {
-        require(_bytes.length >= _start + 2, "toUint16_outOfBounds");
-
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            result := mload(add(add(_bytes, 0x2), _start))
-        }
-    }
-
-    /**
      * @notice Reads a uint32 from a bytes array at a given start index
      * @param _bytes The bytes array to convert
      * @param _start The start index of the uint32

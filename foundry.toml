@@ -7,6 +7,7 @@ src = "contracts"
 out = "out"
 test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
+cache_path = "cache-foundry"
 remappings = [
     "@across-protocol/=node_modules/@across-protocol/",
     "@ensdomains/=node_modules/@ensdomains/",
@@ -63,6 +64,10 @@ unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
+
+# testnet
+arbitrum_testnet = "${NODE_URL_421614}"
+hyperevm_testnet = "${NODE_URL_998}"
 
 
 [etherscan]
