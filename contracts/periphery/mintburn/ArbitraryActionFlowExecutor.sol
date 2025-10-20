@@ -36,8 +36,9 @@ abstract contract ArbitraryActionFlowExecutor {
     /// @notice Error thrown when final balance is insufficient
     error InsufficientFinalBalance(address token, uint256 expected, uint256 actual);
 
-    uint256 constant BPS_PRECISION_DECIMALS = 12;
-    uint256 constant BPS_PRECISION = BPS_SCALAR * (10 ** BPS_PRECISION_DECIMALS);
+    uint256 constant BPS_TOTAL_PRECISION = 18;
+    uint256 constant BPS_DECIMALS = 4;
+    uint256 constant BPS_PRECISION_SCALAR = 10 ** BPS_TOTAL_PRECISION;
 
     constructor(address _multicallHandler) {
         multicallHandler = _multicallHandler;
@@ -72,8 +73,8 @@ abstract contract ArbitraryActionFlowExecutor {
 
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
         uint256 totalAmount = amount + extraFeesToSponsor;
-        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_PRECISION) + totalAmount - 1) / totalAmount;
-        uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** BPS_PRECISION_DECIMALS);
+        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
+        uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
         if (bpsToSponsor > maxBpsToSponsorAdjusted) {
             bpsToSponsor = maxBpsToSponsorAdjusted;
         }
@@ -122,9 +123,9 @@ abstract contract ArbitraryActionFlowExecutor {
         }
 
         // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
-        uint256 bpsToSponsorAdjusted = BPS_PRECISION - bpsToSponsor;
-        uint256 amountToSponsor = (((finalAmount * BPS_PRECISION) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
-            finalAmount;
+        uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
+        uint256 amountToSponsor = (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) /
+            bpsToSponsorAdjusted) - finalAmount;
         if (amountToSponsor > 0) {
             DonationBox donationBox = _getDonationBox();
             if (IERC20(finalToken).balanceOf(address(donationBox)) < amountToSponsor) {
