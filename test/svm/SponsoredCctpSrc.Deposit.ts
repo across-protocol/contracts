@@ -54,7 +54,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     tokenProgram: PublicKey,
     burnToken: PublicKey,
     depositorTokenAccount: PublicKey,
-    tokenMessengerMinterDenylistAccount: PublicKey,
+    denylistAccount: PublicKey,
     tokenMessengerMinterSenderAuthority: PublicKey,
     messageTransmitter: PublicKey,
     tokenMessenger: PublicKey,
@@ -200,7 +200,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   };
 
   const setupCctpAccounts = () => {
-    tokenMessengerMinterDenylistAccount = getDenyList(depositor.publicKey);
+    denylistAccount = getDenyList(depositor.publicKey);
     tokenMessengerMinterSenderAuthority = findProgramAddress(
       "sender_authority",
       tokenMessengerMinterV2Program.programId
@@ -329,8 +329,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       rentFund,
       usedNonce,
       depositorTokenAccount,
-      mint: burnToken,
-      tokenMessengerMinterDenylistAccount,
+      burnToken,
+      denylistAccount,
       tokenMessengerMinterSenderAuthority,
       messageTransmitter,
       tokenMessenger,

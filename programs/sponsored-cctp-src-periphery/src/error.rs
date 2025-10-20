@@ -22,8 +22,8 @@ pub enum SvmError {
     CannotSetCurrentTime,
     #[msg("Seed must be 0 in production")]
     InvalidProductionSeed,
-    #[msg("Invalid mint key")]
-    InvalidMint,
+    #[msg("Invalid burn_token key")]
+    InvalidBurnToken,
     #[msg("Amount must be greater than 0")]
     AmountNotPositive,
     #[msg("The quote deadline has not passed!")]

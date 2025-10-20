@@ -44,7 +44,7 @@ pub struct DepositForBurn<'info> {
 
     #[account(
         mut,
-        associated_token::mint = mint,
+        associated_token::mint = burn_token,
         associated_token::authority = signer,
         associated_token::token_program = token_program
     )]
@@ -52,14 +52,16 @@ pub struct DepositForBurn<'info> {
 
     #[account(
         mut,
-        constraint = mint.key() == SponsoredCCTPQuote::new(&params.quote).burn_token()? @ SvmError::InvalidMint,
+        constraint =
+            burn_token.key() == SponsoredCCTPQuote::new(&params.quote).burn_token()?
+            @ SvmError::InvalidBurnToken,
         mint::token_program = token_program,
     )]
-    pub mint: InterfaceAccount<'info, Mint>,
+    pub burn_token: InterfaceAccount<'info, Mint>,
 
     /// CHECK: denylist PDA, checked in CCTP. Seeds must be ["denylist_account", signer.key()] (CCTP
     // TokenMessengerMinterV2 program).
-    pub token_messenger_minter_denylist_account: UncheckedAccount<'info>,
+    pub denylist_account: UncheckedAccount<'info>,
 
     /// CHECK: empty PDA, checked in CCTP. Seeds must be ["sender_authority"] (CCTP TokenMessengerMinterV2 program).
     pub token_messenger_minter_sender_authority: UncheckedAccount<'info>,
@@ -145,13 +147,13 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
         event_rent_payer: ctx.accounts.rent_fund.to_account_info(),
         sender_authority_pda: ctx.accounts.token_messenger_minter_sender_authority.to_account_info(),
         burn_token_account: ctx.accounts.depositor_token_account.to_account_info(),
-        denylist_account: ctx.accounts.token_messenger_minter_denylist_account.to_account_info(),
+        denylist_account: ctx.accounts.denylist_account.to_account_info(),
         message_transmitter: ctx.accounts.message_transmitter.to_account_info(),
         token_messenger: ctx.accounts.token_messenger.to_account_info(),
         remote_token_messenger: ctx.accounts.remote_token_messenger.to_account_info(),
         token_minter: ctx.accounts.token_minter.to_account_info(),
         local_token: ctx.accounts.local_token.to_account_info(),
-        burn_token_mint: ctx.accounts.mint.to_account_info(),
+        burn_token_mint: ctx.accounts.burn_token.to_account_info(),
         message_sent_event_data: ctx.accounts.message_sent_event_data.to_account_info(),
         message_transmitter_program: ctx.accounts.message_transmitter_program.to_account_info(),
         token_messenger_minter_program: ctx.accounts.token_messenger_minter_program.to_account_info(),
