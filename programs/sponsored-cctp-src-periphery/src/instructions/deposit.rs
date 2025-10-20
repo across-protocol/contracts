@@ -177,7 +177,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
         quote_nonce: quote.nonce()?.to_vec(),
         origin_sender: ctx.accounts.signer.key(),
         final_recipient: quote.final_recipient()?,
-        quote_deadline: quote.deadline()?,
+        quote_deadline,
         max_bps_to_sponsor: quote.max_bps_to_sponsor()?,
         final_token: quote.final_token()?,
         signature: params.signature.to_vec(),
