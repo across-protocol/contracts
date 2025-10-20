@@ -70,8 +70,8 @@ abstract contract ArbitraryActionFlowExecutor {
         // Calculate bps to sponsor based on maxBpsToSponsor
 
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
-        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_SCALAR) + (amount + extraFeesToSponsor - 1)) /
-            (amount + extraFeesToSponsor);
+        uint256 totalAmount = amount + extraFeesToSponsor;
+        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_SCALAR) + totalAmount - 1) / totalAmount;
         if (bpsToSponsor > maxBpsToSponsor) {
             bpsToSponsor = maxBpsToSponsor;
         }
@@ -120,8 +120,9 @@ abstract contract ArbitraryActionFlowExecutor {
         }
 
         // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
-        uint256 amountToSponsor = (((finalAmount * BPS_SCALAR) + BPS_SCALAR - bpsToSponsor - 1) /
-            (BPS_SCALAR - bpsToSponsor)) - finalAmount;
+        uint256 bpsToSponsorAdjusted = BPS_SCALAR - bpsToSponsor;
+        uint256 amountToSponsor = (((finalAmount * BPS_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
+            finalAmount;
         if (amountToSponsor > 0) {
             DonationBox donationBox = _getDonationBox();
             if (IERC20(finalToken).balanceOf(address(donationBox)) < amountToSponsor) {
