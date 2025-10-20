@@ -43,7 +43,7 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             uint256 maxFee,
             uint32 minFinalityThreshold,
             bytes memory hookData
-        ) = SponsoredCCTPQuoteLib.getDespoitForBurnData(quote);
+        ) = SponsoredCCTPQuoteLib.getDepositForBurnData(quote);
 
         IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(burnToken).forceApprove(address(cctpTokenMessenger), amount);

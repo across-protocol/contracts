@@ -34,7 +34,7 @@ library SponsoredCCTPQuoteLib {
     // Minimum length of the message body (can be longer due to variable actionData)
     uint256 private constant MIN_MSG_BYTES_LENGTH = 568;
 
-    function getDespoitForBurnData(
+    function getDepositForBurnData(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
     )
         internal
