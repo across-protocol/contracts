@@ -34,7 +34,6 @@ contract AcrossEventEmitter is ReentrancyGuard {
      */
     function emitData(bytes calldata data) external nonReentrant {
         require(data.length > 0, "Data cannot be empty");
-        require(data.length <= 2048, "Data too large");
         emit MetadataEmitted(data);
     }
 }
