@@ -134,7 +134,7 @@ impl<'a> SponsoredCCTPQuote<'a> {
         // Safe: HOOK_DATA_START and HOOK_DATA_END are derived from SponsoredCCTPQuoteFields, so this should always be
         // in-bounds.
         let data_slice = &self.data[HOOK_DATA_START..HOOK_DATA_END];
-        // Safe: data_slice is exactly HOOK_DATA_LENGTH bytes long, so we can convert it to &[u8; HOOK_DATA_LENGTH].
+        // Safe: data_slice is exactly HOOK_DATA_LENGTH bytes long, so we can convert it to [u8; HOOK_DATA_LENGTH].
         let hook_data_bytes = <&[u8; HOOK_DATA_LENGTH]>::try_from(data_slice).unwrap();
         hook_data_bytes.to_vec()
     }
@@ -144,35 +144,36 @@ impl<'a> SponsoredCCTPQuote<'a> {
         let end = field.end();
         // Safe: start and end are derived from SponsoredCCTPQuoteFields, so this should always be in-bounds.
         let data_slice = &self.data[start..end];
-        // Safe: data_slice is exactly 32 bytes long, so we can convert it to &[u8; 32].
+        // Safe: data_slice is exactly 32 bytes long, so we can convert it to [u8; 32].
         <&[u8; 32]>::try_from(data_slice).unwrap()
     }
 
     fn decode_to_u32(data: &[u8; 32]) -> Result<u32> {
-        let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
-        let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
-        if h_value > 0 || l_value > (u32::MAX as u128) {
+        if data[..28].iter().any(|&b| b != 0) {
             return err!(DataDecodingError::CannotDecodeToU32);
         }
-        Ok(l_value as u32)
+        // Safe: data[28..] is exactly 4 bytes long, so we can convert it to [u8; 4].
+        Ok(u32::from_be_bytes(data[28..].try_into().unwrap()))
     }
 
     fn decode_to_u64(data: &[u8; 32]) -> Result<u64> {
-        let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
-        let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
-        if h_value > 0 || l_value > (u64::MAX as u128) {
+        if data[..24].iter().any(|&b| b != 0) {
             return err!(DataDecodingError::CannotDecodeToU64);
         }
-        Ok(l_value as u64)
+        // Safe: data[24..] is exactly 8 bytes long, so we can convert it to [u8; 8].
+        Ok(u64::from_be_bytes(data[24..].try_into().unwrap()))
     }
 
     fn decode_to_i64(data: &[u8; 32]) -> Result<i64> {
-        let h_value = u128::from_be_bytes(data[..16].try_into().unwrap());
-        let l_value = u128::from_be_bytes(data[16..].try_into().unwrap());
-        if h_value > 0 || l_value > (i64::MAX as u128) {
+        if data[..24].iter().any(|&b| b != 0) {
             return err!(DataDecodingError::CannotDecodeToI64);
         }
-        Ok(l_value as i64)
+        // Safe: data[24..] is exactly 8 bytes long, so we can convert it to [u8; 8].
+        let v_u64 = u64::from_be_bytes(data[24..].try_into().unwrap());
+        match i64::try_from(v_u64) {
+            Ok(v_i64) => Ok(v_i64),
+            Err(_) => err!(DataDecodingError::CannotDecodeToI64),
+        }
     }
 
     fn decode_to_pubkey(data: &[u8; 32]) -> Result<Pubkey> {
