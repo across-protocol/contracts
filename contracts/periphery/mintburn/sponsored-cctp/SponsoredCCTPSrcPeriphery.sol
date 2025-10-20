@@ -3,12 +3,15 @@ pragma solidity ^0.8.0;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 
 contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
+    using SafeERC20 for IERC20;
+
     ITokenMessengerV2 public immutable cctpTokenMessenger;
 
     uint32 public immutable sourceDomain;
@@ -42,8 +45,8 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             bytes memory hookData
         ) = SponsoredCCTPQuoteLib.getDespoitForBurnData(quote);
 
-        IERC20(burnToken).transferFrom(msg.sender, address(this), amount);
-        IERC20(burnToken).approve(address(cctpTokenMessenger), amount);
+        IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(burnToken).safeApprove(address(cctpTokenMessenger), amount);
 
         usedNonces[quote.nonce] = true;
 
