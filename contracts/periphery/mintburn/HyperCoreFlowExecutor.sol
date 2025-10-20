@@ -791,7 +791,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             IERC20(finalToken).safeTransfer(address(swapHandler), sponsorDeltaEvm);
             cumulativeSponsoredAmount[finalToken] += sponsorDeltaEvm;
             if (
-                HyperCoreLib.isCoreAmountSafeToBridge(
+                !HyperCoreLib.isCoreAmountSafeToBridge(
                     finalTokenCoreInfo.coreIndex,
                     sponsorDeltaCore,
                     finalTokenCoreInfo.bridgeSafetyBufferCore
