@@ -24,6 +24,11 @@ pub struct SponsoredDepositForBurn {
 }
 
 #[event]
+pub struct CreatedEventAccount {
+    pub message_sent_event_data: Pubkey,
+}
+
+#[event]
 pub struct ReclaimedEventAccount {
     pub message_sent_event_data: Pubkey,
 }

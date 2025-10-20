@@ -363,20 +363,28 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     );
 
     const events = await readEventsUntilFound(provider.connection, txSignature, [program]);
-    const event = events.find((event) => event.name === "sponsoredDepositForBurn")?.data;
-    assert.isNotNull(event, "SponsoredDepositForBurn event should be emitted");
-    assert.isTrue(event.quoteNonce.equals(nonce), "Invalid quoteNonce");
-    assert.strictEqual(event.originSender.toString(), depositor.publicKey.toString(), "Invalid originSender");
+
+    const depositEvent = events.find((event) => event.name === "sponsoredDepositForBurn")?.data;
+    assert.isNotNull(depositEvent, "SponsoredDepositForBurn event should be emitted");
+    assert.isTrue(depositEvent.quoteNonce.equals(nonce), "Invalid quoteNonce");
+    assert.strictEqual(depositEvent.originSender.toString(), depositor.publicKey.toString(), "Invalid originSender");
     assert.strictEqual(
-      event.finalRecipient.toString(),
+      depositEvent.finalRecipient.toString(),
       new PublicKey(finalRecipient).toString(),
       "Invalid finalRecipient"
     );
-    assert.strictEqual(event.quoteDeadline.toString(), deadline.toString(), "Invalid quoteDeadline");
-    assert.strictEqual(event.maxBpsToSponsor.toString(), maxBpsToSponsor.toString(), "Invalid maxBpsToSponsor");
-    assert.strictEqual(event.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
-    assert.strictEqual(event.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
-    assert.isTrue(event.signature.equals(Buffer.from(signature)), "Invalid signature");
+    assert.strictEqual(depositEvent.quoteDeadline.toString(), deadline.toString(), "Invalid quoteDeadline");
+    assert.strictEqual(depositEvent.maxBpsToSponsor.toString(), maxBpsToSponsor.toString(), "Invalid maxBpsToSponsor");
+    assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
+    assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
+    assert.isTrue(depositEvent.signature.equals(Buffer.from(signature)), "Invalid signature");
+
+    const createdEventAccountEvent = events.find((event) => event.name === "createdEventAccount")?.data;
+    assert.strictEqual(
+      createdEventAccountEvent.messageSentEventData.toString(),
+      messageSentEventData.publicKey.toString(),
+      "Invalid messageSentEventData"
+    );
 
     const message = decodeMessageSentDataV2(
       (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message

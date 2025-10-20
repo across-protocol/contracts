@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams;
 use crate::{
     error::{CommonError, SvmError},
-    event::{ReclaimedEventAccount, ReclaimedUsedNonceAccount, SponsoredDepositForBurn},
+    event::{CreatedEventAccount, ReclaimedEventAccount, ReclaimedUsedNonceAccount, SponsoredDepositForBurn},
     message_transmitter_v2::{self, program::MessageTransmitterV2},
     state::{State, UsedNonce},
     token_messenger_minter_v2::{
@@ -185,6 +185,8 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
         final_token: quote.final_token()?,
         signature: params.signature.to_vec(),
     });
+
+    emit_cpi!(CreatedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });
 
     Ok(())
 }
