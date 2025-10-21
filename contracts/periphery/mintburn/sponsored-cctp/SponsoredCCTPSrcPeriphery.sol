@@ -45,10 +45,10 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             bytes memory hookData
         ) = SponsoredCCTPQuoteLib.getDepositForBurnData(quote);
 
+        usedNonces[quote.nonce] = true;
+
         IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(burnToken).forceApprove(address(cctpTokenMessenger), amount);
-
-        usedNonces[quote.nonce] = true;
 
         cctpTokenMessenger.depositForBurnWithHook(
             amount,
