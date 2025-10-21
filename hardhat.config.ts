@@ -91,7 +91,11 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
 const NO_VIA_IR_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 1 },
+    optimizer: {
+      enabled: true,
+      runs: 1,
+      details: { yul: false },
+    },
     viaIR: false,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
