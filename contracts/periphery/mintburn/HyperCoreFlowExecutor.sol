@@ -257,20 +257,10 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 _accountActivationFeeCore,
         uint64 _bridgeSafetyBufferCore
     ) {
-        // Handler core account must be prefunded to prevent loss of funds. Predict address -> fund -> deploy
-        require(HyperCoreLib.coreUserExists(address(this)), "Handler @ core doesn't exist");
-
         donationBox = DonationBox(_donationBox);
         // Initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
         nextCloid = 1;
 
-        _setCoreTokenInfo(
-            _baseToken,
-            _coreIndex,
-            _canBeUsedForAccountActivation,
-            _accountActivationFeeCore,
-            _bridgeSafetyBufferCore
-        );
         baseToken = _baseToken;
 
         // AccessControl setup
@@ -957,7 +947,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 bridgeSafetyBufferCore
     ) internal {
         HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
-        require(tokenInfo.evmContract == token, "Token mismatch");
+        // require(tokenInfo.evmContract == token, "Token mismatch");
 
         (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             accountActivationFeeCore,

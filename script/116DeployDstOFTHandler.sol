@@ -49,6 +49,16 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
 
         console.log("DonationBox ownership transferred to:", address(dstOFTHandler));
 
+        dstOFTHandler.setCoreTokenInfo(
+            baseToken,
+            coreIndex,
+            canBeUsedForAccountActivation,
+            accountActivationFeeCore,
+            bridgeSafetyBufferCore
+        );
+
+        console.log("CoreTokenInfo set");
+
         vm.stopBroadcast();
     }
 }
