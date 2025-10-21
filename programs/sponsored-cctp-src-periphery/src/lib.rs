@@ -22,7 +22,7 @@ solana_security_txt::security_txt! {
     auditors: "OpenZeppelin"
 }
 
-declare_id!("3xGkdXunLALbrKxuouchngkUpThU2oyNjJpBECV4bkEC");
+declare_id!("CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).
 declare_program!(message_transmitter_v2);
