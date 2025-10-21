@@ -701,7 +701,10 @@ contract HyperCoreFlowExecutor is AccessControl {
     }
 
     /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponding SwapHandler has enough balance
-    function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external {
+    function finalizePendingSwaps(
+        address finalToken,
+        uint256 maxToProcess
+    ) external returns (uint256 swapsProcessed, uint256 totalSwapsProcessed) {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
 
@@ -709,7 +712,7 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         uint256 head = pendingQueueHead[finalToken];
         bytes32[] storage queue = pendingQueue[finalToken];
-        if (head >= queue.length || maxToProcess == 0) return;
+        if (head >= queue.length || maxToProcess == 0) return (0, head);
 
         // Note: `availableCore` is the SwapHandler's Core balance for `finalToken`, which monotonically increases
         uint64 availableCore = HyperCoreLib.spotBalance(address(finalTokenInfo.swapHandler), coreTokenInfo.coreIndex);
@@ -752,6 +755,8 @@ contract HyperCoreFlowExecutor is AccessControl {
         if (processed > 0) {
             lastPullFundsBlock[finalToken] = block.number;
         }
+
+        return (processed, head);
     }
 
     function activateUserAccount(
