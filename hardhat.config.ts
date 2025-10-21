@@ -87,6 +87,16 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   },
 };
 
+// Override settings for contracts that must not use viaIR
+const NO_VIA_IR_CONTRACT_COMPILER_SETTINGS = {
+  version: solcVersion,
+  settings: {
+    optimizer: { enabled: true, runs: 1000000 },
+    viaIR: false,
+    debug: { revertStrings: isTest ? "debug" : "strip" },
+  },
+};
+
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
@@ -115,6 +125,7 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/ArbitraryActionFlowExecutor.sol": NO_VIA_IR_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
