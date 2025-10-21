@@ -88,7 +88,7 @@ abstract contract ArbitraryActionFlowExecutor {
 
         // Decompress calls: add value: 0 to each call and wrap in Instructions
         // We encode Instructions with calls and a drainLeftoverTokens call at the end
-        uint256 callCount = compressedCalls.length;
+        // uint256 callCount = compressedCalls.length;
 
         // Build instructions for MulticallHandler
         bytes memory instructions = _buildMulticallInstructions(
@@ -135,7 +135,7 @@ abstract contract ArbitraryActionFlowExecutor {
             }
         }
 
-        emit ArbitraryActionsExecuted(quoteNonce, callCount, finalAmount);
+        emit ArbitraryActionsExecuted(quoteNonce, compressedCalls.length, finalAmount);
 
         // Route to appropriate destination based on transferToCore flag
         if (transferToCore) {
