@@ -94,9 +94,8 @@ const NO_VIA_IR_CONTRACT_COMPILER_SETTINGS = {
     optimizer: {
       enabled: true,
       runs: 1,
-      details: { yul: false },
     },
-    viaIR: false,
+    viaIR: true,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -130,6 +129,7 @@ const config: HardhatUserConfig = {
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/periphery/mintburn/ArbitraryActionFlowExecutor.sol": NO_VIA_IR_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol": NO_VIA_IR_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
