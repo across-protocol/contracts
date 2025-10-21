@@ -10,8 +10,14 @@ import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
+import { Lockable } from "../../../Lockable.sol";
 
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor {
+contract SponsoredCCTPDstPeriphery is
+    SponsoredCCTPInterface,
+    HyperCoreFlowExecutor,
+    ArbitraryActionFlowExecutor,
+    Lockable
+{
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -52,15 +58,19 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         signer = _signer;
     }
 
-    function setSigner(address _signer) external onlyDefaultAdmin {
+    function setSigner(address _signer) external nonReentrant onlyDefaultAdmin {
         signer = _signer;
     }
 
-    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external onlyDefaultAdmin {
+    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyDefaultAdmin {
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 
-    function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
+    function receiveMessage(
+        bytes memory message,
+        bytes memory attestation,
+        bytes memory signature
+    ) external nonReentrant {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
         // If the hook data is invalid or the mint recipient is not this contract we cannot process the message and therefore we return.

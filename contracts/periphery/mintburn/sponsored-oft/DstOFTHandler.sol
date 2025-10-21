@@ -11,6 +11,7 @@ import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressCo
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
+import { Lockable } from "../../../Lockable.sol";
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -18,7 +19,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor {
+contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor, Lockable {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -92,7 +93,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         }
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external onlyDefaultAdmin {
+    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
         authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
@@ -109,7 +110,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         bytes calldata _message,
         address /* _executor */,
         bytes calldata /* _extraData */
-    ) external payable override {
+    ) external payable override nonReentrant {
         _requireAuthorizedMessage(_oApp, _message);
 
         // Decode the actual `composeMsg` payload to extract the recipient address
