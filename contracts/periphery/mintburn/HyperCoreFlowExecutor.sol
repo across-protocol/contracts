@@ -754,6 +754,12 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
     }
 
+    /**
+     * @notice Activates a user account on Core by funding the account activation fee.
+     * @param quoteNonce The nonce of the quote that is used to identify the user.
+     * @param finalRecipient The address of the recipient of the funds.
+     * @param fundingToken The address of the token that is used to fund the account activation fee.
+     */
     function activateUserAccount(
         bytes32 quoteNonce,
         address finalRecipient,
@@ -1154,6 +1160,21 @@ contract HyperCoreFlowExecutor is AccessControl {
         }
     }
 
+    /**
+     * @notice Given the quote budget and the price, this function calculates the size of the buy limit order to set
+     * as well as the minimum amount of out token to expect. This calculation is based on the HIP-1 spot trading formula.
+     * Source: https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-1-native-token-standard#spot-trading
+     * @param quoteBudget The budget of the quote in base token.
+     * @param pxX1e8 The price of the quote token in base token.
+     * @param quoteD The decimals of the quote token.
+     * @param quoteSz The size decimals of the quote token.
+     * @param baseD The decimals of the base token.
+     * @param baseSz The size decimals of the base token.
+     * @param feePpm The fee in ppm that is applied to the quote.
+     * @return szX1e8 The size of the limit order to set.
+     * @return tokensToSendCore The number of tokens to send for this trade to suceed.
+     * @return minAmountOutCore The minimum amount of out token to expect.
+     */
     function _calcLOAmountsBuy(
         uint64 quoteBudget,
         uint64 pxX1e8,
@@ -1173,6 +1194,21 @@ contract HyperCoreFlowExecutor is AccessControl {
         minAmountOutCore = outBaseNet;
     }
 
+    /**
+     * @notice Given the quote budget and the price, this function calculates the size of the sell limit order to set
+     * as well as the minimum amount of out token to expect. This calculation is based on the HIP-1 spot trading formula.
+     * Source: https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-1-native-token-standard#spot-trading
+     * @param baseBudget The budget of the quote in base token.
+     * @param pxX1e8 The price of the quote token in base token.
+     * @param quoteD The decimals of the quote token.
+     * @param quoteSz The size decimals of the quote token.
+     * @param baseD The decimals of the base token.
+     * @param baseSz The size decimals of the base token.
+     * @param feePpm The fee in ppm that is applied to the quote.
+     * @return szX1e8 The size of the limit order to set.
+     * @return tokensToSendCore The number of tokens to send for this trade to suceed.
+     * @return minAmountOutCore The minimum amount of out token to expect.
+     */
     function _calcLOAmountsSell(
         uint64 baseBudget,
         uint64 pxX1e8,
