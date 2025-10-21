@@ -947,7 +947,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 bridgeSafetyBufferCore
     ) internal {
         HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
-        // require(tokenInfo.evmContract == token, "Token mismatch");
+        require(tokenInfo.evmContract == token, "Token mismatch");
 
         (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             accountActivationFeeCore,
