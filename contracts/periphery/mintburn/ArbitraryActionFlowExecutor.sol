@@ -68,95 +68,84 @@ abstract contract ArbitraryActionFlowExecutor {
         bool transferToCore,
         uint256 extraFeesToSponsor
     ) internal {
-        // Decode the compressed action data
-        CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
-
-        // Total amount to sponsor is the extra fees to sponsor, ceiling division.
-        uint256 totalAmount = amount + extraFeesToSponsor;
-        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
-        uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
-        if (bpsToSponsor > maxBpsToSponsorAdjusted) {
-            bpsToSponsor = maxBpsToSponsorAdjusted;
-        }
-
-        // Snapshot balances
-        uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
-        uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
-
-        // Transfer tokens to MulticallHandler
-        IERC20(initialToken).safeTransfer(multicallHandler, amount);
-
-        // Decompress calls: add value: 0 to each call and wrap in Instructions
-        // We encode Instructions with calls and a drainLeftoverTokens call at the end
-        uint256 callCount = compressedCalls.length;
-
-        // Build instructions for MulticallHandler
-        bytes memory instructions = _buildMulticallInstructions(
-            compressedCalls,
-            finalToken,
-            address(this) // Send leftover tokens back to this contract
-        );
-
-        // Execute via MulticallHandler
-        MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(
-            initialToken,
-            amount,
-            address(this),
-            instructions
-        );
-
-        uint256 finalAmount;
-
-        // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
-        if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
-            finalToken = initialToken;
-            finalAmount = amount;
-        } else {
-            uint256 finalBalance = IERC20(finalToken).balanceOf(address(this));
-            if (finalBalance >= finalAmountSnapshot) {
-                // This means the swap did happen, so we check the balance of the output token and send it.
-                finalAmount = finalBalance - finalAmountSnapshot;
-            } else {
-                // If we somehow lost final tokens, just set the finalAmount to 0.
-                finalAmount = 0;
-            }
-        }
-
-        // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
-        uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
-        uint256 amountToSponsor = (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) /
-            bpsToSponsorAdjusted) - finalAmount;
-        if (amountToSponsor > 0) {
-            DonationBox donationBox = _getDonationBox();
-            if (IERC20(finalToken).balanceOf(address(donationBox)) < amountToSponsor) {
-                amountToSponsor = 0;
-            } else {
-                donationBox.withdraw(IERC20(finalToken), amountToSponsor);
-            }
-        }
-
-        emit ArbitraryActionsExecuted(quoteNonce, callCount, finalAmount);
-
-        // Route to appropriate destination based on transferToCore flag
-        if (transferToCore) {
-            _executeSimpleTransferFlow(
-                finalAmount,
-                quoteNonce,
-                maxBpsToSponsor,
-                finalRecipient,
-                amountToSponsor,
-                finalToken
-            );
-        } else {
-            _fallbackHyperEVMFlow(
-                finalAmount,
-                quoteNonce,
-                maxBpsToSponsor,
-                finalRecipient,
-                amountToSponsor,
-                finalToken
-            );
-        }
+        // // Decode the compressed action data
+        // CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
+        // // Total amount to sponsor is the extra fees to sponsor, ceiling division.
+        // uint256 totalAmount = amount + extraFeesToSponsor;
+        // uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
+        // uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
+        // if (bpsToSponsor > maxBpsToSponsorAdjusted) {
+        //     bpsToSponsor = maxBpsToSponsorAdjusted;
+        // }
+        // // Snapshot balances
+        // uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
+        // uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
+        // // Transfer tokens to MulticallHandler
+        // IERC20(initialToken).safeTransfer(multicallHandler, amount);
+        // // Decompress calls: add value: 0 to each call and wrap in Instructions
+        // // We encode Instructions with calls and a drainLeftoverTokens call at the end
+        // uint256 callCount = compressedCalls.length;
+        // // Build instructions for MulticallHandler
+        // bytes memory instructions = _buildMulticallInstructions(
+        //     compressedCalls,
+        //     finalToken,
+        //     address(this) // Send leftover tokens back to this contract
+        // );
+        // // Execute via MulticallHandler
+        // MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(
+        //     initialToken,
+        //     amount,
+        //     address(this),
+        //     instructions
+        // );
+        // uint256 finalAmount;
+        // // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
+        // if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
+        //     finalToken = initialToken;
+        //     finalAmount = amount;
+        // } else {
+        //     uint256 finalBalance = IERC20(finalToken).balanceOf(address(this));
+        //     if (finalBalance >= finalAmountSnapshot) {
+        //         // This means the swap did happen, so we check the balance of the output token and send it.
+        //         finalAmount = finalBalance - finalAmountSnapshot;
+        //     } else {
+        //         // If we somehow lost final tokens, just set the finalAmount to 0.
+        //         finalAmount = 0;
+        //     }
+        // }
+        // // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
+        // uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
+        // uint256 amountToSponsor = (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) /
+        //     bpsToSponsorAdjusted) - finalAmount;
+        // if (amountToSponsor > 0) {
+        //     DonationBox donationBox = _getDonationBox();
+        //     if (IERC20(finalToken).balanceOf(address(donationBox)) < amountToSponsor) {
+        //         amountToSponsor = 0;
+        //     } else {
+        //         donationBox.withdraw(IERC20(finalToken), amountToSponsor);
+        //     }
+        // }
+        // emit ArbitraryActionsExecuted(quoteNonce, callCount, finalAmount);
+        // // Route to appropriate destination based on transferToCore flag
+        // if (transferToCore) {
+        //     _executeSimpleTransferFlow(
+        //         finalAmount,
+        //         quoteNonce,
+        //         maxBpsToSponsor,
+        //         finalRecipient,
+        //         amountToSponsor,
+        //         finalToken
+        //     );
+        // } else {
+        //     _fallbackHyperEVMFlow(
+        //         finalAmount,
+        //         quoteNonce,
+        //         maxBpsToSponsor,
+        //         finalRecipient,
+        //         amountToSponsor,
+        //         finalToken
+        //     );
+        // }
     }
 
     /**
