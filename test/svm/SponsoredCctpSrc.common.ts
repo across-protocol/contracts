@@ -8,6 +8,7 @@ import { SponsoredCctpSrcPeriphery } from "../../target/types/sponsored_cctp_src
 
 export const provider = anchor.AnchorProvider.env();
 export const program = anchor.workspace.SponsoredCctpSrcPeriphery as Program<SponsoredCctpSrcPeriphery>;
+export const connection = provider.connection;
 export const owner = provider.wallet.publicKey;
 const solanaDomain = 5; // CCTP domain.
 

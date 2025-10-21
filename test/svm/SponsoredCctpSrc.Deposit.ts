@@ -7,6 +7,7 @@ import {
   Keypair,
   PublicKey,
   sendAndConfirmTransaction,
+  SendTransactionError,
   SystemProgram,
   Transaction,
 } from "@solana/web3.js";
@@ -15,7 +16,7 @@ import * as crypto from "crypto";
 import { ethers } from "ethers";
 import { TokenMessengerMinterV2 } from "../../target/types/token_messenger_minter_v2";
 import { MessageTransmitterV2 } from "../../src/svm/assets/message_transmitter_v2";
-import { program, provider, initializeState, owner, createQuoteSigner } from "./SponsoredCctpSrc.common";
+import { program, provider, connection, initializeState, owner, createQuoteSigner } from "./SponsoredCctpSrc.common";
 import { SponsoredCCTPQuote } from "./SponsoredCctpSrc.types";
 import {
   findProgramAddress,
@@ -33,6 +34,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const { payer } = anchor.AnchorProvider.env().wallet as anchor.Wallet;
 
   const depositor = Keypair.generate();
+  const operator = Keypair.generate();
   const { quoteSigner, quoteSignerPubkey } = createQuoteSigner();
 
   const tokenDecimals = 6;
@@ -139,20 +141,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   };
 
   const setupBurnToken = async () => {
-    burnToken = await createMint(
-      provider.connection,
-      payer,
-      owner,
-      owner,
-      tokenDecimals,
-      undefined,
-      undefined,
-      tokenProgram
-    );
+    burnToken = await createMint(connection, payer, owner, owner, tokenDecimals, undefined, undefined, tokenProgram);
 
     depositorTokenAccount = (
       await getOrCreateAssociatedTokenAccount(
-        provider.connection,
+        connection,
         payer,
         burnToken,
         depositor.publicKey,
@@ -163,7 +156,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       )
     ).address;
     await mintTo(
-      provider.connection,
+      connection,
       payer,
       burnToken,
       depositorTokenAccount,
@@ -248,11 +241,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
       authority: owner,
       payer: owner,
-      recentSlot: await provider.connection.getSlot(),
+      recentSlot: await connection.getSlot(),
     });
 
     // Submit the ALT creation transaction
-    await sendAndConfirmTransaction(provider.connection, new Transaction().add(lookupTableInstruction), [payer], {
+    await sendAndConfirmTransaction(connection, new Transaction().add(lookupTableInstruction), [payer], {
       commitment: "confirmed",
       skipPreflight: true,
     });
@@ -265,26 +258,26 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       addresses: lookupAddresses,
     });
 
-    await sendAndConfirmTransaction(provider.connection, new Transaction().add(extendInstruction), [payer], {
+    await sendAndConfirmTransaction(connection, new Transaction().add(extendInstruction), [payer], {
       commitment: "confirmed",
       skipPreflight: true,
     });
 
     // Wait for slot to advance. ALTs only active after slot advance.
-    const initialSlot = await provider.connection.getSlot();
-    while ((await provider.connection.getSlot()) === initialSlot) {
+    const initialSlot = await connection.getSlot();
+    while ((await connection.getSlot()) === initialSlot) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     // Fetch the AddressLookupTableAccount.
-    const fetchedLookupTableAccount = (await provider.connection.getAddressLookupTable(lookupTableAddress)).value;
+    const fetchedLookupTableAccount = (await connection.getAddressLookupTable(lookupTableAddress)).value;
     if (fetchedLookupTableAccount === null) throw new Error("AddressLookupTableAccount not fetched");
     lookupTableAccount = fetchedLookupTableAccount;
   };
 
   const setupRentFund = async () => {
     rentFund = findProgramAddress("rent_fund", program.programId).publicKey;
-    await provider.connection.requestAirdrop(rentFund, 1_000_000_000); // 1 SOL
+    await connection.requestAirdrop(rentFund, 1_000_000_000); // 1 SOL
   };
 
   const getUsedNonce = (nonce: Buffer): PublicKey => {
@@ -293,20 +286,21 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   };
 
   before(async () => {
-    await provider.connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
+    await connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
+    await connection.requestAirdrop(operator.publicKey, 10_000_000_000); // 10 SOL
 
     setupCctpAccounts();
 
     await setupRentFund();
+
+    ({ state, sourceDomain } = await initializeState({ signer: quoteSignerPubkey }));
+
+    tokenProgram = TOKEN_PROGRAM_ID;
+    await setupBurnToken();
+    await setupLookupTable();
   });
 
   beforeEach(async () => {
-    ({ state, sourceDomain } = await initializeState({ signer: quoteSignerPubkey }));
-
-    tokenProgram = TOKEN_PROGRAM_ID; // Some tests might override this.
-    await setupBurnToken();
-    await setupLookupTable();
-
     messageSentEventData = Keypair.generate();
   });
 
@@ -358,14 +352,14 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       .accounts(depositAccounts)
       .instruction();
     const txSignature = await sendTransactionWithExistingLookupTable(
-      provider.connection,
+      connection,
       [depositIx],
       lookupTableAccount,
       depositor,
       [messageSentEventData]
     );
 
-    const depositorTokenAmount = (await getAccount(provider.connection, depositorTokenAccount)).amount;
+    const depositorTokenAmount = (await getAccount(connection, depositorTokenAccount)).amount;
     const expectedDepositorTokenAmount = seedBalance - BigInt(burnAmount.toString());
     assert.strictEqual(
       depositorTokenAmount.toString(),
@@ -373,7 +367,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       "Depositor token amount mismatch"
     );
 
-    const events = await readEventsUntilFound(provider.connection, txSignature, [program]);
+    const events = await readEventsUntilFound(connection, txSignature, [program]);
 
     const depositEvent = events.find((event) => event.name === "sponsoredDepositForBurn")?.data;
     assert.isNotNull(depositEvent, "SponsoredDepositForBurn event should be emitted");
@@ -431,5 +425,96 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const usedNonceCloseInfo = await program.methods.getUsedNonceCloseInfo({ nonce: Array.from(nonce) }).view();
     assert.strictEqual(usedNonceCloseInfo.canCloseAfter.toString(), deadline.toString(), "Invalid canCloseAfter");
     assert.isFalse(usedNonceCloseInfo.canCloseNow, "Used nonce should not be closable now");
+  });
+
+  it("Reclaim used_nonce account", async () => {
+    const nonce = crypto.randomBytes(32);
+    const usedNonce = getUsedNonce(nonce);
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
+
+    const quoteData: SponsoredCCTPQuote = {
+      sourceDomain,
+      destinationDomain: remoteDomain.toNumber(),
+      mintRecipient: ethers.utils.hexlify(mintRecipient),
+      amount: burnAmount,
+      burnToken: ethers.utils.hexlify(burnToken.toBuffer()),
+      destinationCaller: ethers.utils.hexlify(destinationCaller),
+      maxFee,
+      minFinalityThreshold,
+      nonce: ethers.utils.hexlify(nonce),
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient: ethers.utils.hexlify(finalRecipient),
+      finalToken: ethers.utils.hexlify(finalToken),
+    };
+    const { quote, signature } = await signSponsoredCCTPQuote(quoteSigner, quoteData);
+
+    const depositAccounts = {
+      signer: depositor.publicKey,
+      payer: depositor.publicKey,
+      state,
+      rentFund,
+      usedNonce,
+      depositorTokenAccount,
+      burnToken,
+      denylistAccount,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      remoteTokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      tokenProgram,
+      messageSentEventData: messageSentEventData.publicKey,
+      program: program.programId,
+    };
+    const depositIx = await program.methods
+      .depositForBurn({ quote, signature })
+      .accounts(depositAccounts)
+      .instruction();
+    await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+      messageSentEventData,
+    ]);
+
+    const reclaimIx = await program.methods
+      .reclaimUsedNonceAccount({ nonce: Array.from(nonce) })
+      .accountsPartial({ usedNonce })
+      .instruction();
+
+    try {
+      await sendAndConfirmTransaction(connection, new Transaction().add(reclaimIx), [operator]);
+      assert.fail("Reclaim used nonce account should have failed");
+    } catch (err: any) {
+      assert.instanceOf(err, SendTransactionError);
+      const logs = await (err as SendTransactionError).getLogs(connection);
+      assert.isTrue(
+        logs.some((log) => log.includes("QuoteDeadlineNotPassed")),
+        "Expected QuoteDeadlineNotPassed error log"
+      );
+    }
+
+    const usedNonceLamports = await connection.getBalance(usedNonce);
+    const rentFundLamportsBefore = await connection.getBalance(rentFund);
+
+    await program.methods.setCurrentTime({ newTime: new BN(deadline.add(1).toString()) }).rpc();
+
+    await sendAndConfirmTransaction(connection, new Transaction().add(reclaimIx), [operator]);
+
+    try {
+      await program.account.usedNonce.fetch(usedNonce);
+      assert.fail("Fetching closed account should have failed");
+    } catch (err: any) {
+      assert.instanceOf(err, Error);
+      assert.include((err as Error).message, "Account does not exist", "Expected account not found error");
+    }
+
+    const rentFundLamportsAfter = await connection.getBalance(rentFund);
+    assert.strictEqual(
+      rentFundLamportsAfter,
+      rentFundLamportsBefore + usedNonceLamports,
+      "Rent fund should receive all lamports from reclaimed used nonce account"
+    );
   });
 });
