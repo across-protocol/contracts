@@ -41,10 +41,6 @@ contract DeploySponsoredCCTPDstPeriphery is Script, Test, DeploymentUtils {
             deployer,
             address(donationBox),
             baseToken,
-            coreIndex,
-            canBeUsedForAccountActivation,
-            accountActivationFeeCore,
-            bridgeSafetyBufferCore,
             address(0)
         );
 
@@ -53,16 +49,6 @@ contract DeploySponsoredCCTPDstPeriphery is Script, Test, DeploymentUtils {
         donationBox.transferOwnership(address(sponsoredCCTPDstPeriphery));
 
         console.log("DonationBox ownership transferred to:", address(sponsoredCCTPDstPeriphery));
-
-        sponsoredCCTPDstPeriphery.setCoreTokenInfo(
-            baseToken,
-            coreIndex,
-            canBeUsedForAccountActivation,
-            accountActivationFeeCore,
-            bridgeSafetyBufferCore
-        );
-
-        console.log("CoreTokenInfo set");
 
         vm.stopBroadcast();
     }

@@ -61,22 +61,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         address _ioft,
         address _donationBox,
         address _baseToken,
-        uint32 _coreIndex,
-        bool _canBeUsedForAccountActivation,
-        uint64 _accountActivationFeeCore,
-        uint64 _bridgeSafetyBufferCore,
         address _multicallHandler
-    )
-        HyperCoreFlowExecutor(
-            _donationBox,
-            _baseToken,
-            _coreIndex,
-            _canBeUsedForAccountActivation,
-            _accountActivationFeeCore,
-            _bridgeSafetyBufferCore
-        )
-        ArbitraryEVMFlowExecutor(_multicallHandler)
-    {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
         // baseToken is assigned on `HyperCoreFlowExecutor` creation
         if (baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();

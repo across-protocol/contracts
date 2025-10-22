@@ -244,19 +244,8 @@ contract HyperCoreFlowExecutor is AccessControl {
      *
      * @param _donationBox Sponsorship funds live here
      * @param _baseToken Main token used with this Forwarder
-     * @param _coreIndex HCore index of baseToken
-     * @param _canBeUsedForAccountActivation Whether or not baseToken can be used for account activation fee on HCore
-     * @param _accountActivationFeeCore Fee amount to pay for account activation
-     * @param _bridgeSafetyBufferCore Buffer to use the availability of Bridge funds on core side when bridging this token
      */
-    constructor(
-        address _donationBox,
-        address _baseToken,
-        uint32 _coreIndex,
-        bool _canBeUsedForAccountActivation,
-        uint64 _accountActivationFeeCore,
-        uint64 _bridgeSafetyBufferCore
-    ) {
+    constructor(address _donationBox, address _baseToken) {
         donationBox = DonationBox(_donationBox);
         // Initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
         nextCloid = 1;
