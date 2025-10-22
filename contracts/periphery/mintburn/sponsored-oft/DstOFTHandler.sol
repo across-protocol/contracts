@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
-import { OFTComposeMsgCodec } from "../../../libraries/OFTComposeMsgCodec.sol";
+import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { ExecutionMode } from "./Structs.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";

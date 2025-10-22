@@ -5,9 +5,9 @@ import { Quote } from "./Structs.sol";
 import { QuoteSignLib } from "./QuoteSignLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 
-import { IOFT, IOAppCore, IEndpoint, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
+import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
-import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
+import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
