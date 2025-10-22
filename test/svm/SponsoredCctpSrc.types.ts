@@ -15,4 +15,17 @@ export interface SponsoredCCTPQuote {
   maxUserSlippageBps: ethers.BigNumberish; // uint256
   finalRecipient: string; // bytes32
   finalToken: string; // bytes32
+  executionMode: number; // uint8
+  actionData: ethers.BytesLike; // bytes
+}
+
+export interface HookData {
+  nonce: string; // bytes32
+  deadline: ethers.BigNumber; // uint256
+  maxBpsToSponsor: ethers.BigNumber; // uint256
+  maxUserSlippageBps: ethers.BigNumber; // uint256
+  finalRecipient: string; // bytes32
+  finalToken: string; // bytes32
+  executionMode: number; // uint8
+  actionData: string; // bytes
 }

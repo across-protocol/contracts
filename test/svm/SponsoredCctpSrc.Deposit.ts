@@ -17,7 +17,7 @@ import { ethers } from "ethers";
 import { TokenMessengerMinterV2 } from "../../target/types/token_messenger_minter_v2";
 import { MessageTransmitterV2 } from "../../src/svm/assets/message_transmitter_v2";
 import { program, provider, connection, initializeState, owner, createQuoteSigner } from "./SponsoredCctpSrc.common";
-import { SponsoredCCTPQuote } from "./SponsoredCctpSrc.types";
+import { SponsoredCCTPQuote, HookData } from "./SponsoredCctpSrc.types";
 import {
   findProgramAddress,
   sendTransactionWithExistingLookupTable,
@@ -49,6 +49,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const minFinalityThreshold = 5;
   const maxBpsToSponsor = 500;
   const maxUserSlippageBps = 1000;
+  const executionMode = 0; // DirectToCore
+  const actionData = "0x"; // Empty in DirectToCore mode
 
   let sourceDomain: number;
   let messageSentEventData: Keypair;
@@ -75,10 +77,47 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     return denyList;
   };
 
-  const signSponsoredCCTPQuote = async (
+  const signSponsoredCCTPQuote = (signer: ethers.Wallet, quoteData: SponsoredCCTPQuote): Buffer => {
+    const encodedPart1 = ethers.utils.defaultAbiCoder.encode(
+      ["uint32", "uint32", "bytes32", "uint256", "bytes32", "bytes32", "uint256", "uint32"],
+      [
+        quoteData.sourceDomain,
+        quoteData.destinationDomain,
+        quoteData.mintRecipient,
+        quoteData.amount,
+        quoteData.burnToken,
+        quoteData.destinationCaller,
+        quoteData.maxFee,
+        quoteData.minFinalityThreshold,
+      ]
+    );
+    const encodedPart2 = ethers.utils.defaultAbiCoder.encode(
+      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint8", "bytes32"],
+      [
+        quoteData.nonce,
+        quoteData.deadline,
+        quoteData.maxBpsToSponsor,
+        quoteData.maxUserSlippageBps,
+        quoteData.finalRecipient,
+        quoteData.finalToken,
+        quoteData.executionMode,
+        ethers.utils.keccak256(quoteData.actionData),
+      ]
+    );
+    const hash1 = ethers.utils.keccak256(encodedPart1);
+    const hash2 = ethers.utils.keccak256(encodedPart2);
+    const encodedHexString = ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32"], [hash1, hash2]);
+    const digest = ethers.utils.keccak256(encodedHexString);
+
+    // Create simple ECDSA signature over the encoded quote data hash.
+    const signatureHexString = ethers.utils.joinSignature(signer._signingKey().signDigest(digest));
+    return Buffer.from(ethers.utils.arrayify(signatureHexString));
+  };
+
+  const getEncodedQuoteWithSignature = (
     signer: ethers.Wallet,
     quoteData: SponsoredCCTPQuote
-  ): Promise<{ quote: number[]; signature: number[] }> => {
+  ): { quote: Buffer; signature: Buffer } => {
     const encodedHexString = ethers.utils.defaultAbiCoder.encode(
       [
         "uint32",
@@ -95,6 +134,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         "uint256",
         "bytes32",
         "bytes32",
+        "uint8",
+        "bytes",
       ],
       [
         quoteData.sourceDomain,
@@ -111,22 +152,20 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.maxUserSlippageBps,
         quoteData.finalRecipient,
         quoteData.finalToken,
+        quoteData.executionMode,
+        quoteData.actionData,
       ]
     );
-    const encodedQuote = Array.from(Buffer.from(ethers.utils.arrayify(encodedHexString)));
+    const encodedQuote = Buffer.from(ethers.utils.arrayify(encodedHexString));
 
-    const digest = ethers.utils.keccak256(encodedHexString);
-
-    // Create simple ECDSA signature over the ABI encoded quote data hash.
-    const signatureHexString = ethers.utils.joinSignature(signer._signingKey().signDigest(digest));
-    const signature = Array.from(Buffer.from(ethers.utils.arrayify(signatureHexString)));
+    const signature = signSponsoredCCTPQuote(signer, quoteData);
 
     return { quote: encodedQuote, signature };
   };
 
   const getHookDataFromQuote = (quoteData: SponsoredCCTPQuote): Buffer => {
     const encodedHexString = ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32"],
+      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint8", "bytes"],
       [
         quoteData.nonce,
         quoteData.deadline,
@@ -134,10 +173,49 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.maxUserSlippageBps,
         quoteData.finalRecipient,
         quoteData.finalToken,
+        quoteData.executionMode,
+        quoteData.actionData,
       ]
     );
 
     return Buffer.from(ethers.utils.arrayify(encodedHexString));
+  };
+
+  const decodeHookData = (data: Buffer | Uint8Array | string): HookData => {
+    const ABI_TYPES = [
+      "bytes32", // nonce
+      "uint256", // deadline
+      "uint256", // maxBpsToSponsor
+      "uint256", // maxUserSlippageBps
+      "bytes32", // finalRecipient
+      "bytes32", // finalToken
+      "uint8", // executionMode
+      "bytes", // actionData
+    ] as const;
+
+    const decoded = ethers.utils.defaultAbiCoder.decode(ABI_TYPES, data);
+
+    const [
+      nonce,
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient,
+      finalToken,
+      executionMode,
+      actionData,
+    ] = decoded as [string, ethers.BigNumber, ethers.BigNumber, ethers.BigNumber, string, string, number, string];
+
+    return {
+      nonce,
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient,
+      finalToken,
+      executionMode,
+      actionData,
+    };
   };
 
   const setupBurnToken = async () => {
@@ -324,8 +402,10 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData,
     };
-    const { quote, signature } = await signSponsoredCCTPQuote(quoteSigner, quoteData);
+    const { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
 
     const depositAccounts = {
       signer: depositor.publicKey,
@@ -447,8 +527,10 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData,
     };
-    const { quote, signature } = await signSponsoredCCTPQuote(quoteSigner, quoteData);
+    const { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
 
     const depositAccounts = {
       signer: depositor.publicKey,
@@ -516,5 +598,165 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       rentFundLamportsBefore + usedNonceLamports,
       "Rent fund should receive all lamports from reclaimed used nonce account"
     );
+  });
+
+  it("Reclaim used_nonce account", async () => {
+    const nonce = crypto.randomBytes(32);
+    const usedNonce = getUsedNonce(nonce);
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
+
+    const quoteData: SponsoredCCTPQuote = {
+      sourceDomain,
+      destinationDomain: remoteDomain.toNumber(),
+      mintRecipient: ethers.utils.hexlify(mintRecipient),
+      amount: burnAmount,
+      burnToken: ethers.utils.hexlify(burnToken.toBuffer()),
+      destinationCaller: ethers.utils.hexlify(destinationCaller),
+      maxFee,
+      minFinalityThreshold,
+      nonce: ethers.utils.hexlify(nonce),
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient: ethers.utils.hexlify(finalRecipient),
+      finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData,
+    };
+    const { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
+
+    const depositAccounts = {
+      signer: depositor.publicKey,
+      payer: depositor.publicKey,
+      state,
+      rentFund,
+      usedNonce,
+      depositorTokenAccount,
+      burnToken,
+      denylistAccount,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      remoteTokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      tokenProgram,
+      messageSentEventData: messageSentEventData.publicKey,
+      program: program.programId,
+    };
+    const depositIx = await program.methods
+      .depositForBurn({ quote, signature })
+      .accounts(depositAccounts)
+      .instruction();
+    await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+      messageSentEventData,
+    ]);
+
+    const reclaimIx = await program.methods
+      .reclaimUsedNonceAccount({ nonce: Array.from(nonce) })
+      .accountsPartial({ usedNonce })
+      .instruction();
+
+    try {
+      await sendAndConfirmTransaction(connection, new Transaction().add(reclaimIx), [operator]);
+      assert.fail("Reclaim used nonce account should have failed");
+    } catch (err: any) {
+      assert.instanceOf(err, SendTransactionError);
+      const logs = await (err as SendTransactionError).getLogs(connection);
+      assert.isTrue(
+        logs.some((log) => log.includes("QuoteDeadlineNotPassed")),
+        "Expected QuoteDeadlineNotPassed error log"
+      );
+    }
+
+    const usedNonceLamports = await connection.getBalance(usedNonce);
+    const rentFundLamportsBefore = await connection.getBalance(rentFund);
+
+    await program.methods.setCurrentTime({ newTime: new BN(deadline.add(1).toString()) }).rpc();
+
+    await sendAndConfirmTransaction(connection, new Transaction().add(reclaimIx), [operator]);
+
+    try {
+      await program.account.usedNonce.fetch(usedNonce);
+      assert.fail("Fetching closed account should have failed");
+    } catch (err: any) {
+      assert.instanceOf(err, Error);
+      assert.include((err as Error).message, "Account does not exist", "Expected account not found error");
+    }
+
+    const rentFundLamportsAfter = await connection.getBalance(rentFund);
+    assert.strictEqual(
+      rentFundLamportsAfter,
+      rentFundLamportsBefore + usedNonceLamports,
+      "Rent fund should receive all lamports from reclaimed used nonce account"
+    );
+  });
+
+  it("Deposit with maximum actionData length", async () => {
+    const nonce = crypto.randomBytes(32);
+    const usedNonce = getUsedNonce(nonce);
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
+    const executionMode = 1; // ArbitraryActionsToCore
+    const actionDataLenth = 128; // Larger actionData would exceed the transaction message size limits on Solana.
+    const actionData = crypto.randomBytes(actionDataLenth);
+
+    const quoteData: SponsoredCCTPQuote = {
+      sourceDomain,
+      destinationDomain: remoteDomain.toNumber(),
+      mintRecipient: ethers.utils.hexlify(mintRecipient),
+      amount: burnAmount,
+      burnToken: ethers.utils.hexlify(burnToken.toBuffer()),
+      destinationCaller: ethers.utils.hexlify(destinationCaller),
+      maxFee,
+      minFinalityThreshold,
+      nonce: ethers.utils.hexlify(nonce),
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient: ethers.utils.hexlify(finalRecipient),
+      finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData: ethers.utils.hexlify(actionData),
+    };
+    const { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
+
+    const depositAccounts = {
+      signer: depositor.publicKey,
+      payer: depositor.publicKey,
+      state,
+      rentFund,
+      usedNonce,
+      depositorTokenAccount,
+      burnToken,
+      denylistAccount,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      remoteTokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      tokenProgram,
+      messageSentEventData: messageSentEventData.publicKey,
+      program: program.programId,
+    };
+    const depositIx = await program.methods
+      .depositForBurn({ quote, signature })
+      .accounts(depositAccounts)
+      .instruction();
+    await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+      messageSentEventData,
+    ]);
+
+    const message = decodeMessageSentDataV2(
+      (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message
+    );
+    const expectedHookData = getHookDataFromQuote(quoteData);
+    assert.isTrue(message.messageBody.hookData.equals(expectedHookData), "Invalid hookData");
+
+    // Above check for encoded hookData should implicitly verify action data, but add explicit test for clarity.
+    const decodedHookData = decodeHookData(message.messageBody.hookData);
+    assert.strictEqual(decodedHookData.actionData, ethers.utils.hexlify(actionData), "Invalid actionData");
   });
 });

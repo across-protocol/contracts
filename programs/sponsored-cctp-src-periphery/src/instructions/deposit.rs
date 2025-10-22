@@ -11,10 +11,7 @@ use crate::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
     },
-    utils::{
-        get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START, QUOTE_DATA_LENGTH,
-        QUOTE_SIGNATURE_LENGTH,
-    },
+    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START},
 };
 
 #[event_cpi]
@@ -36,7 +33,7 @@ pub struct DepositForBurn<'info> {
         space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE,
         seeds = [
             b"used_nonce",
-            &params.quote[NONCE_START..NONCE_END], // Safe to use as quote is fixed length.
+            &params.quote[NONCE_START..NONCE_END], // Safe to use as all quote params are fixed length.
         ],
         bump
     )]
@@ -53,7 +50,7 @@ pub struct DepositForBurn<'info> {
     #[account(
         mut,
         constraint =
-            burn_token.key() == SponsoredCCTPQuote::new(&params.quote).burn_token()?
+            burn_token.key() == SponsoredCCTPQuote::new(&params.quote)?.burn_token()?
             @ SvmError::InvalidBurnToken,
         mint::token_program = token_program,
     )]
@@ -106,8 +103,8 @@ pub struct DepositForBurn<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositForBurnParams {
-    pub quote: [u8; QUOTE_DATA_LENGTH],
-    pub signature: [u8; QUOTE_SIGNATURE_LENGTH],
+    pub quote: Vec<u8>,
+    pub signature: Vec<u8>,
 }
 
 pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnParams) -> Result<()> {
@@ -116,7 +113,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
 
     let state = &ctx.accounts.state;
 
-    let quote = SponsoredCCTPQuote::new(&params.quote);
+    let quote = SponsoredCCTPQuote::new(&params.quote)?;
     validate_signature(state.signer, &quote, &params.signature)?;
 
     let quote_deadline = quote.deadline()?;
@@ -133,7 +130,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
     let destination_caller = quote.destination_caller()?;
     let max_fee = quote.max_fee()?;
     let min_finality_threshold = quote.min_finality_threshold()?;
-    let hook_data = quote.hook_data();
+    let hook_data = quote.hook_data()?;
 
     // Record the quote deadline as it should be safe to close the used_nonce account after this time.
     ctx.accounts.used_nonce.quote_deadline = quote_deadline;
@@ -184,7 +181,7 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
         max_bps_to_sponsor: quote.max_bps_to_sponsor()?,
         max_user_slippage_bps: quote.max_user_slippage_bps()?,
         final_token: quote.final_token()?,
-        signature: params.signature.to_vec(),
+        signature: params.signature.clone(),
     });
 
     emit_cpi!(CreatedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });

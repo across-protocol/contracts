@@ -28,6 +28,8 @@ pub enum SvmError {
     QuoteDeadlineNotPassed,
     #[msg("New signer unchanged")]
     SignerUnchanged,
+    #[msg("Invalid quote data length")]
+    InvalidQuoteDataLength,
 }
 
 // EVM decoding errors.
@@ -39,4 +41,6 @@ pub enum DataDecodingError {
     CannotDecodeToU64,
     #[msg("Cannot decode to i64")]
     CannotDecodeToI64,
+    #[msg("Cannot decode bytes")]
+    CannotDecodeBytes,
 }
