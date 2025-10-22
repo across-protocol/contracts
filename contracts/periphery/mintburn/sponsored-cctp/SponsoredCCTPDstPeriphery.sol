@@ -38,22 +38,8 @@ contract SponsoredCCTPDstPeriphery is
         address _signer,
         address _donationBox,
         address _baseToken,
-        uint32 _coreIndex,
-        bool _canBeUsedForAccountActivation,
-        uint64 _accountActivationFeeCore,
-        uint64 _bridgeSafetyBufferCore,
         address _multicallHandler
-    )
-        HyperCoreFlowExecutor(
-            _donationBox,
-            _baseToken,
-            _coreIndex,
-            _canBeUsedForAccountActivation,
-            _accountActivationFeeCore,
-            _bridgeSafetyBufferCore
-        )
-        ArbitraryActionFlowExecutor(_multicallHandler)
-    {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryActionFlowExecutor(_multicallHandler) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
     }
