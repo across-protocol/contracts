@@ -62,13 +62,6 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
-        // Total amount to sponsor is the extra fees to sponsor, ceiling division.
-        uint256 bpsToSponsor;
-        {
-            uint256 totalAmount = amount + extraFeesToSponsorTokenIn;
-            bpsToSponsor = ((extraFeesToSponsorTokenIn * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
-        }
-
         // Snapshot balances
         uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
         uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
@@ -106,11 +99,7 @@ abstract contract ArbitraryEVMFlowExecutor {
             }
         }
 
-        // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
-        uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
-        extraFeesToSponsorFinalToken =
-            (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
-            finalAmount;
+        extraFeesToSponsorFinalToken = _calcFinalExtraFees(amount, extraFeesToSponsorTokenIn, finalAmount);
 
         emit ArbitraryActionsExecuted(quoteNonce, compressedCalls.length, finalAmount);
 
@@ -158,6 +147,25 @@ abstract contract ArbitraryEVMFlowExecutor {
         });
 
         return abi.encode(instructions);
+    }
+
+    function _calcFinalExtraFees(
+        uint256 amount,
+        uint256 extraFeesToSponsorTokenIn,
+        uint256 finalAmount
+    ) internal pure returns (uint256 extraFeesToSponsorFinalToken) {
+        // Total amount to sponsor is the extra fees to sponsor, ceiling division.
+        uint256 bpsToSponsor;
+        {
+            uint256 totalAmount = amount + extraFeesToSponsorTokenIn;
+            bpsToSponsor = ((extraFeesToSponsorTokenIn * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
+        }
+
+        // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
+        uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
+        extraFeesToSponsorFinalToken =
+            (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
+            finalAmount;
     }
 
     /// @notice Allow contract to receive native tokens for arbitrary action execution
