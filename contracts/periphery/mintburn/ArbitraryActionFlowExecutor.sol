@@ -73,8 +73,8 @@ abstract contract ArbitraryActionFlowExecutor {
         {
             uint256 totalAmount = amount + extraFeesToSponsor;
             uint256 computedBps = ((extraFeesToSponsor * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
-            uint256 maxBpsAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
-            bpsToSponsor = computedBps > maxBpsAdjusted ? maxBpsAdjusted : computedBps;
+            uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
+            bpsToSponsor = computedBps > maxBpsToSponsorAdjusted ? maxBpsToSponsorAdjusted : computedBps;
         }
 
         // Execute multicall and determine final token/amount
