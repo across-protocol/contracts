@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
-import { BytesLib } from "../../../libraries/BytesLib.sol";
+import { BytesLib } from "../../../external/libraries/BytesLib.sol";
 
 /// @notice Codec for params passed in OFT `composeMsg`.
 library ComposeMsgCodec {

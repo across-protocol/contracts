@@ -395,29 +395,34 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     ) internal virtual {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        bool isSponsoredFlow = maxBpsToSponsor > 0;
-        bool userHasNoCoreAccount = !HyperCoreLib.coreUserExists(finalRecipient);
-        if (userHasNoCoreAccount) {
-            if (isSponsoredFlow) {
-                revert AccountNotActivated(finalRecipient);
-            } else {
-                _fallbackHyperEVMFlow(
-                    amountInEVM,
-                    quoteNonce,
-                    maxBpsToSponsor,
-                    finalRecipient,
-                    extraBridgingFeesEVM,
-                    finalToken
-                );
-                emit SimpleTransferFallbackAccountActivation(quoteNonce);
-                return;
+        {
+            bool isSponsoredFlow = maxBpsToSponsor > 0;
+            bool userHasNoCoreAccount = !HyperCoreLib.coreUserExists(finalRecipient);
+            if (userHasNoCoreAccount) {
+                if (isSponsoredFlow) {
+                    revert AccountNotActivated(finalRecipient);
+                } else {
+                    _fallbackHyperEVMFlow(
+                        amountInEVM,
+                        quoteNonce,
+                        maxBpsToSponsor,
+                        finalRecipient,
+                        extraBridgingFeesEVM,
+                        finalToken
+                    );
+                    emit SimpleTransferFallbackAccountActivation(quoteNonce);
+                    return;
+                }
             }
         }
 
-        uint256 maxEvmAmountToSponsor = ((amountInEVM + extraBridgingFeesEVM) * maxBpsToSponsor) / BPS_SCALAR;
-        uint256 amountToSponsor = extraBridgingFeesEVM;
-        if (amountToSponsor > maxEvmAmountToSponsor) {
-            amountToSponsor = maxEvmAmountToSponsor;
+        uint256 amountToSponsor;
+        {
+            uint256 maxEvmAmountToSponsor = ((amountInEVM + extraBridgingFeesEVM) * maxBpsToSponsor) / BPS_SCALAR;
+            amountToSponsor = extraBridgingFeesEVM;
+            if (amountToSponsor > maxEvmAmountToSponsor) {
+                amountToSponsor = maxEvmAmountToSponsor;
+            }
         }
 
         if (amountToSponsor > 0) {
