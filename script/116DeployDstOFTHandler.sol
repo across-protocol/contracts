@@ -37,10 +37,6 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
             ioft,
             address(donationBox),
             baseToken,
-            coreIndex,
-            canBeUsedForAccountActivation,
-            accountActivationFeeCore,
-            bridgeSafetyBufferCore,
             multicallHandler
         );
         console.log("DstOFTHandler deployed to:", address(dstOFTHandler));
@@ -48,16 +44,6 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
         donationBox.transferOwnership(address(dstOFTHandler));
 
         console.log("DonationBox ownership transferred to:", address(dstOFTHandler));
-
-        dstOFTHandler.setCoreTokenInfo(
-            baseToken,
-            coreIndex,
-            canBeUsedForAccountActivation,
-            accountActivationFeeCore,
-            bridgeSafetyBufferCore
-        );
-
-        console.log("CoreTokenInfo set");
 
         vm.stopBroadcast();
     }
