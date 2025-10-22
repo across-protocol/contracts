@@ -2,8 +2,8 @@ use anchor_lang::{prelude::*, solana_program::keccak};
 
 use crate::error::{DataDecodingError, SvmError};
 
-// Macro to define the SponsoredCCTPQuote fields as an enum with associated constants for ordinal, start, count, and
-// minimum total bytes.
+// Macro to define the SponsoredCCTPQuote fields as an enum with associated constants for ordinal, start, end, count,
+// and minimum total bytes.
 macro_rules! define_quote_fields {
     ($($V:ident),+ $(,)?) => {
         #[derive(Copy, Clone)]
