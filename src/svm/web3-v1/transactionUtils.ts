@@ -1,5 +1,6 @@
 import { web3 } from "@coral-xyz/anchor";
 import {
+  AddressLookupTableAccount,
   AddressLookupTableProgram,
   Connection,
   Keypair,
@@ -15,7 +16,8 @@ import {
 export async function sendTransactionWithLookupTable(
   connection: Connection,
   instructions: TransactionInstruction[],
-  sender: Keypair
+  sender: Keypair,
+  additionalSigners: Keypair[] = []
 ): Promise<{ txSignature: string; lookupTableAddress: PublicKey }> {
   // Maximum number of accounts that can be added to Address Lookup Table (ALT) in a single transaction.
   const maxExtendedAccounts = 30;
@@ -78,7 +80,7 @@ export async function sendTransactionWithLookupTable(
   );
 
   // Sign and submit the versioned transaction.
-  versionedTx.sign([sender]);
+  versionedTx.sign([sender, ...additionalSigners]);
   const txSignature = await connection.sendTransaction(versionedTx);
 
   // Confirm the versioned transaction
@@ -89,4 +91,37 @@ export async function sendTransactionWithLookupTable(
   );
 
   return { txSignature, lookupTableAddress };
+}
+
+/**
+ * Sends a transaction using existing Address Lookup Table.
+ */
+export async function sendTransactionWithExistingLookupTable(
+  connection: Connection,
+  instructions: TransactionInstruction[],
+  lookupTableAccount: AddressLookupTableAccount,
+  sender: Keypair,
+  additionalSigners: Keypair[] = []
+): Promise<string> {
+  // Create the versioned transaction
+  const versionedTx = new VersionedTransaction(
+    new TransactionMessage({
+      payerKey: sender.publicKey,
+      recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+      instructions,
+    }).compileToV0Message([lookupTableAccount])
+  );
+
+  // Sign and submit the versioned transaction.
+  versionedTx.sign([sender, ...additionalSigners]);
+  const txSignature = await connection.sendTransaction(versionedTx);
+
+  // Confirm the versioned transaction
+  let block = await connection.getLatestBlockhash();
+  await connection.confirmTransaction(
+    { signature: txSignature, blockhash: block.blockhash, lastValidBlockHeight: block.lastValidBlockHeight },
+    "confirmed"
+  );
+
+  return txSignature;
 }

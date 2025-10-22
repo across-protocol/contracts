@@ -3,7 +3,7 @@ import { array, object, optional, string, Struct } from "superstruct";
 import { readUInt256BE } from "./relayHashUtils";
 
 // Index positions to decode Message Header from
-// https://developers.circle.com/stablecoins/docs/message-format#message-header
+// https://developers.circle.com/cctp/v1/message-format#cctp-v1-message-header
 const HEADER_VERSION_INDEX = 0;
 const SOURCE_DOMAIN_INDEX = 4;
 const DESTINATION_DOMAIN_INDEX = 8;
@@ -14,7 +14,7 @@ const DESTINATION_CALLER_INDEX = 84;
 const MESSAGE_BODY_INDEX = 116;
 
 // Index positions to decode Message Body for TokenMessenger from
-// https://developers.circle.com/stablecoins/docs/message-format#message-body
+// https://developers.circle.com/cctp/v1/message-format#cctp-v1-message-body
 const BODY_VERSION_INDEX = 0;
 const BURN_TOKEN_INDEX = 4;
 const MINT_RECIPIENT_INDEX = 36;
