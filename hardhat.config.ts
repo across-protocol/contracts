@@ -56,7 +56,7 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.25";
+const solcVersion = "0.8.24";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
