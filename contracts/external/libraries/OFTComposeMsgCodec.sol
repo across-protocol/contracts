@@ -6,7 +6,7 @@ pragma solidity ^0.8.20;
  * @title OFTComposeMsgCodec
  * @notice Copied from LZ implementation here:
  * https://github.com/LayerZero-Labs/devtools/blob/608915a7e260d995ce28e41c4e4877db9b18613b/packages/oft-evm/contracts/libs/OFTComposeMsgCodec.sol#L5
- *
+ * Code was copied, was not modified
  */
 library OFTComposeMsgCodec {
     // Offset constants for decoding composed messages
