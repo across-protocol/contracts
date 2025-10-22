@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { BytesLib } from "./BytesLib.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { BytesLib } from "../../libraries/BytesLib.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**
  * @title MinimalExecutorOptions
  * @notice This library is used to provide minimal required functionality of
  * https://github.com/LayerZero-Labs/LayerZero-v2/blob/2ff4988f85b5c94032eb71bbc4073e69c078179d/packages/layerzero-v2/evm/messagelib/contracts/libs/ExecutorOptions.sol#L7
+ * Code was copied, was not modified
  */
 library MinimalExecutorOptions {
     uint8 internal constant WORKER_ID = 1;
@@ -28,6 +29,7 @@ library MinimalExecutorOptions {
  * @title MinimalLZOptions
  * @notice This library is used to provide minimal functionality of
  * https://github.com/LayerZero-Labs/devtools/blob/52ad590ab249f660f803ae3aafcbf7115733359c/packages/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol
+ * Code was copied, was not modified
  */
 library MinimalLZOptions {
     // @dev Only used in `onlyType3` modifier
