@@ -2,14 +2,14 @@
 pragma solidity ^0.8.0;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
-import { BPS_DECIMALS, BPS_SCALAR } from "./Constants.sol";
+import { BPS_SCALAR } from "./Constants.sol";
 import { Lockable } from "../../Lockable.sol";
 
 /**
@@ -41,11 +41,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     mapping(address => FinalTokenInfo) public finalTokenInfos;
 
     /// @notice All operations performed in this contract are relative to this baseToken
-    address immutable baseToken;
+    address public immutable baseToken;
 
     /// @notice The block number of the last funds pull action per final token: either as a part of finalizing pending swaps,
     /// or an admin funds pull
-    mapping(address finalToken => uint256 lastPullFundsBlock) lastPullFundsBlock;
+    mapping(address finalToken => uint256 lastPullFundsBlock) public lastPullFundsBlock;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct PendingSwap {
@@ -691,7 +691,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     function finalizePendingSwaps(
         address finalToken,
         uint256 maxSwapCountToFinalize
-    ) external nonReentrant returns (uint256 finalizedSwapsCount, uint256 finalizedSwapsAmount, uint256 totalPendingSwapsRemaining) {
+    )
+        external
+        nonReentrant
+        returns (uint256 finalizedSwapsCount, uint256 finalizedSwapsAmount, uint256 totalPendingSwapsRemaining)
+    {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
 
@@ -747,6 +751,12 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         return (finalizedSwapsCount, finalizedSwapsAmount, queue.length - head);
     }
 
+    /**
+     * @notice Activates a user account on Core by funding the account activation fee.
+     * @param quoteNonce The nonce of the quote that is used to identify the user.
+     * @param finalRecipient The address of the recipient of the funds.
+     * @param fundingToken The address of the token that is used to fund the account activation fee.
+     */
     function activateUserAccount(
         bytes32 quoteNonce,
         address finalRecipient,
@@ -1149,6 +1159,21 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
     }
 
+    /**
+     * @notice Given the quote budget and the price, this function calculates the size of the buy limit order to set
+     * as well as the minimum amount of out token to expect. This calculation is based on the HIP-1 spot trading formula.
+     * Source: https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-1-native-token-standard#spot-trading
+     * @param quoteBudget The budget of the quote in base token.
+     * @param pxX1e8 The price of the quote token in base token.
+     * @param quoteD The decimals of the quote token.
+     * @param quoteSz The size decimals of the quote token.
+     * @param baseD The decimals of the base token.
+     * @param baseSz The size decimals of the base token.
+     * @param feePpm The fee in ppm that is applied to the quote.
+     * @return szX1e8 The size of the limit order to set.
+     * @return tokensToSendCore The number of tokens to send for this trade to suceed.
+     * @return minAmountOutCore The minimum amount of out token to expect.
+     */
     function _calcLOAmountsBuy(
         uint64 quoteBudget,
         uint64 pxX1e8,
@@ -1168,6 +1193,21 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         minAmountOutCore = outBaseNet;
     }
 
+    /**
+     * @notice Given the quote budget and the price, this function calculates the size of the sell limit order to set
+     * as well as the minimum amount of out token to expect. This calculation is based on the HIP-1 spot trading formula.
+     * Source: https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-1-native-token-standard#spot-trading
+     * @param baseBudget The budget of the quote in base token.
+     * @param pxX1e8 The price of the quote token in base token.
+     * @param quoteD The decimals of the quote token.
+     * @param quoteSz The size decimals of the quote token.
+     * @param baseD The decimals of the base token.
+     * @param baseSz The size decimals of the base token.
+     * @param feePpm The fee in ppm that is applied to the quote.
+     * @return szX1e8 The size of the limit order to set.
+     * @return tokensToSendCore The number of tokens to send for this trade to suceed.
+     * @return minAmountOutCore The minimum amount of out token to expect.
+     */
     function _calcLOAmountsSell(
         uint64 baseBudget,
         uint64 pxX1e8,

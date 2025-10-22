@@ -7,17 +7,15 @@ import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfac
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
-import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
-import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
-import { Lockable } from "../../../Lockable.sol";
+import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 
-contract SponsoredCCTPDstPeriphery is
-    SponsoredCCTPInterface,
-    HyperCoreFlowExecutor,
-    ArbitraryActionFlowExecutor,
-    Lockable
-{
+/**
+ * @title SponsoredCCTPDstPeriphery
+ * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
+ * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
+ */
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -33,25 +31,48 @@ contract SponsoredCCTPDstPeriphery is
     /// @notice A mapping of used nonces to prevent replay attacks.
     mapping(bytes32 => bool) public usedNonces;
 
+    /**
+     * @notice Constructor for the SponsoredCCTPDstPeriphery contract.
+     * @param _cctpMessageTransmitter The address of the CCTP message transmitter contract.
+     * @param _signer The address of the signer that was used to sign the quotes.
+     * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
+     * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
+     * @param _multicallHandler The address of the multicall handler contract.
+     */
     constructor(
         address _cctpMessageTransmitter,
         address _signer,
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryActionFlowExecutor(_multicallHandler) {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
     }
 
+    /**
+     * @notice Sets the signer address that is used to validate the signatures of the quotes.
+     * @param _signer The new signer address.
+     */
     function setSigner(address _signer) external nonReentrant onlyDefaultAdmin {
         signer = _signer;
     }
 
+    /**
+     * @notice Sets the quote deadline buffer. This is used to prevent the quote from being used after it has expired.
+     * @param _quoteDeadlineBuffer The new quote deadline buffer.
+     */
     function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyDefaultAdmin {
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 
+    /**
+     * @notice Receives a message from CCTP and executes the flow accordingly. This function first calls the
+     * CCTP message transmitter to receive the funds before validating the quote and executing the flow.
+     * @param message The message that is received from CCTP.
+     * @param attestation The attestation that is received from CCTP.
+     * @param signature The signature of the quote.
+     */
     function receiveMessage(
         bytes memory message,
         bytes memory attestation,
@@ -59,15 +80,17 @@ contract SponsoredCCTPDstPeriphery is
     ) external nonReentrant {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
-        // If the hook data is invalid or the mint recipient is not this contract we cannot process the message and therefore we return.
-        // In this case the funds will be kept in this contract
+        // If the hook data is invalid or the mint recipient is not this contract we cannot process the message
+        // and therefore we exit. In this case the funds will be kept in this contract.
         if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
             return;
         }
 
+        // Extract the quote and the fee that was executed from the message.
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
+        // Validate the quote and the signature.
         bool isQuoteValid = _isQuoteValid(quote, signature);
         if (isQuoteValid) {
             usedNonces[quote.nonce] = true;
@@ -81,21 +104,21 @@ contract SponsoredCCTPDstPeriphery is
             (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
                 quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
         ) {
-            // Execute arbitrary actions flow
-            _executeArbitraryActionFlow(
+            // Execute flow with arbitrary evm actions
+            _executeWithEVMFlow(
                 amountAfterFees,
                 quote.nonce,
                 quote.maxBpsToSponsor,
                 baseToken, // initialToken
-                quote.finalRecipient.toAddress(),
                 quote.finalToken.toAddress(),
+                quote.finalRecipient.toAddress(),
                 quote.actionData,
-                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore),
-                feeExecuted
+                feeExecuted,
+                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
             );
         } else {
             // Execute standard HyperCore flow (default)
-            _executeFlow(
+            HyperCoreFlowExecutor._executeFlow(
                 amountAfterFees,
                 quote.nonce,
                 // If the quote is invalid we don't sponsor the flow or the extra fees
@@ -129,45 +152,36 @@ contract SponsoredCCTPDstPeriphery is
             quote.deadline + quoteDeadlineBuffer >= block.timestamp;
     }
 
-    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
-    function _executeSimpleTransferFlow(
-        uint256 finalAmount,
+    function _executeWithEVMFlow(
+        uint256 amount,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
+        address initialToken,
+        address finalToken,
         address finalRecipient,
+        bytes memory actionData,
         uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
-        HyperCoreFlowExecutor._executeSimpleTransferFlow(
+        bool transferToCore
+    ) internal {
+        uint256 finalAmount;
+        uint256 extraFeesToSponsorFinalToken;
+        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
+            amount,
+            quoteNonce,
+            initialToken,
+            finalToken,
+            actionData,
+            extraFeesToSponsor
+        );
+
+        // Route to appropriate destination based on transferToCore flag
+        (transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
             finalAmount,
             quoteNonce,
             maxBpsToSponsor,
             finalRecipient,
-            extraFeesToSponsor,
+            extraFeesToSponsorFinalToken,
             finalToken
         );
-    }
-
-    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
-    function _fallbackHyperEVMFlow(
-        uint256 finalAmount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address finalRecipient,
-        uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
-        HyperCoreFlowExecutor._fallbackHyperEVMFlow(
-            finalAmount,
-            quoteNonce,
-            maxBpsToSponsor,
-            finalRecipient,
-            extraFeesToSponsor,
-            finalToken
-        );
-    }
-
-    function _getDonationBox() internal view override(ArbitraryActionFlowExecutor) returns (DonationBox) {
-        return donationBox;
     }
 }
