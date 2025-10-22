@@ -3,20 +3,19 @@ pragma solidity ^0.8.23;
 
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
-import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { ExecutionMode } from "./Structs.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
-import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
+import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor {
+contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -35,7 +34,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
 
     /// @notice A mapping used for nonce uniqueness checks. Our src periphery and LZ should have prevented this already,
     /// but I guess better safe than sorry
-    mapping(bytes32 quoteNonce => bool used) usedNonces;
+    mapping(bytes32 quoteNonce => bool used) public usedNonces;
 
     /// @notice Emitted when a new authorized src periphery is configured
     event SetAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery);
@@ -63,7 +62,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryActionFlowExecutor(_multicallHandler) {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
         // baseToken is assigned on `HyperCoreFlowExecutor` creation
         if (baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
@@ -125,21 +124,21 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
             executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
             executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM)
         ) {
-            // Execute arbitrary actions flow
-            _executeArbitraryActionFlow(
+            // Execute flow with arbitrary evm actions
+            _executeWithEVMFlow(
                 amountLD,
                 quoteNonce,
                 maxBpsToSponsor,
                 baseToken, // initialToken
-                finalRecipient,
                 finalToken,
+                finalRecipient,
                 actionData,
-                executionMode == uint8(ExecutionMode.ArbitraryActionsToCore),
-                EXTRA_FEES_TO_SPONSOR
+                EXTRA_FEES_TO_SPONSOR,
+                executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
             );
         } else {
             // Execute standard HyperCore flow (default)
-            _executeFlow(
+            HyperCoreFlowExecutor._executeFlow(
                 amountLD,
                 quoteNonce,
                 maxBpsToSponsor,
@@ -149,6 +148,39 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
                 EXTRA_FEES_TO_SPONSOR
             );
         }
+    }
+
+    function _executeWithEVMFlow(
+        uint256 amount,
+        bytes32 quoteNonce,
+        uint256 maxBpsToSponsor,
+        address initialToken,
+        address finalToken,
+        address finalRecipient,
+        bytes memory actionData,
+        uint256 extraFeesToSponsor,
+        bool transferToCore
+    ) internal {
+        uint256 finalAmount;
+        uint256 extraFeesToSponsorFinalToken;
+        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
+            amount,
+            quoteNonce,
+            initialToken,
+            finalToken,
+            actionData,
+            extraFeesToSponsor
+        );
+
+        // Route to appropriate destination based on transferToCore flag
+        (transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
+            finalAmount,
+            quoteNonce,
+            maxBpsToSponsor,
+            finalRecipient,
+            extraFeesToSponsorFinalToken,
+            finalToken
+        );
     }
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
@@ -178,47 +210,5 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         if (authorizedPeriphery != _composeFromBytes32) {
             revert UnauthorizedSrcPeriphery(_srcEid);
         }
-    }
-
-    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
-    function _executeSimpleTransferFlow(
-        uint256 finalAmount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address finalRecipient,
-        uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
-        HyperCoreFlowExecutor._executeSimpleTransferFlow(
-            finalAmount,
-            quoteNonce,
-            maxBpsToSponsor,
-            finalRecipient,
-            extraFeesToSponsor,
-            finalToken
-        );
-    }
-
-    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
-    function _fallbackHyperEVMFlow(
-        uint256 finalAmount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address finalRecipient,
-        uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
-        HyperCoreFlowExecutor._fallbackHyperEVMFlow(
-            finalAmount,
-            quoteNonce,
-            maxBpsToSponsor,
-            finalRecipient,
-            extraFeesToSponsor,
-            finalToken
-        );
-    }
-
-    function _getDonationBox() internal view override returns (DonationBox) {
-        return donationBox;
     }
 }

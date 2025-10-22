@@ -9,9 +9,9 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
-import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
+import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryActionFlowExecutor {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -33,7 +33,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryActionFlowExecutor(_multicallHandler) {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
     }
@@ -71,21 +71,21 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
                 quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
         ) {
-            // Execute arbitrary actions flow
-            _executeArbitraryActionFlow(
+            // Execute flow with arbitrary evm actions
+            _executeWithEVMFlow(
                 amountAfterFees,
                 quote.nonce,
                 quote.maxBpsToSponsor,
                 baseToken, // initialToken
-                quote.finalRecipient.toAddress(),
                 quote.finalToken.toAddress(),
+                quote.finalRecipient.toAddress(),
                 quote.actionData,
-                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore),
-                feeExecuted
+                feeExecuted,
+                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
             );
         } else {
             // Execute standard HyperCore flow (default)
-            _executeFlow(
+            HyperCoreFlowExecutor._executeFlow(
                 amountAfterFees,
                 quote.nonce,
                 // If the quote is invalid we don't sponsor the flow or the extra fees
@@ -119,45 +119,36 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             quote.deadline + quoteDeadlineBuffer >= block.timestamp;
     }
 
-    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
-    function _executeSimpleTransferFlow(
-        uint256 finalAmount,
+    function _executeWithEVMFlow(
+        uint256 amount,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
+        address initialToken,
+        address finalToken,
         address finalRecipient,
+        bytes memory actionData,
         uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
-        HyperCoreFlowExecutor._executeSimpleTransferFlow(
+        bool transferToCore
+    ) internal {
+        uint256 finalAmount;
+        uint256 extraFeesToSponsorFinalToken;
+        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
+            amount,
+            quoteNonce,
+            initialToken,
+            finalToken,
+            actionData,
+            extraFeesToSponsor
+        );
+
+        // Route to appropriate destination based on transferToCore flag
+        (transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
             finalAmount,
             quoteNonce,
             maxBpsToSponsor,
             finalRecipient,
-            extraFeesToSponsor,
+            extraFeesToSponsorFinalToken,
             finalToken
         );
-    }
-
-    /// @notice Override to resolve diamond inheritance - use HyperCoreFlowExecutor implementation
-    function _fallbackHyperEVMFlow(
-        uint256 finalAmount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address finalRecipient,
-        uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal override(ArbitraryActionFlowExecutor, HyperCoreFlowExecutor) {
-        HyperCoreFlowExecutor._fallbackHyperEVMFlow(
-            finalAmount,
-            quoteNonce,
-            maxBpsToSponsor,
-            finalRecipient,
-            extraFeesToSponsor,
-            finalToken
-        );
-    }
-
-    function _getDonationBox() internal view override(ArbitraryActionFlowExecutor) returns (DonationBox) {
-        return donationBox;
     }
 }
