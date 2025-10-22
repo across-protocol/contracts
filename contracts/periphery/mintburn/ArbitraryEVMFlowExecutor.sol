@@ -99,7 +99,7 @@ abstract contract ArbitraryEVMFlowExecutor {
             }
         }
 
-        extraFeesToSponsorFinalToken = _calcFinalExtraFees(amount, extraFeesToSponsorTokenIn, finalAmount);
+        extraFeesToSponsorFinalToken = _calcExtraFeesFinal(amount, extraFeesToSponsorTokenIn, finalAmount);
 
         emit ArbitraryActionsExecuted(quoteNonce, compressedCalls.length, finalAmount);
 
@@ -149,7 +149,8 @@ abstract contract ArbitraryEVMFlowExecutor {
         return abi.encode(instructions);
     }
 
-    function _calcFinalExtraFees(
+    /// @notice Calcualtes proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount
+    function _calcExtraFeesFinal(
         uint256 amount,
         uint256 extraFeesToSponsorTokenIn,
         uint256 finalAmount
