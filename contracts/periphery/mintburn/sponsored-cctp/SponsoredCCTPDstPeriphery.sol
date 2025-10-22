@@ -11,6 +11,11 @@ import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 
+/**
+ * @title SponsoredCCTPDstPeriphery
+ * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
+ * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
+ */
 contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
@@ -27,6 +32,18 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     /// @notice A mapping of used nonces to prevent replay attacks.
     mapping(bytes32 => bool) public usedNonces;
 
+    /**
+     * @notice Constructor for the SponsoredCCTPDstPeriphery contract.
+     * @param _cctpMessageTransmitter The address of the CCTP message transmitter contract.
+     * @param _signer The address of the signer that was used to sign the quotes.
+     * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
+     * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
+     * @param _coreIndex The index of the base token on HyperCore.
+     * @param _canBeUsedForAccountActivation Whether the token can be used for account activation.
+     * @param _accountActivationFeeCore If the token can be used for account activation, this is the fee that is needed for account activation.
+     * @param _bridgeSafetyBufferCore This buffers is used to check if the bridging to Core is safe.
+     * @param _multicallHandler The address of the multicall handler contract.
+     */
     constructor(
         address _cctpMessageTransmitter,
         address _signer,
@@ -38,26 +55,43 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         signer = _signer;
     }
 
+    /**
+     * @notice Sets the signer address that is used to validate the signatures of the quotes.
+     * @param _signer The new signer address.
+     */
     function setSigner(address _signer) external onlyDefaultAdmin {
         signer = _signer;
     }
 
+    /**
+     * @notice Sets the quote deadline buffer. This is used to prevent the quote from being used after it has expired.
+     * @param _quoteDeadlineBuffer The new quote deadline buffer.
+     */
     function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external onlyDefaultAdmin {
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 
+    /**
+     * @notice Receives a message from CCTP and executes the flow accordingly. This function first calls the
+     * CCTP message transmitter to receive the funds before validating the quote and executing the flow.
+     * @param message The message that is received from CCTP.
+     * @param attestation The attestation that is received from CCTP.
+     * @param signature The signature of the quote.
+     */
     function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
-        // If the hook data is invalid or the mint recipient is not this contract we cannot process the message and therefore we return.
-        // In this case the funds will be kept in this contract
+        // If the hook data is invalid or the mint recipient is not this contract we cannot process the message
+        // and therefore we exit. In this case the funds will be kept in this contract.
         if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
             return;
         }
 
+        // Extract the quote and the fee that was executed from the message.
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
+        // Validate the quote and the signature.
         bool isQuoteValid = _isQuoteValid(quote, signature);
         if (isQuoteValid) {
             usedNonces[quote.nonce] = true;
