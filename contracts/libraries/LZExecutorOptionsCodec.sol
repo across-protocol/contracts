@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-// Helper library that provides constants and encoders for executor options per LayerZero TYPE_3 spec
-// Based on https://gist.github.com/St0rmBr3w/32faac27973f5886ed712c3422408b06
+/**
+ * @title LZExecutorOptionsCodec
+ * @notice Helper encoding library based on https://gist.github.com/St0rmBr3w/32faac27973f5886ed712c3422408b06
+ * @notice Licensing note: https://gist.github.com/St0rmBr3w/32faac27973f5886ed712c3422408b06#licensing-note
+ */
 library LZExecutorOptionsCodec {
     uint8 internal constant EXECUTOR_WORKER_ID = 1;
 
