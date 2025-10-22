@@ -166,8 +166,6 @@ contract SponsoredCCTPDstPeripheryTest is Test {
             quote.actionData
         );
 
-        console.logBytes(hookData);
-
         bytes memory messageBody = abi.encodePacked(
             uint32(2), // version
             quote.burnToken, // burnToken
@@ -440,19 +438,6 @@ contract SponsoredCCTPDstPeripheryTest is Test {
         bytes memory signature = signQuote(quote, signerPrivateKey);
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
-
-        console.logBytes(message);
-
-        // 0x000000010000000300000013ec372b3217a03c6069813afd2dd39d8408031c10633b5de27a322866d649fcaf0000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa0000000000000000000000008fe6b999dc680ccfdd5bf7eb0974218be2542daa000000000000000000000000ef8b46765ae805537053c59f826c3ad61924db45000007d0000007d00000000100000000000000000000000075faf114eafb1bdbe2f0316df893fd58ce46aa4d000000000000000000000000ef8b46765ae805537053c59f826c3ad61924db45000000000000000000000000000000000000000000000000000000000098968000000000000000000000000046421d74660d59f04eba6022a7a8038076ccec260000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004af1c8ecc81e75057d48b5b190a69c4e73141f94cd17e4f4218036755cb5b89d0000000000000000000000000000000000000000000000000000000068f5b3ef000000000000000000000000000000000000000000000000000000000000019000000000000000000000000000000000000000000000000000000000000001900000000000000000000000009a8f92a830a5cb89a3816e3d267cb7791c16b04d0000000000000000000000002b3370ee501b4a559b57d449569354196457d8ab
-
-        console.log("--------------------------------");
-        console.log("quote.amount", quote.amount);
-        console.log("quote.finalRecipient", quote.finalRecipient.toAddress());
-        console.log("quote.finalToken", quote.finalToken.toAddress());
-        console.log("quote.deadline", quote.deadline);
-        console.log("quote.maxBpsToSponsor", quote.maxBpsToSponsor);
-        console.log("quote.maxUserSlippageBps", quote.maxUserSlippageBps);
-        console.log("--------------------------------");
 
         // Expect event with correct parameters
         vm.expectEmit(true, true, true, true);
