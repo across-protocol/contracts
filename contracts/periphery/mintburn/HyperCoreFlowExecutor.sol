@@ -1,15 +1,15 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.30;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
-import { BPS_DECIMALS, BPS_SCALAR } from "./Constants.sol";
+import { BPS_SCALAR } from "./Constants.sol";
 
 /**
  * @title HyperCoreFlowExecutor
@@ -31,7 +31,7 @@ contract HyperCoreFlowExecutor is AccessControl {
     bytes32 public constant FUNDS_SWEEPER_ROLE = keccak256("FUNDS_SWEEPER_ROLE");
 
     /// @notice The donation box contract.
-    DonationBox public immutable donationBox;
+    DonationBox public immutable DONATION_BOX;
 
     /// @notice A mapping of token addresses to their core token info.
     mapping(address => CoreTokenInfo) public coreTokenInfos;
@@ -40,11 +40,11 @@ contract HyperCoreFlowExecutor is AccessControl {
     mapping(address => FinalTokenInfo) public finalTokenInfos;
 
     /// @notice All operations performed in this contract are relative to this baseToken
-    address immutable baseToken;
+    address public immutable BASE_TOKEN;
 
     /// @notice The block number of the last funds pull action per final token: either as a part of finalizing pending swaps,
     /// or an admin funds pull
-    mapping(address finalToken => uint256 lastPullFundsBlock) lastPullFundsBlock;
+    mapping(address finalToken => uint256 lastPullFundsBlock) public lastPullFundsBlock;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct PendingSwap {
@@ -246,11 +246,11 @@ contract HyperCoreFlowExecutor is AccessControl {
      * @param _baseToken Main token used with this Forwarder
      */
     constructor(address _donationBox, address _baseToken) {
-        donationBox = DonationBox(_donationBox);
+        DONATION_BOX = DonationBox(_donationBox);
+        BASE_TOKEN = _baseToken;
+
         // Initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
         nextCloid = 1;
-
-        baseToken = _baseToken;
 
         // AccessControl setup
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
@@ -354,7 +354,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         address finalToken,
         uint256 extraFeesToSponsor
     ) internal {
-        if (finalToken == baseToken) {
+        if (finalToken == BASE_TOKEN) {
             _executeSimpleTransferFlow(
                 amountInEVM,
                 quoteNonce,
@@ -491,7 +491,7 @@ contract HyperCoreFlowExecutor is AccessControl {
     ) internal {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
 
-        address initialToken = baseToken;
+        address initialToken = BASE_TOKEN;
         CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[finalToken];
 
@@ -815,7 +815,7 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         address finalToken = pendingSwap.finalToken;
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
-        CoreTokenInfo memory initialTokenInfo = coreTokenInfos[baseToken];
+        CoreTokenInfo memory initialTokenInfo = coreTokenInfos[BASE_TOKEN];
         CoreTokenInfo memory finalTokenCoreInfo = coreTokenInfos[finalToken];
 
         // Remaining budget of tokens attributable to the "old limit order" (now cancelled)
@@ -966,12 +966,12 @@ contract HyperCoreFlowExecutor is AccessControl {
         if (!_availableInDonationBox(token, amount)) {
             revert DonationBoxInsufficientFundsError(token, amount);
         }
-        donationBox.withdraw(IERC20(token), amount);
+        DONATION_BOX.withdraw(IERC20(token), amount);
     }
 
     /// @notice Checks if `amount` of `token` is available to withdraw from donationBox
     function _availableInDonationBox(address token, uint256 amount) internal returns (bool available) {
-        available = IERC20(token).balanceOf(address(donationBox)) >= amount;
+        available = IERC20(token).balanceOf(address(DONATION_BOX)) >= amount;
         if (!available) {
             emit DonationBoxInsufficientFunds(token, amount);
         }

@@ -115,6 +115,46 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPSrcPeriphery.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/sponsored-oft/Structs.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/HyperCoreFlowExecutor.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/Constants.sol": { ...DEFAULT_CONTRACT_COMPILER_SETTINGS, version: "0.8.30" },
+      "contracts/periphery/mintburn/ArbitraryActionFlowExecutor.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/SwapHandler.sol": { ...DEFAULT_CONTRACT_COMPILER_SETTINGS, version: "0.8.30" },
+      "contracts/periphery/mintburn/Structs.sol": { ...DEFAULT_CONTRACT_COMPILER_SETTINGS, version: "0.8.30" },
+      "contracts/periphery/mintburn/sponsored-oft/QuoteSignLib.sol": {
+        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
+        version: "0.8.30",
+      },
+      "contracts/periphery/mintburn/*": { ...DEFAULT_CONTRACT_COMPILER_SETTINGS, version: "0.8.30" },
     },
   },
   zksolc: {

@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.30;
 
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../libraries/OFTComposeMsgCodec.sol";
 import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
-import { HyperCoreLib } from "../../../libraries/HyperCoreLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { ExecutionMode } from "./Structs.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
@@ -12,7 +11,6 @@ import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryActionFlowExecutor } from "../ArbitraryActionFlowExecutor.sol";
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -37,7 +35,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
 
     /// @notice A mapping used for nonce uniqueness checks. Our src periphery and LZ should have prevented this already,
     /// but I guess better safe than sorry
-    mapping(bytes32 quoteNonce => bool used) usedNonces;
+    mapping(bytes32 quoteNonce => bool used) public usedNonces;
 
     /// @notice Emitted when a new authorized src periphery is configured
     event SetAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery);
@@ -66,8 +64,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
         address _baseToken,
         address _multicallHandler
     ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryActionFlowExecutor(_multicallHandler) {
-        // baseToken is assigned on `HyperCoreFlowExecutor` creation
-        if (baseToken != IOFT(_ioft).token()) {
+        // `BASE_TOKEN` is assigned on `HyperCoreFlowExecutor` creation
+        if (BASE_TOKEN != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
         }
 
@@ -132,7 +130,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
                 amountLD,
                 quoteNonce,
                 maxBpsToSponsor,
-                baseToken, // initialToken
+                BASE_TOKEN, // initialToken
                 finalRecipient,
                 finalToken,
                 actionData,
@@ -221,6 +219,6 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryAc
     }
 
     function _getDonationBox() internal view override returns (DonationBox) {
-        return donationBox;
+        return DONATION_BOX;
     }
 }

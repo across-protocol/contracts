@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.30;
 
 import { Quote } from "./Structs.sol";
 import { QuoteSignLib } from "./QuoteSignLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 
-import { IOFT, IOAppCore, IEndpoint, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
+import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../libraries/MinimalLZOptions.sol";
 

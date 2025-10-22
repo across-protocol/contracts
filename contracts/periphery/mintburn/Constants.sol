@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.30;
 
 // Basis points decimals (4 decimals = 10000 for 100%)
 uint256 constant BPS_DECIMALS = 4;

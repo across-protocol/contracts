@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Unlicense
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.30;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,17 +12,17 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
     using SafeERC20 for IERC20;
 
-    ITokenMessengerV2 public immutable cctpTokenMessenger;
+    ITokenMessengerV2 public immutable CCTP_TOKEN_MESSENGER;
 
-    uint32 public immutable sourceDomain;
+    uint32 public immutable SRC_DOMAIN;
 
     address public signer;
 
     mapping(bytes32 => bool) public usedNonces;
 
     constructor(address _cctpTokenMessenger, uint32 _sourceDomain, address _signer) {
-        cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
-        sourceDomain = _sourceDomain;
+        CCTP_TOKEN_MESSENGER = ITokenMessengerV2(_cctpTokenMessenger);
+        SRC_DOMAIN = _sourceDomain;
         signer = _signer;
     }
 
@@ -32,7 +32,7 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
         if (!SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature)) revert InvalidSignature();
         if (usedNonces[quote.nonce]) revert InvalidNonce();
         if (quote.deadline < block.timestamp) revert InvalidDeadline();
-        if (quote.sourceDomain != sourceDomain) revert InvalidSourceDomain();
+        if (quote.sourceDomain != SRC_DOMAIN) revert InvalidSourceDomain();
 
         (
             uint256 amount,
@@ -48,9 +48,9 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
         usedNonces[quote.nonce] = true;
 
         IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
-        IERC20(burnToken).forceApprove(address(cctpTokenMessenger), amount);
+        IERC20(burnToken).forceApprove(address(CCTP_TOKEN_MESSENGER), amount);
 
-        cctpTokenMessenger.depositForBurnWithHook(
+        CCTP_TOKEN_MESSENGER.depositForBurnWithHook(
             amount,
             destinationDomain,
             mintRecipient,
