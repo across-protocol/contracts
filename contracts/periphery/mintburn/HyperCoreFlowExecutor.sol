@@ -408,7 +408,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     ) internal virtual {
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        // Check account activation - inline booleans to reduce stack
+        // Check account activation
         if (!HyperCoreLib.coreUserExists(finalRecipient)) {
             if (maxBpsToSponsor > 0) {
                 revert AccountNotActivated(finalRecipient);
