@@ -8,14 +8,11 @@ import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 // Import MulticallHandler
 import { MulticallHandler } from "../../handlers/MulticallHandler.sol";
 
-// Import constants
-import { BPS_SCALAR } from "./Constants.sol";
-
 /**
  * @title ArbitraryEVMFlowExecutor
  * @notice Base contract for executing arbitrary action sequences using MulticallHandler
  * @dev This contract provides shared functionality for both OFT and CCTP handlers to execute
- * arbitrary actions on HyperEVM via MulticallHandler, with optional transfer to HyperCore.
+ * arbitrary actions on HyperEVM via MulticallHandler, returning information about the resulting token amount
  * @custom:security-contact bugs@across.to
  */
 abstract contract ArbitraryEVMFlowExecutor {
@@ -36,9 +33,9 @@ abstract contract ArbitraryEVMFlowExecutor {
     /// @notice Error thrown when final balance is insufficient
     error InsufficientFinalBalance(address token, uint256 expected, uint256 actual);
 
-    uint256 constant BPS_TOTAL_PRECISION = 18;
-    uint256 constant BPS_DECIMALS = 4;
-    uint256 constant BPS_PRECISION_SCALAR = 10 ** BPS_TOTAL_PRECISION;
+    uint256 private constant BPS_TOTAL_PRECISION = 18;
+    uint256 private constant BPS_DECIMALS = 4;
+    uint256 private constant BPS_PRECISION_SCALAR = 10 ** BPS_TOTAL_PRECISION;
 
     constructor(address _multicallHandler) {
         multicallHandler = _multicallHandler;
@@ -66,8 +63,11 @@ abstract contract ArbitraryEVMFlowExecutor {
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
-        uint256 totalAmount = amount + extraFeesToSponsorTokenIn;
-        uint256 bpsToSponsor = ((extraFeesToSponsorTokenIn * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
+        uint256 bpsToSponsor;
+        {
+            uint256 totalAmount = amount + extraFeesToSponsorTokenIn;
+            bpsToSponsor = ((extraFeesToSponsorTokenIn * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
+        }
 
         // Snapshot balances
         uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
@@ -75,10 +75,6 @@ abstract contract ArbitraryEVMFlowExecutor {
 
         // Transfer tokens to MulticallHandler
         IERC20(initialToken).safeTransfer(multicallHandler, amount);
-
-        // Decompress calls: add value: 0 to each call and wrap in Instructions
-        // We encode Instructions with calls and a drainLeftoverTokens call at the end
-        uint256 callCount = compressedCalls.length;
 
         // Build instructions for MulticallHandler
         bytes memory instructions = _buildMulticallInstructions(
@@ -116,7 +112,7 @@ abstract contract ArbitraryEVMFlowExecutor {
             (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
             finalAmount;
 
-        emit ArbitraryActionsExecuted(quoteNonce, callCount, finalAmount);
+        emit ArbitraryActionsExecuted(quoteNonce, compressedCalls.length, finalAmount);
 
         return (finalToken, finalAmount, extraFeesToSponsorFinalToken);
     }
