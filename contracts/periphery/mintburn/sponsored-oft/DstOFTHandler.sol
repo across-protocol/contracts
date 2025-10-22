@@ -183,7 +183,6 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
             amount,
             quoteNonce,
-            maxBpsToSponsor,
             initialToken,
             finalToken,
             actionData,

@@ -49,7 +49,6 @@ abstract contract ArbitraryEVMFlowExecutor {
      * @dev Decompresses CompressedCall[] to MulticallHandler.Call[] format (adds value: 0)
      * @param amount Amount of tokens to transfer to MulticallHandler
      * @param quoteNonce Unique nonce for this quote
-     * @param maxBpsToSponsor Maximum basis points to sponsor
      * @param initialToken Token to transfer to MulticallHandler
      * @param finalToken Expected final token after actions
      * @param actionData Encoded actions: abi.encode(CompressedCall[] calls)
@@ -58,7 +57,6 @@ abstract contract ArbitraryEVMFlowExecutor {
     function _executeFlow(
         uint256 amount,
         bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
         address initialToken,
         address finalToken,
         bytes memory actionData,
@@ -70,10 +68,6 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
         uint256 totalAmount = amount + extraFeesToSponsorTokenIn;
         uint256 bpsToSponsor = ((extraFeesToSponsorTokenIn * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
-        uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
-        if (bpsToSponsor > maxBpsToSponsorAdjusted) {
-            bpsToSponsor = maxBpsToSponsorAdjusted;
-        }
 
         // Snapshot balances
         uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));

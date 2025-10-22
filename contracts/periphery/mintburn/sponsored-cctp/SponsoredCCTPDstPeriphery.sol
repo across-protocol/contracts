@@ -149,7 +149,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
             amount,
             quoteNonce,
-            maxBpsToSponsor,
             initialToken,
             finalToken,
             actionData,
