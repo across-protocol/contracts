@@ -2,28 +2,8 @@
 pragma solidity ^0.8.23;
 
 import { BytesLib } from "../../libraries/BytesLib.sol";
+import { LZExecutorOptionsCodec } from "../../libraries/LZExecutorOptionsCodec.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
-/**
- * @title MinimalExecutorOptions
- * @notice This library is used to provide minimal required functionality of
- * https://github.com/LayerZero-Labs/LayerZero-v2/blob/2ff4988f85b5c94032eb71bbc4073e69c078179d/packages/layerzero-v2/evm/messagelib/contracts/libs/ExecutorOptions.sol#L7
- * Code was copied, was not modified
- */
-library MinimalExecutorOptions {
-    uint8 internal constant WORKER_ID = 1;
-
-    uint8 internal constant OPTION_TYPE_LZRECEIVE = 1;
-    uint8 internal constant OPTION_TYPE_LZCOMPOSE = 3;
-
-    function encodeLzReceiveOption(uint128 _gas, uint128 _value) internal pure returns (bytes memory) {
-        return _value == 0 ? abi.encodePacked(_gas) : abi.encodePacked(_gas, _value);
-    }
-
-    function encodeLzComposeOption(uint16 _index, uint128 _gas, uint128 _value) internal pure returns (bytes memory) {
-        return _value == 0 ? abi.encodePacked(_index, _gas) : abi.encodePacked(_index, _gas, _value);
-    }
-}
 
 /**
  * @title MinimalLZOptions
@@ -76,8 +56,8 @@ library MinimalLZOptions {
         uint128 _gas,
         uint128 _value
     ) internal pure onlyType3(_options) returns (bytes memory) {
-        bytes memory option = MinimalExecutorOptions.encodeLzReceiveOption(_gas, _value);
-        return addExecutorOption(_options, MinimalExecutorOptions.OPTION_TYPE_LZRECEIVE, option);
+        bytes memory option = LZExecutorOptionsCodec.encodeLzReceiveOptionData(_gas, _value);
+        return addExecutorOption(_options, LZExecutorOptionsCodec.OPTION_TYPE_LZRECEIVE, option);
     }
 
     /**
@@ -98,8 +78,8 @@ library MinimalLZOptions {
         uint128 _gas,
         uint128 _value
     ) internal pure onlyType3(_options) returns (bytes memory) {
-        bytes memory option = MinimalExecutorOptions.encodeLzComposeOption(_index, _gas, _value);
-        return addExecutorOption(_options, MinimalExecutorOptions.OPTION_TYPE_LZCOMPOSE, option);
+        bytes memory option = LZExecutorOptionsCodec.encodeLzComposeOptionData(_index, _gas, _value);
+        return addExecutorOption(_options, LZExecutorOptionsCodec.OPTION_TYPE_LZCOMPOSE, option);
     }
 
     /**
@@ -117,7 +97,7 @@ library MinimalLZOptions {
         return
             abi.encodePacked(
                 _options,
-                MinimalExecutorOptions.WORKER_ID,
+                LZExecutorOptionsCodec.EXECUTOR_WORKER_ID,
                 _option.length.toUint16() + 1, // +1 for optionType
                 _optionType,
                 _option
