@@ -7,7 +7,6 @@ import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfac
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
-import { DonationBox } from "../../../chain-adapters/DonationBox.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 
@@ -38,10 +37,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @param _signer The address of the signer that was used to sign the quotes.
      * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
      * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
-     * @param _coreIndex The index of the base token on HyperCore.
-     * @param _canBeUsedForAccountActivation Whether the token can be used for account activation.
-     * @param _accountActivationFeeCore If the token can be used for account activation, this is the fee that is needed for account activation.
-     * @param _bridgeSafetyBufferCore This buffers is used to check if the bridging to Core is safe.
      * @param _multicallHandler The address of the multicall handler contract.
      */
     constructor(
@@ -59,7 +54,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @notice Sets the signer address that is used to validate the signatures of the quotes.
      * @param _signer The new signer address.
      */
-    function setSigner(address _signer) external onlyDefaultAdmin {
+    function setSigner(address _signer) external nonReentrant onlyDefaultAdmin {
         signer = _signer;
     }
 
@@ -67,7 +62,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @notice Sets the quote deadline buffer. This is used to prevent the quote from being used after it has expired.
      * @param _quoteDeadlineBuffer The new quote deadline buffer.
      */
-    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external onlyDefaultAdmin {
+    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyDefaultAdmin {
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 
@@ -78,7 +73,11 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @param attestation The attestation that is received from CCTP.
      * @param signature The signature of the quote.
      */
-    function receiveMessage(bytes memory message, bytes memory attestation, bytes memory signature) external {
+    function receiveMessage(
+        bytes memory message,
+        bytes memory attestation,
+        bytes memory signature
+    ) external nonReentrant {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
         // If the hook data is invalid or the mint recipient is not this contract we cannot process the message

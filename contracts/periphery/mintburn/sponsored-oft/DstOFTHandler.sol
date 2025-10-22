@@ -75,7 +75,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         }
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external onlyDefaultAdmin {
+    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
         authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
@@ -92,7 +92,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         bytes calldata _message,
         address /* _executor */,
         bytes calldata /* _extraData */
-    ) external payable override {
+    ) external payable override nonReentrant {
         _requireAuthorizedMessage(_oApp, _message);
 
         // Decode the actual `composeMsg` payload to extract the recipient address

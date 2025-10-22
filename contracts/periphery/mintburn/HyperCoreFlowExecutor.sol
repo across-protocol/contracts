@@ -2,14 +2,15 @@
 pragma solidity ^0.8.0;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
-import { IERC20Metadata, IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
-import { BPS_DECIMALS, BPS_SCALAR } from "./Constants.sol";
+import { BPS_SCALAR } from "./Constants.sol";
+import { Lockable } from "../../Lockable.sol";
 
 /**
  * @title HyperCoreFlowExecutor
@@ -17,7 +18,7 @@ import { BPS_DECIMALS, BPS_SCALAR } from "./Constants.sol";
  * @dev This contract is designed to work with stablecoins. baseToken and every finalToken should all be stablecoins.
  * @custom:security-contact bugs@across.to
  */
-contract HyperCoreFlowExecutor is AccessControl {
+contract HyperCoreFlowExecutor is AccessControl, Lockable {
     using SafeERC20 for IERC20;
 
     // Common decimals scalars
@@ -40,11 +41,11 @@ contract HyperCoreFlowExecutor is AccessControl {
     mapping(address => FinalTokenInfo) public finalTokenInfos;
 
     /// @notice All operations performed in this contract are relative to this baseToken
-    address immutable baseToken;
+    address public immutable baseToken;
 
     /// @notice The block number of the last funds pull action per final token: either as a part of finalizing pending swaps,
     /// or an admin funds pull
-    mapping(address finalToken => uint256 lastPullFundsBlock) lastPullFundsBlock;
+    mapping(address finalToken => uint256 lastPullFundsBlock) public lastPullFundsBlock;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct PendingSwap {
@@ -274,7 +275,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         bool canBeUsedForAccountActivation,
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
-    ) external onlyDefaultAdmin {
+    ) external nonReentrant onlyDefaultAdmin {
         _setCoreTokenInfo(
             token,
             coreIndex,
@@ -302,7 +303,13 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint32 feePpm,
         uint32 suggestedDiscountBps,
         address accountActivationFeeToken
-    ) external onlyExistingCoreToken(finalToken) onlyExistingCoreToken(accountActivationFeeToken) onlyDefaultAdmin {
+    )
+        external
+        nonReentrant
+        onlyExistingCoreToken(finalToken)
+        onlyExistingCoreToken(accountActivationFeeToken)
+        onlyDefaultAdmin
+    {
         SwapHandler swapHandler = finalTokenInfos[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
             bytes32 salt = _swapHandlerSalt(finalToken);
@@ -622,15 +629,39 @@ contract HyperCoreFlowExecutor is AccessControl {
             return;
         }
 
-        // Transfer funds to SwapHandler @ core
-        SwapHandler swapHandler = finalTokenInfo.swapHandler;
+        // State changes
+        uint128 cloid = ++nextCloid;
+        pendingSwaps[quoteNonce] = PendingSwap({
+            finalRecipient: finalRecipient,
+            finalToken: finalToken,
+            minCoreAmountFromLO: guaranteedLOOut,
+            sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
+            limitOrderCloid: cloid
+        });
+        pendingQueue[finalToken].push(quoteNonce);
+        cloidToQuoteNonce[cloid] = quoteNonce;
+        cumulativeSponsoredAmount[finalToken] += totalEVMAmountToSponsor;
 
-        // 1. Fund SwapHandler @ core with `initialToken`: use it for the trade
+        emit SwapFlowInitialized(
+            quoteNonce,
+            finalRecipient,
+            finalToken,
+            amountInEVM,
+            totalEVMAmountToSponsor,
+            finalCoreSendAmount,
+            finalTokenInfo.assetIndex,
+            cloid
+        );
+
         (uint256 evmToSendForTrade, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             tokensToSendCore,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
-        // Here, we're sending amount that is <= amountInEVM (came from user's bridge transaction)
+
+        SwapHandler swapHandler = finalTokenInfo.swapHandler;
+        // Interactions with external contracts
+        // 1. Fund SwapHandler @ core with `initialToken`: use it for the trade
+        // Always: evmToSendForTrade <= amountInEVM because of how it's calculated
         IERC20(initialToken).safeTransfer(address(swapHandler), evmToSendForTrade);
         swapHandler.transferFundsToSelfOnCore(
             initialToken,
@@ -651,39 +682,20 @@ contract HyperCoreFlowExecutor is AccessControl {
                 totalEVMAmountToSponsor,
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
-            cumulativeSponsoredAmount[finalToken] += totalEVMAmountToSponsor;
         }
 
-        uint128 cloid = ++nextCloid;
         swapHandler.submitLimitOrder(finalTokenInfo, limitPriceX1e8, sizeX1e8, cloid);
-
-        pendingSwaps[quoteNonce] = PendingSwap({
-            finalRecipient: finalRecipient,
-            finalToken: finalToken,
-            minCoreAmountFromLO: guaranteedLOOut,
-            sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
-            limitOrderCloid: cloid
-        });
-        pendingQueue[finalToken].push(quoteNonce);
-        cloidToQuoteNonce[cloid] = quoteNonce;
-
-        emit SwapFlowInitialized(
-            quoteNonce,
-            finalRecipient,
-            finalToken,
-            amountInEVM,
-            totalEVMAmountToSponsor,
-            finalCoreSendAmount,
-            finalTokenInfo.assetIndex,
-            cloid
-        );
     }
 
     /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponding SwapHandler has enough balance
     function finalizePendingSwaps(
         address finalToken,
         uint256 maxSwapCountToFinalize
-    ) external returns (uint256 finalizedSwapsCount, uint256 finalizedSwapsAmount, uint256 totalPendingSwapsRemaining) {
+    )
+        external
+        nonReentrant
+        returns (uint256 finalizedSwapsCount, uint256 finalizedSwapsAmount, uint256 totalPendingSwapsRemaining)
+    {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
 
@@ -749,7 +761,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         bytes32 quoteNonce,
         address finalRecipient,
         address fundingToken
-    ) external onlyPermissionedBot {
+    ) external nonReentrant onlyPermissionedBot {
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(fundingToken);
         bool coreUserExists = HyperCoreLib.coreUserExists(finalRecipient);
         require(coreUserExists == false, "Can't fund account activation for existing user");
@@ -761,6 +773,8 @@ contract HyperCoreFlowExecutor is AccessControl {
         );
         require(safeToBridge, "Not safe to bridge");
         uint256 activationFeeEvm = coreTokenInfo.accountActivationFeeEVM;
+        cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
+
         // donationBox @ evm -> Handler @ evm
         _getFromDonationBox(fundingToken, activationFeeEvm);
         // Handler @ evm -> Handler @ core -> finalRecipient @ core
@@ -772,14 +786,14 @@ contract HyperCoreFlowExecutor is AccessControl {
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
-
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, activationFeeEvm);
     }
 
     /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
     /// be used for stale limit orders to speed up executing user transactions
-    function cancelLimitOrderByCloid(uint128 cloid) external onlyPermissionedBot returns (bytes32 quoteNonce) {
+    function cancelLimitOrderByCloid(
+        uint128 cloid
+    ) external nonReentrant onlyPermissionedBot returns (bytes32 quoteNonce) {
         quoteNonce = cloidToQuoteNonce[cloid];
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
         // A pending swap was enqueued with this Final token, so it had to be set. Unsetting the final token config is not
@@ -821,7 +835,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         uint64 priceX1e8,
         uint64 oldPriceX1e8,
         uint64 oldSizeX1e8Left
-    ) external onlyPermissionedBot {
+    ) external nonReentrant onlyPermissionedBot {
         PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
         require(pendingSwap.limitOrderCloid == 0, "Cannot resubmit LO for non-empty cloid");
 
@@ -1026,27 +1040,27 @@ contract HyperCoreFlowExecutor is AccessControl {
      *            SWEEP FUNCTIONS         *
      **************************************/
 
-    function sweepErc20(address token, uint256 amount) external onlyFundsSweeper {
+    function sweepErc20(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepErc20FromDonationBox(address token, uint256 amount) external onlyFundsSweeper {
+    function sweepErc20FromDonationBox(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
         _getFromDonationBox(token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepERC20FromSwapHandler(address token, uint256 amount) external onlyFundsSweeper {
+    function sweepERC20FromSwapHandler(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.sweepErc20(token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepOnCore(address token, uint64 amount) external onlyFundsSweeper {
+    function sweepOnCore(address token, uint64 amount) external nonReentrant onlyFundsSweeper {
         HyperCoreLib.transferERC20CoreToCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 
     // TODO? Alternative flow: make this permissionless, send money SwapHandler @ core -> DonationBox @ core => DonationBox pulls money from Core to Self (needs DonationBox code change)
-    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyPermissionedBot {
+    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyPermissionedBot {
         // We first want to make sure there are not pending limit orders for this token
         uint256 head = pendingQueueHead[token];
         if (head < pendingQueue[token].length) {
