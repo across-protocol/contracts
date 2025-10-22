@@ -37,10 +37,6 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils {
             ioft,
             address(donationBox),
             baseToken,
-            coreIndex,
-            canBeUsedForAccountActivation,
-            accountActivationFeeCore,
-            bridgeSafetyBufferCore,
             multicallHandler
         );
         console.log("DstOFTHandler deployed to:", address(dstOFTHandler));
