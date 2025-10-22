@@ -487,7 +487,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
-        // Load structs from storage to optimize repeated field access
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
         address initialToken = baseToken;
         CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
