@@ -33,7 +33,7 @@ pub struct DepositForBurn<'info> {
         space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE,
         seeds = [
             b"used_nonce",
-            &params.quote[NONCE_START..NONCE_END], // Safe to use as all quote params are fixed length.
+            &params.quote[NONCE_START..NONCE_END], // Safe to use as all quote params up to nonce are fixed length.
         ],
         bump
     )]
