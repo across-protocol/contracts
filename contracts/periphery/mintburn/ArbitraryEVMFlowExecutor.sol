@@ -12,13 +12,13 @@ import { MulticallHandler } from "../../handlers/MulticallHandler.sol";
 import { BPS_SCALAR } from "./Constants.sol";
 
 /**
- * @title ArbitraryActionFlowExecutor
+ * @title ArbitraryEVMFlowExecutor
  * @notice Base contract for executing arbitrary action sequences using MulticallHandler
  * @dev This contract provides shared functionality for both OFT and CCTP handlers to execute
  * arbitrary actions on HyperEVM via MulticallHandler, with optional transfer to HyperCore.
  * @custom:security-contact bugs@across.to
  */
-abstract contract ArbitraryActionFlowExecutor {
+abstract contract ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20;
 
     /// @notice Compressed call struct (no value field to save gas)
@@ -51,29 +51,25 @@ abstract contract ArbitraryActionFlowExecutor {
      * @param quoteNonce Unique nonce for this quote
      * @param maxBpsToSponsor Maximum basis points to sponsor
      * @param initialToken Token to transfer to MulticallHandler
-     * @param finalRecipient Final recipient address
      * @param finalToken Expected final token after actions
      * @param actionData Encoded actions: abi.encode(CompressedCall[] calls)
-     * @param transferToCore Whether to transfer result to HyperCore
-     * @param extraFeesToSponsor Extra fees to sponsor
+     * @param extraFeesToSponsorTokenIn Extra fees to sponsor in initialToken
      */
     function _executeArbitraryActionFlow(
         uint256 amount,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,
         address initialToken,
-        address finalRecipient,
         address finalToken,
         bytes memory actionData,
-        bool transferToCore,
-        uint256 extraFeesToSponsor
-    ) internal {
+        uint256 extraFeesToSponsorTokenIn
+    ) internal returns (address /* finalToken */, uint256 finalAmount, uint256 extraFeesToSponsorFinalToken) {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
 
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
-        uint256 totalAmount = amount + extraFeesToSponsor;
-        uint256 bpsToSponsor = ((extraFeesToSponsor * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
+        uint256 totalAmount = amount + extraFeesToSponsorTokenIn;
+        uint256 bpsToSponsor = ((extraFeesToSponsorTokenIn * BPS_PRECISION_SCALAR) + totalAmount - 1) / totalAmount;
         uint256 maxBpsToSponsorAdjusted = maxBpsToSponsor * (10 ** (BPS_TOTAL_PRECISION - BPS_DECIMALS));
         if (bpsToSponsor > maxBpsToSponsorAdjusted) {
             bpsToSponsor = maxBpsToSponsorAdjusted;
@@ -105,8 +101,6 @@ abstract contract ArbitraryActionFlowExecutor {
             instructions
         );
 
-        uint256 finalAmount;
-
         // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
         if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
             finalToken = initialToken;
@@ -124,39 +118,13 @@ abstract contract ArbitraryActionFlowExecutor {
 
         // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
         uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
-        uint256 amountToSponsor = (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) /
-            bpsToSponsorAdjusted) - finalAmount;
-        if (amountToSponsor > 0) {
-            DonationBox donationBox = _getDonationBox();
-            if (IERC20(finalToken).balanceOf(address(donationBox)) < amountToSponsor) {
-                amountToSponsor = 0;
-            } else {
-                donationBox.withdraw(IERC20(finalToken), amountToSponsor);
-            }
-        }
+        extraFeesToSponsorFinalToken =
+            (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
+            finalAmount;
 
         emit ArbitraryActionsExecuted(quoteNonce, callCount, finalAmount);
 
-        // Route to appropriate destination based on transferToCore flag
-        if (transferToCore) {
-            _executeSimpleTransferFlow(
-                finalAmount,
-                quoteNonce,
-                maxBpsToSponsor,
-                finalRecipient,
-                amountToSponsor,
-                finalToken
-            );
-        } else {
-            _fallbackHyperEVMFlow(
-                finalAmount,
-                quoteNonce,
-                maxBpsToSponsor,
-                finalRecipient,
-                amountToSponsor,
-                finalToken
-            );
-        }
+        return (finalToken, finalAmount, extraFeesToSponsorFinalToken);
     }
 
     /**
@@ -201,38 +169,6 @@ abstract contract ArbitraryActionFlowExecutor {
 
         return abi.encode(instructions);
     }
-
-    /**
-     * @notice Execute simple transfer flow to HyperCore with the final token
-     * @dev Must be implemented by contracts that inherit from this contract
-     */
-    function _executeSimpleTransferFlow(
-        uint256 finalAmount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address finalRecipient,
-        uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal virtual;
-
-    /**
-     * @notice Execute fallback HyperEVM flow (stay on HyperEVM)
-     * @dev Must be implemented by contracts that inherit from this contract
-     */
-    function _fallbackHyperEVMFlow(
-        uint256 finalAmount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address finalRecipient,
-        uint256 extraFeesToSponsor,
-        address finalToken
-    ) internal virtual;
-
-    /**
-     * @notice Get the donation box instance
-     * @dev Must be implemented by contracts that inherit from this contract
-     */
-    function _getDonationBox() internal view virtual returns (DonationBox);
 
     /// @notice Allow contract to receive native tokens for arbitrary action execution
     receive() external payable virtual {}
