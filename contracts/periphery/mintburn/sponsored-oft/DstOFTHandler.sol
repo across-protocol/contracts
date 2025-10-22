@@ -155,7 +155,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
             );
         } else {
             // Execute standard HyperCore flow (default)
-            _executeFlow(
+            HyperCoreFlowExecutor._executeFlow(
                 amountLD,
                 quoteNonce,
                 maxBpsToSponsor,
@@ -180,7 +180,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
     ) internal {
         uint256 finalAmount;
         uint256 extraFeesToSponsorFinalToken;
-        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeArbitraryActionFlow(
+        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
             amount,
             quoteNonce,
             maxBpsToSponsor,

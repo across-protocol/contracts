@@ -55,7 +55,7 @@ abstract contract ArbitraryEVMFlowExecutor {
      * @param actionData Encoded actions: abi.encode(CompressedCall[] calls)
      * @param extraFeesToSponsorTokenIn Extra fees to sponsor in initialToken
      */
-    function _executeArbitraryActionFlow(
+    function _executeFlow(
         uint256 amount,
         bytes32 quoteNonce,
         uint256 maxBpsToSponsor,

@@ -99,7 +99,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             );
         } else {
             // Execute standard HyperCore flow (default)
-            _executeFlow(
+            HyperCoreFlowExecutor._executeFlow(
                 amountAfterFees,
                 quote.nonce,
                 // If the quote is invalid we don't sponsor the flow or the extra fees
@@ -146,7 +146,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     ) internal {
         uint256 finalAmount;
         uint256 extraFeesToSponsorFinalToken;
-        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeArbitraryActionFlow(
+        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
             amount,
             quoteNonce,
             maxBpsToSponsor,
