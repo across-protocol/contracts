@@ -126,15 +126,17 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         ) {
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
-                amountLD,
-                quoteNonce,
-                maxBpsToSponsor,
-                baseToken, // initialToken
-                finalToken,
-                finalRecipient,
-                actionData,
-                EXTRA_FEES_TO_SPONSOR,
-                executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
+                EVMFlowParams({
+                    amount: amountLD,
+                    quoteNonce: quoteNonce,
+                    maxBpsToSponsor: maxBpsToSponsor,
+                    initialToken: baseToken,
+                    finalToken: finalToken,
+                    finalRecipient: finalRecipient,
+                    actionData: actionData,
+                    extraFeesToSponsor: EXTRA_FEES_TO_SPONSOR,
+                    transferToCore: executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
+                })
             );
         } else {
             // Execute standard HyperCore flow (default)
@@ -150,36 +152,28 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         }
     }
 
-    function _executeWithEVMFlow(
-        uint256 amount,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        address initialToken,
-        address finalToken,
-        address finalRecipient,
-        bytes memory actionData,
-        uint256 extraFeesToSponsor,
-        bool transferToCore
-    ) internal {
+    function _executeWithEVMFlow(EVMFlowParams memory params) internal {
         uint256 finalAmount;
         uint256 extraFeesToSponsorFinalToken;
-        (finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
-            amount,
-            quoteNonce,
-            initialToken,
-            finalToken,
-            actionData,
-            extraFeesToSponsor
+        (params.finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
+            params.amount,
+            params.quoteNonce,
+            params.initialToken,
+            params.finalToken,
+            params.actionData,
+            params.extraFeesToSponsor
         );
 
         // Route to appropriate destination based on transferToCore flag
-        (transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
-            finalAmount,
-            quoteNonce,
-            maxBpsToSponsor,
-            finalRecipient,
-            extraFeesToSponsorFinalToken,
-            finalToken
+        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
+            CommonFlowParams({
+                amountInEVM: finalAmount,
+                quoteNonce: params.quoteNonce,
+                finalRecipient: params.finalRecipient,
+                finalToken: params.finalToken,
+                maxBpsToSponsor: params.maxBpsToSponsor,
+                extraBridgingFeesEVM: extraFeesToSponsorFinalToken
+            })
         );
     }
 
