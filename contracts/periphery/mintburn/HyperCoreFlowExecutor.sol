@@ -680,7 +680,10 @@ contract HyperCoreFlowExecutor is AccessControl {
     }
 
     /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponding SwapHandler has enough balance
-    function finalizePendingSwaps(address finalToken, uint256 maxToProcess) external {
+    function finalizePendingSwaps(
+        address finalToken,
+        uint256 maxSwapCountToFinalize
+    ) external returns (uint256 finalizedSwapsCount, uint256 finalizedSwapsAmount, uint256 totalPendingSwapsRemaining) {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
 
@@ -688,13 +691,13 @@ contract HyperCoreFlowExecutor is AccessControl {
 
         uint256 head = pendingQueueHead[finalToken];
         bytes32[] storage queue = pendingQueue[finalToken];
-        if (head >= queue.length || maxToProcess == 0) return;
+        if (head >= queue.length) return (0, 0, 0);
+        if (maxSwapCountToFinalize == 0) return (0, 0, queue.length - head);
 
         // Note: `availableCore` is the SwapHandler's Core balance for `finalToken`, which monotonically increases
         uint64 availableCore = HyperCoreLib.spotBalance(address(finalTokenInfo.swapHandler), coreTokenInfo.coreIndex);
-        uint256 processed = 0;
 
-        while (head < queue.length && processed < maxToProcess) {
+        while (head < queue.length && finalizedSwapsCount < maxSwapCountToFinalize) {
             bytes32 nonce = queue[head];
 
             PendingSwap storage pendingSwap = pendingSwaps[nonce];
@@ -723,14 +726,17 @@ contract HyperCoreFlowExecutor is AccessControl {
             // We don't delete `pendingSwaps` state, because we might require it for accounting purposes if we need to
             // update the associated limit order
             head += 1;
-            processed += 1;
+            finalizedSwapsCount += 1;
+            finalizedSwapsAmount += totalAmountToForwardToUser;
         }
 
         pendingQueueHead[finalToken] = head;
 
-        if (processed > 0) {
+        if (finalizedSwapsCount > 0) {
             lastPullFundsBlock[finalToken] = block.number;
         }
+
+        return (finalizedSwapsCount, finalizedSwapsAmount, queue.length - head);
     }
 
     function activateUserAccount(
