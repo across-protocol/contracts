@@ -372,41 +372,12 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * @notice This function is to be called by an inheriting contract. It is to be called after the child contract
      * checked the API signature and made sure that the params passed here have been verified by either the underlying
      * bridge mechanics, or API signaure, or both.
-     * @param amountInEVM The real token amount to be used in this flow execution
-     * @param extraFeesToSponsor Any fees subtracted from the user up until this point (e.g. CCTP bridging fees)
      */
-    function _executeFlow(
-        uint256 amountInEVM,
-        bytes32 quoteNonce,
-        uint256 maxBpsToSponsor,
-        uint256 maxUserSlippageBps,
-        address finalRecipient,
-        address finalToken,
-        uint256 extraFeesToSponsor
-    ) internal {
-        if (finalToken == baseToken) {
-            _executeSimpleTransferFlow(
-                CommonFlowParams({
-                    amountInEVM: amountInEVM,
-                    quoteNonce: quoteNonce,
-                    finalRecipient: finalRecipient,
-                    finalToken: finalToken,
-                    maxBpsToSponsor: maxBpsToSponsor,
-                    extraBridgingFeesEVM: extraFeesToSponsor
-                })
-            );
+    function _executeFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
+        if (params.finalToken == baseToken) {
+            _executeSimpleTransferFlow(params);
         } else {
-            _initiateSwapFlow(
-                CommonFlowParams({
-                    amountInEVM: amountInEVM,
-                    quoteNonce: quoteNonce,
-                    finalRecipient: finalRecipient,
-                    finalToken: finalToken,
-                    maxBpsToSponsor: maxBpsToSponsor,
-                    extraBridgingFeesEVM: extraFeesToSponsor
-                }),
-                maxUserSlippageBps
-            );
+            _initiateSwapFlow(params, maxUserSlippageBps);
         }
     }
 

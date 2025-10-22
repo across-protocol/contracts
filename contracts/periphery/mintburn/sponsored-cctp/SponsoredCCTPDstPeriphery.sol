@@ -121,15 +121,17 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         } else {
             // Execute standard HyperCore flow (default)
             HyperCoreFlowExecutor._executeFlow(
-                amountAfterFees,
-                quote.nonce,
-                // If the quote is invalid we don't sponsor the flow or the extra fees
-                isQuoteValid ? quote.maxBpsToSponsor : 0,
-                quote.maxUserSlippageBps,
-                quote.finalRecipient.toAddress(),
-                // If the quote is invalid we don't want to swap, so we use the base token as the final token
-                isQuoteValid ? quote.finalToken.toAddress() : baseToken,
-                isQuoteValid ? feeExecuted : 0
+                CommonFlowParams({
+                    amountInEVM: amountAfterFees,
+                    quoteNonce: quote.nonce,
+                    finalRecipient: quote.finalRecipient.toAddress(),
+                    // If the quote is invalid we don't want to swap, so we use the base token as the final token
+                    finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
+                    // If the quote is invalid we don't sponsor the flow or the extra fees
+                    maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
+                    extraBridgingFeesEVM: isQuoteValid ? feeExecuted : 0
+                }),
+                quote.maxUserSlippageBps
             );
         }
 

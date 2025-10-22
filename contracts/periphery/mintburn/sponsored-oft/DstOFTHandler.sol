@@ -141,13 +141,15 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         } else {
             // Execute standard HyperCore flow (default)
             HyperCoreFlowExecutor._executeFlow(
-                amountLD,
-                quoteNonce,
-                maxBpsToSponsor,
-                maxUserSlippageBps,
-                finalRecipient,
-                finalToken,
-                EXTRA_FEES_TO_SPONSOR
+                CommonFlowParams({
+                    amountInEVM: amountLD,
+                    quoteNonce: quoteNonce,
+                    finalRecipient: finalRecipient,
+                    finalToken: finalToken,
+                    maxBpsToSponsor: maxBpsToSponsor,
+                    extraBridgingFeesEVM: EXTRA_FEES_TO_SPONSOR
+                }),
+                maxUserSlippageBps
             );
         }
     }
