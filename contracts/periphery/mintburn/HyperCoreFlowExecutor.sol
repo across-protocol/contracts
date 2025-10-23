@@ -158,6 +158,9 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 bridgeSafetyBufferCore
     );
 
+    /// @notice Emitted when we do an ad-hoc send of sponsorship funds to one of the Swap Handlers
+    event SentSponsorshipFundsToSwapHandler(address indexed token, uint256 evmAmountSponsored);
+
     /**************************************
      *            ERRORS               *
      **************************************/
@@ -614,6 +617,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
                 revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, totalAdditionalToSend);
             }
 
+            cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
+
             // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
             // Get additional amount to send from donation box, and send it to self on core
             donationBox.withdraw(IERC20(finalToken), totalAdditionalToSendEVM);
@@ -737,7 +742,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, cloid);
 
-        // TODO? Consider tying this to quoteNonce
         emit CancelledLimitOrder(finalToken, cloid);
     }
 
@@ -750,7 +754,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
 
-        // TODO? Consider tying this to quoteNonce
         emit SubmittedLimitOrder(finalToken, priceX1e8, sizeX1e8, cloid);
     }
 
@@ -791,7 +794,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * @notice Used for ad-hoc sends of sponsorship funds to associated SwapHandler @ HyperCore
      * @param token The final token for which we want to fund the SwapHandler
      */
-    function sendSponsorshipToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
+    function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(token);
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(token);
         (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
@@ -807,6 +810,10 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         ) {
             revert UnsafeToBridgeError(token, amountCoreToReceive);
         }
+
+        cumulativeSponsoredAmount[token] += amountEVMToSend;
+
+        emit SentSponsorshipFundsToSwapHandler(token, amountEVMToSend);
 
         donationBox.withdraw(IERC20(token), amountEVMToSend);
         IERC20(token).safeTransfer(address(finalTokenInfo.swapHandler), amountEVMToSend);
