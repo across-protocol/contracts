@@ -30,16 +30,6 @@ interface SponsoredCCTPInterface {
         bytes signature
     );
 
-    event SponsoredMintAndWithdraw(
-        bytes32 indexed quoteNonce,
-        bytes32 indexed finalRecipient,
-        bytes32 indexed finalToken,
-        uint256 finalAmount,
-        uint256 quoteDeadline,
-        uint256 maxBpsToSponsor,
-        uint256 maxUserSlippageBps
-    );
-
     event SimpleTansferToCore(
         address indexed finalToken,
         address indexed finalRecipient,
