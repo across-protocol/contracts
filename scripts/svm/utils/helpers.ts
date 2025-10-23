@@ -14,6 +14,10 @@ export const formatUsdc = (amount: BigNumber): string => {
   return ethers.utils.formatUnits(amount, 6);
 };
 
+export const parseUsdc = (amount: string): BigNumber => {
+  return ethers.utils.parseUnits(amount, 6);
+};
+
 export function constructEmptyPoolRebalanceTree(chainId: BigNumber, groupIndex: number) {
   const poolRebalanceLeaf = {
     chainId,
@@ -52,3 +56,22 @@ export const constructSimpleRebalanceTreeToHubPool = (
   const merkleTree = new MerkleTree<RelayerRefundLeafType>(relayerRefundLeaves, relayerRefundHashFn);
   return { merkleTree, leaves: relayerRefundLeaves };
 };
+
+/**
+ * Convert a bigint (0 ≤ n < 2^256) to a 32-byte Uint8Array (big-endian).
+ * @dev copied from sdk/src/arch/svm/utils
+ * @param n The bigint to convert.
+ * @returns The 32-byte Uint8Array.
+ */
+export function bigintToU8a32(n: bigint): Uint8Array {
+  if (n < BigInt(0) || n > ethers.constants.MaxUint256.toBigInt()) {
+    throw new RangeError("Value must fit in 256 bits");
+  }
+  const hexPadded = ethers.utils.hexZeroPad("0x" + n.toString(16), 32);
+  return ethers.utils.arrayify(hexPadded);
+}
+
+export const bigToU8a32 = (bn: bigint | BigNumber) =>
+  bigintToU8a32(typeof bn === "bigint" ? bn : BigInt(bn.toString()));
+
+export const numberToU8a32 = (n: number) => bigintToU8a32(BigInt(n));
