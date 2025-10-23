@@ -100,13 +100,24 @@ const config: HardhatUserConfig = {
         ...LARGE_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        // version: "0.8.19",
+        version: "0.8.19",
+        settings: {
+          optimizer: { enabled: true, runs: 50 },
+          viaIR: true,
+          debug: { revertStrings: isTest ? "debug" : "strip" },
+        },
       },
       "contracts/SpokePoolVerifier.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        // version: "0.8.19",
+        version: "0.8.19",
+        settings: {
+          optimizer: { enabled: true, runs: 1000000 },
+          viaIR: true,
+          // Only strip revert strings if not testing or in ci.
+          debug: { revertStrings: isTest ? "debug" : "strip" },
+        },
       },
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -142,7 +153,6 @@ const config: HardhatUserConfig = {
       accounts: { accountsBalance: "1000000000000000000000000" },
       zksync: compileZk,
       allowUnlimitedContractSize: true,
-      // hardfork: "shanghai",
     },
     mainnet: getDefaultHardhatConfig(CHAIN_IDs.MAINNET),
     zksync: {
