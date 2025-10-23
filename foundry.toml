@@ -34,7 +34,7 @@ revert_strings = "strip"
 fs_permissions = [{ access = "read", path = "./"}]
 
 solc = "0.8.24"
-evm_version = "prague"
+evm_version = "cancun"
 
 [profile.zksync]
 src = "contracts/Lens_SpokePool.sol"
