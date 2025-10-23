@@ -43,7 +43,7 @@ export async function deployNewProxy(
   constructorArgs: FnArgs[],
   initArgs: FnArgs[],
   implementationOnly?: boolean
-): Promise<void> {
+): Promise<{ proxyAddress?: string; implementationAddress: string }> {
   const { deployments, run, upgrades, getChainId } = hre;
   let chainId = Number(await getChainId());
 
@@ -54,11 +54,12 @@ export async function deployNewProxy(
   }
 
   // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
-  const proxy = getDeployedAddress("SpokePool", chainId, false);
-  implementationOnly ??= proxy !== undefined;
+  let proxyAddress = getDeployedAddress("SpokePool", chainId, false);
+  implementationOnly ??= proxyAddress !== undefined;
+  let implementationAddress: string;
   if (implementationOnly) {
-    console.log(`${name} deployment already detected @ ${proxy}, deploying new implementation.`);
-    instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
+    console.log(`${name} deployment already detected @ ${proxyAddress}, deploying new implementation.`);
+    implementationAddress = instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
       constructorArgs,
       kind: "uups",
       unsafeAllow: unsafeAllowArgs as unsafeAllowTypes,
@@ -71,9 +72,9 @@ export async function deployNewProxy(
       constructorArgs,
       initializer: "initialize",
     });
-    instance = (await proxy.deployed()).address;
+    proxyAddress = instance = (await proxy.deployed()).address;
     console.log(`New ${name} proxy deployed @ ${instance}`);
-    const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance);
+    implementationAddress = await upgrades.erc1967.getImplementationAddress(instance);
     console.log(`${name} implementation deployed @ ${implementationAddress}`);
   }
 
@@ -93,6 +94,8 @@ export async function deployNewProxy(
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
   const contract = `contracts/${name}.sol:${name}`;
   await verifyContract(instance, constructorArgs, contract);
+
+  return { proxyAddress, implementationAddress };
 }
 
 export async function verifyContract(address: string, constructorArguments: any[], contract?: string) {

@@ -8,8 +8,9 @@ import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
 import { BigNumber, Signer, Contract, ContractFactory, BaseContract } from "ethers";
-import { OFT_EIDs } from "../deploy/consts";
+import { EXPECTED_SAFE_OWNERS, OFT_EIDs } from "../deploy/consts";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
 
 chai.use(smock.matchers);
 
@@ -218,3 +219,16 @@ export function getOftEid(chainId: number): number {
   }
   return value;
 }
+
+export const safeAccountConfig: SafeAccountConfig = {
+  owners: EXPECTED_SAFE_OWNERS,
+  threshold: 2,
+};
+
+export const predictedSafe: PredictedSafeProps = {
+  safeAccountConfig,
+  safeDeploymentConfig: {
+    // Safe addresses are deterministic based on owners and salt nonce.
+    saltNonce: "0x1234",
+  },
+};

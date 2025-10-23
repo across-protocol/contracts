@@ -310,6 +310,14 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "plasma",
+        chainId: 9745,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmascan.to",
+        },
+      },
+      {
         network: "soneium",
         chainId: CHAIN_IDs.SONEIUM,
         urls: {
