@@ -168,8 +168,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// @notice Thrown when an attempt to finalize a non-existing swap is made
     error SwapDoesNotExist();
 
-    /// @notice Throws when an attemp to finalize an already finalized swap is made
+    /// @notice Thrown when an attemp to finalize an already finalized swap is made
     error SwapAlreadyFinalized();
+
+    /// @notice Thrown when trying to finalize a quoteNonce, calling a finalizeSwapFlows with an incorrect token
+    error WrongSwapFinalizationToken(bytes32 quoteNonce);
 
     /// @notice Emitted when the donation box is insufficient funds and we can't proceed.
     error DonationBoxInsufficientFundsError(address token, uint256 amount);
@@ -552,6 +555,12 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
+    /**
+     * @notice Finalizes multiple swap flows associated with a final token, subject to the L1 Hyperliquid balance
+     * @dev Caller is responsible for providing correct limitOrderOutput amounts per assosicated swap flow. The caller
+     * has to estimate how much final tokens it received on core based on the input of the corresponding quote nonce
+     * swap flow
+     */
     function _finalizeSwapFlows(
         address finalToken,
         bytes32[] calldata quoteNonces,
@@ -568,26 +577,19 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             finalCoreTokenInfo.coreIndex
         );
         uint64 totalAdditionalToSend = 0;
-        for (uint256 i; i < quoteNonces.length; ++i) {
-            SwapFlowState storage swap = swaps[quoteNonces[i]];
-            if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
-            if (swap.finalized) revert SwapAlreadyFinalized();
-            swap.finalized = true;
-
-            (uint64 totalToSend, uint64 additionalToSend) = _calcSwapFlowSendAmounts(
-                limitOrderOuts[i],
-                swap.minAmountToSend,
-                swap.maxAmountToSend,
-                swap.isSponsored
+        for (; finalized < quoteNonces.length; ++finalized) {
+            bool success;
+            uint64 additionalToSend;
+            (success, additionalToSend, availableBalance) = _finalizeSingleSwap(
+                quoteNonces[finalized],
+                limitOrderOuts[finalized],
+                finalCoreTokenInfo,
+                availableBalance
             );
-            if (totalToSend > availableBalance) {
+            if (!success) {
                 break;
             }
-            availableBalance -= totalToSend;
             totalAdditionalToSend += additionalToSend;
-            finalized += 1;
-            HyperCoreLib.transferERC20CoreToCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
-            emit SwapFlowFinalized(quoteNonces[i], swap.finalRecipient, swap.finalToken, totalToSend, additionalToSend);
         }
 
         if (finalized > 0) {
@@ -626,6 +628,40 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
+    }
+
+    /// @notice Finalizes a single swap flow, sending the tokens to user on core. Relies on caller to send the `additionalToSend`
+    function _finalizeSingleSwap(
+        bytes32 quoteNonce,
+        uint64 limitOrderOut,
+        CoreTokenInfo memory finalCoreTokenInfo,
+        uint64 availableBalance
+    ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
+        SwapFlowState storage swap = swaps[quoteNonce];
+        if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
+        if (swap.finalized) revert SwapAlreadyFinalized();
+        if (swap.finalToken != finalCoreTokenInfo.tokenInfo.evmContract) revert WrongSwapFinalizationToken(quoteNonce);
+
+        uint64 totalToSend;
+        (totalToSend, additionalToSend) = _calcSwapFlowSendAmounts(
+            limitOrderOut,
+            swap.minAmountToSend,
+            swap.maxAmountToSend,
+            swap.isSponsored
+        );
+
+        // `additionalToSend` will land on HCore before this core > core send will need to be executed
+        balanceRemaining = availableBalance + additionalToSend;
+        if (totalToSend > balanceRemaining) {
+            return (false, 0, availableBalance);
+        }
+
+        swap.finalized = true;
+        success = true;
+        balanceRemaining -= totalToSend;
+
+        HyperCoreLib.transferERC20CoreToCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
+        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSend);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
