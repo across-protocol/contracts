@@ -121,7 +121,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         // In finalToken
         uint64 totalSent,
         // In EVM finalToken
-        uint256 evmAmountSponsored,
+        uint256 evmAmountSponsored
     );
 
     /// @notice Emitted upon cancelling a Limit order
@@ -397,7 +397,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
         if (amountToSponsor > 0) {
             // This will succeed because we checked the balance earlier
-            _getFromDonationBox(coreTokenInfo.tokenInfo.evmContract, amountToSponsor);
+            donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), amountToSponsor);
         }
 
         cumulativeSponsoredAmount[finalToken] += amountToSponsor;
@@ -596,7 +596,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
         // Get additional amount to send from donation box, and send it to self on core
         if (additionalToSendEVM > 0) {
-            _getFromDonationBox(swap.finalToken, additionalToSendEVM);
+            donationBox.withdraw(IERC20(swap.finalToken), additionalToSendEVM);
             IERC20(swap.finalToken).safeTransfer(address(finalTokenInfo.swapHandler), additionalToSendEVM);
             finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
                 swap.finalToken,
@@ -623,7 +623,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             sponsorshipFundsToForward = 0;
         }
         if (sponsorshipFundsToForward > 0) {
-            _getFromDonationBox(params.finalToken, sponsorshipFundsToForward);
+            donationBox.withdraw(IERC20(params.finalToken), sponsorshipFundsToForward);
         }
         uint256 totalAmountToForward = params.amountInEVM + sponsorshipFundsToForward;
         IERC20(params.finalToken).safeTransfer(params.finalRecipient, totalAmountToForward);
@@ -663,7 +663,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
 
         // donationBox @ evm -> Handler @ evm
-        _getFromDonationBox(fundingToken, activationFeeEvm);
+        donationBox.withdraw(IERC20(fundingToken), activationFeeEvm);
         // Handler @ evm -> Handler @ core -> finalRecipient @ core
         HyperCoreLib.transferERC20EVMToCore(
             fundingToken,
@@ -732,16 +732,12 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
-    /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful
-    function _getFromDonationBox(address token, uint256 amount) internal {
-        if (!_availableInDonationBox(token, amount)) {
-            revert DonationBoxInsufficientFundsError(token, amount);
-        }
-        donationBox.withdraw(IERC20(token), amount);
-    }
-
     /// @notice Checks if `amount` of `token` is available to withdraw from donationBox
-    function _availableInDonationBox(bytes32 quoteNonce, address token, uint256 amount) internal returns (bool available) {
+    function _availableInDonationBox(
+        bytes32 quoteNonce,
+        address token,
+        uint256 amount
+    ) internal returns (bool available) {
         uint256 balance = IERC20(token).balanceOf(address(donationBox));
         available = balance >= amount;
         if (!available) {
@@ -802,7 +798,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     }
 
     function sweepErc20FromDonationBox(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
-        _getFromDonationBox(token, amount);
+        donationBox.withdraw(IERC20(token), amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
