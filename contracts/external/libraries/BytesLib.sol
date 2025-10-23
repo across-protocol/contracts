@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { Bytes } from "@openzeppelin/contracts-v5/utils/Bytes.sol";
+
 library BytesLib {
     /**************************************
      *              ERRORS                *
@@ -85,43 +87,13 @@ library BytesLib {
 
     /**
      * @notice Reads a bytes array from a bytes array at a given start index and length
-     * Source: https://github.com/Vectorized/solady/blob/21202175063a0010826bf42697b5aa2ff0c27f9f/src/utils/LibBytes.sol#L369C5-L396C6
-     * Code was copied, was not modified
+     * Source: OpenZeppelin Contracts v5 (utils/Bytes.sol)
      * @param _bytes The bytes array to convert
      * @param _start The start index of the bytes array
      * @param _end The end index of the bytes array
      * @return result The bytes array result
      */
     function slice(bytes memory _bytes, uint256 _start, uint256 _end) internal pure returns (bytes memory result) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let l := mload(_bytes) // _bytes length.
-            if iszero(gt(l, _end)) {
-                _end := l
-            }
-            if iszero(gt(l, _start)) {
-                _start := l
-            }
-            if lt(_start, _end) {
-                result := mload(0x40)
-                let n := sub(_end, _start)
-                let i := add(_bytes, _start)
-                let w := not(0x1f)
-                // Copy the `_bytes` one word at a time, backwards.
-                for {
-                    let j := and(add(n, 0x1f), w)
-                } 1 {} {
-                    mstore(add(result, j), mload(add(i, j)))
-                    j := add(j, w) // `sub(j, 0x20)`.
-                    if iszero(j) {
-                        break
-                    }
-                }
-                let o := add(add(result, 0x20), n)
-                mstore(o, 0) // Zeroize the slot after the bytes.
-                mstore(0x40, add(o, 0x20)) // Allocate memory.
-                mstore(result, n) // Store the length.
-            }
-        }
+        return Bytes.slice(_bytes, _start, _end);
     }
 }
