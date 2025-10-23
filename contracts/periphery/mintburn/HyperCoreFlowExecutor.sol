@@ -455,6 +455,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         // Calculate limit order amounts and check if feasible
         uint64 minAllowableAmountToForwardCore;
         uint64 maxAllowableAmountToForwardCore;
+        // Estimated slippage in ppm, as compared to a one-to-one totalBridgedAmount -> finalAmount conversion
         uint256 estSlippagePpm;
         {
             // In finalToken
@@ -469,7 +470,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
             uint64 approxExecutionPriceX1e8 = _getApproxRealizedPrice(finalTokenInfo);
             uint256 maxAllowableBpsDeviation = params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps;
-            // Harmful deviation means all fees that the user will / or has incurred: both bridging and swap
             if (finalTokenInfo.isBuy) {
                 if (approxExecutionPriceX1e8 < ONEX1e8) {
                     estSlippagePpm = 0;
