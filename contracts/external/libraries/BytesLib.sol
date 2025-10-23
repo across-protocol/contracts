@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+import { Bytes } from "@openzeppelin/contracts-v5/utils/Bytes.sol";
+
 library BytesLib {
     /**************************************
      *              ERRORS                *
      **************************************/
     error OutOfBounds();
-    error InvalidBytes();
-    error InvalidStart();
 
     /**************************************
      *              FUNCTIONS              *
      **************************************/
+
+    // The following 4 functions are copied from solidity-bytes-utils library
+    // https://github.com/GNSPS/solidity-bytes-utils/blob/fc502455bb2a7e26a743378df042612dd50d1eb9/contracts/BytesLib.sol#L323C5-L398C6
+    // Code was copied, and slightly modified to use revert instead of require
 
     /**
      * @notice Reads a uint16 from a bytes array at a given start index
@@ -20,7 +24,9 @@ library BytesLib {
      * @return result The uint16 result
      */
     function toUint16(bytes memory _bytes, uint256 _start) internal pure returns (uint16 result) {
-        require(_bytes.length >= _start + 2, "toUint16_outOfBounds");
+        if (_bytes.length < _start + 2) {
+            revert OutOfBounds();
+        }
 
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -81,41 +87,13 @@ library BytesLib {
 
     /**
      * @notice Reads a bytes array from a bytes array at a given start index and length
+     * Source: OpenZeppelin Contracts v5 (utils/Bytes.sol)
      * @param _bytes The bytes array to convert
      * @param _start The start index of the bytes array
      * @param _end The end index of the bytes array
      * @return result The bytes array result
      */
     function slice(bytes memory _bytes, uint256 _start, uint256 _end) internal pure returns (bytes memory result) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            let l := mload(_bytes) // _bytes length.
-            if iszero(gt(l, _end)) {
-                _end := l
-            }
-            if iszero(gt(l, _start)) {
-                _start := l
-            }
-            if lt(_start, _end) {
-                result := mload(0x40)
-                let n := sub(_end, _start)
-                let i := add(_bytes, _start)
-                let w := not(0x1f)
-                // Copy the `_bytes` one word at a time, backwards.
-                for {
-                    let j := and(add(n, 0x1f), w)
-                } 1 {} {
-                    mstore(add(result, j), mload(add(i, j)))
-                    j := add(j, w) // `sub(j, 0x20)`.
-                    if iszero(j) {
-                        break
-                    }
-                }
-                let o := add(add(result, 0x20), n)
-                mstore(o, 0) // Zeroize the slot after the bytes.
-                mstore(0x40, add(o, 0x20)) // Allocate memory.
-                mstore(result, n) // Store the length.
-            }
-        }
+        return Bytes.slice(_bytes, _start, _end);
     }
 }

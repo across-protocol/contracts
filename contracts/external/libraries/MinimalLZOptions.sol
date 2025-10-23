@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { BytesLib } from "../../libraries/BytesLib.sol";
+import { BytesLib } from "../../external/libraries/BytesLib.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /**

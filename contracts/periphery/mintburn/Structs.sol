@@ -32,3 +32,21 @@ struct FinalTokenInfo {
     // Contract where the accounting for all baseToken -> finalToken accounting happens. One pre finalToken
     SwapHandler swapHandler;
 }
+
+/// @notice Common parameters shared across flow execution functions
+struct CommonFlowParams {
+    uint256 amountInEVM;
+    bytes32 quoteNonce;
+    address finalRecipient;
+    address finalToken;
+    uint256 maxBpsToSponsor;
+    uint256 extraFeesIncurred;
+}
+
+/// @notice Parameters for executing flows with arbitrary EVM actions
+struct EVMFlowParams {
+    CommonFlowParams commonParams;
+    address initialToken;
+    bytes actionData;
+    bool transferToCore;
+}
