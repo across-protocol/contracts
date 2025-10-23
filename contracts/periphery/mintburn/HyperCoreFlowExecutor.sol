@@ -49,32 +49,27 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     mapping(address finalToken => uint256 lastPullFundsBlock) public lastPullFundsBlock;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
-    struct PendingSwap {
-        address finalRecipient;
+    struct SwapFlowState {
+        // in tokenIn
+        uint64 budget; // TODO: mb not required
+        address tokenIn;
         address finalToken;
-        /// @notice totalCoreAmountToForwardToUser = minCoreAmountFromLO + sponsoredCoreAmountPreFunded always.
-        uint64 minCoreAmountFromLO;
-        uint64 sponsoredCoreAmountPreFunded;
-        uint128 limitOrderCloid;
+        uint64 maxToSponsorFinalToken; // TODO: maybe just for data purposes
+        uint64 targetAmountFinalToken; // target amount to send to finalRecipient
+        // if isSposored, send up to `targetAmountFinalToken`
+        // if not sponsored, send `loOut`
+        bool isSponsored;
+        address finalRecipient;
+        bool finalized;
     }
 
     /// @notice A mapping containing the pending state between initializing the swap flow and finalizing it
-    mapping(bytes32 quoteNonce => PendingSwap pendingSwap) public pendingSwaps;
-    /// @notice A FCFS queue of pending swap flows to be executed. Per finalToken
-    mapping(address finalToken => bytes32[] quoteNonces) public pendingQueue;
-    /// @notice An index of the first unexecuted pending swap flow. Or equal to pendingQueue length if currently empty
-    mapping(address => uint256) public pendingQueueHead;
+    mapping(bytes32 quoteNonce => SwapFlowState swap) public swaps;
 
     /// @notice The cumulative amount of funds sponsored for each final token.
     mapping(address => uint256) public cumulativeSponsoredAmount;
     /// @notice The cumulative amount of activation fees sponsored for each final token.
     mapping(address => uint256) public cumulativeSponsoredActivationFee;
-
-    /// @notice Used for uniquely identifying Limit Orders this contract submits. Monotonically increasing
-    uint128 public nextCloid;
-
-    /// @notice A mapping from limit order cliod to the quoteNonce (user order id) responsible for submitting the LO
-    mapping(uint128 => bytes32) public cloidToQuoteNonce;
 
     /// @notice Emitted when the donation box is insufficient funds.
     event DonationBoxInsufficientFunds(address token, uint256 amount);
@@ -249,9 +244,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      */
     constructor(address _donationBox, address _baseToken) {
         donationBox = DonationBox(_donationBox);
-        // Initialize this to 1 as to save 0 for special events when "no cloid is set" = no associated limit order
-        nextCloid = 1;
-
         baseToken = _baseToken;
 
         // AccessControl setup
@@ -470,136 +462,101 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[params.finalToken];
         uint64 tokensToSendCore;
-        uint64 guaranteedLOOut;
-        uint64 sizeX1e8;
-        uint64 finalCoreSendAmount;
-        uint64 totalCoreAmountToSponsor;
-        uint256 totalEVMAmountToSponsor;
+
+        // Calculate limit order amounts and check if feasible
+        uint64 minAllowableAmountToForwardCore;
         {
-            // Calculate limit order amounts and check if feasible
-            uint64 minAllowableAmountToForwardCore;
-            {
-                // In initialToken
-                (, uint64 amountInEquivalentCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-                    params.amountInEVM,
-                    initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
-                );
+            // In initialToken
+            (, uint64 amountInEquivalentCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+                params.amountInEVM,
+                initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
 
-                // In finalToken
-                uint64 maxAmountToSponsorCore;
-                (minAllowableAmountToForwardCore, maxAmountToSponsorCore) = _calculateAllowableAmountsForFlow(
-                    params.amountInEVM + params.extraFeesIncurred,
-                    initialCoreTokenInfo,
-                    finalCoreTokenInfo,
-                    params.maxBpsToSponsor > 0,
-                    params.maxBpsToSponsor,
-                    maxUserSlippageBps
-                );
+            // In finalToken
+            uint64 maxAmountToSponsorCore;
+            (minAllowableAmountToForwardCore, maxAmountToSponsorCore) = _calculateAllowableAmountsForFlow(
+                params.amountInEVM + params.extraFeesIncurred,
+                initialCoreTokenInfo,
+                finalCoreTokenInfo,
+                params.maxBpsToSponsor > 0,
+                params.maxBpsToSponsor,
+                maxUserSlippageBps
+            );
 
-                uint64 limitPriceX1e8 = _getSuggestedPriceX1e8(finalTokenInfo);
-                (sizeX1e8, tokensToSendCore, guaranteedLOOut) = _calcLOAmounts(
-                    amountInEquivalentCore,
-                    limitPriceX1e8,
-                    finalTokenInfo.isBuy,
-                    finalTokenInfo.feePpm,
-                    initialCoreTokenInfo,
-                    finalCoreTokenInfo
-                );
-
-                if (
-                    minAllowableAmountToForwardCore > guaranteedLOOut &&
-                    minAllowableAmountToForwardCore - guaranteedLOOut > maxAmountToSponsorCore
-                ) {
-                    // We can't provide the required slippage in a swap flow, try simple transfer flow instead
-                    params.finalToken = initialToken;
-                    _executeSimpleTransferFlow(params);
-                    emit SwapFlowFallbackTooExpensive(
-                        params.quoteNonce,
-                        minAllowableAmountToForwardCore - guaranteedLOOut,
-                        maxAmountToSponsorCore
-                    );
-                    return;
+            uint64 ONEX1e8 = 10 ** 8;
+            uint64 approxExecutionPriceX1e8 = _getSuggestedApproxPrice(finalTokenInfo);
+            uint256 maxAllowableBpsDeviation = params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps;
+            uint256 harmfulDeviationBps; // deviation that is "against our trade direction"
+            if (finalTokenInfo.isBuy) {
+                if (approxExecutionPriceX1e8 < ONEX1e8) {
+                    harmfulDeviationBps = 0;
+                } else {
+                    // ceil
+                    harmfulDeviationBps = (approxExecutionPriceX1e8 - ONEX1e8) * BPS_SCALAR + (ONEX1e8 - 1) / ONEX1e8;
+                }
+            } else {
+                if (approxExecutionPriceX1e8 > ONEX1e8) {
+                    harmfulDeviationBps = 0;
+                } else {
+                    // ceil
+                    harmfulDeviationBps = (ONEX1e8 - approxExecutionPriceX1e8) * BPS_SCALAR + (ONEX1e8 - 1) / ONEX1e8;
                 }
             }
 
-            // Calculate sponsorship amounts
-            finalCoreSendAmount = params.maxBpsToSponsor > 0 ? minAllowableAmountToForwardCore : guaranteedLOOut;
-            totalCoreAmountToSponsor = finalCoreSendAmount > guaranteedLOOut
-                ? finalCoreSendAmount - guaranteedLOOut
-                : 0;
-
-            totalEVMAmountToSponsor = 0;
-            if (totalCoreAmountToSponsor > 0) {
-                (totalEVMAmountToSponsor, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-                    totalCoreAmountToSponsor,
-                    finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
-                );
-            }
-
-            if (totalEVMAmountToSponsor > 0) {
-                if (!_availableInDonationBox(params.finalToken, totalEVMAmountToSponsor)) {
-                    // We can't provide the required `totalEVMAmountToSponsor` in a swap flow, try simple transfer flow instead
-                    params.finalToken = initialToken;
-                    _executeSimpleTransferFlow(params);
-                    emit SwapFlowFallbackDonationBox(params.quoteNonce, params.finalToken, totalEVMAmountToSponsor);
-                    return;
-                }
-            }
-
-            // Check that we can safely bridge to HCore (for the trade amount actually needed)
-            bool isSafeToBridgeMainToken = HyperCoreLib.isCoreAmountSafeToBridge(
-                initialCoreTokenInfo.coreIndex,
-                tokensToSendCore,
-                initialCoreTokenInfo.bridgeSafetyBufferCore
-            );
-            bool isSafeTobridgeSponsorshipFunds = HyperCoreLib.isCoreAmountSafeToBridge(
-                finalCoreTokenInfo.coreIndex,
-                totalCoreAmountToSponsor,
-                finalCoreTokenInfo.bridgeSafetyBufferCore
-            );
-
-            if (!isSafeToBridgeMainToken || !isSafeTobridgeSponsorshipFunds) {
+            if (harmfulDeviationBps > maxAllowableBpsDeviation) {
                 params.finalToken = initialToken;
-                _fallbackHyperEVMFlow(params);
-                emit SwapFlowFallbackUnsafeToBridge(
-                    params.quoteNonce,
-                    isSafeToBridgeMainToken,
-                    params.finalToken,
-                    isSafeTobridgeSponsorshipFunds
-                );
+                _executeSimpleTransferFlow(params);
+                // TODO: emit fallback event
                 return;
             }
         }
 
-        // Finalize swap flow setup by updating state and funding SwapHandler
-        // State changes
-        uint128 cloid = ++nextCloid;
-        pendingSwaps[params.quoteNonce] = PendingSwap({
-            finalRecipient: params.finalRecipient,
-            finalToken: params.finalToken,
-            minCoreAmountFromLO: guaranteedLOOut,
-            sponsoredCoreAmountPreFunded: totalCoreAmountToSponsor,
-            limitOrderCloid: cloid
-        });
-        pendingQueue[params.finalToken].push(params.quoteNonce);
-        cloidToQuoteNonce[cloid] = params.quoteNonce;
-        cumulativeSponsoredAmount[params.finalToken] += totalEVMAmountToSponsor;
-
-        emit SwapFlowInitialized(
-            params.quoteNonce,
-            params.finalRecipient,
-            params.finalToken,
-            params.amountInEVM,
-            totalEVMAmountToSponsor,
-            finalCoreSendAmount,
-            finalTokenInfo.assetIndex,
-            cloid
+        // Check that we can safely bridge to HCore (for the trade amount actually needed)
+        bool isSafeToBridgeMainToken = HyperCoreLib.isCoreAmountSafeToBridge(
+            initialCoreTokenInfo.coreIndex,
+            tokensToSendCore,
+            initialCoreTokenInfo.bridgeSafetyBufferCore
         );
 
+        if (!isSafeToBridgeMainToken) {
+            params.finalToken = initialToken;
+            _fallbackHyperEVMFlow(params);
+            // emit SwapFlowFallbackUnsafeToBridge(
+            //     params.quoteNonce,
+            //     isSafeToBridgeMainToken,
+            //     params.finalToken,
+            //     true
+            // );
+            return;
+        }
+
+        // Finalize swap flow setup by updating state and funding SwapHandler
+        // State changes
+        swaps[params.quoteNonce] = SwapFlowState({
+            budget: tokensToSendCore,
+            tokenIn: initialToken,
+            finalToken: params.finalToken,
+            maxToSponsorFinalToken: uint64(0), // TODO,
+            targetAmountFinalToken: minAllowableAmountToForwardCore,
+            isSponsored: params.maxBpsToSponsor > 0,
+            finalRecipient: params.finalRecipient,
+            finalized: false
+        });
+
+        // TODO
+        // emit SwapFlowInitialized(
+        //     params.quoteNonce,
+        //     params.finalRecipient,
+        //     params.finalToken,
+        //     params.amountInEVM,
+        //     totalEVMAmountToSponsor,
+        //     finalCoreSendAmount,
+        //     finalTokenInfo.assetIndex,
+        //     cloid
+        // );
+
+        // Send amount received form user to a corresponding SwapHandler
         SwapHandler swapHandler = finalTokenInfo.swapHandler;
-        // Interactions with external contracts
-        // 1. Fund SwapHandler @ core with `initialToken`: use it for the trade
-        // Always: evmToSendForTrade <= amountInEVM because of how it's calculated
         (uint256 evmToSendForTrade, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             tokensToSendCore,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
@@ -611,86 +568,64 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             evmToSendForTrade,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
+    }
 
-        // 2. Fund SwapHandler @ core with `finalToken`: use that for sponsorship
-        if (totalEVMAmountToSponsor > 0) {
-            // We checked that this amount is in donationBox before
-            _getFromDonationBox(params.finalToken, totalEVMAmountToSponsor);
-            // These funds just came from donationBox
-            IERC20(params.finalToken).safeTransfer(address(swapHandler), totalEVMAmountToSponsor);
-            swapHandler.transferFundsToSelfOnCore(
-                params.finalToken,
+    function finalizeSwap(bytes32 quoteNonce, uint64 limitOrderOut) external onlyPermissionedBot {
+        SwapFlowState memory swap = swaps[quoteNonce];
+        require(swap.finalRecipient != address(0), "swap does not exist");
+        require(swap.finalized == false, "already finalized");
+        swap.finalized = true;
+
+        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[swap.finalToken];
+        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[swap.finalToken];
+
+        // What we will send from donationBox right now
+        uint64 additionalToSend;
+        if (limitOrderOut < swap.targetAmountFinalToken) {
+            if (swap.isSponsored) {
+                // This is our sponsor amount
+                additionalToSend = swap.targetAmountFinalToken - limitOrderOut;
+            } else {
+                additionalToSend = swap.targetAmountFinalToken - limitOrderOut;
+            }
+        }
+
+        // What we will forward to user on HCore
+        uint64 totalToSend;
+        if (swap.isSponsored) {
+            totalToSend = swap.targetAmountFinalToken;
+        } else {
+            // Give user a fair deal instead of sending the minimum allowable amount (which means max slippage)
+            totalToSend = limitOrderOut + additionalToSend;
+        }
+
+        // TODO: what to do if we can't bridge? Just forward on HyperEVM? Seems bad, but *workable*
+
+        (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            additionalToSend,
+            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+
+        // TODO: is bridge safe?
+        // Get additional amount to send from donation box, and send it to self on core
+        if (additionalToSendEVM > 0) {
+            _getFromDonationBox(swap.finalToken, additionalToSendEVM);
+            IERC20(swap.finalToken).safeTransfer(address(finalTokenInfo.swapHandler), additionalToSendEVM);
+            finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
+                swap.finalToken,
                 finalCoreTokenInfo.coreIndex,
-                totalEVMAmountToSponsor,
+                additionalToSendEVM,
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
 
-        swapHandler.submitLimitOrder(finalTokenInfo, _getSuggestedPriceX1e8(finalTokenInfo), sizeX1e8, cloid);
-    }
-
-    /// @notice Finalizes pending queue of swaps for `finalToken` if a corresponding SwapHandler has enough balance
-    function finalizePendingSwaps(
-        address finalToken,
-        uint256 maxSwapCountToFinalize
-    )
-        external
-        nonReentrant
-        returns (uint256 finalizedSwapsCount, uint256 finalizedSwapsAmount, uint256 totalPendingSwapsRemaining)
-    {
-        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
-        CoreTokenInfo memory coreTokenInfo = coreTokenInfos[finalToken];
-
-        require(lastPullFundsBlock[finalToken] < block.number, "Can't finalize twice in the same block");
-
-        uint256 head = pendingQueueHead[finalToken];
-        bytes32[] storage queue = pendingQueue[finalToken];
-        if (head >= queue.length) return (0, 0, 0);
-        if (maxSwapCountToFinalize == 0) return (0, 0, queue.length - head);
-
-        // Note: `availableCore` is the SwapHandler's Core balance for `finalToken`, which monotonically increases
-        uint64 availableCore = HyperCoreLib.spotBalance(address(finalTokenInfo.swapHandler), coreTokenInfo.coreIndex);
-
-        while (head < queue.length && finalizedSwapsCount < maxSwapCountToFinalize) {
-            bytes32 nonce = queue[head];
-
-            PendingSwap storage pendingSwap = pendingSwaps[nonce];
-            uint64 totalAmountToForwardToUser = pendingSwap.minCoreAmountFromLO +
-                pendingSwap.sponsoredCoreAmountPreFunded;
-            if (availableCore < totalAmountToForwardToUser) {
-                break;
-            }
-
-            finalTokenInfo.swapHandler.transferFundsToUserOnCore(
-                finalTokenInfo.assetIndex,
-                pendingSwap.finalRecipient,
-                totalAmountToForwardToUser
-            );
-
-            emit SwapFlowCompleted(
-                nonce,
-                pendingSwap.finalRecipient,
-                pendingSwap.finalToken,
-                pendingSwap.sponsoredCoreAmountPreFunded,
-                totalAmountToForwardToUser
-            );
-
-            availableCore -= totalAmountToForwardToUser;
-
-            // We don't delete `pendingSwaps` state, because we might require it for accounting purposes if we need to
-            // update the associated limit order
-            head += 1;
-            finalizedSwapsCount += 1;
-            finalizedSwapsAmount += totalAmountToForwardToUser;
-        }
-
-        pendingQueueHead[finalToken] = head;
-
-        if (finalizedSwapsCount > 0) {
-            lastPullFundsBlock[finalToken] = block.number;
-        }
-
-        return (finalizedSwapsCount, finalizedSwapsAmount, queue.length - head);
+        // Send to user
+        HyperCoreLib.transferERC20CoreToCore(
+            finalCoreTokenInfo.coreIndex,
+            swap.finalRecipient,
+            limitOrderOut + additionalToSend
+        );
+        // TODO: emit event
     }
 
     /**
@@ -734,133 +669,27 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
     /// be used for stale limit orders to speed up executing user transactions
     function cancelLimitOrderByCloid(
+        address finalToken,
         uint128 cloid
     ) external nonReentrant onlyPermissionedBot returns (bytes32 quoteNonce) {
-        quoteNonce = cloidToQuoteNonce[cloid];
-        PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
-        // A pending swap was enqueued with this Final token, so it had to be set. Unsetting the final token config is not
-        // a valid configuration action so we can rely on finalToken being set here
-        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[pendingSwap.finalToken];
-
-        // Here, cloid == pendingSwap.limitOrderCloid
+        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, cloid);
-        // Clear out the cloid. `submitUpdatedLimitOrder` function requires that this is empty. Means that no tracked
-        // associated limit order is present
-        delete pendingSwap.limitOrderCloid;
 
-        emit CancelledLimitOrder(quoteNonce, finalTokenInfo.assetIndex, cloid);
+        // TODO: consider emitting event
+        // emit CancelledLimitOrder(quoteNonce, finalTokenInfo.assetIndex, cloid);
     }
 
-    /**
-     * @notice This function is to be used in situations when the limit order that's on the books has become stale and
-     * we want to speed up the execution.
-     * @dev This function should be called as a second step after the `cancelLimitOrderByCloid` was already called and
-     * the order was fully cancelled. It is the responsibility of this function's caller to supply oldPriceX1e8 and
-     * oldSizeX1e8Left associated with the previous cancelled order. They act as a safeguarding policy that don't allow
-     * to spend more tokens then the previous limit order wanted to spend to protect the accounting assumptions of the
-     * current contract. Although the values provided as still fully trusted.
-     * @dev This functions chooses to ignore the `maxBpsToSponsor` param as it is supposed to be
-     * used only in rare cases. We choose to pay for the adjusted limit order price completely.
-     * @param quoteNonce quote nonce is used to uniquely identify user order (PendingSwap)
-     * @param priceX1e8 price to set for new limit order
-     * @param oldPriceX1e8 price that was set for the cancelled order
-     * @param oldSizeX1e8Left size that was remaining on the order that was cancelled
-     */
-    function submitUpdatedLimitOrder(
-        // old order with some price and some out amount expectations: pendingSwaps (minAmountOutCore, totalSponsoredCore)
-        // new order with some price and new amount expectations. minAmountOutCore2, totalSponsoredCore + (minAmountOutCore2 - minAmountOutCore)
-        // oldPriceX1e8, oldSizeX1e8Left -> partial Limit order that we cancelled
-        // how much tokens that we sent in are still there for us to trade?
-        // priceX1e8: sz ?
-        // partialBudgetRemaining
-        bytes32 quoteNonce,
+    function submitLimitOrderFromBot(
+        address finalToken,
         uint64 priceX1e8,
-        uint64 oldPriceX1e8,
-        uint64 oldSizeX1e8Left
+        uint64 sizeX1e8,
+        uint128 cloid
     ) external nonReentrant onlyPermissionedBot {
-        PendingSwap storage pendingSwap = pendingSwaps[quoteNonce];
-        require(pendingSwap.limitOrderCloid == 0, "Cannot resubmit LO for non-empty cloid");
-
-        address finalToken = pendingSwap.finalToken;
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
-        CoreTokenInfo memory initialTokenInfo = coreTokenInfos[baseToken];
-        CoreTokenInfo memory finalTokenCoreInfo = coreTokenInfos[finalToken];
+        finalTokenInfo.swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
 
-        // Remaining budget of tokens attributable to the "old limit order" (now cancelled)
-        uint64 coreBudgetRemaining = _calcRemainingLOBudget(
-            oldPriceX1e8,
-            oldSizeX1e8Left,
-            finalTokenInfo.isBuy,
-            finalTokenInfo.feePpm,
-            initialTokenInfo,
-            finalTokenCoreInfo
-        );
-        (uint64 szX1e8, , uint64 guaranteedCoreOut) = _calcLOAmounts(
-            coreBudgetRemaining,
-            priceX1e8,
-            finalTokenInfo.isBuy,
-            finalTokenInfo.feePpm,
-            initialTokenInfo,
-            finalTokenCoreInfo
-        );
-
-        (, , uint64 guaranteedCoreOutOld) = _calcLOAmounts(
-            coreBudgetRemaining,
-            oldPriceX1e8,
-            finalTokenInfo.isBuy,
-            finalTokenInfo.feePpm,
-            initialTokenInfo,
-            finalTokenCoreInfo
-        );
-
-        uint64 sponsorDeltaCore;
-        if (guaranteedCoreOut < guaranteedCoreOutOld) {
-            sponsorDeltaCore = guaranteedCoreOutOld - guaranteedCoreOut;
-        } else {
-            sponsorDeltaCore = 0;
-            emit BetterPricedLOSubmitted(quoteNonce, oldPriceX1e8, priceX1e8);
-        }
-
-        // Submit new Limit Order
-        uint128 cloid = ++nextCloid;
-        SwapHandler swapHandler = finalTokenInfo.swapHandler;
-        swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, szX1e8, cloid);
-        pendingSwap.limitOrderCloid = cloid;
-
-        // Send extra sponsorship money to cover for the guaranteed amount out difference
-        if (sponsorDeltaCore > 0) {
-            uint256 sponsorDeltaEvm;
-            (sponsorDeltaEvm, sponsorDeltaCore) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-                sponsorDeltaCore,
-                finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
-            );
-
-            _getFromDonationBox(finalToken, sponsorDeltaEvm);
-            IERC20(finalToken).safeTransfer(address(swapHandler), sponsorDeltaEvm);
-            cumulativeSponsoredAmount[finalToken] += sponsorDeltaEvm;
-            if (
-                !HyperCoreLib.isCoreAmountSafeToBridge(
-                    finalTokenCoreInfo.coreIndex,
-                    sponsorDeltaCore,
-                    finalTokenCoreInfo.bridgeSafetyBufferCore
-                )
-            ) {
-                // Can't add required sponsored funds to balance out the accounting. Have to revert
-                revert("Bridging is unsafe");
-            }
-            swapHandler.transferFundsToSelfOnCore(
-                finalToken,
-                finalTokenCoreInfo.coreIndex,
-                sponsorDeltaEvm,
-                finalTokenCoreInfo.tokenInfo.evmExtraWeiDecimals
-            );
-
-            uint64 fullOldGuranteedOut = pendingSwap.minCoreAmountFromLO;
-            pendingSwap.minCoreAmountFromLO = fullOldGuranteedOut + guaranteedCoreOut - guaranteedCoreOutOld;
-            pendingSwap.sponsoredCoreAmountPreFunded = pendingSwap.sponsoredCoreAmountPreFunded + sponsorDeltaCore;
-        }
-
-        emit ReplacedOldLimitOrder(quoteNonce, cloid, priceX1e8, szX1e8, oldPriceX1e8, oldSizeX1e8Left);
+        // TODO: submittedLimitOrder
+        // emit ReplacedOldLimitOrder(quoteNonce, cloid, priceX1e8, szX1e8, oldPriceX1e8, oldSizeX1e8Left);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
@@ -939,11 +768,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
     }
 
-    function _getAccountActivationFeeEVM(address token, address recipient) internal view returns (uint256) {
-        bool accountActivated = HyperCoreLib.coreUserExists(recipient);
-        return accountActivated ? 0 : coreTokenInfos[token].accountActivationFeeEVM;
-    }
-
     function _calculateAllowableAmountsForFlow(
         uint256 totalAmountBridgedEVM,
         CoreTokenInfo memory initialCoreTokenInfo,
@@ -995,14 +819,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         HyperCoreLib.transferERC20CoreToCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 
-    // TODO? Alternative flow: make this permissionless, send money SwapHandler @ core -> DonationBox @ core => DonationBox pulls money from Core to Self (needs DonationBox code change)
-    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyPermissionedBot {
-        // We first want to make sure there are not pending limit orders for this token
-        uint256 head = pendingQueueHead[token];
-        if (head < pendingQueue[token].length) {
-            revert("Cannot sweep on core if there are pending limit orders");
-        }
-
+    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyDefaultAdmin {
         // Prevent pulling fantom funds (e.g. if finalizePendingSwaps reads stale balance because of this fund pull)
         require(lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
         lastPullFundsBlock[token] = block.number;
@@ -1012,155 +829,15 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     }
 
     /// @notice Reads the current spot price from HyperLiquid and applies a configured suggested discount for faster execution
-    function _getSuggestedPriceX1e8(
+    /// @dev INCLUDES HYPERLIQUID FEES
+    function _getSuggestedApproxPrice(
         FinalTokenInfo memory finalTokenInfo
     ) internal view returns (uint64 limitPriceX1e8) {
         uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenInfo.assetIndex);
         // Buy above spot, sell below spot
-        uint256 adjBps = finalTokenInfo.isBuy
-            ? (BPS_SCALAR + finalTokenInfo.suggestedDiscountBps)
-            : (BPS_SCALAR - finalTokenInfo.suggestedDiscountBps);
-        limitPriceX1e8 = uint64((uint256(spotX1e8) * adjBps) / BPS_SCALAR);
-    }
-
-    /**************************************
-     *    LIMIT ORDER CALCULATION UTILS   *
-     **************************************/
-
-    /// @notice Given the size and price of a limit order, returns the remaining `budget` that Limit order expects to spend
-    function _calcRemainingLOBudget(
-        uint64 pxX1e8,
-        uint64 szX1e8,
-        bool isBuy,
-        uint64 feePpm,
-        CoreTokenInfo memory tokenHave,
-        CoreTokenInfo memory tokenWant
-    ) internal pure returns (uint64 budget) {
-        CoreTokenInfo memory _quoteToken = isBuy ? tokenHave : tokenWant;
-        CoreTokenInfo memory _baseToken = isBuy ? tokenWant : tokenHave;
-
-        if (isBuy) {
-            // We have quoteTokens. Estimate how many quoteTokens we are GUARANTEED to have had to enqueue the LO in the first place (proportional)
-            // qTR is quote tokens real. qTD quote token decimals.
-            // szX1e8 * pxX1e8 / 10 ** 8 = qTX1e8Net
-            // qTR * 10 ** 8 * (10 ** 6 - feePpm) / (10 ** 6 * 10 ** qTD) = qTX1e8Net
-            // qTR = szX1e8 * pxX1e8 * 10 ** 6 * 10 ** qTD / (10 ** 8 * 10 ** 8 * (10 ** 6 - feePpm))
-            budget = uint64(
-                (uint256(szX1e8) * uint256(pxX1e8) * PPM_SCALAR * 10 ** (_quoteToken.tokenInfo.weiDecimals)) /
-                    (10 ** 16 * (PPM_SCALAR - feePpm))
-            );
-        } else {
-            // We have baseTokens. Convert `szX1e8` to base token budget. A simple decimals conversion here
-            budget = uint64((szX1e8 * 10 ** (_baseToken.tokenInfo.weiDecimals)) / 10 ** 8);
-        }
-    }
-
-    /**
-     * @notice The purpose of this function is best described by its return params. Given a budget and a price, determines
-     * size to set, tokens to send, and min amount received.
-     * @return szX1e8 size value to supply when sending a limit order to HyperCore
-     * @return coreToSend the number of tokens to send for this trade to suceed; <= coreBudget
-     * @return guaranteedCoreOut the ABSOLUTE MINIMUM that we're guaranteed to receive when the limit order fully settles
-     */
-    function _calcLOAmounts(
-        uint64 coreBudget,
-        uint64 pxX1e8,
-        bool isBuy,
-        uint64 feePpm,
-        CoreTokenInfo memory tokenHave,
-        CoreTokenInfo memory tokenWant
-    ) internal pure returns (uint64 szX1e8, uint64 coreToSend, uint64 guaranteedCoreOut) {
-        if (isBuy) {
-            return
-                _calcLOAmountsBuy(
-                    coreBudget,
-                    pxX1e8,
-                    tokenHave.tokenInfo.weiDecimals,
-                    tokenHave.tokenInfo.szDecimals,
-                    tokenWant.tokenInfo.weiDecimals,
-                    tokenWant.tokenInfo.szDecimals,
-                    feePpm
-                );
-        } else {
-            return
-                _calcLOAmountsSell(
-                    coreBudget,
-                    pxX1e8,
-                    tokenWant.tokenInfo.weiDecimals,
-                    tokenWant.tokenInfo.szDecimals,
-                    tokenHave.tokenInfo.weiDecimals,
-                    tokenHave.tokenInfo.szDecimals,
-                    feePpm
-                );
-        }
-    }
-
-    /**
-     * @notice Given the quote budget and the price, this function calculates the size of the buy limit order to set
-     * as well as the minimum amount of out token to expect. This calculation is based on the HIP-1 spot trading formula.
-     * Source: https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-1-native-token-standard#spot-trading
-     * @param quoteBudget The budget of the quote in base token.
-     * @param pxX1e8 The price of the quote token in base token.
-     * @param quoteD The decimals of the quote token.
-     * @param quoteSz The size decimals of the quote token.
-     * @param baseD The decimals of the base token.
-     * @param baseSz The size decimals of the base token.
-     * @param feePpm The fee in ppm that is applied to the quote.
-     * @return szX1e8 The size of the limit order to set.
-     * @return tokensToSendCore The number of tokens to send for this trade to suceed.
-     * @return minAmountOutCore The minimum amount of out token to expect.
-     */
-    function _calcLOAmountsBuy(
-        uint64 quoteBudget,
-        uint64 pxX1e8,
-        uint8 quoteD,
-        uint8 quoteSz,
-        uint8 baseD,
-        uint8 baseSz,
-        uint64 feePpm
-    ) internal pure returns (uint64 szX1e8, uint64 tokensToSendCore, uint64 minAmountOutCore) {
-        uint256 px = (pxX1e8 * 10 ** (PX_D + quoteSz)) / 10 ** (8 + baseSz);
-        // quoteD >= quoteSz always
-        uint256 sz = (quoteBudget * (PPM_SCALAR - feePpm) * 10 ** PX_D) / (PPM_SCALAR * px * 10 ** (quoteD - quoteSz));
-        // baseD >= baseSz always
-        uint64 outBaseNet = uint64(sz * 10 ** (baseD - baseSz));
-        szX1e8 = uint64((uint256(outBaseNet) * 10 ** 8) / 10 ** baseD);
-        tokensToSendCore = quoteBudget;
-        minAmountOutCore = outBaseNet;
-    }
-
-    /**
-     * @notice Given the quote budget and the price, this function calculates the size of the sell limit order to set
-     * as well as the minimum amount of out token to expect. This calculation is based on the HIP-1 spot trading formula.
-     * Source: https://hyperliquid.gitbook.io/hyperliquid-docs/hyperliquid-improvement-proposals-hips/hip-1-native-token-standard#spot-trading
-     * @param baseBudget The budget of the quote in base token.
-     * @param pxX1e8 The price of the quote token in base token.
-     * @param quoteD The decimals of the quote token.
-     * @param quoteSz The size decimals of the quote token.
-     * @param baseD The decimals of the base token.
-     * @param baseSz The size decimals of the base token.
-     * @param feePpm The fee in ppm that is applied to the quote.
-     * @return szX1e8 The size of the limit order to set.
-     * @return tokensToSendCore The number of tokens to send for this trade to suceed.
-     * @return minAmountOutCore The minimum amount of out token to expect.
-     */
-    function _calcLOAmountsSell(
-        uint64 baseBudget,
-        uint64 pxX1e8,
-        uint8 quoteD,
-        uint8 quoteSz,
-        uint8 baseD,
-        uint8 baseSz,
-        uint64 feePpm
-    ) internal pure returns (uint64 szX1e8, uint64 tokensToSendCore, uint64 minAmountOutCore) {
-        uint64 sz = uint64(baseBudget / 10 ** (baseD - baseSz));
-        uint256 px = (pxX1e8 * 10 ** (PX_D + quoteSz)) / 10 ** (8 + baseSz);
-
-        // quoteD >= quoteSz always
-        uint64 outQuoteGross = uint64((px * sz * 10 ** (quoteD - quoteSz)) / 10 ** PX_D);
-        uint64 outQuoteNet = uint64((outQuoteGross * (PPM_SCALAR - feePpm)) / PPM_SCALAR);
-        szX1e8 = uint64((sz * 10 ** 8) / 10 ** baseSz);
-        tokensToSendCore = baseBudget;
-        minAmountOutCore = outQuoteNet;
+        uint256 adjPpm = finalTokenInfo.isBuy
+            ? (PPM_SCALAR + finalTokenInfo.suggestedDiscountBps * 10 ** 2 + finalTokenInfo.feePpm)
+            : (PPM_SCALAR - finalTokenInfo.suggestedDiscountBps * 10 ** 2 - finalTokenInfo.feePpm);
+        limitPriceX1e8 = uint64((uint256(spotX1e8) * adjPpm) / PPM_SCALAR);
     }
 }
