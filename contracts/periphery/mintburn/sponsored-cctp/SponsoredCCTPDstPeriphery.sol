@@ -9,6 +9,7 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
+import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
 /**
  * @title SponsoredCCTPDstPeriphery
@@ -98,41 +99,37 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
 
         uint256 amountAfterFees = quote.amount - feeExecuted;
 
+        CommonFlowParams memory commonParams = CommonFlowParams({
+            amountInEVM: amountAfterFees,
+            quoteNonce: quote.nonce,
+            finalRecipient: quote.finalRecipient.toAddress(),
+            // If the quote is invalid we don't want to swap, so we use the base token as the final token
+            finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
+            // If the quote is invalid we don't sponsor the flow or the extra fees
+            maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
+            extraFeesIncurred: feeExecuted
+        });
+
         // Route to appropriate execution based on executionMode
         if (
             isQuoteValid &&
             (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
                 quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
         ) {
+            commonParams.finalToken = quote.finalToken.toAddress();
+
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
                 EVMFlowParams({
-                    amount: amountAfterFees,
-                    quoteNonce: quote.nonce,
-                    maxBpsToSponsor: quote.maxBpsToSponsor,
+                    commonParams: commonParams,
                     initialToken: baseToken,
-                    finalToken: quote.finalToken.toAddress(),
-                    finalRecipient: quote.finalRecipient.toAddress(),
                     actionData: quote.actionData,
-                    extraFeesToSponsor: feeExecuted,
                     transferToCore: quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
                 })
             );
         } else {
             // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(
-                CommonFlowParams({
-                    amountInEVM: amountAfterFees,
-                    quoteNonce: quote.nonce,
-                    finalRecipient: quote.finalRecipient.toAddress(),
-                    // If the quote is invalid we don't want to swap, so we use the base token as the final token
-                    finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
-                    // If the quote is invalid we don't sponsor the flow or the extra fees
-                    maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
-                    extraBridgingFeesEVM: isQuoteValid ? feeExecuted : 0
-                }),
-                quote.maxUserSlippageBps
-            );
+            HyperCoreFlowExecutor._executeFlow(commonParams, quote.maxUserSlippageBps);
         }
 
         emit SponsoredMintAndWithdraw(
@@ -157,27 +154,9 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
-        uint256 finalAmount;
-        uint256 extraFeesToSponsorFinalToken;
-        (params.finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
-            params.amount,
-            params.quoteNonce,
-            params.initialToken,
-            params.finalToken,
-            params.actionData,
-            params.extraFeesToSponsor
-        );
+        params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
-            CommonFlowParams({
-                amountInEVM: finalAmount,
-                quoteNonce: params.quoteNonce,
-                finalRecipient: params.finalRecipient,
-                finalToken: params.finalToken,
-                maxBpsToSponsor: params.maxBpsToSponsor,
-                extraBridgingFeesEVM: extraFeesToSponsorFinalToken
-            })
-        );
+        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
     }
 }

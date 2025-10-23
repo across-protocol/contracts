@@ -11,6 +11,7 @@ import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR } from "./Constants.sol";
 import { Lockable } from "../../Lockable.sol";
+import { CommonFlowParams } from "./Structs.sol";
 
 /**
  * @title HyperCoreFlowExecutor
@@ -55,29 +56,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 minCoreAmountFromLO;
         uint64 sponsoredCoreAmountPreFunded;
         uint128 limitOrderCloid;
-    }
-
-    /// @notice Common parameters shared across flow execution functions
-    struct CommonFlowParams {
-        uint256 amountInEVM;
-        bytes32 quoteNonce;
-        address finalRecipient;
-        address finalToken;
-        uint256 maxBpsToSponsor;
-        uint256 extraBridgingFeesEVM;
-    }
-
-    /// @notice Parameters for executing flows with arbitrary EVM actions
-    struct EVMFlowParams {
-        uint256 amount;
-        bytes32 quoteNonce;
-        uint256 maxBpsToSponsor;
-        address initialToken;
-        address finalToken;
-        address finalRecipient;
-        bytes actionData;
-        uint256 extraFeesToSponsor;
-        bool transferToCore;
     }
 
     /// @notice A mapping containing the pending state between initializing the swap flow and finalizing it
@@ -401,9 +379,9 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         // Calculate sponsorship amount in scope
         uint256 amountToSponsor;
         {
-            uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraBridgingFeesEVM) *
-                params.maxBpsToSponsor) / BPS_SCALAR;
-            amountToSponsor = params.extraBridgingFeesEVM;
+            uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
+                BPS_SCALAR;
+            amountToSponsor = params.extraFeesIncurred;
             if (amountToSponsor > maxEvmAmountToSponsor) {
                 amountToSponsor = maxEvmAmountToSponsor;
             }
@@ -510,7 +488,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
                 // In finalToken
                 uint64 maxAmountToSponsorCore;
                 (minAllowableAmountToForwardCore, maxAmountToSponsorCore) = _calculateAllowableAmountsForFlow(
-                    params.amountInEVM + params.extraBridgingFeesEVM,
+                    params.amountInEVM + params.extraFeesIncurred,
                     initialCoreTokenInfo,
                     finalCoreTokenInfo,
                     params.maxBpsToSponsor > 0,
@@ -533,16 +511,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
                     minAllowableAmountToForwardCore - guaranteedLOOut > maxAmountToSponsorCore
                 ) {
                     // We can't provide the required slippage in a swap flow, try simple transfer flow instead
-                    _executeSimpleTransferFlow(
-                        CommonFlowParams({
-                            amountInEVM: params.amountInEVM,
-                            quoteNonce: params.quoteNonce,
-                            finalRecipient: params.finalRecipient,
-                            finalToken: initialToken,
-                            maxBpsToSponsor: params.maxBpsToSponsor,
-                            extraBridgingFeesEVM: params.extraBridgingFeesEVM
-                        })
-                    );
+                    params.finalToken = initialToken;
+                    _executeSimpleTransferFlow(params);
                     emit SwapFlowFallbackTooExpensive(
                         params.quoteNonce,
                         minAllowableAmountToForwardCore - guaranteedLOOut,
@@ -569,16 +539,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             if (totalEVMAmountToSponsor > 0) {
                 if (!_availableInDonationBox(params.finalToken, totalEVMAmountToSponsor)) {
                     // We can't provide the required `totalEVMAmountToSponsor` in a swap flow, try simple transfer flow instead
-                    _executeSimpleTransferFlow(
-                        CommonFlowParams({
-                            amountInEVM: params.amountInEVM,
-                            quoteNonce: params.quoteNonce,
-                            finalRecipient: params.finalRecipient,
-                            finalToken: initialToken,
-                            maxBpsToSponsor: params.maxBpsToSponsor,
-                            extraBridgingFeesEVM: params.extraBridgingFeesEVM
-                        })
-                    );
+                    params.finalToken = initialToken;
+                    _executeSimpleTransferFlow(params);
                     emit SwapFlowFallbackDonationBox(params.quoteNonce, params.finalToken, totalEVMAmountToSponsor);
                     return;
                 }
@@ -597,16 +559,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             );
 
             if (!isSafeToBridgeMainToken || !isSafeTobridgeSponsorshipFunds) {
-                _fallbackHyperEVMFlow(
-                    CommonFlowParams({
-                        amountInEVM: params.amountInEVM,
-                        quoteNonce: params.quoteNonce,
-                        finalRecipient: params.finalRecipient,
-                        finalToken: initialToken,
-                        maxBpsToSponsor: params.maxBpsToSponsor,
-                        extraBridgingFeesEVM: params.extraBridgingFeesEVM
-                    })
-                );
+                params.finalToken = initialToken;
+                _fallbackHyperEVMFlow(params);
                 emit SwapFlowFallbackUnsafeToBridge(
                     params.quoteNonce,
                     isSafeToBridgeMainToken,
@@ -911,11 +865,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
     function _fallbackHyperEVMFlow(CommonFlowParams memory params) internal virtual {
-        uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraBridgingFeesEVM) * params.maxBpsToSponsor) /
+        uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
             BPS_SCALAR;
-        uint256 sponsorshipFundsToForward = params.extraBridgingFeesEVM > maxEvmAmountToSponsor
+        uint256 sponsorshipFundsToForward = params.extraFeesIncurred > maxEvmAmountToSponsor
             ? maxEvmAmountToSponsor
-            : params.extraBridgingFeesEVM;
+            : params.extraFeesIncurred;
 
         if (!_availableInDonationBox(params.finalToken, sponsorshipFundsToForward)) {
             sponsorshipFundsToForward = 0;

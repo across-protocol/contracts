@@ -9,6 +9,7 @@ import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressCo
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
+import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -119,6 +120,15 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         uint8 executionMode = composeMsg._getExecutionMode();
         bytes memory actionData = composeMsg._getActionData();
 
+        CommonFlowParams memory commonParams = CommonFlowParams({
+            amountInEVM: amountLD,
+            quoteNonce: quoteNonce,
+            finalRecipient: finalRecipient,
+            finalToken: finalToken,
+            maxBpsToSponsor: maxBpsToSponsor,
+            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR
+        });
+
         // Route to appropriate execution based on executionMode
         if (
             executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
@@ -127,56 +137,23 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
                 EVMFlowParams({
-                    amount: amountLD,
-                    quoteNonce: quoteNonce,
-                    maxBpsToSponsor: maxBpsToSponsor,
+                    commonParams: commonParams,
                     initialToken: baseToken,
-                    finalToken: finalToken,
-                    finalRecipient: finalRecipient,
                     actionData: actionData,
-                    extraFeesToSponsor: EXTRA_FEES_TO_SPONSOR,
                     transferToCore: executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
                 })
             );
         } else {
             // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(
-                CommonFlowParams({
-                    amountInEVM: amountLD,
-                    quoteNonce: quoteNonce,
-                    finalRecipient: finalRecipient,
-                    finalToken: finalToken,
-                    maxBpsToSponsor: maxBpsToSponsor,
-                    extraBridgingFeesEVM: EXTRA_FEES_TO_SPONSOR
-                }),
-                maxUserSlippageBps
-            );
+            HyperCoreFlowExecutor._executeFlow(commonParams, maxUserSlippageBps);
         }
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
-        uint256 finalAmount;
-        uint256 extraFeesToSponsorFinalToken;
-        (params.finalToken, finalAmount, extraFeesToSponsorFinalToken) = ArbitraryEVMFlowExecutor._executeFlow(
-            params.amount,
-            params.quoteNonce,
-            params.initialToken,
-            params.finalToken,
-            params.actionData,
-            params.extraFeesToSponsor
-        );
+        params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(
-            CommonFlowParams({
-                amountInEVM: finalAmount,
-                quoteNonce: params.quoteNonce,
-                finalRecipient: params.finalRecipient,
-                finalToken: params.finalToken,
-                maxBpsToSponsor: params.maxBpsToSponsor,
-                extraBridgingFeesEVM: extraFeesToSponsorFinalToken
-            })
-        );
+        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
     }
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
