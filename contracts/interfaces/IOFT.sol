@@ -87,3 +87,15 @@ interface IOFT {
         address _refundAddress
     ) external payable returns (MessagingReceipt memory, OFTReceipt memory);
 }
+
+interface IEndpoint {
+    function eid() external view returns (uint32);
+}
+
+interface IOAppCore {
+    /**
+     * @notice Retrieves the LayerZero endpoint associated with the OApp.
+     * @return iEndpoint The LayerZero endpoint as an interface.
+     */
+    function endpoint() external view returns (IEndpoint iEndpoint);
+}

@@ -56,7 +56,8 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.23";
+const solcVersion = "0.8.24";
+const evmVersion = "cancun";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -65,6 +66,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -73,6 +75,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
+    evmVersion,
     // Only strip revert strings if not testing or in ci.
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
@@ -83,6 +86,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -97,12 +101,23 @@ const config: HardhatUserConfig = {
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
+        settings: {
+          optimizer: { enabled: true, runs: 50 },
+          viaIR: true,
+          debug: { revertStrings: isTest ? "debug" : "strip" },
+        },
       },
       "contracts/SpokePoolVerifier.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
         version: "0.8.19",
+        settings: {
+          optimizer: { enabled: true, runs: 1000000 },
+          viaIR: true,
+          // Only strip revert strings if not testing or in ci.
+          debug: { revertStrings: isTest ? "debug" : "strip" },
+        },
       },
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -124,7 +139,13 @@ const config: HardhatUserConfig = {
         enabled: true,
       },
       suppressedErrors: ["sendtransfer"],
-      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler", "SpokePoolVerifier"],
+      contractsToCompile: [
+        "SpokePoolPeriphery",
+        "MulticallHandler",
+        "SpokePoolVerifier",
+        "ZkSync_SpokePool",
+        "Lens_SpokePool",
+      ],
     },
   },
   networks: {
@@ -156,6 +177,7 @@ const config: HardhatUserConfig = {
     // gasPrice: 3e8, // 0.3 GWEI
     // gasMultiplier: 4.0,
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
     "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),
@@ -240,6 +262,14 @@ const config: HardhatUserConfig = {
           browserURL: "https://era.zksync.network/",
         },
       },
+      {
+        network: "lens",
+        chainId: CHAIN_IDs.LENS,
+        urls: {
+          apiURL: "https://verify.lens.xyz/contract_verification",
+          browserURL: "https://explorer.lens.xyz/",
+        },
+      },
     ],
   },
   blockscout: {
@@ -259,14 +289,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.inkonchain.com/api",
           browserURL: "https://explorer.inkonchain.com",
-        },
-      },
-      {
-        network: "lens",
-        chainId: CHAIN_IDs.LENS,
-        urls: {
-          apiURL: "https://verify.lens.xyz/contract_verification",
-          browserURL: "https://explorer.lens.xyz/",
         },
       },
       {
