@@ -129,16 +129,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             // Execute standard HyperCore flow (default)
             HyperCoreFlowExecutor._executeFlow(commonParams, quote.maxUserSlippageBps);
         }
-
-        emit SponsoredMintAndWithdraw(
-            quote.nonce,
-            quote.finalRecipient,
-            quote.finalToken,
-            quote.amount,
-            quote.deadline,
-            quote.maxBpsToSponsor,
-            quote.maxUserSlippageBps
-        );
     }
 
     function _isQuoteValid(
