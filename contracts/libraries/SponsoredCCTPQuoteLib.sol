@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 
 import { SponsoredCCTPInterface } from "../interfaces/SponsoredCCTPInterface.sol";
-import { BytesLib } from "./BytesLib.sol";
+import { BytesLib } from "../external/libraries/BytesLib.sol";
 import { Bytes32ToAddress } from "./AddressConverters.sol";
 
 /**

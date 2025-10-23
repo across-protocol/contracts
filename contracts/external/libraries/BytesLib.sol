@@ -6,12 +6,14 @@ library BytesLib {
      *              ERRORS                *
      **************************************/
     error OutOfBounds();
-    error InvalidBytes();
-    error InvalidStart();
 
     /**************************************
      *              FUNCTIONS              *
      **************************************/
+
+    // The following 4 functions are copied from solidity-bytes-utils library
+    // https://github.com/GNSPS/solidity-bytes-utils/blob/fc502455bb2a7e26a743378df042612dd50d1eb9/contracts/BytesLib.sol#L323C5-L398C6
+    // Code was copied, and slightly modified to use revert instead of require
 
     /**
      * @notice Reads a uint16 from a bytes array at a given start index
@@ -20,7 +22,9 @@ library BytesLib {
      * @return result The uint16 result
      */
     function toUint16(bytes memory _bytes, uint256 _start) internal pure returns (uint16 result) {
-        require(_bytes.length >= _start + 2, "toUint16_outOfBounds");
+        if (_bytes.length < _start + 2) {
+            revert OutOfBounds();
+        }
 
         // solhint-disable-next-line no-inline-assembly
         assembly {
@@ -81,6 +85,8 @@ library BytesLib {
 
     /**
      * @notice Reads a bytes array from a bytes array at a given start index and length
+     * Source: https://github.com/Vectorized/solady/blob/21202175063a0010826bf42697b5aa2ff0c27f9f/src/utils/LibBytes.sol#L369C5-L396C6
+     * Code was copied, was not modified
      * @param _bytes The bytes array to convert
      * @param _start The start index of the bytes array
      * @param _end The end index of the bytes array
