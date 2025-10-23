@@ -40,6 +40,16 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
     /// @notice Emitted when a new authorized src periphery is configured
     event SetAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery);
 
+    /// @notice Emitted upon successful processing of sponsored flow in `lzCompose`
+    event SponsoredFlowProcessed(
+        bytes32 quoteNonce,
+        address finalRecipient,
+        address finalToken,
+        uint256 amountInEVM,
+        uint256 maxBpsToSponsor,
+        uint256 maxSlippageBps
+    );
+
     /// @notice Thrown when trying to call lzCompose from a source periphery that's not been configured in `authorizedSrcPeripheryContracts`
     error AuthorizedPeripheryNotSet(uint32 _srcEid);
     /// @notice Thrown when source chain recipient is not authorized periphery contract
@@ -147,6 +157,15 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
             // Execute standard HyperCore flow (default)
             HyperCoreFlowExecutor._executeFlow(commonParams, maxUserSlippageBps);
         }
+
+        emit SponsoredFlowProcessed(
+            quoteNonce,
+            finalRecipient,
+            finalToken,
+            amountLD,
+            maxBpsToSponsor,
+            maxUserSlippageBps
+        );
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
