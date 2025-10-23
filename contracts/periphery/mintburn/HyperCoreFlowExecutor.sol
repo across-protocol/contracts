@@ -818,14 +818,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
-    /// @notice Gets `amount` of `token` from donationBox. Reverts if unsuccessful
-    function _getFromDonationBox(address token, uint256 amount) internal {
-        if (!_availableInDonationBox(token, amount)) {
-            revert DonationBoxInsufficientFundsError(token, amount);
-        }
-        donationBox.withdraw(IERC20(token), amount);
-    }
-
     /// @notice Checks if `amount` of `token` is available to withdraw from donationBox
     function _availableInDonationBox(
         bytes32 quoteNonce,
