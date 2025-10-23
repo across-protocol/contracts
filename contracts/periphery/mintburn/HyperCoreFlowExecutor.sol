@@ -429,14 +429,14 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
-    /// @notice initialized swap flow to eventually forward `finalToken` to the user, starting from `baseToken` (received
-    /// from a user bridge transaction)
-    /// @dev !!! Only works for stable -> stable swap flows (or equivalent token flows. Price is supposed to be 1:1)
-    function _initiateSwapFlow(
-        CommonFlowParams memory params,
-        // `maxUserSlippageBps` here means how much token user receives compared to a 1 to 1
-        uint256 maxUserSlippageBps
-    ) internal {
+    /**
+     * @notice Initiates the swap flow. Sends the funds received on EVM side over to a SwapHandler corresponding to a
+     * finalToken. This is the first leg of the swap flow. Next, the bot should submit a limit order through a `submitLimitOrder`
+     * function, and then settle the flow via a `finalizeSwapFlows` function
+     * @dev Only works for stable -> stable swap flows (or equivalent token flows. Price between tokens is supposed to be approximately one to one)
+     * @param maxUserSlippageBps Describes a configured user setting. Slippage here is wrt the one to one exchange
+     */
+    function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
         // Check account activation
         if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
             if (params.maxBpsToSponsor > 0) {
