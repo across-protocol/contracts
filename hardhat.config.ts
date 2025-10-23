@@ -57,6 +57,7 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 const compileZk = process.env.COMPILE_ZK === "true";
 
 const solcVersion = "0.8.24";
+const evmVersion = "cancun";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -65,6 +66,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -73,6 +75,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
+    evmVersion,
     // Only strip revert strings if not testing or in ci.
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
@@ -83,6 +86,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -96,13 +100,13 @@ const config: HardhatUserConfig = {
         ...LARGE_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
+        // version: "0.8.19",
       },
       "contracts/SpokePoolVerifier.sol": {
         ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
         // NOTE: Linea only supports 0.8.19.
         // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
+        // version: "0.8.19",
       },
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -138,6 +142,7 @@ const config: HardhatUserConfig = {
       accounts: { accountsBalance: "1000000000000000000000000" },
       zksync: compileZk,
       allowUnlimitedContractSize: true,
+      // hardfork: "shanghai",
     },
     mainnet: getDefaultHardhatConfig(CHAIN_IDs.MAINNET),
     zksync: {
