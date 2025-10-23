@@ -116,8 +116,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
                 quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
         ) {
-            commonParams.finalToken = quote.finalToken.toAddress();
-
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
                 EVMFlowParams({
@@ -131,16 +129,6 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             // Execute standard HyperCore flow (default)
             HyperCoreFlowExecutor._executeFlow(commonParams, quote.maxUserSlippageBps);
         }
-
-        emit SponsoredMintAndWithdraw(
-            quote.nonce,
-            quote.finalRecipient,
-            quote.finalToken,
-            quote.amount,
-            quote.deadline,
-            quote.maxBpsToSponsor,
-            quote.maxUserSlippageBps
-        );
     }
 
     function _isQuoteValid(

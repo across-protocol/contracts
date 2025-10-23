@@ -28,7 +28,13 @@ abstract contract ArbitraryEVMFlowExecutor {
     address public immutable multicallHandler;
 
     /// @notice Emitted when arbitrary actions are executed successfully
-    event ArbitraryActionsExecuted(bytes32 indexed quoteNonce, uint256 callCount, uint256 finalAmount);
+    event ArbitraryActionsExecuted(
+        bytes32 indexed quoteNonce,
+        address indexed initialToken,
+        uint256 initialAmount,
+        address indexed finalToken,
+        uint256 finalAmount
+    );
 
     /// @notice Error thrown when final balance is insufficient
     error InsufficientFinalBalance(address token, uint256 expected, uint256 actual);
@@ -96,7 +102,13 @@ abstract contract ArbitraryEVMFlowExecutor {
         );
         params.commonParams.amountInEVM = finalAmount;
 
-        emit ArbitraryActionsExecuted(params.commonParams.quoteNonce, compressedCalls.length, finalAmount);
+        emit ArbitraryActionsExecuted(
+            params.commonParams.quoteNonce,
+            params.initialToken,
+            params.commonParams.amountInEVM,
+            params.commonParams.finalToken,
+            finalAmount
+        );
 
         return params.commonParams;
     }
