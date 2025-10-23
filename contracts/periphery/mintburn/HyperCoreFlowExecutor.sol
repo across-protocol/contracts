@@ -881,20 +881,17 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     ) internal pure returns (uint64 totalToSend, uint64 additionalToSend) {
         // What we will send from donationBox right now
         // What we will forward to user on HCore
-        if (limitOrderOut >= maxAmountToSend) {
+        if (limitOrderOut >= maxAmountToSend || isSponsored) {
             totalToSend = maxAmountToSend;
         } else {
             if (limitOrderOut < minAmountToSend) {
                 additionalToSend = minAmountToSend - limitOrderOut;
             }
 
-            if (isSponsored) {
-                // maxAmountToSend = minAmountToSend = one to one
-                totalToSend = maxAmountToSend;
-            } else {
-                // Give user a fair deal instead of sending the minimum allowable amount (which means max slippage)
-                totalToSend = limitOrderOut + additionalToSend;
-            }
+            // Give user a fair deal, which is the max of:
+            // - limitOrderOut
+            // - minAmountToSend
+            totalToSend = limitOrderOut + additionalToSend;
         }
     }
 
