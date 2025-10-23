@@ -561,7 +561,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * has to estimate how much final tokens it received on core based on the input of the corresponding quote nonce
      * swap flow
      */
-    function _finalizeSwapFlows(
+    function finalizeSwapFlows(
         address finalToken,
         bytes32[] calldata quoteNonces,
         uint64[] calldata limitOrderOuts
@@ -782,6 +782,37 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             canBeUsedForAccountActivation,
             accountActivationFeeCore,
             bridgeSafetyBufferCore
+        );
+    }
+
+    /**
+     * @notice Used for ad-hoc sends of sponsorship funds to associated SwapHandler @ HyperCore
+     * @param token The final token for which we want to fund the SwapHandler
+     */
+    function sendSponsorshipToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
+        CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(token);
+        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(token);
+        (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+            amount,
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
+        if (
+            !HyperCoreLib.isCoreAmountSafeToBridge(
+                coreTokenInfo.coreIndex,
+                amountCoreToReceive,
+                coreTokenInfo.bridgeSafetyBufferCore
+            )
+        ) {
+            revert UnsafeToBridgeError(token, amountCoreToReceive);
+        }
+
+        donationBox.withdraw(IERC20(token), amountEVMToSend);
+        IERC20(token).safeTransfer(address(finalTokenInfo.swapHandler), amountEVMToSend);
+        finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
+            token,
+            coreTokenInfo.coreIndex,
+            amountEVMToSend,
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
     }
 
