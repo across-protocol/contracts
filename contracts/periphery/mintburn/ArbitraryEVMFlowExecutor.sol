@@ -6,6 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 // Import MulticallHandler
 import { MulticallHandler } from "../../handlers/MulticallHandler.sol";
+import { EVMFlowParams, CommonFlowParams } from "./Structs.sol";
 
 /**
  * @title ArbitraryEVMFlowExecutor
@@ -43,52 +44,42 @@ abstract contract ArbitraryEVMFlowExecutor {
     /**
      * @notice Executes arbitrary actions by transferring tokens to MulticallHandler
      * @dev Decompresses CompressedCall[] to MulticallHandler.Call[] format (adds value: 0)
-     * @param amount Amount of tokens to transfer to MulticallHandler
-     * @param quoteNonce Unique nonce for this quote
-     * @param initialToken Token to transfer to MulticallHandler
-     * @param finalToken Expected final token after actions
-     * @param actionData Encoded actions: abi.encode(CompressedCall[] calls)
-     * @param extraFeesToSponsorTokenIn Extra fees to sponsor in initialToken
+     * @param params Parameters of HyperEVM execution
+     * @return commonParams Parameters to continue sponsored execution to transfer funds to final recipient at correct destination
      */
-    function _executeFlow(
-        uint256 amount,
-        bytes32 quoteNonce,
-        address initialToken,
-        address finalToken,
-        bytes memory actionData,
-        uint256 extraFeesToSponsorTokenIn
-    ) internal returns (address /* finalToken */, uint256 finalAmount, uint256 extraFeesToSponsorFinalToken) {
+    function _executeFlow(EVMFlowParams memory params) internal returns (CommonFlowParams memory commonParams) {
         // Decode the compressed action data
-        CompressedCall[] memory compressedCalls = abi.decode(actionData, (CompressedCall[]));
+        CompressedCall[] memory compressedCalls = abi.decode(params.actionData, (CompressedCall[]));
 
         // Snapshot balances
-        uint256 initialAmountSnapshot = IERC20(initialToken).balanceOf(address(this));
-        uint256 finalAmountSnapshot = IERC20(finalToken).balanceOf(address(this));
+        uint256 initialAmountSnapshot = IERC20(params.initialToken).balanceOf(address(this));
+        uint256 finalAmountSnapshot = IERC20(params.commonParams.finalToken).balanceOf(address(this));
 
         // Transfer tokens to MulticallHandler
-        IERC20(initialToken).safeTransfer(multicallHandler, amount);
+        IERC20(params.initialToken).safeTransfer(multicallHandler, params.commonParams.amountInEVM);
 
         // Build instructions for MulticallHandler
         bytes memory instructions = _buildMulticallInstructions(
             compressedCalls,
-            finalToken,
+            params.commonParams.finalToken,
             address(this) // Send leftover tokens back to this contract
         );
 
         // Execute via MulticallHandler
         MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(
-            initialToken,
-            amount,
+            params.initialToken,
+            params.commonParams.amountInEVM,
             address(this),
             instructions
         );
 
+        uint256 finalAmount;
         // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
-        if (initialAmountSnapshot == IERC20(initialToken).balanceOf(address(this))) {
-            finalToken = initialToken;
-            finalAmount = amount;
+        if (initialAmountSnapshot == IERC20(params.initialToken).balanceOf(address(this))) {
+            params.commonParams.finalToken = params.initialToken;
+            finalAmount = params.commonParams.amountInEVM;
         } else {
-            uint256 finalBalance = IERC20(finalToken).balanceOf(address(this));
+            uint256 finalBalance = IERC20(params.commonParams.finalToken).balanceOf(address(this));
             if (finalBalance >= finalAmountSnapshot) {
                 // This means the swap did happen, so we check the balance of the output token and send it.
                 finalAmount = finalBalance - finalAmountSnapshot;
@@ -98,11 +89,16 @@ abstract contract ArbitraryEVMFlowExecutor {
             }
         }
 
-        extraFeesToSponsorFinalToken = _calcExtraFeesFinal(amount, extraFeesToSponsorTokenIn, finalAmount);
+        params.commonParams.extraFeesIncurred = _calcExtraFeesFinal(
+            params.commonParams.amountInEVM,
+            params.commonParams.extraFeesIncurred,
+            finalAmount
+        );
+        params.commonParams.amountInEVM = finalAmount;
 
-        emit ArbitraryActionsExecuted(quoteNonce, compressedCalls.length, finalAmount);
+        emit ArbitraryActionsExecuted(params.commonParams.quoteNonce, compressedCalls.length, finalAmount);
 
-        return (finalToken, finalAmount, extraFeesToSponsorFinalToken);
+        return params.commonParams;
     }
 
     /**
