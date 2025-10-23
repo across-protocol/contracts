@@ -107,7 +107,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
             finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
             // If the quote is invalid we don't sponsor the flow or the extra fees
             maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
-            extraFeesIncurred: feeExecuted
+            extraFeesIncurred: isQuoteValid ? feeExecuted : 0
         });
 
         // Route to appropriate execution based on executionMode
