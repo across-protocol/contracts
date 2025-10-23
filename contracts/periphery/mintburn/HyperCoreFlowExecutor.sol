@@ -552,66 +552,80 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
-    function finalizeSwapFlow(bytes32 quoteNonce, uint64 limitOrderOut) external onlyPermissionedBot {
-        // TODO: Read L1 balance, allow to finalize multiple
-        SwapFlowState memory swap = swaps[quoteNonce];
-        if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
-        if (swap.finalized) revert SwapAlreadyFinalized();
-        swap.finalized = true;
+    function _finalizeSwapFlows(
+        address finalToken,
+        bytes32[] calldata quoteNonces,
+        uint64[] calldata limitOrderOuts
+    ) external onlyPermissionedBot returns (uint256 finalized) {
+        require(quoteNonces.length == limitOrderOuts.length, "length");
+        require(lastPullFundsBlock[finalToken] < block.number, "too soon");
 
-        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[swap.finalToken];
-        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[swap.finalToken];
+        CoreTokenInfo memory finalCoreTokenInfo = _getExistingCoreTokenInfo(finalToken);
+        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
 
-        // What we will send from donationBox right now
-        uint64 additionalToSend = 0;
-        // What we will forward to user on HCore
-        uint64 totalToSend;
-        if (limitOrderOut >= swap.maxAmountToSend) {
-            totalToSend = swap.maxAmountToSend;
+        uint64 availableBalance = HyperCoreLib.spotBalance(
+            address(finalTokenInfo.swapHandler),
+            finalCoreTokenInfo.coreIndex
+        );
+        uint64 totalAdditionalToSend = 0;
+        for (uint256 i; i < quoteNonces.length; ++i) {
+            SwapFlowState storage swap = swaps[quoteNonces[i]];
+            if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
+            if (swap.finalized) revert SwapAlreadyFinalized();
+            swap.finalized = true;
+
+            (uint64 totalToSend, uint64 additionalToSend) = _calcSwapFlowSendAmounts(
+                limitOrderOuts[i],
+                swap.minAmountToSend,
+                swap.maxAmountToSend,
+                swap.isSponsored
+            );
+            if (totalToSend > availableBalance) {
+                break;
+            }
+            availableBalance -= totalToSend;
+            totalAdditionalToSend += additionalToSend;
+            finalized += 1;
+            HyperCoreLib.transferERC20CoreToCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
+            emit SwapFlowFinalized(quoteNonces[i], swap.finalRecipient, swap.finalToken, totalToSend, additionalToSend);
+        }
+
+        if (finalized > 0) {
+            lastPullFundsBlock[finalToken] = block.number;
         } else {
-            if (limitOrderOut < swap.minAmountToSend) {
-                additionalToSend = swap.minAmountToSend - limitOrderOut;
-            }
-
-            if (swap.isSponsored) {
-                // maxAmountToSend = minAmountToSend = one to one
-                totalToSend = swap.maxAmountToSend;
-            } else {
-                // Give user a fair deal instead of sending the minimum allowable amount (which means max slippage)
-                totalToSend = limitOrderOut + additionalToSend;
-            }
+            return 0;
         }
 
-        (uint256 additionalToSendEVM, uint64 additionalToSendCoreUnits) = HyperCoreLib
-            .minimumCoreReceiveAmountToAmounts(additionalToSend, finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals);
+        if (totalAdditionalToSend > 0) {
+            (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore) = HyperCoreLib
+                .minimumCoreReceiveAmountToAmounts(
+                    totalAdditionalToSend,
+                    finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                );
 
-        if (
-            !HyperCoreLib.isCoreAmountSafeToBridge(
-                finalCoreTokenInfo.coreIndex,
-                additionalToSendCoreUnits,
-                finalCoreTokenInfo.bridgeSafetyBufferCore
-            )
-        ) {
-            // We expect this situation to be so rare and / or intermittend that we're willing to rely on admin to sweep the funds if this leads to
-            // swaps being impossible to finalize
-            revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, additionalToSendCoreUnits);
-        }
+            if (
+                !HyperCoreLib.isCoreAmountSafeToBridge(
+                    finalCoreTokenInfo.coreIndex,
+                    totalAdditionalReceivedCore,
+                    finalCoreTokenInfo.bridgeSafetyBufferCore
+                )
+            ) {
+                // We expect this situation to be so rare and / or intermittend that we're willing to rely on admin to sweep the funds if this leads to
+                // swaps being impossible to finalize
+                revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, totalAdditionalToSend);
+            }
 
-        // Get additional amount to send from donation box, and send it to self on core
-        if (additionalToSendEVM > 0) {
-            _getFromDonationBox(swap.finalToken, additionalToSendEVM);
-            IERC20(swap.finalToken).safeTransfer(address(finalTokenInfo.swapHandler), additionalToSendEVM);
+            // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
+            // Get additional amount to send from donation box, and send it to self on core
+            _getFromDonationBox(finalToken, totalAdditionalToSendEVM);
+            IERC20(finalToken).safeTransfer(address(finalTokenInfo.swapHandler), totalAdditionalToSendEVM);
             finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
-                swap.finalToken,
+                finalToken,
                 finalCoreTokenInfo.coreIndex,
-                additionalToSendEVM,
+                totalAdditionalToSendEVM,
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
-
-        // Send to user
-        HyperCoreLib.transferERC20CoreToCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSend);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
@@ -779,6 +793,35 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             maxAllowableAmountToForwardCore = uint64(
                 (feelessAmountCoreFinalToken * amount) / (amount + extraFeesIncurred)
             );
+        }
+    }
+
+    /**
+     * @return totalToSend What we will forward to user on HCore
+     * @return additionalToSend What we will send from donationBox right now
+     */
+    function _calcSwapFlowSendAmounts(
+        uint64 limitOrderOut,
+        uint64 minAmountToSend,
+        uint64 maxAmountToSend,
+        bool isSponsored
+    ) internal pure returns (uint64 totalToSend, uint64 additionalToSend) {
+        // What we will send from donationBox right now
+        // What we will forward to user on HCore
+        if (limitOrderOut >= maxAmountToSend) {
+            totalToSend = maxAmountToSend;
+        } else {
+            if (limitOrderOut < minAmountToSend) {
+                additionalToSend = minAmountToSend - limitOrderOut;
+            }
+
+            if (isSponsored) {
+                // maxAmountToSend = minAmountToSend = one to one
+                totalToSend = maxAmountToSend;
+            } else {
+                // Give user a fair deal instead of sending the minimum allowable amount (which means max slippage)
+                totalToSend = limitOrderOut + additionalToSend;
+            }
         }
     }
 
