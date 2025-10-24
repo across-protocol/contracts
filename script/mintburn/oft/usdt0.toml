@@ -3,9 +3,6 @@ token = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
 oft_messenger = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
 src_periphery = "0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE"
 
-[arbitrum.uint]
-src_periphery_deploy_block = 23650228
-
 [999]
 endpoint_url = "${NODE_URL_999}"
 

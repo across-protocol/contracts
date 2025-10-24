@@ -135,7 +135,6 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
 
         // Persist the deployment address under this chain in TOML
         config.set("src_periphery", address(srcOftPeriphery));
-        config.set("src_periphery_deploy_block", block.number);
     }
 
     function _resolveOwnership(
