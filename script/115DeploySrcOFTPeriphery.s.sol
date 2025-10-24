@@ -8,13 +8,14 @@ import { console } from "forge-std/console.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 import { SponsoredOFTSrcPeriphery } from "../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 
-/// Example CLI usage:
-/// forge script script/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
-///   --rpc-url <network> \
-///   --sig "run(address,address,address,address)" \
-///   0xToken 0xOftMessenger 0xSigner 0xFinalOwner
-///
-/// Final owner argument is optional – run with the four-arg overload to keep ownership
+/*
+Example usage command for deploying a Debug version of the contract 
+forge script script/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --rpc-url arbitrum \
+  --sig "run(address,address,address)" 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92 0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D \
+  --broadcast --verify
+*/
+/// Final owner argument is optional – run with the three-arg overload to keep ownership
 /// with the deployer. Passing the zero address renounces ownership after deploy.
 contract DepoySrcOFTPeriphery is Script, Test, DeploymentUtils {
     enum OwnershipInstruction {
