@@ -28,7 +28,7 @@ remappings = [
     "hardhat/=node_modules/hardhat/",
 ]
 via_ir = true
-optimizer_runs = 800
+optimizer_runs = 1
 solc_version = "0.8.24"
 revert_strings = "strip"
 fs_permissions = [{ access = "read", path = "./"}]
@@ -66,8 +66,8 @@ zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 
 # testnet
-arbitrum-testnet = "${NODE_URL_421614}"
-hyperevm-testnet = "${NODE_URL_998}"
+arbitrum_sepolia = "${NODE_URL_421614}"
+hyperevm_testnet = "${NODE_URL_998}"
 
 
 [etherscan]

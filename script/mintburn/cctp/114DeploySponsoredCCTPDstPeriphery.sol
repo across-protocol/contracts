@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Script } from "forge-std/Script.sol";
-import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
-import { DonationBox } from "../contracts/chain-adapters/DonationBox.sol";
-import { SponsoredCCTPDstPeriphery } from "../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
+import { DeploymentUtils } from "../../utils/DeploymentUtils.sol";
+import { DonationBox } from "../../../contracts/chain-adapters/DonationBox.sol";
+import { SponsoredCCTPDstPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 
-// Deploy: forge script script/114DeploySponsoredCCTPDstPeriphery.sol:DeploySponsoredCCTPDstPeriphery --rpc-url <network> -vvvv
-contract DeploySponsoredCCTPDstPeriphery is Script, Test, DeploymentUtils {
+// Deploy: forge script script/mintburn/cctp/114DeploySponsoredCCTPDstPeriphery.sol:DeploySponsoredCCTPDstPeriphery --rpc-url <network> -vvvv
+contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
     function run() external {
         console.log("Deploying SponsoredCCTPDstPeriphery...");
         console.log("Chain ID:", block.chainid);
@@ -19,8 +17,10 @@ contract DeploySponsoredCCTPDstPeriphery is Script, Test, DeploymentUtils {
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        address cctpMessageTransmitter = getL2Address(block.chainid, "cctpV2MessageTransmitter");
-        // address cctpMessageTransmitter = 0x81D40F21F12A8F0E3252Bccb954D722d4c464B64;
+        _loadConfig("./script/mintburn/cctp/config.toml", true);
+
+        address cctpMessageTransmitter = config.get("cctpTokenMessenger").toAddress();
+        uint32 sourceDomain = config.get("cctpDomainId").toUint32();
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -30,11 +30,11 @@ contract DeploySponsoredCCTPDstPeriphery is Script, Test, DeploymentUtils {
         // USDC on HyperEVM Testnet
         // address baseToken = 0x2B3370eE501B4a559b57D449569354196457D8Ab;
         // USDC on HyperEVM Mainnet
-        address baseToken = 0xb88339CB7199b77E23DB6E890353E22632Ba630f;
-        uint32 coreIndex = 0;
-        bool canBeUsedForAccountActivation = true;
-        uint64 accountActivationFeeCore = 100000000; // 1 USDC
-        uint64 bridgeSafetyBufferCore = 1_000_000_00000000; // 1mil USDC (8 decimals)
+        address baseToken = config.get("baseToken").toAddress();
+        uint32 coreIndex = config.get("coreIndex").toUint32();
+        bool canBeUsedForAccountActivation = config.get("canBeUsedForAccountActivation").toBool();
+        uint64 accountActivationFeeCore = config.get("accountActivationFeeCore").toUint64();
+        uint64 bridgeSafetyBufferCore = config.get("bridgeSafetyBufferCore").toUint64();
 
         SponsoredCCTPDstPeriphery sponsoredCCTPDstPeriphery = new SponsoredCCTPDstPeriphery(
             cctpMessageTransmitter,
