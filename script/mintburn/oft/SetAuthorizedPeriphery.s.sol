@@ -7,73 +7,103 @@ import { console } from "forge-std/console.sol";
 
 import { DstOFTHandler } from "../../../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
-import { Constants } from "../../utils/Constants.sol";
+import { IOAppCore, IEndpoint } from "../../../../contracts/interfaces/IOFT.sol";
 
-// Example runs:
-// forge script script/mintburn/oft/SetAuthorizedPeriphery.s.sol:SetAuthorizedPeriphery \
-//   --sig "run(uint256)" 10 \
-//   --rpc-url hyperevm --broadcast -vvvv
-// forge script script/mintburn/oft/SetAuthorizedPeriphery.s.sol:SetAuthorizedPeriphery \
-//   --sig "run(string,uint256)" ./script/mintburn/oft/deployments.toml 10 \
-//   --rpc-url hyperevm --broadcast -vvvv
-contract SetAuthorizedPeriphery is Script, Config {
+/*
+Example usage:
+
+# Update authorized peripheries on current destination chain using token config
+forge script script/mintburn/oft/SetAuthorizedPeriphery.s.sol:UpdateAuthorizedPeripheries \
+  --sig "run(string)" usdt0 \
+  --rpc-url hyperevm -vvvv --broadcast
+*/
+
+contract UpdateAuthorizedPeripheries is Script, Config {
     using AddressToBytes32 for address;
 
-    string internal constant DEFAULT_CONFIG_PATH = "./script/mintburn/oft/deployments.toml";
-
-    function run() external {
-        revert("Missing args. Use run(uint256) or run(string,uint256)");
+    function run() external pure {
+        revert("Missing args. Use run(string tokenName)");
     }
 
-    function run(uint256 srcChainId) external {
-        _run(DEFAULT_CONFIG_PATH, srcChainId);
+    function run(string memory tokenName) external {
+        require(bytes(tokenName).length != 0, "token key required");
+        string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
+        _run(configPath);
     }
 
-    function run(string memory configPath, uint256 srcChainId) external {
-        _run(bytes(configPath).length == 0 ? DEFAULT_CONFIG_PATH : configPath, srcChainId);
-    }
+    function _run(string memory configPath) internal {
+        _loadConfigAndForks(configPath, true);
 
-    function _run(string memory configPath, uint256 srcChainId) internal {
-        // Load config and enable write-back
-        _loadConfig(configPath, true);
+        // Destination context
+        uint256 dstChainId = block.chainid;
+        uint256 dstForkId = forkOf[dstChainId];
+        require(dstForkId != 0, "dst chain not in config");
+        vm.selectFork(dstForkId);
 
-        // Resolve deployer
+        address dstHandlerAddress = config.get("dst_handler").toAddress();
+        require(dstHandlerAddress != address(0), "dst_handler not set");
+
+        // Resolve deployer once
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        // Read required params from TOML for specified chains
-        address dstHandlerAddress = config.get("dst_handler").toAddress();
-        address srcPeriphery = config.get(srcChainId, "src_periphery").toAddress();
-
-        require(dstHandlerAddress != address(0), "dst_handler not set");
-        require(srcPeriphery != address(0), "src_periphery not set");
-        require(srcChainId != 0, "src_chain_id not set");
-
-        // Compute src EID using local chain constants
-        Constants constantsReader = new Constants();
-        uint32 srcEid = uint32(constantsReader.getOftEid(srcChainId));
-
-        console.log("Setting authorized periphery...");
-        console.log("Dst chain:", block.chainid);
-        console.log("Deployer:", deployer);
+        console.log("Updating authorized peripheries on dst chain:", dstChainId);
         console.log("Dst handler:", dstHandlerAddress);
-        console.log("Src chain id:", srcChainId);
-        console.log("Src EID:", uint256(srcEid));
-        console.log("Src periphery:", srcPeriphery);
+        console.log("Deployer:", deployer);
 
         DstOFTHandler dstHandler = DstOFTHandler(payable(dstHandlerAddress));
 
+        bool performedUpdates = false;
         vm.startBroadcast(deployerPrivateKey);
-        dstHandler.setAuthorizedPeriphery(srcEid, srcPeriphery.toBytes32());
+
+        // Iterate over all chains configured in the TOML
+        for (uint256 i = 0; i < chainIds.length; i++) {
+            uint256 srcChainId = chainIds[i];
+
+            // Switch to source chain fork to read its messenger + endpoint EID
+            uint256 srcForkId = forkOf[srcChainId];
+            if (srcForkId == 0) continue;
+            vm.selectFork(srcForkId);
+
+            address srcPeriphery = config.get("src_periphery").toAddress();
+            address oftMessenger = config.get("oft_messenger").toAddress();
+            if (srcPeriphery == address(0) || oftMessenger == address(0)) {
+                // Nothing to do for this chain
+                continue;
+            }
+
+            uint32 srcEid;
+            try IOAppCore(oftMessenger).endpoint() returns (IEndpoint ep) {
+                srcEid = ep.eid();
+            } catch {
+                continue;
+            }
+
+            // Switch back to destination chain to compare/update
+            vm.selectFork(dstForkId);
+
+            bytes32 current = dstHandler.authorizedSrcPeripheryContracts(uint64(srcEid));
+            bytes32 expected = srcPeriphery.toBytes32();
+
+            if (current != expected) {
+                console.log("Updating srcEid:", uint256(srcEid), "to", srcPeriphery);
+                dstHandler.setAuthorizedPeriphery(srcEid, expected);
+                performedUpdates = true;
+
+                // Persist back to TOML under a namespaced key for traceability (dst chain section)
+                string memory eidKey = string.concat("authorized_periphery_", vm.toString(uint256(srcEid)));
+                config.set(eidKey, srcPeriphery);
+            }
+        }
+
         vm.stopBroadcast();
 
-        // Persist back to TOML under a namespaced key for traceability (dst chain section)
-        string memory eidKey = string.concat("authorized_periphery_", vm.toString(uint256(srcEid)));
-        config.set(eidKey, srcPeriphery);
-        config.set("last_authorized_src_eid", uint256(srcEid));
-        config.set("last_authorized_updated_at", block.timestamp);
+        // Additional trace metadata
+        if (performedUpdates) {
+            config.set("last_authorized_updated_at", block.timestamp);
+        }
 
-        console.log("Authorized periphery saved to TOML with key:", eidKey);
+        console.log(performedUpdates ? "Updates complete" : "No updates required");
     }
 }
