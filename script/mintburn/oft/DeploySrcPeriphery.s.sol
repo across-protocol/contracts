@@ -8,29 +8,28 @@ import { console } from "forge-std/console.sol";
 
 import { DeploymentUtils } from "./../../utils/DeploymentUtils.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
+import { IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 
 /*
 Example usage commands:
 
-# Config-driven deploy (recommended) – pass signer as CLI arg
-forge script script/mintburn/oft/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
-  --sig "run(address)" 0xSigner \
+# Deploy using token key (loads ./script/mintburn/oft/<token>.toml)
+forge script script/mintburn/oft/DeploySrcPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --sig "run(string,address)" usdt0 0xSigner \
   --rpc-url $ARBITRUM_RPC_URL --broadcast -vvvv
 
-# Config-driven with custom config path
-forge script script/mintburn/oft/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
-  --sig "run(string,address)" ./script/mintburn/oft/deployments.toml 0xSigner \
+# Deploy using token key with explicit final owner
+forge script script/mintburn/oft/DeploySrcPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --sig "run(string,address,address)" usdt0 0xSigner 0xFinalOwner \
   --rpc-url $ARBITRUM_RPC_URL --broadcast -vvvv
 
-# Manual param mode (legacy)
-forge script script/mintburn/oft/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
-  --sig "run(address,address,address)" 0xToken 0xOFTMessenger 0xSigner \
-  --rpc-url $ARBITRUM_RPC_URL --broadcast -vvvv
+Note that both of these will update:
+- the config + deployments file: ./script/mintburn/oft/<tokenName>.toml
+- the `broadcast/` folder with the latest_run params (used by the precommit hooks to populate some generated artifacts file)
+
 */
-/// Final owner argument is optional – run with the three-arg overload to keep ownership
-/// with the deployer. Passing the zero address renounces ownership after deploy.
+
 contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
-    string internal constant DEFAULT_CONFIG_PATH = "./script/mintburn/oft/deployments.toml";
     enum OwnershipInstruction {
         KeepDeployer,
         Transfer,
@@ -42,26 +41,21 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
         address finalOwner;
     }
 
-    function run() external pure {
-        revert("Missing signer. Use run(address) or run(string,address)");
-    }
-
-    function run(address signer) external {
-        _deployFromConfig(DEFAULT_CONFIG_PATH, signer);
-    }
-
-    function run(string memory configPath, address signer) external {
-        _deployFromConfig(bytes(configPath).length == 0 ? DEFAULT_CONFIG_PATH : configPath, signer);
-    }
-
-    function run(address token, address oftMessenger, address signer) external {
+    /// Deploy by token name key. Builds path: ./script/mintburn/oft/<tokenName>.toml
+    /// Final owner assumed to be the deployer.
+    function run(string memory tokenName, address signer) external {
+        require(bytes(tokenName).length != 0, "token key required");
+        string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
         OwnershipConfig memory ownershipConfig = OwnershipConfig({ useDefaultOwner: true, finalOwner: address(0) });
-        _deploy(token, oftMessenger, signer, ownershipConfig);
+        _deployFromConfig(configPath, signer, ownershipConfig);
     }
 
-    function run(address token, address oftMessenger, address signer, address finalOwner) external {
+    /// Deploy by token name key with explicit final owner.
+    function run(string memory tokenName, address signer, address finalOwner) external {
+        require(bytes(tokenName).length != 0, "token key required");
+        string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
         OwnershipConfig memory ownershipConfig = OwnershipConfig({ useDefaultOwner: false, finalOwner: finalOwner });
-        _deploy(token, oftMessenger, signer, ownershipConfig);
+        _deployFromConfig(configPath, signer, ownershipConfig);
     }
 
     function _deploy(
@@ -69,7 +63,7 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
         address oftMessenger,
         address signer,
         OwnershipConfig memory ownershipConfig
-    ) internal {
+    ) internal returns (SponsoredOFTSrcPeriphery srcOftPeriphery) {
         console.log("Deploying SponsoredOFTSrcPeriphery...");
         console.log("Chain ID:", block.chainid);
 
@@ -81,7 +75,7 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
         require(oftMessenger != address(0), "OFT messenger cannot be zero");
         require(signer != address(0), "Signer cannot be zero");
 
-        uint32 srcEid = uint32(getOftEid(block.chainid));
+        uint32 srcEid = IOAppCore(oftMessenger).endpoint().eid();
 
         (OwnershipInstruction ownershipInstruction, address resolvedFinalOwner) = _resolveOwnership(
             deployer,
@@ -104,7 +98,7 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        SponsoredOFTSrcPeriphery srcOftPeriphery = new SponsoredOFTSrcPeriphery(token, oftMessenger, srcEid, signer);
+        srcOftPeriphery = new SponsoredOFTSrcPeriphery(token, oftMessenger, srcEid, signer);
 
         console.log("SponsoredOFTSrcPeriphery deployed to:", address(srcOftPeriphery));
 
@@ -119,18 +113,16 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
         }
 
         vm.stopBroadcast();
+        return srcOftPeriphery;
     }
 
-    function _deployFromConfig(string memory configPath, address signer) internal {
+    function _deployFromConfig(
+        string memory configPath,
+        address signer,
+        OwnershipConfig memory ownershipConfig
+    ) internal {
         // Load config and enable write-back
         _loadConfig(configPath, true);
-
-        console.log("Deploying SponsoredOFTSrcPeriphery (config-driven)...");
-        console.log("Chain ID:", block.chainid);
-
-        string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-        address deployer = vm.addr(deployerPrivateKey);
 
         address token = config.get("token").toAddress();
         address oftMessenger = config.get("oft_messenger").toAddress();
@@ -139,19 +131,7 @@ contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
         require(oftMessenger != address(0), "oft_messenger not set");
         require(signer != address(0), "signer not set");
 
-        uint32 srcEid = uint32(getOftEid(block.chainid));
-
-        console.log("Token:", token);
-        console.log("OFT messenger:", oftMessenger);
-        console.log("Source EID:", uint256(srcEid));
-        console.log("Signer:", signer);
-        console.log("Deployer:", deployer);
-
-        vm.startBroadcast(deployerPrivateKey);
-        SponsoredOFTSrcPeriphery srcOftPeriphery = new SponsoredOFTSrcPeriphery(token, oftMessenger, srcEid, signer);
-        vm.stopBroadcast();
-
-        console.log("SponsoredOFTSrcPeriphery deployed to:", address(srcOftPeriphery));
+        SponsoredOFTSrcPeriphery srcOftPeriphery = _deploy(token, oftMessenger, signer, ownershipConfig);
 
         // Persist the deployment address under this chain in TOML
         config.set("src_periphery", address(srcOftPeriphery));
