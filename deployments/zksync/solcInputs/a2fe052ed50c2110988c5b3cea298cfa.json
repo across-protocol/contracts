@@ -130,24 +130,13 @@
     },
     "outputSelection": {
       "*": {
-        "*": [
-          "abi",
-          "evm.methodIdentifiers",
-          "metadata",
-          "devdoc",
-          "userdoc",
-          "storageLayout"
-        ],
-        "": [
-          "ast"
-        ]
+        "*": ["abi", "evm.methodIdentifiers", "metadata", "devdoc", "userdoc", "storageLayout"],
+        "": ["ast"]
       }
     },
     "detectMissingLibraries": false,
     "forceEVMLA": false,
     "enableEraVMExtensions": false
   },
-  "suppressedErrors": [
-    "sendtransfer"
-  ]
+  "suppressedErrors": ["sendtransfer"]
 }
