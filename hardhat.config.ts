@@ -73,7 +73,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   version: solcVersion,
   settings: {
-    optimizer: { enabled: true, runs: 1000000 },
+    // optimizer: { enabled: true, runs: 1 },
     viaIR: true,
     evmVersion,
     // Only strip revert strings if not testing or in ci.

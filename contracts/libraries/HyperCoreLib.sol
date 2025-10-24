@@ -8,7 +8,7 @@ interface ICoreWriter {
     function sendRawAction(bytes calldata data) external;
 }
 
-library HyperCoreLib {
+contract HyperCoreLib {
     using SafeERC20 for IERC20;
 
     // Time-in-Force order types
@@ -84,7 +84,7 @@ library HyperCoreLib {
         address to,
         uint256 amountEVM,
         int8 decimalDiff
-    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+    ) external returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         // if the transfer amount exceeds the bridge balance, this wil revert
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
@@ -115,7 +115,7 @@ library HyperCoreLib {
         uint64 erc20CoreIndex,
         uint256 amountEVM,
         int8 decimalDiff
-    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+    ) external returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend != 0) {
@@ -132,7 +132,7 @@ library HyperCoreLib {
      * @param to The address to receive tokens on HyperCore
      * @param amountCore The amount to transfer on HyperCore
      */
-    function transferERC20CoreToCore(uint64 erc20CoreIndex, address to, uint64 amountCore) internal {
+    function transferERC20CoreToCore(uint64 erc20CoreIndex, address to, uint64 amountCore) public {
         bytes memory action = abi.encode(to, erc20CoreIndex, amountCore);
         bytes memory payload = abi.encodePacked(SPOT_SEND_HEADER, action);
 
@@ -158,7 +158,7 @@ library HyperCoreLib {
         bool reduceOnly,
         Tif tif,
         uint128 cloid
-    ) internal {
+    ) external {
         // Basic sanity checks
         if (limitPriceX1e8 == 0) revert LimitPxIsZero();
         if (sizeX1e8 == 0) revert OrderSizeIsZero();
@@ -179,7 +179,7 @@ library HyperCoreLib {
      * @param asset The asset index of the order
      * @param cloid The client order id of the order
      */
-    function cancelOrderByCloid(uint32 asset, uint128 cloid) internal {
+    function cancelOrderByCloid(uint32 asset, uint128 cloid) external {
         // Encode the action
         bytes memory encodedAction = abi.encode(asset, cloid);
 
@@ -196,7 +196,7 @@ library HyperCoreLib {
      * @param token The token to get the balance of
      * @return balance The balance of the specified ERC20 for `account` on HyperCore
      */
-    function spotBalance(address account, uint64 token) internal view returns (uint64 balance) {
+    function spotBalance(address account, uint64 token) public view returns (uint64 balance) {
         (bool success, bytes memory result) = SPOT_BALANCE_PRECOMPILE_ADDRESS.staticcall(abi.encode(account, token));
         if (!success) revert SpotBalancePrecompileCallFailed();
         SpotBalance memory _spotBalance = abi.decode(result, (SpotBalance));
@@ -208,7 +208,7 @@ library HyperCoreLib {
      * @param user The address of the user to check if they exist on HyperCore
      * @return exists True if the user exists on HyperCore, false otherwise
      */
-    function coreUserExists(address user) internal view returns (bool) {
+    function coreUserExists(address user) external view returns (bool) {
         (bool success, bytes memory result) = CORE_USER_EXISTS_PRECOMPILE_ADDRESS.staticcall(abi.encode(user));
         if (!success) revert CoreUserExistsPrecompileCallFailed();
         CoreUserExists memory _coreUserExists = abi.decode(result, (CoreUserExists));
@@ -220,7 +220,7 @@ library HyperCoreLib {
      * @param index The asset index to get the spot price of
      * @return spotPx The spot price of the specified asset on HyperCore scaled by 1e8
      */
-    function spotPx(uint32 index) internal view returns (uint64) {
+    function spotPx(uint32 index) external view returns (uint64) {
         (bool success, bytes memory result) = SPOT_PX_PRECOMPILE_ADDRESS.staticcall(abi.encode(index));
         if (!success) revert SpotPxPrecompileCallFailed();
         return abi.decode(result, (uint64));
@@ -231,7 +231,7 @@ library HyperCoreLib {
      * @param erc20CoreIndex The token to get the info of
      * @return tokenInfo The info of the specified token on HyperCore
      */
-    function tokenInfo(uint32 erc20CoreIndex) internal view returns (TokenInfo memory) {
+    function tokenInfo(uint32 erc20CoreIndex) external view returns (TokenInfo memory) {
         (bool success, bytes memory result) = TOKEN_INFO_PRECOMPILE_ADDRESS.staticcall(abi.encode(erc20CoreIndex));
         if (!success) revert TokenInfoPrecompileCallFailed();
         TokenInfo memory _tokenInfo = abi.decode(result, (TokenInfo));
@@ -250,7 +250,7 @@ library HyperCoreLib {
         uint64 erc20CoreIndex,
         uint64 coreAmount,
         uint64 coreBufferAmount
-    ) internal view returns (bool) {
+    ) public view returns (bool) {
         address bridgeAddress = toAssetBridgeAddress(erc20CoreIndex);
         uint64 currentBridgeBalance = spotBalance(bridgeAddress, erc20CoreIndex);
 
@@ -263,7 +263,7 @@ library HyperCoreLib {
      * @param erc20CoreIndex The core token index id to convert
      * @return assetBridgeAddress The asset bridge address
      */
-    function toAssetBridgeAddress(uint64 erc20CoreIndex) internal pure returns (address) {
+    function toAssetBridgeAddress(uint64 erc20CoreIndex) public pure returns (address) {
         return address(uint160(BASE_ASSET_BRIDGE_ADDRESS_UINT256 + erc20CoreIndex));
     }
 
@@ -272,7 +272,7 @@ library HyperCoreLib {
      * @param assetBridgeAddress The asset bridge address to convert
      * @return erc20CoreIndex The core token index id
      */
-    function toTokenId(address assetBridgeAddress) internal pure returns (uint64) {
+    function toTokenId(address assetBridgeAddress) external pure returns (uint64) {
         return uint64(uint160(assetBridgeAddress) - BASE_ASSET_BRIDGE_ADDRESS_UINT256);
     }
 
@@ -286,7 +286,7 @@ library HyperCoreLib {
     function minimumCoreReceiveAmountToAmounts(
         uint64 minimumCoreReceiveAmount,
         int8 decimalDiff
-    ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
+    ) external pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         if (decimalDiff == 0) {
             // Same decimals between HyperEVM and HyperCore
             amountEVMToSend = uint256(minimumCoreReceiveAmount);
@@ -316,7 +316,7 @@ library HyperCoreLib {
     function maximumEVMSendAmountToAmounts(
         uint256 maximumEVMSendAmount,
         int8 decimalDiff
-    ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
+    ) public pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
         /// @dev HyperLiquid decimal conversion: Scale EVM (u256,evmDecimals) -> Core (u64,coreDecimals)
         /// @dev Core amount is guaranteed to be within u64 range.
         if (decimalDiff == 0) {
@@ -343,7 +343,7 @@ library HyperCoreLib {
         uint64 amountDecimalsFrom,
         uint8 decimalsFrom,
         uint8 decimalsTo
-    ) internal pure returns (uint64) {
+    ) external pure returns (uint64) {
         if (decimalsFrom == decimalsTo) {
             return amountDecimalsFrom;
         } else if (decimalsFrom < decimalsTo) {

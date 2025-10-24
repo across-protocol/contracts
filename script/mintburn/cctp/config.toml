@@ -1,0 +1,37 @@
+[arbitrum]
+endpoint_url = "${NODE_URL_42161}"
+
+[arbitrum.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+
+[arbitrum.uint]
+cctpDomainId = 3
+
+# Arbitrum Sepolia
+[arbitrum-sepolia]
+endpoint_url = "${NODE_URL_421614}"
+
+[arbitrum-sepolia.address]
+cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+
+[arbitrum-sepolia.uint]
+cctpDomainId = 3
+
+
+# HyperEVM testnet
+[998]
+endpoint_url = "${NODE_URL_998}"
+
+[998.address]
+cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+# USDC
+baseToken = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
+
+[998.uint]
+cctpDomainId = 19
+coreIndex = 0
+accountActivationFeeCore = 100000000
+bridgeSafetyBufferCore = 100000000
+
+[998.bool]
+canBeUsedForAccountActivation = true
