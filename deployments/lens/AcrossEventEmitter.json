@@ -1,5 +1,5 @@
 {
-  "address": "0x2316D79073F8e22c2eC818f341bD03162C48D6f3",
+  "address": "0x6AA1d7390C0B9F36f08503207985fEAE6C6a13Dc",
   "abi": [
     {
       "anonymous": false,
@@ -28,7 +28,7 @@
       "type": "function"
     }
   ],
-  "numDeployments": 3,
+  "numDeployments": 1,
   "solcInputHash": "a2fe052ed50c2110988c5b3cea298cfa",
   "metadata": {
     "llvm_options": [],
