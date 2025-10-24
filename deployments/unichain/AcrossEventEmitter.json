@@ -1,0 +1,91 @@
+{
+  "address": "0xBF75133b48b0a42AB9374027902E83C5E2949034",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "MetadataEmitted",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "data",
+          "type": "bytes"
+        }
+      ],
+      "name": "emitData",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x7fd6265b4f8d4ba2ba7ba590102202d1d38cd2c77c39a1f18f6739b3cc7b5a51",
+  "receipt": {
+    "to": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+    "from": "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    "contractAddress": null,
+    "transactionIndex": 7,
+    "gasUsed": "119108",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x7f2d32e4973845b1c6a1a3a2e8da0488944fe9499d08b5128123f6532c444e11",
+    "transactionHash": "0x7fd6265b4f8d4ba2ba7ba590102202d1d38cd2c77c39a1f18f6739b3cc7b5a51",
+    "logs": [],
+    "blockNumber": 30575071,
+    "cumulativeGasUsed": "4767571",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "0fc8eeef855f04b97b7baffcd5c782f7",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.23+commit.f704f362\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"MetadataEmitted\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"emitData\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"events\":{\"MetadataEmitted(bytes)\":{\"params\":{\"data\":\"The metadata bytes emitted\"}}},\"kind\":\"dev\",\"methods\":{\"emitData(bytes)\":{\"params\":{\"data\":\"The bytes data to emit\"}}},\"title\":\"AcrossEventEmitter\",\"version\":1},\"userdoc\":{\"events\":{\"MetadataEmitted(bytes)\":{\"notice\":\"Emitted when metadata is stored\"}},\"kind\":\"user\",\"methods\":{\"emitData(bytes)\":{\"notice\":\"Emits metadata as an event\"}},\"notice\":\"A simple contract that emits events with bytes encoded metadata\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/AcrossEventEmitter.sol\":\"AcrossEventEmitter\"},\"debug\":{\"revertStrings\":\"strip\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"contracts/AcrossEventEmitter.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/**\\n * @title AcrossEventEmitter\\n * @notice A simple contract that emits events with bytes encoded metadata\\n */\\ncontract AcrossEventEmitter {\\n    /**\\n     * @notice Emitted when metadata is stored\\n     * @param data The metadata bytes emitted\\n     */\\n    event MetadataEmitted(bytes data);\\n\\n    /**\\n     * @notice Emits metadata as an event\\n     * @param data The bytes data to emit\\n     */\\n    function emitData(bytes calldata data) external {\\n        require(data.length > 0, \\\"Data cannot be empty\\\");\\n        emit MetadataEmitted(data);\\n    }\\n}\\n\",\"keccak256\":\"0xf40ca34b904d800db09e80ace2cc7331dba212373c14b32fb370298946b136b3\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x608080604052346100165761012e908161001b8239f35b5f80fdfe60808060405260043610156011575f80fd5b5f3560e01c63d836083e146023575f80fd5b3460f45760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011260f4576004359067ffffffffffffffff80831160f4573660238401121560f457826004013590811160f457366024828501011160f457801560f457817fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f8360409460247fc28009f405f9b451f5155492167b1ad5ab376d991bea880cb5049e924e5b823c986020875282602088015201868601375f85828601015201168101030190a1005b5f80fdfea2646970667358221220a2c7a0f09e981d67663b05d824037d0d54404d85e8c1debac93ab835ff1790aa64736f6c63430008170033",
+  "deployedBytecode": "0x60808060405260043610156011575f80fd5b5f3560e01c63d836083e146023575f80fd5b3460f45760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc36011260f4576004359067ffffffffffffffff80831160f4573660238401121560f457826004013590811160f457366024828501011160f457801560f457817fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0601f8360409460247fc28009f405f9b451f5155492167b1ad5ab376d991bea880cb5049e924e5b823c986020875282602088015201868601375f85828601015201168101030190a1005b5f80fdfea2646970667358221220a2c7a0f09e981d67663b05d824037d0d54404d85e8c1debac93ab835ff1790aa64736f6c63430008170033",
+  "devdoc": {
+    "events": {
+      "MetadataEmitted(bytes)": {
+        "params": {
+          "data": "The metadata bytes emitted"
+        }
+      }
+    },
+    "kind": "dev",
+    "methods": {
+      "emitData(bytes)": {
+        "params": {
+          "data": "The bytes data to emit"
+        }
+      }
+    },
+    "title": "AcrossEventEmitter",
+    "version": 1
+  },
+  "userdoc": {
+    "events": {
+      "MetadataEmitted(bytes)": {
+        "notice": "Emitted when metadata is stored"
+      }
+    },
+    "kind": "user",
+    "methods": {
+      "emitData(bytes)": {
+        "notice": "Emits metadata as an event"
+      }
+    },
+    "notice": "A simple contract that emits events with bytes encoded metadata",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}
