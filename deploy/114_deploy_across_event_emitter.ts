@@ -7,6 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     from: deployer,
     log: true,
     skipIfAlreadyDeployed: true,
+    deterministicDeployment: "0x1234", // Salt for create2
   });
   await hre.run("verify:verify", { address: instance.address });
 };

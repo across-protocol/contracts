@@ -124,7 +124,7 @@ const config: HardhatUserConfig = {
         enabled: true,
       },
       suppressedErrors: ["sendtransfer"],
-      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler", "SpokePoolVerifier"],
+      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler", "SpokePoolVerifier", "AcrossEventEmitter"],
     },
   },
   networks: {
@@ -225,11 +225,43 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
+        network: "blast",
+        chainId: CHAIN_IDs.BLAST,
+        urls: {
+          apiURL: "https://blastscan.io/api",
+          browserURL: "https://blastscan.io",
+        },
+      },
+      {
         network: "hyperevm",
         chainId: CHAIN_IDs.HYPEREVM,
         urls: {
           apiURL: "https://hyperevmscan.io/api",
           browserURL: "https://hyperevmscan.io",
+        },
+      },
+      {
+        network: "linea",
+        chainId: CHAIN_IDs.LINEA,
+        urls: {
+          apiURL: "https://lineascan.build/api",
+          browserURL: "https://lineascan.build",
+        },
+      },
+      {
+        network: "scroll",
+        chainId: CHAIN_IDs.SCROLL,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://scrollscan.com",
+        },
+      },
+      {
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
+        urls: {
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
         },
       },
       {
