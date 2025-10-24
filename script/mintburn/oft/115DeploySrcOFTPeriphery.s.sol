@@ -2,22 +2,35 @@
 pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
+import { Config } from "forge-std/Config.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
-import { SponsoredOFTSrcPeriphery } from "../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
+import { DeploymentUtils } from "./../../utils/DeploymentUtils.sol";
+import { SponsoredOFTSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 
 /*
-Example usage command for deploying a Debug version of the contract 
-forge script script/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
-  --rpc-url arbitrum \
-  --sig "run(address,address,address)" 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9 0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92 0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D \
-  --broadcast --verify
+Example usage commands:
+
+# Config-driven deploy (recommended) – pass signer as CLI arg
+forge script script/mintburn/oft/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --sig "run(address)" 0xSigner \
+  --rpc-url $ARBITRUM_RPC_URL --broadcast -vvvv
+
+# Config-driven with custom config path
+forge script script/mintburn/oft/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --sig "run(string,address)" ./script/mintburn/oft/deployments.toml 0xSigner \
+  --rpc-url $ARBITRUM_RPC_URL --broadcast -vvvv
+
+# Manual param mode (legacy)
+forge script script/mintburn/oft/115DeploySrcOFTPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --sig "run(address,address,address)" 0xToken 0xOFTMessenger 0xSigner \
+  --rpc-url $ARBITRUM_RPC_URL --broadcast -vvvv
 */
 /// Final owner argument is optional – run with the three-arg overload to keep ownership
 /// with the deployer. Passing the zero address renounces ownership after deploy.
-contract DepoySrcOFTPeriphery is Script, Test, DeploymentUtils {
+contract DepoySrcOFTPeriphery is Script, Config, Test, DeploymentUtils {
+    string internal constant DEFAULT_CONFIG_PATH = "./script/mintburn/oft/deployments.toml";
     enum OwnershipInstruction {
         KeepDeployer,
         Transfer,
@@ -30,7 +43,15 @@ contract DepoySrcOFTPeriphery is Script, Test, DeploymentUtils {
     }
 
     function run() external pure {
-        revert("Params not provided. See example usage in `script/115DeploySrcOFTPeriphery.s.sol`");
+        revert("Missing signer. Use run(address) or run(string,address)");
+    }
+
+    function run(address signer) external {
+        _deployFromConfig(DEFAULT_CONFIG_PATH, signer);
+    }
+
+    function run(string memory configPath, address signer) external {
+        _deployFromConfig(bytes(configPath).length == 0 ? DEFAULT_CONFIG_PATH : configPath, signer);
     }
 
     function run(address token, address oftMessenger, address signer) external {
@@ -98,6 +119,43 @@ contract DepoySrcOFTPeriphery is Script, Test, DeploymentUtils {
         }
 
         vm.stopBroadcast();
+    }
+
+    function _deployFromConfig(string memory configPath, address signer) internal {
+        // Load config and enable write-back
+        _loadConfig(configPath, true);
+
+        console.log("Deploying SponsoredOFTSrcPeriphery (config-driven)...");
+        console.log("Chain ID:", block.chainid);
+
+        string memory deployerMnemonic = vm.envString("MNEMONIC");
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        address deployer = vm.addr(deployerPrivateKey);
+
+        address token = config.get("token").toAddress();
+        address oftMessenger = config.get("oft_messenger").toAddress();
+
+        require(token != address(0), "token not set");
+        require(oftMessenger != address(0), "oft_messenger not set");
+        require(signer != address(0), "signer not set");
+
+        uint32 srcEid = uint32(getOftEid(block.chainid));
+
+        console.log("Token:", token);
+        console.log("OFT messenger:", oftMessenger);
+        console.log("Source EID:", uint256(srcEid));
+        console.log("Signer:", signer);
+        console.log("Deployer:", deployer);
+
+        vm.startBroadcast(deployerPrivateKey);
+        SponsoredOFTSrcPeriphery srcOftPeriphery = new SponsoredOFTSrcPeriphery(token, oftMessenger, srcEid, signer);
+        vm.stopBroadcast();
+
+        console.log("SponsoredOFTSrcPeriphery deployed to:", address(srcOftPeriphery));
+
+        // Persist the deployment address under this chain in TOML
+        config.set("src_periphery", address(srcOftPeriphery));
+        config.set("src_periphery_deploy_block", block.number);
     }
 
     function _resolveOwnership(

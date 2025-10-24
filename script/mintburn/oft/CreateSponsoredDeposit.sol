@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
-import { SponsoredOFTSrcPeriphery } from "../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
-import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
-import { AddressToBytes32 } from "../../contracts/libraries/AddressConverters.sol";
-import { ComposeMsgCodec } from "../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
-import { MinimalLZOptions } from "../../contracts/external/libraries/MinimalLZOptions.sol";
-import { IOFT, SendParam, MessagingFee } from "../../contracts/interfaces/IOFT.sol";
+import { SponsoredOFTSrcPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
+import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
+import { ComposeMsgCodec } from "../../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
+import { MinimalLZOptions } from "../../../../contracts/external/libraries/MinimalLZOptions.sol";
+import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 

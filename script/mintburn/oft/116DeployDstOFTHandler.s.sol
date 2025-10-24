@@ -5,9 +5,9 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 
-import { DonationBox } from "../contracts/chain-adapters/DonationBox.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
-import { DstOFTHandler } from "../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
+import { DonationBox } from "../../../contracts/chain-adapters/DonationBox.sol";
+import { DeploymentUtils } from "./../../utils/DeploymentUtils.sol";
+import { DstOFTHandler } from "../../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
 
 // Deploy: forge script script/116DeployDstOFTHandler.s.sol:DeployDstOFTHandler --rpc-url <network> -vvvv
 contract DeployDstOFTHandler is Script, Test, DeploymentUtils {

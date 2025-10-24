@@ -1,0 +1,14 @@
+[arbitrum.address]
+token = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+oft_messenger = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
+src_periphery = "0x7f1B8B4EFdF2FA36CFa8017e2F5b743eFDF69745"
+
+[arbitrum.uint]
+src_periphery_deploy_block = 23644517
+
+[999]
+endpoint_url = "${NODE_URL_999}"
+
+[999.address]
+token = "0x0000000000000000000000000000000000000002"
+oft_messenger = "0x0000000000000000000000000000000000000020"

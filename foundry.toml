@@ -8,6 +8,7 @@ out = "out"
 test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
 cache_path = "cache-foundry"
+fs_permissions = [{ access = "read-write", path = "./" }]
 remappings = [
     "@across-protocol/=node_modules/@across-protocol/",
     "@ensdomains/=node_modules/@ensdomains/",
@@ -31,7 +32,6 @@ via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.24"
 revert_strings = "strip"
-fs_permissions = [{ access = "read", path = "./"}]
 
 solc = "0.8.24"
 evm_version = "cancun"
