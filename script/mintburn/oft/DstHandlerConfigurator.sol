@@ -5,11 +5,11 @@ import { Config } from "forge-std/Config.sol";
 import { console } from "forge-std/console.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
-import { ReadHCoreTokenInfoUtil } from "../mintburn/ReadHCoreTokenInfoUtil.s.sol";
-import { DstOFTHandler } from "../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
-import { HyperCoreFlowExecutor } from "../../contracts/periphery/mintburn/HyperCoreFlowExecutor.sol";
-import { IOAppCore, IEndpoint } from "../../contracts/interfaces/IOFT.sol";
-import { AddressToBytes32 } from "../../contracts/libraries/AddressConverters.sol";
+import { ReadHCoreTokenInfoUtil } from "../../mintburn/ReadHCoreTokenInfoUtil.s.sol";
+import { DstOFTHandler } from "../../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
+import { HyperCoreFlowExecutor } from "../../../contracts/periphery/mintburn/HyperCoreFlowExecutor.sol";
+import { IOAppCore, IEndpoint } from "../../../contracts/interfaces/IOFT.sol";
+import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 
 /// @notice Shared helper for configuring `DstOFTHandler` instances using TOML and JSON metadata.
 abstract contract DstHandlerConfigurator is Config {
@@ -40,14 +40,6 @@ abstract contract DstHandlerConfigurator is Config {
             uint64(info.accountActivationFeeCore),
             uint64(info.bridgeSafetyBufferCore)
         );
-
-        string memory key = string(abi.encodePacked("core_token_info_", tokenName));
-        config.set(key, tokenAddr);
-        config.set(string(abi.encodePacked(key, "_index")), uint256(info.index));
-        config.set(string(abi.encodePacked(key, "_canActivate")), info.canBeUsedForAccountActivation);
-        config.set(string(abi.encodePacked(key, "_activationFeeCore")), uint256(info.accountActivationFeeCore));
-        config.set(string(abi.encodePacked(key, "_bridgeSafetyBufferCore")), uint256(info.bridgeSafetyBufferCore));
-        config.set(string(abi.encodePacked(key, "_updated_at")), block.timestamp);
     }
 
     function _configureAuthorizedPeripheries(address dstHandlerAddress) internal {
@@ -55,15 +47,28 @@ abstract contract DstHandlerConfigurator is Config {
 
         DstOFTHandler handler = DstOFTHandler(payable(dstHandlerAddress));
         uint256[] memory chainIdList = config.getChainIds();
-        bool updated;
+
+        uint256 dstForkId = forkOf[block.chainid];
+        require(dstForkId != 0, "dst chain not in config");
 
         for (uint256 i = 0; i < chainIdList.length; i++) {
             uint256 srcChainId = chainIdList[i];
             address srcPeriphery = config.get(srcChainId, "src_periphery").toAddress();
             address oftMessenger = config.get(srcChainId, "oft_messenger").toAddress();
             if (srcPeriphery == address(0) || oftMessenger == address(0)) {
+                console.log(
+                    "Skipping authorizing periphery for chain",
+                    srcChainId,
+                    "srcPeriphery or oftMessenger not set"
+                );
                 continue;
             }
+
+            uint256 srcForkId = forkOf[block.chainid];
+            require(srcForkId != 0, "dst chain not in config");
+
+            // Switch to calling src chain contracts to get srcEid
+            vm.selectFork(srcForkId);
 
             uint32 srcEid;
             try IOAppCore(oftMessenger).endpoint() returns (IEndpoint ep) {
@@ -72,19 +77,14 @@ abstract contract DstHandlerConfigurator is Config {
                 continue;
             }
 
+            // Switch to calling src chain contracts to read dst chain state + update periphery if needed
+            vm.selectFork(dstForkId);
+
             bytes32 expected = srcPeriphery.toBytes32();
             if (handler.authorizedSrcPeripheryContracts(uint64(srcEid)) != expected) {
                 console.log("Authorizing periphery", srcPeriphery, "for srcEid", uint256(srcEid));
                 handler.setAuthorizedPeriphery(srcEid, expected);
-                updated = true;
-
-                string memory eidKey = string.concat("authorized_periphery_", Strings.toString(uint256(srcEid)));
-                config.set(srcChainId, eidKey, srcPeriphery);
             }
-        }
-
-        if (updated) {
-            config.set("last_authorized_updated_at", block.timestamp);
         }
     }
 }

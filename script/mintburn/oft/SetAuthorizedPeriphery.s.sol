@@ -5,9 +5,9 @@ import { Script } from "forge-std/Script.sol";
 import { Config } from "forge-std/Config.sol";
 import { console } from "forge-std/console.sol";
 
-import { DstOFTHandler } from "../../../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
-import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
-import { IOAppCore, IEndpoint } from "../../../../contracts/interfaces/IOFT.sol";
+import { DstOFTHandler } from "../../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
+import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
+import { IOAppCore, IEndpoint } from "../../../contracts/interfaces/IOFT.sol";
 
 /*
 Example usage:
