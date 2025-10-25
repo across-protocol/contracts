@@ -60,6 +60,9 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigu
 
         vm.stopBroadcast();
 
+        // Persist the deployment address under this chain in TOML
+        config.set("src_periphery", address(dstOFTHandler));
+
         // TODO: right, Foundry can't work with precompiles at all :(
         // _configureCoreTokenInfo(tokenName, address(dstOFTHandler));
         _configureAuthorizedPeripheries(address(dstOFTHandler), deployerPrivateKey);
