@@ -13,6 +13,28 @@ import { IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 import { PermissionedMulticallHandler } from "../../../contracts/handlers/PermissionedMulticallHandler.sol";
 
 /*
+Instructions for deploying with a dynamic lib (contract size limits):
+
+# 0)
+source .env
+
+# 1) Deploy the library
+forge create contracts/libraries/HyperCoreLib.sol:HyperCoreLib \
+  --rpc-url hyperevm \
+  --mnemonic $MNEMONIC \
+  --broadcast --verify
+
+# 2) Link and deploy the handler
+HYPERCORE_LIB_ADDR=0x... \
+forge script script/mintburn/oft/DeployDstHandler.s.sol:DeployDstOFTHandler \
+  --sig "run(string)" usdt0 \
+  --rpc-url hyperevm \
+  --broadcast \
+  --libraries "contracts/libraries/HyperCoreLib.sol:HyperCoreLib:$HYPERCORE_LIB_ADDR" \
+  -vvvv
+*/
+
+/*
 forge script script/mintburn/oft/DeployDstHandler.s.sol:DeployDstOFTHandler \
   --sig "run(string)" usdt0 \
   --rpc-url hyperevm -vvvv --broadcast
