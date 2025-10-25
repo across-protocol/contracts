@@ -18,7 +18,7 @@ abstract contract DstHandlerConfigurator is Config {
     function _loadTokenConfig(string memory tokenKey) internal {
         require(bytes(tokenKey).length != 0, "token key required");
         string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenKey, ".toml"));
-        _loadConfig(configPath, true);
+        _loadConfigAndForks(configPath, true);
     }
 
     function _configureCoreTokenInfo(string memory tokenName, address dstHandlerAddress) internal {
@@ -42,17 +42,23 @@ abstract contract DstHandlerConfigurator is Config {
         );
     }
 
-    function _configureAuthorizedPeripheries(address dstHandlerAddress) internal {
+    function _configureAuthorizedPeripheries(address dstHandlerAddress, uint256 configurerPrivateKey) internal {
         require(dstHandlerAddress != address(0), "dst handler not set");
 
-        DstOFTHandler handler = DstOFTHandler(payable(dstHandlerAddress));
         uint256[] memory chainIdList = config.getChainIds();
 
-        uint256 dstForkId = forkOf[block.chainid];
+        uint256 dstChainId = block.chainid;
+        uint256 dstForkId = forkOf[dstChainId];
         require(dstForkId != 0, "dst chain not in config");
+        // Ensure active fork is the destination before instantiating the typed contract
+        vm.selectFork(dstForkId);
+        DstOFTHandler handler = DstOFTHandler(payable(dstHandlerAddress));
 
         for (uint256 i = 0; i < chainIdList.length; i++) {
             uint256 srcChainId = chainIdList[i];
+            if (srcChainId == dstChainId) {
+                continue;
+            }
             address srcPeriphery = config.get(srcChainId, "src_periphery").toAddress();
             address oftMessenger = config.get(srcChainId, "oft_messenger").toAddress();
             if (srcPeriphery == address(0) || oftMessenger == address(0)) {
@@ -64,8 +70,8 @@ abstract contract DstHandlerConfigurator is Config {
                 continue;
             }
 
-            uint256 srcForkId = forkOf[block.chainid];
-            require(srcForkId != 0, "dst chain not in config");
+            uint256 srcForkId = forkOf[srcChainId];
+            require(srcForkId != 0, "src chain not in config");
 
             // Switch to calling src chain contracts to get srcEid
             vm.selectFork(srcForkId);
@@ -77,13 +83,15 @@ abstract contract DstHandlerConfigurator is Config {
                 continue;
             }
 
-            // Switch to calling src chain contracts to read dst chain state + update periphery if needed
+            // Switch to calling dst chain contracts to read dst chain state + update periphery if needed
             vm.selectFork(dstForkId);
 
             bytes32 expected = srcPeriphery.toBytes32();
             if (handler.authorizedSrcPeripheryContracts(uint64(srcEid)) != expected) {
                 console.log("Authorizing periphery", srcPeriphery, "for srcEid", uint256(srcEid));
+                vm.startBroadcast(configurerPrivateKey);
                 handler.setAuthorizedPeriphery(srcEid, expected);
+                vm.stopBroadcast();
             }
         }
     }

@@ -24,6 +24,11 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigu
 
         _loadTokenConfig(tokenName);
 
+        // Ensure we deploy on the configured destination fork so subsequent configuration
+        // operates on the same fork where the contract exists.
+        uint256 dstForkId = forkOf[block.chainid];
+        vm.selectFork(dstForkId);
+
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
@@ -53,11 +58,11 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigu
 
         console.log("DstOFTHandler deployed to:", address(dstOFTHandler));
 
+        vm.stopBroadcast();
+
         // TODO: right, Foundry can't work with precompiles at all :(
         // _configureCoreTokenInfo(tokenName, address(dstOFTHandler));
-        _configureAuthorizedPeripheries(address(dstOFTHandler));
-
-        vm.stopBroadcast();
+        _configureAuthorizedPeripheries(address(dstOFTHandler), deployerPrivateKey);
     }
 
     /// @notice Returns a default zero address if not present
