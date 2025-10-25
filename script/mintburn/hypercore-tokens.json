@@ -1,0 +1,38 @@
+{
+  "usdc": {
+    "name": "USDC",
+    "index": 0,
+    "tokenId": "0x6d1e7cde53ba9467b783cb7c530ce054",
+    "szDecimals": 8,
+    "weiDecimals": 8,
+    "isCanonical": true,
+    "evmAddress": null,
+    "canBeUsedForAccountActivation": true,
+    "accountActivationFeeCore": 100000000,
+    "bridgeSafetyBufferCore": 100000000000000000
+  },
+  "usdt0": {
+    "name": "USDT0",
+    "index": 268,
+    "tokenId": "0x25faedc3f054130dbb4e4203aca63567",
+    "szDecimals": 2,
+    "weiDecimals": 8,
+    "isCanonical": false,
+    "evmAddress": "0xb8ce59fc3717ada4c02eadf9682a9e934f625ebb",
+    "canBeUsedForAccountActivation": true,
+    "accountActivationFeeCore": 100000000,
+    "bridgeSafetyBufferCore": 100000000000000000
+  },
+  "usdh": {
+    "name": "USDH",
+    "index": 360,
+    "tokenId": "0x54e00a5988577cb0b0c9ab0cb6ef7f4b",
+    "szDecimals": 2,
+    "weiDecimals": 8,
+    "isCanonical": false,
+    "evmAddress": "0x111111a1a0667d36bd57c0a9f569b98057111111",
+    "canBeUsedForAccountActivation": true,
+    "accountActivationFeeCore": 100000000,
+    "bridgeSafetyBufferCore": 100000000000000000
+  }
+}

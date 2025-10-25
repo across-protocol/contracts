@@ -818,6 +818,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c`
   - Block Number: `385694983`
 
+#### SponsoredOFTSrcPeriphery
+
+- **SponsoredOFTSrcPeriphery**: `0x7f1b8b4efdf2fa36cfa8017e2f5b743efdf69745`
+  - Transaction Hash: `0xc4e94c0c97412ef4e662d843f89819fc3ffcd22f14233e2ecbeb30f47f91aafa`
+  - Block Number: `392763719`
+
+#### SponsoredOFTSrcPeriphery
+
+- **SponsoredOFTSrcPeriphery**: `0x1235ac1010feec8ae22744f323416cbbe37fedbe`
+  - Transaction Hash: `0xb3b2a5445cb0e46c7a94e4e0d04bfac9f9f40a641b96dae11895f65c629440dc`
+  - Block Number: `393040455`
+
 ### Ink (Chain ID: 57073)
 
 #### SpokePool

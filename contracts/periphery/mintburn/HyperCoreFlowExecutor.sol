@@ -428,6 +428,20 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
+    struct MinMaxEst {
+        // Calculate limit order amounts and check if feasible
+        uint64 minAllowableAmountToForwardCore;
+        uint64 maxAllowableAmountToForwardCore;
+        // Estimated slippage in ppm, as compared to a one-to-one totalBridgedAmount -> finalAmount conversion
+        uint256 estSlippagePpm;
+    }
+
+    struct SwapFlowTokens {
+        CoreTokenInfo initialCoreTokenInfo;
+        CoreTokenInfo finalCoreTokenInfo;
+        FinalTokenInfo finalTokenInfo;
+    }
+
     /**
      * @notice Initiates the swap flow. Sends the funds received on EVM side over to a SwapHandler corresponding to a
      * finalToken. This is the first leg of the swap flow. Next, the bot should submit a limit order through a `submitLimitOrder`
@@ -447,57 +461,59 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
-        address initialToken = baseToken;
-        CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
-        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[params.finalToken];
-        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
+        SwapFlowTokens memory tokens = SwapFlowTokens(
+            coreTokenInfos[baseToken],
+            coreTokenInfos[params.finalToken],
+            _getExistingFinalTokenInfo(params.finalToken)
+        );
 
-        // Calculate limit order amounts and check if feasible
-        uint64 minAllowableAmountToForwardCore;
-        uint64 maxAllowableAmountToForwardCore;
-        // Estimated slippage in ppm, as compared to a one-to-one totalBridgedAmount -> finalAmount conversion
-        uint256 estSlippagePpm;
+        // CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[baseToken];
+        // CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[params.finalToken];
+        // FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
+
+        MinMaxEst memory mme;
         {
             // In finalToken
-            (minAllowableAmountToForwardCore, maxAllowableAmountToForwardCore) = _calcAllowableAmtsSwapFlow(
+            (mme.minAllowableAmountToForwardCore, mme.maxAllowableAmountToForwardCore) = _calcAllowableAmtsSwapFlow(
                 params.amountInEVM,
                 params.extraFeesIncurred,
-                initialCoreTokenInfo,
-                finalCoreTokenInfo,
+                tokens.initialCoreTokenInfo,
+                tokens.finalCoreTokenInfo,
                 params.maxBpsToSponsor > 0,
                 maxUserSlippageBps
             );
 
-            uint64 approxExecutionPriceX1e8 = _getApproxRealizedPrice(finalTokenInfo);
+            uint64 approxExecutionPriceX1e8 = _getApproxRealizedPrice(tokens.finalTokenInfo);
             uint256 maxAllowableBpsDeviation = params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps;
-            if (finalTokenInfo.isBuy) {
+            if (tokens.finalTokenInfo.isBuy) {
                 if (approxExecutionPriceX1e8 < ONEX1e8) {
-                    estSlippagePpm = 0;
+                    mme.estSlippagePpm = 0;
                 } else {
                     // ceil
-                    estSlippagePpm = ((approxExecutionPriceX1e8 - ONEX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
+                    mme.estSlippagePpm = ((approxExecutionPriceX1e8 - ONEX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
                 }
             } else {
                 if (approxExecutionPriceX1e8 > ONEX1e8) {
-                    estSlippagePpm = 0;
+                    mme.estSlippagePpm = 0;
                 } else {
                     // ceil
-                    estSlippagePpm = ((ONEX1e8 - approxExecutionPriceX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
+                    mme.estSlippagePpm = ((ONEX1e8 - approxExecutionPriceX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
                 }
             }
             // Add `extraFeesIncurred` to "slippage from one to one"
-            estSlippagePpm +=
+            mme.estSlippagePpm +=
                 (params.extraFeesIncurred * PPM_SCALAR + (params.amountInEVM + params.extraFeesIncurred) - 1) /
                 (params.amountInEVM + params.extraFeesIncurred);
 
-            if (estSlippagePpm > maxAllowableBpsDeviation * 10 ** (PPM_DECIMALS - BPS_DECIMALS)) {
+            if (mme.estSlippagePpm > maxAllowableBpsDeviation * 10 ** (PPM_DECIMALS - BPS_DECIMALS)) {
                 emit SwapFlowTooExpensive(
                     params.quoteNonce,
                     params.finalToken,
-                    (estSlippagePpm + 10 ** (PPM_DECIMALS - BPS_DECIMALS) - 1) / 10 ** (PPM_DECIMALS - BPS_DECIMALS),
+                    (mme.estSlippagePpm + 10 ** (PPM_DECIMALS - BPS_DECIMALS) - 1) /
+                        10 ** (PPM_DECIMALS - BPS_DECIMALS),
                     maxAllowableBpsDeviation
                 );
-                params.finalToken = initialToken;
+                params.finalToken = baseToken;
                 _executeSimpleTransferFlow(params);
                 return;
             }
@@ -505,19 +521,25 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
         (uint256 tokensToSendEvm, uint64 coreAmountIn) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             params.amountInEVM,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            tokens.initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        // Check that we can safely bridge to HCore (for the trade amount actually needed)
-        bool isSafeToBridgeMainToken = HyperCoreLib.isCoreAmountSafeToBridge(
-            initialCoreTokenInfo.coreIndex,
-            coreAmountIn,
-            initialCoreTokenInfo.bridgeSafetyBufferCore
-        );
+        // // Check that we can safely bridge to HCore (for the trade amount actually needed)
+        // bool isSafeToBridgeMainToken = HyperCoreLib.isCoreAmountSafeToBridge(
+        //     initialCoreTokenInfo.coreIndex,
+        //     coreAmountIn,
+        //     initialCoreTokenInfo.bridgeSafetyBufferCore
+        // );
 
-        if (!isSafeToBridgeMainToken) {
-            emit UnsafeToBridge(params.quoteNonce, initialToken, coreAmountIn);
-            params.finalToken = initialToken;
+        if (
+            !HyperCoreLib.isCoreAmountSafeToBridge(
+                tokens.initialCoreTokenInfo.coreIndex,
+                coreAmountIn,
+                tokens.initialCoreTokenInfo.bridgeSafetyBufferCore
+            )
+        ) {
+            emit UnsafeToBridge(params.quoteNonce, baseToken, coreAmountIn);
+            params.finalToken = baseToken;
             _fallbackHyperEVMFlow(params);
             return;
         }
@@ -527,8 +549,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
-            minAmountToSend: minAllowableAmountToForwardCore,
-            maxAmountToSend: maxAllowableAmountToForwardCore,
+            minAmountToSend: mme.minAllowableAmountToForwardCore,
+            maxAmountToSend: mme.maxAllowableAmountToForwardCore,
             isSponsored: params.maxBpsToSponsor > 0,
             finalized: false
         });
@@ -540,18 +562,18 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             params.amountInEVM,
             params.extraFeesIncurred,
             coreAmountIn,
-            minAllowableAmountToForwardCore,
-            maxAllowableAmountToForwardCore
+            mme.minAllowableAmountToForwardCore,
+            mme.maxAllowableAmountToForwardCore
         );
 
         // Send amount received form user to a corresponding SwapHandler
-        SwapHandler swapHandler = finalTokenInfo.swapHandler;
-        IERC20(initialToken).safeTransfer(address(swapHandler), tokensToSendEvm);
+        SwapHandler swapHandler = tokens.finalTokenInfo.swapHandler;
+        IERC20(baseToken).safeTransfer(address(swapHandler), tokensToSendEvm);
         swapHandler.transferFundsToSelfOnCore(
-            initialToken,
-            initialCoreTokenInfo.coreIndex,
+            baseToken,
+            tokens.initialCoreTokenInfo.coreIndex,
             tokensToSendEvm,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            tokens.initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
     }
 
