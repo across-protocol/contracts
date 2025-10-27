@@ -6,7 +6,7 @@ import { FinalTokenInfo } from "./Structs.sol";
 
 contract SwapHandler {
     address public immutable parentHandler;
-    address public constant HYPER_CORE_LIB_ADDRESS = 0x362850664E624639777999840971B19e01763175;
+    // address public constant HYPER_CORE_LIB_ADDRESS = 0x362850664E624639777999840971B19e01763175;
 
     constructor() {
         parentHandler = msg.sender;
@@ -23,12 +23,7 @@ contract SwapHandler {
         uint256 amountEVM,
         int8 decimalDiff
     ) external onlyParentHandler {
-        HyperCoreLib(HYPER_CORE_LIB_ADDRESS).transferERC20EVMToSelfOnCore(
-            erc20EVMAddress,
-            erc20CoreIndex,
-            amountEVM,
-            decimalDiff
-        );
+        HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
     }
 
     function transferFundsToSelfOnCore(
@@ -37,12 +32,7 @@ contract SwapHandler {
         uint256 amountEVM,
         int8 decimalDiff
     ) external onlyParentHandler {
-        HyperCoreLib(HYPER_CORE_LIB_ADDRESS).transferERC20EVMToSelfOnCore(
-            erc20EVMAddress,
-            erc20CoreIndex,
-            amountEVM,
-            decimalDiff
-        );
+        HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
     }
 
     function transferFundsToUserOnCore(
@@ -50,7 +40,7 @@ contract SwapHandler {
         address to,
         uint64 amountCore
     ) external onlyParentHandler {
-        HyperCoreLib(HYPER_CORE_LIB_ADDRESS).transferERC20CoreToCore(erc20CoreIndex, to, amountCore);
+        HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore);
     }
 
     function submitLimitOrder(
@@ -59,7 +49,7 @@ contract SwapHandler {
         uint64 sizeX1e8,
         uint128 cloid
     ) external onlyParentHandler {
-        HyperCoreLib(HYPER_CORE_LIB_ADDRESS).submitLimitOrder(
+        HyperCoreLib.submitLimitOrder(
             finalTokenInfo.assetIndex,
             finalTokenInfo.isBuy,
             limitPriceX1e8,
@@ -71,7 +61,7 @@ contract SwapHandler {
     }
 
     function cancelOrderByCloid(uint32 assetIndex, uint128 cloid) external onlyParentHandler {
-        HyperCoreLib(HYPER_CORE_LIB_ADDRESS).cancelOrderByCloid(assetIndex, cloid);
+        HyperCoreLib.cancelOrderByCloid(assetIndex, cloid);
     }
 
     function sweepErc20(address token, uint256 amount) external onlyParentHandler {

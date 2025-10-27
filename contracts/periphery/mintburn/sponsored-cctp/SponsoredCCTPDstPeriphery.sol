@@ -4,12 +4,11 @@ pragma solidity ^0.8.0;
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
-import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
-import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
+import { SponsoredCCTPMessageLib } from "../../../libraries/SponsoredCCTPMessageLib.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
-import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
+import { EVMFlowParams } from "../Structs.sol";
 
 /**
  * @title SponsoredCCTPDstPeriphery
@@ -18,7 +17,6 @@ import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
  */
 contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor {
     using SafeERC20 for IERC20Metadata;
-    using Bytes32ToAddress for bytes32;
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
@@ -87,71 +85,39 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     ) external nonReentrant {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
-        // If the hook data is invalid or the mint recipient is not this contract we cannot process the message
-        // and therefore we exit. In this case the funds will be kept in this contract.
-        if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
-            return;
+        SponsoredCCTPMessageLib.MessageProcessingResult memory result = SponsoredCCTPMessageLib.processMessage(
+            message,
+            signature,
+            signer,
+            baseToken,
+            quoteDeadlineBuffer
+        );
+
+        if (!result.shouldProcess) return;
+
+        // Check nonce and update validity
+        if (usedNonces[result.commonParams.quoteNonce]) {
+            result.isQuoteValid = false;
+        } else if (result.isQuoteValid) {
+            usedNonces[result.commonParams.quoteNonce] = true;
         }
 
-        // Extract the quote and the fee that was executed from the message.
-        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
-            .getSponsoredCCTPQuoteData(message);
-
-        // Validate the quote and the signature.
-        bool isQuoteValid = _isQuoteValid(quote, signature);
-        if (isQuoteValid) {
-            usedNonces[quote.nonce] = true;
-        }
-
-        uint256 amountAfterFees = quote.amount - feeExecuted;
-
-        CommonFlowParams memory commonParams = CommonFlowParams({
-            amountInEVM: amountAfterFees,
-            quoteNonce: quote.nonce,
-            finalRecipient: quote.finalRecipient.toAddress(),
-            // If the quote is invalid we don't want to swap, so we use the base token as the final token
-            finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
-            // If the quote is invalid we don't sponsor the flow or the extra fees
-            maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
-            extraFeesIncurred: feeExecuted
-        });
-
-        // Route to appropriate execution based on executionMode
         if (
-            isQuoteValid &&
-            (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
-                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
+            result.isQuoteValid &&
+            (result.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
+                result.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
         ) {
-            // Execute flow with arbitrary evm actions
-            _executeWithEVMFlow(
-                EVMFlowParams({
-                    commonParams: commonParams,
-                    initialToken: baseToken,
-                    actionData: quote.actionData,
-                    transferToCore: quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
-                })
-            );
+            EVMFlowParams memory evmParams = EVMFlowParams({
+                commonParams: result.commonParams,
+                initialToken: baseToken,
+                actionData: result.actionData,
+                transferToCore: result.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
+            });
+            evmParams.commonParams = ArbitraryEVMFlowExecutor.executeFlow(multicallHandler, evmParams);
+            (evmParams.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(evmParams.commonParams);
         } else {
-            // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(commonParams, quote.maxUserSlippageBps);
+            HyperCoreFlowExecutor._executeFlow(result.commonParams, result.maxUserSlippageBps);
         }
-    }
-
-    function _isQuoteValid(
-        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
-        bytes memory signature
-    ) internal view returns (bool) {
-        return
-            SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature) &&
-            !usedNonces[quote.nonce] &&
-            quote.deadline + quoteDeadlineBuffer >= block.timestamp;
-    }
-
-    function _executeWithEVMFlow(EVMFlowParams memory params) internal {
-        params.commonParams = ArbitraryEVMFlowExecutor.executeFlow(multicallHandler, params);
-
-        // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
     }
 
     /// @notice Allow contract to receive native tokens for arbitrary action execution

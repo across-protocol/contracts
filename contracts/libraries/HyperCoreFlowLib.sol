@@ -4,9 +4,7 @@ pragma solidity ^0.8.0;
 import { HyperCoreLib } from "./HyperCoreLib.sol";
 import { CoreTokenInfo, FinalTokenInfo } from "../periphery/mintburn/Structs.sol";
 
-contract HyperCoreFlowLib {
-    address public constant HYPER_CORE_LIB_ADDRESS = 0x362850664E624639777999840971B19e01763175;
-
+library HyperCoreFlowLib {
     struct SponsorshipAmount {
         uint64 minAllowableAmountToForwardCore;
         uint64 maxAllowableAmountToForwardCore;
@@ -39,11 +37,11 @@ contract HyperCoreFlowLib {
         bool isSponsoredFlow,
         uint256 maxUserSlippageBps
     ) internal pure returns (SponsorshipAmount memory sponsorshipAmount) {
-        (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).maximumEVMSendAmountToAmounts(
+        (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             amount + extraFeesIncurred,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
-        uint64 feelessAmountCoreFinalToken = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).convertCoreDecimalsSimple(
+        uint64 feelessAmountCoreFinalToken = HyperCoreLib.convertCoreDecimalsSimple(
             feelessAmountCoreInitialToken,
             initialCoreTokenInfo.tokenInfo.weiDecimals,
             finalCoreTokenInfo.tokenInfo.weiDecimals
@@ -80,7 +78,7 @@ contract HyperCoreFlowLib {
     function getApproxRealizedPrice(
         FinalTokenInfo memory finalTokenInfo
     ) internal view returns (uint64 limitPriceX1e8) {
-        uint64 spotX1e8 = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).spotPx(finalTokenInfo.assetIndex);
+        uint64 spotX1e8 = HyperCoreLib.spotPx(finalTokenInfo.assetIndex);
         uint256 adjPpm = finalTokenInfo.isBuy
             ? (1000000 + finalTokenInfo.suggestedDiscountBps * 100 + finalTokenInfo.feePpm)
             : (1000000 - finalTokenInfo.suggestedDiscountBps * 100 - finalTokenInfo.feePpm);
@@ -157,15 +155,11 @@ contract HyperCoreFlowLib {
         uint32 coreIndex,
         uint64 bridgeSafetyBufferCore
     ) internal view returns (uint256 quotedEvmAmount, uint64 quotedCoreAmount, bool isSafe) {
-        (quotedEvmAmount, quotedCoreAmount) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).maximumEVMSendAmountToAmounts(
+        (quotedEvmAmount, quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             finalAmount,
             int8(evmExtraWeiDecimals)
         );
-        isSafe = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-            coreIndex,
-            quotedCoreAmount,
-            bridgeSafetyBufferCore
-        );
+        isSafe = HyperCoreLib.isCoreAmountSafeToBridge(coreIndex, quotedCoreAmount, bridgeSafetyBufferCore);
     }
 
     /**
@@ -199,10 +193,10 @@ contract HyperCoreFlowLib {
         uint32 coreIndex,
         uint64 accountActivationFeeCore
     ) external view returns (HyperCoreLib.TokenInfo memory tokenInfo, uint256 accountActivationFeeEVM) {
-        tokenInfo = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).tokenInfo(coreIndex);
+        tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
         require(tokenInfo.evmContract == token, "Token mismatch");
 
-        (accountActivationFeeEVM, ) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).minimumCoreReceiveAmountToAmounts(
+        (accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             accountActivationFeeCore,
             tokenInfo.evmExtraWeiDecimals
         );
@@ -224,14 +218,12 @@ contract HyperCoreFlowLib {
         uint32 coreIndex,
         uint64 bridgeSafetyBufferCore
     ) external view returns (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore, bool isSafe) {
-        (totalAdditionalToSendEVM, totalAdditionalReceivedCore) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS)
-            .minimumCoreReceiveAmountToAmounts(totalAdditionalToSend, int8(evmExtraWeiDecimals));
-
-        isSafe = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-            coreIndex,
-            totalAdditionalReceivedCore,
-            bridgeSafetyBufferCore
+        (totalAdditionalToSendEVM, totalAdditionalReceivedCore) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            totalAdditionalToSend,
+            int8(evmExtraWeiDecimals)
         );
+
+        isSafe = HyperCoreLib.isCoreAmountSafeToBridge(coreIndex, totalAdditionalReceivedCore, bridgeSafetyBufferCore);
     }
 
     /**
@@ -250,16 +242,12 @@ contract HyperCoreFlowLib {
         uint32 coreIndex,
         uint64 bridgeSafetyBufferCore
     ) internal view returns (uint256 tokensToSendEvm, uint64 coreAmountIn, bool isSafe) {
-        (tokensToSendEvm, coreAmountIn) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).maximumEVMSendAmountToAmounts(
+        (tokensToSendEvm, coreAmountIn) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             amountInEVM,
             int8(evmExtraWeiDecimals)
         );
 
-        isSafe = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-            coreIndex,
-            coreAmountIn,
-            bridgeSafetyBufferCore
-        );
+        isSafe = HyperCoreLib.isCoreAmountSafeToBridge(coreIndex, coreAmountIn, bridgeSafetyBufferCore);
     }
 
     /**
@@ -296,14 +284,9 @@ contract HyperCoreFlowLib {
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
     ) external view returns (bool isValid) {
-        if (HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(finalRecipient)) return false;
+        if (HyperCoreLib.coreUserExists(finalRecipient)) return false;
         if (!canBeUsedForAccountActivation) return false;
-        return
-            HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-                coreIndex,
-                accountActivationFeeCore,
-                bridgeSafetyBufferCore
-            );
+        return HyperCoreLib.isCoreAmountSafeToBridge(coreIndex, accountActivationFeeCore, bridgeSafetyBufferCore);
     }
 
     /**
@@ -322,15 +305,11 @@ contract HyperCoreFlowLib {
         uint32 coreIndex,
         uint64 bridgeSafetyBufferCore
     ) external view returns (uint256 amountEVMToSend, uint64 amountCoreToReceive, bool isSafe) {
-        (amountEVMToSend, amountCoreToReceive) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).maximumEVMSendAmountToAmounts(
+        (amountEVMToSend, amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             amount,
             int8(evmExtraWeiDecimals)
         );
-        isSafe = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-            coreIndex,
-            amountCoreToReceive,
-            bridgeSafetyBufferCore
-        );
+        isSafe = HyperCoreLib.isCoreAmountSafeToBridge(coreIndex, amountCoreToReceive, bridgeSafetyBufferCore);
     }
 
     /**
@@ -356,7 +335,7 @@ contract HyperCoreFlowLib {
         uint256 donationBoxBalance
     ) external view returns (SimpleTransferFlowResult memory result) {
         // Check account activation
-        if (!HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(finalRecipient)) {
+        if (!HyperCoreLib.coreUserExists(finalRecipient)) {
             result.fb = true;
             return result;
         }
@@ -402,7 +381,7 @@ contract HyperCoreFlowLib {
         uint256 maxUserSlippageBps
     ) external view returns (SwapFlowResult memory result) {
         // Check account activation
-        if (!HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(finalRecipient)) {
+        if (!HyperCoreLib.coreUserExists(finalRecipient)) {
             result.fb = true;
             return result;
         }

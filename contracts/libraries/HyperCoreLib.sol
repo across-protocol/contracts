@@ -8,7 +8,7 @@ interface ICoreWriter {
     function sendRawAction(bytes calldata data) external;
 }
 
-contract HyperCoreLib {
+library HyperCoreLib {
     using SafeERC20 for IERC20;
 
     // Time-in-Force order types
