@@ -43,7 +43,9 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
         bytes memory initArgs = abi.encodeWithSelector(
             OP_SpokePool.initialize.selector,
-            1, // _initialDepositId
+            // Note: Ensure that this is very high number of deposits to avoid duplicate deposit ID's
+            // with deprecated spoke pool.
+            1_000_000, // _initialDepositId
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
         );
