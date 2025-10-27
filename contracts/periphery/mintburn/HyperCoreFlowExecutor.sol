@@ -36,18 +36,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
 
-    /// @notice A mapping of token addresses to their core token info.
-    mapping(address => CoreTokenInfo) public coreTokenInfos;
-
-    /// @notice A mapping of token address to additional relevan info for final tokens, like Hyperliquid market params
-    mapping(address => FinalTokenInfo) public finalTokenInfos;
-
     /// @notice All operations performed in this contract are relative to this baseToken
     address public immutable baseToken;
-
-    /// @notice The block number of the last funds pull action per final token: either as a part of finalizing pending swaps,
-    /// or an admin funds pull
-    mapping(address finalToken => uint256 lastPullFundsBlock) public lastPullFundsBlock;
 
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct SwapFlowState {
@@ -59,13 +49,33 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         bool finalized;
     }
 
-    /// @notice A mapping containing the pending state between initializing the swap flow and finalizing it
-    mapping(bytes32 quoteNonce => SwapFlowState swap) public swaps;
+    /// @custom:storage-location erc7201:across.hypercore.HyperCoreFlowExecutor
+    struct HyperCoreFlowExecutorStorage {
+        /// @notice A mapping of token addresses to their core token info.
+        mapping(address => CoreTokenInfo) coreTokenInfos;
+        /// @notice A mapping of token address to additional relevant info for final tokens, like Hyperliquid market params
+        mapping(address => FinalTokenInfo) finalTokenInfos;
+        /// @notice The block number of the last funds pull action per final token: either as a part of finalizing pending swaps,
+        /// or an admin funds pull
+        mapping(address => uint256) lastPullFundsBlock;
+        /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
+        mapping(bytes32 => SwapFlowState) swaps;
+        /// @notice The cumulative amount of funds sponsored for each final token.
+        mapping(address => uint256) cumulativeSponsoredAmount;
+        /// @notice The cumulative amount of activation fees sponsored for each final token.
+        mapping(address => uint256) cumulativeSponsoredActivationFee;
+    }
 
-    /// @notice The cumulative amount of funds sponsored for each final token.
-    mapping(address => uint256) public cumulativeSponsoredAmount;
-    /// @notice The cumulative amount of activation fees sponsored for each final token.
-    mapping(address => uint256) public cumulativeSponsoredActivationFee;
+    bytes32 public constant STORAGE_SLOT =
+        keccak256(abi.encode(uint256(keccak256(bytes("across.hypercore.HyperCoreFlowExecutor"))) - 1)) &
+            ~bytes32(uint256(0xff));
+
+    function _getStorage() private pure returns (HyperCoreFlowExecutorStorage storage $) {
+        bytes32 slot = STORAGE_SLOT;
+        assembly {
+            $.slot := slot
+        }
+    }
 
     /**************************************
      *            EVENTS               *
@@ -212,7 +222,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     function _getExistingCoreTokenInfo(
         address evmTokenAddress
     ) internal view returns (CoreTokenInfo memory coreTokenInfo) {
-        coreTokenInfo = coreTokenInfos[evmTokenAddress];
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        coreTokenInfo = s.coreTokenInfos[evmTokenAddress];
         require(
             coreTokenInfo.tokenInfo.evmContract != address(0) && coreTokenInfo.tokenInfo.weiDecimals != 0,
             "CoreTokenInfo not set"
@@ -223,7 +234,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     function _getExistingFinalTokenInfo(
         address evmTokenAddress
     ) internal view returns (FinalTokenInfo memory finalTokenInfo) {
-        finalTokenInfo = finalTokenInfos[evmTokenAddress];
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        finalTokenInfo = s.finalTokenInfos[evmTokenAddress];
         require(address(finalTokenInfo.swapHandler) != address(0), "FinalTokenInfo not set");
     }
 
@@ -293,13 +305,14 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         onlyExistingCoreToken(accountActivationFeeToken)
         onlyDefaultAdmin
     {
-        SwapHandler swapHandler = finalTokenInfos[finalToken].swapHandler;
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        SwapHandler swapHandler = s.finalTokenInfos[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
             bytes32 salt = _swapHandlerSalt(finalToken);
             swapHandler = new SwapHandler{ salt: salt }();
         }
 
-        finalTokenInfos[finalToken] = FinalTokenInfo({
+        s.finalTokenInfos[finalToken] = FinalTokenInfo({
             assetIndex: assetIndex,
             isBuy: isBuy,
             feePpm: feePpm,
@@ -345,7 +358,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(CommonFlowParams memory params) internal virtual {
         address finalToken = params.finalToken;
-        CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        CoreTokenInfo storage coreTokenInfo = s.coreTokenInfos[finalToken];
 
         // Check account activation
         if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
@@ -406,7 +420,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), amountToSponsor);
         }
 
-        cumulativeSponsoredAmount[finalToken] += amountToSponsor;
+        s.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
 
         // There is a very slim change that someone is sending > buffer amount in the same EVM block and the balance of
         // the bridge is not enough to cover our transfer, so the funds are lost.
@@ -461,9 +475,10 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
         SwapFlowTokens memory tokens = SwapFlowTokens(
-            coreTokenInfos[baseToken],
-            coreTokenInfos[params.finalToken],
+            s.coreTokenInfos[baseToken],
+            s.coreTokenInfos[params.finalToken],
             _getExistingFinalTokenInfo(params.finalToken)
         );
 
@@ -546,7 +561,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
         // Finalize swap flow setup by updating state and funding SwapHandler
         // State changes
-        swaps[params.quoteNonce] = SwapFlowState({
+        s.swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
             minAmountToSend: mme.minAllowableAmountToForwardCore,
@@ -589,10 +604,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64[] calldata limitOrderOuts
     ) external onlyPermissionedBot returns (uint256 finalized) {
         require(quoteNonces.length == limitOrderOuts.length, "length");
-        require(lastPullFundsBlock[finalToken] < block.number, "too soon");
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        require(s.lastPullFundsBlock[finalToken] < block.number, "too soon");
 
         CoreTokenInfo memory finalCoreTokenInfo = _getExistingCoreTokenInfo(finalToken);
-        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
+        FinalTokenInfo memory finalTokenInfo = s.finalTokenInfos[finalToken];
 
         uint64 availableBalance = HyperCoreLib.spotBalance(
             address(finalTokenInfo.swapHandler),
@@ -615,7 +631,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
 
         if (finalized > 0) {
-            lastPullFundsBlock[finalToken] = block.number;
+            s.lastPullFundsBlock[finalToken] = block.number;
         } else {
             return 0;
         }
@@ -639,7 +655,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
                 revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, totalAdditionalToSend);
             }
 
-            cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
+            s.cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
 
             // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
             // Get additional amount to send from donation box, and send it to self on core
@@ -661,7 +677,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         CoreTokenInfo memory finalCoreTokenInfo,
         uint64 availableBalance
     ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
-        SwapFlowState storage swap = swaps[quoteNonce];
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        SwapFlowState storage swap = s.swaps[quoteNonce];
         if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
         if (swap.finalized) revert SwapAlreadyFinalized();
         if (swap.finalToken != finalCoreTokenInfo.tokenInfo.evmContract) revert WrongSwapFinalizationToken(quoteNonce);
@@ -695,6 +712,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
     function _fallbackHyperEVMFlow(CommonFlowParams memory params) internal virtual {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
         uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
             BPS_SCALAR;
         uint256 sponsorshipFundsToForward = params.extraFeesIncurred > maxEvmAmountToSponsor
@@ -709,7 +727,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
         uint256 totalAmountToForward = params.amountInEVM + sponsorshipFundsToForward;
         IERC20(params.finalToken).safeTransfer(params.finalRecipient, totalAmountToForward);
-        cumulativeSponsoredAmount[params.finalToken] += sponsorshipFundsToForward;
+        s.cumulativeSponsoredAmount[params.finalToken] += sponsorshipFundsToForward;
         emit FallbackHyperEVMFlowCompleted(
             params.quoteNonce,
             params.finalRecipient,
@@ -731,6 +749,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address finalRecipient,
         address fundingToken
     ) external nonReentrant onlyPermissionedBot {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(fundingToken);
         bool coreUserExists = HyperCoreLib.coreUserExists(finalRecipient);
         require(coreUserExists == false, "Can't fund account activation for existing user");
@@ -742,7 +761,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
         require(safeToBridge, "Not safe to bridge");
         uint256 activationFeeEvm = coreTokenInfo.accountActivationFeeEVM;
-        cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
+        s.cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
 
         // donationBox @ evm -> Handler @ evm
         donationBox.withdraw(IERC20(fundingToken), activationFeeEvm);
@@ -761,7 +780,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
     /// be used for stale limit orders to speed up executing user transactions
     function cancelLimitOrderByCloid(address finalToken, uint128 cloid) external nonReentrant onlyPermissionedBot {
-        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        FinalTokenInfo memory finalTokenInfo = s.finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, cloid);
 
         emit CancelledLimitOrder(finalToken, cloid);
@@ -773,7 +793,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 sizeX1e8,
         uint128 cloid
     ) external nonReentrant onlyPermissionedBot {
-        FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        FinalTokenInfo memory finalTokenInfo = s.finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
 
         emit SubmittedLimitOrder(finalToken, priceX1e8, sizeX1e8, cloid);
@@ -786,6 +807,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
     ) internal {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
         HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
         require(tokenInfo.evmContract == token, "Token mismatch");
 
@@ -794,7 +816,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             tokenInfo.evmExtraWeiDecimals
         );
 
-        coreTokenInfos[token] = CoreTokenInfo({
+        s.coreTokenInfos[token] = CoreTokenInfo({
             tokenInfo: tokenInfo,
             coreIndex: coreIndex,
             canBeUsedForAccountActivation: canBeUsedForAccountActivation,
@@ -817,6 +839,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * @param token The final token for which we want to fund the SwapHandler
      */
     function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(token);
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(token);
         (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
@@ -833,7 +856,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             revert UnsafeToBridgeError(token, amountCoreToReceive);
         }
 
-        cumulativeSponsoredAmount[token] += amountEVMToSend;
+        s.cumulativeSponsoredAmount[token] += amountEVMToSend;
 
         emit SentSponsorshipFundsToSwapHandler(token, amountEVMToSend);
 
@@ -944,21 +967,62 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     }
 
     function sweepERC20FromSwapHandler(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
-        SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
+        HyperCoreFlowExecutorStorage storage s2 = _getStorage();
+        SwapHandler swapHandler = s2.finalTokenInfos[token].swapHandler;
         swapHandler.sweepErc20(token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
     function sweepOnCore(address token, uint64 amount) external nonReentrant onlyFundsSweeper {
-        HyperCoreLib.transferERC20CoreToCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        HyperCoreLib.transferERC20CoreToCore(s.coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 
     function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyDefaultAdmin {
         // Prevent pulling fantom funds (e.g. if finalizePendingSwaps reads stale balance because of this fund pull)
-        require(lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
-        lastPullFundsBlock[token] = block.number;
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        require(s.lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
+        s.lastPullFundsBlock[token] = block.number;
 
-        SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
-        swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
+        SwapHandler swapHandler = s.finalTokenInfos[token].swapHandler;
+        swapHandler.transferFundsToUserOnCore(s.finalTokenInfos[token].assetIndex, msg.sender, amount);
+    }
+
+    // TODO: do we even need these manual getters?
+
+    // -------------------------
+    // Manual getters (preserve ABI after 7201 migration)
+    // -------------------------
+    function coreTokenInfos(address token) external view returns (CoreTokenInfo memory) {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        CoreTokenInfo memory info = s.coreTokenInfos[token];
+        return info;
+    }
+
+    function finalTokenInfos(address token) external view returns (FinalTokenInfo memory) {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        FinalTokenInfo memory info = s.finalTokenInfos[token];
+        return info;
+    }
+
+    function lastPullFundsBlock(address finalToken) external view returns (uint256) {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        return s.lastPullFundsBlock[finalToken];
+    }
+
+    function swaps(bytes32 quoteNonce) external view returns (SwapFlowState memory) {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        SwapFlowState memory sw = s.swaps[quoteNonce];
+        return sw;
+    }
+
+    function cumulativeSponsoredAmount(address token) external view returns (uint256) {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        return s.cumulativeSponsoredAmount[token];
+    }
+
+    function cumulativeSponsoredActivationFee(address token) external view returns (uint256) {
+        HyperCoreFlowExecutorStorage storage s = _getStorage();
+        return s.cumulativeSponsoredActivationFee[token];
     }
 }
