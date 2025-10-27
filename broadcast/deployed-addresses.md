@@ -1026,18 +1026,6 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `32616082`
 
-### HyperEVM Testnet (Chain ID: 998)
-
-#### DonationBox
-
-- **DonationBox**: `0xad7c5516b25661e0a204646b08024cd82ffe6c48`
-
-  - Transaction Hash: `0xbacd179c39c885ee6964b8b3786ea20699d62c39be720d180f302e45ee74c3e0`
-  - Block Number: `35816417`
-
-- **SponsoredCCTPDstPeriphery**: `0x56e2d1b8c7de8d11b282e1b4c924c32d91f9102b`
-  - Transaction Hash: `0xb27e332834f346b5564637ac3e3e814e18fe6d387dec1ff70e01a61d8cbaa444`
-
 ### Unichain Sepolia (Chain ID: 1301)
 
 #### SpokePool
