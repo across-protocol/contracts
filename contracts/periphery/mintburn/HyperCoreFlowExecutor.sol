@@ -10,7 +10,6 @@ import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
-import { Lockable } from "../../Lockable.sol";
 import { CommonFlowParams } from "./Structs.sol";
 
 /**
@@ -19,7 +18,7 @@ import { CommonFlowParams } from "./Structs.sol";
  * @dev This contract is designed to work with stablecoins. baseToken and every finalToken should all be stablecoins.
  * @custom:security-contact bugs@across.to
  */
-contract HyperCoreFlowExecutor is AccessControl, Lockable {
+contract HyperCoreFlowExecutor is AccessControl {
     using SafeERC20 for IERC20;
 
     // Common decimals scalars
@@ -192,25 +191,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// @notice Thrown when we can't bridge some token from HyperEVM to HyperCore
     error UnsafeToBridgeError(address token, uint64 amount);
 
-    /**************************************
-     *            MODIFIERS               *
-     **************************************/
-
-    modifier onlyDefaultAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not default admin");
-        _;
-    }
-
-    modifier onlyPermissionedBot() {
-        require(hasRole(PERMISSIONED_BOT_ROLE, msg.sender), "Not limit order updater");
-        _;
-    }
-
-    modifier onlyFundsSweeper() {
-        require(hasRole(FUNDS_SWEEPER_ROLE, msg.sender), "Not funds sweeper");
-        _;
-    }
-
     modifier onlyExistingCoreToken(address evmTokenAddress) {
         _getExistingCoreTokenInfo(evmTokenAddress);
         _;
@@ -266,7 +246,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         bool canBeUsedForAccountActivation,
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
-    ) external nonReentrant onlyDefaultAdmin {
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setCoreTokenInfo(
             token,
             coreIndex,
@@ -296,10 +276,9 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address accountActivationFeeToken
     )
         external
-        nonReentrant
         onlyExistingCoreToken(finalToken)
         onlyExistingCoreToken(accountActivationFeeToken)
-        onlyDefaultAdmin
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
         MainStorage storage $ = _getMainStorage();
         SwapHandler swapHandler = $.finalTokenInfos[finalToken].swapHandler;
@@ -576,7 +555,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address finalToken,
         bytes32[] calldata quoteNonces,
         uint64[] calldata limitOrderOuts
-    ) external onlyPermissionedBot returns (uint256 finalized) {
+    ) external onlyRole(PERMISSIONED_BOT_ROLE) returns (uint256 finalized) {
         MainStorage storage $ = _getMainStorage();
         require(quoteNonces.length == limitOrderOuts.length, "length");
         require($.lastPullFundsBlock[finalToken] < block.number, "too soon");
@@ -684,7 +663,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
-    function _fallbackHyperEVMFlow(CommonFlowParams memory params) internal virtual {
+    function _fallbackHyperEVMFlow(CommonFlowParams memory params) public {
         uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
             BPS_SCALAR;
         uint256 sponsorshipFundsToForward = params.extraFeesIncurred > maxEvmAmountToSponsor
@@ -720,7 +699,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         bytes32 quoteNonce,
         address finalRecipient,
         address fundingToken
-    ) external nonReentrant onlyPermissionedBot {
+    ) external onlyRole(PERMISSIONED_BOT_ROLE) {
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(fundingToken);
         bool coreUserExists = HyperCoreLib.coreUserExists(finalRecipient);
         require(coreUserExists == false, "Can't fund account activation for existing user");
@@ -750,7 +729,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
     /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
     /// be used for stale limit orders to speed up executing user transactions
-    function cancelLimitOrderByCloid(address finalToken, uint128 cloid) external nonReentrant onlyPermissionedBot {
+    function cancelLimitOrderByCloid(address finalToken, uint128 cloid) external onlyRole(PERMISSIONED_BOT_ROLE) {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, cloid);
 
@@ -762,7 +741,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 priceX1e8,
         uint64 sizeX1e8,
         uint128 cloid
-    ) external nonReentrant onlyPermissionedBot {
+    ) external onlyRole(PERMISSIONED_BOT_ROLE) {
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
         finalTokenInfo.swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
 
@@ -806,7 +785,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * @notice Used for ad-hoc sends of sponsorship funds to associated SwapHandler @ HyperCore
      * @param token The final token for which we want to fund the SwapHandler
      */
-    function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
+    function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external onlyRole(PERMISSIONED_BOT_ROLE) {
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(token);
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(token);
         (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib.maximumEVMSendAmountToAmounts(
@@ -924,26 +903,26 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      *            SWEEP FUNCTIONS         *
      **************************************/
 
-    function sweepErc20(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
+    function sweepErc20(address token, uint256 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepErc20FromDonationBox(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
+    function sweepErc20FromDonationBox(address token, uint256 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
         donationBox.withdraw(IERC20(token), amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepERC20FromSwapHandler(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
+    function sweepERC20FromSwapHandler(address token, uint256 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
         SwapHandler swapHandler = _getExistingFinalTokenInfo(token).swapHandler;
         swapHandler.sweepErc20(token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepOnCore(address token, uint64 amount) external nonReentrant onlyFundsSweeper {
+    function sweepOnCore(address token, uint64 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
         HyperCoreLib.transferERC20CoreToCore(_getMainStorage().coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 
-    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyDefaultAdmin {
+    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external onlyRole(DEFAULT_ADMIN_ROLE) {
         MainStorage storage $ = _getMainStorage();
         // Prevent pulling fantom funds (e.g. if finalizePendingSwaps reads stale balance because of this fund pull)
         require($.lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
