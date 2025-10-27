@@ -5,7 +5,7 @@ on:
     branches:
       - "master"
 env:
-  NODE_VERSION: 20
+  NODE_VERSION: 22.18
 jobs:
   # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
   upload-svm-artifacts:
@@ -124,7 +124,7 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test evm-hardhat
         shell: bash
-        run: yarn test-evm
+        run: yarn test-evm-hardhat
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts
@@ -144,6 +144,16 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ env.NODE_VERSION }}
+      - name: Check which paths changed
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            svm:
+              - 'programs/**'
+              - 'scripts/svm/**'
+              - 'src/svm/**'
+              - 'test/svm/**'
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -165,6 +175,7 @@ jobs:
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-test-binaries.tar target/deploy
       - name: Test verified SVM build
+        if: steps.filter.outputs.svm == 'true'
         run: anchor test --skip-build
   build-ts:
     name: Build TypeScript
@@ -212,4 +223,4 @@ jobs:
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
       - name: Test evm-foundry
-        run: forge test --match-path test/evm/foundry/local/**/*.t.sol
+        run: yarn test-evm-foundry

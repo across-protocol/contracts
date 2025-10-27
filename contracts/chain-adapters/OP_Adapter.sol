@@ -38,7 +38,7 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     /**
      * @notice Constructs new Adapter.
      * @param _l1Weth WETH address on L1.
-     * @param _crossDomainMessenger XDomainMessenger Desination chain system contract.
+     * @param _crossDomainMessenger XDomainMessenger Destination chain system contract.
      * @param _l1StandardBridge Standard bridge contract.
      * @param _l1Usdc USDC address on L1.
      */

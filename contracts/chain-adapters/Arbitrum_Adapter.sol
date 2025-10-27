@@ -5,8 +5,10 @@ import "./interfaces/AdapterInterface.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IOFT } from "../interfaces/IOFT.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import "../libraries/CircleCCTPAdapter.sol";
+import { OFTTransportAdapterWithStore } from "../libraries/OFTTransportAdapterWithStore.sol";
 import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
 
 /**
@@ -18,7 +20,7 @@ import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } 
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
+contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportAdapterWithStore {
     using SafeERC20 for IERC20;
 
     // Amount of ETH allocated to pay for the base submission fee. The base submission fee is a parameter unique to
@@ -61,14 +63,23 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _l2RefundL2Address L2 address to receive gas refunds on after a message is relayed.
      * @param _l1Usdc USDC address on L1.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP.
+     * @param _adapterStore Helper storage contract to support bridging via OFT
+     * @param _oftDstEid destination endpoint id for OFT messaging
+     * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether
      */
     constructor(
         ArbitrumL1InboxLike _l1ArbitrumInbox,
         ArbitrumL1ERC20GatewayLike _l1ERC20GatewayRouter,
         address _l2RefundL2Address,
         IERC20 _l1Usdc,
-        ITokenMessenger _cctpTokenMessenger
-    ) CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum) {
+        ITokenMessenger _cctpTokenMessenger,
+        address _adapterStore,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
+    )
+        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, CircleDomainIds.Arbitrum)
+        OFTTransportAdapterWithStore(_oftDstEid, _oftFeeCap, _adapterStore)
+    {
         L1_INBOX = _l1ArbitrumInbox;
         L1_ERC20_GATEWAY_ROUTER = _l1ERC20GatewayRouter;
         L2_REFUND_L2_ADDRESS = _l2RefundL2Address;
@@ -113,9 +124,13 @@ contract Arbitrum_Adapter is AdapterInterface, CircleCCTPAdapter {
         uint256 amount,
         address to
     ) external payable override {
-        // Check if this token is USDC, which requires a custom bridge via CCTP.
+        address oftMessenger = _getOftMessenger(l1Token);
+
+        // Check if the token needs to use any of the custom bridge solutions first
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
+        } else if (oftMessenger != address(0)) {
+            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
         }
         // If not, we can use the Arbitrum gateway
         else {

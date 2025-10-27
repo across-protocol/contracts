@@ -61,9 +61,36 @@ yarn lint-fix
 
 ### EVM
 
+#### Hardhat
+
 ```shell
 NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --network mainnet
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
+```
+
+#### Foundry
+
+```shell
+forge build
+
+forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+
+```
+
+#### Foundry (ZKSync)
+
+To enable ZKSync support, the zksync fork of foundry must be installed (see [here](https://foundry-book.zksync.io/introduction/installation#using-foundryup-zksync) for instructions).
+
+Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
+
+```shell
+FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+```
+
+Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
+
+```shell
+yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
 ```
 
 ### SVM
@@ -86,6 +113,7 @@ export KEYPAIR=~/.config/solana/dev-wallet.json
 export PROGRAM=svm_spoke # Also repeat the deployment process for multicall_handler
 export PROGRAM_ID=$(cat target/idl/$PROGRAM.json | jq -r ".address")
 export MULTISIG= # Export the Squads vault, not the multisig address!
+export SOLANA_VERSION=$(grep -A 2 'name = "solana-program"' Cargo.lock | grep 'version' | head -n 1 | cut -d'"' -f2)
 ```
 
 For the initial deployment also need these:
@@ -95,6 +123,7 @@ export SVM_CHAIN_ID=$(cast to-dec $(cast shr $(cast shl $(cast keccak solana-dev
 export HUB_POOL=0x14224e63716afAcE30C9a417E0542281869f7d9e # This is for sepolia, update for mainnet
 export DEPOSIT_QUOTE_TIME_BUFFER=3600
 export FILL_DEADLINE_BUFFER=21600
+export MAX_LEN=$(( 2 * $(stat -c %s target/deploy/$PROGRAM.so) )) # Reserve twice the size of the program for future upgrades
 ```
 
 #### Initial deployment
@@ -103,11 +132,14 @@ Deploy the program and set the upgrade authority to the multisig:
 
 ```shell
 solana program deploy \
-  --url $RPC_URL target/deploy/$PROGRAM.so \
+  --url $RPC_URL \
   --keypair $KEYPAIR \
   --program-id target/deploy/$PROGRAM-keypair.json \
+  --max-len $MAX_LEN \
   --with-compute-unit-price 50000 \
-  --max-sign-attempts 100
+  --max-sign-attempts 100 \
+  --use-rpc \
+  target/deploy/$PROGRAM.so
 solana program set-upgrade-authority \
   --url $RPC_URL \
   --keypair $KEYPAIR \
@@ -215,6 +247,7 @@ solana-verify verify-from-repo \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
    --library-name $PROGRAM \
+   --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
   https://github.com/across-protocol/contracts
 ```
 
@@ -225,6 +258,7 @@ solana-verify export-pda-tx \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
   --library-name $PROGRAM  \
+  --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
   --uploader $MULTISIG \
   https://github.com/across-protocol/contracts
 ```

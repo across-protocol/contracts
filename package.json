@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.0.13",
+  "version": "4.1.11",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -8,7 +8,7 @@
     "url": "git+https://github.com/across-protocol/across-smart-contracts-v2.git"
   },
   "engines": {
-    "node": ">=16.18.0"
+    "node": ">=22.18.0"
   },
   "files": [
     "/contracts/**/*.sol",
@@ -19,13 +19,14 @@
   "main": "dist/index.js",
   "scripts": {
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
+    "forge-script-zksync": " FOUNDRY_PROFILE=zksync forge script --zksync --suppress-errors sendtransfer",
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
     "lint-js": "yarn prettier --list-different **/*.js **/*.ts",
     "lint-rust": "cargo +nightly fmt --all -- --check && cargo clippy",
     "lint-fix": "yarn prettier --write **/*.js **/*.ts ./programs/**/*.rs ./contracts**/*.sol && cargo +nightly fmt  --all && cargo clippy",
-    "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
-    "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain",
+    "clean-fast": "for dir in node_modules cache cache-zk artifacts artifacts-zk dist typechain out zkout; do mv \"${dir}\" \"_${dir}\"; rm -rf \"_${dir}\" &; done",
+    "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain out zkout",
     "generate-svm-artifacts": "bash ./scripts/svm/buildHelpers/buildIdl.sh && sh ./scripts/svm/buildHelpers/generateSvmAssets.sh && yarn generate-svm-clients",
     "generate-svm-clients": "yarn ts-node ./scripts/svm/buildHelpers/generateSvmClients.ts && yarn ts-node ./scripts/svm/buildHelpers/renameClientsImports.ts",
     "build-evm": "hardhat compile",
@@ -35,18 +36,23 @@
     "export-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
     "build": "yarn build-evm && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
     "build-verified": "yarn build-evm && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
-    "test-evm": "IS_TEST=true hardhat test",
+    "test-evm": "yarn test-evm-hardhat && yarn test-evm-foundry",
+    "test-evm-hardhat": "IS_TEST=true hardhat test",
+    "test-evm-foundry": "FOUNDRY_PROFILE=local forge test",
     "test-svm": "IS_TEST=true yarn build-svm && yarn generate-svm-artifacts && anchor test --skip-build",
     "test-svm-solana-verify": "IS_TEST=true yarn build-svm-solana-verify && yarn generate-svm-artifacts && anchor test --skip-build",
     "test": "yarn test-evm && yarn test-svm",
     "test-verified": "yarn test-evm && yarn test-svm-solana-verify",
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
+    "evm-contract-sizes": "sh scripts/evm-contract-sizes.sh",
     "generate-evm-artifacts": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
-    "pre-commit-hook": "sh scripts/preCommitHook.sh"
+    "pre-commit-hook": "sh scripts/preCommitHook.sh",
+    "extract-addresses": "./script/utils/extract_foundry_addresses.sh",
+    "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.66",
+    "@across-protocol/constants": "^3.1.77",
     "@coral-xyz/anchor": "^0.31.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",
@@ -55,6 +61,8 @@
     "@ethersproject/bignumber": "5.7.0",
     "@openzeppelin/contracts": "4.9.6",
     "@openzeppelin/contracts-upgradeable": "4.9.6",
+    "@openzeppelin/foundry-upgrades": "^0.4.0",
+    "@safe-global/protocol-kit": "^6.1.1",
     "@scroll-tech/contracts": "^0.1.0",
     "@solana-developers/helpers": "^2.4.0",
     "@solana-program/address-lookup-table": "^0.7.0",
@@ -75,13 +83,12 @@
   "devDependencies": {
     "@codama/nodes-from-anchor": "^1.2.0",
     "@codama/renderers-js": "^1.2.14",
-    "@consensys/linea-sdk": "^0.1.6",
     "@matterlabs/hardhat-zksync-deploy": "^0.6.3",
-    "@matterlabs/hardhat-zksync-solc": "^1.1.4",
+    "@matterlabs/hardhat-zksync-solc": "^1.4.0",
     "@matterlabs/hardhat-zksync-upgradable": "^0.1.0",
-    "@matterlabs/hardhat-zksync-verify": "^0.2.0",
+    "@matterlabs/hardhat-zksync-verify": "^1.9.0",
     "@matterlabs/zksync-contracts": "^0.2.4",
-    "@nomicfoundation/hardhat-verify": "^1.0.3",
+    "@nomicfoundation/hardhat-verify": "^2.0.14",
     "@nomiclabs/hardhat-ethers": "^2.2.3",
     "@nomiclabs/hardhat-waffle": "2.0.3",
     "@openzeppelin/hardhat-upgrades": "^1.22.0",
@@ -113,10 +120,10 @@
     "husky": "^4.2.3",
     "mocha": "^9.0.3",
     "multiformats": "9.9.0",
-    "prettier": "^2.3.2",
-    "prettier-plugin-solidity": "^1.0.0-beta.13",
+    "prettier": "^2.8.8",
+    "prettier-plugin-solidity": "^1.4.1",
     "pretty-quick": "^2.0.1",
-    "solhint": "^3.3.6",
+    "solhint": "^3.6.2",
     "solidity-coverage": "^0.7.16",
     "ts-mocha": "^10.0.0",
     "ts-node": "^10.1.0",
@@ -142,6 +149,8 @@
   },
   "resolutions": {
     "**/eccrypto/secp256k1": "3.8.1",
-    "**/eth-crypto/secp256k1": "5.0.1"
+    "**/eth-crypto/secp256k1": "5.0.1",
+    "**/create-hash/sha.js": "2.4.12",
+    "sha.js": "2.4.12"
   }
 }

@@ -83,9 +83,11 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftDstEid, _oftFeeCap)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         ADMIN_UPDATE_BUFFER = _adminUpdateBufferSeconds;
@@ -178,8 +180,12 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
+        address oftMessenger = _getOftMessenger(l2TokenAddress);
+
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
+        } else if (oftMessenger != address(0)) {
+            _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             revert NotImplemented();
         }
