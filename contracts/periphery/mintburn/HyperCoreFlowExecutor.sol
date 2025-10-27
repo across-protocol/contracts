@@ -301,14 +301,14 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         onlyExistingCoreToken(accountActivationFeeToken)
         onlyDefaultAdmin
     {
-        MainStorage storage s = _getMainStorage();
-        SwapHandler swapHandler = s.finalTokenInfos[finalToken].swapHandler;
+        MainStorage storage $ = _getMainStorage();
+        SwapHandler swapHandler = $.finalTokenInfos[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
             bytes32 salt = _swapHandlerSalt(finalToken);
             swapHandler = new SwapHandler{ salt: salt }();
         }
 
-        s.finalTokenInfos[finalToken] = FinalTokenInfo({
+        $.finalTokenInfos[finalToken] = FinalTokenInfo({
             assetIndex: assetIndex,
             isBuy: isBuy,
             feePpm: feePpm,
@@ -354,8 +354,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(CommonFlowParams memory params) public {
         address finalToken = params.finalToken;
-        MainStorage storage s = _getMainStorage();
-        CoreTokenInfo storage coreTokenInfo = s.coreTokenInfos[finalToken];
+        MainStorage storage $ = _getMainStorage();
+        CoreTokenInfo storage coreTokenInfo = $.coreTokenInfos[finalToken];
 
         // Check account activation
         if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
@@ -416,7 +416,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), amountToSponsor);
         }
 
-        s.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
+        $.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
 
         // There is a very slim change that someone is sending > buffer amount in the same EVM block and the balance of
         // the bridge is not enough to cover our transfer, so the funds are lost.
@@ -458,9 +458,9 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
 
         address initialToken = baseToken;
-        MainStorage storage s = _getMainStorage();
-        CoreTokenInfo memory initialCoreTokenInfo = s.coreTokenInfos[initialToken];
-        CoreTokenInfo memory finalCoreTokenInfo = s.coreTokenInfos[params.finalToken];
+        MainStorage storage $ = _getMainStorage();
+        CoreTokenInfo memory initialCoreTokenInfo = $.coreTokenInfos[initialToken];
+        CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
 
         // Calculate limit order amounts and check if feasible
@@ -535,7 +535,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
         // Finalize swap flow setup by updating state and funding SwapHandler
         // State changes
-        s.swaps[params.quoteNonce] = SwapFlowState({
+        $.swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
             minAmountToSend: minAllowableAmountToForwardCore,
@@ -577,12 +577,12 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         bytes32[] calldata quoteNonces,
         uint64[] calldata limitOrderOuts
     ) external onlyPermissionedBot returns (uint256 finalized) {
-        MainStorage storage s = _getMainStorage();
+        MainStorage storage $ = _getMainStorage();
         require(quoteNonces.length == limitOrderOuts.length, "length");
-        require(s.lastPullFundsBlock[finalToken] < block.number, "too soon");
+        require($.lastPullFundsBlock[finalToken] < block.number, "too soon");
 
         CoreTokenInfo memory finalCoreTokenInfo = _getExistingCoreTokenInfo(finalToken);
-        FinalTokenInfo memory finalTokenInfo = s.finalTokenInfos[finalToken];
+        FinalTokenInfo memory finalTokenInfo = $.finalTokenInfos[finalToken];
 
         uint64 availableBalance = HyperCoreLib.spotBalance(
             address(finalTokenInfo.swapHandler),
@@ -605,7 +605,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
 
         if (finalized > 0) {
-            s.lastPullFundsBlock[finalToken] = block.number;
+            $.lastPullFundsBlock[finalToken] = block.number;
         } else {
             return 0;
         }
@@ -629,7 +629,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
                 revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, totalAdditionalToSend);
             }
 
-            s.cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
+            $.cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
 
             // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
             // Get additional amount to send from donation box, and send it to self on core
@@ -944,12 +944,12 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     }
 
     function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyDefaultAdmin {
-        MainStorage storage s = _getMainStorage();
+        MainStorage storage $ = _getMainStorage();
         // Prevent pulling fantom funds (e.g. if finalizePendingSwaps reads stale balance because of this fund pull)
-        require(s.lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
-        s.lastPullFundsBlock[token] = block.number;
+        require($.lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
+        $.lastPullFundsBlock[token] = block.number;
 
-        SwapHandler swapHandler = s.finalTokenInfos[token].swapHandler;
-        swapHandler.transferFundsToUserOnCore(s.finalTokenInfos[token].assetIndex, msg.sender, amount);
+        SwapHandler swapHandler = $.finalTokenInfos[token].swapHandler;
+        swapHandler.transferFundsToUserOnCore($.finalTokenInfos[token].assetIndex, msg.sender, amount);
     }
 }
