@@ -10,13 +10,19 @@ import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Lockable } from "../../../Lockable.sol";
 
 /**
  * @title SponsoredCCTPDstPeriphery
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
  */
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, AccessControl, Lockable, ArbitraryEVMFlowExecutor {
+    /// @notice Address of the deployed HyperCoreFlowExecutor module used via delegatecall
+    address public immutable hyperCoreModule;
+    /// @notice Cached base token expected by the module and used by this periphery
+    address public immutable baseToken;
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -46,16 +52,23 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    ) ArbitraryEVMFlowExecutor(_multicallHandler) {
+        // Deploy HyperCore module and cache base token
+        hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
+        baseToken = HyperCoreFlowExecutor(hyperCoreModule).baseToken();
+
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
+
+        // AccessControl setup
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
      * @notice Sets the signer address that is used to validate the signatures of the quotes.
      * @param _signer The new signer address.
      */
-    function setSigner(address _signer) external nonReentrant onlyDefaultAdmin {
+    function setSigner(address _signer) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         signer = _signer;
     }
 
@@ -63,7 +76,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @notice Sets the quote deadline buffer. This is used to prevent the quote from being used after it has expired.
      * @param _quoteDeadlineBuffer The new quote deadline buffer.
      */
-    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyDefaultAdmin {
+    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 
@@ -126,8 +139,14 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
                 })
             );
         } else {
-            // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(commonParams, quote.maxUserSlippageBps);
+            // Execute standard HyperCore flow (default) via delegatecall
+            _delegateToHyperCore(
+                abi.encodeWithSelector(
+                    HyperCoreFlowExecutor.executeFlowViaModule.selector,
+                    commonParams,
+                    quote.maxUserSlippageBps
+                )
+            );
         }
     }
 
@@ -145,6 +164,23 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
+        _delegateToHyperCore(
+            abi.encodeWithSelector(
+                params.transferToCore
+                    ? HyperCoreFlowExecutor.fallbackHyperEVMFlowViaModule.selector
+                    : HyperCoreFlowExecutor.fallbackHyperEVMFlowViaModule.selector,
+                params.commonParams
+            )
+        );
+    }
+
+    function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
+        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
+        if (!success) {
+            assembly {
+                revert(add(ret, 32), mload(ret))
+            }
+        }
+        return ret;
     }
 }

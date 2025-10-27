@@ -354,6 +354,13 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
     }
 
+    /// @notice External entrypoint to execute a HyperCore flow when called via delegatecall from a handler module
+    /// @dev This function intentionally has no access control and no nonReentrant, so the caller can enforce its own
+    ///      permissions and reentrancy protections. The code inside will still enforce its own checks when relevant.
+    function executeFlowViaModule(CommonFlowParams memory params, uint256 maxUserSlippageBps) external {
+        _executeFlow(params, maxUserSlippageBps);
+    }
+
     /// @notice Execute a simple transfer flow in which we transfer `finalToken` to the user on HyperCore after receiving
     /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(CommonFlowParams memory params) internal virtual {
@@ -736,6 +743,15 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             params.extraFeesIncurred,
             sponsorshipFundsToForward
         );
+    }
+
+    /// @notice External entrypoint wrappers for selective flows via delegatecall from a handler
+    function executeSimpleTransferFlowViaModule(CommonFlowParams memory params) external {
+        _executeSimpleTransferFlow(params);
+    }
+
+    function fallbackHyperEVMFlowViaModule(CommonFlowParams memory params) external {
+        _fallbackHyperEVMFlow(params);
     }
 
     /**

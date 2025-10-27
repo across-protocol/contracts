@@ -13,10 +13,12 @@ import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Lockable } from "../../../Lockable.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is ILayerZeroComposer, AccessControl, Lockable, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -28,6 +30,11 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
 
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
+
+    /// @notice Address of the deployed HyperCoreFlowExecutor module used via delegatecall
+    address public immutable hyperCoreModule;
+    /// @notice Cached base token expected by the module and used by this handler
+    address public immutable baseToken;
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
@@ -60,11 +67,15 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
     constructor(
         address _oftEndpoint,
         address _ioft,
+        // TODO: create donationBox here, in constructor
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
-        // baseToken is assigned on `HyperCoreFlowExecutor` creation
+    ) ArbitraryEVMFlowExecutor(_multicallHandler) {
+        // Deploy HyperCore module and cache base token
+        hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
+        baseToken = HyperCoreFlowExecutor(hyperCoreModule).baseToken();
+        // Validate IOFT token matches baseToken
         if (baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
         }
@@ -74,9 +85,15 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
             revert IOFTEndpointMismatch();
         }
+
+        // AccessControl setup
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
+    function setAuthorizedPeriphery(
+        uint32 srcEid,
+        bytes32 srcPeriphery
+    ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
@@ -144,16 +161,28 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
                 })
             );
         } else {
-            // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(commonParams, maxUserSlippageBps);
+            // Execute standard HyperCore flow (default) via delegatecall
+            _delegateToHyperCore(
+                abi.encodeWithSelector(
+                    HyperCoreFlowExecutor.executeFlowViaModule.selector,
+                    commonParams,
+                    maxUserSlippageBps
+                )
+            );
         }
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
-
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
+        _delegateToHyperCore(
+            abi.encodeWithSelector(
+                params.transferToCore
+                    ? HyperCoreFlowExecutor.executeSimpleTransferFlowViaModule.selector
+                    : HyperCoreFlowExecutor.fallbackHyperEVMFlowViaModule.selector,
+                params.commonParams
+            )
+        );
     }
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
@@ -183,5 +212,21 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         if (authorizedPeriphery != _composeFromBytes32) {
             revert UnauthorizedSrcPeriphery(_srcEid);
         }
+    }
+
+    function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
+        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
+        if (!success) {
+            assembly {
+                revert(add(ret, 32), mload(ret))
+            }
+        }
+        return ret;
+    }
+
+    /// @notice Generic delegatecall entrypoint to the HyperCore module
+    /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
+    function callHyperCoreModule(bytes calldata data) external payable returns (bytes memory) {
+        return _delegateToHyperCore(data);
     }
 }
