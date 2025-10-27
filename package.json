@@ -8,7 +8,7 @@
     "url": "git+https://github.com/across-protocol/across-smart-contracts-v2.git"
   },
   "engines": {
-    "node": ">=16.18.0"
+    "node": ">=22.18.0"
   },
   "files": [
     "/contracts/**/*.sol",
