@@ -41,7 +41,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId] ?? ZERO_ADDRESS,
-    L2_ADDRESS_MAP[spokeChainId]?.cctpTokenMessenger ?? ZERO_ADDRESS,
+    // ! Notice: pick `cctpV2TokenMessenger` / `cctpTokenMessenger` here to match your adapter CCTP version
+    L2_ADDRESS_MAP[spokeChainId]?.cctpV2TokenMessenger ?? ZERO_ADDRESS,
     oftEid,
     oftFeeCap,
   ];

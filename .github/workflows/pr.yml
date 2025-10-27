@@ -144,6 +144,16 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ env.NODE_VERSION }}
+      - name: Check which paths changed
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            svm:
+              - 'programs/**'
+              - 'scripts/svm/**'
+              - 'src/svm/**'
+              - 'test/svm/**'
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -165,6 +175,7 @@ jobs:
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-test-binaries.tar target/deploy
       - name: Test verified SVM build
+        if: steps.filter.outputs.svm == 'true'
         run: anchor test --skip-build
   build-ts:
     name: Build TypeScript

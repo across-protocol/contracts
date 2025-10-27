@@ -1,7 +1,5 @@
 # Deployed Contract Addresses
 
-Generated on: 2025-08-29T20:35:33.825Z
-
 This file contains the latest deployed smart contract addresses from the broadcast folder.
 
 ## 🚀 Mainnet Networks
@@ -19,6 +17,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **AcrossMerkleDistributor**: `0xE50b2cEAC4f60E840Ae513924033E753e2366487`
   - Transaction Hash: `Unknown`
   - Block Number: `15976846`
+
+#### AdapterStore
+
+- **AdapterStore**: `0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b`
+  - Transaction Hash: `Unknown`
+  - Block Number: `23086526`
 
 #### Arbitrum_Adapter
 
@@ -130,9 +134,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `20277013`
+  - Block Number: `22967417`
 
 #### Lisk_Adapter
 
@@ -140,11 +144,23 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `22474211`
 
-#### Universal_Adapter
+#### Universal_Adapter_56
 
-- **Universal_Adapter**: `0x22001f37B586792F25Ef9d19d99537C6446e0833`
+- **Universal_Adapter_56**: `0x6f1C9d3bcDF51316E7b515a62C02F601500b084b`
   - Transaction Hash: `Unknown`
-  - Block Number: `22368546`
+  - Block Number: `23251254`
+
+#### Universal_Adapter_999
+
+- **Universal_Adapter_999**: `0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B`
+  - Transaction Hash: `Unknown`
+  - Block Number: `23371516`
+
+#### Universal_Adapter_9745
+
+- **Universal_Adapter_9745**: `0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363`
+  - Transaction Hash: `Unknown`
+  - Block Number: `23419367`
 
 #### Blast_Adapter
 
@@ -208,9 +224,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Lens_Adapter
 
-- **Lens_Adapter**: `0x63AC22131eD457aeCbD63e6c4C7eeC7BBC74fF1F`
+- **Lens_Adapter**: `0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf`
   - Transaction Hash: `Unknown`
-  - Block Number: `22167069`
+  - Block Number: `22382942`
 
 #### DoctorWho_Adapter
 
@@ -230,7 +246,37 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `22789839`
 
-#### DeployPermissionSplitterProxy.s.sol
+#### Optimism_Adapter
+
+- **Optimism_Adapter**: `0x3562e309c6c79626e5f0cf746fb5bf4f6b8eebe5`
+  - Transaction Hash: `0x2d4b2fc5de201b2cf2a4f369c458e86d7577e18ef3850b9d90061fea3d8a6b8f`
+  - Block Number: `23498500`
+
+#### Arbitrum_Adapter
+
+- **Arbitrum_Adapter**: `0xc0b6d2f794cc787c71f2ca5cecd57102c32379b3`
+  - Transaction Hash: `0xedc397bdc758e28f61e8b35ddab220911ccfe605ddd3649d13223dc12bc137ef`
+  - Block Number: `23498485`
+
+#### Polygon_Adapter
+
+- **Polygon_Adapter**: `0x537abe038c223066b50312474409924487d2e655`
+  - Transaction Hash: `0x8eb57df471fea74d5a69f59abbafb38d1f7c116f24b29b47a8251ee6bc6c9d75`
+  - Block Number: `23498649`
+
+#### Base_Adapter
+
+- **Base_Adapter**: `0x799bdc55d91864b14b2ed63a34def5d502aa897f`
+  - Transaction Hash: `0xf9845ddc7ebcf5e00b6ee2073dfb8cf50a774161e1f4562cd5c11a5016f4bb64`
+  - Block Number: `23498763`
+
+#### DoctorWho_Adapter
+
+- **DoctorWho_Adapter**: `0x8956efa31572e1d7ed5c8e36772f214a57dfa0d1`
+  - Transaction Hash: `0x67979fe35fe433222cc4f1b7966084c65e4cd2dcecc6e0e3a7cd9970d0c77b75`
+  - Block Number: `23498783`
+
+#### PermissionSplitterProxy
 
 - **PermissionSplitterProxy**: `0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7`
   - Transaction Hash: `0xa2a7b2c6812fb8ae34539fb04cd5f2a9112da1c7f6ffce0ddcf1fee7e43acf48`
@@ -270,15 +316,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `122513129`
+  - Block Number: `138622548`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `137675818`
+
+#### Optimism_SpokePool
+
+- **Optimism_SpokePool**: `0x21352b3495a6ee1bd2921bdb0a876fadc3a9245e`
+  - Transaction Hash: `0xc2df23c0f90b79bb4d0cdc77984bce181b2a9e5f50216b21ce62c7e6608d206f`
+  - Block Number: `141955483`
 
 ### BNB Smart Chain (Chain ID: 56)
 
@@ -306,6 +358,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `52135703`
 
+#### Helios
+
+- **Helios**: `0xE58480CA74f1A819faFd777BEDED4E2D5629943d`
+  - Transaction Hash: `Unknown`
+  - Block Number: `59344945`
+
 ### Unichain (Chain ID: 130)
 
 #### SpokePool
@@ -322,15 +380,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `7930191`
+  - Block Number: `22350961`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `20205357`
+
+#### DoctorWho_SpokePool
+
+- **DoctorWho_SpokePool**: `0x1d82bfdb412415b3ed2514d5eb33574a3c94a72a`
+  - Transaction Hash: `0xd11b50621ee864671a6b953ec0f921577089bcf2b796fbed147aad67122daa90`
+  - Block Number: `28765348`
 
 ### Polygon (Chain ID: 137)
 
@@ -384,9 +448,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `59194129`
+  - Block Number: `74229464`
 
 #### SpokePoolPeriphery
 
@@ -394,19 +458,31 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `73247089`
 
+#### Polygon_SpokePool
+
+- **Polygon_SpokePool**: `0x8f7b21ff11006f0520b06074d36e39b6cd83cf29`
+  - Transaction Hash: `0x92801b64851c27c614e68b66dc26ab6831c1f2b95f3f805bd8646d1747105685`
+  - Block Number: `77338915`
+
 ### Lens (Chain ID: 232)
 
 #### SpokePool
 
-- **SpokePool**: `0xe7cb3e167e7475dE1331Cf6E0CEb187654619E12`
+- **SpokePool**: `0xb234cA484866c811d0e6D3318866F583781ED045`
   - Transaction Hash: `Unknown`
-  - Block Number: `193290`
+  - Block Number: `4197027`
+
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `4419395`
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0xc5939F59b3c9662377DdA53A08D5085b2d52b719`
+- **MulticallHandler**: `0x1Ed0D59019a52870337b51DEe8190486a8663037`
   - Transaction Hash: `Unknown`
-  - Block Number: `193291`
+  - Block Number: `3458452`
 
 #### SpokePoolPeriphery
 
@@ -430,11 +506,17 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `10352565`
 
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `64765628`
+
 #### MulticallHandler
 
-- **MulticallHandler**: `0x863859ef502F0Ee9676626ED5B418037252eFeb2`
+- **MulticallHandler**: `0x68d3806E57148D6c6793C78EbDDbc272fE605dbf`
   - Transaction Hash: `Unknown`
-  - Block Number: `36906393`
+  - Block Number: `63168917`
 
 #### SpokePoolPeriphery
 
@@ -458,9 +540,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `4528295`
+  - Block Number: `16881850`
 
 #### SpokePoolPeriphery
 
@@ -484,15 +566,53 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `5159031`
+  - Block Number: `20457079`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `16783149`
+
+#### Redstone_SpokePool
+
+- **Redstone_SpokePool**: `0x78d8cb7284b14c123a2e81a3246494e8dad873e4`
+  - Transaction Hash: `0xa57c46d87a2f441460948eee80f1301db9881360e82158d1dae50e73f3d32166`
+  - Block Number: `21978768`
+
+### HyperEVM (Chain ID: 999)
+
+#### SpokePool
+
+- **SpokePool**: `0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04`
+  - Transaction Hash: `Unknown`
+  - Block Number: `13937805`
+
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `14459886`
+
+#### Helios
+
+- **Helios**: `0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5`
+  - Transaction Hash: `Unknown`
+  - Block Number: `13934816`
+
+#### MulticallHandler
+
+- **MulticallHandler**: `0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba`
+  - Transaction Hash: `Unknown`
+  - Block Number: `13992522`
+
+#### SpokePoolPeriphery
+
+- **SpokePoolPeriphery**: `0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb`
+  - Transaction Hash: `Unknown`
+  - Block Number: `15142204`
 
 ### Lisk (Chain ID: 1135)
 
@@ -510,9 +630,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `2948231`
+  - Block Number: `19185347`
 
 #### SpokePoolPeriphery
 
@@ -536,15 +656,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `1711482`
+  - Block Number: `9982275`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `8910059`
+
+#### Cher_SpokePool
+
+- **Cher_SpokePool**: `0x48e687205d3962c43891b8cde5a4fe75fa6c8d7a`
+  - Transaction Hash: `0x5e126b5845bf4425d053febf06089e7c02411ee3edf7df6ffa888bc530d85c7f`
+  - Block Number: `11504355`
 
 ### Base (Chain ID: 8453)
 
@@ -574,9 +700,47 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `16917922`
+  - Block Number: `33154505`
+
+#### Base_SpokePool
+
+- **Base_SpokePool**: `0x2eb5def5cf9635f9d926788a26d424287a045b92`
+  - Transaction Hash: `0x6ec337bdf00c331fabbfb0e98862aa2b766c613b6d6002c44b53668b7240989c`
+  - Block Number: `36361964`
+
+### Plasma (Chain ID: 9745)
+
+#### Helios
+
+- **Helios**: `0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1552582`
+
+#### SpokePool
+
+- **SpokePool**: `0x50039fAEfebef707cFD94D6d462fE6D10B39207a`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1710028`
+
+#### SpokePoolVerifier
+
+- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1619568`
+
+#### SpokePoolPeriphery
+
+- **SpokePoolPeriphery**: `0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1628438`
+
+#### MulticallHandler
+
+- **MulticallHandler**: `0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba`
+  - Transaction Hash: `Unknown`
+  - Block Number: `1619956`
 
 ### Mode (Chain ID: 34443)
 
@@ -594,9 +758,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `10228826`
+  - Block Number: `26465760`
 
 #### SpokePoolPeriphery
 
@@ -604,25 +768,11 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `25393939`
 
-### Aleph Zero (Chain ID: 41455)
+#### Mode_SpokePool
 
-#### SpokePool
-
-- **SpokePool**: `0x13fDac9F9b4777705db45291bbFF3c972c6d1d97`
-  - Transaction Hash: `Unknown`
-  - Block Number: `4240318`
-
-#### SpokePoolVerifier
-
-- **SpokePoolVerifier**: `0x3Fb9cED51E968594C87963a371Ed90c39519f65A`
-  - Transaction Hash: `Unknown`
-  - Block Number: `8669066`
-
-#### MulticallHandler
-
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
-  - Transaction Hash: `Unknown`
-  - Block Number: `4112529`
+- **Mode_SpokePool**: `0xc49226858478de8757e425661b1b5297102330d7`
+  - Transaction Hash: `0x0c14a2fadf82090979edd310e414ba7c7da3558ef1283ad2ec762f0093b5839b`
+  - Block Number: `27988148`
 
 ### Arbitrum One (Chain ID: 42161)
 
@@ -652,15 +802,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `230779625`
+  - Block Number: `360020909`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `351421618`
+
+#### Arbitrum_SpokePool
+
+- **Arbitrum_SpokePool**: `0x33d52d76d617126648067401c106923e4a34dbe1`
+  - Transaction Hash: `0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c`
+  - Block Number: `385694983`
 
 ### Ink (Chain ID: 57073)
 
@@ -678,15 +834,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `1145284`
+  - Block Number: `19600021`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `17456376`
+
+#### Ink_SpokePool
+
+- **Ink_SpokePool**: `0x5be04e53b465c6fd89ecff3d36ddf666d198e31a`
+  - Transaction Hash: `0x4be0cb8bd16c8541998b7fb4fe7fb93fb453af9edf96dcdef7c2b48f5f134667`
+  - Block Number: `22643750`
 
 ### Linea (Chain ID: 59144)
 
@@ -704,9 +866,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x1015c58894961F4F7Dd7D68ba033e28Ed3ee1cDB`
+- **MulticallHandler**: `0xdF1C940487574EEfa79989a79a4936A0F979cDa2`
   - Transaction Hash: `Unknown`
-  - Block Number: `5669220`
+  - Block Number: `21108879`
 
 #### SpokePoolPeriphery
 
@@ -730,15 +892,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `5876291`
+  - Block Number: `22144286`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `21071991`
+
+#### Blast_SpokePool
+
+- **Blast_SpokePool**: `0xfcb6f77112951e1995d37542b519fe0a85a1aa77`
+  - Transaction Hash: `0x36ddae4eb4e86aab7bcead1e4e18dab4ac19b2e6facdcbc363df0b2f37e2eea0`
+  - Block Number: `23665884`
 
 ### Scroll (Chain ID: 534352)
 
@@ -756,15 +924,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `7489978`
+  - Block Number: `17441646`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `16783149`
+
+#### Scroll_SpokePool
+
+- **Scroll_SpokePool**: `0x9fda59848900a9c93b7dd9341312a292df8fcdc8`
+  - Transaction Hash: `0xe052d93c759370f20c1c3b0212a149a7207c0ea31bb2967e5cf3753f497d736e`
+  - Block Number: `20085960`
 
 ### Zora (Chain ID: 7777777)
 
@@ -782,15 +956,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `18119854`
+  - Block Number: `33202799`
 
 #### SpokePoolPeriphery
 
 - **SpokePoolPeriphery**: `0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C`
   - Transaction Hash: `Unknown`
   - Block Number: `32130332`
+
+#### Zora_SpokePool
+
+- **Zora_SpokePool**: `0x40ad479382ad2a5c3061487a5094a677b00f6cb0`
+  - Transaction Hash: `0x095f04a9587bad2fabfa5f0a40bb1e2b3481ad5a8904b33a9abd8ac4e0332deb`
+  - Block Number: `34724058`
 
 ### Solana (Chain ID: 34268394551451)
 
@@ -818,6 +998,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `262177984`
 
+#### MessageTransmitterV2
+
+- **MessageTransmitterV2**: `CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC`
+  - Transaction Hash: `Unknown`
+  - Block Number: `343321624`
+
+#### TokenMessengerMinterV2
+
+- **TokenMessengerMinterV2**: `CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe`
+  - Transaction Hash: `Unknown`
+  - Block Number: `343322709`
+
 ## 🧪 Testnet Networks
 
 ### Mode Sepolia (Chain ID: 919)
@@ -830,9 +1022,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `15826581`
+  - Block Number: `32616082`
 
 ### Unichain Sepolia (Chain ID: 1301)
 
@@ -844,9 +1036,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `12594561`
+  - Block Number: `26247751`
 
 ### Lisk Sepolia (Chain ID: 4202)
 
@@ -858,9 +1050,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `7660205`
+  - Block Number: `23893534`
 
 ### Lens Sepolia (Chain ID: 37111)
 
@@ -892,9 +1084,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `8797771`
+  - Block Number: `24181411`
 
 ### Base Sepolia (Chain ID: 84532)
 
@@ -906,9 +1098,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `12429513`
+  - Block Number: `28665844`
 
 #### SpokePoolPeriphery
 
@@ -946,9 +1138,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `58993382`
+  - Block Number: `175845768`
 
 ### BOB Sepolia (Chain ID: 808813)
 
@@ -968,9 +1160,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `6284508`
+  - Block Number: `8810926`
 
 #### AcrossConfigStore
 
@@ -1048,9 +1240,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `14411096`
+  - Block Number: `138622548`
 
 ### Blast Sepolia (Chain ID: 168587773)
 
@@ -1062,9 +1254,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0x924a9f036260DdD5808007E1AA95f08eD08aA569`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
-  - Block Number: `7973417`
+  - Block Number: `24206664`
 
 ### Solana Devnet (Chain ID: 133268194659241)
 
@@ -1091,3 +1283,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **TokenMessengerMinter**: `CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3`
   - Transaction Hash: `Unknown`
   - Block Number: `277864039`
+
+#### MessageTransmitterV2
+
+- **MessageTransmitterV2**: `CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC`
+  - Transaction Hash: `Unknown`
+  - Block Number: `383716739`
+
+#### TokenMessengerMinterV2
+
+- **TokenMessengerMinterV2**: `CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe`
+  - Transaction Hash: `Unknown`
+  - Block Number: `383709630`
