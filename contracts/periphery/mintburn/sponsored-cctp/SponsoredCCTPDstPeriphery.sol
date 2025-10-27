@@ -59,7 +59,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @notice Sets the signer address that is used to validate the signatures of the quotes.
      * @param _signer The new signer address.
      */
-    function setSigner(address _signer) external nonReentrant onlyDefaultAdmin {
+    function setSigner(address _signer) external nonReentrant {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
         signer = _signer;
     }
 
@@ -67,7 +68,8 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @notice Sets the quote deadline buffer. This is used to prevent the quote from being used after it has expired.
      * @param _quoteDeadlineBuffer The new quote deadline buffer.
      */
-    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyDefaultAdmin {
+    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 

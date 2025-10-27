@@ -81,7 +81,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         }
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
+    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
         authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }

@@ -11,7 +11,6 @@ import { HyperCoreFlowLib } from "../../libraries/HyperCoreFlowLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
-import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
 import { Lockable } from "../../Lockable.sol";
 import { CommonFlowParams } from "./Structs.sol";
 
@@ -24,18 +23,10 @@ import { CommonFlowParams } from "./Structs.sol";
 contract HyperCoreFlowExecutor is AccessControl, Lockable {
     using SafeERC20 for IERC20;
 
-    // Common decimals scalars
-    uint256 public constant PPM_DECIMALS = 6;
-    uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
-    // Decimals to use for Price calculations in limit order-related calculation functions
-    uint8 public constant PX_D = 8;
-    uint64 public constant ONEX1e8 = 10 ** 8;
-
-    // Roles
-    bytes32 public constant PERMISSIONED_BOT_ROLE = keccak256("PERMISSIONED_BOT_ROLE");
-    bytes32 public constant FUNDS_SWEEPER_ROLE = keccak256("FUNDS_SWEEPER_ROLE");
-    address public constant HYPER_CORE_FLOW_LIB_ADDRESS = 0x99F91151b6B1c98DAc76c3B4668EC6Deef2dDe29;
-    address public constant HYPER_CORE_LIB_ADDRESS = 0x362850664E624639777999840971B19e01763175;
+    bytes32 internal constant PERMISSIONED_BOT_ROLE = keccak256("PERMISSIONED_BOT_ROLE");
+    bytes32 internal constant FUNDS_SWEEPER_ROLE = keccak256("FUNDS_SWEEPER_ROLE");
+    address internal constant HYPER_CORE_FLOW_LIB_ADDRESS = 0x99F91151b6B1c98DAc76c3B4668EC6Deef2dDe29;
+    address internal constant HYPER_CORE_LIB_ADDRESS = 0x362850664E624639777999840971B19e01763175;
 
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
@@ -188,39 +179,38 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     /// @notice Thrown when we can't bridge some token from HyperEVM to HyperCore
     error UnsafeToBridgeError(address token, uint64 amount);
 
+    /// @notice Thrown when core token info is not set
+    error CoreTokenInfoNotSet();
+
+    /// @notice Thrown when final token info is not set
+    error FinalTokenInfoNotSet();
+
+    /// @notice Thrown when array lengths don't match
+    error LengthMismatch();
+
+    /// @notice Thrown when trying to pull funds too soon
+    error TooSoon();
+
+    /// @notice Thrown when caller is not default admin
+    error NotDefaultAdmin();
+
+    /// @notice Thrown when caller is not permissioned bot
+    error NotPermissionedBot();
+
+    /// @notice Thrown when caller is not funds sweeper
+    error NotFundsSweeper();
+
     /**************************************
      *            MODIFIERS               *
      **************************************/
-
-    modifier onlyDefaultAdmin() {
-        require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "Not default admin");
-        _;
-    }
-
-    modifier onlyPermissionedBot() {
-        require(hasRole(PERMISSIONED_BOT_ROLE, msg.sender), "Not limit order updater");
-        _;
-    }
-
-    modifier onlyFundsSweeper() {
-        require(hasRole(FUNDS_SWEEPER_ROLE, msg.sender), "Not funds sweeper");
-        _;
-    }
-
-    modifier onlyExistingCoreToken(address evmTokenAddress) {
-        _getExistingCoreTokenInfo(evmTokenAddress);
-        _;
-    }
 
     /// @notice Reverts if the token is not configured
     function _getExistingCoreTokenInfo(
         address evmTokenAddress
     ) internal view returns (CoreTokenInfo memory coreTokenInfo) {
         coreTokenInfo = coreTokenInfos[evmTokenAddress];
-        require(
-            coreTokenInfo.tokenInfo.evmContract != address(0) && coreTokenInfo.tokenInfo.weiDecimals != 0,
-            "CoreTokenInfo not set"
-        );
+        if (coreTokenInfo.tokenInfo.evmContract == address(0) || coreTokenInfo.tokenInfo.weiDecimals == 0)
+            revert CoreTokenInfoNotSet();
     }
 
     /// @notice Reverts if the token is not configured
@@ -228,7 +218,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address evmTokenAddress
     ) internal view returns (FinalTokenInfo memory finalTokenInfo) {
         finalTokenInfo = finalTokenInfos[evmTokenAddress];
-        require(address(finalTokenInfo.swapHandler) != address(0), "FinalTokenInfo not set");
+        if (address(finalTokenInfo.swapHandler) == address(0)) revert FinalTokenInfoNotSet();
     }
 
     /**
@@ -262,7 +252,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         bool canBeUsedForAccountActivation,
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
-    ) external nonReentrant onlyDefaultAdmin {
+    ) external nonReentrant {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
         _setCoreTokenInfo(
             token,
             coreIndex,
@@ -290,13 +281,10 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint32 feePpm,
         uint32 suggestedDiscountBps,
         address accountActivationFeeToken
-    )
-        external
-        nonReentrant
-        onlyExistingCoreToken(finalToken)
-        onlyExistingCoreToken(accountActivationFeeToken)
-        onlyDefaultAdmin
-    {
+    ) external nonReentrant {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
+        _getExistingCoreTokenInfo(finalToken);
+        _getExistingCoreTokenInfo(accountActivationFeeToken);
         SwapHandler swapHandler = finalTokenInfos[finalToken].swapHandler;
         if (address(swapHandler) == address(0)) {
             bytes32 salt = _swapHandlerSalt(finalToken);
@@ -313,10 +301,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
         // We don't allow SwapHandler accounts to be uninitiated. That could lead to loss of funds. They instead should
         // be pre-funded using `predictSwapHandler` to predict their address
-        require(
-            HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(address(swapHandler)),
-            "SwapHandler @ core doesn't exist"
-        );
+        if (!HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(address(swapHandler))) revert FinalTokenInfoNotSet();
     }
 
     /// @notice Predicts the deterministic address of a SwapHandler for a given finalToken using CREATE2
@@ -354,8 +339,22 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address finalToken = params.finalToken;
         CoreTokenInfo storage coreTokenInfo = coreTokenInfos[finalToken];
 
-        // Check account activation
-        if (!HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(params.finalRecipient)) {
+        // Execute all calculations and validations in library
+        uint256 donationBoxBalance = IERC20(coreTokenInfo.tokenInfo.evmContract).balanceOf(address(donationBox));
+        HyperCoreFlowLib.SimpleTransferFlowResult memory result = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
+            .executeSimpleTransferFlowLogic(
+                params.finalRecipient,
+                params.amountInEVM,
+                params.extraFeesIncurred,
+                params.maxBpsToSponsor,
+                uint8(coreTokenInfo.tokenInfo.evmExtraWeiDecimals),
+                uint32(coreTokenInfo.coreIndex),
+                coreTokenInfo.bridgeSafetyBufferCore,
+                donationBoxBalance
+            );
+
+        // Handle fallback case
+        if (result.fb) {
             if (params.maxBpsToSponsor > 0) {
                 revert AccountNotActivatedError(params.finalRecipient);
             } else {
@@ -365,51 +364,26 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
-        // Calculate sponsorship amount
-        uint256 amountToSponsor = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).calcSponsorshipAmount(
-            params.amountInEVM,
-            params.extraFeesIncurred,
-            params.maxBpsToSponsor
-        );
-
-        if (amountToSponsor > 0) {
-            if (!_availableInDonationBox(params.quoteNonce, coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
-                amountToSponsor = 0;
-            }
-        }
-
-        // Calculate quoted amounts and check safety
-        uint256 finalAmount = params.amountInEVM + amountToSponsor;
-        (uint256 quotedEvmAmount, uint64 quotedCoreAmount, bool isSafe) = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
-            .validateAndCalcTransferAmounts(
-                finalAmount,
-                uint8(coreTokenInfo.tokenInfo.evmExtraWeiDecimals),
-                uint32(coreTokenInfo.coreIndex),
-                coreTokenInfo.bridgeSafetyBufferCore
-            );
-
-        if (!isSafe) {
-            // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
-            // fall back to sending user funds on HyperEVM.
+        // Handle unsafe to bridge case
+        if (!result.safe) {
             _fallbackHyperEVMFlow(params);
-            emit UnsafeToBridge(params.quoteNonce, finalToken, quotedCoreAmount);
+            emit UnsafeToBridge(params.quoteNonce, finalToken, result.coreAmt);
             return;
         }
 
-        if (amountToSponsor > 0) {
-            // This will succeed because we checked the balance earlier
-            donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), amountToSponsor);
+        // Withdraw sponsorship from donation box
+        if (result.amt > 0) {
+            donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), result.amt);
         }
 
-        cumulativeSponsoredAmount[finalToken] += amountToSponsor;
+        cumulativeSponsoredAmount[finalToken] += result.amt;
 
-        // There is a very slim change that someone is sending > buffer amount in the same EVM block and the balance of
-        // the bridge is not enough to cover our transfer, so the funds are lost.
+        // Transfer to core
         HyperCoreLib(HYPER_CORE_LIB_ADDRESS).transferERC20EVMToCore(
             finalToken,
             coreTokenInfo.coreIndex,
             params.finalRecipient,
-            quotedEvmAmount,
+            result.evmAmt,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
@@ -419,7 +393,7 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             finalToken,
             params.amountInEVM,
             params.extraFeesIncurred,
-            amountToSponsor
+            result.amt
         );
     }
 
@@ -431,8 +405,26 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * @param maxUserSlippageBps Describes a configured user setting. Slippage here is wrt the one to one exchange
      */
     function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
-        // Check account activation
-        if (!HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(params.finalRecipient)) {
+        address initialToken = baseToken;
+        CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
+        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[params.finalToken];
+        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
+
+        // Execute all calculations and validations in library
+        HyperCoreFlowLib.SwapFlowResult memory result = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
+            .initiateSwapFlowLogic(
+                params.finalRecipient,
+                params.amountInEVM,
+                params.extraFeesIncurred,
+                params.maxBpsToSponsor,
+                initialCoreTokenInfo,
+                finalCoreTokenInfo,
+                finalTokenInfo,
+                maxUserSlippageBps
+            );
+
+        // Handle fallback case
+        if (result.fb) {
             if (params.maxBpsToSponsor > 0) {
                 revert AccountNotActivatedError(params.finalRecipient);
             } else {
@@ -442,76 +434,33 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
-        address initialToken = baseToken;
-        CoreTokenInfo memory initialCoreTokenInfo = coreTokenInfos[initialToken];
-        CoreTokenInfo memory finalCoreTokenInfo = coreTokenInfos[params.finalToken];
-        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
-
-        // Calculate limit order amounts and check if feasible
-        HyperCoreFlowLib.SponsorshipAmount memory sponsorshipAmount;
-        // Estimated slippage in ppm, as compared to a one-to-one totalBridgedAmount -> finalAmount conversion
-        uint256 estSlippagePpm;
-        {
-            // In finalToken
-            sponsorshipAmount = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).calcAllowableAmtsSwapFlow(
-                params.amountInEVM,
-                params.extraFeesIncurred,
-                initialCoreTokenInfo,
-                finalCoreTokenInfo,
-                params.maxBpsToSponsor > 0,
-                maxUserSlippageBps
+        // Handle revert to simple flow case
+        if (result.revertSimple) {
+            emit SwapFlowTooExpensive(
+                params.quoteNonce,
+                params.finalToken,
+                result.slippage,
+                params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps
             );
-
-            uint64 approxExecutionPriceX1e8 = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).getApproxRealizedPrice(
-                finalTokenInfo
-            );
-
-            estSlippagePpm = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).calcEstimatedSlippagePpm(
-                approxExecutionPriceX1e8,
-                finalTokenInfo.isBuy,
-                params.extraFeesIncurred,
-                params.amountInEVM
-            );
-
-            (bool isTooExpensive, uint256 estBpsSlippage) = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
-                .validateSwapSlippage(estSlippagePpm, params.maxBpsToSponsor, maxUserSlippageBps);
-
-            if (isTooExpensive) {
-                emit SwapFlowTooExpensive(
-                    params.quoteNonce,
-                    params.finalToken,
-                    estBpsSlippage,
-                    params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps
-                );
-                params.finalToken = initialToken;
-                _executeSimpleTransferFlow(params);
-                return;
-            }
+            params.finalToken = initialToken;
+            _executeSimpleTransferFlow(params);
+            return;
         }
 
-        (uint256 tokensToSendEvm, uint64 coreAmountIn, bool isSafeToBridgeMainToken) = HyperCoreFlowLib(
-            HYPER_CORE_FLOW_LIB_ADDRESS
-        ).validateSwapBridgeSafety(
-                params.amountInEVM,
-                uint8(initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals),
-                uint32(initialCoreTokenInfo.coreIndex),
-                initialCoreTokenInfo.bridgeSafetyBufferCore
-            );
-
-        if (!isSafeToBridgeMainToken) {
-            emit UnsafeToBridge(params.quoteNonce, initialToken, coreAmountIn);
+        // Handle revert to fallback case
+        if (result.revertFb) {
+            emit UnsafeToBridge(params.quoteNonce, initialToken, result.core);
             params.finalToken = initialToken;
             _fallbackHyperEVMFlow(params);
             return;
         }
 
         // Finalize swap flow setup by updating state and funding SwapHandler
-        // State changes
         swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
-            minAmountToSend: sponsorshipAmount.minAllowableAmountToForwardCore,
-            maxAmountToSend: sponsorshipAmount.maxAllowableAmountToForwardCore,
+            minAmountToSend: result.minAmt,
+            maxAmountToSend: result.maxAmt,
             isSponsored: params.maxBpsToSponsor > 0,
             finalized: false
         });
@@ -522,18 +471,18 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             params.finalToken,
             params.amountInEVM,
             params.extraFeesIncurred,
-            coreAmountIn,
-            sponsorshipAmount.minAllowableAmountToForwardCore,
-            sponsorshipAmount.maxAllowableAmountToForwardCore
+            result.core,
+            result.minAmt,
+            result.maxAmt
         );
 
         // Send amount received form user to a corresponding SwapHandler
         SwapHandler swapHandler = finalTokenInfo.swapHandler;
-        IERC20(initialToken).safeTransfer(address(swapHandler), tokensToSendEvm);
+        IERC20(initialToken).safeTransfer(address(swapHandler), result.evm);
         swapHandler.transferFundsToSelfOnCore(
             initialToken,
             initialCoreTokenInfo.coreIndex,
-            tokensToSendEvm,
+            result.evm,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
     }
@@ -548,9 +497,10 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address finalToken,
         bytes32[] calldata quoteNonces,
         uint64[] calldata limitOrderOuts
-    ) external onlyPermissionedBot returns (uint256 finalized) {
-        require(quoteNonces.length == limitOrderOuts.length, "length");
-        require(lastPullFundsBlock[finalToken] < block.number, "too soon");
+    ) external returns (uint256 finalized) {
+        if (!hasRole(PERMISSIONED_BOT_ROLE, msg.sender)) revert NotPermissionedBot();
+        if (quoteNonces.length != limitOrderOuts.length) revert LengthMismatch();
+        if (lastPullFundsBlock[finalToken] >= block.number) revert TooSoon();
 
         CoreTokenInfo memory finalCoreTokenInfo = _getExistingCoreTokenInfo(finalToken);
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
@@ -582,9 +532,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
 
         if (totalAdditionalToSend > 0) {
-            (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore, bool isSafe) = HyperCoreFlowLib(
-                HYPER_CORE_FLOW_LIB_ADDRESS
-            ).validateFinalizeSafety(
+            (uint256 totalAdditionalToSendEVM, , bool isSafe) = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
+                .validateFinalizeSafety(
                     totalAdditionalToSend,
                     uint8(finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals),
                     uint32(finalCoreTokenInfo.coreIndex),
@@ -692,17 +641,19 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         bytes32 quoteNonce,
         address finalRecipient,
         address fundingToken
-    ) external nonReentrant onlyPermissionedBot {
+    ) external nonReentrant {
+        if (!hasRole(PERMISSIONED_BOT_ROLE, msg.sender)) revert NotPermissionedBot();
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(fundingToken);
 
-        bool isValid = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).validateAccountActivation(
-            finalRecipient,
-            coreTokenInfo.canBeUsedForAccountActivation,
-            uint32(coreTokenInfo.coreIndex),
-            coreTokenInfo.accountActivationFeeCore,
-            coreTokenInfo.bridgeSafetyBufferCore
-        );
-        require(isValid, "Invalid activation");
+        if (
+            !HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).validateAccountActivation(
+                finalRecipient,
+                coreTokenInfo.canBeUsedForAccountActivation,
+                uint32(coreTokenInfo.coreIndex),
+                coreTokenInfo.accountActivationFeeCore,
+                coreTokenInfo.bridgeSafetyBufferCore
+            )
+        ) revert AccountNotActivatedError(finalRecipient);
 
         uint256 activationFeeEvm = coreTokenInfo.accountActivationFeeEVM;
         cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
@@ -723,7 +674,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
     /// @notice Cancells a pending limit order by `cloid` with an intention to submit a new limit order in its place. To
     /// be used for stale limit orders to speed up executing user transactions
-    function cancelLimitOrderByCloid(address finalToken, uint128 cloid) external nonReentrant onlyPermissionedBot {
+    function cancelLimitOrderByCloid(address finalToken, uint128 cloid) external nonReentrant {
+        if (!hasRole(PERMISSIONED_BOT_ROLE, msg.sender)) revert NotPermissionedBot();
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.cancelOrderByCloid(finalTokenInfo.assetIndex, cloid);
 
@@ -735,7 +687,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 priceX1e8,
         uint64 sizeX1e8,
         uint128 cloid
-    ) external nonReentrant onlyPermissionedBot {
+    ) external nonReentrant {
+        if (!hasRole(PERMISSIONED_BOT_ROLE, msg.sender)) revert NotPermissionedBot();
         FinalTokenInfo memory finalTokenInfo = finalTokenInfos[finalToken];
         finalTokenInfo.swapHandler.submitLimitOrder(finalTokenInfo, priceX1e8, sizeX1e8, cloid);
 
@@ -775,7 +728,8 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      * @notice Used for ad-hoc sends of sponsorship funds to associated SwapHandler @ HyperCore
      * @param token The final token for which we want to fund the SwapHandler
      */
-    function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
+    function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external {
+        if (!hasRole(PERMISSIONED_BOT_ROLE, msg.sender)) revert NotPermissionedBot();
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(token);
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(token);
 
@@ -823,22 +777,26 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
      *            SWEEP FUNCTIONS         *
      **************************************/
 
-    function sweepErc20(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
+    function sweepErc20(address token, uint256 amount) external nonReentrant {
+        if (!hasRole(FUNDS_SWEEPER_ROLE, msg.sender)) revert NotFundsSweeper();
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepErc20FromDonationBox(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
+    function sweepErc20FromDonationBox(address token, uint256 amount) external nonReentrant {
+        if (!hasRole(FUNDS_SWEEPER_ROLE, msg.sender)) revert NotFundsSweeper();
         donationBox.withdraw(IERC20(token), amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepERC20FromSwapHandler(address token, uint256 amount) external nonReentrant onlyFundsSweeper {
+    function sweepERC20FromSwapHandler(address token, uint256 amount) external nonReentrant {
+        if (!hasRole(FUNDS_SWEEPER_ROLE, msg.sender)) revert NotFundsSweeper();
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
         swapHandler.sweepErc20(token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepOnCore(address token, uint64 amount) external nonReentrant onlyFundsSweeper {
+    function sweepOnCore(address token, uint64 amount) external nonReentrant {
+        if (!hasRole(FUNDS_SWEEPER_ROLE, msg.sender)) revert NotFundsSweeper();
         HyperCoreLib(HYPER_CORE_LIB_ADDRESS).transferERC20CoreToCore(
             coreTokenInfos[token].coreIndex,
             msg.sender,
@@ -846,9 +804,10 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         );
     }
 
-    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant onlyDefaultAdmin {
+    function sweepOnCoreFromSwapHandler(address token, uint64 amount) external nonReentrant {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
         // Prevent pulling fantom funds (e.g. if finalizePendingSwaps reads stale balance because of this fund pull)
-        require(lastPullFundsBlock[token] < block.number, "Can't pull funds twice in the same block");
+        if (lastPullFundsBlock[token] >= block.number) revert TooSoon();
         lastPullFundsBlock[token] = block.number;
 
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
