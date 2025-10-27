@@ -9,13 +9,13 @@ import { MulticallHandler } from "../../handlers/MulticallHandler.sol";
 import { EVMFlowParams, CommonFlowParams } from "./Structs.sol";
 
 /**
- * @title ArbitraryEVMFlowExecutor
- * @notice Base contract for executing arbitrary action sequences using MulticallHandler
- * @dev This contract provides shared functionality for both OFT and CCTP handlers to execute
- * arbitrary actions on HyperEVM via MulticallHandler, returning information about the resulting token amount
- * @custom:security-contact bugs@across.to
- */
-abstract contract ArbitraryEVMFlowExecutor {
+| * @title ArbitraryEVMFlowExecutor
+| * @notice Library for executing arbitrary action sequences using MulticallHandler
+| * @dev This library provides shared functionality for both OFT and CCTP handlers to execute
+| * arbitrary actions on HyperEVM via MulticallHandler, returning information about the resulting token amount
+| * @custom:security-contact bugs@across.to
+| */
+library ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20;
 
     /// @notice Compressed call struct (no value field to save gas)
@@ -23,9 +23,6 @@ abstract contract ArbitraryEVMFlowExecutor {
         address target;
         bytes callData;
     }
-
-    /// @notice MulticallHandler contract instance
-    address public immutable multicallHandler;
 
     /// @notice Emitted when arbitrary actions are executed successfully
     event ArbitraryActionsExecuted(
@@ -43,17 +40,17 @@ abstract contract ArbitraryEVMFlowExecutor {
     uint256 private constant BPS_DECIMALS = 4;
     uint256 private constant BPS_PRECISION_SCALAR = 10 ** BPS_TOTAL_PRECISION;
 
-    constructor(address _multicallHandler) {
-        multicallHandler = _multicallHandler;
-    }
-
     /**
      * @notice Executes arbitrary actions by transferring tokens to MulticallHandler
      * @dev Decompresses CompressedCall[] to MulticallHandler.Call[] format (adds value: 0)
+     * @param multicallHandler The address of the MulticallHandler contract
      * @param params Parameters of HyperEVM execution
      * @return commonParams Parameters to continue sponsored execution to transfer funds to final recipient at correct destination
      */
-    function _executeFlow(EVMFlowParams memory params) internal returns (CommonFlowParams memory commonParams) {
+    function executeFlow(
+        address multicallHandler,
+        EVMFlowParams memory params
+    ) external returns (CommonFlowParams memory commonParams) {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(params.actionData, (CompressedCall[]));
 
@@ -65,7 +62,8 @@ abstract contract ArbitraryEVMFlowExecutor {
         IERC20(params.initialToken).safeTransfer(multicallHandler, params.commonParams.amountInEVM);
 
         // Build instructions for MulticallHandler
-        bytes memory instructions = _buildMulticallInstructions(
+        bytes memory instructions = buildMulticallInstructions(
+            multicallHandler,
             compressedCalls,
             params.commonParams.finalToken,
             address(this) // Send leftover tokens back to this contract
@@ -95,7 +93,7 @@ abstract contract ArbitraryEVMFlowExecutor {
             }
         }
 
-        params.commonParams.extraFeesIncurred = _calcExtraFeesFinal(
+        params.commonParams.extraFeesIncurred = calcExtraFeesFinal(
             params.commonParams.amountInEVM,
             params.commonParams.extraFeesIncurred,
             finalAmount
@@ -116,12 +114,17 @@ abstract contract ArbitraryEVMFlowExecutor {
     /**
      * @notice Builds MulticallHandler Instructions from compressed calls
      * @dev Decompresses calls by adding value: 0, and adds drainLeftoverTokens call at the end
+     * @param multicallHandler The address of the MulticallHandler contract
+     * @param compressedCalls Array of compressed calls to execute
+     * @param finalToken The final token expected after execution
+     * @param fallbackRecipient The recipient to send leftover tokens to
      */
-    function _buildMulticallInstructions(
+    function buildMulticallInstructions(
+        address multicallHandler,
         CompressedCall[] memory compressedCalls,
         address finalToken,
         address fallbackRecipient
-    ) internal view returns (bytes memory) {
+    ) public pure returns (bytes memory) {
         uint256 callCount = compressedCalls.length;
 
         // Create Call[] array with value: 0 for each call, plus one for drainLeftoverTokens
@@ -157,11 +160,11 @@ abstract contract ArbitraryEVMFlowExecutor {
     }
 
     /// @notice Calcualtes proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount
-    function _calcExtraFeesFinal(
+    function calcExtraFeesFinal(
         uint256 amount,
         uint256 extraFeesToSponsorTokenIn,
         uint256 finalAmount
-    ) internal pure returns (uint256 extraFeesToSponsorFinalToken) {
+    ) public pure returns (uint256 extraFeesToSponsorFinalToken) {
         // Total amount to sponsor is the extra fees to sponsor, ceiling division.
         uint256 bpsToSponsor;
         {
@@ -175,7 +178,4 @@ abstract contract ArbitraryEVMFlowExecutor {
             (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
             finalAmount;
     }
-
-    /// @notice Allow contract to receive native tokens for arbitrary action execution
-    receive() external payable virtual {}
 }

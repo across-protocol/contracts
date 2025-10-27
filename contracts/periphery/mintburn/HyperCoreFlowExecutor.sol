@@ -365,47 +365,35 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
-        // Calculate sponsorship amount in scope
-        uint256 amountToSponsor;
-        {
-            uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
-                BPS_SCALAR;
-            amountToSponsor = params.extraFeesIncurred;
-            if (amountToSponsor > maxEvmAmountToSponsor) {
-                amountToSponsor = maxEvmAmountToSponsor;
-            }
+        // Calculate sponsorship amount
+        uint256 amountToSponsor = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).calcSponsorshipAmount(
+            params.amountInEVM,
+            params.extraFeesIncurred,
+            params.maxBpsToSponsor
+        );
 
-            if (amountToSponsor > 0) {
-                if (!_availableInDonationBox(params.quoteNonce, coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
-                    amountToSponsor = 0;
-                }
+        if (amountToSponsor > 0) {
+            if (!_availableInDonationBox(params.quoteNonce, coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
+                amountToSponsor = 0;
             }
         }
 
         // Calculate quoted amounts and check safety
-        uint256 quotedEvmAmount;
-        uint64 quotedCoreAmount;
-        {
-            uint256 finalAmount = params.amountInEVM + amountToSponsor;
-            (quotedEvmAmount, quotedCoreAmount) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).maximumEVMSendAmountToAmounts(
+        uint256 finalAmount = params.amountInEVM + amountToSponsor;
+        (uint256 quotedEvmAmount, uint64 quotedCoreAmount, bool isSafe) = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
+            .validateAndCalcTransferAmounts(
                 finalAmount,
-                coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                uint8(coreTokenInfo.tokenInfo.evmExtraWeiDecimals),
+                uint32(coreTokenInfo.coreIndex),
+                coreTokenInfo.bridgeSafetyBufferCore
             );
-            // If there are no funds left on the destination side of the bridge, the funds will be lost in the
-            // bridge. We check send safety via `isCoreAmountSafeToBridge`
-            if (
-                !HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-                    coreTokenInfo.coreIndex,
-                    quotedCoreAmount,
-                    coreTokenInfo.bridgeSafetyBufferCore
-                )
-            ) {
-                // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
-                // fall back to sending user funds on HyperEVM.
-                _fallbackHyperEVMFlow(params);
-                emit UnsafeToBridge(params.quoteNonce, finalToken, quotedCoreAmount);
-                return;
-            }
+
+        if (!isSafe) {
+            // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
+            // fall back to sending user funds on HyperEVM.
+            _fallbackHyperEVMFlow(params);
+            emit UnsafeToBridge(params.quoteNonce, finalToken, quotedCoreAmount);
+            return;
         }
 
         if (amountToSponsor > 0) {
@@ -477,33 +465,23 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             uint64 approxExecutionPriceX1e8 = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).getApproxRealizedPrice(
                 finalTokenInfo
             );
-            uint256 maxAllowableBpsDeviation = params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps;
-            if (finalTokenInfo.isBuy) {
-                if (approxExecutionPriceX1e8 < ONEX1e8) {
-                    estSlippagePpm = 0;
-                } else {
-                    // ceil
-                    estSlippagePpm = ((approxExecutionPriceX1e8 - ONEX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
-                }
-            } else {
-                if (approxExecutionPriceX1e8 > ONEX1e8) {
-                    estSlippagePpm = 0;
-                } else {
-                    // ceil
-                    estSlippagePpm = ((ONEX1e8 - approxExecutionPriceX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
-                }
-            }
-            // Add `extraFeesIncurred` to "slippage from one to one"
-            estSlippagePpm +=
-                (params.extraFeesIncurred * PPM_SCALAR + (params.amountInEVM + params.extraFeesIncurred) - 1) /
-                (params.amountInEVM + params.extraFeesIncurred);
 
-            if (estSlippagePpm > maxAllowableBpsDeviation * 10 ** (PPM_DECIMALS - BPS_DECIMALS)) {
+            estSlippagePpm = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).calcEstimatedSlippagePpm(
+                approxExecutionPriceX1e8,
+                finalTokenInfo.isBuy,
+                params.extraFeesIncurred,
+                params.amountInEVM
+            );
+
+            (bool isTooExpensive, uint256 estBpsSlippage) = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS)
+                .validateSwapSlippage(estSlippagePpm, params.maxBpsToSponsor, maxUserSlippageBps);
+
+            if (isTooExpensive) {
                 emit SwapFlowTooExpensive(
                     params.quoteNonce,
                     params.finalToken,
-                    (estSlippagePpm + 10 ** (PPM_DECIMALS - BPS_DECIMALS) - 1) / 10 ** (PPM_DECIMALS - BPS_DECIMALS),
-                    maxAllowableBpsDeviation
+                    estBpsSlippage,
+                    params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps
                 );
                 params.finalToken = initialToken;
                 _executeSimpleTransferFlow(params);
@@ -511,15 +489,14 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             }
         }
 
-        (uint256 tokensToSendEvm, uint64 coreAmountIn) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS)
-            .maximumEVMSendAmountToAmounts(params.amountInEVM, initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals);
-
-        // Check that we can safely bridge to HCore (for the trade amount actually needed)
-        bool isSafeToBridgeMainToken = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-            initialCoreTokenInfo.coreIndex,
-            coreAmountIn,
-            initialCoreTokenInfo.bridgeSafetyBufferCore
-        );
+        (uint256 tokensToSendEvm, uint64 coreAmountIn, bool isSafeToBridgeMainToken) = HyperCoreFlowLib(
+            HYPER_CORE_FLOW_LIB_ADDRESS
+        ).validateSwapBridgeSafety(
+                params.amountInEVM,
+                uint8(initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals),
+                uint32(initialCoreTokenInfo.coreIndex),
+                initialCoreTokenInfo.bridgeSafetyBufferCore
+            );
 
         if (!isSafeToBridgeMainToken) {
             emit UnsafeToBridge(params.quoteNonce, initialToken, coreAmountIn);
@@ -605,20 +582,16 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         }
 
         if (totalAdditionalToSend > 0) {
-            (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore) = HyperCoreLib(
-                HYPER_CORE_LIB_ADDRESS
-            ).minimumCoreReceiveAmountToAmounts(
+            (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore, bool isSafe) = HyperCoreFlowLib(
+                HYPER_CORE_FLOW_LIB_ADDRESS
+            ).validateFinalizeSafety(
                     totalAdditionalToSend,
-                    finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                    uint8(finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals),
+                    uint32(finalCoreTokenInfo.coreIndex),
+                    finalCoreTokenInfo.bridgeSafetyBufferCore
                 );
 
-            if (
-                !HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-                    finalCoreTokenInfo.coreIndex,
-                    totalAdditionalReceivedCore,
-                    finalCoreTokenInfo.bridgeSafetyBufferCore
-                )
-            ) {
+            if (!isSafe) {
                 // We expect this situation to be so rare and / or intermittend that we're willing to rely on admin to sweep the funds if this leads to
                 // swaps being impossible to finalize
                 revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, totalAdditionalToSend);
@@ -684,11 +657,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
     function _fallbackHyperEVMFlow(CommonFlowParams memory params) internal virtual {
-        uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
-            BPS_SCALAR;
-        uint256 sponsorshipFundsToForward = params.extraFeesIncurred > maxEvmAmountToSponsor
-            ? maxEvmAmountToSponsor
-            : params.extraFeesIncurred;
+        uint256 sponsorshipFundsToForward = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).calcFallbackSponsorshipAmount(
+            params.amountInEVM,
+            params.extraFeesIncurred,
+            params.maxBpsToSponsor
+        );
 
         if (!_availableInDonationBox(params.quoteNonce, params.finalToken, sponsorshipFundsToForward)) {
             sponsorshipFundsToForward = 0;
@@ -721,15 +694,16 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         address fundingToken
     ) external nonReentrant onlyPermissionedBot {
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(fundingToken);
-        bool coreUserExists = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).coreUserExists(finalRecipient);
-        require(coreUserExists == false, "Can't fund account activation for existing user");
-        require(coreTokenInfo.canBeUsedForAccountActivation, "Token can't be used for this");
-        bool safeToBridge = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-            coreTokenInfo.coreIndex,
+
+        bool isValid = HyperCoreFlowLib(HYPER_CORE_FLOW_LIB_ADDRESS).validateAccountActivation(
+            finalRecipient,
+            coreTokenInfo.canBeUsedForAccountActivation,
+            uint32(coreTokenInfo.coreIndex),
             coreTokenInfo.accountActivationFeeCore,
             coreTokenInfo.bridgeSafetyBufferCore
         );
-        require(safeToBridge, "Not safe to bridge");
+        require(isValid, "Invalid activation");
+
         uint256 activationFeeEvm = coreTokenInfo.accountActivationFeeEVM;
         cumulativeSponsoredActivationFee[fundingToken] += activationFeeEvm;
 
@@ -775,13 +749,9 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
     ) internal {
-        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).tokenInfo(coreIndex);
-        require(tokenInfo.evmContract == token, "Token mismatch");
-
-        (uint256 accountActivationFeeEVM, ) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS).minimumCoreReceiveAmountToAmounts(
-            accountActivationFeeCore,
-            tokenInfo.evmExtraWeiDecimals
-        );
+        (HyperCoreLib.TokenInfo memory tokenInfo, uint256 accountActivationFeeEVM) = HyperCoreFlowLib(
+            HYPER_CORE_FLOW_LIB_ADDRESS
+        ).buildCoreTokenInfo(token, coreIndex, accountActivationFeeCore);
 
         coreTokenInfos[token] = CoreTokenInfo({
             tokenInfo: tokenInfo,
@@ -808,15 +778,17 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
     function sendSponsorshipFundsToSwapHandler(address token, uint256 amount) external onlyPermissionedBot {
         CoreTokenInfo memory coreTokenInfo = _getExistingCoreTokenInfo(token);
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(token);
-        (uint256 amountEVMToSend, uint64 amountCoreToReceive) = HyperCoreLib(HYPER_CORE_LIB_ADDRESS)
-            .maximumEVMSendAmountToAmounts(amount, coreTokenInfo.tokenInfo.evmExtraWeiDecimals);
-        if (
-            !HyperCoreLib(HYPER_CORE_LIB_ADDRESS).isCoreAmountSafeToBridge(
-                coreTokenInfo.coreIndex,
-                amountCoreToReceive,
+
+        (uint256 amountEVMToSend, uint64 amountCoreToReceive, bool isSafe) = HyperCoreFlowLib(
+            HYPER_CORE_FLOW_LIB_ADDRESS
+        ).validateSponsorshipTransfer(
+                amount,
+                uint8(coreTokenInfo.tokenInfo.evmExtraWeiDecimals),
+                uint32(coreTokenInfo.coreIndex),
                 coreTokenInfo.bridgeSafetyBufferCore
-            )
-        ) {
+            );
+
+        if (!isSafe) {
             revert UnsafeToBridgeError(token, amountCoreToReceive);
         }
 

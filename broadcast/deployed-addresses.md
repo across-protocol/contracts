@@ -1026,6 +1026,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `Unknown`
   - Block Number: `32616082`
 
+### HyperEVM Testnet (Chain ID: 998)
+
+#### DonationBox
+
+- **DonationBox**: `0xad7c5516b25661e0a204646b08024cd82ffe6c48`
+
+  - Transaction Hash: `0xbacd179c39c885ee6964b8b3786ea20699d62c39be720d180f302e45ee74c3e0`
+  - Block Number: `35816417`
+
+- **SponsoredCCTPDstPeriphery**: `0x56e2d1b8c7de8d11b282e1b4c924c32d91f9102b`
+  - Transaction Hash: `0xb27e332834f346b5564637ac3e3e814e18fe6d387dec1ff70e01a61d8cbaa444`
+
 ### Unichain Sepolia (Chain ID: 1301)
 
 #### SpokePool
@@ -1141,6 +1153,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
   - Transaction Hash: `Unknown`
   - Block Number: `175845768`
+
+#### SponsoredCCTPSrcPeriphery
+
+- **SponsoredCCTPSrcPeriphery**: `0x79176e2e91c77b57ac11c6fe2d2ab2203d87af85`
+  - Transaction Hash: `0xbc4b24d846566a4c6df4d07f5d00379b93fd353dea7c04fec0587d01ffe559e5`
+  - Block Number: `208017214`
 
 ### BOB Sepolia (Chain ID: 808813)
 

@@ -16,12 +16,15 @@ import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
  */
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    /// @notice The multicall handler contract for arbitrary EVM actions.
+    address public immutable multicallHandler;
 
     /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
@@ -46,8 +49,9 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) {
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
+        multicallHandler = _multicallHandler;
         signer = _signer;
     }
 
@@ -142,9 +146,12 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
-        params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
+        params.commonParams = ArbitraryEVMFlowExecutor.executeFlow(multicallHandler, params);
 
         // Route to appropriate destination based on transferToCore flag
         (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
     }
+
+    /// @notice Allow contract to receive native tokens for arbitrary action execution
+    receive() external payable {}
 }

@@ -16,7 +16,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -28,6 +28,9 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
 
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
+
+    /// @notice The multicall handler contract for arbitrary EVM actions.
+    address public immutable multicallHandler;
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
@@ -63,7 +66,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) {
         // baseToken is assigned on `HyperCoreFlowExecutor` creation
         if (baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
@@ -71,6 +74,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
 
         OFT_ENDPOINT_ADDRESS = _oftEndpoint;
         IOFT_ADDRESS = _ioft;
+        multicallHandler = _multicallHandler;
+
         if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
             revert IOFTEndpointMismatch();
         }
@@ -150,11 +155,14 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
-        params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
+        params.commonParams = ArbitraryEVMFlowExecutor.executeFlow(multicallHandler, params);
 
         // Route to appropriate destination based on transferToCore flag
         (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
     }
+
+    /// @notice Allow contract to receive native tokens for arbitrary action execution
+    receive() external payable {}
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
     function _requireAuthorizedMessage(address _oApp, bytes calldata _message) internal view {
