@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
@@ -13,10 +14,11 @@ import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is AccessControl, ReentrancyGuard, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -28,6 +30,12 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
 
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
+
+    /// @notice Base token associated with this handler. The one we receive from the OFT bridge
+    address public immutable baseToken;
+
+    /// @notice In this implementation, `hyperCoreModule` is used like a library with some storage actions
+    address public immutable hyperCoreModule;
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
@@ -63,9 +71,12 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
-        // baseToken is assigned on `HyperCoreFlowExecutor` creation
-        if (baseToken != IOFT(_ioft).token()) {
+    ) ArbitraryEVMFlowExecutor(_multicallHandler) {
+        // TODO: consider creating a donationBox here.
+        baseToken = _baseToken;
+        hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
+
+        if (_baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
         }
 
@@ -74,9 +85,18 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
             revert IOFTEndpointMismatch();
         }
+
+        // TODO: what kind of AccessControl setup do we need here? E.g.:
+        // _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        // _setRoleAdmin(PERMISSIONED_BOT_ROLE, DEFAULT_ADMIN_ROLE);
+        // _setRoleAdmin(FUNDS_SWEEPER_ROLE, DEFAULT_ADMIN_ROLE);
+        // TODO: is `DEFAULT_ADMIN_ROLE` already set + an admin of all roles? Maybe we need to inherit AccessControlWithSensibleDefaults or something
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
+    function setAuthorizedPeriphery(
+        uint32 srcEid,
+        bytes32 srcPeriphery
+    ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
@@ -144,8 +164,10 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
                 })
             );
         } else {
-            // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(commonParams, maxUserSlippageBps);
+            // Execute standard HyperCore flow (default) via delegatecall
+            _delegateToHyperCore(
+                abi.encodeWithSelector(HyperCoreFlowExecutor._executeFlow.selector, commonParams, maxUserSlippageBps)
+            );
         }
     }
 
@@ -153,7 +175,14 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
+        _delegateToHyperCore(
+            abi.encodeWithSelector(
+                params.transferToCore
+                    ? HyperCoreFlowExecutor.executeSimpleTransferFlow.selector
+                    : HyperCoreFlowExecutor.fallbackHyperEVMFlow.selector,
+                params.commonParams
+            )
+        );
     }
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
@@ -183,5 +212,23 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         if (authorizedPeriphery != _composeFromBytes32) {
             revert UnauthorizedSrcPeriphery(_srcEid);
         }
+    }
+
+    /// @notice Generic delegatecall entrypoint to the HyperCore module
+    /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
+    function callHyperCoreModule(bytes calldata data) external payable returns (bytes memory) {
+        return _delegateToHyperCore(data);
+    }
+
+    // TODO: consider having this support multiple modules through a mapping(bytes32 => address). Split this functionality
+    // TODO: out into a separate Base contract for both CCTP and OFT to use
+    function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
+        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
+        if (!success) {
+            assembly {
+                revert(add(ret, 32), mload(ret))
+            }
+        }
+        return ret;
     }
 }

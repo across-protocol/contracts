@@ -38,6 +38,9 @@ contract HyperCoreFlowExecutor is AccessControl {
     /// @notice All operations performed in this contract are relative to this baseToken
     address public immutable baseToken;
 
+    /// @notice Handler that's delegatecalling into this contract
+    address public immutable handler;
+
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct SwapFlowState {
         address finalRecipient;
@@ -221,13 +224,13 @@ contract HyperCoreFlowExecutor is AccessControl {
      * @param _baseToken Main token used with this Forwarder
      */
     constructor(address _donationBox, address _baseToken) {
+        // Set immutable variables only
         donationBox = DonationBox(_donationBox);
         baseToken = _baseToken;
 
-        // AccessControl setup
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setRoleAdmin(PERMISSIONED_BOT_ROLE, DEFAULT_ADMIN_ROLE);
-        _setRoleAdmin(FUNDS_SWEEPER_ROLE, DEFAULT_ADMIN_ROLE);
+        // TODO: this contract is being used like a library with storage interactions
+        // TODO: do we need to protect the storage state of this particular contract
+        // TODO: from abuse somehow? I don't think it can affect execution in any way
     }
 
     /**************************************
@@ -321,17 +324,26 @@ contract HyperCoreFlowExecutor is AccessControl {
      * checked the API signature and made sure that the params passed here have been verified by either the handler contract
      *  the underlying bridge mechanics, or API signaure, or both.
      */
+    // TODO! We need some way to be able to tell if this call is coming from a funded handler call, e.g. onlyFundedHandlerCall
+    // TODO! As opposed to ad-hoc module calls. Only allow flow functions to be called in a certain entrypoint on the handler
+    // TODO! Something like this._validateFlowCalls(): validated = true; _; validated = false;
+    // TODO! Something like a system of hooks where the calling handler is calling:
+    // TODO! _preflowHook() onlyHandler, _flow(), _postFlowHook() onlyHandler
+    //
+    // TODO! Maybe _executeFlow can just be adapted for executing different actions and then it can be a single entrypoint?
+    // TODO! _executeFlow has to be protected nonetheless though
+    // TODO! onlyCheckedFundedFlow is the modifier we're looking for. The Q is where to put it
     function _executeFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) external {
         if (params.finalToken == baseToken) {
-            _executeSimpleTransferFlow(params);
+            executeSimpleTransferFlow(params);
         } else {
-            _initiateSwapFlow(params, maxUserSlippageBps);
+            initiateSwapFlow(params, maxUserSlippageBps);
         }
     }
 
     /// @notice Execute a simple transfer flow in which we transfer `finalToken` to the user on HyperCore after receiving
     /// an amount of finalToken from the user on HyperEVM
-    function _executeSimpleTransferFlow(CommonFlowParams memory params) public {
+    function executeSimpleTransferFlow(CommonFlowParams memory params) public {
         address finalToken = params.finalToken;
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo storage coreTokenInfo = $.coreTokenInfos[finalToken];
@@ -342,7 +354,7 @@ contract HyperCoreFlowExecutor is AccessControl {
                 revert AccountNotActivatedError(params.finalRecipient);
             } else {
                 emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                _fallbackHyperEVMFlow(params);
+                fallbackHyperEVMFlow(params);
                 return;
             }
         }
@@ -384,7 +396,7 @@ contract HyperCoreFlowExecutor is AccessControl {
             ) {
                 // If the amount is not safe to bridge because the bridge doesn't have enough liquidity,
                 // fall back to sending user funds on HyperEVM.
-                _fallbackHyperEVMFlow(params);
+                fallbackHyperEVMFlow(params);
                 emit UnsafeToBridge(params.quoteNonce, finalToken, quotedCoreAmount);
                 return;
             }
@@ -424,14 +436,14 @@ contract HyperCoreFlowExecutor is AccessControl {
      * @dev Only works for stable -> stable swap flows (or equivalent token flows. Price between tokens is supposed to be approximately one to one)
      * @param maxUserSlippageBps Describes a configured user setting. Slippage here is wrt the one to one exchange
      */
-    function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
+    function initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
         // Check account activation
         if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
             if (params.maxBpsToSponsor > 0) {
                 revert AccountNotActivatedError(params.finalRecipient);
             } else {
                 emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                _fallbackHyperEVMFlow(params);
+                fallbackHyperEVMFlow(params);
                 return;
             }
         }
@@ -488,7 +500,7 @@ contract HyperCoreFlowExecutor is AccessControl {
                     maxAllowableBpsDeviation
                 );
                 params.finalToken = initialToken;
-                _executeSimpleTransferFlow(params);
+                executeSimpleTransferFlow(params);
                 return;
             }
         }
@@ -508,7 +520,7 @@ contract HyperCoreFlowExecutor is AccessControl {
         if (!isSafeToBridgeMainToken) {
             emit UnsafeToBridge(params.quoteNonce, initialToken, coreAmountIn);
             params.finalToken = initialToken;
-            _fallbackHyperEVMFlow(params);
+            fallbackHyperEVMFlow(params);
             return;
         }
 
@@ -663,7 +675,7 @@ contract HyperCoreFlowExecutor is AccessControl {
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
-    function _fallbackHyperEVMFlow(CommonFlowParams memory params) public {
+    function fallbackHyperEVMFlow(CommonFlowParams memory params) public {
         uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
             BPS_SCALAR;
         uint256 sponsorshipFundsToForward = params.extraFeesIncurred > maxEvmAmountToSponsor
