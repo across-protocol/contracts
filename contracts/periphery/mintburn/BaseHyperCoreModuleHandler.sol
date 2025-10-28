@@ -6,6 +6,11 @@ import { HyperCoreFlowExecutor } from "./HyperCoreFlowExecutor.sol";
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
+/**
+ * @dev IMPORTANT. The storage layout of this contract is meant to be in sync with `HyperCoreFlowExeutor` in terms of
+    handling `AccessControl` storage slots specifically. The roles set on the handler (inheritor of this contract) are
+    meant to be enforceable in the delegatecalls made to `HyperCoreFlowExecutor`
+ */
 abstract contract BaseHyperCoreModuleHandler is AccessControl, AuthorizedFundedFlow {
     /// @notice Address of the underlying hypercore module
     address public immutable hyperCoreModule;
