@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { AuthorizedFundedFlow } from "./AuthorizedFundedFlow.sol";
 import { HyperCoreFlowExecutor } from "./HyperCoreFlowExecutor.sol";
+import { HyperCoreFlowRoles } from "./HyperCoreFlowRoles.sol";
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -11,16 +12,15 @@ import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol"
     handling `AccessControl` storage slots specifically. The roles set on the handler (inheritor of this contract) are
     meant to be enforceable in the delegatecalls made to `HyperCoreFlowExecutor`
  */
-abstract contract BaseHyperCoreModuleHandler is AccessControl, AuthorizedFundedFlow {
+abstract contract BaseHyperCoreModuleHandler is AccessControl, AuthorizedFundedFlow, HyperCoreFlowRoles {
     /// @notice Address of the underlying hypercore module
     address public immutable hyperCoreModule;
 
     constructor(address _donationBox, address _baseToken, bytes32 _roleAdmin) {
         hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
 
-        // TODO: why doesn't work?
-        // _setRoleAdmin(HyperCoreFlowExecutor.PERMISSIONED_BOT_ROLE, _roleAdmin);
-        // _setRoleAdmin(HyperCoreFlowExecutor.FUNDS_SWEEPER_ROLE, _roleAdmin);
+        _setRoleAdmin(PERMISSIONED_BOT_ROLE, _roleAdmin);
+        _setRoleAdmin(FUNDS_SWEEPER_ROLE, _roleAdmin);
     }
 
     /// @notice External delegatecall entrypoint to the HyperCore module

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { AuthorizedFundedFlow } from "./AuthorizedFundedFlow.sol";
+import { HyperCoreFlowRoles } from "./HyperCoreFlowRoles.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { CoreTokenInfo } from "./Structs.sol";
@@ -20,7 +21,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @dev This contract is designed to work with stablecoins. baseToken and every finalToken should all be stablecoins.
  * @custom:security-contact bugs@across.to
  */
-contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow {
+contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow, HyperCoreFlowRoles {
     using SafeERC20 for IERC20;
 
     // Common decimals scalars
@@ -29,10 +30,6 @@ contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow {
     // Decimals to use for Price calculations in limit order-related calculation functions
     uint8 public constant PX_D = 8;
     uint64 public constant ONEX1e8 = 10 ** 8;
-
-    // Roles
-    bytes32 public constant PERMISSIONED_BOT_ROLE = keccak256("PERMISSIONED_BOT_ROLE");
-    bytes32 public constant FUNDS_SWEEPER_ROLE = keccak256("FUNDS_SWEEPER_ROLE");
 
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
