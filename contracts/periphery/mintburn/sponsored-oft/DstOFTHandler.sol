@@ -16,7 +16,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
+contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -28,9 +28,6 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
 
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
-
-    /// @notice The multicall handler contract for arbitrary EVM actions.
-    address public immutable multicallHandler;
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
@@ -66,7 +63,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) {
+    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
         // baseToken is assigned on `HyperCoreFlowExecutor` creation
         if (baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
@@ -74,15 +71,12 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
 
         OFT_ENDPOINT_ADDRESS = _oftEndpoint;
         IOFT_ADDRESS = _ioft;
-        multicallHandler = _multicallHandler;
-
         if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
             revert IOFTEndpointMismatch();
         }
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant {
-        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) revert NotDefaultAdmin();
+    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
         authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
@@ -156,14 +150,11 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor {
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
-        params.commonParams = ArbitraryEVMFlowExecutor.executeFlow(multicallHandler, params);
+        params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
         (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
     }
-
-    /// @notice Allow contract to receive native tokens for arbitrary action execution
-    receive() external payable {}
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
     function _requireAuthorizedMessage(address _oApp, bytes calldata _message) internal view {

@@ -6,7 +6,6 @@ import { FinalTokenInfo } from "./Structs.sol";
 
 contract SwapHandler {
     address public immutable parentHandler;
-    // address public constant HYPER_CORE_LIB_ADDRESS = 0x362850664E624639777999840971B19e01763175;
 
     constructor() {
         parentHandler = msg.sender;
