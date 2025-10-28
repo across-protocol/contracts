@@ -55,7 +55,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         address _multicallHandler
     ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
         baseToken = _baseToken;
-        hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
 
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
