@@ -85,4 +85,7 @@ interface SpokePoolInterface {
     error InvalidWithdrawalRecipient();
     error DepositsArePaused();
     error FillsArePaused();
+    error CustomActionExecutionFailed();
+    error MessageTooShort();
+    error ZeroAddressTarget();
 }

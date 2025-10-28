@@ -370,6 +370,29 @@ abstract contract SpokePool is
         _setOftMessenger(token, messenger);
     }
 
+    /**
+     * @notice Execute custom actions encoded in the message.
+     * @dev If target address is this contract, a delegatecall to this contract is executed.
+     * @dev If target address is not this contract, an external call to the target address is executed.
+     * @param message The message containing the target and custom actions to execute.
+     */
+    function executeCustomActions(bytes calldata message) external onlyAdmin nonReentrant {
+        (address target, bytes memory data) = abi.decode(message, (address, bytes));
+
+        if (target == address(0)) revert ZeroAddressTarget();
+        if (data.length < 4) revert MessageTooShort(); // need at least a selector
+
+        if (target == address(this)) {
+            // delegatecall to self; runs in this contract's storage context
+            (bool success, ) = address(this).delegatecall(data);
+            if (!success) revert CustomActionExecutionFailed();
+        } else {
+            // external call to target
+            (bool success, ) = target.call(data);
+            if (!success) revert CustomActionExecutionFailed();
+        }
+    }
+
     /**************************************
      *    LEGACY DEPOSITOR FUNCTIONS      *
      **************************************/
