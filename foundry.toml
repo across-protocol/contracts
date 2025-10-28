@@ -26,6 +26,7 @@ remappings = [
     "eth-gas-reporter/=node_modules/eth-gas-reporter/",
     "hardhat-deploy/=node_modules/hardhat-deploy/",
     "hardhat/=node_modules/hardhat/",
+    "@openzeppelin/contracts/access/IAccessControl.sol=node_modules/@openzeppelin/contracts-v5/access/IAccessControl.sol",
 ]
 via_ir = true
 optimizer_runs = 800
