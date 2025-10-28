@@ -384,7 +384,7 @@ abstract contract SpokePool is
 
         bool success;
         if (target == address(this)) {
-            // delegatecall to self; runs in this contract's storage context
+            // delegatecall to self
             (success, ) = address(this).delegatecall(data);
         } else {
             // external call to target
