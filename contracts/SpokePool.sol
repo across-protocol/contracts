@@ -382,15 +382,16 @@ abstract contract SpokePool is
         if (target == address(0)) revert ZeroAddressTarget();
         if (data.length < 4) revert MessageTooShort(); // need at least a selector
 
+        bool success;
         if (target == address(this)) {
             // delegatecall to self; runs in this contract's storage context
-            (bool success, ) = address(this).delegatecall(data);
-            if (!success) revert CustomActionExecutionFailed();
+            (success, ) = address(this).delegatecall(data);
         } else {
             // external call to target
-            (bool success, ) = target.call(data);
-            if (!success) revert CustomActionExecutionFailed();
+            (success, ) = target.call(data);
         }
+
+        if (!success) revert CustomActionExecutionFailed();
     }
 
     /**************************************
