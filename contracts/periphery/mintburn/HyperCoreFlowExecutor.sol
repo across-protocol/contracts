@@ -241,10 +241,6 @@ contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow, HyperCore
         donationBox = DonationBox(_donationBox);
         baseToken = _baseToken;
         handler = msg.sender;
-
-        // TODO: this contract is being used like a library with storage interactions
-        // TODO: do we need to protect the storage state of this particular contract
-        // TODO: from abuse somehow? I don't think it can affect execution in any way
     }
 
     /**************************************
