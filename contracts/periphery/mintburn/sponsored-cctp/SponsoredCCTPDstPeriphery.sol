@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import { AuthorizedFundedFlow } from "../AuthorizedFundedFlow.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
@@ -19,7 +20,13 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
  */
-contract SponsoredCCTPDstPeriphery is AccessControl, ReentrancyGuard, SponsoredCCTPInterface, ArbitraryEVMFlowExecutor {
+contract SponsoredCCTPDstPeriphery is
+    AccessControl,
+    ReentrancyGuard,
+    SponsoredCCTPInterface,
+    ArbitraryEVMFlowExecutor,
+    AuthorizedFundedFlow
+{
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -97,7 +104,7 @@ contract SponsoredCCTPDstPeriphery is AccessControl, ReentrancyGuard, SponsoredC
         bytes memory message,
         bytes memory attestation,
         bytes memory signature
-    ) external nonReentrant {
+    ) external nonReentrant authorizeFundedFlow {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
         // If the hook data is invalid or the mint recipient is not this contract we cannot process the message
@@ -148,7 +155,7 @@ contract SponsoredCCTPDstPeriphery is AccessControl, ReentrancyGuard, SponsoredC
             // Execute standard HyperCore flow (default) via delegatecall
             _delegateToHyperCore(
                 abi.encodeWithSelector(
-                    HyperCoreFlowExecutor._executeFlow.selector,
+                    HyperCoreFlowExecutor.executeFlow.selector,
                     commonParams,
                     quote.maxUserSlippageBps
                 )

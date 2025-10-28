@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
+import { AuthorizedFundedFlow } from "../AuthorizedFundedFlow.sol";
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
@@ -18,7 +19,13 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is AccessControl, ReentrancyGuard, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is
+    AccessControl,
+    ReentrancyGuard,
+    ILayerZeroComposer,
+    ArbitraryEVMFlowExecutor,
+    AuthorizedFundedFlow
+{
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -72,7 +79,6 @@ contract DstOFTHandler is AccessControl, ReentrancyGuard, ILayerZeroComposer, Ar
         address _baseToken,
         address _multicallHandler
     ) ArbitraryEVMFlowExecutor(_multicallHandler) {
-        // TODO: consider creating a donationBox here.
         baseToken = _baseToken;
         hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
 
@@ -113,7 +119,7 @@ contract DstOFTHandler is AccessControl, ReentrancyGuard, ILayerZeroComposer, Ar
         bytes calldata _message,
         address /* _executor */,
         bytes calldata /* _extraData */
-    ) external payable override nonReentrant {
+    ) external payable override nonReentrant authorizeFundedFlow {
         _requireAuthorizedMessage(_oApp, _message);
 
         // Decode the actual `composeMsg` payload to extract the recipient address
@@ -166,7 +172,7 @@ contract DstOFTHandler is AccessControl, ReentrancyGuard, ILayerZeroComposer, Ar
         } else {
             // Execute standard HyperCore flow (default) via delegatecall
             _delegateToHyperCore(
-                abi.encodeWithSelector(HyperCoreFlowExecutor._executeFlow.selector, commonParams, maxUserSlippageBps)
+                abi.encodeWithSelector(HyperCoreFlowExecutor.executeFlow.selector, commonParams, maxUserSlippageBps)
             );
         }
     }
