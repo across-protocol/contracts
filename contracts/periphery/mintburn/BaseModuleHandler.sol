@@ -6,13 +6,14 @@ import { HyperCoreFlowExecutor } from "./HyperCoreFlowExecutor.sol";
 import { HyperCoreFlowRoles } from "./HyperCoreFlowRoles.sol";
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @dev IMPORTANT. The storage layout of this contract is meant to be in sync with `HyperCoreFlowExeutor` in terms of
     handling `AccessControl` storage slots specifically. The roles set on the handler (inheritor of this contract) are
     meant to be enforceable in the delegatecalls made to `HyperCoreFlowExecutor`
  */
-abstract contract BaseHyperCoreModuleHandler is AccessControl, AuthorizedFundedFlow, HyperCoreFlowRoles {
+abstract contract BaseModuleHandler is AccessControl, ReentrancyGuard, AuthorizedFundedFlow, HyperCoreFlowRoles {
     /// @notice Address of the underlying hypercore module
     address public immutable hyperCoreModule;
 
@@ -25,7 +26,7 @@ abstract contract BaseHyperCoreModuleHandler is AccessControl, AuthorizedFundedF
 
     /// @notice External delegatecall entrypoint to the HyperCore module
     /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
-    function callHyperCoreModule(bytes calldata data) external payable returns (bytes memory) {
+    function callHyperCoreModule(bytes calldata data) external payable nonReentrant returns (bytes memory) {
         return _delegateToHyperCore(data);
     }
 

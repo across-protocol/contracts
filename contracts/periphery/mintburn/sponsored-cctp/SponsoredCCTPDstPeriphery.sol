@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import { BaseHyperCoreModuleHandler } from "../BaseHyperCoreModuleHandler.sol";
+import { BaseModuleHandler } from "../BaseModuleHandler.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
@@ -11,22 +11,16 @@ import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title SponsoredCCTPDstPeriphery
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
- * @dev IMPORTANT. `BaseHyperCoreModuleHandler` should always be the first contract in inheritance chain. Read 
-    `BaseHyperCoreModuleHandler` contract code to learn more.
+ * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
+    `BaseModuleHandler` contract code to learn more.
  */
-contract SponsoredCCTPDstPeriphery is
-    BaseHyperCoreModuleHandler,
-    ReentrancyGuard,
-    SponsoredCCTPInterface,
-    ArbitraryEVMFlowExecutor
-{
+contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
@@ -59,10 +53,7 @@ contract SponsoredCCTPDstPeriphery is
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    )
-        BaseHyperCoreModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
-        ArbitraryEVMFlowExecutor(_multicallHandler)
-    {
+    ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
         baseToken = _baseToken;
         hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
 

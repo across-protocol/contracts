@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import { BaseHyperCoreModuleHandler } from "../BaseHyperCoreModuleHandler.sol";
+import { BaseModuleHandler } from "../BaseModuleHandler.sol";
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
@@ -13,16 +13,15 @@ import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain 
     sender), and forwards authorized params to the `_executeFlow` function
- * @dev IMPORTANT. `BaseHyperCoreModuleHandler` should always be the first contract in inheritance chain. Read 
-    `BaseHyperCoreModuleHandler` contract code to learn more.
+ * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
+    `BaseModuleHandler` contract code to learn more.
  */
-contract DstOFTHandler is BaseHyperCoreModuleHandler, ReentrancyGuard, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -72,10 +71,7 @@ contract DstOFTHandler is BaseHyperCoreModuleHandler, ReentrancyGuard, ILayerZer
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    )
-        BaseHyperCoreModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
-        ArbitraryEVMFlowExecutor(_multicallHandler)
-    {
+    ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
         baseToken = _baseToken;
 
         if (_baseToken != IOFT(_ioft).token()) {
