@@ -376,7 +376,7 @@ abstract contract SpokePool is
      * @dev If target address is not this contract, an external call to the target address is executed.
      * @param message The message containing the target and custom actions to execute.
      */
-    function executeCustomActions(bytes calldata message) external onlyAdmin nonReentrant {
+    function executeCustomActions(bytes calldata message) external onlyAdmin {
         (address target, bytes memory data) = abi.decode(message, (address, bytes));
 
         if (target == address(0)) revert ZeroAddressTarget();
