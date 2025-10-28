@@ -31,7 +31,7 @@ declare_program!(token_messenger_minter_v2);
 /// # Across Sponsored CCTP Source Periphery
 ///
 /// Source chain periphery program for users to interact with to start a sponsored or a non-sponsored flow that allows
-/// custom Accross-supported flows on destination chain. Uses Circle's CCTPv2 as an underlying bridge
+/// custom Across-supported flows on destination chain. Uses Circle's CCTPv2 as an underlying bridge
 
 #[program]
 pub mod sponsored_cctp_src_periphery {
