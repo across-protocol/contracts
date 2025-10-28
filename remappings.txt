@@ -1,0 +1,2 @@
+@openzeppelin/=node_modules/@openzeppelin/
+@openzeppelin/contracts/access/IAccessControl.sol=node_modules/@openzeppelin/contracts-v5/access/IAccessControl.sol

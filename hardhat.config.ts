@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv";
 dotenv.config();
+import fs from "fs";
 import { HardhatUserConfig } from "hardhat/config";
 import { CHAIN_IDs } from "./utils/constants";
 import { getNodeUrl } from "./utils";
@@ -14,6 +15,8 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
+
+import "hardhat-preprocessor";
 
 const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.
@@ -32,6 +35,19 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
     companionNetworks: { l1: isTestnet ? "sepolia" : "mainnet" },
   };
 };
+
+// Hardhat already resolves node_modules paths, so we only need to remap specific contracts where we need to apply a custom remapping rule.
+const customRemappings: [string, string][] = [
+  ["@openzeppelin/contracts/access/IAccessControl.sol", "@openzeppelin/contracts-v5/access/IAccessControl.sol"],
+];
+
+function applyRemappings(line: string): string {
+  // split/join works on plain-string patterns and supports old Node versions
+  for (const [find, rep] of customRemappings) {
+    if (line.includes(find)) line = line.split(find).join(rep);
+  }
+  return line;
+}
 
 // Custom tasks to add to HRE.
 const tasks = [
@@ -356,6 +372,11 @@ const config: HardhatUserConfig = {
   },
   paths: {
     tests: "./test/evm/hardhat",
+  },
+  preprocess: {
+    eachLine: () => ({
+      transform: (line: string) => applyRemappings(line),
+    }),
   },
 };
 
