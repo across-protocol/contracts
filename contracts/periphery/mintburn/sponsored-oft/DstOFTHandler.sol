@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import { AuthorizedFundedFlow } from "../AuthorizedFundedFlow.sol";
+import { BaseHyperCoreModuleHandler } from "../BaseHyperCoreModuleHandler.sol";
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
@@ -12,20 +12,13 @@ import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is
-    AccessControl,
-    ReentrancyGuard,
-    ILayerZeroComposer,
-    ArbitraryEVMFlowExecutor,
-    AuthorizedFundedFlow
-{
+contract DstOFTHandler is BaseHyperCoreModuleHandler, ReentrancyGuard, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -40,9 +33,6 @@ contract DstOFTHandler is
 
     /// @notice Base token associated with this handler. The one we receive from the OFT bridge
     address public immutable baseToken;
-
-    /// @notice In this implementation, `hyperCoreModule` is used like a library with some storage actions
-    address public immutable hyperCoreModule;
 
     /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
     /// bytes32 to support non-EVM src chains
@@ -78,9 +68,11 @@ contract DstOFTHandler is
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    )
+        BaseHyperCoreModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
+        ArbitraryEVMFlowExecutor(_multicallHandler)
+    {
         baseToken = _baseToken;
-        hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
 
         if (_baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
@@ -92,11 +84,7 @@ contract DstOFTHandler is
             revert IOFTEndpointMismatch();
         }
 
-        // TODO: what kind of AccessControl setup do we need here? E.g.:
-        // _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        // _setRoleAdmin(PERMISSIONED_BOT_ROLE, DEFAULT_ADMIN_ROLE);
-        // _setRoleAdmin(FUNDS_SWEEPER_ROLE, DEFAULT_ADMIN_ROLE);
-        // TODO: is `DEFAULT_ADMIN_ROLE` already set + an admin of all roles? Maybe we need to inherit AccessControlWithSensibleDefaults or something
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function setAuthorizedPeriphery(
@@ -218,23 +206,5 @@ contract DstOFTHandler is
         if (authorizedPeriphery != _composeFromBytes32) {
             revert UnauthorizedSrcPeriphery(_srcEid);
         }
-    }
-
-    /// @notice Generic delegatecall entrypoint to the HyperCore module
-    /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
-    function callHyperCoreModule(bytes calldata data) external payable returns (bytes memory) {
-        return _delegateToHyperCore(data);
-    }
-
-    // TODO: consider having this support multiple modules through a mapping(bytes32 => address). Split this functionality
-    // TODO: out into a separate Base contract for both CCTP and OFT to use
-    function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
-        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
-        if (!success) {
-            assembly {
-                revert(add(ret, 32), mload(ret))
-            }
-        }
-        return ret;
     }
 }

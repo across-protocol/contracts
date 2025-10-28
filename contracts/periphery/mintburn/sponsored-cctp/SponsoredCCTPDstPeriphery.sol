@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import { AuthorizedFundedFlow } from "../AuthorizedFundedFlow.sol";
+import { BaseHyperCoreModuleHandler } from "../BaseHyperCoreModuleHandler.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
@@ -21,11 +21,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
  */
 contract SponsoredCCTPDstPeriphery is
-    AccessControl,
+    BaseHyperCoreModuleHandler,
     ReentrancyGuard,
     SponsoredCCTPInterface,
-    ArbitraryEVMFlowExecutor,
-    AuthorizedFundedFlow
+    ArbitraryEVMFlowExecutor
 {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
@@ -35,9 +34,6 @@ contract SponsoredCCTPDstPeriphery is
 
     /// @notice Base token associated with this handler. The one we receive from the CCTP bridge
     address public immutable baseToken;
-
-    /// @notice In this implementation, `hyperCoreModule` is used like a library with some storage actions
-    address public immutable hyperCoreModule;
 
     /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
@@ -62,19 +58,17 @@ contract SponsoredCCTPDstPeriphery is
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) ArbitraryEVMFlowExecutor(_multicallHandler) {
-        // TODO: consider creating a donationBox here.
+    )
+        BaseHyperCoreModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
+        ArbitraryEVMFlowExecutor(_multicallHandler)
+    {
         baseToken = _baseToken;
         hyperCoreModule = address(new HyperCoreFlowExecutor(_donationBox, _baseToken));
 
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
 
-        // TODO: what kind of AccessControl setup do we need here? E.g.:
-        // _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        // _setRoleAdmin(PERMISSIONED_BOT_ROLE, DEFAULT_ADMIN_ROLE);
-        // _setRoleAdmin(FUNDS_SWEEPER_ROLE, DEFAULT_ADMIN_ROLE);
-        // TODO: is `DEFAULT_ADMIN_ROLE` already set + an admin of all roles? Maybe we need to inherit AccessControlWithSensibleDefaults or something
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
@@ -185,23 +179,5 @@ contract SponsoredCCTPDstPeriphery is
                 params.commonParams
             )
         );
-    }
-
-    /// @notice Generic delegatecall entrypoint to the HyperCore module
-    /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
-    function callHyperCoreModule(bytes calldata data) external payable returns (bytes memory) {
-        return _delegateToHyperCore(data);
-    }
-
-    // TODO: consider having this support multiple modules through a mapping(bytes32 => address). Split this functionality
-    // TODO: out into a separate Base contract for both CCTP and OFT to use
-    function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
-        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
-        if (!success) {
-            assembly {
-                revert(add(ret, 32), mload(ret))
-            }
-        }
-        return ret;
     }
 }
