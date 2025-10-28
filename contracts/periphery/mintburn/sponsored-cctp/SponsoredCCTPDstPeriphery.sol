@@ -1,8 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { BaseModuleHandler } from "../BaseModuleHandler.sol";
 import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
@@ -11,17 +10,25 @@ import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 /**
  * @title SponsoredCCTPDstPeriphery
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
+ * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
+    `BaseModuleHandler` contract code to learn more.
  */
-contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    /// @notice Base token associated with this handler. The one we receive from the CCTP bridge
+    address public immutable baseToken;
 
     /// @notice The public key of the signer that was used to sign the quotes.
     address public signer;
@@ -46,16 +53,20 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
+        baseToken = _baseToken;
+
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
         signer = _signer;
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
      * @notice Sets the signer address that is used to validate the signatures of the quotes.
      * @param _signer The new signer address.
      */
-    function setSigner(address _signer) external nonReentrant onlyDefaultAdmin {
+    function setSigner(address _signer) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         signer = _signer;
     }
 
@@ -63,7 +74,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
      * @notice Sets the quote deadline buffer. This is used to prevent the quote from being used after it has expired.
      * @param _quoteDeadlineBuffer The new quote deadline buffer.
      */
-    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyDefaultAdmin {
+    function setQuoteDeadlineBuffer(uint256 _quoteDeadlineBuffer) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
         quoteDeadlineBuffer = _quoteDeadlineBuffer;
     }
 
@@ -78,7 +89,7 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         bytes memory message,
         bytes memory attestation,
         bytes memory signature
-    ) external nonReentrant {
+    ) external nonReentrant authorizeFundedFlow {
         cctpMessageTransmitter.receiveMessage(message, attestation);
 
         // If the hook data is invalid or the mint recipient is not this contract we cannot process the message
@@ -126,8 +137,14 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
                 })
             );
         } else {
-            // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(commonParams, quote.maxUserSlippageBps);
+            // Execute standard HyperCore flow (default) via delegatecall
+            _delegateToHyperCore(
+                abi.encodeWithSelector(
+                    HyperCoreFlowExecutor.executeFlow.selector,
+                    commonParams,
+                    quote.maxUserSlippageBps
+                )
+            );
         }
     }
 
@@ -145,6 +162,13 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
+        _delegateToHyperCore(
+            abi.encodeWithSelector(
+                params.transferToCore
+                    ? HyperCoreFlowExecutor.executeSimpleTransferFlow.selector
+                    : HyperCoreFlowExecutor.fallbackHyperEVMFlow.selector,
+                params.commonParams
+            )
+        );
     }
 }
