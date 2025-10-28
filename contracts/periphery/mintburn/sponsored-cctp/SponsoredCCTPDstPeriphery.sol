@@ -10,7 +10,6 @@ import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -19,6 +18,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @title SponsoredCCTPDstPeriphery
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
+ * @dev IMPORTANT. `BaseHyperCoreModuleHandler` should always be the first contract in inheritance chain. Read 
+    `BaseHyperCoreModuleHandler` contract code to learn more.
  */
 contract SponsoredCCTPDstPeriphery is
     BaseHyperCoreModuleHandler,

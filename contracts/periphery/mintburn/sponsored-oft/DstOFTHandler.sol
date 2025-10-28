@@ -16,8 +16,12 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-/// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
-/// sender), and forwards authorized params to the `_executeFlow` function
+/**
+ * @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain 
+    sender), and forwards authorized params to the `_executeFlow` function
+ * @dev IMPORTANT. `BaseHyperCoreModuleHandler` should always be the first contract in inheritance chain. Read 
+    `BaseHyperCoreModuleHandler` contract code to learn more.
+ */
 contract DstOFTHandler is BaseHyperCoreModuleHandler, ReentrancyGuard, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
