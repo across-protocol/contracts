@@ -5,15 +5,20 @@ import { AuthorizedFundedFlow } from "./AuthorizedFundedFlow.sol";
 import { HyperCoreFlowExecutor } from "./HyperCoreFlowExecutor.sol";
 import { HyperCoreFlowRoles } from "./HyperCoreFlowRoles.sol";
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+// Note: v5 is necessary since v4 does not use ERC-7201.
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable-v5/access/AccessControlUpgradeable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
- * @dev IMPORTANT. The storage layout of this contract is meant to be in sync with `HyperCoreFlowExeutor` in terms of
-    handling `AccessControl` storage slots specifically. The roles set on the handler (inheritor of this contract) are
-    meant to be enforceable in the delegatecalls made to `HyperCoreFlowExecutor`
+ * @notice Base contract for module handlers that use delegatecall to interact with HyperCoreFlowExecutor
+ * @dev Uses AccessControlUpgradeable to ensure storage compatibility with HyperCoreFlowExecutor when using delegatecall
  */
-abstract contract BaseModuleHandler is AccessControl, ReentrancyGuard, AuthorizedFundedFlow, HyperCoreFlowRoles {
+abstract contract BaseModuleHandler is
+    AccessControlUpgradeable,
+    ReentrancyGuard,
+    AuthorizedFundedFlow,
+    HyperCoreFlowRoles
+{
     /// @notice Address of the underlying hypercore module
     address public immutable hyperCoreModule;
 
@@ -24,10 +29,10 @@ abstract contract BaseModuleHandler is AccessControl, ReentrancyGuard, Authorize
         _setRoleAdmin(FUNDS_SWEEPER_ROLE, _roleAdmin);
     }
 
-    /// @notice External delegatecall entrypoint to the HyperCore module
+    /// @notice Fallback function to proxy all calls to the HyperCore module via delegatecall
     /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
-    function callHyperCoreModule(bytes calldata data) external payable nonReentrant returns (bytes memory) {
-        return _delegateToHyperCore(data);
+    fallback() external payable nonReentrant {
+        _delegateToHyperCore(msg.data);
     }
 
     /// @notice Internal delegatecall helper

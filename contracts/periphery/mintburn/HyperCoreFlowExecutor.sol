@@ -11,7 +11,8 @@ import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
 import { CommonFlowParams } from "./Structs.sol";
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+// Note: v5 is necessary since v4 does not use ERC-7201.
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable-v5/access/AccessControlUpgradeable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -21,7 +22,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @dev This contract is designed to work with stablecoins. baseToken and every finalToken should all be stablecoins.
  * @custom:security-contact bugs@across.to
  */
-contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow, HyperCoreFlowRoles {
+contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow, HyperCoreFlowRoles {
     using SafeERC20 for IERC20;
 
     // Common decimals scalars
@@ -193,22 +194,12 @@ contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow, HyperCore
     /// @notice Thrown when we can't bridge some token from HyperEVM to HyperCore
     error UnsafeToBridgeError(address token, uint64 amount);
 
-    /// @notice Thrown when a call did not come as a delegatecall from handler
-    error NotHandler();
-
     /**************************************
      *            MODIFIERS               *
      **************************************/
 
     modifier onlyExistingCoreToken(address evmTokenAddress) {
         _getExistingCoreTokenInfo(evmTokenAddress);
-        _;
-    }
-
-    modifier onlyHandlerDelegatecall() {
-        if (address(this) != handler) {
-            revert NotHandler();
-        }
         _;
     }
 
@@ -333,10 +324,7 @@ contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow, HyperCore
      * @notice External entrypoint to execute flow when called via delegatecall from a handler. Works with params
      * checked by a handler. Params authorization by a handler is enforced via `onlyAuthorizedFlow` modifier
      */
-    function executeFlow(
-        CommonFlowParams memory params,
-        uint256 maxUserSlippageBps
-    ) external onlyHandlerDelegatecall onlyAuthorizedFlow {
+    function executeFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) external onlyAuthorizedFlow {
         if (params.finalToken == baseToken) {
             _executeSimpleTransferFlow(params);
         } else {
@@ -345,14 +333,12 @@ contract HyperCoreFlowExecutor is AccessControl, AuthorizedFundedFlow, HyperCore
     }
 
     /// @notice External entrypoint to execute simple transfer flow (see `executeFlow` comment for details)
-    function executeSimpleTransferFlow(
-        CommonFlowParams memory params
-    ) external onlyHandlerDelegatecall onlyAuthorizedFlow {
+    function executeSimpleTransferFlow(CommonFlowParams memory params) external onlyAuthorizedFlow {
         _executeSimpleTransferFlow(params);
     }
 
     /// @notice External entrypoint to execute fallback evm flow (see `executeFlow` comment for details)
-    function fallbackHyperEVMFlow(CommonFlowParams memory params) external onlyHandlerDelegatecall onlyAuthorizedFlow {
+    function fallbackHyperEVMFlow(CommonFlowParams memory params) external onlyAuthorizedFlow {
         _fallbackHyperEVMFlow(params);
     }
 
