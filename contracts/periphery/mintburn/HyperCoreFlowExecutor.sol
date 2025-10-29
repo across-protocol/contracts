@@ -667,7 +667,11 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
             finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        HyperCoreLib.transferERC20CoreToCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
+        finalTokenInfos[swap.finalToken].swapHandler.transferFundsToUserOnCore(
+            finalCoreTokenInfo.coreIndex,
+            swap.finalRecipient,
+            totalToSend
+        );
         emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSendEVM);
     }
 
