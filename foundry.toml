@@ -10,6 +10,7 @@ libs = ["node_modules", "lib"]
 cache_path = "cache-foundry"
 fs_permissions = [{ access = "read-write", path = "./" }]
 remappings = [
+    "@openzeppelin/contracts/access/IAccessControl.sol=node_modules/@openzeppelin/contracts-v5/access/IAccessControl.sol",
     "@across-protocol/=node_modules/@across-protocol/",
     "@ensdomains/=node_modules/@ensdomains/",
     "@eth-optimism/=node_modules/@eth-optimism/",
@@ -26,11 +27,11 @@ remappings = [
     "base64-sol/=node_modules/base64-sol/",
     "eth-gas-reporter/=node_modules/eth-gas-reporter/",
     "hardhat-deploy/=node_modules/hardhat-deploy/",
-    "hardhat/=node_modules/hardhat/",
-    "@openzeppelin/contracts/access/IAccessControl.sol=node_modules/@openzeppelin/contracts-v5/access/IAccessControl.sol",
+    "hardhat/=node_modules/hardhat/"
 ]
 via_ir = true
 optimizer_runs = 1
+use_literal_content = true
 solc_version = "0.8.24"
 revert_strings = "strip"
 

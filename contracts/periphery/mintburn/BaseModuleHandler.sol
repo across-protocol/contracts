@@ -37,12 +37,27 @@ abstract contract BaseModuleHandler is
 
     /// @notice Internal delegatecall helper
     function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
-        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
-        if (!success) {
-            assembly {
-                revert(add(ret, 32), mload(ret))
+        address implementation = hyperCoreModule;
+        assembly {
+            // Load the pointer to the call data in memory and its length
+            let ptr := add(data, 32)
+            let len := mload(data)
+
+            // Call the implementation using the provided memory buffer
+            // out and outsize are 0 because we don't know the size yet.
+            let result := delegatecall(gas(), implementation, ptr, len, 0, 0)
+
+            // Copy the returned data.
+            returndatacopy(0, 0, returndatasize())
+
+            switch result
+            // delegatecall returns 0 on error.
+            case 0 {
+                revert(0, returndatasize())
+            }
+            default {
+                return(0, returndatasize())
             }
         }
-        return ret;
     }
 }

@@ -37,7 +37,7 @@ contract UpdateAuthorizedPeripheries is Script, DstHandlerConfigurator {
         console.log("Dst handler:", dstHandlerAddress);
 
         vm.startBroadcast(deployerPrivateKey);
-        _configureAuthorizedPeripheries(dstHandlerAddress);
+        _configureAuthorizedPeripheries(dstHandlerAddress, deployerPrivateKey);
         vm.stopBroadcast();
     }
 }
