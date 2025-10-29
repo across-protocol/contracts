@@ -47,3 +47,22 @@ if [ $EXTRACT_ADDRESSES_EXIT -ne 0 ]; then
     echo "extract-addresses encountered an error. Aborting the hook."
     exit $EXTRACT_ADDRESSES_EXIT
 fi
+
+# Check if foundry.toml was modified in staged changes and update remappings.txt if so
+if git diff --cached --name-only --diff-filter=d | grep -q "foundry\.toml"; then
+    echo "Running forge remappings to update remappings.txt ..."
+    forge remappings > remappings.txt
+    FORGE_REMAPPINGS_EXIT=$?
+    if [ $FORGE_REMAPPINGS_EXIT -ne 0 ]; then
+        echo "forge remappings encountered an error. Aborting the hook."
+        exit $FORGE_REMAPPINGS_EXIT
+    fi
+
+    # Stage remappings.txt if it was modified
+    if git diff --name-only remappings.txt | grep -q "remappings.txt"; then
+        git add remappings.txt
+        echo "Updated and staged remappings.txt"
+    fi
+else
+    echo "Skipping forge remappings (foundry.toml not modified)"
+fi
