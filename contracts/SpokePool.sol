@@ -371,12 +371,11 @@ abstract contract SpokePool is
     }
 
     /**
-     * @notice Execute custom actions encoded in the message.
-     * @dev Executes an external call to the target address with the provided data.
-     * @param message The message containing the target and custom actions to execute.
+     * @notice Execute an external call to a target contract.
+     * @param message The message containing the target address and calldata to execute.
      * @return returnData The return data from the executed call.
      */
-    function executeCustomActions(
+    function executeExternalCall(
         bytes calldata message
     ) external onlyAdmin nonReentrant returns (bytes memory returnData) {
         (address target, bytes memory data) = abi.decode(message, (address, bytes));
@@ -388,7 +387,7 @@ abstract contract SpokePool is
         bool success;
         (success, returnData) = target.call(data);
 
-        if (!success) revert CustomActionExecutionFailed();
+        if (!success) revert ExternalCallExecutionFailed();
     }
 
     /**************************************

@@ -8,7 +8,7 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 
-contract SpokePoolCustomActionsTest is Test {
+contract SpokePoolExternalCallTest is Test {
     MockSpokePool spokePool;
     WETH9 mockWETH;
 
@@ -32,7 +32,7 @@ contract SpokePoolCustomActionsTest is Test {
 
     // =============== SUCCESS CASES ===============
 
-    function testExecuteCustomActions_ExternalCall() public {
+    function testExecuteExternalCall_ExternalCall() public {
         // Test calls approve on WETH to test external call
         // Initial allowance should be 0
         assertEq(mockWETH.allowance(address(spokePool), anon), 0);
@@ -42,15 +42,15 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory data = abi.encodeWithSignature("approve(address,uint256)", anon, approvalAmount);
         bytes memory message = abi.encode(address(mockWETH), data);
 
-        // Execute custom action via external call as owner
+        // Execute external call as owner
         vm.prank(owner);
-        spokePool.executeCustomActions(message);
+        spokePool.executeExternalCall(message);
 
         // Verify approval was set
         assertEq(mockWETH.allowance(address(spokePool), anon), approvalAmount);
     }
 
-    function testExecuteCustomActions_ReturnsDataFromExternalCall() public {
+    function testExecuteExternalCall_ReturnsDataFromExternalCall() public {
         // Test that return data is captured from external calls
         // approve() returns a bool, so we should get that back
 
@@ -59,7 +59,7 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory message = abi.encode(address(mockWETH), data);
 
         vm.prank(owner);
-        bytes memory returnData = spokePool.executeCustomActions(message);
+        bytes memory returnData = spokePool.executeExternalCall(message);
 
         // Decode the bool return value
         bool approveSuccess = abi.decode(returnData, (bool));
@@ -68,17 +68,17 @@ contract SpokePoolCustomActionsTest is Test {
 
     // =============== FAILURE CASES ===============
 
-    function testExecuteCustomActions_RevertsWhenNotAdmin() public {
-        // Try to execute custom action as non-owner
+    function testExecuteExternalCall_RevertsWhenNotAdmin() public {
+        // Try to execute external call as non-owner
         bytes memory data = abi.encodeWithSignature("approve(address,uint256)", anon, 100);
         bytes memory message = abi.encode(address(mockWETH), data);
 
         vm.prank(anon);
         vm.expectRevert();
-        spokePool.executeCustomActions(message);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnZeroAddress() public {
+    function testExecuteExternalCall_RevertsOnZeroAddress() public {
         vm.prank(owner);
 
         // Target is zero address, should revert
@@ -86,10 +86,10 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory message = abi.encode(address(0), data);
 
         vm.expectRevert(SpokePoolInterface.ZeroAddressTarget.selector);
-        spokePool.executeCustomActions(message);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnMessageTooShort() public {
+    function testExecuteExternalCall_RevertsOnMessageTooShort() public {
         vm.prank(owner);
 
         // Message with less than 4 bytes (no valid selector)
@@ -97,31 +97,31 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory message = abi.encode(address(spokePool), data);
 
         vm.expectRevert(SpokePoolInterface.MessageTooShort.selector);
-        spokePool.executeCustomActions(message);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnMessageEmpty() public {
+    function testExecuteExternalCall_RevertsOnMessageEmpty() public {
         vm.prank(owner);
 
         bytes memory data = hex"";
         bytes memory message = abi.encode(address(spokePool), data);
 
         vm.expectRevert(SpokePoolInterface.MessageTooShort.selector);
-        spokePool.executeCustomActions(message);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnExternalCallNonExistentFunction() public {
+    function testExecuteExternalCall_RevertsOnExternalCallNonExistentFunction() public {
         vm.prank(owner);
 
         // Try to call a non-existent function
         bytes memory data = abi.encodeWithSignature("nonExistentFunction()");
         bytes memory message = abi.encode(address(spokePool), data);
 
-        vm.expectRevert(SpokePoolInterface.CustomActionExecutionFailed.selector);
-        spokePool.executeCustomActions(message);
+        vm.expectRevert(SpokePoolInterface.ExternalCallExecutionFailed.selector);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnExternalCallFailure() public {
+    function testExecuteExternalCall_RevertsOnExternalCallFailure() public {
         // Verify spokePool has no WETH balance
         assertEq(mockWETH.balanceOf(address(spokePool)), 0);
 
@@ -131,23 +131,23 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory message = abi.encode(address(mockWETH), data);
 
         vm.prank(owner);
-        vm.expectRevert(SpokePoolInterface.CustomActionExecutionFailed.selector);
-        spokePool.executeCustomActions(message);
+        vm.expectRevert(SpokePoolInterface.ExternalCallExecutionFailed.selector);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnInvalidFunctionSelector() public {
+    function testExecuteExternalCall_RevertsOnInvalidFunctionSelector() public {
         vm.prank(owner);
 
         // 4 bytes but invalid selector
         bytes memory data = hex"12345678"; // 4 bytes but doesn't match any function
         bytes memory message = abi.encode(address(spokePool), data);
 
-        vm.expectRevert(SpokePoolInterface.CustomActionExecutionFailed.selector);
-        spokePool.executeCustomActions(message);
+        vm.expectRevert(SpokePoolInterface.ExternalCallExecutionFailed.selector);
+        spokePool.executeExternalCall(message);
     }
 
-    function testExecuteCustomActions_RevertsOnReentrancy() public {
-        // Test that executeCustomActions cannot be used to reenter another nonReentrant function
+    function testExecuteExternalCall_RevertsOnReentrancy() public {
+        // Test that executeExternalCall cannot be used to reenter another nonReentrant function
         // Create a fillRelay call (which has nonReentrant modifier)
         V3SpokePoolInterface.V3RelayData memory relayData = V3SpokePoolInterface.V3RelayData({
             depositor: bytes32(uint256(uint160(anon))),
@@ -173,9 +173,9 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory message = abi.encode(address(spokePool), fillRelayData);
 
         // This should revert because fillRelay has nonReentrant modifier
-        // and we're already inside executeCustomActions which also has nonReentrant
+        // and we're already inside executeExternalCall which also has nonReentrant
         vm.prank(owner);
         vm.expectRevert(); // Should revert with ReentrancyGuard error
-        spokePool.executeCustomActions(message);
+        spokePool.executeExternalCall(message);
     }
 }
