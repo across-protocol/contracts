@@ -2,13 +2,12 @@
 pragma solidity ^0.8.0;
 
 import { Test, console } from "forge-std/Test.sol";
-import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SponsoredCCTPDstPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { IMessageTransmitterV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
-import { DonationBox } from "../../../../contracts/chain-adapters/DonationBox.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
 
 contract MockMessageTransmitter is IMessageTransmitterV2 {
     bool internal shouldSucceed = true;
@@ -62,7 +61,7 @@ contract MockUSDC is Test {
     }
 }
 
-contract SponsoredCCTPDstPeripheryTest is Test {
+contract SponsoredCCTPDstPeripheryTest is HyperCoreMockHelper {
     using AddressToBytes32 for address;
     using Bytes32ToAddress for bytes32;
 
@@ -102,50 +101,8 @@ contract SponsoredCCTPDstPeripheryTest is Test {
         donationBox = new MockDonationBox();
         usdc = new MockUSDC();
 
-        // Mock the HyperCore precompiles required by the HyperCoreFlowExecutor constructor
-
-        // 1. Mock coreUserExists precompile (0x810)
-        address coreUserExistsPrecompile = address(0x0000000000000000000000000000000000000810);
-        vm.mockCall(
-            coreUserExistsPrecompile,
-            bytes(""), // Match any calldata
-            abi.encode(true) // CoreUserExists struct with exists = true
-        );
-
-        // 2. Mock tokenInfo precompile (0x80C)
-        address tokenInfoPrecompile = address(0x000000000000000000000000000000000000080C);
-        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.TokenInfo({
-            name: "Mock USDC",
-            spots: new uint64[](0),
-            deployerTradingFeeShare: 0,
-            deployer: address(0),
-            evmContract: address(usdc),
-            szDecimals: 6,
-            weiDecimals: 6,
-            evmExtraWeiDecimals: 0
-        });
-        vm.mockCall(
-            tokenInfoPrecompile,
-            bytes(""), // Match any calldata
-            abi.encode(tokenInfo)
-        );
-
-        // 3. Mock spot balance precompile (0x801)
-        address spotBalancePrecompile = address(0x0000000000000000000000000000000000000801);
-        HyperCoreLib.SpotBalance memory spotBalance = HyperCoreLib.SpotBalance({ total: 10e8, hold: 0, entryNtl: 0 });
-        vm.mockCall(
-            spotBalancePrecompile,
-            bytes(""), // Match any calldata
-            abi.encode(spotBalance)
-        );
-
-        // 4. Mock core writer precompile (0x3333333333333333333333333333333333333333)
-        address coreWriterPrecompile = address(0x3333333333333333333333333333333333333333);
-        vm.mockCall(
-            coreWriterPrecompile,
-            bytes(""), // Match any calldata
-            abi.encode(true)
-        );
+        // Setup HyperCore precompile mocks using the helper
+        setupDefaultHyperCoreMocks(address(usdc), "Mock USDC", 6);
 
         // Deploy periphery
         vm.startPrank(admin);
