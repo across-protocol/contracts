@@ -31,33 +31,18 @@ abstract contract BaseModuleHandler is
 
     /// @notice Fallback function to proxy all calls to the HyperCore module via delegatecall
     /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
-    fallback() external payable nonReentrant {
-        _delegateToHyperCore(msg.data);
+    fallback(bytes calldata data) external payable nonReentrant returns (bytes memory) {
+        return _delegateToHyperCore(data);
     }
 
     /// @notice Internal delegatecall helper
     function _delegateToHyperCore(bytes memory data) internal returns (bytes memory) {
-        address implementation = hyperCoreModule;
-        assembly {
-            // Load the pointer to the call data in memory and its length
-            let ptr := add(data, 32)
-            let len := mload(data)
-
-            // Call the implementation using the provided memory buffer
-            // out and outsize are 0 because we don't know the size yet.
-            let result := delegatecall(gas(), implementation, ptr, len, 0, 0)
-
-            // Copy the returned data.
-            returndatacopy(0, 0, returndatasize())
-
-            switch result
-            // delegatecall returns 0 on error.
-            case 0 {
-                revert(0, returndatasize())
-            }
-            default {
-                return(0, returndatasize())
+        (bool success, bytes memory ret) = hyperCoreModule.delegatecall(data);
+        if (!success) {
+            assembly {
+                revert(add(ret, 32), mload(ret))
             }
         }
+        return ret;
     }
 }

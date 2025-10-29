@@ -29,13 +29,15 @@ library DebugQuoteSignLib {
                     p.finalRecipient,
                     p.finalToken,
                     p.lzReceiveGasLimit,
-                    p.lzComposeGasLimit
+                    p.lzComposeGasLimit,
+                    p.executionMode,
+                    keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
                 )
             );
     }
 }
 
-// forge script script/mintburn/CreateSponsoredDeposit.sol:CreateSponsoredDeposit --rpc-url arbitrum -vvvv
+// forge script script/mintburn/oft/CreateSponsoredDeposit.sol:CreateSponsoredDeposit --rpc-url arbitrum -vvvv
 contract CreateSponsoredDeposit is Script {
     using AddressToBytes32 for address;
     using SafeERC20 for IERC20;
@@ -48,16 +50,16 @@ contract CreateSponsoredDeposit is Script {
 
         // --- START CONFIG ---
         uint32 srcEid = 30110; // Arbitrum
-        address srcPeriphery = 0x2C4413C70Fd1BDB109d7DFEE7310f4B692Dec381;
+        address srcPeriphery = 0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE;
         address token = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9; // Arbitrum USDT
-        uint256 amountLD = 2 * 10 ** 6 + 5456; // 1 USDT (6 decimals)
-        bytes32 nonce = bytes32(uint256(12351)); // Replace with unique nonce per deposit
+        uint256 amountLD = 1 * 10 ** 6 + 5456; // 1 USDT (6 decimals)
+        bytes32 nonce = bytes32(uint256(12353)); // Replace with unique nonce per deposit
         uint256 deadline = block.timestamp + 1 hours;
         uint256 maxBpsToSponsor = 100; // 1%
         uint256 maxUserSlippageBps = 50; // 0.5%
         uint32 dstEid = 30367; // HyperEVM
-        address destinationHandler = 0x40ad479382Ad2a5c3061487A5094a677B00f6Cb0;
-        address finalRecipient = 0xD1A68de1d242B3b98A7230ba003c19f7cF90e360; // alternative dev wallet
+        address destinationHandler = 0x1425e20d2EcB0bbDEeD8fe1F8252724ED084c1A0;
+        address finalRecipient = 0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D; // alternative dev wallet
         address finalToken = 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb; // USDT0 @ HyperEVM
         uint256 lzReceiveGasLimit = 200_000;
         uint256 lzComposeGasLimit = 300_000;
