@@ -68,6 +68,37 @@ contract SponsoredCCTPDstPeriphery is SponsoredCCTPInterface, HyperCoreFlowExecu
     }
 
     /**
+     * @notice Emmergency function that can be used to recover funds in cases where it is not possible to go
+     * through the normal flow (e.g. HyperEVM <> HyperCore bridge is disabled). Receives the message from
+     * CCTP and then sends it to final receipent
+     * @param message The message that is received from CCTP.
+     * @param attestation The attestation that is received from CCTP.
+     */
+    function emergencyReceiveMessage(
+        bytes memory message,
+        bytes memory attestation
+    ) external nonReentrant onlyDefaultAdmin {
+        cctpMessageTransmitter.receiveMessage(message, attestation);
+
+        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
+            .getSponsoredCCTPQuoteData(message);
+
+        IERC20Metadata(quote.finalToken.toAddress()).safeTransfer(
+            quote.finalRecipient.toAddress(),
+            quote.amount - feeExecuted
+        );
+
+        usedNonces[quote.nonce] = true;
+
+        emit EmergencyReceiveMessage(
+            quote.nonce,
+            quote.finalRecipient.toAddress(),
+            quote.finalToken.toAddress(),
+            quote.amount - feeExecuted
+        );
+    }
+
+    /**
      * @notice Receives a message from CCTP and executes the flow accordingly. This function first calls the
      * CCTP message transmitter to receive the funds before validating the quote and executing the flow.
      * @param message The message that is received from CCTP.

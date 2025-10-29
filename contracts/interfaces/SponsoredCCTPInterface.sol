@@ -30,12 +30,8 @@ interface SponsoredCCTPInterface {
         bytes signature
     );
 
-    event SimpleTansferToCore(
-        address indexed finalToken,
-        address indexed finalRecipient,
-        uint256 finalAmount,
-        uint256 maxAmountToSponsor
-    );
+    // Event when emergency receive is called
+    event EmergencyReceiveMessage(bytes32 nonce, address finalRecipent, address finalToken, uint256 amount);
 
     // Execution modes for the sponsored CCTP flow
     enum ExecutionMode {
