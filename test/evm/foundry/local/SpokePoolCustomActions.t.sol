@@ -65,6 +65,59 @@ contract SpokePoolCustomActionsTest is Test {
         assertEq(mockWETH.allowance(address(spokePool), anon), approvalAmount);
     }
 
+    function testExecuteCustomActions_ReturnsDataFromExternalCall() public {
+        // Test that return data is captured from external calls
+        // approve() returns a bool, so we should get that back
+
+        uint256 approvalAmount = 100;
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)", anon, approvalAmount);
+        bytes memory message = abi.encode(address(mockWETH), data);
+
+        vm.prank(owner);
+        bytes memory returnData = spokePool.executeCustomActions(message);
+
+        // Decode the bool return value
+        bool approveSuccess = abi.decode(returnData, (bool));
+        assertTrue(approveSuccess);
+    }
+
+    function testExecuteCustomActions_ReturnsDataFromDelegatecall() public {
+        // Test that return data is captured from delegatecalls
+        // Call a view function that returns data
+
+        bytes memory data = abi.encodeWithSignature("crossDomainAdmin()");
+        bytes memory message = abi.encode(address(spokePool), data);
+
+        vm.prank(owner);
+        bytes memory returnData = spokePool.executeCustomActions(message);
+
+        // Decode the address return value
+        address returnedAdmin = abi.decode(returnData, (address));
+        assertEq(returnedAdmin, spokePool.crossDomainAdmin());
+        assertEq(returnedAdmin, owner);
+    }
+
+    function testExecuteCustomActions_ReturnsDataFromAllowanceCall() public {
+        // Set up an allowance first
+        uint256 approvalAmount = 500;
+        bytes memory approveData = abi.encodeWithSignature("approve(address,uint256)", anon, approvalAmount);
+        bytes memory approveMessage = abi.encode(address(mockWETH), approveData);
+
+        vm.prank(owner);
+        spokePool.executeCustomActions(approveMessage);
+
+        // Now call allowance() which returns uint256
+        bytes memory allowanceData = abi.encodeWithSignature("allowance(address,address)", address(spokePool), anon);
+        bytes memory allowanceMessage = abi.encode(address(mockWETH), allowanceData);
+
+        vm.prank(owner);
+        bytes memory returnData = spokePool.executeCustomActions(allowanceMessage);
+
+        // Decode the uint256 return value
+        uint256 returnedAllowance = abi.decode(returnData, (uint256));
+        assertEq(returnedAllowance, approvalAmount);
+    }
+
     // =============== FAILURE CASES ===============
 
     function testExecuteCustomActions_RevertsWhenNotAdmin() public {
