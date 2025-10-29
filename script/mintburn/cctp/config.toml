@@ -24,8 +24,9 @@ endpoint_url = "${NODE_URL_998}"
 
 [998.address]
 cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+cctpMessageTransmitter = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
 # USDC
-baseToken = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
+baseToken = "0x2B3370eE501B4a559b57D449569354196457D8Ab"
 
 [998.uint]
 cctpDomainId = 19

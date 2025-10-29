@@ -28,7 +28,7 @@ remappings = [
     "hardhat/=node_modules/hardhat/",
 ]
 via_ir = true
-optimizer_runs = 1
+optimizer_runs = 800
 solc_version = "0.8.24"
 revert_strings = "strip"
 fs_permissions = [{ access = "read", path = "./"}]

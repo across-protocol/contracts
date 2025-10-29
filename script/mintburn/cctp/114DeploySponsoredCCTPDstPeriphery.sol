@@ -19,23 +19,17 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         _loadConfig("./script/mintburn/cctp/config.toml", true);
 
-        address cctpMessageTransmitter = config.get("cctpTokenMessenger").toAddress();
-        uint32 sourceDomain = config.get("cctpDomainId").toUint32();
+        address cctpMessageTransmitter = config.get("cctpMessageTransmitter").toAddress();
 
         vm.startBroadcast(deployerPrivateKey);
 
         DonationBox donationBox = new DonationBox();
         console.log("DonationBox deployed to:", address(donationBox));
 
-        // USDC on HyperEVM Testnet
-        // address baseToken = 0x2B3370eE501B4a559b57D449569354196457D8Ab;
-        // USDC on HyperEVM Mainnet
+        // USDC on HyperEVM
         address baseToken = config.get("baseToken").toAddress();
-        uint32 coreIndex = config.get("coreIndex").toUint32();
-        bool canBeUsedForAccountActivation = config.get("canBeUsedForAccountActivation").toBool();
-        uint64 accountActivationFeeCore = config.get("accountActivationFeeCore").toUint64();
-        uint64 bridgeSafetyBufferCore = config.get("bridgeSafetyBufferCore").toUint64();
 
+        // TODO: use create2 for final deployment
         SponsoredCCTPDstPeriphery sponsoredCCTPDstPeriphery = new SponsoredCCTPDstPeriphery(
             cctpMessageTransmitter,
             deployer,
