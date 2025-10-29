@@ -372,25 +372,21 @@ abstract contract SpokePool is
 
     /**
      * @notice Execute custom actions encoded in the message.
-     * @dev If target address is this contract, a delegatecall to this contract is executed.
-     * @dev If target address is not this contract, an external call to the target address is executed.
+     * @dev Executes an external call to the target address with the provided data.
      * @param message The message containing the target and custom actions to execute.
      * @return returnData The return data from the executed call.
      */
-    function executeCustomActions(bytes calldata message) external onlyAdmin returns (bytes memory returnData) {
+    function executeCustomActions(
+        bytes calldata message
+    ) external onlyAdmin nonReentrant returns (bytes memory returnData) {
         (address target, bytes memory data) = abi.decode(message, (address, bytes));
 
         if (target == address(0)) revert ZeroAddressTarget();
         if (data.length < 4) revert MessageTooShort(); // need at least a selector
 
+        // external call to target
         bool success;
-        if (target == address(this)) {
-            // delegatecall to self
-            (success, returnData) = address(this).delegatecall(data);
-        } else {
-            // external call to target
-            (success, returnData) = target.call(data);
-        }
+        (success, returnData) = target.call(data);
 
         if (!success) revert CustomActionExecutionFailed();
     }

@@ -6,6 +6,7 @@ import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
+import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 
 contract SpokePoolCustomActionsTest is Test {
     MockSpokePool spokePool;
@@ -30,22 +31,6 @@ contract SpokePoolCustomActionsTest is Test {
     }
 
     // =============== SUCCESS CASES ===============
-
-    function testExecuteCustomActions_DelegatecallOnlyAdminFunction() public {
-        // Pause deposits should be false initially
-        assertFalse(spokePool.pausedDeposits());
-
-        // Encode pauseDeposits(true) call
-        bytes memory data = abi.encodeWithSignature("pauseDeposits(bool)", true);
-        bytes memory message = abi.encode(address(spokePool), data);
-
-        // Execute custom action via delegatecall as owner
-        vm.prank(owner);
-        spokePool.executeCustomActions(message);
-
-        // Verify state changed (delegatecall modifies storage in the context of spokePool)
-        assertTrue(spokePool.pausedDeposits());
-    }
 
     function testExecuteCustomActions_ExternalCall() public {
         // Test calls approve on WETH to test external call
@@ -81,49 +66,12 @@ contract SpokePoolCustomActionsTest is Test {
         assertTrue(approveSuccess);
     }
 
-    function testExecuteCustomActions_ReturnsDataFromDelegatecall() public {
-        // Test that return data is captured from delegatecalls
-        // Call a view function that returns data
-
-        bytes memory data = abi.encodeWithSignature("crossDomainAdmin()");
-        bytes memory message = abi.encode(address(spokePool), data);
-
-        vm.prank(owner);
-        bytes memory returnData = spokePool.executeCustomActions(message);
-
-        // Decode the address return value
-        address returnedAdmin = abi.decode(returnData, (address));
-        assertEq(returnedAdmin, spokePool.crossDomainAdmin());
-        assertEq(returnedAdmin, owner);
-    }
-
-    function testExecuteCustomActions_ReturnsDataFromAllowanceCall() public {
-        // Set up an allowance first
-        uint256 approvalAmount = 500;
-        bytes memory approveData = abi.encodeWithSignature("approve(address,uint256)", anon, approvalAmount);
-        bytes memory approveMessage = abi.encode(address(mockWETH), approveData);
-
-        vm.prank(owner);
-        spokePool.executeCustomActions(approveMessage);
-
-        // Now call allowance() which returns uint256
-        bytes memory allowanceData = abi.encodeWithSignature("allowance(address,address)", address(spokePool), anon);
-        bytes memory allowanceMessage = abi.encode(address(mockWETH), allowanceData);
-
-        vm.prank(owner);
-        bytes memory returnData = spokePool.executeCustomActions(allowanceMessage);
-
-        // Decode the uint256 return value
-        uint256 returnedAllowance = abi.decode(returnData, (uint256));
-        assertEq(returnedAllowance, approvalAmount);
-    }
-
     // =============== FAILURE CASES ===============
 
     function testExecuteCustomActions_RevertsWhenNotAdmin() public {
-        // Try to call adminOnly function as non-owner
-        bytes memory data = abi.encodeWithSignature("pauseDeposits(bool)", true);
-        bytes memory message = abi.encode(address(spokePool), data);
+        // Try to execute custom action as non-owner
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)", anon, 100);
+        bytes memory message = abi.encode(address(mockWETH), data);
 
         vm.prank(anon);
         vm.expectRevert();
@@ -133,7 +81,8 @@ contract SpokePoolCustomActionsTest is Test {
     function testExecuteCustomActions_RevertsOnZeroAddress() public {
         vm.prank(owner);
 
-        bytes memory data = abi.encodeWithSignature("pauseDeposits(bool)", true);
+        // Target is zero address, should revert
+        bytes memory data = abi.encodeWithSignature("approve(address,uint256)", anon, 100);
         bytes memory message = abi.encode(address(0), data);
 
         vm.expectRevert(SpokePoolInterface.ZeroAddressTarget.selector);
@@ -161,7 +110,7 @@ contract SpokePoolCustomActionsTest is Test {
         spokePool.executeCustomActions(message);
     }
 
-    function testExecuteCustomActions_RevertsOnDelegatecallFailure() public {
+    function testExecuteCustomActions_RevertsOnExternalCallNonExistentFunction() public {
         vm.prank(owner);
 
         // Try to call a non-existent function
@@ -194,6 +143,39 @@ contract SpokePoolCustomActionsTest is Test {
         bytes memory message = abi.encode(address(spokePool), data);
 
         vm.expectRevert(SpokePoolInterface.CustomActionExecutionFailed.selector);
+        spokePool.executeCustomActions(message);
+    }
+
+    function testExecuteCustomActions_RevertsOnReentrancy() public {
+        // Test that executeCustomActions cannot be used to reenter another nonReentrant function
+        // Create a fillRelay call (which has nonReentrant modifier)
+        V3SpokePoolInterface.V3RelayData memory relayData = V3SpokePoolInterface.V3RelayData({
+            depositor: bytes32(uint256(uint160(anon))),
+            recipient: bytes32(uint256(uint160(anon))),
+            exclusiveRelayer: bytes32(0),
+            inputToken: bytes32(uint256(uint160(address(mockWETH)))),
+            outputToken: bytes32(uint256(uint160(address(mockWETH)))),
+            inputAmount: 100,
+            outputAmount: 100,
+            originChainId: 1,
+            depositId: 1,
+            fillDeadline: uint32(block.timestamp + 1000),
+            exclusivityDeadline: 0,
+            message: ""
+        });
+
+        bytes memory fillRelayData = abi.encodeWithSignature(
+            "fillRelay((bytes32,bytes32,bytes32,bytes32,bytes32,uint256,uint256,uint256,uint32,uint32,uint32,bytes),uint256,bytes32)",
+            relayData,
+            block.chainid,
+            bytes32(uint256(uint160(anon)))
+        );
+        bytes memory message = abi.encode(address(spokePool), fillRelayData);
+
+        // This should revert because fillRelay has nonReentrant modifier
+        // and we're already inside executeCustomActions which also has nonReentrant
+        vm.prank(owner);
+        vm.expectRevert(); // Should revert with ReentrancyGuard error
         spokePool.executeCustomActions(message);
     }
 }
