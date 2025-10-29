@@ -937,6 +937,6 @@ contract HyperCoreFlowExecutor is AccessControl, Lockable {
         lastPullFundsBlock[token] = block.number;
 
         SwapHandler swapHandler = finalTokenInfos[token].swapHandler;
-        swapHandler.transferFundsToUserOnCore(finalTokenInfos[token].assetIndex, msg.sender, amount);
+        swapHandler.transferFundsToUserOnCore(coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 }
