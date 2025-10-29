@@ -31,8 +31,8 @@ abstract contract BaseModuleHandler is
 
     /// @notice Fallback function to proxy all calls to the HyperCore module via delegatecall
     /// @dev Permissioning is enforced by the delegated function's own modifiers (e.g. onlyPermissionedBot)
-    fallback() external payable nonReentrant {
-        _delegateToHyperCore(msg.data);
+    fallback(bytes calldata data) external payable nonReentrant returns (bytes memory) {
+        return _delegateToHyperCore(data);
     }
 
     /// @notice Internal delegatecall helper
