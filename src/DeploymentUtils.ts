@@ -1,9 +1,15 @@
-import * as deployments_ from "../deployments/deployments.json";
+import * as deployments_ from "../broadcast/deployed-addresses.json";
 
-/** Mapping: chainId -> contractName -> { address, blockNumber }. */
-export type Deployments = Record<string, Record<string, { address: string; blockNumber: number }>>;
+/** Mapping: chainId -> contracts ->  contractName -> { address, blockNumber }. */
+export type Deployments = Record<
+  string,
+  {
+    chain_name: string;
+    contracts: Record<string, { address: string; block_number: number; transaction_hash?: string | undefined }>;
+  }
+>;
 
-export const DEPLOYMENTS: Readonly<Deployments> = deployments_ as Deployments;
+export const DEPLOYMENTS: Readonly<Deployments> = deployments_.chains as Deployments;
 
 /**
  * Returns the deployed address of any contract on any network.
@@ -13,7 +19,7 @@ export function getDeployedAddress(
   networkId: number | string,
   throwOnError = true
 ): string | undefined {
-  const address = DEPLOYMENTS[networkId.toString()]?.[contractName]?.address;
+  const address = DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.address;
   if (!address && throwOnError) {
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
@@ -30,9 +36,9 @@ export function getAllDeployedAddresses(
 ): Array<{ chainId: number; address: string; blockNumber: number }> {
   const results: Array<{ chainId: number; address: string; blockNumber: number }> = [];
   Object.keys(DEPLOYMENTS).forEach((_chainId) => {
-    const info = DEPLOYMENTS[_chainId]?.[contractName];
+    const info = DEPLOYMENTS[_chainId]?.contracts[contractName];
     if (info?.address) {
-      results.push({ chainId: Number(_chainId), address: info.address, blockNumber: info.blockNumber });
+      results.push({ chainId: Number(_chainId), address: info.address, blockNumber: info.block_number });
     }
   });
   return results;
@@ -43,7 +49,7 @@ export function getAllDeployedAddresses(
  */
 export function getDeployedBlockNumber(contractName: string, networkId: number): number {
   try {
-    return DEPLOYMENTS[networkId.toString()][contractName].blockNumber;
+    return DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.block_number;
   } catch (_) {
     throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
   }
@@ -56,8 +62,8 @@ export function getContractInfoFromAddress(contractAddress: string): { chainId: 
   const returnValue: { chainId: number; contractName: string }[] = [];
 
   Object.keys(DEPLOYMENTS).forEach((_chainId) =>
-    Object.keys(DEPLOYMENTS[_chainId]).forEach((_contractName) => {
-      if (DEPLOYMENTS[_chainId][_contractName].address === contractAddress)
+    Object.keys(DEPLOYMENTS[_chainId]?.contracts).forEach((_contractName) => {
+      if (DEPLOYMENTS[_chainId]?.contracts[_contractName]?.address === contractAddress)
         returnValue.push({ chainId: Number(_chainId), contractName: _contractName });
     })
   );
