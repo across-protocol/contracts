@@ -38,9 +38,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     /// @notice All operations performed in this contract are relative to this baseToken
     address public immutable baseToken;
 
-    /// @notice Handler that's delegatecalling into this contract
-    address public immutable handler;
-
     /// @notice A struct used for storing state of a swap flow that has been initialized, but not yet finished
     struct SwapFlowState {
         address finalRecipient;
@@ -231,7 +228,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         // Set immutable variables only
         donationBox = DonationBox(_donationBox);
         baseToken = _baseToken;
-        handler = msg.sender;
     }
 
     /**************************************
