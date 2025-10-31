@@ -2,12 +2,14 @@
 pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
+import { Config } from "forge-std/Config.sol";
+import { Constants } from "../../utils/Constants.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { ComposeMsgCodec } from "../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalLZOptions.sol";
-import { IOFT, SendParam, MessagingFee } from "../../../contracts/interfaces/IOFT.sol";
+import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../contracts/interfaces/IOFT.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -36,109 +38,259 @@ library DebugQuoteSignLib {
             );
     }
 }
+/*
+forge script script/mintburn/oft/CreateSponsoredDeposit.sol:CreateSponsoredDeposit \
+  --sig "run(string,uint256,uint256)" usdt0 999 1234569 \
+  --rpc-url arbitrum -vvvv --broadcast
 
-// forge script script/mintburn/oft/CreateSponsoredDeposit.sol:CreateSponsoredDeposit --rpc-url arbitrum -vvvv
-contract CreateSponsoredDeposit is Script {
+Run script with:
+
+forge script script/mintburn/oft/CreateSponsoredDeposit.sol:CreateSponsoredDeposit \
+  --sig "run(string,uint256,uint256)" usdt0 <DST_CHAIN_ID> <AMOUNT_LD> \
+  --rpc-url <SRC_RPC_ALIAS> -vvvv --broadcast
+
+or, explicitly provide src chain id:
+
+forge script script/mintburn/oft/CreateSponsoredDeposit.sol:CreateSponsoredDeposit \
+  --sig "run(string,uint256,uint256,uint256)" usdt0 <SRC_CHAIN_ID> <DST_CHAIN_ID> <AMOUNT_LD> \
+  --rpc-url <SRC_RPC_ALIAS> -vvvv --broadcast
+*/
+contract CreateSponsoredDeposit is Script, Config, Constants {
     using AddressToBytes32 for address;
     using SafeERC20 for IERC20;
     using MinimalLZOptions for bytes;
 
-    function run() external {
-        string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-        address deployer = vm.addr(deployerPrivateKey); // dev wallet
+    struct ChainConfig {
+        address srcPeriphery;
+        address token;
+        address dstHandler;
+        address finalToken;
+        uint32 srcEid;
+        uint32 dstEid;
+        uint256 srcForkId;
+    }
 
-        // --- START CONFIG ---
-        uint32 srcEid = 30110; // Arbitrum
-        address srcPeriphery = 0x1235Ac1010FeeC8ae22744f323416cBBE37feDbE;
-        address token = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9; // Arbitrum USDT
-        uint256 amountLD = 1 * 10 ** 6 + 5456; // 1 USDT (6 decimals)
-        bytes32 nonce = bytes32(uint256(12353)); // Replace with unique nonce per deposit
-        uint256 deadline = block.timestamp + 1 hours;
-        uint256 maxBpsToSponsor = 100; // 1%
-        uint256 maxUserSlippageBps = 50; // 0.5%
-        uint32 dstEid = 30367; // HyperEVM
-        address destinationHandler = 0x1425e20d2EcB0bbDEeD8fe1F8252724ED084c1A0;
-        address finalRecipient = 0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D; // alternative dev wallet
-        address finalToken = 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb; // USDT0 @ HyperEVM
-        uint256 lzReceiveGasLimit = 200_000;
-        uint256 lzComposeGasLimit = 300_000;
-        address refundRecipient = deployer; // dev wallet
-        // --- END CONFIG ---
+    struct FlowParams {
+        uint256 amountLD;
+        uint256 deadline;
+        uint256 maxBpsToSponsor;
+        uint256 maxUserSlippageBps;
+        uint256 lzReceiveGasLimit;
+        uint256 lzComposeGasLimit;
+        address refundRecipient;
+        address finalRecipient;
+        bytes32 nonce;
+    }
 
-        SponsoredOFTSrcPeriphery srcPeripheryContract = SponsoredOFTSrcPeriphery(srcPeriphery);
-        require(srcPeripheryContract.signer() == deployer, "quote signer mismatch");
+    function run(string memory tokenKey, uint256 dstChainId, uint256 amountLD) external {
+        // Derive srcChainId from the current RPC
+        _run(tokenKey, block.chainid, dstChainId, amountLD);
+    }
 
-        SignedQuoteParams memory signedParams = SignedQuoteParams({
-            srcEid: srcEid,
-            dstEid: dstEid,
-            destinationHandler: destinationHandler.toBytes32(),
-            amountLD: amountLD,
-            nonce: nonce,
-            deadline: deadline,
-            maxBpsToSponsor: maxBpsToSponsor,
-            finalRecipient: finalRecipient.toBytes32(),
-            finalToken: finalToken.toBytes32(),
-            lzReceiveGasLimit: lzReceiveGasLimit,
-            lzComposeGasLimit: lzComposeGasLimit,
-            executionMode: 0, // DirectToCore mode
-            actionData: "" // Empty for DirectToCore mode
-        });
+    function run(string memory tokenKey, uint256 srcChainId, uint256 dstChainId, uint256 amountLD) external {
+        _run(tokenKey, srcChainId, dstChainId, amountLD);
+    }
 
-        UnsignedQuoteParams memory unsignedParams = UnsignedQuoteParams({
-            refundRecipient: refundRecipient,
-            maxUserSlippageBps: maxUserSlippageBps
-        });
+    function _run(string memory tokenKey, uint256 srcChainId, uint256 dstChainId, uint256 amountLD) internal {
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
+        address deployer = vm.addr(deployerPrivateKey);
 
-        Quote memory quote = Quote({ signedParams: signedParams, unsignedParams: unsignedParams });
+        _loadTokenConfig(tokenKey);
 
-        bytes32 quoteDigest = DebugQuoteSignLib.hashMemory(signedParams);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(deployerPrivateKey, quoteDigest);
-        bytes memory signature = abi.encodePacked(r, s, v);
+        ChainConfig memory cfg = _resolveChainConfig(srcChainId, dstChainId);
+        FlowParams memory fp = _buildDefaultFlowParams(amountLD, deployer);
 
-        MessagingFee memory fee = _quoteMessagingFee(srcPeripheryContract, quote);
+        SponsoredOFTSrcPeriphery periphery = SponsoredOFTSrcPeriphery(cfg.srcPeriphery);
+        require(periphery.signer() == deployer, "quote signer mismatch");
 
-        vm.startBroadcast(deployerPrivateKey);
+        (Quote memory quote, bytes32 digest) = _buildQuote(cfg, fp);
+        bytes memory sig = _signQuote(digest, deployerPrivateKey);
 
-        IERC20(token).forceApprove(srcPeriphery, amountLD);
-
-        srcPeripheryContract.deposit{ value: fee.nativeFee }(quote, signature);
-
-        vm.stopBroadcast();
+        _broadcastFlow(periphery, cfg, fp, quote, sig, deployerPrivateKey);
     }
 
     function _quoteMessagingFee(
         SponsoredOFTSrcPeriphery srcPeripheryContract,
         Quote memory quote
     ) internal view returns (MessagingFee memory) {
-        address oftMessenger = srcPeripheryContract.OFT_MESSENGER();
-
-        bytes memory composeMsg = ComposeMsgCodec._encode(
-            quote.signedParams.nonce,
-            quote.signedParams.deadline,
-            quote.signedParams.maxBpsToSponsor,
-            quote.unsignedParams.maxUserSlippageBps,
-            quote.signedParams.finalRecipient,
-            quote.signedParams.finalToken,
-            quote.signedParams.executionMode,
-            quote.signedParams.actionData
+        bytes memory composeMsg = _encodeComposeMsg(quote);
+        bytes memory extraOptions = _buildLZOptions(
+            quote.signedParams.lzReceiveGasLimit,
+            quote.signedParams.lzComposeGasLimit
         );
+        SendParam memory sendParam = _buildSendParam(
+            quote,
+            composeMsg,
+            extraOptions,
+            srcPeripheryContract.EMPTY_OFT_COMMAND()
+        );
+        return IOFT(srcPeripheryContract.OFT_MESSENGER()).quoteSend(sendParam, false);
+    }
 
-        bytes memory extraOptions = MinimalLZOptions
-            .newOptions()
-            .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
-            .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
+    function _encodeComposeMsg(Quote memory quote) internal pure returns (bytes memory) {
+        return
+            ComposeMsgCodec._encode(
+                quote.signedParams.nonce,
+                quote.signedParams.deadline,
+                quote.signedParams.maxBpsToSponsor,
+                quote.unsignedParams.maxUserSlippageBps,
+                quote.signedParams.finalRecipient,
+                quote.signedParams.finalToken,
+                quote.signedParams.executionMode,
+                quote.signedParams.actionData
+            );
+    }
 
-        SendParam memory sendParam = SendParam({
-            dstEid: quote.signedParams.dstEid,
-            to: quote.signedParams.destinationHandler,
-            amountLD: quote.signedParams.amountLD,
-            minAmountLD: quote.signedParams.amountLD,
-            extraOptions: extraOptions,
-            composeMsg: composeMsg,
-            oftCmd: srcPeripheryContract.EMPTY_OFT_COMMAND()
+    function _buildLZOptions(uint256 receiveGas, uint256 composeGas) internal pure returns (bytes memory) {
+        return
+            MinimalLZOptions
+                .newOptions()
+                .addExecutorLzReceiveOption(uint128(receiveGas), uint128(0))
+                .addExecutorLzComposeOption(uint16(0), uint128(composeGas), uint128(0));
+    }
+
+    function _buildSendParam(
+        Quote memory quote,
+        bytes memory composeMsg,
+        bytes memory extraOptions,
+        bytes memory oftCmd
+    ) internal pure returns (SendParam memory) {
+        return
+            SendParam({
+                dstEid: quote.signedParams.dstEid,
+                to: quote.signedParams.destinationHandler,
+                amountLD: quote.signedParams.amountLD,
+                minAmountLD: quote.signedParams.amountLD,
+                extraOptions: extraOptions,
+                composeMsg: composeMsg,
+                oftCmd: oftCmd
+            });
+    }
+
+    function _resolveChainConfig(uint256 srcChainId, uint256 dstChainId) internal returns (ChainConfig memory cfg) {
+        uint256 srcForkId = forkOf[srcChainId];
+        if (srcForkId != 0) {
+            vm.selectFork(srcForkId);
+        } else {
+            require(block.chainid == srcChainId, "select src RPC or add endpoint_url");
+        }
+
+        address srcPeriphery = config.get(srcChainId, "src_periphery").toAddress();
+        address token = config.get(srcChainId, "token").toAddress();
+        address dstHandler = config.get(dstChainId, "dst_handler").toAddress();
+        address finalToken = config.get(dstChainId, "token").toAddress();
+        require(srcPeriphery != address(0) && token != address(0), "src config missing");
+        require(dstHandler != address(0) && finalToken != address(0), "dst config missing");
+
+        uint32 srcEid = _resolveEid(srcChainId);
+        uint32 dstEid = _resolveEid(dstChainId);
+
+        if (srcForkId != 0) {
+            vm.selectFork(srcForkId);
+        } else {
+            require(block.chainid == srcChainId, "not on src RPC after EID resolution");
+        }
+
+        cfg = ChainConfig({
+            srcPeriphery: srcPeriphery,
+            token: token,
+            dstHandler: dstHandler,
+            finalToken: finalToken,
+            srcEid: srcEid,
+            dstEid: dstEid,
+            srcForkId: srcForkId
+        });
+    }
+
+    function _buildDefaultFlowParams(uint256 amountLD, address deployer) internal view returns (FlowParams memory fp) {
+        fp.amountLD = amountLD;
+        fp.deadline = block.timestamp + 1 hours;
+        fp.maxBpsToSponsor = 100;
+        fp.maxUserSlippageBps = 50;
+        fp.lzReceiveGasLimit = 200_000;
+        fp.lzComposeGasLimit = 300_000;
+        fp.refundRecipient = deployer;
+        fp.finalRecipient = deployer;
+        fp.nonce = bytes32(uint256(block.timestamp));
+    }
+
+    function _buildQuote(
+        ChainConfig memory cfg,
+        FlowParams memory fp
+    ) internal pure returns (Quote memory quote, bytes32 digest) {
+        SignedQuoteParams memory sp = SignedQuoteParams({
+            srcEid: cfg.srcEid,
+            dstEid: cfg.dstEid,
+            destinationHandler: cfg.dstHandler.toBytes32(),
+            amountLD: fp.amountLD,
+            nonce: fp.nonce,
+            deadline: fp.deadline,
+            maxBpsToSponsor: fp.maxBpsToSponsor,
+            finalRecipient: fp.finalRecipient.toBytes32(),
+            finalToken: cfg.finalToken.toBytes32(),
+            lzReceiveGasLimit: fp.lzReceiveGasLimit,
+            lzComposeGasLimit: fp.lzComposeGasLimit,
+            executionMode: 0,
+            actionData: ""
         });
 
-        return IOFT(oftMessenger).quoteSend(sendParam, false);
+        UnsignedQuoteParams memory usp = UnsignedQuoteParams({
+            refundRecipient: fp.refundRecipient,
+            maxUserSlippageBps: fp.maxUserSlippageBps
+        });
+
+        quote = Quote({ signedParams: sp, unsignedParams: usp });
+        digest = DebugQuoteSignLib.hashMemory(sp);
+    }
+
+    function _signQuote(bytes32 digest, uint256 deployerPrivateKey) internal pure returns (bytes memory sig) {
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(deployerPrivateKey, digest);
+        sig = abi.encodePacked(r, s, v);
+    }
+
+    function _broadcastFlow(
+        SponsoredOFTSrcPeriphery periphery,
+        ChainConfig memory cfg,
+        FlowParams memory fp,
+        Quote memory quote,
+        bytes memory sig,
+        uint256 deployerPrivateKey
+    ) internal {
+        MessagingFee memory fee = _quoteMessagingFee(periphery, quote);
+
+        vm.startBroadcast(deployerPrivateKey);
+        IERC20(cfg.token).forceApprove(cfg.srcPeriphery, fp.amountLD);
+        periphery.deposit{ value: fee.nativeFee }(quote, sig);
+        vm.stopBroadcast();
+    }
+
+    function _resolveEid(uint256 chainId) internal returns (uint32) {
+        // If we're already on this chain, read directly
+        if (block.chainid == chainId) {
+            address ioftCurrent = config.get(chainId, "oft_messenger").toAddress();
+            if (ioftCurrent != address(0)) {
+                return IOAppCore(ioftCurrent).endpoint().eid();
+            }
+        }
+
+        // If a fork exists, switch to it and read
+        uint256 forkId = forkOf[chainId];
+        if (forkId != 0) {
+            vm.selectFork(forkId);
+            address ioft = config.get(chainId, "oft_messenger").toAddress();
+            require(ioft != address(0), "oft messenger missing");
+            return IOAppCore(ioft).endpoint().eid();
+        }
+
+        // Fallback to constants if no fork; ensures robustness
+        uint256 eid = getOftEid(chainId);
+        require(eid != 0, "eid unavailable");
+        return uint32(eid);
+    }
+
+    function _loadTokenConfig(string memory tokenKey) internal {
+        require(bytes(tokenKey).length != 0, "token key required");
+        string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenKey, ".toml"));
+        _loadConfigAndForks(configPath, true);
     }
 }
