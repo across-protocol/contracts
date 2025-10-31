@@ -584,6 +584,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 quoteNonces[finalized],
                 limitOrderOuts[finalized],
                 finalCoreTokenInfo,
+                finalTokenInfo.swapHandler,
                 availableBalance
             );
             if (!success) {
@@ -637,6 +638,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         bytes32 quoteNonce,
         uint64 limitOrderOut,
         CoreTokenInfo memory finalCoreTokenInfo,
+        SwapHandler swapHandler,
         uint64 availableBalance
     ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
         SwapFlowState storage swap = _getMainStorage().swaps[quoteNonce];
@@ -667,7 +669,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        HyperCoreLib.transferERC20CoreToCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
+        swapHandler.transferFundsToUserOnCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
         emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSendEVM);
     }
 
@@ -938,6 +940,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         $.lastPullFundsBlock[token] = block.number;
 
         SwapHandler swapHandler = $.finalTokenInfos[token].swapHandler;
-        swapHandler.transferFundsToUserOnCore($.finalTokenInfos[token].assetIndex, msg.sender, amount);
+        swapHandler.transferFundsToUserOnCore($.coreTokenInfos[token].coreIndex, msg.sender, amount);
     }
 }
