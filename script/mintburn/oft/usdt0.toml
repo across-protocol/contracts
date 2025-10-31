@@ -9,4 +9,4 @@ endpoint_url = "${NODE_URL_999}"
 [999.address]
 token = "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb"
 oft_messenger = "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98"
-dst_handler = "0x1425e20d2EcB0bbDEeD8fe1F8252724ED084c1A0"
+dst_handler = "0x2beF20D17a17f6903017d27D1A35CC9Dc72b0888"

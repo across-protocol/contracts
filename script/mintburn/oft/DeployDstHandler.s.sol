@@ -65,8 +65,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigu
 
         // TODO: right, Foundry can't work with precompiles at all :(
         // _configureCoreTokenInfo(tokenName, address(dstOFTHandler));
-        // TODO: can make optional for now too. Less TXs to send (or switch to fast blocks here lol)
-        // _configureAuthorizedPeripheries(address(dstOFTHandler), deployerPrivateKey);
+        _configureAuthorizedPeripheries(address(dstOFTHandler), deployerPrivateKey);
     }
 
     /// @notice Returns a default zero address if not present
