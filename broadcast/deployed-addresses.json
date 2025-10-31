@@ -534,19 +534,19 @@
           "block_number": 15142204
         },
         "DonationBox": {
-          "address": "0xc154fd5654ea7ff153d20ff9b8a874dd953a986f",
-          "transaction_hash": "0x1926929d2f103a99fcac7f6f47c9d785571991bd7d780a59cd204c9f86229789",
-          "block_number": 17746720
+          "address": "0xdfdcc8a89ca177b04dcc0bcafa6cfdef08cd57c5",
+          "transaction_hash": "0x408950b32edf3e0628f45dc0313dade57cb64153739eeb0088bd89a2728ae36b",
+          "block_number": 17914653
         },
         "PermissionedMulticallHandler": {
-          "address": "0x54225259a16caea40646481f3dc930e014d41430",
-          "transaction_hash": "0x75f458b0439a18f684a1ae5f2d9c3ca171307d3b99c4bd367a271a666aba6a4d",
-          "block_number": 17746720
+          "address": "0x65e2ca8f82f190b0c3e4310e97a6c94639a1c31d",
+          "transaction_hash": "0x11f18407716325cd19d4a2beda2b483047ce05c32fe8f001d87c3cc3ff8b0c38",
+          "block_number": 17914653
         },
         "DstOFTHandler": {
-          "address": "0x1425e20d2ecb0bbdeed8fe1f8252724ed084c1a0",
-          "transaction_hash": "0xcbcfcaf5d25a378d3d48e262487d10dd24d8ca23f17fe2d0e4bc528fda693347",
-          "block_number": 17746720
+          "address": "0x2bef20d17a17f6903017d27d1a35cc9dc72b0888",
+          "transaction_hash": "0xbe736824e03d7ec955baca7d62c386e6496f598bc079e22ca00e1363219d1724",
+          "block_number": 17914653
         }
       }
     },

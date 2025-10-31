@@ -616,19 +616,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### DonationBox
 
-- **DonationBox**: `0xc154fd5654ea7ff153d20ff9b8a874dd953a986f`
+- **DonationBox**: `0xdfdcc8a89ca177b04dcc0bcafa6cfdef08cd57c5`
 
-  - Transaction Hash: `0x1926929d2f103a99fcac7f6f47c9d785571991bd7d780a59cd204c9f86229789`
-  - Block Number: `17746720`
+  - Transaction Hash: `0x408950b32edf3e0628f45dc0313dade57cb64153739eeb0088bd89a2728ae36b`
+  - Block Number: `17914653`
 
-- **PermissionedMulticallHandler**: `0x54225259a16caea40646481f3dc930e014d41430`
+- **PermissionedMulticallHandler**: `0x65e2ca8f82f190b0c3e4310e97a6c94639a1c31d`
 
-  - Transaction Hash: `0x75f458b0439a18f684a1ae5f2d9c3ca171307d3b99c4bd367a271a666aba6a4d`
-  - Block Number: `17746720`
+  - Transaction Hash: `0x11f18407716325cd19d4a2beda2b483047ce05c32fe8f001d87c3cc3ff8b0c38`
+  - Block Number: `17914653`
 
-- **DstOFTHandler**: `0x1425e20d2ecb0bbdeed8fe1f8252724ed084c1a0`
-  - Transaction Hash: `0xcbcfcaf5d25a378d3d48e262487d10dd24d8ca23f17fe2d0e4bc528fda693347`
-  - Block Number: `17746720`
+- **DstOFTHandler**: `0x2bef20d17a17f6903017d27d1a35cc9dc72b0888`
+  - Transaction Hash: `0xbe736824e03d7ec955baca7d62c386e6496f598bc079e22ca00e1363219d1724`
+  - Block Number: `17914653`
 
 ### Lisk (Chain ID: 1135)
 
