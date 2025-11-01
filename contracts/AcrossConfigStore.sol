@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol";
+import "@openzeppelin/contracts-v4/access/Ownable.sol";
 
 /**
  * @title Allows admin to set and update configuration settings for full contract system. These settings are designed

@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Permit } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Permit.sol";
+import { Address } from "@openzeppelin/contracts-v4/utils/Address.sol";
+import { MultiCaller } from "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
+import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
+import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
 import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";

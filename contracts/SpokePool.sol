@@ -15,12 +15,12 @@ import "./libraries/AddressConverters.sol";
 import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool
@@ -1704,6 +1704,88 @@ abstract contract SpokePool is
         // If relay token is wrappedNativeToken then unwrap and send native token.
         // Stack too deep.
         if (relayData.outputToken.toAddress() == address(wrappedNativeToken)) {
+            // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
+            // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
+            // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
+            // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
+            // need to unwrap it to native token before sending to the user.
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else {
+            // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
+            else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
+        }
+
+        bytes memory updatedMessage = relayExecution.updatedMessage;
+        if (updatedMessage.length > 0 && recipientToSend.isContract()) {
+            AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
+                outputToken,
+                amountToSend,
+                msg.sender,
+                updatedMessage
+            );
+        }
+
+        _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
+        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
+    }
+
+    /**
+     * @notice Emits the FilledRelay event for a completed relay fill.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param relayer The relayer address.
+     * @param fillType The type of fill being executed.
+     */
+    function _emitFilledRelayEvent(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bytes32 relayer,
+        FillType fillType
+    ) private {
+        emit FilledRelay(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            relayExecution.repaymentChainId,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayer,
+            relayData.depositor,
+            relayData.recipient,
+            _hashNonEmptyMessage(relayData.message),
+            V3RelayExecutionEventInfo({
+                updatedRecipient: relayExecution.updatedRecipient,
+                updatedMessageHash: _hashNonEmptyMessage(relayExecution.updatedMessage),
+                updatedOutputAmount: relayExecution.updatedOutputAmount,
+                fillType: fillType
+            })
+        );
+    }
+
+    /**
+     * @notice Transfers tokens to the recipient based on the relay execution parameters.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param isSlowFill Whether this is a slow fill execution.
+     */
+    function _transferTokensToRecipient(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bool isSlowFill
+    ) private {
+        address outputToken = relayData.outputToken.toAddress();
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
+        address recipientToSend = relayExecution.updatedRecipient.toAddress();
+
+        // If relay token is wrappedNativeToken then unwrap and send native token.
+        if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
