@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../external/uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
+import "contracts/external/uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
