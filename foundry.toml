@@ -16,7 +16,6 @@ remappings = [
     "@matterlabs/=node_modules/@matterlabs/",
     "@openzeppelin/=node_modules/@openzeppelin/",
     "@scroll-tech/=node_modules/@scroll-tech/",
-    "@uma/=contracts/external/uma/",
     "@uniswap/=node_modules/@uniswap/",
     "arb-bridge-eth/=node_modules/arb-bridge-eth/",
     "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
@@ -28,9 +27,11 @@ remappings = [
 ]
 via_ir = true
 optimizer_runs = 800
-auto_detect_solc = true
+solc_version = "0.8.25"
 revert_strings = "strip"
 fs_permissions = [{ access = "read", path = "./"}]
+
+solc = "0.8.25"
 evm_version = "prague"
 
 [profile.zksync.zksync]

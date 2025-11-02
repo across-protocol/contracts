@@ -14,7 +14,6 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
-import "hardhat-preprocessor";
 
 const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.
@@ -33,17 +32,6 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
     companionNetworks: { l1: isTestnet ? "sepolia" : "mainnet" },
   };
 };
-
-// Hardhat already resolves node_modules paths, so we only need to remap specific contracts where we need to apply a custom remapping rule.
-const customRemappings: [string, string][] = [["@uma", "contracts/external/uma/"]];
-
-function applyRemappings(line: string): string {
-  // split/join works on plain-string patterns and supports old Node versions
-  for (const [find, rep] of customRemappings) {
-    if (line.includes(find)) line = line.split(find).join(rep);
-  }
-  return line;
-}
 
 // Custom tasks to add to HRE.
 const tasks = [
@@ -101,27 +89,10 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
 
 const config: HardhatUserConfig = {
   solidity: {
-    compilers: [
-      DEFAULT_CONTRACT_COMPILER_SETTINGS,
-      {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        version: "0.8.16",
-      },
-    ],
+    compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Linea_SpokePool.sol": {
-        ...LARGE_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        // version: "0.8.19",
-      },
-      // "contracts/SpokePoolVerifier.sol": {
-      //   ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-      //   // NOTE: Linea only supports 0.8.19.
-      //   // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-      //   version: "0.8.19",
-      // },
+      "contracts/Linea_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -133,10 +104,6 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/external/uma/**/*.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        version: "0.8.16",
-      },
     },
   },
   zksolc: {
@@ -397,11 +364,6 @@ const config: HardhatUserConfig = {
   paths: {
     tests: "./test/evm/hardhat",
   },
-  // preprocess: {
-  //   eachLine: () => ({
-  //     transform: (line: string) => applyRemappings(line),
-  //   }),
-  // },
 };
 
 export default config;

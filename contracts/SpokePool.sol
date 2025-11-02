@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.25;
+pragma solidity ^0.8.18;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
