@@ -56,7 +56,10 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.24";
+const solcVersion = "0.8.30";
+
+// Hardhat 2.20.0 doesn't support prague yet, so we use cancun instead (need to upgrade to v3 to use prague)
+const evmVersion = isTest ? "cancun" : "prague";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -65,6 +68,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -73,6 +77,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
+    evmVersion,
     // Only strip revert strings if not testing or in ci.
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
@@ -83,6 +88,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
