@@ -58,8 +58,8 @@ const compileZk = process.env.COMPILE_ZK === "true";
 
 const solcVersion = "0.8.30";
 
-// Hardhat 2.20.0 doesn't support prague yet, so we use cancun instead (need to upgrade to v3 to use prague)
-const evmVersion = isTest ? "cancun" : "prague";
+// Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
+const evmVersion = isTest ? "paris" : "prague";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.

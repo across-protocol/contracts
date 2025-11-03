@@ -115,7 +115,7 @@
     "ethereum-waffle": "3.4.0",
     "ethereumjs-util": "^7.1.4",
     "ethers": "5.7.2",
-    "hardhat": "^2.20.0",
+    "hardhat": "^2.14.0",
     "hardhat-deploy": "^0.11.12",
     "hardhat-gas-reporter": "^1.0.8",
     "husky": "^4.2.3",

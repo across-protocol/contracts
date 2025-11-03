@@ -10331,7 +10331,7 @@ hardhat-watcher@^2.1.1:
   dependencies:
     chokidar "^3.4.3"
 
-hardhat@^2.20.0:
+hardhat@^2.14.0:
   version "2.26.5"
   resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.26.5.tgz#831073e3bc9d034fbb997078aa819f38538d2d7f"
   integrity sha512-TvFKUPGRaoemeVpnKsXt5I+kVCNrzP2cLwyNUveu0JKf2Q0lzh6LTgVBsWyYPlXAwBzyUQ6fsL98UgyF/QdOfA==
