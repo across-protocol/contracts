@@ -9,9 +9,9 @@ import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IO
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge

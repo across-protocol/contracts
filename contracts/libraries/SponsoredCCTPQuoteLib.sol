@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { SignatureChecker } from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
 
 import { SponsoredCCTPInterface } from "../interfaces/SponsoredCCTPInterface.sol";
 import { BytesLib } from "../external/libraries/BytesLib.sol";

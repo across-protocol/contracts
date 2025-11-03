@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-v4/utils/Address.sol";
 import "./interfaces/V3SpokePoolInterface.sol";
 import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
 

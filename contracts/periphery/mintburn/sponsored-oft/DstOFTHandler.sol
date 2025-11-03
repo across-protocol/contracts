@@ -11,8 +11,8 @@ import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
 /// sender), and forwards authorized params to the `_executeFlow` function

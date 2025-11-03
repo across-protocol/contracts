@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.11",
+  "version": "4.1.12",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -8,7 +8,7 @@
     "url": "git+https://github.com/across-protocol/across-smart-contracts-v2.git"
   },
   "engines": {
-    "node": ">=16.18.0"
+    "node": ">=22.18.0"
   },
   "files": [
     "/contracts/**/*.sol",
@@ -59,9 +59,10 @@
     "@ethersproject/abstract-provider": "5.7.0",
     "@ethersproject/abstract-signer": "5.7.0",
     "@ethersproject/bignumber": "5.7.0",
-    "@openzeppelin/contracts": "4.9.6",
-    "@openzeppelin/contracts-upgradeable": "4.9.6",
-    "@openzeppelin/contracts-v5": "npm:@openzeppelin/contracts@5",
+    "@openzeppelin/contracts": "5.5.0",
+    "@openzeppelin/contracts-upgradeable": "5.5.0",
+    "@openzeppelin/contracts-upgradeable-v4": "npm:@openzeppelin/contracts-upgradeable@4.9.6",
+    "@openzeppelin/contracts-v4": "npm:@openzeppelin/contracts@4.9.6",
     "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@safe-global/protocol-kit": "^6.1.1",
     "@scroll-tech/contracts": "^0.1.0",
@@ -74,7 +75,6 @@
     "@types/yargs": "^17.0.33",
     "@uma/common": "^2.37.3",
     "@uma/contracts-node": "^0.4.17",
-    "@uma/core": "^2.61.0",
     "axios": "^1.7.4",
     "bs58": "^6.0.0",
     "prettier-plugin-rust": "^0.1.9",

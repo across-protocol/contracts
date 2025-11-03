@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./external/interfaces/IPolygonZkEVMBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Define interface for PolygonZkEVM Bridge message receiver
@@ -18,11 +18,7 @@ interface IBridgeMessageReceiver {
      * @param originNetwork Polygon zkEVM's internal network id of source chain.
      * @param data Data to be received and executed on this contract.
      */
-    function onMessageReceived(
-        address originAddress,
-        uint32 originNetwork,
-        bytes memory data
-    ) external payable;
+    function onMessageReceived(address originAddress, uint32 originNetwork, bytes memory data) external payable;
 }
 
 /**

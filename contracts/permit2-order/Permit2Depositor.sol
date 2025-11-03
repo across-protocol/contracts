@@ -5,9 +5,9 @@ import "./Permit2OrderLib.sol";
 import "../external/interfaces/IPermit2.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
@@ -33,11 +33,7 @@ contract Permit2Depositor {
      * @param _permit2 Permit2 contract
      * @param _quoteBeforeDeadline quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
      */
-    constructor(
-        V3SpokePoolInterface _spokePool,
-        IPermit2 _permit2,
-        uint256 _quoteBeforeDeadline
-    ) {
+    constructor(V3SpokePoolInterface _spokePool, IPermit2 _permit2, uint256 _quoteBeforeDeadline) {
         SPOKE_POOL = _spokePool;
         PERMIT2 = _permit2;
         QUOTE_BEFORE_DEADLINE = _quoteBeforeDeadline;

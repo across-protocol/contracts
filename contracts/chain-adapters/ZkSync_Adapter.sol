@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 interface ZkSyncInterface {
     // _contractL2: L2 address of the contract to be called.
@@ -171,11 +171,7 @@ contract ZkSync_Adapter is AdapterInterface {
      * @param _l2RefundAddress address that recieves excess gas refunds on L2.
      * @param _maxTxGasPrice The maximum effective gas price any transaction sent to this adapter may have.
      */
-    constructor(
-        WETH9Interface _l1Weth,
-        address _l2RefundAddress,
-        uint256 _maxTxGasPrice
-    ) {
+    constructor(WETH9Interface _l1Weth, address _l2RefundAddress, uint256 _maxTxGasPrice) {
         l1Weth = _l1Weth;
         l2RefundAddress = _l2RefundAddress;
         MAX_TX_GASPRICE = _maxTxGasPrice;

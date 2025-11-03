@@ -15,12 +15,12 @@ import "./libraries/AddressConverters.sol";
 import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool

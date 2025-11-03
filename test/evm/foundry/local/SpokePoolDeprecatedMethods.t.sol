@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 
 // Deprecated interface used to show that we can still call deposit() on the spoke, which should route internally to the
 // colliding function interface selector on depositDeprecated_5947912356 enabling legacy deposits to still work without
@@ -33,7 +33,7 @@ contract SpokePoolOverloadedDeprecatedMethodsTest is Test {
     address owner;
 
     uint256 destinationChainId = 10;
-    uint256 depositAmount = 0.5 * (10**18);
+    uint256 depositAmount = 0.5 * (10 ** 18);
 
     function setUp() public {
         mockWETH = new WETH9();

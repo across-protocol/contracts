@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 

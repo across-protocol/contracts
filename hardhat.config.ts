@@ -96,29 +96,7 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Linea_SpokePool.sol": {
-        ...LARGE_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-        settings: {
-          optimizer: { enabled: true, runs: 50 },
-          viaIR: true,
-          debug: { revertStrings: isTest ? "debug" : "strip" },
-        },
-      },
-      "contracts/SpokePoolVerifier.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-        settings: {
-          optimizer: { enabled: true, runs: 1000000 },
-          viaIR: true,
-          // Only strip revert strings if not testing or in ci.
-          debug: { revertStrings: isTest ? "debug" : "strip" },
-        },
-      },
+      "contracts/Linea_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -145,6 +123,7 @@ const config: HardhatUserConfig = {
         "SpokePoolVerifier",
         "ZkSync_SpokePool",
         "Lens_SpokePool",
+        "AcrossEventEmitter",
       ],
     },
   },
@@ -247,11 +226,43 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
+        network: "blast",
+        chainId: CHAIN_IDs.BLAST,
+        urls: {
+          apiURL: "https://blastscan.io/api",
+          browserURL: "https://blastscan.io",
+        },
+      },
+      {
         network: "hyperevm",
         chainId: CHAIN_IDs.HYPEREVM,
         urls: {
           apiURL: "https://hyperevmscan.io/api",
           browserURL: "https://hyperevmscan.io",
+        },
+      },
+      {
+        network: "linea",
+        chainId: CHAIN_IDs.LINEA,
+        urls: {
+          apiURL: "https://lineascan.build/api",
+          browserURL: "https://lineascan.build",
+        },
+      },
+      {
+        network: "scroll",
+        chainId: CHAIN_IDs.SCROLL,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://scrollscan.com",
+        },
+      },
+      {
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
+        urls: {
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
         },
       },
       {
@@ -329,6 +340,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.redstone.xyz/api",
           browserURL: "https://explorer.redstone.xyz",
+        },
+      },
+      {
+        network: "plasma",
+        chainId: 9745,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmascan.to",
         },
       },
       {

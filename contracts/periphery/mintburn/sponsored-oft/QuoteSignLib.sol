@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
 import { SignedQuoteParams } from "./Structs.sol";
 
 /// @notice Lib to check the signature for `SignedQuoteParams`.

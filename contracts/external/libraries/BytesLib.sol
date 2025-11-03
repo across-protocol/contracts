@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Bytes } from "@openzeppelin/contracts-v5/utils/Bytes.sol";
+import { Bytes } from "@openzeppelin/contracts/utils/Bytes.sol";
 
 library BytesLib {
     /**************************************

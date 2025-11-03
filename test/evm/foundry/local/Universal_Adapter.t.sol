@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { Universal_Adapter, HubPoolStore } from "../../../../contracts/chain-adapters/Universal_Adapter.sol";
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";

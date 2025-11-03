@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { MulticallHandler } from "./MulticallHandler.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControl } from "@openzeppelin/contracts-v4/access/AccessControl.sol";
 
 /**
  * @title PermissionedMulticallHandler
