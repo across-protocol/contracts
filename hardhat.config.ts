@@ -56,7 +56,7 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.23";
+const solcVersion = "0.8.24";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -92,18 +92,7 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Linea_SpokePool.sol": {
-        ...LARGE_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
-      "contracts/SpokePoolVerifier.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
+      "contracts/Linea_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,

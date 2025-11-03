@@ -7,8 +7,8 @@ import "../libraries/CircleCCTPAdapter.sol";
 
 import { IMessageService, ITokenBridge, IUSDCBridge } from "../external/interfaces/LineaInterfaces.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to Linea.
@@ -60,12 +60,7 @@ contract Linea_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         if (l1Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(to, amount);
         }

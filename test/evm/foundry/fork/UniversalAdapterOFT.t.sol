@@ -8,8 +8,8 @@ import { Universal_Adapter } from "../../../../contracts/chain-adapters/Universa
 import { AdapterStore, MessengerTypes } from "../../../../contracts/AdapterStore.sol";
 import { HubPoolStore } from "../../../../contracts/chain-adapters/utilities/HubPoolStore.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // A mock contract to simulate the HubPool's delegatecall to the Universal_Adapter
@@ -20,12 +20,7 @@ contract MockHub {
         adapter = _adapter;
     }
 
-    function callRelayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable {
+    function callRelayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
         // This simulates HubPool's delegatecall to the adapter
         (bool success, ) = adapter.delegatecall(
             abi.encodeWithSignature("relayTokens(address,address,uint256,address)", l1Token, l2Token, amount, to)
@@ -60,7 +55,7 @@ contract UniversalAdapterOFTTest is Test {
 
     // Test parameters
     uint256 forkId;
-    uint256 constant SEND_AMOUNT = 1 * 10**6; // 1 USDT (6 decimals)
+    uint256 constant SEND_AMOUNT = 1 * 10 ** 6; // 1 USDT (6 decimals)
     uint256 constant ETH_FUNDING = 0.1 ether;
     uint32 constant DST_EID = 30110; // Arbitrum EID
     address constant RECIPIENT = 0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D; // dev wallet

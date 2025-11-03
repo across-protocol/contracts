@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { Polygon_Adapter } from "../contracts/chain-adapters/Polygon_Adapter.sol";
 import { Constants } from "./utils/Constants.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";

@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { HubPool } from "../contracts/HubPool.sol";
 import { LpTokenFactory } from "../contracts/LpTokenFactory.sol";
-import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
+import { FinderInterface } from "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { Constants } from "./utils/Constants.sol";
 

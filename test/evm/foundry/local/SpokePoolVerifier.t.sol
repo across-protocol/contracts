@@ -7,8 +7,8 @@ import { SpokePoolVerifier } from "../../../../contracts/SpokePoolVerifier.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 interface EthereumSpokePoolOnlyAddressInterface {
@@ -41,8 +41,8 @@ contract SpokePoolVerifierTest is Test {
     address owner;
 
     uint256 destinationChainId = 10;
-    uint256 mintAmount = 10**22;
-    uint256 depositAmount = 5 * (10**18);
+    uint256 mintAmount = 10 ** 22;
+    uint256 depositAmount = 5 * (10 ** 18);
     uint32 fillDeadlineBuffer = 7200;
 
     function setUp() public {
