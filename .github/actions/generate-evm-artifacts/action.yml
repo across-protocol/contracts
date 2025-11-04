@@ -13,6 +13,8 @@ runs:
       uses: ./.github/actions/setup-node-if-needed
       with:
         node_version: ${{ inputs.node_version }}
+    - name: Enable Corepack
+      run: sudo corepack enable
     - name: Install packages
       shell: bash
       run: yarn install --frozen-lockfile
