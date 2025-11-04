@@ -73,13 +73,13 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Enable Corepack
-        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: Install Cargo toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -109,13 +109,13 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Enable Corepack
-        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: Install packages
         run: yarn install --immutable
       - name: Download SVM artifacts
@@ -136,13 +136,13 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Enable Corepack
-        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: Install packages
         run: yarn install --immutable
       - name: Setup Anchor & Solana
@@ -192,13 +192,13 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Enable Corepack
-        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: Install packages
         run: yarn install --immutable
       - name: Download SVM artifacts
@@ -217,13 +217,13 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Enable Corepack
-        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: Install packages
         run: yarn install --immutable
       - name: Install Foundry
