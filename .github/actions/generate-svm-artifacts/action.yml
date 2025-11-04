@@ -16,8 +16,6 @@ runs:
       uses: ./.github/actions/setup-node-if-needed
       with:
         node_version: ${{ inputs.node_version }}
-    - name: Enable Corepack
-      run: sudo corepack enable
     - name: Setup Anchor & Solana
       uses: ./.github/actions/setup-solana-anchor
       with:
