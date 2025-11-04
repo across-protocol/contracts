@@ -17,7 +17,7 @@ import { ethers } from "ethers";
 import { TokenMessengerMinterV2 } from "../../target/types/token_messenger_minter_v2";
 import { MessageTransmitterV2 } from "../../src/svm/assets/message_transmitter_v2";
 import { program, provider, connection, initializeState, owner, createQuoteSigner } from "./SponsoredCctpSrc.common";
-import { SponsoredCCTPQuote, HookData } from "./SponsoredCctpSrc.types";
+import { SponsoredCCTPQuote, HookData, SponsoredCCTPQuoteSVM } from "./SponsoredCctpSrc.types";
 import {
   findProgramAddress,
   sendTransactionWithExistingLookupTable,
@@ -114,51 +114,34 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     return Buffer.from(ethers.utils.arrayify(signatureHexString));
   };
 
+  const encodeQuoteForSVM = (quote: SponsoredCCTPQuote): SponsoredCCTPQuoteSVM => {
+    return {
+      sourceDomain: quote.sourceDomain,
+      destinationDomain: quote.destinationDomain,
+      mintRecipient: new PublicKey(ethers.utils.arrayify(quote.mintRecipient)),
+      amount: new BN(quote.amount.toString()),
+      burnToken: new PublicKey(ethers.utils.arrayify(quote.burnToken)),
+      destinationCaller: new PublicKey(ethers.utils.arrayify(quote.destinationCaller)),
+      maxFee: new BN(quote.maxFee.toString()),
+      minFinalityThreshold: quote.minFinalityThreshold,
+      nonce: Array.from(ethers.utils.arrayify(quote.nonce)),
+      deadline: new BN(quote.deadline.toString()),
+      maxBpsToSponsor: new BN(quote.maxBpsToSponsor.toString()),
+      maxUserSlippageBps: new BN(quote.maxUserSlippageBps.toString()),
+      finalRecipient: new PublicKey(ethers.utils.arrayify(quote.finalRecipient)),
+      finalToken: new PublicKey(ethers.utils.arrayify(quote.finalToken)),
+      executionMode: quote.executionMode,
+      actionData: Buffer.from(ethers.utils.arrayify(quote.actionData)),
+    };
+  };
+
   const getEncodedQuoteWithSignature = (
     signer: ethers.Wallet,
     quoteData: SponsoredCCTPQuote
-  ): { quote: Buffer; signature: Buffer } => {
-    const encodedHexString = ethers.utils.defaultAbiCoder.encode(
-      [
-        "uint32",
-        "uint32",
-        "bytes32",
-        "uint256",
-        "bytes32",
-        "bytes32",
-        "uint256",
-        "uint32",
-        "bytes32",
-        "uint256",
-        "uint256",
-        "uint256",
-        "bytes32",
-        "bytes32",
-        "uint8",
-        "bytes",
-      ],
-      [
-        quoteData.sourceDomain,
-        quoteData.destinationDomain,
-        quoteData.mintRecipient,
-        quoteData.amount,
-        quoteData.burnToken,
-        quoteData.destinationCaller,
-        quoteData.maxFee,
-        quoteData.minFinalityThreshold,
-        quoteData.nonce,
-        quoteData.deadline,
-        quoteData.maxBpsToSponsor,
-        quoteData.maxUserSlippageBps,
-        quoteData.finalRecipient,
-        quoteData.finalToken,
-        quoteData.executionMode,
-        quoteData.actionData,
-      ]
-    );
-    const encodedQuote = Buffer.from(ethers.utils.arrayify(encodedHexString));
+  ): { quote: SponsoredCCTPQuoteSVM; signature: number[] } => {
+    const encodedQuote = encodeQuoteForSVM(quoteData);
 
-    const signature = signSponsoredCCTPQuote(signer, quoteData);
+    const signature = Array.from(signSponsoredCCTPQuote(signer, quoteData));
 
     return { quote: encodedQuote, signature };
   };
@@ -605,7 +588,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const usedNonce = getUsedNonce(nonce);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
     const executionMode = 1; // ArbitraryActionsToCore
-    const actionDataLenth = 128; // Larger actionData would exceed the transaction message size limits on Solana.
+    const actionDataLenth = 444; // Larger actionData would exceed the transaction message size limits on Solana.
     const actionData = crypto.randomBytes(actionDataLenth);
 
     const quoteData: SponsoredCCTPQuote = {

@@ -11,7 +11,7 @@ use crate::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
     },
-    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, NONCE_END, NONCE_START},
+    utils::{get_current_time, validate_signature, SponsoredCCTPQuote, QUOTE_SIGNATURE_LENGTH},
 };
 
 #[event_cpi]
@@ -31,10 +31,7 @@ pub struct DepositForBurn<'info> {
         init, // Enforces that a given quote nonce can be used only once during the quote deadline.
         payer = signer,
         space = UsedNonce::DISCRIMINATOR.len() + UsedNonce::INIT_SPACE,
-        seeds = [
-            b"used_nonce",
-            &params.quote[NONCE_START..NONCE_END], // Safe to use as all quote params up to nonce are fixed length.
-        ],
+        seeds = [b"used_nonce", params.quote.nonce.as_ref()],
         bump
     )]
     pub used_nonce: Account<'info, UsedNonce>,
@@ -49,9 +46,7 @@ pub struct DepositForBurn<'info> {
 
     #[account(
         mut,
-        constraint =
-            burn_token.key() == SponsoredCCTPQuote::new(&params.quote)?.burn_token()?
-            @ SvmError::InvalidBurnToken,
+        address = params.quote.burn_token @ SvmError::InvalidBurnToken,
         mint::token_program = token_program,
     )]
     pub burn_token: InterfaceAccount<'info, Mint>,
@@ -103,8 +98,8 @@ pub struct DepositForBurn<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct DepositForBurnParams {
-    pub quote: Vec<u8>,
-    pub signature: Vec<u8>,
+    pub quote: SponsoredCCTPQuote,
+    pub signature: [u8; QUOTE_SIGNATURE_LENGTH],
 }
 
 pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnParams) -> Result<()> {
@@ -113,27 +108,18 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
 
     let state = &ctx.accounts.state;
 
-    let quote = SponsoredCCTPQuote::new(&params.quote)?;
+    let quote = &params.quote;
     validate_signature(state.signer, &quote, &params.signature)?;
 
-    let quote_deadline = quote.deadline()?;
-    if quote_deadline < get_current_time(state)? {
+    if quote.deadline < get_current_time(state)? {
         return err!(CommonError::InvalidDeadline);
     }
-    if quote.source_domain()? != state.source_domain {
+    if quote.source_domain != state.source_domain {
         return err!(CommonError::InvalidSourceDomain);
     }
 
-    let amount = quote.amount()?;
-    let destination_domain = quote.destination_domain()?;
-    let mint_recipient = quote.mint_recipient()?;
-    let destination_caller = quote.destination_caller()?;
-    let max_fee = quote.max_fee()?;
-    let min_finality_threshold = quote.min_finality_threshold()?;
-    let hook_data = quote.hook_data()?;
-
     // Record the quote deadline as it should be safe to close the used_nonce account after this time.
-    ctx.accounts.used_nonce.quote_deadline = quote_deadline;
+    ctx.accounts.used_nonce.quote_deadline = quote.deadline;
 
     // Invoke CCTPv2 to bridge user tokens. This burns user tokens directly by inheriting the signer privileges. The
     // side effect is that the user signer address will show up as messageSender on the destination chain, not the
@@ -163,25 +149,25 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
     let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
     let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, rent_fund_seeds);
     let cpi_params = DepositForBurnWithHookParams {
-        amount,
-        destination_domain,
-        mint_recipient,
-        destination_caller,
-        max_fee,
-        min_finality_threshold,
-        hook_data,
+        amount: quote.amount,
+        destination_domain: quote.destination_domain,
+        mint_recipient: quote.mint_recipient,
+        destination_caller: quote.destination_caller,
+        max_fee: quote.max_fee,
+        min_finality_threshold: quote.min_finality_threshold,
+        hook_data: quote.encode_hook_data(),
     };
     token_messenger_minter_v2::cpi::deposit_for_burn_with_hook(cpi_ctx, cpi_params)?;
 
     emit_cpi!(SponsoredDepositForBurn {
-        quote_nonce: quote.nonce()?.to_vec(),
+        quote_nonce: quote.nonce.to_vec(),
         origin_sender: ctx.accounts.signer.key(),
-        final_recipient: quote.final_recipient()?,
-        quote_deadline,
-        max_bps_to_sponsor: quote.max_bps_to_sponsor()?,
-        max_user_slippage_bps: quote.max_user_slippage_bps()?,
-        final_token: quote.final_token()?,
-        signature: params.signature.clone(),
+        final_recipient: quote.final_recipient,
+        quote_deadline: quote.deadline,
+        max_bps_to_sponsor: quote.max_bps_to_sponsor,
+        max_user_slippage_bps: quote.max_user_slippage_bps,
+        final_token: quote.final_token,
+        signature: params.signature.to_vec(),
     });
 
     emit_cpi!(CreatedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });
@@ -287,7 +273,7 @@ pub struct GetUsedNonceCloseInfo<'info> {
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct UsedNonceCloseInfo {
-    pub can_close_after: i64,
+    pub can_close_after: u64,
     pub can_close_now: bool,
 }
 

@@ -1,10 +1,10 @@
 import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { randomBytes } from "crypto";
 import { ethers } from "ethers";
 import { evmAddressToPublicKey } from "../../src/svm/web3-v1";
 import { SponsoredCctpSrcPeriphery } from "../../target/types/sponsored_cctp_src_periphery";
+import { SponsoredCCTPQuote, SponsoredCCTPQuoteSVM } from "./SponsoredCctpSrc.types";
 
 export const provider = anchor.AnchorProvider.env();
 export const program = anchor.workspace.SponsoredCctpSrcPeriphery as Program<SponsoredCctpSrcPeriphery>;

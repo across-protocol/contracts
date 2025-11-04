@@ -17,11 +17,11 @@ pub struct SponsoredDepositForBurn {
     pub quote_nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
     pub origin_sender: Pubkey,
     pub final_recipient: Pubkey,
-    pub quote_deadline: i64,
+    pub quote_deadline: u64,
     pub max_bps_to_sponsor: u64,
     pub max_user_slippage_bps: u64,
     pub final_token: Pubkey,
-    pub signature: Vec<u8>,
+    pub signature: Vec<u8>, // Signature is fixed 65 bytes, but it is more readable in logs expressed as encoded data blob.
 }
 
 #[event]

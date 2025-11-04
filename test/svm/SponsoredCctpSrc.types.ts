@@ -1,4 +1,6 @@
 import { ethers } from "ethers";
+import type { BN } from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
 
 export interface SponsoredCCTPQuote {
   sourceDomain: number; // uint32
@@ -17,6 +19,25 @@ export interface SponsoredCCTPQuote {
   finalToken: string; // bytes32
   executionMode: number; // uint8
   actionData: ethers.BytesLike; // bytes
+}
+
+export interface SponsoredCCTPQuoteSVM {
+  sourceDomain: number; // u32
+  destinationDomain: number; // u32
+  mintRecipient: PublicKey; // Pubkey
+  amount: BN; // u64
+  burnToken: PublicKey; // Pubkey
+  destinationCaller: PublicKey; // Pubkey
+  maxFee: BN; // u64
+  minFinalityThreshold: number; // u32
+  nonce: number[]; // [u8; 32]
+  deadline: BN; // u64
+  maxBpsToSponsor: BN; // u64
+  maxUserSlippageBps: BN; // u64
+  finalRecipient: PublicKey; // Pubkey
+  finalToken: PublicKey; // Pubkey
+  executionMode: number; // u8
+  actionData: Buffer; // Vec<u8>
 }
 
 export interface HookData {
