@@ -89,7 +89,7 @@ jobs:
       - name: Cache Cargo dependencies
         uses: Swatinem/rust-cache@v2
       - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+        run: yarn install --immutable
       - name: Lint js
         shell: bash
         run: yarn lint-js
@@ -117,7 +117,7 @@ jobs:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+        run: yarn install --immutable
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -144,7 +144,7 @@ jobs:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+        run: yarn install --immutable
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
@@ -200,7 +200,7 @@ jobs:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+        run: yarn install --immutable
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -225,7 +225,7 @@ jobs:
           node-version: "${{ env.NODE_VERSION }}"
           cache: yarn
       - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
+        run: yarn install --immutable
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
       - name: Install forge dependencies
