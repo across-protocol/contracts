@@ -12,6 +12,8 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Enable Corepack
+      run: sudo corepack enable
     - name: "Use Node ${{ inputs.node_version }}"
       uses: ./.github/actions/setup-node-if-needed
       with:
