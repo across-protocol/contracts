@@ -73,6 +73,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
@@ -107,6 +109,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
@@ -132,6 +136,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
@@ -186,6 +192,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
@@ -209,6 +217,8 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+      - name: Enable Corepack
+        run: sudo corepack enable
       - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:

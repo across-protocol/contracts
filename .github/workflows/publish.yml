@@ -31,6 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Enable Corepack
+        run: sudo corepack enable
+
       # Note we set an `id` called `release`. We'll use that later...
       - name: Validate and extract release information
         id: release
@@ -117,6 +120,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Enable Corepack
+        run: sudo corepack enable
+
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
         with:
@@ -139,6 +145,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Enable Corepack
+        run: sudo corepack enable
 
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
