@@ -1689,7 +1689,7 @@ abstract contract SpokePool is
         V3RelayData memory relayData,
         bytes32 relayer,
         FillType fillType
-    ) private {
+    ) internal {
         emit FilledRelay(
             relayData.inputToken,
             relayData.outputToken,
@@ -1724,7 +1724,7 @@ abstract contract SpokePool is
         V3RelayExecutionParams memory relayExecution,
         V3RelayData memory relayData,
         bool isSlowFill
-    ) private {
+    ) internal {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
