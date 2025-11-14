@@ -202,6 +202,9 @@ abstract contract SpokePool is
     event PausedFills(bool isPaused);
     event SetOFTMessenger(address indexed token, address indexed messenger);
 
+    /// @notice Emitted when the call to external contract is executed, triggered by an admin action
+    event AdminExternalCallExecuted(address indexed target, bytes data);
+
     error OFTTokenMismatch();
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
@@ -388,6 +391,7 @@ abstract contract SpokePool is
         (success, returnData) = target.call(data);
 
         if (!success) revert ExternalCallExecutionFailed();
+        emit AdminExternalCallExecuted(target, data);
     }
 
     /**************************************
