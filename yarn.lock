@@ -10761,6 +10761,10 @@ husky@^4.2.3:
     slash "^3.0.0"
     which-pm-runs "^1.0.0"
 
+hyper-evm-lib@hyperliquid-dev/hyper-evm-lib:
+  version "0.0.0"
+  resolved "https://codeload.github.com/hyperliquid-dev/hyper-evm-lib/tar.gz/ee5e5e8593e9265fca35719e4efaa4fd3092123e"
+
 iconv-lite@0.4.24:
   version "0.4.24"
   resolved "https://registry.yarnpkg.com/iconv-lite/-/iconv-lite-0.4.24.tgz#2022b4b25fbddc21d2f524974a474aafe733908b"
