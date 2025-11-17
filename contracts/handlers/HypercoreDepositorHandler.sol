@@ -4,59 +4,56 @@ pragma solidity ^0.8.0;
 import "../interfaces/SpokePoolMessageHandler.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-v4/access/AccessControl.sol";
 import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 import { CoreWriterLib, PrecompileLib } from "@hyper-evm-lib/src/CoreWriterLib.sol";
 import { HLConversions } from "@hyper-evm-lib/src/common/HLConversions.sol";
 
 /**
- * @title Bespoke version of the MulticallHandler contract that allows whitelisted relayers to deposit Across Deposit
- * output tokens into Hypercore (from HyperEVM) on behalf of the end user.
- * @dev This contract is permissioned to only be callable by those with the DEPOSITOR.
+ * @title Allows caller to bridge tokens from HyperEVM to Hypercore and send them to the end user's account
+ * on Hypercore.
  * @dev This contract should only be deployed on HyperEVM.
+ * @dev This contract can replace a MulticallHandler on HyperEVM if the intent only wants to deposit tokens into
+ * Hypercore and bypass the other complex arbitrary calldata logic.
+ * @dev This contract can also be called by the MulticallHandler to deposit tokens into Hypercore.
  */
-contract HypercoreDepositorHandler is AcrossMessageHandler, ReentrancyGuard, AccessControl {
+contract HypercoreDepositorHandler is AcrossMessageHandler, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    // Role identifier for tx.origins that can ultimately call this contract.
-    bytes32 public constant HYPERCORE_DEPOSITOR_ROLE = keccak256("DEPOSITOR");
-
-    // Errors
-    error NotRelayer();
-
     /**
-     * @notice Constructor that grants the DEFAULT_ADMIN_ROLE and the DEPOSITOR roles.
-     * @param admin Address that will have DEFAULT_ADMIN_ROLE
-     * @param initialDepositors List of initial depositors to grant the DEPOSITOR role to.
+     * @notice Bridges tokens from HyperEVM to Hypercore and sends them to the end user's account on Hypercore.
+     * @param token The address of the token to deposit.
+     * @param amount The amount of tokens on HyperEVM to deposit.
+     * @param user The address of the user on Hypercore to send the tokens to.
      */
-    constructor(address admin, address[] memory initialDepositors) {
-        _grantRole(HYPERCORE_DEPOSITOR_ROLE, msg.sender);
-        for (uint256 i = 0; i < initialDepositors.length; i++) {
-            _grantRole(HYPERCORE_DEPOSITOR_ROLE, initialDepositors[i]);
-        }
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-    }
-
-    modifier onlyWhitelistedOrigin() {
-        _requireTxOriginIsHypercoreDepositor();
-        _;
+    function depositToHypercore(address token, uint256 amount, address user) external nonReentrant {
+        _bridgeToCore(token, amount);
+        _spotSend(user, token, amount);
     }
 
     /**
-     * @notice Main entrypoint for the handler called by the SpokePool contract. Sends tokens to the
-     * end user on Hypercore using funds received on this contract on HyperEVM.
-     * @dev The tx.origin of this transaction must be an account with the DEPOSITOR role.
+     * @notice Entrypoint function if this contract is called by the SpokePool contract following an intent fill.
+     * @dev Deposits tokens into Hypercore and sends them to the end user's account on Hypercore.
+     * @param token The address of the token sent.
+     * @param amount The amount of tokens received by this contract.
+     * @param message Encoded end user address.
      */
     function handleV3AcrossMessage(
         address token,
-        uint256 evmAmount,
-        address,
+        uint256 amount,
+        address /* relayer */,
         bytes memory message
-    ) external nonReentrant onlyWhitelistedOrigin {
+    ) external nonReentrant {
         address user = abi.decode(message, (address));
+        _bridgeToCore(token, amount);
+        _spotSend(user, token, amount);
+    }
 
+    function _bridgeToCore(address token, uint256 evmAmount) internal {
+        // Bridge tokens from HyperEVM to Hypercore. This call should revert if this contract has insufficient balance.
         CoreWriterLib.bridgeToCore(token, evmAmount);
+    }
 
+    function _spotSend(address user, address token, uint256 evmAmount) internal {
         // Convert EVM amount to wei amount (used in HyperCore)
         uint64 tokenIndex = PrecompileLib.getTokenIndex(token);
         uint64 coreAmount = HLConversions.evmToWei(tokenIndex, evmAmount);
@@ -66,12 +63,6 @@ contract HypercoreDepositorHandler is AcrossMessageHandler, ReentrancyGuard, Acc
         // Therefore, this contract will maintain a balance of tokens for one block until the spot send into Hypercore
         // is confirmed.
         CoreWriterLib.spotSend(user, tokenIndex, coreAmount);
-    }
-
-    function _requireTxOriginIsHypercoreDepositor() internal view {
-        // We check tx.origin to allow the whitelisted account to call this contract via another proxy contract.
-        // @todo: Is this a safe check to add permissioning properties that we want?
-        if (!hasRole(HYPERCORE_DEPOSITOR_ROLE, tx.origin)) revert NotRelayer();
     }
 
     // Native tokens are not supported by this contract.
