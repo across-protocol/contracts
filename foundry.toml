@@ -11,6 +11,7 @@ remappings = [
     "@across-protocol/=node_modules/@across-protocol/",
     "@ensdomains/=node_modules/@ensdomains/",
     "@eth-optimism/=node_modules/@eth-optimism/",
+    "@hyper-evm-lib=lib/hyper-evm-lib",
     "@gnosis.pm/=node_modules/@gnosis.pm/",
     "@maticnetwork/=node_modules/@maticnetwork/",
     "@matterlabs/=node_modules/@matterlabs/",
