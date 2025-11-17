@@ -11,7 +11,6 @@ remappings = [
     "@across-protocol/=node_modules/@across-protocol/",
     "@ensdomains/=node_modules/@ensdomains/",
     "@eth-optimism/=node_modules/@eth-optimism/",
-    "@hyper-evm-lib=node_modules/hyper-evm-lib/",
     "@gnosis.pm/=node_modules/@gnosis.pm/",
     "@maticnetwork/=node_modules/@maticnetwork/",
     "@matterlabs/=node_modules/@matterlabs/",
@@ -25,6 +24,7 @@ remappings = [
     "eth-gas-reporter/=node_modules/eth-gas-reporter/",
     "hardhat-deploy/=node_modules/hardhat-deploy/",
     "hardhat/=node_modules/hardhat/",
+    "hyper-evm-lib=node_modules/hyper-evm-lib/",
 ]
 via_ir = true
 optimizer_runs = 800

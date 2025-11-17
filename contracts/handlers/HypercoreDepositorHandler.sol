@@ -5,8 +5,8 @@ import "../interfaces/SpokePoolMessageHandler.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
-import { CoreWriterLib, PrecompileLib } from "@hyper-evm-lib/src/CoreWriterLib.sol";
-import { HLConversions } from "@hyper-evm-lib/src/common/HLConversions.sol";
+import { CoreWriterLib, PrecompileLib } from "hyper-evm-lib/src/CoreWriterLib.sol";
+import { HLConversions } from "hyper-evm-lib/src/common/HLConversions.sol";
 
 /**
  * @title Allows caller to bridge tokens from HyperEVM to Hypercore and send them to the end user's account
