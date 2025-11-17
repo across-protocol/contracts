@@ -21,9 +21,6 @@ contract HypercoreDepositorHandler is AcrossMessageHandler, ReentrancyGuard, Acc
     // Role identifier for tx.origins that can ultimately call this contract.
     bytes32 public constant HYPERCORE_DEPOSITOR_ROLE = keccak256("DEPOSITOR");
 
-    // Emitted when leftover tokens following a Hypercore deposit are sent to the end user.
-    event DrainedTokens(address indexed destination, address indexed token, uint256 amount);
-
     // Errors
     error NotRelayer();
 
@@ -46,12 +43,9 @@ contract HypercoreDepositorHandler is AcrossMessageHandler, ReentrancyGuard, Acc
     }
 
     /**
-     * @notice Main entrypoint for the handler called by the SpokePool contract.
-     * @dev This will execute all calls encoded in the msg. The caller is responsible for making sure all tokens are
-     * drained from this contract by the end of the series of calls. If not, they can be stolen.
-     * A drainLeftoverTokens call can be included as a way to drain any remaining tokens from this contract.
-     * @param message abi encoded array of Call structs, containing a target, callData, and value for each call that
-     * the contract should make.
+     * @notice Main entrypoint for the handler called by the SpokePool contract. Sends tokens to the
+     * end user on Hypercore using funds received on this contract on HyperEVM.
+     * @dev The tx.origin of this transaction must be an account with the DEPOSITOR role.
      */
     function handleV3AcrossMessage(
         address token,
@@ -68,19 +62,10 @@ contract HypercoreDepositorHandler is AcrossMessageHandler, ReentrancyGuard, Acc
         uint64 coreAmount = HLConversions.evmToWei(tokenIndex, evmAmount);
 
         // use CoreWriterLib to call the spotSend CoreWriter action and send tokens to end user.
+        // @dev: the following call does not execute atomically with the deposit into Hypercore.
+        // Therefore, this contract will maintain a balance of tokens for one block until the spot send into Hypercore
+        // is confirmed.
         CoreWriterLib.spotSend(user, tokenIndex, coreAmount);
-
-        // If there are leftover tokens, send them to the recipient on Hyperevm.
-        _drainRemainingTokens(token, user);
-    }
-
-    function _drainRemainingTokens(address token, address destination) internal {
-        // For now, native tokens are not supported by this contract so we don't need to handle any.
-        uint256 amount = IERC20(token).balanceOf(address(this));
-        if (amount > 0) {
-            IERC20(token).safeTransfer(destination, amount);
-            emit DrainedTokens(destination, token, amount);
-        }
     }
 
     function _requireTxOriginIsHypercoreDepositor() internal view {
