@@ -1697,8 +1697,23 @@ abstract contract SpokePool is
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
         fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
-        // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
-        // successful.
+        _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
+        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
+    }
+
+    /**
+     * @notice Emits the FilledRelay event for a completed relay fill.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param relayer The relayer address.
+     * @param fillType The type of fill being executed.
+     */
+    function _emitFilledRelayEvent(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bytes32 relayer,
+        FillType fillType
+    ) internal {
         emit FilledRelay(
             relayData.inputToken,
             relayData.outputToken,
@@ -1721,13 +1736,25 @@ abstract contract SpokePool is
                 fillType: fillType
             })
         );
+    }
 
+    /**
+     * @notice Transfers tokens to the recipient based on the relay execution parameters.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param isSlowFill Whether this is a slow fill execution.
+     */
+    function _transferTokensToRecipient(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bool isSlowFill
+    ) internal {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
+
         // If relay token is wrappedNativeToken then unwrap and send native token.
-        // Stack too deep.
-        if (relayData.outputToken.toAddress() == address(wrappedNativeToken)) {
+        if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
