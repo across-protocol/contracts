@@ -86,10 +86,6 @@
     "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 74229464 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 73247089 }
   },
-  "143": {
-    "SpokePool": { "address": "0xD29C85F15DF544bA632C9E25829fd29d767d7978", "blockNumber": 36434627 },
-    "Helios": { "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64", "blockNumber": 36241473 }
-  },
   "232": {
     "SpokePool": { "address": "0xb234cA484866c811d0e6D3318866F583781ED045", "blockNumber": 4197027 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 4419395 },

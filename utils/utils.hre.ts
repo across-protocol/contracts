@@ -55,7 +55,7 @@ export async function deployNewProxy(
 
   // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
   let proxyAddress = getDeployedAddress("SpokePool", chainId, false);
-  implementationOnly ??= proxyAddress !== undefined;
+  implementationOnly = false;
   let implementationAddress: string;
   if (implementationOnly) {
     console.log(`${name} deployment already detected @ ${proxyAddress}, deploying new implementation.`);
@@ -93,7 +93,7 @@ export async function deployNewProxy(
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
   const contract = `contracts/${name}.sol:${name}`;
-  await verifyContract(instance, constructorArgs, contract);
+  // await verifyContract(instance, constructorArgs, contract);
 
   return { proxyAddress, implementationAddress };
 }
