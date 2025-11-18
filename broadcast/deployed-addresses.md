@@ -398,6 +398,18 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0x92801b64851c27c614e68b66dc26ab6831c1f2b95f3f805bd8646d1747105685`
   - Block Number: `77338915`
 
+### Monad Mainnet (Chain ID: 143)
+
+#### SpokePool
+
+- **SpokePool**: `0xD29C85F15DF544bA632C9E25829fd29d767d7978`
+  - Block Number: `36434627`
+
+#### Helios
+
+- **Helios**: `0x09aea4b2242abc8bb4bb78d537a67a245a7bec64`
+  - Block Number: `36241473`
+
 ### Lens (Chain ID: 232)
 
 #### SpokePool
