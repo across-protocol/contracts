@@ -52,7 +52,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     oftEid,
     oftFeeCap,
   ];
-  console.log(`Deploying new Universal SpokePool on ${spokeChainId} with args:`, constructorArgs);
+  console.log(`Deploying new Universal SpokePool on ${spokeChainId} with constructor arguments:`, constructorArgs);
+  console.log(`Deploying implementation with initialization arguments:`, initArgs);
+  return;
 
   // @dev Deploy on different address for each chain.
   // The Universal Adapter writes calldata to be relayed to L2 by associating it with the
