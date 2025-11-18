@@ -48,3 +48,13 @@ test-ledger
 src/svm/assets 
 src/svm/clients/*
 !src/svm/clients/index.ts
+
+
+# Yarn files
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
