@@ -402,8 +402,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### SpokePool
 
-- **SpokePool**: `0xD29C85F15DF544bA632C9E25829fd29d767d7978`
-  - Block Number: `36434627`
+- **SpokePool**: `0xd2ecb3afe598b746F8123CaE365a598DA831A449`
+  - Block Number: `36437473`
 
 #### Helios
 
