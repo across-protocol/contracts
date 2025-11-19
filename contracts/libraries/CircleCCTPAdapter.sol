@@ -15,6 +15,12 @@ library CircleDomainIds {
     uint32 public constant Polygon = 7;
     uint32 public constant DoctorWho = 10;
     uint32 public constant Linea = 11;
+    uint32 public constant WorldChain = 14;
+    uint32 public constant Monad = 15;
+    uint32 public constant BSC = 17;
+    uint32 public constant HyperEVM = 19;
+    uint32 public constant Ink = 21;
+    uint32 public constant Arc = 26;
     uint32 public constant UNINITIALIZED = type(uint32).max;
 }
 

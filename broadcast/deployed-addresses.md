@@ -126,6 +126,11 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Universal_Adapter_56**: `0x6f1C9d3bcDF51316E7b515a62C02F601500b084b`
   - Block Number: `23251254`
 
+#### Universal_Adapter_143
+
+- **Universal_Adapter_143**: `0xc29a3ba0fbf477f16fd53d2c438eade024fd8452`
+  - Block Number: `23832288`
+
 #### Universal_Adapter_999
 
 - **Universal_Adapter_999**: `0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B`
@@ -397,6 +402,23 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Polygon_SpokePool**: `0x8f7b21ff11006f0520b06074d36e39b6cd83cf29`
   - Transaction Hash: `0x92801b64851c27c614e68b66dc26ab6831c1f2b95f3f805bd8646d1747105685`
   - Block Number: `77338915`
+
+### Monad Mainnet (Chain ID: 143)
+
+#### Helios
+
+- **Helios**: `0x09aea4b2242abc8bb4bb78d537a67a245a7bec64`
+  - Block Number: `36241473`
+
+#### MulticallHandler
+
+- **MulticallHandler**: `0xeC41F75c686e376Ab2a4F18bde263ab5822c4511`
+  - Block Number: `36589196`
+
+#### SpokePool
+
+- **SpokePool**: `0xd2ecb3afe598b746F8123CaE365a598DA831A449`
+  - Block Number: `36437473`
 
 ### Lens (Chain ID: 232)
 

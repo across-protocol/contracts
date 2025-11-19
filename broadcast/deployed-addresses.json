@@ -103,6 +103,10 @@
           "address": "0x6f1C9d3bcDF51316E7b515a62C02F601500b084b",
           "block_number": 23251254
         },
+        "Universal_Adapter_143": {
+          "address": "0xc29a3ba0fbf477f16fd53d2c438eade024fd8452",
+          "block_number": 23832288
+        },
         "Universal_Adapter_999": {
           "address": "0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B",
           "block_number": 23371516
@@ -311,6 +315,23 @@
           "address": "0x8f7b21ff11006f0520b06074d36e39b6cd83cf29",
           "block_number": 77338915,
           "transaction_hash": "0x92801b64851c27c614e68b66dc26ab6831c1f2b95f3f805bd8646d1747105685"
+        }
+      }
+    },
+    "143": {
+      "chain_name": "Monad Mainnet",
+      "contracts": {
+        "Helios": {
+          "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+          "block_number": 36241473
+        },
+        "MulticallHandler": {
+          "address": "0xeC41F75c686e376Ab2a4F18bde263ab5822c4511",
+          "block_number": 36589196
+        },
+        "SpokePool": {
+          "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449",
+          "block_number": 36437473
         }
       }
     },
