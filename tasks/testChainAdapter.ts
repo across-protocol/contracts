@@ -10,7 +10,6 @@ const chains = {
   [CHAIN_IDs.ARBITRUM]: "Arbitrum_Adapter",
   [CHAIN_IDs.ALEPH_ZERO]: "Arbitrum_CustomGasToken_Adapter",
   [CHAIN_IDs.WORLD_CHAIN]: "WorldChain_Adapter",
-  [CHAIN_IDs.ZK_SYNC]: "ZkSync_Adapter",
 };
 
 task("testChainAdapter", "Verify a chain adapter")

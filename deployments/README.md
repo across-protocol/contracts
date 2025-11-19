@@ -18,7 +18,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | Ethereum_SpokePool  | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | PolygonTokenBridger | [0x48d990AbDA20afa1fD1da713AbC041B60a922c65](https://etherscan.io/address/0x48d990AbDA20afa1fD1da713AbC041B60a922c65) |
 | Polygon_Adapter     | [0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A](https://etherscan.io/address/0x3E94e8d4316a1eBfb2245E45E6F0B8724094CE1A) |
-| ZkSync_Adapter      | [0xE233009838CB898b50e0012a6E783FC9FeE447FB](https://etherscan.io/address/0xE233009838CB898b50e0012a6E783FC9FeE447FB) |
+| ZkSync_Adapter      | [0xA374585E6062517Ee367ee5044946A6fBe17724f](https://etherscan.io/address/0xA374585E6062517Ee367ee5044946A6fBe17724f) |
 | Base_Adapter        | [0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E](https://etherscan.io/address/0x2d8B1e2B0Dff62DF132d23BEa68a6D2c4D20046E) |
 | Linea Adapter       | [0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE](https://etherscan.io/address/0x7Ea0D1882D610095A45E512B0113f79cA98a8EfE) |
 | Mode Adapter        | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
