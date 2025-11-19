@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.13",
+  "version": "4.1.14",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -52,7 +52,7 @@
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.87",
+    "@across-protocol/constants": "^3.1.88",
     "@coral-xyz/anchor": "^0.31.1",
     "@defi-wonderland/smock": "^2.3.4",
     "@eth-optimism/contracts": "^0.5.40",

@@ -51,7 +51,7 @@
       "hypDomainId": 137
     },
     "143": {
-      "name": "Monad Mainnet",
+      "name": "Monad",
       "family": "NONE",
       "nativeToken": "MON",
       "publicRPC": "https://rpc-mainnet.monadinfra.com/",
