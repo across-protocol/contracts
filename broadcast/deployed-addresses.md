@@ -405,15 +405,20 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ### Monad Mainnet (Chain ID: 143)
 
-#### SpokePool
-
-- **SpokePool**: `0xd2ecb3afe598b746F8123CaE365a598DA831A449`
-  - Block Number: `36437473`
-
 #### Helios
 
 - **Helios**: `0x09aea4b2242abc8bb4bb78d537a67a245a7bec64`
   - Block Number: `36241473`
+
+#### MulticallHandler
+
+- **MulticallHandler**: `0xeC41F75c686e376Ab2a4F18bde263ab5822c4511`
+  - Block Number: `36589196`
+
+#### SpokePool
+
+- **SpokePool**: `0xd2ecb3afe598b746F8123CaE365a598DA831A449`
+  - Block Number: `36437473`
 
 ### Lens (Chain ID: 232)
 
