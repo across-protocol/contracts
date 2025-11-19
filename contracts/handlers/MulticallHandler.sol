@@ -61,7 +61,12 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
      * @param message abi encoded array of Call structs, containing a target, callData, and value for each call that
      * the contract should make.
      */
-    function handleV3AcrossMessage(address token, uint256, address, bytes memory message) external nonReentrant {
+    function handleV3AcrossMessage(
+        address token,
+        uint256,
+        address,
+        bytes memory message
+    ) external nonReentrant {
         Instructions memory instructions = abi.decode(message, (Instructions));
 
         // If there is no fallback recipient, call and revert if the inner call fails.
