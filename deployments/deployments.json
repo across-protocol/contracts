@@ -24,6 +24,7 @@
     "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 22967417 },
     "Lisk_Adapter": { "address": "0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b", "blockNumber": 22474211 },
     "Universal_Adapter_56": { "address": "0x6f1C9d3bcDF51316E7b515a62C02F601500b084b", "blockNumber": 23251254 },
+    "Universal_Adapter_143": { "address": "0xc29a3ba0fbf477f16fd53d2c438eade024fd8452", "blockNumber": 23832288 },
     "Universal_Adapter_999": { "address": "0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B", "blockNumber": 23371516 },
     "Universal_Adapter_9745": { "address": "0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363", "blockNumber": 23419367 },
     "Blast_Adapter": { "address": "0xF2bEf5E905AAE0295003ab14872F811E914EdD81", "blockNumber": 20221494 },

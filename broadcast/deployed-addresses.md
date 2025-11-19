@@ -126,6 +126,11 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Universal_Adapter_56**: `0x6f1C9d3bcDF51316E7b515a62C02F601500b084b`
   - Block Number: `23251254`
 
+#### Universal_Adapter_143
+
+- **Universal_Adapter_143**: `0xc29a3ba0fbf477f16fd53d2c438eade024fd8452`
+  - Block Number: `23832288`
+
 #### Universal_Adapter_999
 
 - **Universal_Adapter_999**: `0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B`

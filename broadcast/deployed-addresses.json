@@ -103,6 +103,10 @@
           "address": "0x6f1C9d3bcDF51316E7b515a62C02F601500b084b",
           "block_number": 23251254
         },
+        "Universal_Adapter_143": {
+          "address": "0xc29a3ba0fbf477f16fd53d2c438eade024fd8452",
+          "block_number": 23832288
+        },
         "Universal_Adapter_999": {
           "address": "0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B",
           "block_number": 23371516
