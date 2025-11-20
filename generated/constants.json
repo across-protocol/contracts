@@ -54,8 +54,8 @@
       "name": "Monad",
       "family": "NONE",
       "nativeToken": "MON",
-      "publicRPC": "https://rpc-mainnet.monadinfra.com/",
-      "blockExplorer": "https://monadscan.com/",
+      "publicRPC": "https://rpc-mainnet.monadinfra.com",
+      "blockExplorer": "https://monadvision.com",
       "cctpDomain": 15,
       "oftEid": 30390,
       "hypDomainId": 143
@@ -244,8 +244,8 @@
       "name": "Monad Testnet",
       "family": "NONE",
       "nativeToken": "MON",
-      "publicRPC": "https://testnet-rpc.monad.xyz/",
-      "blockExplorer": "https://testnet.monvision.io/",
+      "publicRPC": "https://testnet-rpc.monad.xyz",
+      "blockExplorer": "https://testnet.monvision.io",
       "cctpDomain": 15,
       "oftEid": 40204,
       "hypDomainId": 10143
