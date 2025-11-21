@@ -12,7 +12,6 @@ use crate::{
     utils::initialize_current_time,
 };
 
-#[event_cpi]
 #[derive(Accounts)]
 #[instruction(params: InitializeParams)]
 pub struct Initialize<'info> {
@@ -28,7 +27,6 @@ pub struct Initialize<'info> {
     #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
     pub program_data: Account<'info, ProgramData>,
 
-    // This is duplicate of program account added by event_cpi, but we need it to access its programdata_address.
     pub this_program: Program<'info, program::SponsoredCctpSrcPeriphery>,
 
     pub system_program: Program<'info, System>,
@@ -54,12 +52,11 @@ pub fn initialize(ctx: Context<Initialize>, params: &InitializeParams) -> Result
 
     // Set and log initial quote signer.
     state.signer = params.signer;
-    emit_cpi!(SignerSet { old_signer: Pubkey::default(), new_signer: params.signer });
+    emit!(SignerSet { old_signer: Pubkey::default(), new_signer: params.signer });
 
     Ok(())
 }
 
-#[event_cpi]
 #[derive(Accounts)]
 pub struct SetSigner<'info> {
     #[account(
@@ -74,7 +71,6 @@ pub struct SetSigner<'info> {
     #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
     pub program_data: Account<'info, ProgramData>,
 
-    // This is duplicate of program account added by event_cpi, but we need it to access its programdata_address.
     pub this_program: Program<'info, program::SponsoredCctpSrcPeriphery>,
 }
 
@@ -94,12 +90,11 @@ pub fn set_signer(ctx: Context<SetSigner>, params: &SetSignerParams) -> Result<(
 
     // Set and log old/new quote signer.
     state.signer = params.new_signer;
-    emit_cpi!(SignerSet { old_signer, new_signer: params.new_signer });
+    emit!(SignerSet { old_signer, new_signer: params.new_signer });
 
     Ok(())
 }
 
-#[event_cpi]
 #[derive(Accounts)]
 pub struct WithdrawRentFund<'info> {
     #[account(
@@ -118,7 +113,6 @@ pub struct WithdrawRentFund<'info> {
     #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
     pub program_data: Account<'info, ProgramData>,
 
-    // This is duplicate of program account added by event_cpi, but we need it to access its programdata_address.
     pub this_program: Program<'info, program::SponsoredCctpSrcPeriphery>,
 
     pub system_program: Program<'info, System>,
@@ -141,7 +135,7 @@ pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: &WithdrawRentF
         CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
     system_program::transfer(cpi_ctx, params.amount)?;
 
-    emit_cpi!(WithdrawnRentFund { amount: params.amount, recipient: ctx.accounts.recipient.key() });
+    emit!(WithdrawnRentFund { amount: params.amount, recipient: ctx.accounts.recipient.key() });
 
     Ok(())
 }

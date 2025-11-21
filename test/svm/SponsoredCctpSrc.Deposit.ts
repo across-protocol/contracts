@@ -354,7 +354,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     if (rentFundBalance > 0) {
       await program.methods
         .withdrawRentFund({ amount: new BN(rentFundBalance.toString()) })
-        .accounts({ recipient: owner, program: program.programId, programData })
+        .accounts({ recipient: owner, programData })
         .rpc();
     }
     await requestAndConfirmAirdrop(connection, rentFund, 1_000_000_000); // 1 SOL should be sufficient for rent.
@@ -809,7 +809,6 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       .withdrawRentFund({ amount: new BN(rentFundBalance.toString()) })
       .accounts({
         recipient: owner,
-        program: program.programId,
         programData,
       })
       .rpc();
