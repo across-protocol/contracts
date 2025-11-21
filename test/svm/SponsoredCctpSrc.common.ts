@@ -32,9 +32,6 @@ export async function initializeState({
   const seeds = [Buffer.from("state")];
   const [state] = PublicKey.findProgramAddressSync(seeds, program.programId);
   const programData = getProgramData();
-  await program.methods
-    .initialize({ sourceDomain, signer })
-    .accounts({ program: program.programId, programData })
-    .rpc();
+  await program.methods.initialize({ sourceDomain, signer }).accounts({ programData }).rpc();
   return { programData, state, sourceDomain, signer };
 }

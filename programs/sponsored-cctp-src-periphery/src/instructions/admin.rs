@@ -106,7 +106,7 @@ pub struct WithdrawRentFund<'info> {
     #[account(mut, seeds = [b"rent_fund"], bump)]
     pub rent_fund: SystemAccount<'info>,
 
-    /// CHECK: Upgrade authority can withdraw from rent_fund to any account.
+    /// CHECK: Upgrade authority can withdraw from rent_fund to any account, except to Pubkey::default().
     #[account(mut)]
     pub recipient: UncheckedAccount<'info>,
 
@@ -126,6 +126,9 @@ pub struct WithdrawRentFundParams {
 pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: &WithdrawRentFundParams) -> Result<()> {
     if params.amount == 0 {
         return err!(SvmError::AmountNotPositive);
+    }
+    if ctx.accounts.recipient.key() == Pubkey::default() {
+        return err!(SvmError::InvalidRecipientKey);
     }
 
     let cpi_accounts =

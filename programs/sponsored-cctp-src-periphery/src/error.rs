@@ -36,4 +36,6 @@ pub enum SvmError {
     RentClaimOverflow,
     #[msg("Insufficient rent fund balance")]
     InsufficientRentFundBalance,
+    #[msg("Invalid recipient key")]
+    InvalidRecipientKey,
 }
