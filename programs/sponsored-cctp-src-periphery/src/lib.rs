@@ -151,7 +151,26 @@ pub mod sponsored_cctp_src_periphery {
     /// - system_program (Program): System program.
     ///
     /// Parameters:
-    /// - quote: ABI-encoded quote bytes (fixed length) containing burn parameters and hook data.
+    /// - quote: SponsoredCCTPQuote struct serialized by Anchor:
+    ///   - source_domain: CCTP domain ID of the source chain.
+    ///   - destination_domain: CCTP domain ID of the destination chain.
+    ///   - mint_recipient: The recipient of the minted tokens on the destination chain.
+    ///   - amount: The amount of tokens that the user pays on the source chain.
+    ///   - burn_token: The token that will be burned on the source chain.
+    ///   - destination_caller: The caller of the destination chain.
+    ///   - max_fee: Maximum fee to pay on the destination domain, specified in units of burn_token.
+    ///   - min_finality_threshold: Minimum finality threshold before allowed to attest.
+    ///   - nonce: Nonce is used to prevent replay attacks.
+    ///   - deadline: Timestamp of the quote after which it can no longer be used.
+    ///   - max_bps_to_sponsor: The maximum basis points of the amount that can be sponsored.
+    ///   - max_user_slippage_bps: Slippage tolerance for the fees on the destination. Used in swap flow, enforced on
+    ///     destination.
+    ///   - final_recipient: The final recipient of the sponsored deposit. This is needed as the mint_recipient will be
+    ///     the handler contract address instead of the final recipient.
+    ///   - final_token: The final token that final recipient will receive. This is needed as it can be different from
+    ///     the burn_token in which case we perform a swap on the destination chain.
+    ///   - execution_mode: Execution mode: DirectToCore (0), ArbitraryActionsToCore (1), or ArbitraryActionsToEVM (2).
+    ///   - action_data: Encoded action data for arbitrary execution. Empty for DirectToCore mode.
     /// - signature: 65-byte EVM signature authorizing the quote by the trusted signer.
     ///
     /// Notes:
