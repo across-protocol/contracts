@@ -2,13 +2,23 @@ use anchor_lang::prelude::*;
 
 use crate::{message_transmitter_v2::accounts::MessageSent, utils::SponsoredCCTPQuote};
 
+#[cfg(not(feature = "test"))]
 #[account]
 #[derive(InitSpace)]
 pub struct State {
     pub source_domain: u32, // Immutable CCTP domain for the chain this program is deployed on (e.g. 5 for Solana).
     pub signer: Pubkey,     // The authorized signer for sponsored CCTP quotes.
     pub bump: u8,           // Seed bump for the state account.
-    pub current_time: u64,  // Only used in testable mode, else set to 0 on mainnet.
+}
+
+#[cfg(feature = "test")]
+#[account]
+#[derive(InitSpace)]
+pub struct State {
+    pub source_domain: u32, // Immutable CCTP domain for the chain this program is deployed on (e.g. 5 for Solana).
+    pub signer: Pubkey,     // The authorized signer for sponsored CCTP quotes.
+    pub bump: u8,           // Seed bump for the state account.
+    pub current_time: u64,  // Only used in testable mode.
 }
 
 #[account]
