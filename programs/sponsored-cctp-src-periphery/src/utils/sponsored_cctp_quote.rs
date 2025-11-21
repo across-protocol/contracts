@@ -21,6 +21,8 @@ pub struct SponsoredCCTPQuote {
 }
 
 impl SponsoredCCTPQuote {
+    const HOOK_DATA_STATIC_FIELDS: usize = 7; // Number of static fields in the hook data.
+
     /// EVM-compatible typed hash used for signature verification.
     ///
     /// Mirrors the Solidity implementation:
@@ -81,9 +83,8 @@ impl SponsoredCCTPQuote {
     pub fn encode_hook_data(&self) -> Vec<u8> {
         // ABI encoded hookData on EVM holds 7 static 32-byte words followed by the actionData offset that points to the
         // length-prefixed actionData bytes. The actionData bytes are padded to 32-byte word length.
-        let action_data_offset = 8 * 32;
-        let min_hook_data_len = action_data_offset + 32;
-        let mut hook_data = Vec::with_capacity(min_hook_data_len);
+        let action_data_offset = (Self::HOOK_DATA_STATIC_FIELDS + 1) * 32;
+        let mut hook_data = Vec::with_capacity(self.encoded_hook_data_len());
 
         Self::encode_bytes32(&mut hook_data, &self.nonce);
         Self::encode_u64(&mut hook_data, self.deadline);
@@ -95,6 +96,20 @@ impl SponsoredCCTPQuote {
         Self::encode_bytes(&mut hook_data, &self.action_data, action_data_offset as u64);
 
         hook_data
+    }
+
+    pub fn encoded_hook_data_len(&self) -> usize {
+        let action_data_len = self.action_data.len();
+        let remainder = action_data_len % 32;
+        let padded_action_data_len = if remainder == 0 {
+            action_data_len
+        } else {
+            action_data_len + (32 - remainder)
+        };
+
+        // ABI encoded hookData on EVM holds 7 static 32-byte words followed by the actionData offset (32 bytes), the
+        // length of the actionData (32 bytes), and the padded actionData bytes.
+        (Self::HOOK_DATA_STATIC_FIELDS + 2) * 32 + padded_action_data_len
     }
 
     fn pad32_left(output: &mut Vec<u8>, input: &[u8]) {

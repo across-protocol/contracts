@@ -24,6 +24,7 @@ import {
   readEventsUntilFound,
   decodeMessageSentDataV2,
 } from "../../src/svm/web3-v1";
+import { requestAndConfirmAirdrop } from "./utils";
 
 describe("sponsored_cctp_src_periphery.deposit", () => {
   anchor.setProvider(provider);
@@ -69,7 +70,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     cctpEventAuthority: PublicKey,
     rentFund: PublicKey,
     minimumDeposit: PublicKey,
-    programData: PublicKey;
+    programData: PublicKey,
+    rentClaim: PublicKey;
 
   const getDenyList = (user: PublicKey): PublicKey => {
     const [denyList] = PublicKey.findProgramAddressSync(
@@ -288,6 +290,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const setupLookupTable = async () => {
     // These accounts should be the same for all deposits that have the same burnToken.
     const eventAuthority = findProgramAddress("__event_authority", program.programId).publicKey;
+    rentFund = findProgramAddress("rent_fund", program.programId).publicKey;
     const lookupAddresses = [
       state,
       burnToken,
@@ -307,7 +310,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     ];
 
     // Create instructions for creating and extending the ALT.
-    const [lookupTableInstruction, lookupTableAddress] = await AddressLookupTableProgram.createLookupTable({
+    const [lookupTableInstruction, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
       authority: owner,
       payer: owner,
       recentSlot: await connection.getSlot(),
@@ -344,9 +347,17 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     lookupTableAccount = fetchedLookupTableAccount;
   };
 
+  // Ensures the same rent_fund balance before each test.
   const setupRentFund = async () => {
     rentFund = findProgramAddress("rent_fund", program.programId).publicKey;
-    await connection.requestAirdrop(rentFund, 1_000_000_000); // 1 SOL
+    const rentFundBalance = await connection.getBalance(rentFund);
+    if (rentFundBalance > 0) {
+      await program.methods
+        .withdrawRentFund({ amount: new BN(rentFundBalance.toString()) })
+        .accounts({ recipient: owner, program: program.programId, programData })
+        .rpc();
+    }
+    await requestAndConfirmAirdrop(connection, rentFund, 1_000_000_000); // 1 SOL should be sufficient for rent.
   };
 
   const getUsedNonce = (nonce: Buffer): PublicKey => {
@@ -355,12 +366,9 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   };
 
   before(async () => {
-    await connection.requestAirdrop(depositor.publicKey, 10_000_000_000); // 10 SOL
-    await connection.requestAirdrop(operator.publicKey, 10_000_000_000); // 10 SOL
-
+    await requestAndConfirmAirdrop(connection, depositor.publicKey, 10_000_000_000); // 10 SOL
+    await requestAndConfirmAirdrop(connection, operator.publicKey, 10_000_000_000); // 10 SOL
     setupCctpAccounts();
-
-    await setupRentFund();
 
     ({ state, sourceDomain, programData } = await initializeState({ signer: quoteSignerPubkey }));
 
@@ -375,7 +383,12 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       .accounts({ programData, burnToken })
       .rpc();
 
+    await setupRentFund();
+
     messageSentEventData = Keypair.generate();
+
+    // Set rent_claim to None as normally rent_fund should have been sufficiently funded. Some tests might override this.
+    rentClaim = program.programId;
   });
 
   it("Sponsored CCTP deposit", async () => {
@@ -409,6 +422,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       state,
       rentFund,
       usedNonce,
+      rentClaim,
       depositorTokenAccount,
       burnToken,
       denylistAccount,
@@ -534,6 +548,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       state,
       rentFund,
       usedNonce,
+      rentClaim,
       depositorTokenAccount,
       burnToken,
       denylistAccount,
@@ -558,7 +573,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
     const reclaimIx = await program.methods
       .reclaimUsedNonceAccount({ nonce: Array.from(nonce) })
-      .accountsPartial({ usedNonce })
+      .accounts({ program: program.programId })
       .instruction();
 
     try {
@@ -601,7 +616,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const usedNonce = getUsedNonce(nonce);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
     const executionMode = 1; // ArbitraryActionsToCore
-    const actionDataLenth = 443; // Larger actionData would exceed the transaction message size limits on Solana.
+    const actionDataLenth = 442; // Larger actionData would exceed the transaction message size limits on Solana.
     const actionData = crypto.randomBytes(actionDataLenth);
 
     const quoteData: SponsoredCCTPQuote = {
@@ -630,6 +645,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       state,
       rentFund,
       usedNonce,
+      rentClaim,
       depositorTokenAccount,
       burnToken,
       denylistAccount,
@@ -728,5 +744,110 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         "Expected DepositAmountBelowMinimum error log"
       );
     }
+  });
+
+  it("Accrue and repay rent_fund debt", async () => {
+    [rentClaim] = PublicKey.findProgramAddressSync(
+      [Buffer.from("rent_claim"), depositor.publicKey.toBuffer()],
+      program.programId
+    );
+    let nonce = crypto.randomBytes(32);
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
+
+    const quoteData: SponsoredCCTPQuote = {
+      sourceDomain,
+      destinationDomain: remoteDomain.toNumber(),
+      mintRecipient: ethers.utils.hexlify(mintRecipient),
+      amount: burnAmount,
+      burnToken: ethers.utils.hexlify(burnToken.toBuffer()),
+      destinationCaller: ethers.utils.hexlify(destinationCaller),
+      maxFee,
+      minFinalityThreshold,
+      nonce: ethers.utils.hexlify(nonce),
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient: ethers.utils.hexlify(finalRecipient),
+      finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData,
+    };
+    let { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
+
+    const depositAccounts = {
+      signer: depositor.publicKey,
+      payer: depositor.publicKey,
+      state,
+      rentFund,
+      usedNonce: getUsedNonce(nonce),
+      rentClaim,
+      depositorTokenAccount,
+      burnToken,
+      denylistAccount,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      remoteTokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      tokenProgram,
+      messageSentEventData: messageSentEventData.publicKey,
+      program: program.programId,
+    };
+    let depositIx = await program.methods.depositForBurn({ quote, signature }).accounts(depositAccounts).instruction();
+    await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+      messageSentEventData,
+    ]);
+
+    let rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
+    assert.isTrue(rentClaimAccount.amount.eq(new BN(0)), "No debt should be accrued when rent_fund had funding");
+
+    // Withdraw all rent_fund balance to test debt accrual.
+    let rentFundBalance = await connection.getBalance(rentFund);
+    await program.methods
+      .withdrawRentFund({ amount: new BN(rentFundBalance.toString()) })
+      .accounts({
+        recipient: owner,
+        program: program.programId,
+        programData,
+      })
+      .rpc();
+
+    nonce = crypto.randomBytes(32);
+    messageSentEventData = Keypair.generate();
+    depositAccounts.usedNonce = getUsedNonce(nonce);
+    depositAccounts.messageSentEventData = messageSentEventData.publicKey;
+    quoteData.nonce = ethers.utils.hexlify(nonce);
+    ({ quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData));
+    depositIx = await program.methods.depositForBurn({ quote, signature }).accounts(depositAccounts).instruction();
+    await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+      messageSentEventData,
+    ]);
+
+    rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
+    const usedNonceBalance = await connection.getBalance(depositAccounts.usedNonce);
+    const messageSentEventDataBalance = await connection.getBalance(depositAccounts.messageSentEventData);
+    rentFundBalance = await connection.getBalance(rentFund);
+    assert.isTrue(
+      rentClaimAccount.amount.eq(new BN(usedNonceBalance + messageSentEventDataBalance + rentFundBalance)),
+      "Rent claim should have accrued debt for account creation"
+    );
+
+    // Test repayment after rent_fund has balance.
+    await requestAndConfirmAirdrop(connection, rentFund, 1_000_000_000);
+    const userBalanceBefore = await connection.getBalance(depositor.publicKey);
+    const rentClaimBalance = await connection.getBalance(rentClaim); // Also should be refunded upon closing.
+    await program.methods
+      .repayRentFundDebt()
+      .accounts({ recipient: depositor.publicKey, program: program.programId })
+      .rpc();
+    const userBalanceAfter = await connection.getBalance(depositor.publicKey);
+    assert.strictEqual(
+      userBalanceAfter - userBalanceBefore,
+      rentClaimAccount.amount.toNumber() + rentClaimBalance,
+      "User should have been refunded the claim and proceeds from closing rent_claim"
+    );
+    assert.isNull(await program.account.rentClaim.fetchNullable(rentClaim), "Rent claim account should be closed");
   });
 });

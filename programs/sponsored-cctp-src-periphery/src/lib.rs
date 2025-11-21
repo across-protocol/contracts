@@ -129,6 +129,8 @@ pub mod sponsored_cctp_src_periphery {
     /// - rent_fund (SystemAccount, Writable): PDA used to sponsor rent and event accounts. Seed: ["rent_fund"].
     /// - minimum_deposit (Account): Minimum deposit state PDA. Seed: ["minimum_deposit", burn_token.key()].
     /// - used_nonce (Account, Writable, Init): Per-quote nonce PDA. Seed: ["used_nonce", nonce].
+    /// - rent_claim (Optional Account, Writable, Init-If-Needed): Optional PDA to accrue rent_fund debt to the user.
+    ///   Seed: ["rent_claim", signer.key()].
     /// - depositor_token_account (InterfaceAccount<TokenAccount>, Writable): Signer ATA of the burn token.
     /// - burn_token (InterfaceAccount<Mint>, Mutable): Mint of the token to burn. Must match quote.burn_token.
     /// - denylist_account (Unchecked): CCTP denylist PDA, validated within CCTP.
@@ -155,6 +157,18 @@ pub mod sponsored_cctp_src_periphery {
     ///   rent for the `used_nonce` PDA and the CCTP `MessageSent` event account.
     pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: DepositForBurnParams) -> Result<()> {
         instructions::deposit_for_burn(ctx, &params)
+    }
+
+    /// Repays rent_fund liability for a user if rent_fund had insufficient balance at the time of deposit.
+    ///
+    /// Required Accounts:
+    /// - rent_fund (SystemAccount, Writable): PDA used to sponsor rent and event accounts. Seed: ["rent_fund"].
+    /// - recipient (Unchecked, Writable): The user account to repay rent fund debt to.
+    /// - rent_claim (Account, Writable, Close=recipient): PDA with accrued rent_fund debt to the user.
+    ///   Seed: ["rent_claim", recipient.key()].
+    /// - system_program (Program): System program.
+    pub fn repay_rent_fund_debt(ctx: Context<RepayRentFundDebt>) -> Result<()> {
+        instructions::repay_rent_fund_debt(ctx)
     }
 
     /// Reclaims the CCTP `MessageSent` event account, returning rent to the rent fund.

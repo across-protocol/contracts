@@ -30,4 +30,10 @@ pub enum SvmError {
     SignerUnchanged,
     #[msg("Deposit amount below minimum")]
     DepositAmountBelowMinimum,
+    #[msg("Missing rent claim account")]
+    MissingRentClaimAccount,
+    #[msg("Rent claim amount overflow")]
+    RentClaimOverflow,
+    #[msg("Insufficient rent fund balance")]
+    InsufficientRentFundBalance,
 }

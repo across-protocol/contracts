@@ -45,3 +45,16 @@ pub struct ReclaimedUsedNonceAccount {
     pub nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
     pub used_nonce: Pubkey, // PDA derived from above nonce that got closed.
 }
+
+#[event]
+pub struct AccruedRentFundLiability {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub total_user_claim: u64,
+}
+
+#[event]
+pub struct RepaidRentFundDebt {
+    pub user: Pubkey,
+    pub amount: u64,
+}
