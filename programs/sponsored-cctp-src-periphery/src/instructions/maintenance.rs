@@ -102,7 +102,7 @@ pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &Reclaim
 #[derive(Accounts)]
 #[instruction(params: UsedNonceAccountParams)]
 pub struct ReclaimUsedNonceAccount<'info> {
-    #[account(seeds = [b"state"], bump)]
+    #[account(seeds = [b"state"], bump = state.bump)]
     pub state: Account<'info, State>,
 
     #[account(mut, seeds = [b"rent_fund"], bump)]
@@ -133,7 +133,7 @@ pub fn reclaim_used_nonce_account(
 #[derive(Accounts)]
 #[instruction(_params: UsedNonceAccountParams)]
 pub struct GetUsedNonceCloseInfo<'info> {
-    #[account(seeds = [b"state"], bump)]
+    #[account(seeds = [b"state"], bump = state.bump)]
     pub state: Account<'info, State>,
 
     #[account(seeds = [b"used_nonce", &_params.nonce.as_ref()], bump)]

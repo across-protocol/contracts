@@ -22,6 +22,9 @@ solana_security_txt::security_txt! {
     auditors: "OpenZeppelin"
 }
 
+// If changing the program ID, make sure to check that the resulting rent_fund PDA has the highest bump of 255 so to
+// minimize the compute cost when finding the PDA. The reason for not persisting rent_fund PDA bump in its state is that
+// it is used as a payer for CCTP MessageSent event account creation, so it cannot contain any data.
 declare_id!("CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq");
 
 // External programs from idls directory (requires anchor run generateExternalTypes).

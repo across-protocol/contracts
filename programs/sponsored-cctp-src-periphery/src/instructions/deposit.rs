@@ -21,7 +21,7 @@ pub struct DepositForBurn<'info> {
     #[account(mut)]
     pub signer: Signer<'info>,
 
-    #[account(seeds = [b"state"], bump)]
+    #[account(seeds = [b"state"], bump = state.bump)]
     pub state: Account<'info, State>,
 
     #[account(mut, seeds = [b"rent_fund"], bump)]

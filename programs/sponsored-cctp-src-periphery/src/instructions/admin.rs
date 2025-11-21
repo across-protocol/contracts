@@ -43,6 +43,9 @@ pub struct InitializeParams {
 pub fn initialize(ctx: Context<Initialize>, params: &InitializeParams) -> Result<()> {
     let state = &mut ctx.accounts.state;
 
+    // Persist the seed bump.
+    state.bump = ctx.bumps.state;
+
     // Set current time in test mode (no-op in production).
     initialize_current_time(state)?;
 
@@ -65,7 +68,7 @@ pub struct SetSigner<'info> {
     )]
     pub signer: Signer<'info>,
 
-    #[account(mut, seeds = [b"state"], bump)]
+    #[account(mut, seeds = [b"state"], bump = state.bump)]
     pub state: Account<'info, State>,
 
     #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
