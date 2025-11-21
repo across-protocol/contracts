@@ -28,4 +28,6 @@ pub enum SvmError {
     QuoteDeadlineNotPassed,
     #[msg("New signer unchanged")]
     SignerUnchanged,
+    #[msg("Deposit amount below minimum")]
+    DepositAmountBelowMinimum,
 }

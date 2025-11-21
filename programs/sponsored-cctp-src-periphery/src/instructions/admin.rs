@@ -2,12 +2,13 @@ use anchor_lang::{
     prelude::*,
     system_program::{self, Transfer},
 };
+use anchor_spl::token_interface::Mint;
 
 use crate::{
     error::SvmError,
-    event::{SignerSet, WithdrawnRentFund},
+    event::{MinimumDepositAmountSet, SignerSet, WithdrawnRentFund},
     program,
-    state::State,
+    state::{MinimumDeposit, State},
     utils::initialize_current_time,
 };
 
@@ -138,6 +139,55 @@ pub fn withdraw_rent_fund(ctx: Context<WithdrawRentFund>, params: &WithdrawRentF
     system_program::transfer(cpi_ctx, params.amount)?;
 
     emit_cpi!(WithdrawnRentFund { amount: params.amount, recipient: ctx.accounts.recipient.key() });
+
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct SetMinimumDepositAmount<'info> {
+    #[account(
+        mut,
+        address = program_data.upgrade_authority_address.unwrap_or_default() @ SvmError::NotUpgradeAuthority
+    )]
+    pub signer: Signer<'info>,
+
+    #[account(
+        init_if_needed,
+        payer = signer,
+        space = MinimumDeposit::DISCRIMINATOR.len() + MinimumDeposit::INIT_SPACE,
+        seeds = [b"minimum_deposit", burn_token.key().as_ref()],
+        bump
+    )]
+    pub minimum_deposit: Account<'info, MinimumDeposit>,
+
+    #[account()]
+    pub burn_token: InterfaceAccount<'info, Mint>,
+
+    #[account(address = this_program.programdata_address()?.unwrap_or_default() @ SvmError::InvalidProgramData)]
+    pub program_data: Account<'info, ProgramData>,
+
+    pub this_program: Program<'info, program::SponsoredCctpSrcPeriphery>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct SetMinimumDepositAmountParams {
+    pub amount: u64,
+}
+
+pub fn set_minimum_deposit_amount(
+    ctx: Context<SetMinimumDepositAmount>,
+    params: &SetMinimumDepositAmountParams,
+) -> Result<()> {
+    let minimum_deposit = &mut ctx.accounts.minimum_deposit;
+
+    // Persist the PDA seed bump. This overwrites it if the account already exists, but it should be the same value.
+    minimum_deposit.bump = ctx.bumps.minimum_deposit;
+
+    // Set and log the new minimum deposit amount for the burn token.
+    minimum_deposit.amount = params.amount;
+    emit!(MinimumDepositAmountSet { amount: params.amount, burn_token: ctx.accounts.burn_token.key() });
 
     Ok(())
 }

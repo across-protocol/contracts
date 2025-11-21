@@ -92,6 +92,28 @@ pub mod sponsored_cctp_src_periphery {
         instructions::withdraw_rent_fund(ctx, &params)
     }
 
+    /// Updates the minimum deposit amount for a given burn token.
+    ///
+    /// Only callable by the upgrade authority. This must be set at least once for a supported burn token as otherwise
+    /// deposits would be blocked.
+    ///
+    /// Required Accounts:
+    /// - signer (Signer, Writable): Must be the program upgrade authority.
+    /// - minimum_deposit (Writable): Minimum deposit state PDA. Seed: ["minimum_deposit", burn_token.key()].
+    /// - burn_token: Supported burn token for which the minimum deposit amount is being set.
+    /// - program_data (Account): Program data account to verify the upgrade authority.
+    /// - this_program (Program): This program account, used to resolve `programdata_address`.
+    /// - system_program (Program): System program for transfers.
+    ///
+    /// Parameters:
+    /// - amount: New minimum deposit amount for a given burn token.
+    pub fn set_minimum_deposit_amount(
+        ctx: Context<SetMinimumDepositAmount>,
+        params: SetMinimumDepositAmountParams,
+    ) -> Result<()> {
+        instructions::set_minimum_deposit_amount(ctx, &params)
+    }
+
     /// Verifies a sponsored CCTP quote, records its nonce, and burns the user's tokens via CCTPv2 with hook data.
     ///
     /// The user's depositor ATA is burned via `deposit_for_burn_with_hook` CPI on the CCTPv2. The rent cost for the
@@ -105,6 +127,7 @@ pub mod sponsored_cctp_src_periphery {
     /// - signer (Signer, Writable): The user authorizing the burn.
     /// - state (Account): Program state PDA. Seed: ["state"].
     /// - rent_fund (SystemAccount, Writable): PDA used to sponsor rent and event accounts. Seed: ["rent_fund"].
+    /// - minimum_deposit (Account): Minimum deposit state PDA. Seed: ["minimum_deposit", burn_token.key()].
     /// - used_nonce (Account, Writable, Init): Per-quote nonce PDA. Seed: ["used_nonce", nonce].
     /// - depositor_token_account (InterfaceAccount<TokenAccount>, Writable): Signer ATA of the burn token.
     /// - burn_token (InterfaceAccount<Mint>, Mutable): Mint of the token to burn. Must match quote.burn_token.

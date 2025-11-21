@@ -67,7 +67,9 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     tokenMinter: PublicKey,
     localToken: PublicKey,
     cctpEventAuthority: PublicKey,
-    rentFund: PublicKey;
+    rentFund: PublicKey,
+    minimumDeposit: PublicKey,
+    programData: PublicKey;
 
   const getDenyList = (user: PublicKey): PublicKey => {
     const [denyList] = PublicKey.findProgramAddressSync(
@@ -228,6 +230,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       tokenProgram
     );
 
+    [minimumDeposit] = PublicKey.findProgramAddressSync(
+      [Buffer.from("minimum_deposit"), burnToken.toBuffer()],
+      program.programId
+    );
+
     // Add local CCTP token (test wallet is overridden as token controller in Anchor.toml).
     [localToken] = PublicKey.findProgramAddressSync(
       [Buffer.from("local_token"), burnToken.toBuffer()],
@@ -296,6 +303,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       SystemProgram.programId,
       eventAuthority,
       rentFund,
+      minimumDeposit,
     ];
 
     // Create instructions for creating and extending the ALT.
@@ -354,7 +362,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
     await setupRentFund();
 
-    ({ state, sourceDomain } = await initializeState({ signer: quoteSignerPubkey }));
+    ({ state, sourceDomain, programData } = await initializeState({ signer: quoteSignerPubkey }));
 
     tokenProgram = TOKEN_PROGRAM_ID;
     await setupBurnToken();
@@ -362,6 +370,11 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   });
 
   beforeEach(async () => {
+    await program.methods
+      .setMinimumDepositAmount({ amount: new BN(0) })
+      .accounts({ programData, burnToken })
+      .rpc();
+
     messageSentEventData = Keypair.generate();
   });
 
@@ -588,7 +601,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const usedNonce = getUsedNonce(nonce);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
     const executionMode = 1; // ArbitraryActionsToCore
-    const actionDataLenth = 444; // Larger actionData would exceed the transaction message size limits on Solana.
+    const actionDataLenth = 443; // Larger actionData would exceed the transaction message size limits on Solana.
     const actionData = crypto.randomBytes(actionDataLenth);
 
     const quoteData: SponsoredCCTPQuote = {
@@ -648,5 +661,72 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     // Above check for encoded hookData should implicitly verify action data, but add explicit test for clarity.
     const decodedHookData = decodeHookData(message.messageBody.hookData);
     assert.strictEqual(decodedHookData.actionData, ethers.utils.hexlify(actionData), "Invalid actionData");
+  });
+
+  it("Deposit below minimum amount fails", async () => {
+    const minimumAmount = new BN(burnAmount.add(1).toString());
+    await program.methods.setMinimumDepositAmount({ amount: minimumAmount }).accounts({ programData, burnToken }).rpc();
+
+    const nonce = crypto.randomBytes(32);
+    const usedNonce = getUsedNonce(nonce);
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
+
+    const quoteData: SponsoredCCTPQuote = {
+      sourceDomain,
+      destinationDomain: remoteDomain.toNumber(),
+      mintRecipient: ethers.utils.hexlify(mintRecipient),
+      amount: burnAmount,
+      burnToken: ethers.utils.hexlify(burnToken.toBuffer()),
+      destinationCaller: ethers.utils.hexlify(destinationCaller),
+      maxFee,
+      minFinalityThreshold,
+      nonce: ethers.utils.hexlify(nonce),
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient: ethers.utils.hexlify(finalRecipient),
+      finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData,
+    };
+    const { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
+
+    const depositAccounts = {
+      signer: depositor.publicKey,
+      payer: depositor.publicKey,
+      state,
+      rentFund,
+      usedNonce,
+      depositorTokenAccount,
+      burnToken,
+      denylistAccount,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      remoteTokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      tokenProgram,
+      messageSentEventData: messageSentEventData.publicKey,
+      program: program.programId,
+    };
+    const depositIx = await program.methods
+      .depositForBurn({ quote, signature })
+      .accounts(depositAccounts)
+      .instruction();
+    try {
+      await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+        messageSentEventData,
+      ]);
+      assert.fail("Deposit should have failed due to amount below minimum");
+    } catch (err) {
+      assert.instanceOf(err, SendTransactionError);
+      const logs = await (err as SendTransactionError).getLogs(connection);
+      assert.isTrue(
+        logs.some((log) => log.includes("DepositAmountBelowMinimum")),
+        "Expected DepositAmountBelowMinimum error log"
+      );
+    }
   });
 });

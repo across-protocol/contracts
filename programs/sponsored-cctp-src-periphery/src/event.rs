@@ -13,6 +13,12 @@ pub struct WithdrawnRentFund {
 }
 
 #[event]
+pub struct MinimumDepositAmountSet {
+    pub amount: u64,
+    pub burn_token: Pubkey,
+}
+
+#[event]
 pub struct SponsoredDepositForBurn {
     pub quote_nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
     pub origin_sender: Pubkey,

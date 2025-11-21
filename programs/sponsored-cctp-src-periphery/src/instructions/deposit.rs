@@ -6,7 +6,7 @@ use crate::{
     error::{CommonError, SvmError},
     event::{CreatedEventAccount, ReclaimedEventAccount, ReclaimedUsedNonceAccount, SponsoredDepositForBurn},
     message_transmitter_v2::{self, program::MessageTransmitterV2},
-    state::{State, UsedNonce},
+    state::{MinimumDeposit, State, UsedNonce},
     token_messenger_minter_v2::{
         self, cpi::accounts::DepositForBurnWithHook, program::TokenMessengerMinterV2,
         types::DepositForBurnWithHookParams,
@@ -26,6 +26,9 @@ pub struct DepositForBurn<'info> {
 
     #[account(mut, seeds = [b"rent_fund"], bump)]
     pub rent_fund: SystemAccount<'info>,
+
+    #[account(seeds = [b"minimum_deposit", burn_token.key().as_ref()], bump = minimum_deposit.bump)]
+    pub minimum_deposit: Account<'info, MinimumDeposit>,
 
     #[account(
         init, // Enforces that a given quote nonce can be used only once during the quote deadline.
@@ -116,6 +119,9 @@ pub fn deposit_for_burn(ctx: Context<DepositForBurn>, params: &DepositForBurnPar
     }
     if quote.source_domain != state.source_domain {
         return err!(CommonError::InvalidSourceDomain);
+    }
+    if quote.amount < ctx.accounts.minimum_deposit.amount {
+        return err!(SvmError::DepositAmountBelowMinimum);
     }
 
     // Record the quote deadline as it should be safe to close the used_nonce account after this time.

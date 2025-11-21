@@ -13,3 +13,10 @@ pub struct State {
 pub struct UsedNonce {
     pub quote_deadline: u64, // Quote deadline is used to determine when it is safe to close the nonce account.
 }
+
+#[account]
+#[derive(InitSpace)]
+pub struct MinimumDeposit {
+    pub amount: u64, // Minimum deposit amount for a given burn token, set by the admin.
+    pub bump: u8,    // Seed bump for the PDA.
+}
