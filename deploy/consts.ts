@@ -208,6 +208,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.MONAD]: {
     helios: "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    permit2: "0x000000000022d473030f116ddee9f6b43ac78ba3",
   },
   [CHAIN_IDs.PLASMA]: {
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",

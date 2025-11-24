@@ -610,7 +610,8 @@
     },
     "143": {
       "helios": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
-      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "permit2": "0x000000000022d473030f116ddee9f6b43ac78ba3"
     },
     "232": {
       "zkErc20Bridge": "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
