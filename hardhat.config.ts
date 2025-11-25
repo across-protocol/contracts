@@ -145,11 +145,16 @@ const config: HardhatUserConfig = {
     "arbitrum-sepolia": getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM_SEPOLIA, true),
     sepolia: getDefaultHardhatConfig(CHAIN_IDs.SEPOLIA, true),
     polygon: getDefaultHardhatConfig(CHAIN_IDs.POLYGON),
-    bsc: getDefaultHardhatConfig(CHAIN_IDs.BSC),
-    // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
-    // gas: "auto",
-    // gasPrice: 3e8, // 0.3 GWEI
-    // gasMultiplier: 4.0,
+    bsc: {
+      chainId: CHAIN_IDs.BSC,
+      url: getNodeUrl(CHAIN_IDs.BSC),
+      accounts: { mnemonic },
+      saveDeployments: true,
+      companionNetworks: { l1: "mainnet" },
+      gas: "auto",
+      gasPrice: 3e8, // 0.3 GWEI
+      gasMultiplier: 4.0,
+    },
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
     monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),

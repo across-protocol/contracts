@@ -314,8 +314,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Helios
 
-- **Helios**: `0xE58480CA74f1A819faFd777BEDED4E2D5629943d`
-  - Block Number: `59344945`
+- **Helios**: `0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922`
+  - Block Number: `69435667`
 
 ### Unichain (Chain ID: 130)
 
