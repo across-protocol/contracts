@@ -535,8 +535,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Helios
 
-- **Helios**: `0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5`
-  - Block Number: `13934816`
+- **Helios**: `0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0`
+  - Block Number: `20185101`
 
 #### MulticallHandler
 
