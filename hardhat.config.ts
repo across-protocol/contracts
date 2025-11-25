@@ -146,11 +146,7 @@ const config: HardhatUserConfig = {
     sepolia: getDefaultHardhatConfig(CHAIN_IDs.SEPOLIA, true),
     polygon: getDefaultHardhatConfig(CHAIN_IDs.POLYGON),
     bsc: {
-      chainId: CHAIN_IDs.BSC,
-      url: getNodeUrl(CHAIN_IDs.BSC),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      companionNetworks: { l1: "mainnet" },
+      ...getDefaultHardhatConfig(CHAIN_IDs.BSC),
       gas: "auto",
       gasPrice: 3e8, // 0.3 GWEI
       gasMultiplier: 4.0,
