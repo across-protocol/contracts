@@ -56,7 +56,10 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.23";
+const solcVersion = "0.8.30";
+
+// Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
+const evmVersion = isTest ? "paris" : "prague";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -65,6 +68,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -73,6 +77,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
+    evmVersion,
     // Only strip revert strings if not testing or in ci.
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
@@ -83,6 +88,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -92,34 +98,18 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Linea_SpokePool.sol": {
-        ...LARGE_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
-      "contracts/SpokePoolVerifier.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
+      "contracts/Linea_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Mode_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/OP_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Bob_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -167,6 +157,7 @@ const config: HardhatUserConfig = {
     // gasPrice: 3e8, // 0.3 GWEI
     // gasMultiplier: 4.0,
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
     "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),
@@ -236,11 +227,43 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
+        network: "blast",
+        chainId: CHAIN_IDs.BLAST,
+        urls: {
+          apiURL: "https://blastscan.io/api",
+          browserURL: "https://blastscan.io",
+        },
+      },
+      {
         network: "hyperevm",
         chainId: CHAIN_IDs.HYPEREVM,
         urls: {
           apiURL: "https://hyperevmscan.io/api",
           browserURL: "https://hyperevmscan.io",
+        },
+      },
+      {
+        network: "linea",
+        chainId: CHAIN_IDs.LINEA,
+        urls: {
+          apiURL: "https://lineascan.build/api",
+          browserURL: "https://lineascan.build",
+        },
+      },
+      {
+        network: "scroll",
+        chainId: CHAIN_IDs.SCROLL,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://scrollscan.com",
+        },
+      },
+      {
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
+        urls: {
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
         },
       },
       {
@@ -318,6 +341,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.redstone.xyz/api",
           browserURL: "https://explorer.redstone.xyz",
+        },
+      },
+      {
+        network: "plasma",
+        chainId: 9745,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmascan.to",
         },
       },
       {

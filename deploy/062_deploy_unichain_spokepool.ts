@@ -17,7 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
     USDC[spokeChainId],
-    L2_ADDRESS_MAP[spokeChainId].cctpTokenMessenger,
+    L2_ADDRESS_MAP[spokeChainId].cctpV2TokenMessenger,
   ];
   await deployNewProxy("DoctorWho_SpokePool", constructorArgs, initArgs);
 };

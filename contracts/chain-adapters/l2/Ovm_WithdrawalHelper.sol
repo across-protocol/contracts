@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
-import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
+import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/crosschain/optimism/LibOptimismUpgradeable.sol";
 import { IL2ERC20Bridge } from "../../Ovm_SpokePool.sol";
 
 /**
@@ -102,11 +102,7 @@ contract Ovm_WithdrawalHelper is WithdrawalHelperBase {
      * New lines of code correspond to instances where this contract queries state from the spoke pool, such as determining
      * the appropriate token bridge for the withdrawal or finding the remoteL1Token to withdraw.
      */
-    function withdrawToken(
-        address,
-        address l2Token,
-        uint256 amountToReturn
-    ) public override {
+    function withdrawToken(address, address l2Token, uint256 amountToReturn) public override {
         // Fetch the current l1Gas defined in the Ovm_SpokePool.
         uint32 l1Gas = spokePool.l1Gas();
         // If the token being bridged is WETH then we need to first unwrap it to ETH and then send ETH over the

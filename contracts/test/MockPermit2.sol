@@ -1,10 +1,10 @@
 pragma solidity ^0.8.0;
 
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { IERC1271 } from "@openzeppelin/contracts-v4/interfaces/IERC1271.sol";
+import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
 
 // Taken from https://github.com/Uniswap/permit2/blob/main/src/EIP712.sol
 contract Permit2EIP712 {

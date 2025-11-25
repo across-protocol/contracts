@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/security/ReentrancyGuardUpgradeable.sol";
 import { ForwarderInterface } from "./interfaces/ForwarderInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
-import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { MultiCaller } from "../external/uma/core/contracts/common/implementation/MultiCaller.sol";
 import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 
 /**

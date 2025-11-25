@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@across-protocol/constants@^3.1.77":
-  version "3.1.77"
-  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.77.tgz#0d57db8676a7eaf4541b2cc9143d95e8d753c0af"
-  integrity sha512-zRRTFAKhLgAA1QBJsbG5KautFczW0NV0N2hPW8dIn3cyC+pvYBU8FBb3gQ2Vp9b++kg1Gk1rSpMVMKKnjUBtOA==
+"@across-protocol/constants@^3.1.88":
+  version "3.1.88"
+  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.88.tgz#1ba756921a06bd5bd2d3750a934b1ceb624a6b66"
+  integrity sha512-pwvbDpaMm25VCsjc9G3gsIyWxY/mak+AGg0NHQszhS1nbKFFZxgJe6Qs5v9IIND7mlxTAXFmXNLOsjwC9U5Kkg==
 
 "@across-protocol/contracts@^0.1.4":
   version "0.1.4"
@@ -2552,10 +2552,25 @@
   dependencies:
     "@opentelemetry/core" "^1.1.0"
 
-"@openzeppelin/contracts-upgradeable@4.9.6", "@openzeppelin/contracts-upgradeable@^4.8.1":
+"@openzeppelin/contracts-upgradeable-v4@npm:@openzeppelin/contracts-upgradeable@4.9.6":
   version "4.9.6"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-4.9.6.tgz#38b21708a719da647de4bb0e4802ee235a0d24df"
   integrity sha512-m4iHazOsOCv1DgM7eD7GupTJ+NFVujRZt1wzddDPSVGpWdKq1SKkla5htKG7+IS4d2XOCtzkUNwRZ7Vq5aEUMA==
+
+"@openzeppelin/contracts-upgradeable@5.5.0":
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-5.5.0.tgz#e35b3ededa5ccc13205c2b42e2058cd5cb7d424a"
+  integrity sha512-Va5hKG5oaK0EE5bXTVWugcGimMHazxL+SL523dH6WVbGiuLXwuWr9oxtLyPHQSVGtgmlIgtKNR5V+OUpCIUwFQ==
+
+"@openzeppelin/contracts-upgradeable@^4.8.1":
+  version "4.9.6"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-4.9.6.tgz#38b21708a719da647de4bb0e4802ee235a0d24df"
+  integrity sha512-m4iHazOsOCv1DgM7eD7GupTJ+NFVujRZt1wzddDPSVGpWdKq1SKkla5htKG7+IS4d2XOCtzkUNwRZ7Vq5aEUMA==
+
+"@openzeppelin/contracts-v4@npm:@openzeppelin/contracts@4.9.6":
+  version "4.9.6"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.9.6.tgz#2a880a24eb19b4f8b25adc2a5095f2aa27f39677"
+  integrity sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dbuHkgjuwDFUmaFauBCboQMGB/S5UqUl2y54X99BmA==
 
 "@openzeppelin/contracts@3.4.1-solc-0.7-2":
   version "3.4.1-solc-0.7-2"
@@ -2572,7 +2587,12 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.4.2.tgz#4e889c9c66e736f7de189a53f8ba5b8d789425c2"
   integrity sha512-NyJV7sJgoGYqbtNUWgzzOGW4T6rR19FmX1IJgXGdapGPWsuMelGJn9h03nos0iqfforCbCB0iYIR0MtIuIFLLw==
 
-"@openzeppelin/contracts@4.9.6", "@openzeppelin/contracts@^4.2.0", "@openzeppelin/contracts@^4.8.1":
+"@openzeppelin/contracts@5.5.0":
+  version "5.5.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-5.5.0.tgz#24e8a2f9598de484dcb223512af656edf52bc0e8"
+  integrity sha512-R8hq4zmKKWP2c7OxeRgAcjZwvF5W0Qq2OIX7degrtdM52Q9xYr4MLJdUAVPKGUewNJ1qo+M6YiZLLnNUnjP/gg==
+
+"@openzeppelin/contracts@^4.2.0", "@openzeppelin/contracts@^4.8.1":
   version "4.9.6"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.9.6.tgz#2a880a24eb19b4f8b25adc2a5095f2aa27f39677"
   integrity sha512-xSmezSupL+y9VkHZJGDoCBpmnB2ogM13ccaYDWqJTfS3dbuHkgjuwDFUmaFauBCboQMGB/S5UqUl2y54X99BmA==
@@ -4504,22 +4524,6 @@
     "@openzeppelin/contracts" "4.4.2"
     "@uma/common" "^2.34.0"
     "@uma/merkle-distributor" "^1.3.38"
-    "@uniswap/lib" "4.0.1-alpha"
-    "@uniswap/v2-core" "1.0.0"
-    "@uniswap/v2-periphery" "1.1.0-beta.0"
-    "@uniswap/v3-core" "^1.0.0-rc.2"
-    "@uniswap/v3-periphery" "^1.0.0-beta.23"
-
-"@uma/core@^2.61.0":
-  version "2.61.0"
-  resolved "https://registry.yarnpkg.com/@uma/core/-/core-2.61.0.tgz#29580736349a47af8fb10beb4bb3b50bfcf912f5"
-  integrity sha512-bnk+CWW+uWpRilrgUny/gDXHKomG+h1Ug84OXdx+AAvj1/BtlMDOCNNt1OX8LSAz+a0hkiN9s24/zgHclTC/sg==
-  dependencies:
-    "@gnosis.pm/safe-contracts" "^1.3.0"
-    "@gnosis.pm/zodiac" "3.2.0"
-    "@maticnetwork/fx-portal" "^1.0.4"
-    "@openzeppelin/contracts" "4.9.6"
-    "@uma/common" "^2.37.3"
     "@uniswap/lib" "4.0.1-alpha"
     "@uniswap/v2-core" "1.0.0"
     "@uniswap/v2-periphery" "1.1.0-beta.0"

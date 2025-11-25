@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/access/OwnableUpgradeable.sol";
 
 /**
  * @notice Ethereum L1 specific SpokePool. Used on Ethereum L1 to facilitate L2->L1 transfers.

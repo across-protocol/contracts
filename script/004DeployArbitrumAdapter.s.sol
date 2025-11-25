@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { Arbitrum_Adapter } from "../contracts/chain-adapters/Arbitrum_Adapter.sol";
 import { Constants } from "./utils/Constants.sol";
 
@@ -59,7 +59,7 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
             ArbitrumL1ERC20GatewayLike(l1Addresses.l1ERC20GatewayRouter),
             l2RefundAddress,
             IERC20(getUSDCAddress(chainId)),
-            ITokenMessenger(l1Addresses.cctpTokenMessenger),
+            ITokenMessenger(l1Addresses.cctpV2TokenMessenger),
             l1Addresses.adapterStore, // This might need to be deployed first or set to address(0)
             oftDstEid,
             oftFeeCap
@@ -72,7 +72,7 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
         console.log("L1 ERC20 Gateway Router:", l1Addresses.l1ERC20GatewayRouter);
         console.log("L2 Refund Address:", l2RefundAddress);
         console.log("USDC Address:", getUSDCAddress(chainId));
-        console.log("CCTP Token Messenger:", l1Addresses.cctpTokenMessenger);
+        console.log("CCTP Token Messenger:", l1Addresses.cctpV2TokenMessenger);
         console.log("Adapter Store:", l1Addresses.adapterStore);
         console.log("OFT Destination EID:", oftDstEid);
         console.log("OFT Fee Cap:", oftFeeCap);

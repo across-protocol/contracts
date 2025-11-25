@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { HubPool } from "../contracts/HubPool.sol";
 import { LpTokenFactory } from "../contracts/LpTokenFactory.sol";
-import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
+import { FinderInterface } from "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { Constants } from "./utils/Constants.sol";
 
@@ -26,7 +26,7 @@ contract DeployHubPool is Script, Test, Constants {
         uint256 chainId = block.chainid;
 
         // Get the appropriate addresses for this chain
-        WETH9Interface weth = getWrappedNativeToken(chainId);
+        address weth = getWrappedNativeToken(chainId);
         FinderInterface finder = FinderInterface(getL1Addresses(chainId).finder);
 
         vm.startBroadcast(deployerPrivateKey);
@@ -35,7 +35,7 @@ contract DeployHubPool is Script, Test, Constants {
         LpTokenFactory lpTokenFactory = new LpTokenFactory();
 
         // Deploy HubPool with the LpTokenFactory address
-        HubPool hubPool = new HubPool(lpTokenFactory, finder, weth, address(0));
+        HubPool hubPool = new HubPool(lpTokenFactory, finder, WETH9Interface(weth), address(0));
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);

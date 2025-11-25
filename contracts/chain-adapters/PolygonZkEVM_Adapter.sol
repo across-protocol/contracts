@@ -5,8 +5,8 @@ import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
 import "../external/interfaces/IPolygonZkEVMBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Supports sending messages and tokens from L1 to PolygonZkEVM.
@@ -51,12 +51,7 @@ contract PolygonZkEVM_Adapter is AdapterInterface {
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         // The mapped WETH address in the native Polygon zkEVM bridge contract does not match
         // the official WETH address. Therefore, if the l1Token is WETH then unwrap it to ETH
         // and send the ETH directly via as msg.value.

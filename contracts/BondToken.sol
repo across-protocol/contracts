@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-v4/access/Ownable.sol";
+import "@openzeppelin/contracts-v4/utils/Address.sol";
 
 import "./interfaces/HubPoolInterface.sol";
 import "./external/WETH9.sol";
@@ -71,11 +71,7 @@ contract BondToken is WETH9, Ownable {
      * @param amt Amount to transfer.
      * @return True on success.
      */
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 amt
-    ) public override returns (bool) {
+    function transferFrom(address src, address dst, uint256 amt) public override returns (bool) {
         if (dst == address(HUB_POOL)) {
             require(proposers[src] || HUB_POOL.rootBundleProposal().proposer != src, "Transfer not permitted");
         }

@@ -15,12 +15,12 @@ import "./libraries/AddressConverters.sol";
 import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool
@@ -202,6 +202,9 @@ abstract contract SpokePool is
     event PausedFills(bool isPaused);
     event SetOFTMessenger(address indexed token, address indexed messenger);
 
+    /// @notice Emitted when the call to external contract is executed, triggered by an admin action
+    event AdminExternalCallExecuted(address indexed target, bytes data);
+
     error OFTTokenMismatch();
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
@@ -368,6 +371,27 @@ abstract contract SpokePool is
      */
     function setOftMessenger(address token, address messenger) external onlyAdmin nonReentrant {
         _setOftMessenger(token, messenger);
+    }
+
+    /**
+     * @notice Execute an external call to a target contract.
+     * @param message The message containing the target address and calldata to execute.
+     * @return returnData The return data from the executed call.
+     */
+    function executeExternalCall(
+        bytes calldata message
+    ) external onlyAdmin nonReentrant returns (bytes memory returnData) {
+        (address target, bytes memory data) = abi.decode(message, (address, bytes));
+
+        if (target == address(0)) revert ZeroAddressTarget();
+        if (data.length < 4) revert MessageTooShort(); // need at least a selector
+
+        // external call to target
+        bool success;
+        (success, returnData) = target.call(data);
+
+        if (!success) revert ExternalCallExecutionFailed();
+        emit AdminExternalCallExecuted(target, data);
     }
 
     /**************************************
@@ -1673,8 +1697,23 @@ abstract contract SpokePool is
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
         fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
-        // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
-        // successful.
+        _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
+        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
+    }
+
+    /**
+     * @notice Emits the FilledRelay event for a completed relay fill.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param relayer The relayer address.
+     * @param fillType The type of fill being executed.
+     */
+    function _emitFilledRelayEvent(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bytes32 relayer,
+        FillType fillType
+    ) internal {
         emit FilledRelay(
             relayData.inputToken,
             relayData.outputToken,
@@ -1697,13 +1736,25 @@ abstract contract SpokePool is
                 fillType: fillType
             })
         );
+    }
 
+    /**
+     * @notice Transfers tokens to the recipient based on the relay execution parameters.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param isSlowFill Whether this is a slow fill execution.
+     */
+    function _transferTokensToRecipient(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bool isSlowFill
+    ) internal {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
+
         // If relay token is wrappedNativeToken then unwrap and send native token.
-        // Stack too deep.
-        if (relayData.outputToken.toAddress() == address(wrappedNativeToken)) {
+        if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the

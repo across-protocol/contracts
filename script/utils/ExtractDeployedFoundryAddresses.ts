@@ -45,8 +45,8 @@ interface JsonOutput {
       contracts: {
         [contractName: string]: {
           address: string;
-          transaction_hash: string;
-          block_number: number | null;
+          transaction_hash?: string;
+          block_number?: number;
         };
       };
     };
@@ -335,13 +335,15 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     content.push("");
 
     for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      const name = contracts.length > 1 ? contracts[0].contractName : scriptName;
+      const name = contracts.length > 0 ? contracts[0].contractName : scriptName;
       content.push(`#### ${name}`);
       content.push("");
 
       for (const contract of contracts) {
         content.push(`- **${contract.contractName}**: \`${contract.contractAddress}\``);
-        content.push(`  - Transaction Hash: \`${contract.transactionHash}\``);
+        if (contract.transactionHash !== "Unknown") {
+          content.push(`  - Transaction Hash: \`${contract.transactionHash}\``);
+        }
         if (contract.blockNumber !== null) {
           content.push(`  - Block Number: \`${contract.blockNumber}\``);
         }
@@ -366,8 +368,8 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
         const contractName = contract.contractName;
         jsonOutput.chains[chainId].contracts[contractName] = {
           address: contract.contractAddress,
-          transaction_hash: contract.transactionHash,
-          block_number: contract.blockNumber,
+          ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
+          ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
         };
       }
     }

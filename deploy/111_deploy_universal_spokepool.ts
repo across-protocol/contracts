@@ -5,6 +5,7 @@ import { FILL_DEADLINE_BUFFER, L2_ADDRESS_MAP, QUOTE_TIME_BUFFER, USDC, ZERO_ADD
 import { CHAIN_IDs, PRODUCTION_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils/constants";
 import { getOftEid, toWei } from "../utils/utils";
 import { getDeployedAddress } from "../src/DeploymentUtils";
+import "@nomiclabs/hardhat-ethers";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { hubPool, hubChainId, spokeChainId } = await getSpokePoolDeploymentInfo(hre);
@@ -29,7 +30,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const oftEid = getOftEid(hubChainId);
   // ! Notice. Deployed has to adjust this fee cap based on dst chain's native token. 4.4 BNB for BSC
-  const oftFeeCap = toWei(4.4); // ~1 ETH fee cap
+  let oftFeeCap = toWei("1"); // 1 ETH fee cap
+  if (spokeChainId == CHAIN_IDs.MONAD) {
+    oftFeeCap = toWei(78_000); // ~1 ETH fee cap
+  } else if (spokeChainId == CHAIN_IDs.BSC) {
+    oftFeeCap = toWei(4.4); // ~1 ETH fee cap
+  }
 
   const heliosAddress = getDeployedAddress("Helios", spokeChainId);
 
@@ -46,14 +52,21 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     oftEid,
     oftFeeCap,
   ];
-  console.log(`Deploying new Universal SpokePool on ${spokeChainId} with args:`, constructorArgs);
+  console.log(`Deploying new Universal SpokePool on ${spokeChainId} with constructor arguments:`, constructorArgs);
+  console.log(`Deploying implementation with initialization arguments:`, initArgs);
 
   // @dev Deploy on different address for each chain.
   // The Universal Adapter writes calldata to be relayed to L2 by associating it with the
   // target address of the spoke pool. This is because the HubPool does not pass in the chainId when calling
   // relayMessage() on the Adapter. Therefore, if Universal SpokePools share the same address,
   // then a message designed to be sent to one chain could be sent to another's SpokePool.
-  await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
+  const { proxyAddress } = await deployNewProxy("Universal_SpokePool", constructorArgs, initArgs);
+
+  if (!proxyAddress) {
+    return;
+  }
+
+  console.log(`Deployed Universal SpokePool at ${proxyAddress}! Remember to transfer ownership to the Gnosis Safe!`);
 };
 module.exports = func;
 func.tags = ["UniversalSpokePool"];

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title MultiCallerUpgradeable
- * @notice Logic is 100% copied from "@uma/core/contracts/common/implementation/MultiCaller.sol" but one
+ * @notice Logic is 100% copied from "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol" but one
  * comment is added to clarify why we allow delegatecall() in this contract, which is typically unsafe for use in
  * upgradeable implementation contracts.
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
