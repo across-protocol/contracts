@@ -173,3 +173,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Universal_SpokePool | [0x50039fAEfebef707cFD94D6d462fE6D10B39207a](https://plasmascan.to/address/0x50039fAEfebef707cFD94D6d462fE6D10B39207a) |
 | MulticallHandler    | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://plasmascan.to/address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
+
+## Monad mainnet (143)
+
+| Contract Name       | Address                                                                                                                  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Universal_SpokePool | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadvision.com/address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| MulticallHandler    | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
