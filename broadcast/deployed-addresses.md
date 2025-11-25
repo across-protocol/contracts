@@ -635,8 +635,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### Helios
 
-- **Helios**: `0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75`
-  - Block Number: `1552582`
+- **Helios**: `0x6f1cd5f317a7228269eab2b496313862de712ccb`
+  - Block Number: `7166956`
 
 #### SpokePool
 
