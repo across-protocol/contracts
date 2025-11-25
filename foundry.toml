@@ -34,6 +34,9 @@ fs_permissions = [{ access = "read", path = "./"}]
 solc = "0.8.30"
 evm_version = "prague"
 
+[profile.zksync]
+src = "contracts/Lens_SpokePool.sol"
+
 [profile.zksync.zksync]
 compile = true
 fallback_oz = true

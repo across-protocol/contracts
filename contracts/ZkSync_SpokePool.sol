@@ -128,6 +128,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      **************************************/
 
     /**
+     * @notice Checks if an address is a 7702 delegated wallet (EOA with delegated code).
+     * @return False Since eraVM does not support 7702 delegated wallets, this function always returns false.
+     */
+    function _is7702DelegatedWallet(address) internal pure override returns (bool) {
+        return false;
+    }
+
+    /**
      * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      */

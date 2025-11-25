@@ -1661,7 +1661,7 @@ abstract contract SpokePool is
      * @param account The address to check.
      * @return True if the address is a 7702 delegated wallet, false otherwise.
      */
-    function _is7702DelegatedWallet(address account) internal view returns (bool) {
+    function _is7702DelegatedWallet(address account) internal view virtual returns (bool) {
         return bytes3(account.code) == EIP7702_PREFIX;
     }
 
