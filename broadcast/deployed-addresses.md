@@ -304,8 +304,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### MulticallHandler
 
-- **MulticallHandler**: `0xAC537C12fE8f544D712d71ED4376a502EEa944d7`
-  - Block Number: `48762440`
+- **MulticallHandler**: `0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E`
+  - Block Number: `54800640`
 
 #### SpokePoolPeriphery
 

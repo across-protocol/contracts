@@ -58,7 +58,7 @@
   "56": {
     "SpokePool": { "address": "0x4e8E101924eDE233C13e2D8622DC8aED2872d505", "blockNumber": 48762335 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 49157612 },
-    "MulticallHandler": { "address": "0xAC537C12fE8f544D712d71ED4376a502EEa944d7", "blockNumber": 48762440 },
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 54800640 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 52135703 },
     "Helios": { "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d", "blockNumber": 59344945 }
   },
