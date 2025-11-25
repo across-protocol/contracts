@@ -82,7 +82,6 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
         console.log("Helios address:", helios);
         console.log("L1 HubPoolStore address:", l1HubPoolStore);
-        console.log("Wrapped Native Token address:", weth);
         console.log("USDC address:", usdcAddress);
         console.log("CCTP Token Messenger:", cctpTokenMessenger);
         console.log("OFT DST EID:", oftDstEid);
