@@ -7,7 +7,7 @@ import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol
 import "./SpokePool.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/bridge/asset-router/L2AssetRouter.sol#L321
-interface ZkL2AssetRouter {
+interface ZkBridgeLike {
     function withdraw(bytes32 _assetId, bytes memory _assetData) external returns (bytes32);
 }
 
@@ -32,7 +32,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     address public l2Eth;
 
     // Bridge used to withdraw ERC20's to L1
-    ZkL2AssetRouter public zkErc20Bridge;
+    ZkBridgeLike public zkErc20Bridge;
 
     // Used to compute asset ID needed to withdraw tokens.
     // See https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol
