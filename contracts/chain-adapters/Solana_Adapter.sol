@@ -7,7 +7,7 @@ import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 /**
  * @notice Contract containing logic to send messages from L1 to Solana via CCTP.
@@ -119,12 +119,7 @@ contract Solana_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         if (l1Token != address(usdcToken)) {
             revert InvalidL1Token(l1Token);
         }

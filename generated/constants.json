@@ -43,12 +43,22 @@
     "137": {
       "name": "Polygon",
       "family": "NONE",
-      "nativeToken": "MATIC",
+      "nativeToken": "POL",
       "publicRPC": "https://polygon-rpc.com",
       "blockExplorer": "https://polygonscan.com",
       "cctpDomain": 7,
       "oftEid": 30109,
       "hypDomainId": 137
+    },
+    "143": {
+      "name": "Monad",
+      "family": "NONE",
+      "nativeToken": "MON",
+      "publicRPC": "https://rpc-mainnet.monadinfra.com/",
+      "blockExplorer": "https://monadscan.com/",
+      "cctpDomain": 15,
+      "oftEid": 30390,
+      "hypDomainId": 143
     },
     "232": {
       "name": "Lens",
@@ -230,6 +240,16 @@
       "oftEid": -1,
       "hypDomainId": -1
     },
+    "10143": {
+      "name": "Monad Testnet",
+      "family": "NONE",
+      "nativeToken": "MON",
+      "publicRPC": "https://testnet-rpc.monad.xyz/",
+      "blockExplorer": "https://testnet.monvision.io/",
+      "cctpDomain": 15,
+      "oftEid": 40204,
+      "hypDomainId": 10143
+    },
     "34443": {
       "name": "Mode",
       "family": "OP_STACK",
@@ -293,7 +313,7 @@
     "80002": {
       "name": "Polygon Amoy",
       "family": "NONE",
-      "nativeToken": "MATIC",
+      "nativeToken": "POL",
       "publicRPC": "https://rpc-amoy.polygon.technology",
       "blockExplorer": "https://amoy.polygonscan.com",
       "cctpDomain": 7,
@@ -447,6 +467,7 @@
     "LISK": 1135,
     "MAINNET": 1,
     "MODE": 34443,
+    "MONAD": 143,
     "OPTIMISM": 10,
     "PLASMA": 9745,
     "POLYGON": 137,
@@ -469,6 +490,7 @@
     "LENS_SEPOLIA": 37111,
     "LISK_SEPOLIA": 4202,
     "MODE_SEPOLIA": 919,
+    "MONAD_TESTNET": 10143,
     "OPTIMISM_SEPOLIA": 11155420,
     "PLASMA_TESTNET": 9746,
     "POLYGON_AMOY": 80002,
@@ -479,8 +501,8 @@
     "SOLANA_DEVNET": 133268194659241
   },
   "TESTNET_CHAIN_IDs": [
-    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 11155420, 9746, 80002, 534351, 11155111,
-    1301, 300, 133268194659241
+    421614, 84532, 168587773, 808813, 998, 763373, 129399, 37111, 4202, 919, 10143, 11155420, 9746, 80002, 534351,
+    11155111, 1301, 300, 133268194659241
   ],
   "WETH": {
     "1": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
@@ -527,6 +549,7 @@
     "56": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
     "130": "0x4200000000000000000000000000000000000006",
     "137": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
+    "143": "0x3bd359C1119dA7Da1D913D1C4D2B7c461115433A",
     "288": "0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeAD0000",
     "300": "0x2D6Db36B3117802E996f13073A08A685D3FeF7eD",
     "324": "0x5AEa5775959fBC2557Cc8789bC1bf90A239D9a91",
@@ -542,6 +565,7 @@
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
     "9746": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
+    "10143": "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
     "34443": "0x4200000000000000000000000000000000000006",
     "37111": "0xeee5a340Cdc9c179Db25dea45AcfD5FE8d4d3eB8",
     "41455": "0xb7Da55D7040ef9C887e20374D76A88F93A59119E",
@@ -583,6 +607,10 @@
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
+    "143": {
+      "helios": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
     },
     "232": {
       "zkErc20Bridge": "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
@@ -855,12 +883,14 @@
     "10": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
     "130": "0x078D782b760474a361dDA0AF3839290b0EF57AD6",
     "137": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
+    "143": "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
     "232": "0x88F08E304EC4f90D644Cec3Fb69b8aD414acf884",
     "480": "0x79A02482A880bCE3F13e09Da970dC34db4CD24d1",
     "998": "0x2B3370eE501B4a559b57D449569354196457D8Ab",
     "999": "0xb88339CB7199b77E23DB6E890353E22632Ba630f",
     "1301": "0x31d0220469e10c4E71834a79b1f276d740d3768F",
     "8453": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "10143": "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
     "42161": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
     "59144": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
     "80002": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
@@ -890,7 +920,7 @@
     "232": "0x6bDc36E20D267Ff0dd6097799f82e78907105e2F"
   },
   "WMATIC": {
-    "1": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0",
+    "1": "0x455e53CBB86018Ac2B8092FdCd39d8444aFFC3F6",
     "137": "0x0d500B1d8E8eF31E21C99d1Db9A6444d3ADf1270",
     "80002": "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
     "11155111": "0x3fd0A53F4Bf853985a95F4Eb3F9C9FDE1F8e2b53"

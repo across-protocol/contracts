@@ -5,7 +5,7 @@ import "./SpokePool.sol";
 import "./external/interfaces/WETH9Interface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 
-import "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 // https://github.com/ethereum-optimism/optimism/blob/bf51c4935261634120f31827c3910aa631f6bf9c/packages/contracts-bedrock/contracts/L2/L2StandardBridge.sol

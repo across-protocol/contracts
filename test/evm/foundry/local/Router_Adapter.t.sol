@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { ERC20, IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import { FinderInterface } from "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
+import { FinderInterface } from "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 
 import { Router_Adapter } from "../../../../contracts/chain-adapters/Router_Adapter.sol";
 import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
