@@ -6,9 +6,9 @@ import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "./libraries
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import "./SpokePool.sol";
 
-// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
-interface ZkBridgeLike {
-    function withdraw(address _l1Receiver, address _l2Token, uint256 _amount) external;
+// https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/bridge/asset-router/L2AssetRouter.sol#L321
+interface ZkL2AssetRouter {
+    function withdraw(bytes32 _assetId, bytes memory _assetData) external returns (bytes32);
 }
 
 interface IL2ETH {
@@ -32,9 +32,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     address public l2Eth;
 
     // Bridge used to withdraw ERC20's to L1
-    ZkBridgeLike public zkErc20Bridge;
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-    ZkBridgeLike public immutable zkUSDCBridge;
+    ZkL2AssetRouter public zkErc20Bridge;
+
+    // Used to compute asset ID needed to withdraw tokens.
+    // See https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol
+    address public immutable l2NativeTokenVault;
+
+    // Used to compute asset ID needed to withdraw tokens.
+    uint256 public immutable l1ChainId;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
@@ -42,12 +47,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     /**
      * @notice Constructor.
-     * @notice Circle bridged & native USDC are optionally supported via configuration, but are mutually exclusive.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
-     * If not set to zero, then either the zkUSDCBridge or cctpTokenMessenger must be set and will be used to
-     * bridge this token.
-     * @param _zkUSDCBridge Elastic chain custom bridge address for USDC (if deployed, or address(0) to disable).
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
      * into the past from the block time of the deposit.
@@ -58,7 +59,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     constructor(
         address _wrappedNativeTokenAddress,
         IERC20 _circleUSDC,
-        ZkBridgeLike _zkUSDCBridge,
+        uint256 _l1ChainId,
+        address _l2NativeTokenVault,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
@@ -73,17 +75,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         )
         CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
-        address zero = address(0);
-        if (address(_circleUSDC) != zero) {
-            bool zkUSDCBridgeDisabled = address(_zkUSDCBridge) == zero;
-            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
-            // Bridged and Native USDC are mutually exclusive.
-            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
-                revert InvalidBridgeConfig();
-            }
-        }
-
-        zkUSDCBridge = _zkUSDCBridge;
+        l1ChainId = _l1ChainId;
+        l2NativeTokenVault = _l2NativeTokenVault;
     }
 
     /**
@@ -160,17 +153,12 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
             IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
-        } else if (l2TokenAddress == address(usdcToken)) {
-            if (_isCCTPEnabled()) {
-                // Circle native USDC via CCTP.
-                _transferUsdc(withdrawalRecipient, amountToReturn);
-            } else {
-                // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
-                IERC20(l2TokenAddress).forceApprove(address(zkUSDCBridge), amountToReturn);
-                zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
-            }
+        } else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
+            _transferUsdc(withdrawalRecipient, amountToReturn);
         } else {
-            zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            bytes32 assetId = _getAssetId(l2TokenAddress);
+            bytes memory data = _encodeBridgeBurnData(amountToReturn, withdrawalRecipient, l2TokenAddress);
+            zkErc20Bridge.withdraw(assetId, data);
         }
     }
 
@@ -178,6 +166,20 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         address oldErc20Bridge = address(zkErc20Bridge);
         zkErc20Bridge = _zkErc20Bridge;
         emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
+    }
+
+    // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
+    function _getAssetId(address _tokenAddress) internal pure returns (bytes32) {
+        return keccak256(abi.encode(l1ChainId, l2NativeTokenVault, _tokenAddress));
+    }
+
+    // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L24C1-L30C6
+    function _encodeBridgeBurnData(
+        uint256 _amount,
+        address _remoteReceiver,
+        address _l2TokenAddress
+    ) internal pure returns (bytes memory) {
+        return abi.encode(_amount, _remoteReceiver, _l2TokenAddress);
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
