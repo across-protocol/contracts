@@ -169,7 +169,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
-    function _getAssetId(address _tokenAddress) internal pure returns (bytes32) {
+    function _getAssetId(address _tokenAddress) internal view returns (bytes32) {
         return keccak256(abi.encode(l1ChainId, l2NativeTokenVault, _tokenAddress));
     }
 
