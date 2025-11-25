@@ -417,8 +417,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 #### SpokePoolPeriphery
 
-- **SpokePoolPeriphery**: `0x8810Bc1bAd93eF2F8b0493B9659220cdb0f94232`
-  - Block Number: `37743561`
+- **SpokePoolPeriphery**: `0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7`
+  - Block Number: `37957403`
 
 #### SpokePool
 
