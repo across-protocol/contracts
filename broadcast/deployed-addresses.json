@@ -329,6 +329,10 @@
           "address": "0xeC41F75c686e376Ab2a4F18bde263ab5822c4511",
           "block_number": 36589196
         },
+        "SpokePoolPeriphery": {
+          "address": "0x8810Bc1bAd93eF2F8b0493B9659220cdb0f94232",
+          "block_number": 37743561
+        },
         "SpokePool": {
           "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449",
           "block_number": 36437473

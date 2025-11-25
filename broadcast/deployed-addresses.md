@@ -415,6 +415,11 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **MulticallHandler**: `0xeC41F75c686e376Ab2a4F18bde263ab5822c4511`
   - Block Number: `36589196`
 
+#### SpokePoolPeriphery
+
+- **SpokePoolPeriphery**: `0x8810Bc1bAd93eF2F8b0493B9659220cdb0f94232`
+  - Block Number: `37743561`
+
 #### SpokePool
 
 - **SpokePool**: `0xd2ecb3afe598b746F8123CaE365a598DA831A449`
