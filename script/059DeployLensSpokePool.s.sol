@@ -86,6 +86,7 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         console.log("cctpTokenMessenger:", cctpTokenMessenger);
         console.log("Lens_SpokePool proxy deployed to:", result.proxy);
         console.log("Lens_SpokePool implementation deployed to:", result.implementation);
+        console.logBytes(constructorArgs);
 
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
