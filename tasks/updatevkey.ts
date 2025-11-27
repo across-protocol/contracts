@@ -102,7 +102,8 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
     types.string
   )
   .setAction(async (args, hre: HardhatRuntimeEnvironment) => {
-    const { ethers: hreEthers, deployments, artifacts } = hre;
+    const hreAny = hre as any;
+    const { ethers: hreEthers, deployments, artifacts } = hreAny;
     const newVkey = normalizeVkey(args.newvkey);
     const chainIds = parseChainList(args.chains);
 
@@ -120,6 +121,8 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
       spokePool: string;
       helios: string;
     }> = [];
+    const failedChains: number[] = [];
+    const chainsAlreadyUpToDate: number[] = [];
 
     console.log(`Preparing Helios vkey update calldata for chains: ${chainIds.join(", ")}`);
     console.log(`Using HubPool at ${hubPoolDeployment.address}\n`);
@@ -129,6 +132,7 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
       const chainDeployments = DEPLOYMENTS[chainKey];
       if (!chainDeployments || !chainDeployments.SpokePool?.address) {
         console.warn(`Skipping chain ${chainId}: no SpokePool entry in deployments/deployments.json`);
+        failedChains.push(chainId);
         continue;
       }
 
@@ -139,6 +143,7 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
         networkConfig = getNetworkConfigForChainId(hre, chainId);
       } catch (err) {
         console.warn(`Skipping chain ${chainId}: ${(err as Error).message}`);
+        failedChains.push(chainId);
         continue;
       }
 
@@ -153,11 +158,13 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
         console.warn(
           `Skipping chain ${chainId}: SpokePool at ${spokePoolAddress} does not expose helios() (is it a Universal_SpokePool?)`
         );
+        failedChains.push(chainId);
         continue;
       }
 
       if (!heliosAddress || heliosAddress === hreEthers.constants.AddressZero) {
         console.warn(`Skipping chain ${chainId}: SpokePool.helios() returned zero address`);
+        failedChains.push(chainId);
         continue;
       }
 
@@ -175,6 +182,7 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
         vkeyRoleOnChain = await helios.VKEY_UPDATER_ROLE();
       } catch (err) {
         console.warn(`Skipping chain ${chainId}: failed to read VKEY_UPDATER_ROLE from Helios at ${heliosAddress}`);
+        failedChains.push(chainId);
         continue;
       }
 
@@ -189,12 +197,14 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
         console.warn(
           `Skipping chain ${chainId}: SpokePool (${spokePoolAddress}) does not have VKEY_UPDATER_ROLE on Helios (${heliosAddress})`
         );
+        failedChains.push(chainId);
         continue;
       }
 
       const currentVkey: string = await helios.heliosProgramVkey();
       if (currentVkey.toLowerCase() === newVkey.toLowerCase()) {
         console.log(`Chain ${chainId}: Helios already has the requested vkey; no update calldata generated`);
+        chainsAlreadyUpToDate.push(chainId);
         continue;
       }
 
@@ -225,9 +235,16 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
       });
     }
 
+    if (failedChains.length > 0) {
+      console.error(
+        `\nERROR: Failed to prepare vkey update calldata for the following chains: ${failedChains.join(", ")}`
+      );
+      throw new Error("One or more chains failed during vkey update preparation");
+    }
+
     console.log(`\nGenerated ${calls.length} HubPool admin call(s).`);
     if (calls.length === 0) {
-      console.log("No calldata generated. Check warnings above for chains that were skipped.");
+      console.log("All requested chains already have the provided Helios vkey; no HubPool calldata needed.");
       return;
     }
 
@@ -236,12 +253,15 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
       console.log(`  - chainId=${call.chainId}, spokePool=${call.spokePool}, helios=${call.helios}`);
     }
 
-    console.log("\nCalldata payloads (each entry is a call to HubPool.relaySpokePoolAdminFunction):");
+    const targetChains = calls.map(({ chainId }) => chainId);
+    const multicallData = calls.map(({ data }) => data);
+
     console.log(
-      JSON.stringify(
-        calls.map(({ chainId, target, data }) => ({ chainId, target, data })),
-        null,
-        2
-      )
+      `\nData to use for HubPool.multicall on ${
+        hubPoolDeployment.address
+      }. Each entry is an encoded \`relaySpokePoolAdminFunction\` call. Included destination chains: [${targetChains.join(
+        ", "
+      )}]`
     );
+    console.log(`\n[${multicallData.join(",")}]`);
   });
