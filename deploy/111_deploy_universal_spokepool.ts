@@ -29,12 +29,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   }
 
   const oftEid = getOftEid(hubChainId);
-  // ! Notice. Deployed has to adjust this fee cap based on dst chain's native token. 4.4 BNB for BSC
+  // ! Notice. Deployer has to adjust this fee cap based on dst chain's native token. 4.4 BNB for BSC
   let oftFeeCap = toWei("1"); // 1 ETH fee cap
-  if (spokeChainId == CHAIN_IDs.MONAD) {
-    oftFeeCap = toWei(78_000); // ~1 ETH fee cap
-  } else if (spokeChainId == CHAIN_IDs.BSC) {
-    oftFeeCap = toWei(4.4); // ~1 ETH fee cap
+  switch (spokeChainId) {
+    case CHAIN_IDs.MONAD:
+      oftFeeCap = toWei(78_000); // ~1 ETH fee cap
+      break;
+    case CHAIN_IDs.BSC:
+      oftFeeCap = toWei(4.4); // ~1 ETH fee cap
+      break;
+    case CHAIN_IDs.HYPEREVM:
+      oftFeeCap = toWei(100); // ~1ETH fee cap
+      break;
   }
 
   const heliosAddress = getDeployedAddress("Helios", spokeChainId);
