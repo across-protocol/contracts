@@ -1,7 +1,7 @@
 import { task, types } from "hardhat/config";
 import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import { ethers } from "ethers";
-import deploymentsJson from "../deployments/deployments.json";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 
 // Minimal SP1Helios ABI subset needed by this task.
 const SP1_HELIOS_ABI = [
@@ -46,10 +46,6 @@ const SP1_HELIOS_ABI = [
 
 // Expected value for VKEY_UPDATER_ROLE to sanity check on-chain value.
 const EXPECTED_VKEY_UPDATER_ROLE = "0x07ecc55c8d82c6f82ef86e34d1905e0f2873c085733fa96f8a6e0316b050d174";
-
-type DeploymentsJson = Record<string, Record<string, { address: string; blockNumber: number }>>;
-
-const DEPLOYMENTS = deploymentsJson as DeploymentsJson;
 
 function parseChainList(rawChains: string): number[] {
   const cleaned = (rawChains || "").replace(/\s/g, "");
@@ -128,15 +124,12 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
     console.log(`Using HubPool at ${hubPoolDeployment.address}\n`);
 
     for (const chainId of chainIds) {
-      const chainKey = chainId.toString();
-      const chainDeployments = DEPLOYMENTS[chainKey];
-      if (!chainDeployments || !chainDeployments.SpokePool?.address) {
-        console.warn(`Skipping chain ${chainId}: no SpokePool entry in deployments/deployments.json`);
+      const spokePoolAddress = getDeployedAddress("SpokePool", chainId, false);
+      if (!spokePoolAddress) {
+        console.warn(`Skipping chain ${chainId}: no SpokePool entry in broadcast/deployed-addresses.json`);
         failedChains.push(chainId);
         continue;
       }
-
-      const spokePoolAddress = chainDeployments.SpokePool.address;
 
       let networkConfig;
       try {
@@ -168,10 +161,10 @@ task("updatevkey", "Generate HubPool admin calldata to update SP1Helios program 
         continue;
       }
 
-      const heliosFromDeployments = chainDeployments.Helios?.address;
+      const heliosFromDeployments = getDeployedAddress("Helios", chainId, false);
       if (heliosFromDeployments && heliosFromDeployments.toLowerCase() !== heliosAddress.toLowerCase()) {
         console.warn(
-          `Warning: Helios address mismatch on chain ${chainId}. deployments.json=${heliosFromDeployments}, on-chain=${heliosAddress}`
+          `Warning: Helios address mismatch on chain ${chainId}. broadcast/deployed-addresses.json=${heliosFromDeployments}, on-chain=${heliosAddress}`
         );
       }
 
