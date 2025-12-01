@@ -39,7 +39,6 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // Legacy bridge used to withdraw ERC20's to L1, replaced by `l2AssetRouter`.
     address public DEPRECATED_zkErc20Bridge;
 
-    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     /// @dev Legacy bridge used to withdraw USDC to L1, for withdrawing all other ERC20's we use `l2AssetRouter`.
     ZkBridgeLike public immutable zkUSDCBridge;
 
@@ -191,7 +190,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
     function _getAssetId(address _tokenAddress) internal view returns (bytes32) {
-        return keccak256(abi.encode(l1ChainId, l2NativeTokenVault, _tokenAddress));
+        return keccak256(abi.encode(l1ChainId, L2_NATIVE_TOKEN_VAULT_ADDR, _tokenAddress));
     }
 
     // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L24C1-L30C6
