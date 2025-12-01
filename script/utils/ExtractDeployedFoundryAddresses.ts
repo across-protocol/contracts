@@ -191,6 +191,67 @@ function getChainName(chainId: number): string {
   return PUBLIC_NETWORKS[chainId]?.name || `Chain ${chainId}`;
 }
 
+function getBlockExplorerUrl(chainId: number): string | null {
+  // Load block explorer from constants.json if available
+  try {
+    // Try multiple possible paths for constants.json
+    const possiblePaths = [
+      path.join(__dirname, "../../../generated/constants.json"),
+      path.join(process.cwd(), "generated/constants.json"),
+      path.join(process.cwd(), "../generated/constants.json"),
+    ];
+
+    for (const constantsPath of possiblePaths) {
+      if (fs.existsSync(constantsPath)) {
+        const constants = JSON.parse(fs.readFileSync(constantsPath, "utf8"));
+        const chainInfo = constants.PUBLIC_NETWORKS?.[chainId.toString()];
+        if (chainInfo?.blockExplorer) {
+          return chainInfo.blockExplorer;
+        }
+        break; // Found the file, no need to check other paths
+      }
+    }
+  } catch (error) {
+    // Fall through to default handling
+  }
+
+  // Fallback: try to get from PUBLIC_NETWORKS if it has blockExplorer
+  const network = PUBLIC_NETWORKS[chainId];
+  if (network && "blockExplorer" in network) {
+    return (network as any).blockExplorer || null;
+  }
+
+  // Special cases for chains that might have different explorer URLs in README
+  const specialCases: { [key: number]: string } = {
+    324: "https://explorer.zksync.io", // zkSync uses explorer.zksync.io instead of era.zksync.network
+    480: "https://worldchain-mainnet.explorer.alchemy.com", // World Chain
+    34443: "https://modescan.io", // Mode uses modescan.io instead of explorer.mode.network
+    143: "https://monadvision.com", // Monad uses monadvision.com instead of monadscan.com
+  };
+
+  if (specialCases[chainId]) {
+    return specialCases[chainId];
+  }
+
+  return null;
+}
+
+function getBlockExplorerAddressUrl(chainId: number, address: string): string {
+  const baseUrl = getBlockExplorerUrl(chainId);
+  if (!baseUrl) {
+    return address; // Return plain address if no explorer available
+  }
+
+  // Handle different explorer URL patterns
+  if (baseUrl.includes("solscan.io") || baseUrl.includes("explorer.solana.com")) {
+    // Solana explorers use different URL format
+    return `${baseUrl}/account/${address}`;
+  } else {
+    // Most EVM explorers use /address/ pattern
+    return `${baseUrl}/address/${address}`;
+  }
+}
+
 function toChecksumAddress(address: string): string {
   // Check if this looks like an Ethereum address (0x followed by 40 hex characters)
   if (/^0x[a-fA-F0-9]{40}$/.test(address)) {
@@ -297,58 +358,37 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
 
   for (const chainId of sortedChainIds) {
     const chainInfo = allContracts[chainId];
-    const isMainnet = Object.values(MAINNET_CHAIN_IDs).includes(chainId);
-    const isTestnet = Object.values(TESTNET_CHAIN_IDs).includes(chainId);
 
-    // Add section headers only once at the beginning of each category
-    if (
-      isMainnet &&
-      (chainId === sortedChainIds[0] ||
-        (sortedChainIds.indexOf(chainId) > 0 &&
-          !Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
-    ) {
-      content.push("## 🚀 Mainnet Networks");
-      content.push("");
-    } else if (
-      isTestnet &&
-      !isMainnet &&
-      (chainId === sortedChainIds[0] ||
-        (sortedChainIds.indexOf(chainId) > 0 &&
-          Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1]) &&
-          !Object.values(TESTNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
-    ) {
-      content.push("## 🧪 Testnet Networks");
-      content.push("");
-    } else if (
-      !isMainnet &&
-      !isTestnet &&
-      (chainId === sortedChainIds[0] ||
-        (sortedChainIds.indexOf(chainId) > 0 &&
-          Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1]) &&
-          Object.values(TESTNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
-    ) {
-      content.push("## 🔗 Other Networks");
-      content.push("");
-    }
+    // Format chain name similar to README.md (e.g., "Mainnet (1)" or "Optimism mainnet (10)")
+    // Match the format used in README.md exactly
+    const chainNameFormatted = `${chainInfo.chainName} (${chainId})`;
 
-    content.push(`### ${chainInfo.chainName} (Chain ID: ${chainId})`);
+    content.push(`## ${chainNameFormatted}`);
     content.push("");
 
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      const name = contracts.length > 0 ? contracts[0].contractName : scriptName;
-      content.push(`#### ${name}`);
-      content.push("");
+    // Collect all contracts for this chain into a single array
+    const allChainContracts: Contract[] = [];
+    for (const contracts of Object.values(chainInfo.scripts)) {
+      allChainContracts.push(...contracts);
+    }
 
-      for (const contract of contracts) {
-        content.push(`- **${contract.contractName}**: \`${contract.contractAddress}\``);
-        if (contract.transactionHash !== "Unknown") {
-          content.push(`  - Transaction Hash: \`${contract.transactionHash}\``);
-        }
-        if (contract.blockNumber !== null) {
-          content.push(`  - Block Number: \`${contract.blockNumber}\``);
-        }
-        content.push("");
+    // Sort contracts by name for consistent ordering
+    allChainContracts.sort((a, b) => a.contractName.localeCompare(b.contractName));
+
+    if (allChainContracts.length > 0) {
+      // Generate table header
+      content.push("| Contract Name | Address |");
+      content.push("| ------------- | ------- |");
+
+      // Generate table rows
+      for (const contract of allChainContracts) {
+        const address = toChecksumAddress(contract.contractAddress);
+        const explorerUrl = getBlockExplorerAddressUrl(chainId, address);
+        const addressLink = explorerUrl !== address ? `[${address}](${explorerUrl})` : address;
+
+        content.push(`| ${contract.contractName} | ${addressLink} |`);
       }
+      content.push("");
     }
   }
 

@@ -7,6 +7,7 @@ src = "contracts"
 out = "out"
 test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
+cache_path = "cache-foundry"
 remappings = [
     "@across-protocol/=node_modules/@across-protocol/",
     "@ensdomains/=node_modules/@ensdomains/",
