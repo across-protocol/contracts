@@ -338,8 +338,6 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   for (const chainId of sortedChainIds) {
     const chainInfo = allContracts[chainId];
 
-    // Format chain name similar to README.md (e.g., "Mainnet (1)" or "Optimism mainnet (10)")
-    // Match the format used in README.md exactly
     const chainNameFormatted = `${chainInfo.chainName} (${chainId})`;
 
     content.push(`## ${chainNameFormatted}`);
