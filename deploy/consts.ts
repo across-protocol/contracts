@@ -227,7 +227,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
   },
   [CHAIN_IDs.ZK_SYNC]: {
-    zkErc20Bridge: "0x11f943b2c77b743AB90f4A0Ae7d5A4e7FCA3E102",
     cctpTokenMessenger: ZERO_ADDRESS, // CCTP not available on zkSync.
     "1inchV6Router": "0x6fd4383cB451173D5f9304F041C7BCBf27d561fF",
     permit2: "0x0000000000225e31d15943971f47ad3022f714fa",
@@ -263,7 +262,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
   },
   [CHAIN_IDs.LENS]: {
-    zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
     zkUSDCBridge: "0x7188B6975EeC82ae914b6eC7AC32b3c9a18b2c81",
     cctpTokenMessenger: ZERO_ADDRESS, // Not available on Lens.
     permit2: "0x0000000000225e31D15943971F47aD3022F714Fa",

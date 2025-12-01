@@ -120,7 +120,7 @@ const config: HardhatUserConfig = {
     },
   },
   zksolc: {
-    version: "1.5.7",
+    version: "1.5.15",
     settings: {
       optimizer: {
         enabled: true,
