@@ -23,8 +23,8 @@ contract TestableMockSpokePool is ZkSync_SpokePool {
         ZkSync_SpokePool(
             _wrappedNativeTokenAddress,
             IERC20(address(0)),
+            ZkBridgeLike(address(0)),
             1,
-            address(0),
             ITokenMessenger(address(0)),
             1 hours,
             9 hours
