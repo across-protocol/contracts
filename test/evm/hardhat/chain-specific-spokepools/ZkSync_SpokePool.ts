@@ -20,6 +20,7 @@ import { constructSingleRelayerRefundTree } from "../MerkleLib.utils";
 import { smock } from "@defi-wonderland/smock";
 
 const L2_ASSET_ROUTER = "0x0000000000000000000000000000000000010003";
+const L1_NATIVE_TOKEN_VAULT_ADDR = "0x0000000000000000000000000000000000010004";
 // TODO: Grab the following from relayer/CONTRACT_ADDRESSES dictionary?
 const USDC_BRIDGE = "0x350ACF3d84A6E668E53d4AA682989DCA15Ea27E2";
 
@@ -185,7 +186,7 @@ describe("ZkSync Spoke Pool", function () {
     // This should have sent tokens back to L1.
     expect(l2AssetRouter.withdraw).to.have.been.calledOnce;
     const expectedAssetId = keccak256(
-      defaultAbiCoder.encode(["uint256", "address", "address"], [1, L2_ASSET_ROUTER, l2Dai])
+      defaultAbiCoder.encode(["uint256", "address", "address"], [1, L1_NATIVE_TOKEN_VAULT_ADDR, l2Dai])
     );
     const expectedData = defaultAbiCoder.encode(
       ["uint256", "address", "address"],
@@ -212,6 +213,14 @@ describe("ZkSync Spoke Pool", function () {
 
     // This should have sent tokens back to L1. Check the correct methods on the gateway are correctly called.
     expect(l2AssetRouter.withdraw).to.have.been.calledOnce;
+    const expectedAssetId = keccak256(
+      defaultAbiCoder.encode(["uint256", "address", "address"], [1, L1_NATIVE_TOKEN_VAULT_ADDR, usdc.address])
+    );
+    const expectedData = defaultAbiCoder.encode(
+      ["uint256", "address", "address"],
+      [amountToReturn, hubPool.address, usdc.address]
+    );
+    expect(l2AssetRouter.withdraw).to.have.been.calledWith(expectedAssetId, expectedData);
   });
   it("Bridge tokens to hub pool correctly calls the custom USDC L2 Bridge for Circle Bridged USDC", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
