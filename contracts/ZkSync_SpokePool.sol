@@ -11,6 +11,11 @@ interface IL2AssetRouter {
     function withdraw(bytes32 _assetId, bytes memory _assetData) external returns (bytes32);
 }
 
+// https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
+interface ZkBridgeLike {
+    function withdraw(address _l1Receiver, address _l2Token, uint256 _amount) external;
+}
+
 interface IL2ETH {
     function withdraw(address _l1Receiver) external payable;
 }
@@ -34,18 +39,22 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // Legacy bridge used to withdraw ERC20's to L1, replaced by `l2AssetRouter`.
     address public DEPRECATED_zkErc20Bridge;
 
-    // @dev The offset from which the built-in, but user space contracts are located.
-    // Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L12C1-L13C58
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    /// @dev Legacy bridge used to withdraw USDC to L1, for withdrawing all other ERC20's we use `l2AssetRouter`.
+    ZkBridgeLike public immutable zkUSDCBridge;
+
+    /// @dev The offset from which the built-in, but user space contracts are located.
+    /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L12C1-L13C58
     uint160 constant USER_CONTRACTS_OFFSET = 0x10000; // 2^16
 
-    // Contract used to withdraw ERC20's to L1.
-    // Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L68
+    /// Contract used to withdraw ERC20's to L1.
+    /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L68
     address constant L2_ASSET_ROUTER_ADDR = address(USER_CONTRACTS_OFFSET + 0x03);
     IL2AssetRouter public constant l2AssetRouter = IL2AssetRouter(L2_ASSET_ROUTER_ADDR);
 
-    // @dev An l2 system contract address, used in the assetId calculation for native assets.
-    // This is needed for automatic bridging, i.e. without deploying the AssetHandler contract,
-    // if the assetId can be calculated with this address then it is in fact an NTV asset
+    /// @dev An l2 system contract address, used in the assetId calculation for native assets.
+    /// This is needed for automatic bridging, i.e. without deploying the AssetHandler contract,
+    /// if the assetId can be calculated with this address then it is in fact an NTV asset
     /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L70C1-L73C85
     address constant L2_NATIVE_TOKEN_VAULT_ADDR = address(USER_CONTRACTS_OFFSET + 0x04);
 
@@ -58,8 +67,12 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     /**
      * @notice Constructor.
+     * @param _zkUSDCBridge Legacy bridge used to withdraw USDC to L1, for withdrawing all other ERC20's we use `l2AssetRouter`.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
+     * If not set to zero, then either the zkUSDCBridge or cctpTokenMessenger must be set and will be used to
+     * bridge this token.
+     * @param _zkUSDCBridge Elastic chain custom bridge address for USDC (if deployed, or address(0) to disable).
      * @param _l1ChainId Chain ID of the L1 chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
@@ -71,6 +84,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     constructor(
         address _wrappedNativeTokenAddress,
         IERC20 _circleUSDC,
+        ZkBridgeLike _zkUSDCBridge,
         uint256 _l1ChainId,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
@@ -86,6 +100,17 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         )
         CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
+        address zero = address(0);
+        if (address(_circleUSDC) != zero) {
+            bool zkUSDCBridgeDisabled = address(_zkUSDCBridge) == zero;
+            bool cctpUSDCBridgeDisabled = address(_cctpTokenMessenger) == zero;
+            // Bridged and Native USDC are mutually exclusive.
+            if (zkUSDCBridgeDisabled == cctpUSDCBridgeDisabled) {
+                revert InvalidBridgeConfig();
+            }
+        }
+
+        zkUSDCBridge = _zkUSDCBridge;
         l1ChainId = _l1ChainId;
     }
 
@@ -148,8 +173,15 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
             WETH9Interface(l2TokenAddress).withdraw(amountToReturn); // Unwrap into ETH.
             // To withdraw tokens, we actually call 'withdraw' on the L2 eth token itself.
             IL2ETH(l2Eth).withdraw{ value: amountToReturn }(withdrawalRecipient);
-        } else if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
-            _transferUsdc(withdrawalRecipient, amountToReturn);
+        } else if (l2TokenAddress == address(usdcToken)) {
+            if (_isCCTPEnabled()) {
+                // Circle native USDC via CCTP.
+                _transferUsdc(withdrawalRecipient, amountToReturn);
+            } else {
+                // Matter Labs custom USDC bridge for Circle Bridged (upgradable) USDC.
+                IERC20(l2TokenAddress).forceApprove(address(zkUSDCBridge), amountToReturn);
+                zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            }
         } else {
             bytes32 assetId = _getAssetId(l2TokenAddress);
             bytes memory data = _encodeBridgeBurnData(amountToReturn, withdrawalRecipient, l2TokenAddress);
