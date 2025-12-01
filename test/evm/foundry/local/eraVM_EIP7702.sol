@@ -74,7 +74,7 @@ contract SpokePoolEIP7702Test is Test {
         vm.startPrank(owner);
         ERC1967Proxy proxy = new ERC1967Proxy(
             address(new TestableMockSpokePool(address(weth))),
-            abi.encodeCall(ZkSync_SpokePool.initialize, (0, ZkBridgeLike(address(0)), owner, makeAddr("hubPool")))
+            abi.encodeCall(ZkSync_SpokePool.initialize, (0, owner, makeAddr("hubPool")))
         );
         spokePool = TestableMockSpokePool(payable(proxy));
         vm.stopPrank();
