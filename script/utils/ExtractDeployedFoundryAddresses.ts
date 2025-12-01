@@ -194,21 +194,12 @@ function getChainName(chainId: number): string {
 function getBlockExplorerUrl(chainId: number): string | null {
   // Load block explorer from constants.json if available
   try {
-    // Try multiple possible paths for constants.json
-    const possiblePaths = [
-      path.join(__dirname, "../../../generated/constants.json"),
-      path.join(process.cwd(), "generated/constants.json"),
-      path.join(process.cwd(), "../generated/constants.json"),
-    ];
-
-    for (const constantsPath of possiblePaths) {
-      if (fs.existsSync(constantsPath)) {
-        const constants = JSON.parse(fs.readFileSync(constantsPath, "utf8"));
-        const chainInfo = constants.PUBLIC_NETWORKS?.[chainId.toString()];
-        if (chainInfo?.blockExplorer) {
-          return chainInfo.blockExplorer;
-        }
-        break; // Found the file, no need to check other paths
+    const constantsPath = path.join(process.cwd(), "generated/constants.json");
+    if (fs.existsSync(constantsPath)) {
+      const constants = JSON.parse(fs.readFileSync(constantsPath, "utf8"));
+      const chainInfo = constants.PUBLIC_NETWORKS?.[chainId.toString()];
+      if (chainInfo?.blockExplorer) {
+        return chainInfo.blockExplorer;
       }
     }
   } catch (error) {
@@ -219,18 +210,6 @@ function getBlockExplorerUrl(chainId: number): string | null {
   const network = PUBLIC_NETWORKS[chainId];
   if (network && "blockExplorer" in network) {
     return (network as any).blockExplorer || null;
-  }
-
-  // Special cases for chains that might have different explorer URLs in README
-  const specialCases: { [key: number]: string } = {
-    324: "https://explorer.zksync.io", // zkSync uses explorer.zksync.io instead of era.zksync.network
-    480: "https://worldchain-mainnet.explorer.alchemy.com", // World Chain
-    34443: "https://modescan.io", // Mode uses modescan.io instead of explorer.mode.network
-    143: "https://monadvision.com", // Monad uses monadvision.com instead of monadscan.com
-  };
-
-  if (specialCases[chainId]) {
-    return specialCases[chainId];
   }
 
   return null;
