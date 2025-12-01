@@ -20,10 +20,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const artifact = await deployer.loadArtifact(contractName);
 
-  const { zkErc20Bridge, zkUSDCBridge = ZERO_ADDRESS, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
+  const { zkUSDCBridge = ZERO_ADDRESS, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
   const initArgs = [
     0, // Start at 0 since this first time we're deploying this spoke pool. On future upgrades increase this.
-    zkErc20Bridge,
     hubPool.address,
     hubPool.address,
   ];
@@ -44,6 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WETH[spokeChainId],
     usdcAddress,
     zkUSDCBridge,
+    hubChainId,
     cctpTokenMessenger,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
