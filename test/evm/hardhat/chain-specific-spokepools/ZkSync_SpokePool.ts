@@ -119,7 +119,7 @@ describe("ZkSync Spoke Pool", function () {
     let _constructorArgs = [...constructorArgs];
     expect(_constructorArgs[1]).to.equal(usdc.address);
     expect(_constructorArgs[2]).to.equal(zkUSDCBridge.address);
-    expect(_constructorArgs[3]).to.equal(cctpTokenMessenger);
+    expect(_constructorArgs[4]).to.equal(cctpTokenMessenger);
 
     // Verify successful deployment.
     let implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
@@ -132,7 +132,7 @@ describe("ZkSync Spoke Pool", function () {
     // Configure cctp
     _constructorArgs = [...constructorArgs];
     _constructorArgs[2] = ZERO_ADDRESS;
-    _constructorArgs[3] = randomAddress();
+    _constructorArgs[4] = randomAddress();
     implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
@@ -142,7 +142,7 @@ describe("ZkSync Spoke Pool", function () {
 
     // Configure bridged USDC
     _constructorArgs = [...constructorArgs];
-    _constructorArgs[3] = ZERO_ADDRESS;
+    _constructorArgs[4] = ZERO_ADDRESS;
     implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
@@ -153,7 +153,7 @@ describe("ZkSync Spoke Pool", function () {
     // Configure none (misconfigured)
     _constructorArgs = [...constructorArgs];
     _constructorArgs[2] = ZERO_ADDRESS;
-    _constructorArgs[3] = ZERO_ADDRESS;
+    _constructorArgs[4] = ZERO_ADDRESS;
     implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
@@ -164,7 +164,7 @@ describe("ZkSync Spoke Pool", function () {
     // Configure both (misconfigured)
     _constructorArgs = [...constructorArgs];
     _constructorArgs[2] = zkUSDCBridge.address;
-    _constructorArgs[3] = randomAddress();
+    _constructorArgs[4] = randomAddress();
     implementation = hre.upgrades.deployImplementation(await getContractFactory("ZkSync_SpokePool", owner), {
       kind: "uups",
       unsafeAllow: ["delegatecall"],
@@ -197,7 +197,15 @@ describe("ZkSync Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for zkSync Bridged USDC.e", async function () {
     // Redeploy the SpokePool with usdc address -> 0x0
     const usdcAddress = ZERO_ADDRESS;
-    const constructorArgs = [weth.address, usdcAddress, zkUSDCBridge.address, cctpTokenMessenger, 60 * 60, 9 * 60 * 60];
+    const constructorArgs = [
+      weth.address,
+      usdcAddress,
+      zkUSDCBridge.address,
+      1,
+      cctpTokenMessenger,
+      60 * 60,
+      9 * 60 * 60,
+    ];
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("ZkSync_SpokePool", owner),
       { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs }
