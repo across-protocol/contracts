@@ -16,7 +16,7 @@ import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.
 // 2. forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(string)" <DEST_CHAIN_NAME e.g. MONAD> --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter MONAD --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(string)" MONAD --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
 contract DeployUniversalAdapter is Script, Test, Constants {
     function run() external pure {
@@ -38,7 +38,7 @@ contract DeployUniversalAdapter is Script, Test, Constants {
         uint256 destinationChainId = getChainId(destinationChainName);
         bool hasCctpDomain = hasCctpDomain(destinationChainId);
         address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
-        uint32 cctpDomainId = hasCctpDomain ? uint32(getCircleDomainId(destinationChainId)) : 0;
+        uint32 cctpDomainId = hasCctpDomain ? uint32(getCircleDomainId(destinationChainId)) : 4294967295; // 2^32 - 1
 
         uint256 oftFeeCap = 1 ether;
 

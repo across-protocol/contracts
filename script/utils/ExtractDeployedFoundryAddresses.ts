@@ -12,7 +12,13 @@ import * as fs from "fs";
 import * as path from "path";
 import { getAddress } from "ethers/lib/utils";
 
-import { PUBLIC_NETWORKS, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs } from "../../utils/constants";
+import {
+  PUBLIC_NETWORKS,
+  PRODUCTION_NETWORKS,
+  TEST_NETWORKS,
+  MAINNET_CHAIN_IDs,
+  TESTNET_CHAIN_IDs,
+} from "../../utils/constants";
 
 interface BroadcastFile {
   scriptName: string;
@@ -169,6 +175,36 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           const blockNumber = txHashToBlock[txHash] || null;
 
           let contractName = tx.contractName as string;
+
+          if (contractName === "Universal_Adapter") {
+            const [, , , cctpDomainId, , oftDstEid] = tx.arguments;
+
+            // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches either cctpDomainId or oftDstEid
+            let matchingChainId: number | undefined = undefined;
+
+            const networks = broadcastFile.chainId in TEST_NETWORKS ? TEST_NETWORKS : PRODUCTION_NETWORKS;
+
+            for (const [chainIdString, chainInfo] of Object.entries(networks)) {
+              const chainId = Number(chainIdString);
+
+              // Some chains may have properties for cctpDomainId or oftDstEid. Try to check both.
+              if (
+                (chainInfo.cctpDomain !== undefined && chainInfo.cctpDomain?.toString() === cctpDomainId?.toString()) ||
+                (chainInfo.oftEid !== undefined && chainInfo.oftEid?.toString() === oftDstEid?.toString())
+              ) {
+                matchingChainId = chainId;
+                break;
+              }
+            }
+
+            if (matchingChainId !== undefined) {
+              contractName = `Universal_Adapter_${matchingChainId}`;
+            } else {
+              console.log(
+                `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
+              );
+            }
+          }
 
           contracts.push({
             contractName: contractName || "Unknown",
