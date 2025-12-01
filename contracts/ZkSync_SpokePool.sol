@@ -7,7 +7,7 @@ import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol
 import "./SpokePool.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/bridge/asset-router/L2AssetRouter.sol#L321
-interface ZkBridgeLike {
+interface IL2AssetRouter {
     function withdraw(bytes32 _assetId, bytes memory _assetData) external returns (bytes32);
 }
 
@@ -31,12 +31,23 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
     address public l2Eth;
 
-    // Bridge used to withdraw ERC20's to L1
-    ZkBridgeLike public zkErc20Bridge;
+    // Legacy bridge used to withdraw ERC20's to L1, replaced by `l2AssetRouter`.
+    address public DEPRECATED_zkErc20Bridge;
 
-    // Used to compute asset ID needed to withdraw tokens.
-    // See https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol
-    address public immutable l2NativeTokenVault;
+    // @dev The offset from which the built-in, but user space contracts are located.
+    // Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L12C1-L13C58
+    uint160 constant USER_CONTRACTS_OFFSET = 0x10000; // 2^16
+
+    // Contract used to withdraw ERC20's to L1.
+    // Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L68
+    address constant L2_ASSET_ROUTER_ADDR = address(USER_CONTRACTS_OFFSET + 0x03);
+    IL2AssetRouter public constant l2AssetRouter = IL2AssetRouter(L2_ASSET_ROUTER_ADDR);
+
+    // @dev An l2 system contract address, used in the assetId calculation for native assets.
+    // This is needed for automatic bridging, i.e. without deploying the AssetHandler contract,
+    // if the assetId can be calculated with this address then it is in fact an NTV asset
+    /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L70C1-L73C85
+    address constant L2_NATIVE_TOKEN_VAULT_ADDR = address(USER_CONTRACTS_OFFSET + 0x04);
 
     // Used to compute asset ID needed to withdraw tokens.
     uint256 public immutable l1ChainId;
@@ -49,6 +60,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      * @notice Constructor.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
+     * @param _l1ChainId Chain ID of the L1 chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
      * into the past from the block time of the deposit.
@@ -60,7 +72,6 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         address _wrappedNativeTokenAddress,
         IERC20 _circleUSDC,
         uint256 _l1ChainId,
-        address _l2NativeTokenVault,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
@@ -76,44 +87,28 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         l1ChainId = _l1ChainId;
-        l2NativeTokenVault = _l2NativeTokenVault;
     }
 
     /**
      * @notice Initialize the ZkSync SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
-     * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
      * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
-        ZkBridgeLike _zkErc20Bridge,
         address _crossDomainAdmin,
         address _withdrawalRecipient
     ) public initializer {
         l2Eth = 0x000000000000000000000000000000000000800A;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
-        _setZkBridge(_zkErc20Bridge);
     }
 
     modifier onlyFromCrossDomainAdmin() {
         require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
-    }
-
-    /********************************************************
-     *      ZKSYNC-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
-     ********************************************************/
-
-    /**
-     * @notice Change L2 token bridge addresses. Callable only by admin.
-     * @param _zkErc20Bridge New address of L2 ERC20 gateway.
-     */
-    function setZkBridge(ZkBridgeLike _zkErc20Bridge) public onlyAdmin nonReentrant {
-        _setZkBridge(_zkErc20Bridge);
     }
 
     /**************************************
@@ -158,14 +153,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         } else {
             bytes32 assetId = _getAssetId(l2TokenAddress);
             bytes memory data = _encodeBridgeBurnData(amountToReturn, withdrawalRecipient, l2TokenAddress);
-            zkErc20Bridge.withdraw(assetId, data);
+            l2AssetRouter.withdraw(assetId, data);
         }
-    }
-
-    function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
-        address oldErc20Bridge = address(zkErc20Bridge);
-        zkErc20Bridge = _zkErc20Bridge;
-        emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
     }
 
     // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
