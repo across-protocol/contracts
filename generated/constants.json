@@ -595,6 +595,7 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "56": {
+      "helios": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "130": {
@@ -636,6 +637,7 @@
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000"
     },
     "999": {
+      "helios": "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
@@ -660,6 +662,7 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "9745": {
+      "helios": "0x6f1cd5f317a7228269eab2b496313862de712ccb",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "34443": {

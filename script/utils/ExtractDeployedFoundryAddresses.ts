@@ -170,6 +170,10 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = tx.contractName as string;
 
+          if (contractName === "ERC1967Proxy") {
+            contractName = "SpokePool";
+          }
+
           contracts.push({
             contractName: contractName || "Unknown",
             contractAddress: tx.contractAddress,
