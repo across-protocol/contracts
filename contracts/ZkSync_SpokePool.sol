@@ -40,6 +40,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     address public DEPRECATED_zkErc20Bridge;
 
     /// @dev Legacy bridge used to withdraw USDC to L1, for withdrawing all other ERC20's we use `l2AssetRouter`.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     ZkBridgeLike public immutable zkUSDCBridge;
 
     /// @dev The offset from which the built-in, but user space contracts are located.
@@ -57,7 +58,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L70C1-L73C85
     address constant L2_NATIVE_TOKEN_VAULT_ADDR = address(USER_CONTRACTS_OFFSET + 0x04);
 
-    // Used to compute asset ID needed to withdraw tokens.
+    /// Used to compute asset ID needed to withdraw tokens.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint256 public immutable l1ChainId;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
