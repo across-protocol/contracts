@@ -37,3 +37,14 @@ pub enum SvmError {
     #[msg("Invalid recipient key")]
     InvalidRecipientKey,
 }
+
+// CCTP BurnMessageV2 specific errors.
+#[error_code]
+pub enum CctpBurnMessageV2Error {
+    #[msg("Malformed V2 burn message")]
+    MalformedMessage,
+    #[msg("Invalid message version")]
+    InvalidMessageVersion,
+    #[msg("Invalid message body version")]
+    InvalidMessageBodyVersion,
+}

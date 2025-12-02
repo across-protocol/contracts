@@ -198,11 +198,16 @@ pub mod sponsored_cctp_src_periphery {
     /// Required Accounts:
     /// - rent_fund (SystemAccount, Writable): PDA to receive reclaimed lamports. Seed: ["rent_fund"].
     /// - message_transmitter (Unchecked, Mutable): CCTP MessageTransmitter account.
-    /// - message_sent_event_data (Unchecked, Mutable): The event account created during `deposit_for_burn`.
+    /// - message_sent_event_data (Account, Mutable): The `MessageSent` event account created during `deposit_for_burn`.
     /// - message_transmitter_program (Program): CCTPv2 MessageTransmitter program.
     ///
     /// Parameters:
-    /// - params: Parameters required by CCTP to reclaim the event account.
+    /// - params: Parameters struct required to construct reclaim_event_account instruction on the CCTPv2.
+    ///   - attestation: Attestation obtained from the CCTP attestation service.
+    ///   - nonce: bytes32 from the attested destination message.
+    ///   - finality_threshold_executed: uint32 BE encoded from the attested destination message.
+    ///   - fee_executed: uint256 BE encoded from the attested destination message body.
+    ///   - expiration_block: uint256 BE encoded from the attested destination message body.
     ///
     /// Notes:
     /// - This can only be called after the CCTP attestation service has processed the message and sufficient time has

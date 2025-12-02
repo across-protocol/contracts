@@ -1,12 +1,12 @@
 use anchor_lang::{prelude::*, system_program};
 
-pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams;
+pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams as ReclaimEventAccountCctpV2Params;
 use crate::{
     error::SvmError,
     event::{ReclaimedEventAccount, ReclaimedUsedNonceAccount, RepaidRentFundDebt},
-    message_transmitter_v2::{self, program::MessageTransmitterV2},
+    message_transmitter_v2::{self, accounts::MessageSent, program::MessageTransmitterV2},
     state::{RentClaim, State, UsedNonce},
-    utils::get_current_time,
+    utils::{build_destination_message, get_current_time},
 };
 
 #[event_cpi]
@@ -79,14 +79,26 @@ pub struct ReclaimEventAccount<'info> {
     #[account(mut)]
     pub message_transmitter: UncheckedAccount<'info>,
 
-    /// CHECK: MessageSent is checked in CCTP, must be the same account as in DepositForBurn.
     #[account(mut)]
-    pub message_sent_event_data: UncheckedAccount<'info>,
+    pub message_sent_event_data: Account<'info, MessageSent>,
 
     pub message_transmitter_program: Program<'info, MessageTransmitterV2>,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct ReclaimEventAccountParams {
+    pub attestation: Vec<u8>,
+    pub nonce: [u8; 32],
+    pub finality_threshold_executed: [u8; 4],
+    pub fee_executed: [u8; 32],
+    pub expiration_block: [u8; 32],
+}
+
 pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &ReclaimEventAccountParams) -> Result<()> {
+    let destination_message = build_destination_message(&ctx.accounts.message_sent_event_data.message, params)?;
+    let cctp_v2_params =
+        ReclaimEventAccountCctpV2Params { attestation: params.attestation.clone(), destination_message };
+
     let cpi_program = ctx.accounts.message_transmitter_program.to_account_info();
     let cpi_accounts = message_transmitter_v2::cpi::accounts::ReclaimEventAccount {
         payee: ctx.accounts.rent_fund.to_account_info(),
@@ -95,7 +107,7 @@ pub fn reclaim_event_account(ctx: Context<ReclaimEventAccount>, params: &Reclaim
     };
     let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
     let cpi_ctx = CpiContext::new_with_signer(cpi_program, cpi_accounts, rent_fund_seeds);
-    message_transmitter_v2::cpi::reclaim_event_account(cpi_ctx, params.clone())?;
+    message_transmitter_v2::cpi::reclaim_event_account(cpi_ctx, cctp_v2_params)?;
 
     emit_cpi!(ReclaimedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });
 

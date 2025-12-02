@@ -1,7 +1,6 @@
 use anchor_lang::{prelude::*, system_program};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
-pub use crate::message_transmitter_v2::types::ReclaimEventAccountParams;
 use crate::{
     error::{CommonError, SvmError},
     event::{AccruedRentFundLiability, CreatedEventAccount, SponsoredDepositForBurn},
