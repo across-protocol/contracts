@@ -37,6 +37,13 @@ const abiData = {
         stateMutability: "nonpayable",
         type: "function",
       },
+      {
+        inputs: [{ internalType: "address", name: "_l2TokenAddress", type: "address" }],
+        name: "l1TokenAddress",
+        outputs: [{ internalType: "address", name: "", type: "address" }],
+        stateMutability: "view",
+        type: "function",
+      },
     ],
   },
   erc20DefaultBridge: {

@@ -9,6 +9,7 @@ import "./SpokePool.sol";
 // https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/bridge/asset-router/L2AssetRouter.sol#L321
 interface IL2AssetRouter {
     function withdraw(bytes32 _assetId, bytes memory _assetData) external returns (bytes32);
+    function l1TokenAddress(address _l2TokenAddress) external view returns (address);
 }
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
@@ -49,14 +50,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     /// Contract used to withdraw ERC20's to L1.
     /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L68
-    address constant L2_ASSET_ROUTER_ADDR = address(USER_CONTRACTS_OFFSET + 0x03);
+    address public constant L2_ASSET_ROUTER_ADDR = address(USER_CONTRACTS_OFFSET + 0x03);
     IL2AssetRouter public constant l2AssetRouter = IL2AssetRouter(L2_ASSET_ROUTER_ADDR);
 
     /// @dev An l2 system contract address, used in the assetId calculation for native assets.
     /// This is needed for automatic bridging, i.e. without deploying the AssetHandler contract,
     /// if the assetId can be calculated with this address then it is in fact an NTV asset
     /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L70C1-L73C85
-    address constant L2_NATIVE_TOKEN_VAULT_ADDR = address(USER_CONTRACTS_OFFSET + 0x04);
+    address public constant L2_NATIVE_TOKEN_VAULT_ADDR = address(USER_CONTRACTS_OFFSET + 0x04);
 
     /// Used to compute asset ID needed to withdraw tokens.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
@@ -191,8 +192,9 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     }
 
     // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
-    function _getAssetId(address _tokenAddress) internal view returns (bytes32) {
-        return keccak256(abi.encode(l1ChainId, L2_NATIVE_TOKEN_VAULT_ADDR, _tokenAddress));
+    function _getAssetId(address _l2TokenAddress) internal view returns (bytes32) {
+        address l1TokenAddress = l2AssetRouter.l1TokenAddress(_l2TokenAddress);
+        return keccak256(abi.encode(l1ChainId, L2_NATIVE_TOKEN_VAULT_ADDR, l1TokenAddress));
     }
 
     // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L24C1-L30C6
