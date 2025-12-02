@@ -57,4 +57,5 @@ pub struct AccruedRentFundLiability {
 pub struct RepaidRentFundDebt {
     pub user: Pubkey,
     pub amount: u64,
+    pub remaining_user_claim: u64,
 }

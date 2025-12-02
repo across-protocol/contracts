@@ -19,12 +19,7 @@ pub struct RepayRentFundDebt<'info> {
     #[account(mut)]
     pub recipient: UncheckedAccount<'info>,
 
-    #[account(
-        mut,
-        close = recipient,
-        seeds = [b"rent_claim", recipient.key().as_ref()],
-        bump
-    )]
+    #[account(mut, seeds = [b"rent_claim", recipient.key().as_ref()], bump)]
     pub rent_claim: Account<'info, RentClaim>,
 
     pub system_program: Program<'info, System>,
@@ -33,21 +28,18 @@ pub struct RepayRentFundDebt<'info> {
 pub fn repay_rent_fund_debt(ctx: Context<RepayRentFundDebt>) -> Result<()> {
     let anchor_rent = Rent::get()?;
 
-    // Debt amount might be zero if user had passed Some rent_claim account without accruing any rent_fund debt in the
-    // deposit. Exit early in this case so that rent_claim account can be closed.
-    let amount = ctx.accounts.rent_claim.amount;
-    if amount == 0 {
-        return Ok(());
-    }
+    let rent_claim = &mut ctx.accounts.rent_claim;
 
-    // Check if rent fund has enough balance to repay the debt and remain rent-exempt.
+    // Check if rent fund has enough balance to repay any non-zero debt and remain rent-exempt.
     let max_repay = ctx
         .accounts
         .rent_fund
         .lamports()
         .saturating_sub(anchor_rent.minimum_balance(0));
-    if max_repay < amount {
-        return err!(SvmError::InsufficientRentFundBalance);
+    let repay_amount = rent_claim.amount.min(max_repay);
+    if repay_amount == 0 {
+        // Deposit instruction closes rent_claim account with zero debt, so return early if cannot repay any part of it.
+        return Ok(());
     }
 
     let cpi_accounts = system_program::Transfer {
@@ -57,9 +49,21 @@ pub fn repay_rent_fund_debt(ctx: Context<RepayRentFundDebt>) -> Result<()> {
     let rent_fund_seeds: &[&[&[u8]]] = &[&[b"rent_fund", &[ctx.bumps.rent_fund]]];
     let cpi_context =
         CpiContext::new_with_signer(ctx.accounts.system_program.to_account_info(), cpi_accounts, rent_fund_seeds);
-    system_program::transfer(cpi_context, amount)?;
+    system_program::transfer(cpi_context, repay_amount)?;
 
-    emit_cpi!(RepaidRentFundDebt { user: ctx.accounts.recipient.key(), amount });
+    // Update the remaining debt, safe to subtract repay_amount as it is guaranteed to be <= rent_claim.amount.
+    rent_claim.amount -= repay_amount;
+
+    emit_cpi!(RepaidRentFundDebt {
+        user: ctx.accounts.recipient.key(),
+        amount: repay_amount,
+        remaining_user_claim: rent_claim.amount,
+    });
+
+    // Close the claim account if the debt is fully repaid.
+    if rent_claim.amount == 0 {
+        rent_claim.close(ctx.accounts.recipient.to_account_info())?;
+    }
 
     Ok(())
 }

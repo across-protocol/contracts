@@ -186,6 +186,13 @@ pub fn deposit_for_burn(mut ctx: Context<DepositForBurn>, params: &DepositForBur
 
     emit_cpi!(CreatedEventAccount { message_sent_event_data: ctx.accounts.message_sent_event_data.key() });
 
+    // Close the claim account if the user passed Some rent_claim account without accruing any rent_fund debt.
+    if let Some(rent_claim) = &ctx.accounts.rent_claim {
+        if rent_claim.amount == 0 {
+            rent_claim.close(ctx.accounts.signer.to_account_info())?;
+        }
+    }
+
     Ok(())
 }
 

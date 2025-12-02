@@ -800,8 +800,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       messageSentEventData,
     ]);
 
-    let rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
-    assert.isTrue(rentClaimAccount.amount.eq(new BN(0)), "No debt should be accrued when rent_fund had funding");
+    let rentClaimAccount = await program.account.rentClaim.fetchNullable(rentClaim);
+    assert.isNull(rentClaimAccount, "No debt should be accrued and account closed when rent_fund had funding");
 
     // Withdraw all rent_fund balance to test debt accrual.
     let rentFundBalance = await connection.getBalance(rentFund);
@@ -848,5 +848,109 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       "User should have been refunded the claim and proceeds from closing rent_claim"
     );
     assert.isNull(await program.account.rentClaim.fetchNullable(rentClaim), "Rent claim account should be closed");
+  });
+
+  it("Accrue and partially repay rent_fund debt", async () => {
+    // Withdraw all rent_fund balance to test debt accrual.
+    let rentFundBalance = await connection.getBalance(rentFund);
+    await program.methods
+      .withdrawRentFund({ amount: new BN(rentFundBalance.toString()) })
+      .accounts({
+        recipient: owner,
+        programData,
+      })
+      .rpc();
+
+    [rentClaim] = PublicKey.findProgramAddressSync(
+      [Buffer.from("rent_claim"), depositor.publicKey.toBuffer()],
+      program.programId
+    );
+    let nonce = crypto.randomBytes(32);
+    const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
+
+    const quoteData: SponsoredCCTPQuote = {
+      sourceDomain,
+      destinationDomain: remoteDomain.toNumber(),
+      mintRecipient: ethers.utils.hexlify(mintRecipient),
+      amount: burnAmount,
+      burnToken: ethers.utils.hexlify(burnToken.toBuffer()),
+      destinationCaller: ethers.utils.hexlify(destinationCaller),
+      maxFee,
+      minFinalityThreshold,
+      nonce: ethers.utils.hexlify(nonce),
+      deadline,
+      maxBpsToSponsor,
+      maxUserSlippageBps,
+      finalRecipient: ethers.utils.hexlify(finalRecipient),
+      finalToken: ethers.utils.hexlify(finalToken),
+      executionMode,
+      actionData,
+    };
+    let { quote, signature } = getEncodedQuoteWithSignature(quoteSigner, quoteData);
+
+    const depositAccounts = {
+      signer: depositor.publicKey,
+      payer: depositor.publicKey,
+      state,
+      rentFund,
+      usedNonce: getUsedNonce(nonce),
+      rentClaim,
+      depositorTokenAccount,
+      burnToken,
+      denylistAccount,
+      tokenMessengerMinterSenderAuthority,
+      messageTransmitter,
+      tokenMessenger,
+      remoteTokenMessenger,
+      tokenMinter,
+      localToken,
+      cctpEventAuthority,
+      tokenProgram,
+      messageSentEventData: messageSentEventData.publicKey,
+      program: program.programId,
+    };
+
+    let depositIx = await program.methods.depositForBurn({ quote, signature }).accounts(depositAccounts).instruction();
+    await sendTransactionWithExistingLookupTable(connection, [depositIx], lookupTableAccount, depositor, [
+      messageSentEventData,
+    ]);
+
+    let rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
+    const usedNonceBalance = await connection.getBalance(depositAccounts.usedNonce);
+    const messageSentEventDataBalance = await connection.getBalance(depositAccounts.messageSentEventData);
+    rentFundBalance = await connection.getBalance(rentFund);
+    const fullClaimAmount = new BN(usedNonceBalance + messageSentEventDataBalance + rentFundBalance);
+    assert.isTrue(
+      rentClaimAccount.amount.eq(fullClaimAmount),
+      "Rent claim should have accrued debt for account creation"
+    );
+
+    // Without funding rent claim account should keep the debt.
+    await program.methods
+      .repayRentFundDebt()
+      .accounts({ recipient: depositor.publicKey, program: program.programId })
+      .rpc();
+    rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
+    assert.isTrue(rentClaimAccount.amount.eq(fullClaimAmount), "Rent claim should not been repaid");
+
+    // Test partial repayment of 1 lamport (rent_fund should already hold its minimum rent-free balance)
+    const partialRepayment = 1;
+    await requestAndConfirmAirdrop(connection, rentFund, partialRepayment);
+    const userBalanceBefore = await connection.getBalance(depositor.publicKey);
+    await program.methods
+      .repayRentFundDebt()
+      .accounts({ recipient: depositor.publicKey, program: program.programId })
+      .rpc();
+    const userBalanceAfter = await connection.getBalance(depositor.publicKey);
+    assert.strictEqual(
+      userBalanceAfter - userBalanceBefore,
+      partialRepayment,
+      "User should have been refunded only part of the claim"
+    );
+    rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
+    assert.isTrue(
+      rentClaimAccount.amount.eq(fullClaimAmount.sub(new BN(partialRepayment))),
+      "Rent claim should have been partially repaid"
+    );
   });
 });
