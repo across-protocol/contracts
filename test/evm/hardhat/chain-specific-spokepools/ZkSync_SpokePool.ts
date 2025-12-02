@@ -187,13 +187,14 @@ describe("ZkSync Spoke Pool", function () {
   });
   it("Bridge tokens to hub pool correctly calls the L2 Asset Router for standard ERC20s", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(l2Dai, await zkSyncSpokePool.callStatic.chainId());
+    l2AssetRouter.l1TokenAddress.returns(dai.address);
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
     // This should have sent tokens back to L1.
     expect(l2AssetRouter.withdraw).to.have.been.calledOnce;
     const expectedAssetId = keccak256(
-      defaultAbiCoder.encode(["uint256", "address", "address"], [1, L1_NATIVE_TOKEN_VAULT_ADDR, l2Dai])
+      defaultAbiCoder.encode(["uint256", "address", "address"], [1, L1_NATIVE_TOKEN_VAULT_ADDR, dai.address])
     );
     const expectedData = defaultAbiCoder.encode(
       ["uint256", "address", "address"],
@@ -223,6 +224,7 @@ describe("ZkSync Spoke Pool", function () {
       usdc.address,
       await zkSyncSpokePool.callStatic.chainId()
     );
+    l2AssetRouter.l1TokenAddress.returns(usdc.address);
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
 
