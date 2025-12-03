@@ -14,15 +14,6 @@ contract PermissionedMulticallHandler is MulticallHandler, AccessControl {
     /// @notice Role identifier for whitelisted callers
     bytes32 public constant WHITELISTED_CALLER_ROLE = keccak256("WHITELISTED_CALLER_ROLE");
 
-    /// @notice Emitted when a caller is whitelisted
-    event CallerWhitelisted(address indexed caller);
-
-    /// @notice Emitted when a caller is removed from whitelist
-    event CallerRemovedFromWhitelist(address indexed caller);
-
-    /// @notice Error thrown when caller is not whitelisted
-    error CallerNotWhitelisted(address caller);
-
     /**
      * @notice Constructor that sets up the initial admin
      * @param admin Address that will have DEFAULT_ADMIN_ROLE
@@ -44,30 +35,8 @@ contract PermissionedMulticallHandler is MulticallHandler, AccessControl {
         uint256 amount,
         address relayer,
         bytes memory message
-    ) public override {
-        if (!hasRole(WHITELISTED_CALLER_ROLE, msg.sender)) {
-            revert CallerNotWhitelisted(msg.sender);
-        }
-
+    ) public override onlyRole(WHITELISTED_CALLER_ROLE) {
         // Call parent implementation
         super.handleV3AcrossMessage(token, amount, relayer, message);
-    }
-
-    /**
-     * @notice Add a caller to the whitelist
-     * @param caller Address to whitelist
-     */
-    function whitelistCaller(address caller) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        grantRole(WHITELISTED_CALLER_ROLE, caller);
-        emit CallerWhitelisted(caller);
-    }
-
-    /**
-     * @notice Remove a caller from the whitelist
-     * @param caller Address to remove from whitelist
-     */
-    function removeCallerFromWhitelist(address caller) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        revokeRole(WHITELISTED_CALLER_ROLE, caller);
-        emit CallerRemovedFromWhitelist(caller);
     }
 }

@@ -19,6 +19,9 @@ interface SponsoredCCTPInterface {
     // Error thrown when the source domain is invalid.
     error InvalidSourceDomain();
 
+    // Error thrown when the CCTP message transmitter receive message fails.
+    error CCTPMessageTransmitterFailed();
+
     event SponsoredDepositForBurn(
         bytes32 indexed quoteNonce,
         address indexed originSender,
@@ -30,12 +33,8 @@ interface SponsoredCCTPInterface {
         bytes signature
     );
 
-    event SimpleTansferToCore(
-        address indexed finalToken,
-        address indexed finalRecipient,
-        uint256 finalAmount,
-        uint256 maxAmountToSponsor
-    );
+    // Event when emergency receive is called
+    event EmergencyReceiveMessage(bytes32 nonce, address finalRecipent, address finalToken, uint256 amount);
 
     // Execution modes for the sponsored CCTP flow
     enum ExecutionMode {
@@ -56,7 +55,6 @@ interface SponsoredCCTPInterface {
         // The recipient of the minted USDC on the destination chain.
         bytes32 mintRecipient;
         // The amount that the user pays on the source chain.
-        // TODO: rename this to indicate source amount
         uint256 amount;
         // The token that will be burned on the source chain.
         bytes32 burnToken;

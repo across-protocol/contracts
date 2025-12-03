@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import { SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
-
 /// @notice Execution modes for the sponsored OFT flow
 enum ExecutionMode {
     // Send to core and perform swap (if needed) there.

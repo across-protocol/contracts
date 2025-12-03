@@ -1,11 +1,16 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 
 contract SwapHandler {
+    // See https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/api/exchange-endpoint#asset
+    uint32 private constant SPOT_MARKET_INDEX_OFFSET = 10_000;
+
     address public immutable parentHandler;
+    using SafeERC20 for IERC20;
 
     constructor() {
         parentHandler = msg.sender;
@@ -42,14 +47,14 @@ contract SwapHandler {
         HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore);
     }
 
-    function submitLimitOrder(
+    function submitSpotLimitOrder(
         FinalTokenInfo memory finalTokenInfo,
         uint64 limitPriceX1e8,
         uint64 sizeX1e8,
         uint128 cloid
     ) external onlyParentHandler {
         HyperCoreLib.submitLimitOrder(
-            finalTokenInfo.assetIndex,
+            finalTokenInfo.spotIndex + SPOT_MARKET_INDEX_OFFSET,
             finalTokenInfo.isBuy,
             limitPriceX1e8,
             sizeX1e8,
@@ -59,11 +64,11 @@ contract SwapHandler {
         );
     }
 
-    function cancelOrderByCloid(uint32 assetIndex, uint128 cloid) external onlyParentHandler {
-        HyperCoreLib.cancelOrderByCloid(assetIndex, cloid);
+    function cancelOrderByCloid(uint32 spotIndex, uint128 cloid) external onlyParentHandler {
+        HyperCoreLib.cancelOrderByCloid(spotIndex + SPOT_MARKET_INDEX_OFFSET, cloid);
     }
 
     function sweepErc20(address token, uint256 amount) external onlyParentHandler {
-        IERC20(token).transfer(msg.sender, amount);
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 }

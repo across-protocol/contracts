@@ -22,7 +22,7 @@ struct CoreTokenInfo {
 
 struct FinalTokenInfo {
     // The index of the market where we're going to swap baseToken -> finalToken
-    uint32 assetIndex;
+    uint32 spotIndex;
     // To go baseToken -> finalToken, do we have to enqueue a buy or a sell?
     bool isBuy;
     // The fee Hyperliquid charges for Limit orders in the market; in parts per million, e.g. 1.4 bps = 140 ppm

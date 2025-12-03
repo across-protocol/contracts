@@ -118,6 +118,7 @@
     "hardhat": "^2.14.0",
     "hardhat-deploy": "^0.11.12",
     "hardhat-gas-reporter": "^1.0.8",
+    "hardhat-preprocessor": "^0.1.5",
     "husky": "^4.2.3",
     "mocha": "^9.0.3",
     "multiformats": "9.9.0",

@@ -45,7 +45,6 @@ library HyperCoreLib {
     uint256 public constant BASE_ASSET_BRIDGE_ADDRESS_UINT256 = uint256(uint160(BASE_ASSET_BRIDGE_ADDRESS));
 
     // Precompile addresses
-    // TODO: maybe we should be using https://github.com/hyperliquid-dev/hyper-evm-lib instead?
     address public constant SPOT_BALANCE_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000801;
     address public constant SPOT_PX_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000808;
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
@@ -65,7 +64,6 @@ library HyperCoreLib {
     error CoreUserExistsPrecompileCallFailed();
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
-    error TransferAmtExceedsAssetBridgeBalance(uint256 amt, uint256 maxAmt);
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.

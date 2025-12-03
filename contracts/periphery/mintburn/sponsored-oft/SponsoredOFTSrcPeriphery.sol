@@ -30,13 +30,35 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     /// @notice Source endpoint id
     uint32 public immutable SRC_EID;
 
-    /// @notice Signer public key to check the signed quote against
-    address public signer;
+    /// @custom:storage-location erc7201:SponsoredOFTSrcPeriphery.main
+    struct MainStorage {
+        /// @notice Signer public key to check the signed quote against
+        address signer;
+        /// @notice A mapping to enforce only a single usage per quote
+        mapping(bytes32 => bool) quoteNonces;
+    }
 
-    /// @notice A mapping to enforce only a single usage per quote
-    mapping(bytes32 => bool) public quoteNonces;
+    // keccak256(abi.encode(uint256(keccak256("erc7201:SponsoredOFTSrcPeriphery.main")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MAIN_STORAGE_LOCATION = 0xbbe623e022cc184bd276c9a778810da1531bdd4c0bac9d86069eb499aa2eb500;
 
-    /// @notice Event with auxiliary information. To be used in concert with OftSent event to get relevant quote details
+    function _getMainStorage() private pure returns (MainStorage storage $) {
+        assembly {
+            $.slot := MAIN_STORAGE_LOCATION
+        }
+    }
+
+    /**
+     * @notice Event with auxiliary information. To be used in concert with OftSent event to get relevant quote details
+     * @param quoteNonce Unique identifier for this quote/transaction
+     * @param originSender The address initiating the transfer on the source chain
+     * @param finalRecipient The final recipient address on the destination chain (as bytes32)
+     * @param destinationHandler The handler contract address on the destination chain (as bytes32)
+     * @param quoteDeadline The timestamp by which the quote expires
+     * @param maxBpsToSponsor Maximum basis points that can be sponsored
+     * @param maxUserSlippageBps Maximum user slippage in basis points
+     * @param finalToken The final token address on the destination chain (as bytes32)
+     * @param sig The signature authorizing this transfer
+     */
     event SponsoredOFTSend(
         bytes32 indexed quoteNonce,
         address indexed originSender,
@@ -59,6 +81,8 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     error QuoteExpired();
     /// @notice Thrown if Quote nonce was already used
     error NonceAlreadyUsed();
+    /// @notice Thrown when provided msg.value is not sufficient to cover OFT bridging fee
+    error InsufficientNativeFee();
 
     constructor(address _token, address _oftMessenger, uint32 _srcEid, address _signer) {
         TOKEN = _token;
@@ -70,24 +94,57 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         if (IOFT(_oftMessenger).token() != _token) {
             revert TokenIOFTMismatch();
         }
-        signer = _signer;
+        _getMainStorage().signer = _signer;
     }
 
-    /// @notice Main entrypoint function to start the user flow
+    /**
+     * @notice Returns the signer address that is used to validate the signatures of the quotes.
+     * @return The signer address.
+     */
+    function signer() external view returns (address) {
+        return _getMainStorage().signer;
+    }
+
+    /**
+     * @notice Returns true if the nonce has been used, false otherwise.
+     * @param nonce The nonce to check.
+     * @return True if the nonce has been used, false otherwise.
+     */
+    function usedNonces(bytes32 nonce) external view returns (bool) {
+        return _getMainStorage().quoteNonces[nonce];
+    }
+
+    /**
+     * @notice Main entrypoint function to start the user flow
+     * @param quote The quote struct containing all transfer parameters
+     * @param signature The signature authorizing the quote
+     */
     function deposit(Quote calldata quote, bytes calldata signature) external payable {
         // Step 1: validate quote and mark quote nonce used
         _validateQuote(quote, signature);
-        quoteNonces[quote.signedParams.nonce] = true;
+        _getMainStorage().quoteNonces[quote.signedParams.nonce] = true;
 
         // Step 2: build oft send params from quote
         (SendParam memory sendParam, MessagingFee memory fee, address refundAddress) = _buildOftTransfer(quote);
+
+        if (fee.nativeFee > msg.value) {
+            revert InsufficientNativeFee();
+        }
+        // OFT doesn't refund the unused native fee portion. Instead, it expects precise fee.nativeFee to be transferred
+        // as msg.value, so we refund the user ourselves
+        uint256 nativeFeeRefund = msg.value - fee.nativeFee;
+        if (nativeFeeRefund > 0) {
+            // Adapted from "@openzeppelin/contracts/utils/Address.sol";
+            (bool success, ) = payable(refundAddress).call{ value: nativeFeeRefund }("");
+            require(success, "Unable to send value, recipient may have reverted");
+        }
 
         // Step 3: pull tokens from user and apporove OFT messenger
         IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
         IERC20(TOKEN).forceApprove(address(OFT_MESSENGER), quote.signedParams.amountLD);
 
         // Step 4: send oft transfer and emit event with auxiliary data
-        IOFT(OFT_MESSENGER).send{ value: msg.value }(sendParam, fee, refundAddress);
+        IOFT(OFT_MESSENGER).send{ value: fee.nativeFee }(sendParam, fee, refundAddress);
         emit SponsoredOFTSend(
             quote.signedParams.nonce,
             msg.sender,
@@ -138,7 +195,8 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     }
 
     function _validateQuote(Quote calldata quote, bytes calldata signature) internal view {
-        if (!QuoteSignLib.isSignatureValid(signer, quote.signedParams, signature)) {
+        MainStorage storage $ = _getMainStorage();
+        if (!QuoteSignLib.isSignatureValid($.signer, quote.signedParams, signature)) {
             revert IncorrectSignature();
         }
         if (quote.signedParams.deadline < block.timestamp) {
@@ -147,12 +205,12 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         if (quote.signedParams.srcEid != SRC_EID) {
             revert IncorrectSrcEid();
         }
-        if (quoteNonces[quote.signedParams.nonce]) {
+        if ($.quoteNonces[quote.signedParams.nonce]) {
             revert NonceAlreadyUsed();
         }
     }
 
     function setSigner(address _newSigner) external onlyOwner {
-        signer = _newSigner;
+        _getMainStorage().signer = _newSigner;
     }
 }

@@ -23,11 +23,22 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
     /// @notice The source domain ID for the chain that this contract is deployed on.
     uint32 public immutable sourceDomain;
 
-    /// @notice The signer address that is used to validate the signatures of the quotes.
-    address public signer;
+    /// @custom:storage-location erc7201:SponsoredCCTPSrcPeriphery.main
+    struct MainStorage {
+        /// @notice The signer address that is used to validate the signatures of the quotes.
+        address signer;
+        /// @notice A mapping of used nonces to prevent replay attacks.
+        mapping(bytes32 => bool) usedNonces;
+    }
 
-    /// @notice A mapping of used nonces to prevent replay attacks.
-    mapping(bytes32 => bool) public usedNonces;
+    // keccak256(abi.encode(uint256(keccak256("erc7201:SponsoredCCTPSrcPeriphery.main")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MAIN_STORAGE_LOCATION = 0xf0a1b42b86a218bb35dbc2254545839ce4b1bf1d3780b5099e3e0abfc7a5b200;
+
+    function _getMainStorage() private pure returns (MainStorage storage $) {
+        assembly {
+            $.slot := MAIN_STORAGE_LOCATION
+        }
+    }
 
     /**
      * @notice Constructor for the SponsoredCCTPSrcPeriphery contract.
@@ -38,7 +49,24 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
     constructor(address _cctpTokenMessenger, uint32 _sourceDomain, address _signer) {
         cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
         sourceDomain = _sourceDomain;
-        signer = _signer;
+        _getMainStorage().signer = _signer;
+    }
+
+    /**
+     * @notice Returns the signer address that is used to validate the signatures of the quotes.
+     * @return The signer address.
+     */
+    function signer() external view returns (address) {
+        return _getMainStorage().signer;
+    }
+
+    /**
+     * @notice Returns true if the nonce has been used, false otherwise.
+     * @param nonce The nonce to check.
+     * @return True if the nonce has been used, false otherwise.
+     */
+    function usedNonces(bytes32 nonce) external view returns (bool) {
+        return _getMainStorage().usedNonces[nonce];
     }
 
     /**
@@ -47,8 +75,9 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
      * @param signature The signature of the quote.
      */
     function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory signature) external {
-        if (!SponsoredCCTPQuoteLib.validateSignature(signer, quote, signature)) revert InvalidSignature();
-        if (usedNonces[quote.nonce]) revert InvalidNonce();
+        MainStorage storage $ = _getMainStorage();
+        if (!SponsoredCCTPQuoteLib.validateSignature($.signer, quote, signature)) revert InvalidSignature();
+        if ($.usedNonces[quote.nonce]) revert InvalidNonce();
         if (quote.deadline < block.timestamp) revert InvalidDeadline();
         if (quote.sourceDomain != sourceDomain) revert InvalidSourceDomain();
 
@@ -63,7 +92,7 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             bytes memory hookData
         ) = SponsoredCCTPQuoteLib.getDepositForBurnData(quote);
 
-        usedNonces[quote.nonce] = true;
+        $.usedNonces[quote.nonce] = true;
 
         IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(burnToken).forceApprove(address(cctpTokenMessenger), amount);
@@ -96,6 +125,6 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
      * @param _signer The new signer address.
      */
     function setSigner(address _signer) external onlyOwner {
-        signer = _signer;
+        _getMainStorage().signer = _signer;
     }
 }

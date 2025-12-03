@@ -27,7 +27,14 @@ abstract contract ArbitraryEVMFlowExecutor {
     /// @notice MulticallHandler contract instance
     address public immutable multicallHandler;
 
-    /// @notice Emitted when arbitrary actions are executed successfully
+    /**
+     * @notice Emitted when arbitrary actions are executed successfully
+     * @param quoteNonce Unique identifier for this quote/transaction
+     * @param initialToken The token address received before executing actions
+     * @param initialAmount The amount of initial token received
+     * @param finalToken The token address after executing actions
+     * @param finalAmount The amount of final token after executing actions
+     */
     event ArbitraryActionsExecuted(
         bytes32 indexed quoteNonce,
         address indexed initialToken,
@@ -36,11 +43,7 @@ abstract contract ArbitraryEVMFlowExecutor {
         uint256 finalAmount
     );
 
-    /// @notice Error thrown when final balance is insufficient
-    error InsufficientFinalBalance(address token, uint256 expected, uint256 actual);
-
     uint256 private constant BPS_TOTAL_PRECISION = 18;
-    uint256 private constant BPS_DECIMALS = 4;
     uint256 private constant BPS_PRECISION_SCALAR = 10 ** BPS_TOTAL_PRECISION;
 
     constructor(address _multicallHandler) {
@@ -139,11 +142,7 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Add final call to drain leftover tokens back to this contract
         calls[callCount] = MulticallHandler.Call({
             target: multicallHandler,
-            callData: abi.encodeWithSelector(
-                MulticallHandler.drainLeftoverTokens.selector,
-                finalToken,
-                fallbackRecipient
-            ),
+            callData: abi.encodeCall(MulticallHandler.drainLeftoverTokens, (finalToken, payable(fallbackRecipient))),
             value: 0
         });
 
@@ -156,7 +155,7 @@ abstract contract ArbitraryEVMFlowExecutor {
         return abi.encode(instructions);
     }
 
-    /// @notice Calcualtes proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount
+    /// @notice Calculates proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount
     function _calcExtraFeesFinal(
         uint256 amount,
         uint256 extraFeesToSponsorTokenIn,

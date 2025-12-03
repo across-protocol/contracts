@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
+import { BaseModuleHandler } from "../BaseModuleHandler.sol";
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
@@ -14,9 +15,13 @@ import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
-/// @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
-/// sender), and forwards authorized params to the `_executeFlow` function
-contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEVMFlowExecutor {
+/**
+ * @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain 
+    sender), and forwards authorized params to the `_executeFlow` function
+ * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
+    `BaseModuleHandler` contract code to learn more.
+ */
+contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -29,15 +34,33 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
 
-    /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
-    /// bytes32 to support non-EVM src chains
-    mapping(uint64 eid => bytes32 authorizedSrcPeriphery) public authorizedSrcPeripheryContracts;
+    /// @notice Base token associated with this handler. The one we receive from the OFT bridge
+    address public immutable baseToken;
 
-    /// @notice A mapping used for nonce uniqueness checks. Our src periphery and LZ should have prevented this already,
-    /// but I guess better safe than sorry
-    mapping(bytes32 quoteNonce => bool used) public usedNonces;
+    /// @custom:storage-location erc7201:DstOFTHandler.main
+    struct MainStorage {
+        /// @notice A mapping used to validate an incoming message against a list of authorized src periphery contracts. In
+        /// bytes32 to support non-EVM src chains
+        mapping(uint64 eid => bytes32 authorizedSrcPeriphery) authorizedSrcPeripheryContracts;
+        /// @notice A mapping used for nonce uniqueness checks. Our src periphery and LZ should have prevented this already,
+        /// but I guess better safe than sorry
+        mapping(bytes32 quoteNonce => bool used) usedNonces;
+    }
 
-    /// @notice Emitted when a new authorized src periphery is configured
+    // keccak256(abi.encode(uint256(keccak256("erc7201:DstOFTHandler.main")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 private constant MAIN_STORAGE_LOCATION = 0xe61a4c968926ec08fb0c5bf5be95077bf8b3ddd75ead66c94187ce8d5509de00;
+
+    function _getMainStorage() private pure returns (MainStorage storage $) {
+        assembly {
+            $.slot := MAIN_STORAGE_LOCATION
+        }
+    }
+
+    /**
+     * @notice Emitted when a new authorized src periphery is configured
+     * @param srcEid The source chain endpoint ID
+     * @param srcPeriphery The authorized source periphery contract address (as bytes32)
+     */
     event SetAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery);
 
     /// @notice Thrown when trying to call lzCompose from a source periphery that's not been configured in `authorizedSrcPeripheryContracts`
@@ -63,9 +86,10 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) HyperCoreFlowExecutor(_donationBox, _baseToken) ArbitraryEVMFlowExecutor(_multicallHandler) {
-        // baseToken is assigned on `HyperCoreFlowExecutor` creation
-        if (baseToken != IOFT(_ioft).token()) {
+    ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
+        baseToken = _baseToken;
+
+        if (_baseToken != IOFT(_ioft).token()) {
             revert TokenIOFTMismatch();
         }
 
@@ -74,10 +98,33 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         if (address(IOAppCore(IOFT_ADDRESS).endpoint()) != address(OFT_ENDPOINT_ADDRESS)) {
             revert IOFTEndpointMismatch();
         }
+
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
-    function setAuthorizedPeriphery(uint32 srcEid, bytes32 srcPeriphery) external nonReentrant onlyDefaultAdmin {
-        authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
+    /**
+     * @notice Returns the authorized src periphery contract for a given source chain endpoint ID.
+     * @param srcEid The source chain endpoint ID
+     * @return The authorized src periphery contract address (as bytes32)
+     */
+    function authorizedSrcPeripheryContracts(uint64 srcEid) external view returns (bytes32) {
+        return _getMainStorage().authorizedSrcPeripheryContracts[srcEid];
+    }
+
+    /**
+     * @notice Returns true if the nonce has been used, false otherwise.
+     * @param nonce The nonce to check.
+     * @return True if the nonce has been used, false otherwise.
+     */
+    function usedNonces(bytes32 nonce) external view returns (bool) {
+        return _getMainStorage().usedNonces[nonce];
+    }
+
+    function setAuthorizedPeriphery(
+        uint32 srcEid,
+        bytes32 srcPeriphery
+    ) external nonReentrant onlyRole(DEFAULT_ADMIN_ROLE) {
+        _getMainStorage().authorizedSrcPeripheryContracts[srcEid] = srcPeriphery;
         emit SetAuthorizedPeriphery(srcEid, srcPeriphery);
     }
 
@@ -86,6 +133,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
      * @dev Ensures the message comes from the correct OApp and is sent through the authorized endpoint.
      *
      * @param _oApp The address of the OApp that is sending the composed message.
+     * @param _message The composed message payload containing transfer and execution details
      */
     function lzCompose(
         address _oApp,
@@ -93,7 +141,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         bytes calldata _message,
         address /* _executor */,
         bytes calldata /* _extraData */
-    ) external payable override nonReentrant {
+    ) external payable override nonReentrant authorizeFundedFlow {
         _requireAuthorizedMessage(_oApp, _message);
 
         // Decode the actual `composeMsg` payload to extract the recipient address
@@ -101,16 +149,17 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
 
         // This check is a safety mechanism against blackholing funds. The funds were sent by the authorized periphery
         // contract, but if the length is unexpected, we require funds be rescued, this is not a situation we aim to
-        // revover from in `lzCompose` call
-        if (composeMsg._isValidComposeMsgBytelength() == false) {
+        // recover from in `lzCompose` call
+        if (!composeMsg._isValidComposeMsgBytelength()) {
             revert InvalidComposeMsgFormat();
         }
 
         bytes32 quoteNonce = composeMsg._getNonce();
-        if (usedNonces[quoteNonce]) {
+        MainStorage storage $ = _getMainStorage();
+        if ($.usedNonces[quoteNonce]) {
             revert NonceAlreadyUsed();
         }
-        usedNonces[quoteNonce] = true;
+        $.usedNonces[quoteNonce] = true;
 
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
         uint256 maxBpsToSponsor = composeMsg._getMaxBpsToSponsor();
@@ -144,8 +193,8 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
                 })
             );
         } else {
-            // Execute standard HyperCore flow (default)
-            HyperCoreFlowExecutor._executeFlow(commonParams, maxUserSlippageBps);
+            // Execute standard HyperCore flow (default) via delegatecall
+            _delegateToHyperCore(abi.encodeCall(HyperCoreFlowExecutor.executeFlow, (commonParams, maxUserSlippageBps)));
         }
     }
 
@@ -153,7 +202,11 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
         // Route to appropriate destination based on transferToCore flag
-        (params.transferToCore ? _executeSimpleTransferFlow : _fallbackHyperEVMFlow)(params.commonParams);
+        _delegateToHyperCore(
+            params.transferToCore
+                ? abi.encodeCall(HyperCoreFlowExecutor.executeSimpleTransferFlow, (params.commonParams))
+                : abi.encodeCall(HyperCoreFlowExecutor.fallbackHyperEVMFlow, (params.commonParams))
+        );
     }
 
     /// @notice Checks that message was authorized by LayerZero's identity system and that it came from authorized src periphery
@@ -170,7 +223,7 @@ contract DstOFTHandler is ILayerZeroComposer, HyperCoreFlowExecutor, ArbitraryEV
     /// @dev Checks that _message came from the authorized src periphery contract stored in `authorizedSrcPeripheryContracts`
     function _requireAuthorizedPeriphery(bytes calldata _message) internal view {
         uint32 _srcEid = OFTComposeMsgCodec.srcEid(_message);
-        bytes32 authorizedPeriphery = authorizedSrcPeripheryContracts[_srcEid];
+        bytes32 authorizedPeriphery = _getMainStorage().authorizedSrcPeripheryContracts[_srcEid];
         if (authorizedPeriphery == bytes32(0)) {
             revert AuthorizedPeripheryNotSet(_srcEid);
         }
