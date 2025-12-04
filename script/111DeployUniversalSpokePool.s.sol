@@ -73,7 +73,7 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
             "Universal_SpokePool",
             constructorArgs,
             initArgs,
-            false // implementationOnly
+            true // implementationOnly
         );
 
         // Log the deployed addresses
