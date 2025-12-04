@@ -176,7 +176,9 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = tx.contractName as string;
 
-          if (contractName === "Universal_Adapter") {
+          if (contractName === "ERC1967Proxy") {
+            contractName = "SpokePool";
+          } else if (contractName === "Universal_Adapter") {
             const [, , , cctpDomainId, , oftDstEid] = tx.arguments;
 
             // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches either cctpDomainId or oftDstEid
