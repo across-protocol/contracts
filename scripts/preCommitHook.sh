@@ -43,7 +43,7 @@ if [ $GENERATE_CONSTANTS_JSON_EXIT -ne 0 ]; then
 fi
 
 echo "Running extract-addresses on staged files ..."
-yarn extract-addresses
+yarn extract-addresses && yarn prettier --write broadcast/deployed-addresses.json && yarn prettier --write broadcast/deployed-addresses.md
 EXTRACT_ADDRESSES_EXIT=$?
 if [ $EXTRACT_ADDRESSES_EXIT -ne 0 ]; then
     echo "extract-addresses encountered an error. Aborting the hook."

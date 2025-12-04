@@ -237,8 +237,8 @@
           "block_number": 52135703
         },
         "Helios": {
-          "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d",
-          "block_number": 59344945
+          "address": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
+          "block_number": 69434159
         }
       }
     },
@@ -328,6 +328,10 @@
         "MulticallHandler": {
           "address": "0xeC41F75c686e376Ab2a4F18bde263ab5822c4511",
           "block_number": 36589196
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7",
+          "block_number": 37957403
         },
         "SpokePool": {
           "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449",
@@ -458,8 +462,8 @@
           "block_number": 14459886
         },
         "Helios": {
-          "address": "0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5",
-          "block_number": 13934816
+          "address": "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
+          "block_number": 20185101
         },
         "MulticallHandler": {
           "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba",
@@ -578,8 +582,8 @@
       "chain_name": "Plasma",
       "contracts": {
         "Helios": {
-          "address": "0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75",
-          "block_number": 1552582
+          "address": "0x6f1cd5f317a7228269eab2b496313862de712ccb",
+          "block_number": 7166956
         },
         "SpokePool": {
           "address": "0x50039fAEfebef707cFD94D6d462fE6D10B39207a",

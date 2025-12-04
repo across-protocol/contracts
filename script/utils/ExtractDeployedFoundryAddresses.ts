@@ -12,7 +12,13 @@ import * as fs from "fs";
 import * as path from "path";
 import { getAddress } from "ethers/lib/utils";
 
-import { PUBLIC_NETWORKS, MAINNET_CHAIN_IDs, TESTNET_CHAIN_IDs } from "../../utils/constants";
+import {
+  PUBLIC_NETWORKS,
+  PRODUCTION_NETWORKS,
+  TEST_NETWORKS,
+  MAINNET_CHAIN_IDs,
+  TESTNET_CHAIN_IDs,
+} from "../../utils/constants";
 
 interface BroadcastFile {
   scriptName: string;
@@ -170,6 +176,38 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           let contractName = tx.contractName as string;
 
+          if (contractName === "ERC1967Proxy") {
+            contractName = "SpokePool";
+          } else if (contractName === "Universal_Adapter") {
+            const [, , , cctpDomainId, , oftDstEid] = tx.arguments;
+
+            // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches either cctpDomainId or oftDstEid
+            let matchingChainId: number | undefined = undefined;
+
+            const networks = broadcastFile.chainId in TEST_NETWORKS ? TEST_NETWORKS : PRODUCTION_NETWORKS;
+
+            for (const [chainIdString, chainInfo] of Object.entries(networks)) {
+              const chainId = Number(chainIdString);
+
+              // Some chains may have properties for cctpDomainId or oftDstEid. Try to check both.
+              if (
+                (chainInfo.cctpDomain !== undefined && chainInfo.cctpDomain?.toString() === cctpDomainId?.toString()) ||
+                (chainInfo.oftEid !== undefined && chainInfo.oftEid?.toString() === oftDstEid?.toString())
+              ) {
+                matchingChainId = chainId;
+                break;
+              }
+            }
+
+            if (matchingChainId !== undefined) {
+              contractName = `Universal_Adapter_${matchingChainId}`;
+            } else {
+              console.log(
+                `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
+              );
+            }
+          }
+
           contracts.push({
             contractName: contractName || "Unknown",
             contractAddress: tx.contractAddress,
@@ -189,6 +227,46 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
 function getChainName(chainId: number): string {
   return PUBLIC_NETWORKS[chainId]?.name || `Chain ${chainId}`;
+}
+
+function getBlockExplorerUrl(chainId: number): string | null {
+  // Load block explorer from constants.json if available
+  try {
+    const constantsPath = path.join(process.cwd(), "generated/constants.json");
+    if (fs.existsSync(constantsPath)) {
+      const constants = JSON.parse(fs.readFileSync(constantsPath, "utf8"));
+      const chainInfo = constants.PUBLIC_NETWORKS?.[chainId.toString()];
+      if (chainInfo?.blockExplorer) {
+        return chainInfo.blockExplorer;
+      }
+    }
+  } catch (error) {
+    // Fall through to default handling
+  }
+
+  // Fallback: try to get from PUBLIC_NETWORKS if it has blockExplorer
+  const network = PUBLIC_NETWORKS[chainId];
+  if (network && "blockExplorer" in network) {
+    return (network as any).blockExplorer || null;
+  }
+
+  return null;
+}
+
+function getBlockExplorerAddressUrl(chainId: number, address: string): string {
+  const baseUrl = getBlockExplorerUrl(chainId);
+  if (!baseUrl) {
+    return address; // Return plain address if no explorer available
+  }
+
+  // Handle different explorer URL patterns
+  if (baseUrl.includes("solscan.io") || baseUrl.includes("explorer.solana.com")) {
+    // Solana explorers use different URL format
+    return `${baseUrl}/account/${address}`;
+  } else {
+    // Most EVM explorers use /address/ pattern
+    return `${baseUrl}/address/${address}`;
+  }
 }
 
 function toChecksumAddress(address: string): string {
@@ -297,58 +375,35 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
 
   for (const chainId of sortedChainIds) {
     const chainInfo = allContracts[chainId];
-    const isMainnet = Object.values(MAINNET_CHAIN_IDs).includes(chainId);
-    const isTestnet = Object.values(TESTNET_CHAIN_IDs).includes(chainId);
 
-    // Add section headers only once at the beginning of each category
-    if (
-      isMainnet &&
-      (chainId === sortedChainIds[0] ||
-        (sortedChainIds.indexOf(chainId) > 0 &&
-          !Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
-    ) {
-      content.push("## 🚀 Mainnet Networks");
-      content.push("");
-    } else if (
-      isTestnet &&
-      !isMainnet &&
-      (chainId === sortedChainIds[0] ||
-        (sortedChainIds.indexOf(chainId) > 0 &&
-          Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1]) &&
-          !Object.values(TESTNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
-    ) {
-      content.push("## 🧪 Testnet Networks");
-      content.push("");
-    } else if (
-      !isMainnet &&
-      !isTestnet &&
-      (chainId === sortedChainIds[0] ||
-        (sortedChainIds.indexOf(chainId) > 0 &&
-          Object.values(MAINNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1]) &&
-          Object.values(TESTNET_CHAIN_IDs).includes(sortedChainIds[sortedChainIds.indexOf(chainId) - 1])))
-    ) {
-      content.push("## 🔗 Other Networks");
-      content.push("");
-    }
+    const chainNameFormatted = `${chainInfo.chainName} (${chainId})`;
 
-    content.push(`### ${chainInfo.chainName} (Chain ID: ${chainId})`);
+    content.push(`## ${chainNameFormatted}`);
     content.push("");
 
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      const name = contracts.length > 0 ? contracts[0].contractName : scriptName;
-      content.push(`#### ${name}`);
-      content.push("");
+    // Collect all contracts for this chain into a single array
+    const allChainContracts: Contract[] = [];
+    for (const contracts of Object.values(chainInfo.scripts)) {
+      allChainContracts.push(...contracts);
+    }
 
-      for (const contract of contracts) {
-        content.push(`- **${contract.contractName}**: \`${contract.contractAddress}\``);
-        if (contract.transactionHash !== "Unknown") {
-          content.push(`  - Transaction Hash: \`${contract.transactionHash}\``);
-        }
-        if (contract.blockNumber !== null) {
-          content.push(`  - Block Number: \`${contract.blockNumber}\``);
-        }
-        content.push("");
+    // Sort contracts by name for consistent ordering
+    allChainContracts.sort((a, b) => a.contractName.localeCompare(b.contractName));
+
+    if (allChainContracts.length > 0) {
+      // Generate table header
+      content.push("| Contract Name | Address |");
+      content.push("| ------------- | ------- |");
+
+      // Generate table rows
+      for (const contract of allChainContracts) {
+        const address = toChecksumAddress(contract.contractAddress);
+        const explorerUrl = getBlockExplorerAddressUrl(chainId, address);
+        const addressLink = explorerUrl !== address ? `[${address}](${explorerUrl})` : address;
+
+        content.push(`| ${contract.contractName} | ${addressLink} |`);
       }
+      content.push("");
     }
   }
 
