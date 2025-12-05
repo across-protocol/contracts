@@ -242,6 +242,12 @@ This file contains the latest deployed smart contract addresses from the broadca
   - Transaction Hash: `0xa2a7b2c6812fb8ae34539fb04cd5f2a9112da1c7f6ffce0ddcf1fee7e43acf48`
   - Block Number: `19084679`
 
+#### SponsoredOFTSrcPeriphery
+
+- **SponsoredOFTSrcPeriphery**: `0x4607bceaf7b22cb0c46882ffc9fab3c6efe66e5a`
+  - Transaction Hash: `0x644921ba43415194748b1054d7610bc78e0b518b93cc703afc1b1f10af87fb11`
+  - Block Number: `23929853`
+
 ### Optimism (Chain ID: 10)
 
 #### SpokePool
@@ -526,6 +532,36 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **SpokePoolPeriphery**: `0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb`
   - Block Number: `15142204`
 
+#### DonationBox
+
+- **DonationBox**: `0x002e76dc036a1eff1488ee5435ee66c6abf32674`
+  - Transaction Hash: `0x16b942e66df79bdf146ba03b8232604d966ae571282c4229eb3d0e9f8fcebf8d`
+  - Block Number: `20793257`
+
+- **SponsoredCCTPDstPeriphery**: `0x83e245941befbde29682df068bcda006a804eb0c`
+  - Transaction Hash: `0xb08e0d23618a1447781b9071792c660bfd76db006b105822ea41d65e0ddc2802`
+  - Block Number: `20793257`
+
+#### DonationBox
+
+- **DonationBox**: `0x90e2487764e5316a2e4109c2ed40a3b3ad423659`
+  - Transaction Hash: `0xf72c3e798991af0e7123197bfd7da40585f936b4353b91159b749008ceac541a`
+  - Block Number: `20815766`
+
+- **PermissionedMulticallHandler**: `0x0980d0f6799ca06c71ffafdc0e423cf2b0f20502`
+  - Transaction Hash: `0xee446c5d024fc2d807a387b7be9dc0e17f7f806efac526cc1db7bebd7fa5f7c7`
+  - Block Number: `20815766`
+
+- **DstOFTHandler**: `0x40153ddfad90c49dbe3f5c9f96f2a5b25ec67461`
+  - Transaction Hash: `0xb29d240d7893c5e112a3407a86d1ae520674cb3799cc0fb88420b386dbf018c7`
+  - Block Number: `20815766`
+
+#### HyperliquidDepositHandler
+
+- **HyperliquidDepositHandler**: `0x861e127036b28d32f3777b4676f6bbb9e007d195`
+  - Transaction Hash: `0x187b45f39be413aff2ff526946c64f76ed98763129e7e2ffb7d2d4c5bd997519`
+  - Block Number: `20301679`
+
 ### Lisk (Chain ID: 1135)
 
 #### SpokePool
@@ -608,6 +644,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Base_SpokePool**: `0x2eb5def5cf9635f9d926788a26d424287a045b92`
   - Transaction Hash: `0x6ec337bdf00c331fabbfb0e98862aa2b766c613b6d6002c44b53668b7240989c`
   - Block Number: `36361964`
+
+#### SponsoredCCTPSrcPeriphery
+
+- **SponsoredCCTPSrcPeriphery**: `0xa7a8d1efc1ee3e69999d370380949092251a5c20`
+  - Transaction Hash: `0xa7a480cad9b735b44890b80945b33b22d171820c6343349343813bb25e5be017`
+  - Block Number: `38957833`
 
 ### Plasma (Chain ID: 9745)
 
@@ -701,6 +743,18 @@ This file contains the latest deployed smart contract addresses from the broadca
 - **Arbitrum_SpokePool**: `0x33d52d76d617126648067401c106923e4a34dbe1`
   - Transaction Hash: `0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c`
   - Block Number: `385694983`
+
+#### SponsoredCCTPSrcPeriphery
+
+- **SponsoredCCTPSrcPeriphery**: `0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b`
+  - Transaction Hash: `0x6c4f6d7537530911757ecc317e0b5a39b5caf7089ab5549cb4299c830a9d854c`
+  - Block Number: `406495696`
+
+#### SponsoredOFTSrcPeriphery
+
+- **SponsoredOFTSrcPeriphery**: `0x2ac5ee3796e027da274fbde84c82173a65868940`
+  - Transaction Hash: `0xaf2427171b1d55e27dc75985001ce5a6be8c89a817f51b479f223b4c9799c7eb`
+  - Block Number: `406587622`
 
 ### Ink (Chain ID: 57073)
 

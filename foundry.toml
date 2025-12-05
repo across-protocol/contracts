@@ -8,29 +8,12 @@ out = "out"
 test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
 cache_path = "cache-foundry"
-remappings = [
-    "@across-protocol/=node_modules/@across-protocol/",
-    "@ensdomains/=node_modules/@ensdomains/",
-    "@eth-optimism/=node_modules/@eth-optimism/",
-    "@gnosis.pm/=node_modules/@gnosis.pm/",
-    "@maticnetwork/=node_modules/@maticnetwork/",
-    "@matterlabs/=node_modules/@matterlabs/",
-    "@openzeppelin/=node_modules/@openzeppelin/",
-    "@scroll-tech/=node_modules/@scroll-tech/",
-    "@uniswap/=node_modules/@uniswap/",
-    "arb-bridge-eth/=node_modules/arb-bridge-eth/",
-    "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
-    "arbos-precompiles/=node_modules/arbos-precompiles/",
-    "base64-sol/=node_modules/base64-sol/",
-    "eth-gas-reporter/=node_modules/eth-gas-reporter/",
-    "hardhat-deploy/=node_modules/hardhat-deploy/",
-    "hardhat/=node_modules/hardhat/",
-]
 via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.24"
 revert_strings = "strip"
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read-write", path = "./" }]
+use_literal_content = true
 
 solc = "0.8.24"
 evm_version = "prague"
@@ -65,8 +48,8 @@ zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 
 # testnet
-arbitrum-testnet = "${NODE_URL_421614}"
-hyperevm-testnet = "${NODE_URL_998}"
+arbitrum_sepolia = "${NODE_URL_421614}"
+hyperevm_testnet = "${NODE_URL_998}"
 
 
 [etherscan]

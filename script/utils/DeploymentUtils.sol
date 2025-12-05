@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
+import { Config } from "forge-std/Config.sol";
 import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/src/LegacyUpgrades.sol";
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
@@ -15,7 +16,7 @@ import { DeployedAddresses } from "./DeployedAddresses.sol";
  * @notice Foundry smart contract script that provides deployment utilities for Across Protocol contracts
  * @dev This contract implements the equivalent functionality of utils.hre.ts for Foundry scripts
  */
-contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
+contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     // Struct to hold deployment information
     struct DeploymentInfo {
         address hubPool;
