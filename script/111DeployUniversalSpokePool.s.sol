@@ -76,6 +76,8 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
             true // implementationOnly
         );
 
+        address weth = getWrappedNativeToken(info.spokeChainId);
+
         // Log the deployed addresses
         console.log("Chain ID:", info.spokeChainId);
         console.log("Hub Chain ID:", info.hubChainId);
