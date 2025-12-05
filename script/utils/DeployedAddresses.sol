@@ -32,7 +32,8 @@ contract DeployedAddresses is Test {
             contractName,
             '"].address'
         );
-        return jsonData.readAddress(path);
+        bool keyExists = vm.keyExists(jsonData, path);
+        return keyExists ? jsonData.readAddress(path) : address(0);
     }
 
     /**

@@ -42,7 +42,6 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
      * @return info Deployment information struct
      */
     function getSpokePoolDeploymentInfo(address hubPoolAddress) public view returns (DeploymentInfo memory info) {
-        console.log("hubPoolAddress", hubPoolAddress);
         uint256 spokeChainId = block.chainid;
 
         // Determine hub chain ID based on spoke chain ID
@@ -61,6 +60,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         if (hubPool == address(0)) {
             hubPool = getAddress(hubChainId, "HubPool");
         }
+        console.log("hubPoolAddress", hubPool);
 
         require(hubPool != address(0), "HubPool address cannot be zero");
 

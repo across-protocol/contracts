@@ -56,8 +56,10 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.24";
-const evmVersion = "cancun";
+const solcVersion = "0.8.30";
+
+// Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
+const evmVersion = isTest ? "paris" : "prague";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -151,13 +153,15 @@ const config: HardhatUserConfig = {
     "arbitrum-sepolia": getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM_SEPOLIA, true),
     sepolia: getDefaultHardhatConfig(CHAIN_IDs.SEPOLIA, true),
     polygon: getDefaultHardhatConfig(CHAIN_IDs.POLYGON),
-    bsc: getDefaultHardhatConfig(CHAIN_IDs.BSC),
-    // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
-    // gas: "auto",
-    // gasPrice: 3e8, // 0.3 GWEI
-    // gasMultiplier: 4.0,
+    bsc: {
+      ...getDefaultHardhatConfig(CHAIN_IDs.BSC),
+      gas: "auto",
+      gasPrice: 3e8, // 0.3 GWEI
+      gasMultiplier: 4.0,
+    },
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
     "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
+    monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
     "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),

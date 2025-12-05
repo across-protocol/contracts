@@ -200,15 +200,23 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.BSC]: {
+    helios: "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.HYPEREVM]: {
+    helios: "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     oftEndpoint: "0x3A73033C0b1407574C76BdBAc67f126f6b4a9AA9",
     cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
+  [CHAIN_IDs.MONAD]: {
+    helios: "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    permit2: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  },
   [CHAIN_IDs.PLASMA]: {
+    helios: "0x6f1cd5f317a7228269eab2b496313862de712ccb",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.POLYGON]: {
