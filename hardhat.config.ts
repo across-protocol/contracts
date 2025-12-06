@@ -1,3 +1,25 @@
+const { subtask } = require("hardhat/config");
+const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
+
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
+  const paths = await runSuper();
+
+  // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
+  // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
+  if (process.env.IS_TEST === "true" || process.env.CI === "true") {
+    return paths.filter((p: any) => {
+      return (
+        !p.includes("contracts/periphery/mintburn") &&
+        !p.includes("contracts/external/libraries/BytesLib.sol") &&
+        !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
+        !p.includes("contracts/external/libraries/MinimalLZOptions.sol")
+      );
+    });
+  }
+
+  return paths;
+});
+
 import * as dotenv from "dotenv";
 dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
