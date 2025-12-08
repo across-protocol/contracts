@@ -324,7 +324,7 @@
       }
     },
     "143": {
-      "chain_name": "Monad",
+      "chain_name": "Chain 143",
       "contracts": {
         "Helios": {
           "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
@@ -499,9 +499,9 @@
           "transaction_hash": "0xb29d240d7893c5e112a3407a86d1ae520674cb3799cc0fb88420b386dbf018c7"
         },
         "HyperliquidDepositHandler": {
-          "address": "0x861e127036b28d32f3777b4676f6bbb9e007d195",
-          "block_number": 20301679,
-          "transaction_hash": "0x187b45f39be413aff2ff526946c64f76ed98763129e7e2ffb7d2d4c5bd997519"
+          "address": "0x420d76aa59a56953c920a1d1451b0b73147334f1",
+          "block_number": 21063559,
+          "transaction_hash": "0xffab70f9e89792c33ce50987cdb6c4a515f96b210f80e924c00eb7091f95e184"
         }
       }
     },

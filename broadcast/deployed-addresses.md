@@ -104,15 +104,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | UniswapV3_SwapAndBridge          | [0x9220Fa27ae680E4e8D9733932128FA73362E0393](https://polygonscan.com/address/0x9220Fa27ae680E4e8D9733932128FA73362E0393) |
 | UniswapV3_UniversalSwapAndBridge | [0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2](https://polygonscan.com/address/0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2) |
 
-## Monad (143)
-
-| Contract Name      | Address                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
-| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
-| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
-
 ## Lens (232)
 
 | Contract Name      | Address                                                                                                                    |
@@ -164,7 +155,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | DonationBox                  | [0x90E2487764E5316a2e4109c2Ed40A3B3ad423659](https://hyperevmscan.io//address/0x90E2487764E5316a2e4109c2Ed40A3B3ad423659) |
 | DstOFTHandler                | [0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461](https://hyperevmscan.io//address/0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461) |
 | Helios                       | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
-| HyperliquidDepositHandler    | [0x861E127036B28D32f3777B4676F6bbb9e007d195](https://hyperevmscan.io//address/0x861E127036B28D32f3777B4676F6bbb9e007d195) |
+| HyperliquidDepositHandler    | [0x420D76Aa59A56953C920a1D1451b0B73147334F1](https://hyperevmscan.io//address/0x420D76Aa59A56953C920a1D1451b0B73147334F1) |
 | MulticallHandler             | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
 | PermissionedMulticallHandler | [0x0980D0F6799CA06C71fFAFdc0E423cF2B0f20502](https://hyperevmscan.io//address/0x0980D0F6799CA06C71fFAFdc0E423cF2B0f20502) |
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
@@ -296,6 +287,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SvmSpoke               | [DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru](https://solscan.io/account/DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru) |
 | TokenMessengerMinter   | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://solscan.io/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
 | TokenMessengerMinterV2 | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://solscan.io/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
+
+## Chain 143 (143)
+
+| Contract Name      | Address                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
+| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
 
 ## Mode Sepolia (919)
 
