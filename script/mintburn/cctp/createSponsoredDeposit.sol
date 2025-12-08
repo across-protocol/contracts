@@ -85,10 +85,10 @@ contract CreateSponsoredDeposit is DeploymentUtils {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = SponsoredCCTPInterface.SponsoredCCTPQuote({
             sourceDomain: config.get("cctpDomainId").toUint32(), // Arbitrum CCTP domain
             destinationDomain: 19, // HyperEVM CCTP domain
-            mintRecipient: address(0x83e245941BefbDe29682dF068Bcda006A804eb0C).toBytes32(), // Destination handler contract
+            mintRecipient: address(0xb63c02e60C05F05975653edC83F876C334E07C6d).toBytes32(), // Destination handler contract
             amount: 10000, // 100 USDC (6 decimals)
             burnToken: config.get("usdc").toAddress().toBytes32(), // USDC on Arbitrum
-            destinationCaller: address(0x83e245941BefbDe29682dF068Bcda006A804eb0C).toBytes32(), // Destination handler contract
+            destinationCaller: address(0xb63c02e60C05F05975653edC83F876C334E07C6d).toBytes32(), // Destination handler contract
             maxFee: 1, // 0 max fee
             minFinalityThreshold: 1000, // Minimum finality threshold
             nonce: keccak256(abi.encodePacked(block.timestamp, deployer, vm.getNonce(deployer))), // Generate nonce
@@ -97,8 +97,8 @@ contract CreateSponsoredDeposit is DeploymentUtils {
             maxUserSlippageBps: 0, // 4% max user slippage (400 basis points)
             finalRecipient: address(0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D).toBytes32(), // Final recipient
             finalToken: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f).toBytes32(), // USDC on HyperEVM
-            executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToEVM), // DirectToCore mode
-            actionData: actionDataEmpty // Empty for DirectToCore mode
+            executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore), // DirectToCore mode
+            actionData: emptyActionData // Empty for DirectToCore mode
         });
 
         console.log("SponsoredCCTPQuote created:");
