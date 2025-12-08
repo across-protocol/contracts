@@ -319,3 +319,4 @@ All code in this repository is licensed under BUSL-1.1 unless specified differen
 Individual exceptions to this license can be made by Risk Labs, which holds the rights to this
 software and design. If you are interested in using the code or designs in a derivative work,
 feel free to reach out to licensing@risklabs.foundation.
+<!-- Suggestion: Add details on token support for Base ↔ Solana bridging. Currently, only USDC and ETH seem reliable; others show "not supported". This could help users avoid errors. -->
