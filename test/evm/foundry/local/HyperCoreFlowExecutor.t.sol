@@ -66,7 +66,7 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
 
         finalRecipient = makeAddr("finalRecipient");
 
-        token = new MockERC20();
+        token = MockERC20(0xb88339CB7199b77E23DB6E890353E22632Ba630f);
         donationBox = new DonationBox();
         handler = new TestHyperCoreHandler(address(donationBox), address(token));
 
@@ -74,9 +74,7 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
         vm.prank(donationBox.owner());
         donationBox.transferOwnership(address(handler));
 
-        // Link token to HyperCore and set token info in the module via delegatecall
-        // name, weiDecimals=8, szDecimals=8, evmExtraWeiDecimals=0
-        hyperCore.forceTokenInfo(CORE_INDEX, "MOCK", address(token), 8, 8, 0);
+        // Set token info in the module via delegatecall
         handler.callSetCoreTokenInfo(address(token), CORE_INDEX, true, 1e6, 1e6);
 
         // Ensure recipient has an active HyperCore account for sponsored simple transfer path
