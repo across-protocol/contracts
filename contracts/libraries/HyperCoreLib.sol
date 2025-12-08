@@ -51,7 +51,10 @@ library HyperCoreLib {
     address public constant CORE_USER_EXISTS_PRECOMPILE_ADDRESS = 0x0000000000000000000000000000000000000810;
     address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
-    address public constant CORE_DEPOSIT_WALLET_ADDRESS = 0x6B9E773128f453f5c2C60935Ee2DE2CBc5390A24;
+
+    // USDC
+    address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS = 0x6B9E773128f453f5c2C60935Ee2DE2CBc5390A24;
+    uint64 public constant USDC_CORE_INDEX = 0;
 
     // CoreWriter action headers
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
@@ -146,12 +149,12 @@ library HyperCoreLib {
      * @param amountEVMToSend The amount to transfer on HyperEVM
      */
     function transferToCore(address erc20EVMAddress, uint64 erc20CoreIndex, uint256 amountEVMToSend) internal {
-        // index 0 is USDC, which requires a special transfer to core
-        if (erc20CoreIndex == 0) {
-            IERC20(erc20EVMAddress).forceApprove(CORE_DEPOSIT_WALLET_ADDRESS, amountEVMToSend);
-            ICoreDepositWallet(CORE_DEPOSIT_WALLET_ADDRESS).deposit(amountEVMToSend, CORE_SPOT_DEX_ID);
+        // USDC requires a special transfer to core
+        if (erc20CoreIndex == USDC_CORE_INDEX) {
+            IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, amountEVMToSend);
+            ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(amountEVMToSend, CORE_SPOT_DEX_ID);
         } else {
-            // Transfer the tokens to this contract's address on HyperCore
+            // For all other tokens, transfer to the asset bridge address on HyperCore
             IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amountEVMToSend);
         }
     }
