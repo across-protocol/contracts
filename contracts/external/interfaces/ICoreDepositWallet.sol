@@ -21,7 +21,7 @@ pragma solidity ^0.8.0;
  * @title ICoreDepositWallet
  * @notice Interface for the core deposit wallet
  */
-interface ICoreDepositWallet is IForwardDepositReceiver {
+interface ICoreDepositWallet {
     /**
      * @notice Deposits tokens for the sender.
      * @param amount The amount of tokens being deposited.

@@ -273,6 +273,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     /// @notice Thrown when an attemp to finalize an already finalized swap is made
     error SwapAlreadyFinalized();
 
+    /// @notice Thrown when trying to finalize a quoteNonce, calling a finalizeSwapFlows with an incorrect token
+    error WrongSwapFinalizationToken(bytes32 quoteNonce);
+
     /// @notice Emitted when we're inside the sponsored flow and a user doesn't have a HyperCore account activated. The
     /// bot should activate user's account first by calling `activateUserAccount`
     error AccountNotActivatedError(address user);
@@ -747,6 +750,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 limitOrderOuts[finalized],
                 finalCoreTokenInfo,
                 finalTokenInfo.swapHandler,
+                finalToken,
                 availableBalance
             );
             if (!success) {
@@ -801,11 +805,13 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 limitOrderOut,
         CoreTokenInfo memory finalCoreTokenInfo,
         SwapHandler swapHandler,
+        address finalToken,
         uint64 availableBalance
     ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
         SwapFlowState storage swap = _getMainStorage().swaps[quoteNonce];
         if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
         if (swap.finalized) revert SwapAlreadyFinalized();
+        if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
 
         uint64 totalToSend;
         (totalToSend, additionalToSend) = _calcSwapFlowSendAmounts(
