@@ -20,6 +20,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICoreDepositWallet
  * @notice Interface for the core deposit wallet
+ * @dev Source: https://developers.circle.com/cctp/coredepositwallet-contract-interface#deposit-function
  */
 interface ICoreDepositWallet {
     /**
