@@ -104,6 +104,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 | UniswapV3_SwapAndBridge          | [0x9220Fa27ae680E4e8D9733932128FA73362E0393](https://polygonscan.com/address/0x9220Fa27ae680E4e8D9733932128FA73362E0393) |
 | UniswapV3_UniversalSwapAndBridge | [0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2](https://polygonscan.com/address/0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2) |
 
+## Monad (143)
+
+| Contract Name      | Address                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
+| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
+
 ## Lens (232)
 
 | Contract Name      | Address                                                                                                                    |
@@ -287,15 +296,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SvmSpoke               | [DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru](https://solscan.io/account/DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru) |
 | TokenMessengerMinter   | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://solscan.io/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
 | TokenMessengerMinterV2 | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://solscan.io/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
-
-## Chain 143 (143)
-
-| Contract Name      | Address                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
-| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
-| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
 
 ## Mode Sepolia (919)
 

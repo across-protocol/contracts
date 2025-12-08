@@ -324,7 +324,7 @@
       }
     },
     "143": {
-      "chain_name": "Chain 143",
+      "chain_name": "Monad",
       "contracts": {
         "Helios": {
           "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
