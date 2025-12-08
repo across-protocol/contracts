@@ -148,6 +148,7 @@ library HyperCoreLib {
     function transferToCore(address erc20EVMAddress, uint64 erc20CoreIndex, uint256 amountEVMToSend) internal {
         // index 0 is USDC, which requires a special transfer to core
         if (erc20CoreIndex == 0) {
+            IERC20(erc20EVMAddress).forceApprove(CORE_DEPOSIT_WALLET_ADDRESS, amountEVMToSend);
             ICoreDepositWallet(CORE_DEPOSIT_WALLET_ADDRESS).deposit(amountEVMToSend, CORE_SPOT_DEX_ID);
         } else {
             // Transfer the tokens to this contract's address on HyperCore
