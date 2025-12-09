@@ -46,6 +46,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                  | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | SpokePoolPeriphery         | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://etherscan.io/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier          | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery  | [0x89004EA51Bac007FEc55976967135b2Aa6e838d4](https://etherscan.io/address/0x89004EA51Bac007FEc55976967135b2Aa6e838d4) |
 | SponsoredOFTSrcPeriphery   | [0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a](https://etherscan.io/address/0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a) |
 | Universal_Adapter_143      | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_56       | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
@@ -57,16 +58,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Optimism (10)
 
-| Contract Name           | Address                                                                                                                          |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| 1inch_SwapAndBridge     | [0x3E7448657409278C9d6E192b92F2b69B234FCc42](https://optimistic.etherscan.io/address/0x3E7448657409278C9d6E192b92F2b69B234FCc42) |
-| AcrossMerkleDistributor | [0xc8b31410340d57417bE62672f6B53dfB9de30aC2](https://optimistic.etherscan.io/address/0xc8b31410340d57417bE62672f6B53dfB9de30aC2) |
-| MulticallHandler        | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://optimistic.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| Optimism_SpokePool      | [0x21352B3495A6eE1Bd2921Bdb0a876FaDc3A9245E](https://optimistic.etherscan.io/address/0x21352B3495A6eE1Bd2921Bdb0a876FaDc3A9245E) |
-| SpokePool               | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
-| SpokePoolPeriphery      | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://optimistic.etherscan.io/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
-| SpokePoolVerifier       | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://optimistic.etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| UniswapV3_SwapAndBridge | [0x6f4A733c7889f038D77D4f540182Dda17423CcbF](https://optimistic.etherscan.io/address/0x6f4A733c7889f038D77D4f540182Dda17423CcbF) |
+| Contract Name             | Address                                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1inch_SwapAndBridge       | [0x3E7448657409278C9d6E192b92F2b69B234FCc42](https://optimistic.etherscan.io/address/0x3E7448657409278C9d6E192b92F2b69B234FCc42) |
+| AcrossMerkleDistributor   | [0xc8b31410340d57417bE62672f6B53dfB9de30aC2](https://optimistic.etherscan.io/address/0xc8b31410340d57417bE62672f6B53dfB9de30aC2) |
+| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://optimistic.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| Optimism_SpokePool        | [0x21352B3495A6eE1Bd2921Bdb0a876FaDc3A9245E](https://optimistic.etherscan.io/address/0x21352B3495A6eE1Bd2921Bdb0a876FaDc3A9245E) |
+| SpokePool                 | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
+| SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://optimistic.etherscan.io/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
+| SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://optimistic.etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery | [0x986E476F93a423d7a4CD0baF362c5E0903268142](https://optimistic.etherscan.io/address/0x986E476F93a423d7a4CD0baF362c5E0903268142) |
+| UniswapV3_SwapAndBridge   | [0x6f4A733c7889f038D77D4f540182Dda17423CcbF](https://optimistic.etherscan.io/address/0x6f4A733c7889f038D77D4f540182Dda17423CcbF) |
 
 ## BNB Smart Chain (56)
 
@@ -80,13 +82,14 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Unichain (130)
 
-| Contract Name       | Address                                                                                                              |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| DoctorWho_SpokePool | [0x1d82bFDb412415b3ED2514d5EB33574A3c94a72A](https://uniscan.xyz/address/0x1d82bFDb412415b3ED2514d5EB33574A3c94a72A) |
-| MulticallHandler    | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool           | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| SpokePoolPeriphery  | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://uniscan.xyz/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
-| SpokePoolVerifier   | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name             | Address                                                                                                              |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| DoctorWho_SpokePool       | [0x1d82bFDb412415b3ED2514d5EB33574A3c94a72A](https://uniscan.xyz/address/0x1d82bFDb412415b3ED2514d5EB33574A3c94a72A) |
+| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                 | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://uniscan.xyz/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
+| SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery | [0x2918236893EC1ec739a96C381e00403d52ac560F](https://uniscan.xyz/address/0x2918236893EC1ec739a96C381e00403d52ac560F) |
 
 ## Polygon (137)
 
@@ -139,12 +142,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## World Chain (480)
 
-| Contract Name      | Address                                                                                                                                          |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://worldchain-mainnet-explorer.alchemy.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet-explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://worldchain-mainnet-explorer.alchemy.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://worldchain-mainnet-explorer.alchemy.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name             | Address                                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://worldchain-mainnet-explorer.alchemy.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                 | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet-explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://worldchain-mainnet-explorer.alchemy.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
+| SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://worldchain-mainnet-explorer.alchemy.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery | [0x1c8243198570658f818FC56538f2c837C2a32958](https://worldchain-mainnet-explorer.alchemy.com/address/0x1c8243198570658f818FC56538f2c837C2a32958) |
 
 ## Redstone (690)
 
@@ -249,12 +253,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Linea (59144)
 
-| Contract Name      | Address                                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| MulticallHandler   | [0xdF1C940487574EEfa79989a79a4936A0F979cDa2](https://lineascan.build/address/0xdF1C940487574EEfa79989a79a4936A0F979cDa2) |
-| SpokePool          | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
-| SpokePoolPeriphery | [0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0](https://lineascan.build/address/0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://lineascan.build/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name             | Address                                                                                                                  |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| MulticallHandler          | [0xdF1C940487574EEfa79989a79a4936A0F979cDa2](https://lineascan.build/address/0xdF1C940487574EEfa79989a79a4936A0F979cDa2) |
+| SpokePool                 | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
+| SpokePoolPeriphery        | [0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0](https://lineascan.build/address/0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0) |
+| SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://lineascan.build/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery | [0x60eB88A83434f13095B0A138cdCBf5078Aa5005C](https://lineascan.build/address/0x60eB88A83434f13095B0A138cdCBf5078Aa5005C) |
 
 ## Blast (81457)
 
