@@ -30,7 +30,6 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
         address baseToken = config.get("baseToken").toAddress();
         address multicallHandler = config.get("multicallHandler").toAddress();
 
-        // TODO: use create2 for final deployment
         SponsoredCCTPDstPeriphery sponsoredCCTPDstPeriphery = new SponsoredCCTPDstPeriphery(
             cctpMessageTransmitter,
             deployer,
