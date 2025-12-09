@@ -164,7 +164,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                | Address                                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| DonationBox                  | [0xbC217096db9EB6d2782c1d9E725D462077a4d1f6](https://hyperevmscan.io//address/0xbC217096db9EB6d2782c1d9E725D462077a4d1f6) |
+| DonationBox                  | [0x039d62C549F27ead0eB9B567d8776289e5020583](https://hyperevmscan.io//address/0x039d62C549F27ead0eB9B567d8776289e5020583) |
 | DonationBox                  | [0x3D589D40312Bf2d20f13cD0AF26A11144a9cA844](https://hyperevmscan.io//address/0x3D589D40312Bf2d20f13cD0AF26A11144a9cA844) |
 | DstOFTHandler                | [0xc8786D517b4e224bB43985A38dBeF8588D7354CD](https://hyperevmscan.io//address/0xc8786D517b4e224bB43985A38dBeF8588D7354CD) |
 | Helios                       | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
@@ -174,7 +174,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
 | SpokePoolPeriphery           | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPDstPeriphery    | [0xb63c02e60C05F05975653edC83F876C334E07C6d](https://hyperevmscan.io//address/0xb63c02e60C05F05975653edC83F876C334E07C6d) |
+| SponsoredCCTPDstPeriphery    | [0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f](https://hyperevmscan.io//address/0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f) |
 
 ## Lisk (1135)
 

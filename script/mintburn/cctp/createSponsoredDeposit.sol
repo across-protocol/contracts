@@ -85,18 +85,18 @@ contract CreateSponsoredDeposit is DeploymentUtils {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = SponsoredCCTPInterface.SponsoredCCTPQuote({
             sourceDomain: config.get("cctpDomainId").toUint32(), // Arbitrum CCTP domain
             destinationDomain: 19, // HyperEVM CCTP domain
-            mintRecipient: address(0xb63c02e60C05F05975653edC83F876C334E07C6d).toBytes32(), // Destination handler contract
-            amount: 1000000, // 100 USDC (6 decimals)
+            mintRecipient: address(0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f).toBytes32(), // Destination handler contract
+            amount: 11000000, // 100 USDC (6 decimals)
             burnToken: config.get("usdc").toAddress().toBytes32(), // USDC on Arbitrum
-            destinationCaller: address(0xb63c02e60C05F05975653edC83F876C334E07C6d).toBytes32(), // Destination handler contract
-            maxFee: 1400, // 0 max fee
+            destinationCaller: address(0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f).toBytes32(), // Destination handler contract
+            maxFee: 1100, // 0 max fee
             minFinalityThreshold: 1000, // Minimum finality threshold
             nonce: keccak256(abi.encodePacked(block.timestamp, deployer, vm.getNonce(deployer))), // Generate nonce
             deadline: block.timestamp + 10800, // 3 hours from now
             maxBpsToSponsor: 400, // 4% max sponsorship (400 basis points)
             maxUserSlippageBps: 400, // 4% max user slippage (400 basis points)
             finalRecipient: address(0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D).toBytes32(), // Final recipient
-            finalToken: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f).toBytes32(), // USDC on HyperEVM
+            finalToken: address(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb).toBytes32(), // USDC on HyperEVM
             executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore), // DirectToCore mode
             actionData: emptyActionData // Empty for DirectToCore mode
         });
