@@ -40,7 +40,7 @@ Activate HyperLiquid account for that (see step 3 for an example).
 And FinalTokenInfo:
 
 ```
-cast send $DEPLOYED_DST_OFT "setFinalTokenInfo(address,uint32,bool,uint32,uint32,address)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 166 false 140 2 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb --rpc-url hyperevm --account dev
+cast send $DEPLOYED_DST_OFT "setFinalTokenInfo(address,uint32,bool,uint32,uint32)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 166 false 140 2 --rpc-url hyperevm --account dev
 ```
 
 3. **Activate $DEPLOYED_DST_OFT account on HyperCore**
@@ -99,20 +99,37 @@ Calculations + limit order submission:
 
 Calc size based on coreIn + price
 
+PRICE MINUS 2 BPS (E.g. suggested BPS below market). We're selling, so going cheaper is "good", i.e. fast settle
+
 ```
+AMOUNT_CORE=1100000000
+PRICE=99980000
 forge script script/mintburn/LimitOrderCalcCli.s.sol:LimitOrderCalcCli \
   --sig "calcLOAmounts(uint64,uint64,bool,uint64,uint8,uint8,uint8,uint8)" \
-  1033000000 99970000 false 140 8 2 8 8
+  $AMOUNT_CORE $PRICE false 140 8 2 8 8
 ```
 
 Submit Limit order:
 
 ```
-cast send $DEPLOYED_DST_OFT "submitLimitOrderFromBot(address,uint64,uint64,uint128)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 99990000 100000000 1 --rpc-url hyperevm --account dev
+# PRICE= *Take from above*
+# SIZE= *Take from above output*
+# CLOID make unique, > 0
+SIZE=1100000000
+CLOID=1
+cast send $DEPLOYED_DST_OFT "submitLimitOrderFromBot(address,uint64,uint64,uint128)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f $PRICE $SIZE $CLOID --rpc-url hyperevm --account dev
 ```
 
-Finalize a swap flow:
+Finalize swap flow:
 
 ```
-cast send $DEPLOYED_DST_OFT "finalizeSwapFlows(address,bytes32[],uint64[])" 0xb88339CB7199b77E23DB6E890353E22632Ba630f "[0x00000000000000000000000000000000000000000000000000000000690D3DBE]" "[122576511]" --rpc-url hyperevm --account dev
+QUOTE_ID=0x0000000000000000000000000000000000000000000000000000000069378738
+REAL_OUT=1099626030
+cast send $DEPLOYED_DST_OFT "finalizeSwapFlows(address,bytes32[],uint64[])" 0xb88339CB7199b77E23DB6E890353E22632Ba630f "[$QUOTE_ID]" "[$REAL_OUT]" --rpc-url hyperevm --account dev
+```
+
+Grant a FUNDS_SWEEPER_ROLE:
+
+```
+cast send $DEPLOYED_DST_OFT "grantRole(bytes32,address)" 0x880a9ba888678c7fe4e8c4f028c224f26ce12a3bed6e96025c61ef8a5db6312f $ROLE_RECIPIENT --rpc-url hyperevm --account dev
 ```
