@@ -18,7 +18,7 @@ Make sure all the src peripheries are correctly configured (currently addrs for 
    Example with cast for USDT0:
 
 ```
-cast send $DEPLOYED_DST_OFT "setCoreTokenInfo(address,uint32,bool,uint64,uint64)" 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb 268 true 100000000 100000000000000 --rpc-url hyperevm --account dev
+cast send $DEPLOYED_DST_OFT "setCoreTokenInfo(address,uint32,bool,uint64,uint64)" 0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb 268 true 100000000 100000000000000000 --rpc-url hyperevm --account dev
 ```
 
 2.(a) Configure additional tokens, like USDC:
@@ -26,7 +26,7 @@ cast send $DEPLOYED_DST_OFT "setCoreTokenInfo(address,uint32,bool,uint64,uint64)
 CoreTokenInfo:
 
 ```
-cast send $DEPLOYED_DST_OFT "setCoreTokenInfo(address,uint32,bool,uint64,uint64)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 0 true 100000000 100000000000000 --rpc-url hyperevm --account dev
+cast send $DEPLOYED_DST_OFT "setCoreTokenInfo(address,uint32,bool,uint64,uint64)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 0 true 100000000 100000000000000000 --rpc-url hyperevm --account dev
 ```
 
 (before adding FinalTokenInfo):
