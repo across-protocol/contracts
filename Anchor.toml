@@ -51,6 +51,8 @@ generateExternalTypes = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/build
 fakeFillWithRandomDistribution = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/fakeFillWithRandomDistribution.ts"
 addressToPublicKey = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/addressToPublicKey.ts"
 publicKeyToAddress = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/publicKeyToAddress.ts"
+acrossPlusJupiter = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/acrossPlusJupiter.ts"
+acrossPlusValueForward = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/acrossPlusValueForward.ts"
 findFillStatusPdaFromEvent = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusPdaFromEvent.ts"
 findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusFromFillStatusPda.ts"
 nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
