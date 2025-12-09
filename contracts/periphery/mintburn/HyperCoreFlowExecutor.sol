@@ -741,29 +741,34 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             address(finalTokenInfo.swapHandler),
             finalCoreTokenInfo.coreIndex
         );
+
+        uint64[] memory totalToSendAmounts = new uint64[](quoteNonces.length);
+        uint64[] memory additionalToSendAmounts = new uint64[](quoteNonces.length);
         uint64 totalAdditionalToSend = 0;
+
         for (; finalized < quoteNonces.length; ++finalized) {
-            bool success;
-            uint64 additionalToSend;
-            (success, additionalToSend, availableBalance) = _finalizeSingleSwap(
-                quoteNonces[finalized],
-                limitOrderOuts[finalized],
-                finalCoreTokenInfo,
-                finalTokenInfo.swapHandler,
-                finalToken,
-                availableBalance
-            );
-            if (!success) {
-                break;
-            }
+            (
+                bool success,
+                uint64 totalToSend,
+                uint64 additionalToSend,
+                uint64 remainingBalance
+            ) = _prepareSwapFinalization(
+                    quoteNonces[finalized],
+                    limitOrderOuts[finalized],
+                    finalToken,
+                    availableBalance
+                );
+            if (!success) break;
+
+            totalToSendAmounts[finalized] = totalToSend;
+            additionalToSendAmounts[finalized] = additionalToSend;
             totalAdditionalToSend += additionalToSend;
+            availableBalance = remainingBalance;
         }
 
-        if (finalized > 0) {
-            $.lastPullFundsBlock[finalToken] = block.number;
-        } else {
-            return 0;
-        }
+        if (finalized == 0) return 0;
+
+        $.lastPullFundsBlock[finalToken] = block.number;
 
         if (totalAdditionalToSend > 0) {
             (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore) = HyperCoreLib
@@ -797,23 +802,41 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
+
+        for (uint256 i = 0; i < finalized; ++i) {
+            SwapFlowState storage swap = $.swaps[quoteNonces[i]];
+            (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+                additionalToSendAmounts[i],
+                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+
+            finalTokenInfo.swapHandler.transferFundsToUserOnCore(
+                finalCoreTokenInfo.coreIndex,
+                swap.finalRecipient,
+                totalToSendAmounts[i]
+            );
+            emit SwapFlowFinalized(
+                quoteNonces[i],
+                swap.finalRecipient,
+                finalToken,
+                totalToSendAmounts[i],
+                additionalToSendEVM
+            );
+        }
     }
 
-    /// @notice Finalizes a single swap flow, sending the tokens to user on core. Relies on caller to send the `additionalToSend`
-    function _finalizeSingleSwap(
+    /// @notice Finalizes a single swap flow state, calculating amounts but not sending tokens yet
+    function _prepareSwapFinalization(
         bytes32 quoteNonce,
         uint64 limitOrderOut,
-        CoreTokenInfo memory finalCoreTokenInfo,
-        SwapHandler swapHandler,
-        address finalToken,
+        address expectedToken,
         uint64 availableBalance
-    ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
+    ) internal returns (bool success, uint64 totalToSend, uint64 additionalToSend, uint64 balanceRemaining) {
         SwapFlowState storage swap = _getMainStorage().swaps[quoteNonce];
         if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
         if (swap.finalized) revert SwapAlreadyFinalized();
-        if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
+        if (swap.finalToken != expectedToken) revert WrongSwapFinalizationToken(quoteNonce);
 
-        uint64 totalToSend;
         (totalToSend, additionalToSend) = _calcSwapFlowSendAmounts(
             limitOrderOut,
             swap.minAmountToSend,
@@ -824,20 +847,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         // `additionalToSend` will land on HCore before this core > core send will need to be executed
         balanceRemaining = availableBalance + additionalToSend;
         if (totalToSend > balanceRemaining) {
-            return (false, 0, availableBalance);
+            return (false, 0, 0, availableBalance);
         }
 
         swap.finalized = true;
         success = true;
         balanceRemaining -= totalToSend;
-
-        (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-            additionalToSend,
-            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
-
-        swapHandler.transferFundsToUserOnCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSendEVM);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
