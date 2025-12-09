@@ -93,7 +93,7 @@ endpoint_url = "${NODE_URL_999}"
 cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
 # USDC
 baseToken = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
-multicallHandler = "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba"
+multicallHandler = "0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC"
 
 [999.uint]
 cctpDomainId = 19
