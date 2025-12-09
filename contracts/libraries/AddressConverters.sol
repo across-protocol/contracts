@@ -17,9 +17,13 @@ library Bytes32ToAddress {
     }
 
     function checkAddress(bytes32 _bytes32) internal pure {
-        if (uint256(_bytes32) >> 160 != 0) {
+        if (!isValidAddress(_bytes32)) {
             revert InvalidBytes32();
         }
+    }
+
+    function isValidAddress(bytes32 _bytes32) internal pure returns (bool) {
+        return uint256(_bytes32) >> 160 == 0;
     }
 }
 

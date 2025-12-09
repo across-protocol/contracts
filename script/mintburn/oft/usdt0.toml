@@ -1,0 +1,20 @@
+[1]
+endpoint_url = "${NODE_URL_1}"
+
+[1.address]
+token = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+oft_messenger = "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee"
+src_periphery = "0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a"
+
+[arbitrum.address]
+token = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+oft_messenger = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
+src_periphery = "0x2ac5Ee3796E027dA274fbDe84c82173a65868940"
+
+[999]
+endpoint_url = "${NODE_URL_999}"
+
+[999.address]
+token = "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb"
+oft_messenger = "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98"
+dst_handler = "0x40153DdFAd90C49dbE3F5c9F96f2a5B25ec67461"

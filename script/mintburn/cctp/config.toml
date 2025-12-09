@@ -1,0 +1,70 @@
+[base]
+endpoint_url = "${NODE_URL_8453}"
+
+[base.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+sponsoredCCTPSrcPeriphery = "0xA7A8d1efC1EE3E69999D370380949092251a5c20"
+usdc = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+
+[base.uint]
+cctpDomainId = 6
+
+[arbitrum]
+endpoint_url = "${NODE_URL_42161}"
+
+[arbitrum.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+sponsoredCCTPSrcPeriphery = "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B"
+usdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+
+[arbitrum.uint]
+cctpDomainId = 3
+
+# Arbitrum Sepolia
+[arbitrum-sepolia]
+endpoint_url = "${NODE_URL_421614}"
+
+[arbitrum-sepolia.address]
+cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+
+[arbitrum-sepolia.uint]
+cctpDomainId = 3
+
+
+# HyperEVM Mainnet
+[999]
+endpoint_url = "${NODE_URL_999}"
+
+[999.address]
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+# USDC
+baseToken = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
+multicallHandler = "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba"
+
+[999.uint]
+cctpDomainId = 19
+coreIndex = 0
+accountActivationFeeCore = 100000000
+bridgeSafetyBufferCore = 100000000
+
+[999.bool]
+canBeUsedForAccountActivation = true
+
+# HyperEVM testnet
+[998]
+endpoint_url = "${NODE_URL_998}"
+
+[998.address]
+cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+cctpMessageTransmitter = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
+# USDC
+baseToken = "0x2B3370eE501B4a559b57D449569354196457D8Ab"
+
+[998.uint]
+cctpDomainId = 19
+coreIndex = 0
+accountActivationFeeCore = 100000000
+bridgeSafetyBufferCore = 100000000
+
+[998.bool]
+canBeUsedForAccountActivation = true

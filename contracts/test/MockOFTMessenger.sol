@@ -8,7 +8,7 @@ import "../interfaces/IOFT.sol";
  * @dev This contract is intended to be inherited by other chain-specific adapters and spoke pools.
  * @custom:security-contact bugs@across.to
  */
-contract MockOFTMessenger is IOFT {
+contract MockOFTMessenger is IOFT, IOAppCore {
     address public token;
     uint256 public nativeFee;
     uint256 public lzFee;
@@ -16,12 +16,33 @@ contract MockOFTMessenger is IOFT {
     uint256 public amountReceivedLDToReturn;
     bool public useCustomReceipt;
 
+    // IOAppCore endpoint for tests that require endpoint().eid()
+    IEndpoint public endpoint_;
+
+    // Captured call data for assertions in tests
+    SendParam public lastSendParam;
+    MessagingFee public lastFee;
+    address public lastRefundAddress;
+    uint256 public lastMsgValue;
+    uint256 public sendCallCount;
+
     constructor(address _token) {
         token = _token;
     }
 
+    // Test helper to set the endpoint used by IOAppCore
+    function setEndpoint(address endpointAddr) external {
+        endpoint_ = IEndpoint(endpointAddr);
+    }
+
+    // IOAppCore
+    function endpoint() external view returns (IEndpoint iEndpoint) {
+        return endpoint_;
+    }
+
+    // IOFT
     function quoteSend(
-        SendParam calldata, /*_sendParam*/
+        SendParam calldata /*_sendParam*/,
         bool /*_payInLzToken*/
     ) external view returns (MessagingFee memory) {
         return MessagingFee(nativeFee, lzFee);
@@ -29,9 +50,14 @@ contract MockOFTMessenger is IOFT {
 
     function send(
         SendParam calldata _sendParam,
-        MessagingFee calldata, /*_fee*/
-        address /*_refundAddress*/
+        MessagingFee calldata _fee,
+        address _refundAddress
     ) external payable returns (MessagingReceipt memory, OFTReceipt memory) {
+        lastSendParam = _sendParam;
+        lastFee = _fee;
+        lastRefundAddress = _refundAddress;
+        lastMsgValue = msg.value;
+        sendCallCount++;
         if (useCustomReceipt) {
             return (
                 MessagingReceipt(0, 0, MessagingFee(0, 0)),

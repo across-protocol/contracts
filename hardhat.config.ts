@@ -1,3 +1,25 @@
+const { subtask } = require("hardhat/config");
+const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
+
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
+  const paths = await runSuper();
+
+  // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
+  // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
+  if (process.env.IS_TEST === "true" || process.env.CI === "true") {
+    return paths.filter((p: any) => {
+      return (
+        !p.includes("contracts/periphery/mintburn") &&
+        !p.includes("contracts/external/libraries/BytesLib.sol") &&
+        !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
+        !p.includes("contracts/external/libraries/MinimalLZOptions.sol")
+      );
+    });
+  }
+
+  return paths;
+});
+
 import * as dotenv from "dotenv";
 dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
@@ -110,6 +132,7 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/HyperCoreFlowExecutor.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -125,6 +148,7 @@ const config: HardhatUserConfig = {
         "SpokePoolVerifier",
         "ZkSync_SpokePool",
         "Lens_SpokePool",
+        "AcrossEventEmitter",
       ],
     },
   },
@@ -158,6 +182,7 @@ const config: HardhatUserConfig = {
       gasMultiplier: 4.0,
     },
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
     monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
