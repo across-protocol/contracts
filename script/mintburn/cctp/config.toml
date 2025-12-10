@@ -85,6 +85,28 @@ usdc = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff"
 [linea.uint]
 cctpDomainId = 11
 
+[polygon]
+endpoint_url = "${NODE_URL_137}"
+
+[polygon.address]
+sponsoredCCTPSrcPeriphery = "0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+
+[polygon.uint]
+cctpDomainId = 7
+
+[143]
+endpoint_url = "${NODE_URL_143}"
+
+[143.address]
+sponsoredCCTPSrcPeriphery = "0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
+
+[143.uint]
+cctpDomainId = 15
+
 # HyperEVM Mainnet
 [999]
 endpoint_url = "${NODE_URL_999}"
