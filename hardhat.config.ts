@@ -70,7 +70,7 @@ const tasks = [
 // eslint-disable-next-line node/no-missing-require
 tasks.forEach((task) => require(`./tasks/${task}`));
 
-const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+const isTest = process.env.IS_TEST === "true";
 
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
