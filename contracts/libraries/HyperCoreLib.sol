@@ -113,24 +113,17 @@ library HyperCoreLib {
      * @dev Encapsulates USDC vs non-USDC activation semantics. The returned `coreAmountToBridge`
      *      should be used for safety checks via `isCoreAmountSafeToBridge`.
      * @param accountActivationFeeCore The account activation fee in core token units.
-     * @param coreIndex The core index of the token.
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals.
      * @return evmAmountToSend The amount of EVM tokens to send from HyperEVM.
      * @return coreAmountToBridge The corresponding amount on HyperCore that bridging should result in.
      */
     function getRequiredEVMSendAmountForActivation(
         uint64 accountActivationFeeCore,
-        uint64 coreIndex,
         int8 decimalDiff
     ) internal pure returns (uint256 evmAmountToSend, uint64 coreAmountToBridge) {
-        // - For USDC, we pay the fee by doing a depositFor on Cirlce's CoreDepositWallet
-        // - For other tokens, we require fee + 1 wei, because we send 1 wei to user's account to activate it
-        uint64 totalBalanceRequiredToActivate = coreIndex == USDC_CORE_INDEX
-            ? accountActivationFeeCore
-            : accountActivationFeeCore + 1;
-
+        //  accountActivationFeeCore plus 1 wei is required for an account to become activated
         (evmAmountToSend, coreAmountToBridge) = minimumCoreReceiveAmountToAmounts(
-            totalBalanceRequiredToActivate,
+            accountActivationFeeCore + 1,
             decimalDiff
         );
     }

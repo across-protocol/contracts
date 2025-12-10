@@ -886,7 +886,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         // Compute the required EVM amount to cover the activation fee and minimal spot send on Core.
         (uint256 evmAmountToSend, uint64 coreAmountToBridge) = HyperCoreLib.getRequiredEVMSendAmountForActivation(
             coreTokenInfo.accountActivationFeeCore,
-            coreTokenInfo.coreIndex,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
