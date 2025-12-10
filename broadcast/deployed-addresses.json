@@ -524,9 +524,9 @@
           "block_number": 15142204
         },
         "DonationBox": {
-          "address": "0x3d589d40312bf2d20f13cd0af26a11144a9ca844",
-          "block_number": 21341868,
-          "transaction_hash": "0xe617eb954e31dc4305f9ddcd9badd2e0e707e4b9c266e16fddaf8e7c23180fde"
+          "address": "0x1d7c1398df7c823068e6a120d3921847929d428e",
+          "block_number": 21492721,
+          "transaction_hash": "0x4666b500b70a02f2f8656ad8d74a35fca668cd56e3444371e114999d93c9e68b"
         },
         "SponsoredCCTPDstPeriphery": {
           "address": "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
@@ -534,14 +534,14 @@
           "transaction_hash": "0x9c7604f9254450f13b0941008f5272f68ec58db61f32e5ee6713e72b4b56de0b"
         },
         "PermissionedMulticallHandler": {
-          "address": "0xfd0876712dd9003d014cdcd8e5140b4efac9bfcc",
-          "block_number": 21341868,
-          "transaction_hash": "0xc0b5e25643a971a281b9a142a4b146f7833b336a36c68f446bb4e63495e3eeb7"
+          "address": "0x2b20df3471e2751840a9c921696d62ea8bc4a391",
+          "block_number": 21492721,
+          "transaction_hash": "0xa6be6f9659a1d4d03fb280a87a7fa9e556b8d98c04d224e5c97bd5f3877c0cd1"
         },
         "DstOFTHandler": {
-          "address": "0xc8786d517b4e224bb43985a38dbef8588d7354cd",
-          "block_number": 21341868,
-          "transaction_hash": "0x7ce545552d4a517bc380951ec35bd5eb86f84e0364a7ac9417aba605b8bf6309"
+          "address": "0xdfa6ec7a77f90d9762459069edd1ea78b853c67c",
+          "block_number": 21492721,
+          "transaction_hash": "0x0a784217cbe3ea1f5a707cd0c97ba1468341d523c9f500899313754f91d5e1e9"
         },
         "HyperliquidDepositHandler": {
           "address": "0x861e127036b28d32f3777b4676f6bbb9e007d195",
@@ -760,9 +760,9 @@
           "transaction_hash": "0x6c4f6d7537530911757ecc317e0b5a39b5caf7089ab5549cb4299c830a9d854c"
         },
         "SponsoredOFTSrcPeriphery": {
-          "address": "0x2ac5ee3796e027da274fbde84c82173a65868940",
-          "block_number": 406587622,
-          "transaction_hash": "0xaf2427171b1d55e27dc75985001ce5a6be8c89a817f51b479f223b4c9799c7eb"
+          "address": "0xcf0e59e044216e0d291f6652e8e15b6c8d69cea8",
+          "block_number": 409259186,
+          "transaction_hash": "0xc9d530e42b9a991e3b36930338793faeb52127a87eaa7b9935d8d9aa0a847d62"
         }
       }
     },
