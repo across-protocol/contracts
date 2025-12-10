@@ -29,4 +29,12 @@ interface ICoreDepositWallet {
      * @param destinationDex The destination dex on HyperCore.
      */
     function deposit(uint256 amount, uint32 destinationDex) external;
+
+    /**
+     * @notice Deposits tokens to credit a specific recipient on Hypercore.
+     * @param recipient The address receiving the tokens on HyperCore.
+     * @param amount The amount of tokens being deposited.
+     * @param destinationDex The destination dex on HyperCore.
+     */
+    function depositFor(address recipient, uint256 amount, uint32 destinationDex) external;
 }

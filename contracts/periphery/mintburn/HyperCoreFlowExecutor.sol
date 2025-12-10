@@ -900,17 +900,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         // donationBox @ evm -> Handler @ evm
         donationBox.withdraw(IERC20(fundingToken), evmAmountToSend);
-        // Handler @ evm -> Handler @ core
-        HyperCoreLib.transferERC20EVMToSelfOnCore(
-            fundingToken,
-            coreTokenInfo.coreIndex,
-            evmAmountToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
-        // The total balance withdrawn from Handler @ Core for this operation is activationFee + amountSent, so we set
-        // amountSent to 1 wei to only activate the account
-        // Handler @ core -> finalRecipient @ core
-        HyperCoreLib.transferERC20CoreToCore(coreTokenInfo.coreIndex, finalRecipient, 1);
+
+        HyperCoreLib.activateCoreAccountFromEVM(fundingToken, coreTokenInfo.coreIndex, finalRecipient, evmAmountToSend);
 
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, evmAmountToSend);
     }
