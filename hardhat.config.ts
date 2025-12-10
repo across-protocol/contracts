@@ -6,7 +6,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any
 
   // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
   // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
-  if (process.env.IS_TEST === "true" || process.env.CI === "true") {
+  if (process.env.IS_TEST === "true") {
     return paths.filter((p: any) => {
       return (
         !p.includes("contracts/periphery/mintburn") &&
