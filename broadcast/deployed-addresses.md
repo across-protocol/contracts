@@ -170,12 +170,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                | Address                                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | DonationBox                  | [0x039d62C549F27ead0eB9B567d8776289e5020583](https://hyperevmscan.io//address/0x039d62C549F27ead0eB9B567d8776289e5020583) |
-| DonationBox                  | [0x1d7c1398dF7C823068E6a120d3921847929d428e](https://hyperevmscan.io//address/0x1d7c1398dF7C823068E6a120d3921847929d428e) |
-| DstOFTHandler                | [0xDFa6EC7A77f90d9762459069EDd1ea78B853C67c](https://hyperevmscan.io//address/0xDFa6EC7A77f90d9762459069EDd1ea78B853C67c) |
+| DonationBox                  | [0x3D589D40312Bf2d20f13cD0AF26A11144a9cA844](https://hyperevmscan.io//address/0x3D589D40312Bf2d20f13cD0AF26A11144a9cA844) |
+| DstOFTHandler                | [0xc8786D517b4e224bB43985A38dBeF8588D7354CD](https://hyperevmscan.io//address/0xc8786D517b4e224bB43985A38dBeF8588D7354CD) |
 | Helios                       | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | HyperliquidDepositHandler    | [0x861E127036B28D32f3777B4676F6bbb9e007d195](https://hyperevmscan.io//address/0x861E127036B28D32f3777B4676F6bbb9e007d195) |
 | MulticallHandler             | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
-| PermissionedMulticallHandler | [0x2b20df3471E2751840a9C921696d62eA8Bc4a391](https://hyperevmscan.io//address/0x2b20df3471E2751840a9C921696d62eA8Bc4a391) |
+| PermissionedMulticallHandler | [0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC](https://hyperevmscan.io//address/0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC) |
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
 | SpokePoolPeriphery           | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
@@ -243,7 +243,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://arbiscan.io/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://arbiscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery | [0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B](https://arbiscan.io/address/0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B) |
-| SponsoredOFTSrcPeriphery  | [0xCf0E59e044216e0D291f6652e8e15B6c8D69CeA8](https://arbiscan.io/address/0xCf0E59e044216e0D291f6652e8e15B6c8D69CeA8) |
+| SponsoredOFTSrcPeriphery  | [0x2ac5Ee3796E027dA274fbDe84c82173a65868940](https://arbiscan.io/address/0x2ac5Ee3796E027dA274fbDe84c82173a65868940) |
 | UniswapV3_SwapAndBridge   | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 
 ## Ink (57073)
