@@ -883,15 +883,16 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         require(!coreUserExists, "Can't fund account activation for existing user");
         require(coreTokenInfo.canBeUsedForAccountActivation, "Token can't be used for this");
 
-        // Compute the required EVM amount to cover the activation fee and minimal spot send on Core.
-        (uint256 evmAmountToSend, uint64 coreAmountToBridge) = HyperCoreLib.getRequiredEVMSendAmountForActivation(
-            coreTokenInfo.accountActivationFeeCore,
+        // +1 wei for a spot send
+        uint64 totalBalanceRequiredToActivate = coreTokenInfo.accountActivationFeeCore + 1;
+        (uint256 evmAmountToSend, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            totalBalanceRequiredToActivate,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
         bool safeToBridge = HyperCoreLib.isCoreAmountSafeToBridge(
             coreTokenInfo.coreIndex,
-            coreAmountToBridge,
+            totalBalanceRequiredToActivate,
             coreTokenInfo.bridgeSafetyBufferCore
         );
         require(safeToBridge, "Not safe to bridge");

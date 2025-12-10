@@ -109,26 +109,6 @@ library HyperCoreLib {
     }
 
     /**
-     * @notice Computes the EVM amount required to activate a user account on HyperCore.
-     * @dev Encapsulates USDC vs non-USDC activation semantics. The returned `coreAmountToBridge`
-     *      should be used for safety checks via `isCoreAmountSafeToBridge`.
-     * @param accountActivationFeeCore The account activation fee in core token units.
-     * @param decimalDiff The decimal difference of evmDecimals - coreDecimals.
-     * @return evmAmountToSend The amount of EVM tokens to send from HyperEVM.
-     * @return coreAmountToBridge The corresponding amount on HyperCore that bridging should result in.
-     */
-    function getRequiredEVMSendAmountForActivation(
-        uint64 accountActivationFeeCore,
-        int8 decimalDiff
-    ) internal pure returns (uint256 evmAmountToSend, uint64 coreAmountToBridge) {
-        //  accountActivationFeeCore plus 1 wei is required for an account to become activated
-        (evmAmountToSend, coreAmountToBridge) = minimumCoreReceiveAmountToAmounts(
-            accountActivationFeeCore + 1,
-            decimalDiff
-        );
-    }
-
-    /**
      * @notice Activate a user account on HyperCore from HyperEVM.
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM.
      * @param erc20CoreIndex The HyperCore index id of the token to transfer.
