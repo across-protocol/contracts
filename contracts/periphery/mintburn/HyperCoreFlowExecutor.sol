@@ -883,16 +883,16 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         require(!coreUserExists, "Can't fund account activation for existing user");
         require(coreTokenInfo.canBeUsedForAccountActivation, "Token can't be used for this");
 
-        // +1 wei for a spot send
-        uint64 totalBalanceRequiredToActivate = coreTokenInfo.accountActivationFeeCore + 1;
-        (uint256 evmAmountToSend, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
-            totalBalanceRequiredToActivate,
+        // Compute the required EVM amount to cover the activation fee and minimal spot send on Core.
+        (uint256 evmAmountToSend, uint64 coreAmountToBridge) = HyperCoreLib.getRequiredEVMSendAmountForActivation(
+            coreTokenInfo.accountActivationFeeCore,
+            coreTokenInfo.coreIndex,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
         bool safeToBridge = HyperCoreLib.isCoreAmountSafeToBridge(
             coreTokenInfo.coreIndex,
-            totalBalanceRequiredToActivate,
+            coreAmountToBridge,
             coreTokenInfo.bridgeSafetyBufferCore
         );
         require(safeToBridge, "Not safe to bridge");
@@ -900,17 +900,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         // donationBox @ evm -> Handler @ evm
         donationBox.withdraw(IERC20(fundingToken), evmAmountToSend);
-        // Handler @ evm -> Handler @ core
-        HyperCoreLib.transferERC20EVMToSelfOnCore(
-            fundingToken,
-            coreTokenInfo.coreIndex,
-            evmAmountToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
-        // The total balance withdrawn from Handler @ Core for this operation is activationFee + amountSent, so we set
-        // amountSent to 1 wei to only activate the account
-        // Handler @ core -> finalRecipient @ core
-        HyperCoreLib.transferERC20CoreToCore(coreTokenInfo.coreIndex, finalRecipient, 1);
+
+        HyperCoreLib.activateCoreAccountFromEVM(fundingToken, coreTokenInfo.coreIndex, finalRecipient, evmAmountToSend);
 
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, evmAmountToSend);
     }
