@@ -90,6 +90,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://uniscan.xyz/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery | [0x2918236893EC1ec739a96C381e00403d52ac560F](https://uniscan.xyz/address/0x2918236893EC1ec739a96C381e00403d52ac560F) |
+| SponsoredOFTSrcPeriphery  | [0x0Bf1A44AE69869cF7AEA7e0cbA76624792fAD4DE](https://uniscan.xyz/address/0x0Bf1A44AE69869cF7AEA7e0cbA76624792fAD4DE) |
 
 ## Polygon (137)
 
@@ -104,17 +105,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                        | [0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096](https://polygonscan.com/address/0x9295ee1d8C5b022Be115A2AD3c30C72E34e7F096) |
 | SpokePoolPeriphery               | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://polygonscan.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier                | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://polygonscan.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredOFTSrcPeriphery         | [0xC6A21E6A57777F2183312c19e614DD6054b1A54F](https://polygonscan.com/address/0xC6A21E6A57777F2183312c19e614DD6054b1A54F) |
 | UniswapV3_SwapAndBridge          | [0x9220Fa27ae680E4e8D9733932128FA73362E0393](https://polygonscan.com/address/0x9220Fa27ae680E4e8D9733932128FA73362E0393) |
 | UniswapV3_UniversalSwapAndBridge | [0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2](https://polygonscan.com/address/0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2) |
 
 ## Monad (143)
 
-| Contract Name      | Address                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
-| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
-| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
+| Contract Name            | Address                                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Helios                   | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler         | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
+| SpokePool                | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| SpokePoolPeriphery       | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
+| SponsoredOFTSrcPeriphery | [0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1](https://monadscan.com//address/0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1) |
 
 ## Lens (232)
 
