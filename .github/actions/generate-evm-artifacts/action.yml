@@ -19,6 +19,10 @@ runs:
     - name: Build Harhat
       shell: bash
       run: yarn build-evm
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+    - name: Install forge dependencies
+      run: forge install
     - name: Build Foundry
       shell: bash
       run: forge build --skip test script && rm out/build-info/*.json
