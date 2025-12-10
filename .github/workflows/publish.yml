@@ -21,6 +21,7 @@ env:
     artifacts
     cache
     typechain
+    typechain-types
   SVM_ARTIFACTS_PATHS: |
     target/idl
     target/types

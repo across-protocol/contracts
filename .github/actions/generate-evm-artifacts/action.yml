@@ -16,9 +16,15 @@ runs:
     - name: Install packages
       shell: bash
       run: yarn install --frozen-lockfile
-    - name: Build EVM
+    - name: Build Harhat
       shell: bash
       run: yarn build-evm
+    - name: Build Foundry
+      shell: bash
+      run: forge build --skip test script && rm out/build-info/*.json
+    - name: Generate Typechain
+      shell: bash
+      run: npx typechain --target ethers-v5 "out/**/*.json" --out-dir typechain-types
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:
