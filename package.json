@@ -95,7 +95,6 @@
     "@openzeppelin/hardhat-upgrades": "^1.22.0",
     "@pinata/sdk": "^2.1.0",
     "@typechain/ethers-v5": "^11.0.0",
-    "@typechain/hardhat": "^8.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.5",
     "@types/mocha": "^9.0.0",
