@@ -25,13 +25,13 @@ import {
 } from "../../../../utils/utils";
 import { getOftEid } from "../../../../utils/utils";
 import { CHAIN_IDs } from "@across-protocol/constants";
-import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT.sol/IOFT__factory";
+import { IOFT__factory } from "../../../../typechain/factories/IOFT.sol/IOFT__factory";
 import {
   MessagingFeeStructOutput,
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/contracts/interfaces/IOFT.sol/IOFT";
+} from "../../../../typechain/IOFT.sol/IOFT";
 import { hre } from "../../../../utils/utils.hre";
 import { hubPoolFixture } from "../fixtures/HubPool.Fixture";
 import { buildRelayerRefundLeaves, buildRelayerRefundTree, constructSingleRelayerRefundTree } from "../MerkleLib.utils";
