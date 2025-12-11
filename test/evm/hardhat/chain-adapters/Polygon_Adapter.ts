@@ -32,8 +32,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/contracts/interfaces/IOFT.sol/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT.sol/IOFT__factory";
+} from "../../../../typechain/IOFT.sol/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/IOFT.sol/IOFT__factory";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
 import { AdapterStore, AdapterStore__factory } from "../../../../typechain";
 import { CHAIN_IDs } from "@across-protocol/constants";
