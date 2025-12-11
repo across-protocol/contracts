@@ -264,6 +264,10 @@
     "TokenMessengerMinterV2": {
       "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
       "blockNumber": 383709630
+    },
+    "SponsoredCctpSrcPeriphery": {
+      "address": "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq",
+      "blockNumber": 425722812
     }
   },
   "34268394551451": {
@@ -290,6 +294,10 @@
     "TokenMessengerMinterV2": {
       "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
       "blockNumber": 343322709
+    },
+    "SponsoredCctpSrcPeriphery": {
+      "address": "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq",
+      "blockNumber": 385282462
     }
   },
   "808813": {

@@ -13,10 +13,12 @@ sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 [programs.devnet]
 multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
 svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 
 [programs.mainnet]
 multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
 svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
+sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 
 [registry]
 url = "https://api.apr.dev"
@@ -26,6 +28,7 @@ cluster = "localnet"
 wallet = "test/svm/keys/localnet-wallet.json"
 
 [scripts]
+### SvmSpoke scripts:
 test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
 queryEvents = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEvents.ts"
 queryEventsV2 = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEventsV2.ts"
@@ -56,6 +59,20 @@ findFillStatusPdaFromEvent = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/
 findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/findFillStatusFromFillStatusPda.ts"
 nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
 squadsIdlUpgrade = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/squadsIdlUpgrade.ts"
+
+### SponsoredCctpSrc scripts:
+initializeSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/initialize.ts"
+setSignerSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/setSigner.ts"
+setMinimumDepositSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/setMinimumDeposit.ts"
+withdrawRentFundSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/withdrawRentFund.ts"
+depositRentFundSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/depositRentFund.ts"
+setupLookupTableSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/setupLookupTable.ts"
+depositForBurnSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/depositForBurn.ts"
+queryDepositsSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/queryDeposits.ts"
+reclaimUsedNonceAccountsSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/reclaimUsedNonceAccounts.ts"
+reclaimEventAccountsSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/reclaimEventAccounts.ts"
+receiveMessageSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/receiveMessage.ts"
+repayRentFundDebtSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/repayRentFundDebt.ts"
 
 [test]
 upgradeable = true

@@ -1,5 +1,9 @@
 import * as anchor from "@coral-xyz/anchor";
+import { array, enums, object, optional, string, union, nullable, Infer, coerce } from "superstruct";
+import { ethers } from "ethers";
+import { assert } from "superstruct";
 import { readUInt256BE } from "./relayHashUtils";
+import { addressOrBase58ToBytes32 } from "./conversionUtils";
 
 // Index positions to decode Message Header from
 // https://developers.circle.com/cctp/technical-guide#message-header
@@ -25,6 +29,8 @@ const MAX_FEE_INDEX = 132;
 const FEE_EXECUTED_INDEX = 164;
 const EXPIRATION_BLOCK = 196;
 const HOOK_DATA_INDEX = 228;
+
+export const EVENT_ACCOUNT_WINDOW_SECONDS = 60 * 60 * 24 * 5; // 60 secs * 60 mins * 24 hours * 5 days = 5 days in seconds
 
 /**
  * Type for the body of a TokenMessengerV2 message.
@@ -115,3 +121,133 @@ export const decodeTokenMessengerV2MessageBody = (data: Buffer): TokenMessengerV
   const hookData = data.slice(HOOK_DATA_INDEX);
   return { version, burnToken, mintRecipient, amount, messageSender, maxFee, feeExecuted, expirationBlock, hookData };
 };
+
+// Below structs defines the types for CCTP attestation API as documented in
+// https://developers.circle.com/api-reference/cctp/all/get-messages-v-2
+
+// DecodedMessage.decodedMessageBody (V1/V2; some fields V2-only)
+export const DecodedMessageBody = object({
+  burnToken: string(),
+  mintRecipient: string(),
+  amount: string(),
+  messageSender: string(),
+  // V2-only
+  maxFee: optional(string()),
+  feeExecuted: optional(string()),
+  expirationBlock: optional(string()),
+  hookData: optional(string()),
+});
+
+// DecodedMessage (nullable/empty if decoding fails)
+// minFinalityThreshold & finalityThresholdExecuted are V2-only
+export const DecodedMessage = object({
+  sourceDomain: string(),
+  destinationDomain: string(),
+  nonce: string(),
+  sender: string(),
+  recipient: string(),
+  destinationCaller: string(),
+  minFinalityThreshold: optional(enums(["1000", "2000"])),
+  finalityThresholdExecuted: optional(enums(["1000", "2000"])),
+  messageBody: string(),
+  decodedMessageBody: optional(
+    coerce(nullable(DecodedMessageBody), union([nullable(DecodedMessageBody), object({})]), (v) =>
+      isEmptyObject(v) ? null : v
+    )
+  ),
+});
+
+// Each message item
+export const AttestationMessage = object({
+  message: string(), // "0x" when not available
+  eventNonce: string(),
+  attestation: string(), // "PENDING" when not available
+  decodedMessage: optional(
+    coerce(nullable(DecodedMessage), union([nullable(DecodedMessage), object({})]), (v) =>
+      isEmptyObject(v) ? null : v
+    )
+  ),
+  cctpVersion: enums([1, 2]),
+  status: enums(["complete", "pending_confirmations"]),
+  // Only present in some delayed cases
+  delayReason: optional(nullable(enums(["insufficient_fee", "amount_above_max", "insufficient_allowance_available"]))),
+});
+
+// Top-level 200 response
+export const AttestationResponse = object({
+  messages: array(AttestationMessage),
+});
+
+export type TAttestationResponse = Infer<typeof AttestationResponse>;
+export type TAttestationMessage = Infer<typeof AttestationMessage>;
+export type TDecodedMessage = Infer<typeof DecodedMessage>;
+export type TDecodedMessageBody = Infer<typeof DecodedMessageBody>;
+
+const isEmptyObject = (v: unknown) =>
+  v != null && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length === 0;
+
+/**
+ * Fetches attestation from attestation service given the txHash and source message for CCTP V2 token burn.
+ */
+export async function getV2BurnAttestation(
+  txSignature: string,
+  sourceMessageData: Buffer,
+  irisApiUrl: string
+): Promise<{ destinationMessage: Buffer; attestation: Buffer } | null> {
+  const sourceMessage = decodeMessageSentDataV2(sourceMessageData);
+
+  const attestationResponse = await (
+    await fetch(`${irisApiUrl}/v2/messages/${sourceMessage.sourceDomain}/?transactionHash=${txSignature}`)
+  ).json();
+  if (attestationResponse.error) return null;
+  assert(attestationResponse, AttestationResponse);
+
+  // Return the first attested message that matches the source message.
+  for (const message of attestationResponse.messages) {
+    if (
+      message.message !== "0x" &&
+      message.attestation !== "PENDING" &&
+      !!message.decodedMessage &&
+      isMatchingV2BurnMessage(sourceMessage, message.decodedMessage)
+    ) {
+      return {
+        destinationMessage: Buffer.from(ethers.utils.arrayify(message.message)),
+        attestation: Buffer.from(ethers.utils.arrayify(message.attestation)),
+      };
+    }
+  }
+  return null;
+}
+
+function isMatchingV2BurnMessage(
+  sourceMessage: ReturnType<typeof decodeMessageSentDataV2>,
+  destinationMessage: TDecodedMessage
+): boolean {
+  if (!destinationMessage.decodedMessageBody) return false;
+
+  return (
+    sourceMessage.sourceDomain.toString() === destinationMessage.sourceDomain &&
+    sourceMessage.destinationDomain.toString() === destinationMessage.destinationDomain &&
+    // nonce is only set on destination
+    addressOrBase58ToBytes32(sourceMessage.sender.toString()) === addressOrBase58ToBytes32(destinationMessage.sender) &&
+    addressOrBase58ToBytes32(sourceMessage.recipient.toString()) ===
+      addressOrBase58ToBytes32(destinationMessage.recipient) &&
+    addressOrBase58ToBytes32(sourceMessage.destinationCaller.toString()) ===
+      addressOrBase58ToBytes32(destinationMessage.destinationCaller) &&
+    sourceMessage.minFinalityThreshold.toString() === destinationMessage.minFinalityThreshold &&
+    // finalityThresholdExecuted is only set on destination
+    addressOrBase58ToBytes32(sourceMessage.messageBody.burnToken.toString()) ===
+      addressOrBase58ToBytes32(destinationMessage.decodedMessageBody.burnToken) &&
+    addressOrBase58ToBytes32(sourceMessage.messageBody.mintRecipient.toString()) ===
+      addressOrBase58ToBytes32(destinationMessage.decodedMessageBody.mintRecipient) &&
+    sourceMessage.messageBody.amount.toString() === destinationMessage.decodedMessageBody.amount &&
+    addressOrBase58ToBytes32(sourceMessage.messageBody.messageSender.toString()) ===
+      addressOrBase58ToBytes32(destinationMessage.decodedMessageBody.messageSender) &&
+    sourceMessage.messageBody.maxFee.toString() === destinationMessage.decodedMessageBody.maxFee &&
+    // feeExecuted is only set on destination
+    // expirationBlock is only set on destination
+    sourceMessage.messageBody.hookData.equals(
+      Buffer.from(ethers.utils.arrayify(destinationMessage.decodedMessageBody.hookData || "0x"))
+    )
+  );
+}
