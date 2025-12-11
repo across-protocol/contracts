@@ -7,33 +7,19 @@ src = "contracts"
 out = "out"
 test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
-remappings = [
-    "@across-protocol/=node_modules/@across-protocol/",
-    "@ensdomains/=node_modules/@ensdomains/",
-    "@eth-optimism/=node_modules/@eth-optimism/",
-    "@gnosis.pm/=node_modules/@gnosis.pm/",
-    "@maticnetwork/=node_modules/@maticnetwork/",
-    "@matterlabs/=node_modules/@matterlabs/",
-    "@openzeppelin/=node_modules/@openzeppelin/",
-    "@scroll-tech/=node_modules/@scroll-tech/",
-    "@uma/=node_modules/@uma/",
-    "@uniswap/=node_modules/@uniswap/",
-    "arb-bridge-eth/=node_modules/arb-bridge-eth/",
-    "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
-    "arbos-precompiles/=node_modules/arbos-precompiles/",
-    "base64-sol/=node_modules/base64-sol/",
-    "eth-gas-reporter/=node_modules/eth-gas-reporter/",
-    "hardhat-deploy/=node_modules/hardhat-deploy/",
-    "hardhat/=node_modules/hardhat/",
-]
+cache_path = "cache-foundry"
 via_ir = true
 optimizer_runs = 800
-solc_version = "0.8.23"
+solc_version = "0.8.30"
 revert_strings = "strip"
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read-write", path = "./" }]
+use_literal_content = true
 
-solc = "0.8.23"
+solc = "0.8.30"
 evm_version = "prague"
+
+[profile.zksync]
+src = "contracts/Lens_SpokePool.sol"
 
 [profile.zksync.zksync]
 compile = true
@@ -51,7 +37,9 @@ lens = "${NODE_URL_232}"
 linea = "${NODE_URL_59144}"
 lisk = "${NODE_URL_1135}"
 mode = "${NODE_URL_34443}"
+monad = "${NODE_URL_143}"
 optimism = "${NODE_URL_10}"
+plasma = "${NODE_URL_9745}"
 polygon = "${NODE_URL_137}"
 redstone = "${NODE_URL_690}"
 scroll = "${NODE_URL_534352}"
@@ -59,6 +47,11 @@ soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
+hyperevm = "${NODE_URL_999}"
+
+# testnet
+arbitrum_sepolia = "${NODE_URL_421614}"
+hyperevm_testnet = "${NODE_URL_998}"
 
 
 [etherscan]

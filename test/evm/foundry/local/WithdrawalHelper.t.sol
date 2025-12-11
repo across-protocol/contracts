@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { ERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
+import { ERC20, IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-v4/proxy/utils/UUPSUpgradeable.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { Arbitrum_WithdrawalHelper } from "../../../../contracts/chain-adapters/l2/Arbitrum_WithdrawalHelper.sol";

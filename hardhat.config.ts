@@ -1,3 +1,25 @@
+const { subtask } = require("hardhat/config");
+const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
+
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
+  const paths = await runSuper();
+
+  // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
+  // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
+  if (process.env.IS_TEST === "true" || process.env.CI === "true") {
+    return paths.filter((p: any) => {
+      return (
+        !p.includes("contracts/periphery/mintburn") &&
+        !p.includes("contracts/external/libraries/BytesLib.sol") &&
+        !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
+        !p.includes("contracts/external/libraries/MinimalLZOptions.sol")
+      );
+    });
+  }
+
+  return paths;
+});
+
 import * as dotenv from "dotenv";
 dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
@@ -56,7 +78,10 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.23";
+const solcVersion = "0.8.30";
+
+// Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
+const evmVersion = isTest ? "paris" : "prague";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -65,6 +90,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -73,6 +99,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
+    evmVersion,
     // Only strip revert strings if not testing or in ci.
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
@@ -83,6 +110,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -92,18 +120,7 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Linea_SpokePool.sol": {
-        ...LARGE_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
-      "contracts/SpokePoolVerifier.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
+      "contracts/Linea_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -115,6 +132,7 @@ const config: HardhatUserConfig = {
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/HyperCoreFlowExecutor.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -124,7 +142,14 @@ const config: HardhatUserConfig = {
         enabled: true,
       },
       suppressedErrors: ["sendtransfer"],
-      contractsToCompile: ["SpokePoolPeriphery", "MulticallHandler", "SpokePoolVerifier"],
+      contractsToCompile: [
+        "SpokePoolPeriphery",
+        "MulticallHandler",
+        "SpokePoolVerifier",
+        "ZkSync_SpokePool",
+        "Lens_SpokePool",
+        "AcrossEventEmitter",
+      ],
     },
   },
   networks: {
@@ -150,12 +175,15 @@ const config: HardhatUserConfig = {
     "arbitrum-sepolia": getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM_SEPOLIA, true),
     sepolia: getDefaultHardhatConfig(CHAIN_IDs.SEPOLIA, true),
     polygon: getDefaultHardhatConfig(CHAIN_IDs.POLYGON),
-    bsc: getDefaultHardhatConfig(CHAIN_IDs.BSC),
-    // ! Notice. Params below helped deploy Universal_Spoke on BSC, but might not be desirable always
-    // gas: "auto",
-    // gasPrice: 3e8, // 0.3 GWEI
-    // gasMultiplier: 4.0,
+    bsc: {
+      ...getDefaultHardhatConfig(CHAIN_IDs.BSC),
+      gas: "auto",
+      gasPrice: 3e8, // 0.3 GWEI
+      gasMultiplier: 4.0,
+    },
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
+    monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
     "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),
@@ -225,6 +253,14 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
+        network: "blast",
+        chainId: CHAIN_IDs.BLAST,
+        urls: {
+          apiURL: "https://blastscan.io/api",
+          browserURL: "https://blastscan.io",
+        },
+      },
+      {
         network: "hyperevm",
         chainId: CHAIN_IDs.HYPEREVM,
         urls: {
@@ -233,11 +269,43 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "linea",
+        chainId: CHAIN_IDs.LINEA,
+        urls: {
+          apiURL: "https://lineascan.build/api",
+          browserURL: "https://lineascan.build",
+        },
+      },
+      {
+        network: "scroll",
+        chainId: CHAIN_IDs.SCROLL,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://scrollscan.com",
+        },
+      },
+      {
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
+        urls: {
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
+        },
+      },
+      {
         network: "zksync",
         chainId: CHAIN_IDs.ZK_SYNC,
         urls: {
           apiURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
           browserURL: "https://era.zksync.network/",
+        },
+      },
+      {
+        network: "lens",
+        chainId: CHAIN_IDs.LENS,
+        urls: {
+          apiURL: "https://verify.lens.xyz/contract_verification",
+          browserURL: "https://explorer.lens.xyz/",
         },
       },
     ],
@@ -259,14 +327,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.inkonchain.com/api",
           browserURL: "https://explorer.inkonchain.com",
-        },
-      },
-      {
-        network: "lens",
-        chainId: CHAIN_IDs.LENS,
-        urls: {
-          apiURL: "https://verify.lens.xyz/contract_verification",
-          browserURL: "https://explorer.lens.xyz/",
         },
       },
       {
@@ -307,6 +367,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://explorer.redstone.xyz/api",
           browserURL: "https://explorer.redstone.xyz",
+        },
+      },
+      {
+        network: "plasma",
+        chainId: 9745,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmascan.to",
         },
       },
       {

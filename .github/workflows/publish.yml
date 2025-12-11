@@ -14,8 +14,9 @@ on:
     types: [created]
 permissions:
   contents: write
+  id-token: write
 env:
-  NODE_VERSION: "20.x"
+  NODE_VERSION: 22.18
   EVM_ARTIFACTS_PATHS: |
     artifacts
     cache
@@ -29,20 +30,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       # Note we set an `id` called `release`. We'll use that later...
       - name: Validate and extract release information
         id: release
         uses: manovotny/github-releases-for-automated-package-publishing-action@v2.0.1
 
-      # Setup .npmrc file to publish to npm
-      - uses: actions/setup-node@v3
+      # Enable npm trusted publishing (OIDC) for releases
+      - uses: actions/setup-node@v4
         with:
           node-version: "${{ env.NODE_VERSION }}"
-          always-auth: true
           registry-url: "https://registry.npmjs.org"
           cache: "yarn"
+
+      - name: Update npm
+        run: npm install -g npm@latest
 
       - name: Install packages
         run: yarn install --frozen-lockfile
@@ -88,25 +91,23 @@ jobs:
       # If there *is not* a tag (ie. `beta`, `canary`, etc.), we publish a
       # version of a package (ie. 1.2.3).
       #
-      # This example is using npm to publish, but you could just as easily
-      # use yarn, if you prefer. It's also publishing to the NPM registry,
-      # thus, it's using `NPM_TOKEN`, but you could just as easily use
-      # `GITHUB_TOKEN` if you were publishing to the GitHub Package registry.
+      # This workflow publishes via npm using GitHub's OIDC integration for
+      # trusted publishing, so no long-lived tokens are required.
 
       # This will publish a "pre-release" or "tagged" version of a package.
 
       # This will publish a version of a package.
       - name: Publish version
         if: steps.release.outputs.tag == ''
-        run: yarn publish
+        run: npm publish
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "false"
 
       - name: Publish tagged version
         if: steps.release.outputs.tag != ''
-        run: yarn publish --tag ${{ steps.release.outputs.tag }}
+        run: npm publish --tag ${{ steps.release.outputs.tag }}
         env:
-          NPM_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "false"
 
   # Due to GitHub cache scoping, we cannot easily share the cache between releases even if the cache key is the same.
   # In order to not slow down the NPM package publishing, we move the building of SVM binaries for GitHub release to a
@@ -115,7 +116,7 @@ jobs:
     name: Release SVM production binaries on GitHub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor
@@ -138,7 +139,7 @@ jobs:
     name: Release SVM test binaries on GitHub
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Setup Anchor & Solana
         uses: ./.github/actions/setup-solana-anchor

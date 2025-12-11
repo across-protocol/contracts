@@ -4,9 +4,10 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
+import { Config } from "forge-std/Config.sol";
 import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/src/LegacyUpgrades.sol";
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { Constants } from "./Constants.sol";
 import { DeployedAddresses } from "./DeployedAddresses.sol";
 
@@ -15,7 +16,7 @@ import { DeployedAddresses } from "./DeployedAddresses.sol";
  * @notice Foundry smart contract script that provides deployment utilities for Across Protocol contracts
  * @dev This contract implements the equivalent functionality of utils.hre.ts for Foundry scripts
  */
-contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
+contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     // Struct to hold deployment information
     struct DeploymentInfo {
         address hubPool;
@@ -41,7 +42,6 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
      * @return info Deployment information struct
      */
     function getSpokePoolDeploymentInfo(address hubPoolAddress) public view returns (DeploymentInfo memory info) {
-        console.log("hubPoolAddress", hubPoolAddress);
         uint256 spokeChainId = block.chainid;
 
         // Determine hub chain ID based on spoke chain ID
@@ -60,6 +60,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses {
         if (hubPool == address(0)) {
             hubPool = getAddress(hubChainId, "HubPool");
         }
+        console.log("hubPoolAddress", hubPool);
 
         require(hubPool != address(0), "HubPool address cannot be zero");
 

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
 import "../SpokePool.sol";
 import "../external/interfaces/IPermit2.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "../external/uma/core/contracts/common/implementation/MultiCaller.sol";
 
 /**
  * @notice AcrossOriginSettler processes an external order type and translates it into an AcrossV3Deposit

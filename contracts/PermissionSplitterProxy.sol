@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
+import "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol";
+import "@openzeppelin/contracts-v4/access/AccessControl.sol";
 
 /**
  * @notice This contract is designed to own an Ownable "target" contract and gate access to specific

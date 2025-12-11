@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Optimism_Adapter } from "../contracts/chain-adapters/Optimism_Adapter.sol";
 import { Constants } from "./utils/Constants.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
