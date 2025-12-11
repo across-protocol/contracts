@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { ICoreDepositWallet } from "../external/interfaces/ICoreDepositWallet.sol";
 
 interface ICoreWriter {
     function sendRawAction(bytes calldata data) external;
@@ -51,10 +52,17 @@ library HyperCoreLib {
     address public constant TOKEN_INFO_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000080C;
     address public constant CORE_WRITER_PRECOMPILE_ADDRESS = 0x3333333333333333333333333333333333333333;
 
+    // USDC
+    address public constant USDC_CORE_DEPOSIT_WALLET_ADDRESS = 0x6B9E773128f453f5c2C60935Ee2DE2CBc5390A24;
+    uint64 public constant USDC_CORE_INDEX = 0;
+
     // CoreWriter action headers
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
     bytes4 public constant SPOT_SEND_HEADER = 0x01000006; // version=1, action=6
     bytes4 public constant CANCEL_BY_CLOID_HEADER = 0x0100000B; // version=1, action=11
+
+    // HyperCore protocol constants
+    uint32 private constant CORE_SPOT_DEX_ID = type(uint32).max;
 
     // Errors
     error LimitPxIsZero();
@@ -87,9 +95,7 @@ library HyperCoreLib {
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend != 0) {
-            // Transfer the tokens to this contract's address on HyperCore
-            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
-
+            transferToCore(erc20EVMAddress, erc20CoreIndex, _amountEVMToSend);
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
             transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive);
         }
@@ -117,8 +123,7 @@ library HyperCoreLib {
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend != 0) {
-            // Transfer the tokens to this contract's address on HyperCore
-            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
+            transferToCore(erc20EVMAddress, erc20CoreIndex, _amountEVMToSend);
         }
 
         return (_amountEVMToSend, _amountCoreToReceive);
@@ -135,6 +140,23 @@ library HyperCoreLib {
         bytes memory payload = abi.encodePacked(SPOT_SEND_HEADER, action);
 
         ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(payload);
+    }
+
+    /**
+     * @notice Transfers tokens from this contract on HyperEVM to this contract's address on HyperCore
+     * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
+     * @param erc20CoreIndex The HyperCore index id of the token to transfer
+     * @param amountEVMToSend The amount to transfer on HyperEVM
+     */
+    function transferToCore(address erc20EVMAddress, uint64 erc20CoreIndex, uint256 amountEVMToSend) internal {
+        // USDC requires a special transfer to core
+        if (erc20CoreIndex == USDC_CORE_INDEX) {
+            IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, amountEVMToSend);
+            ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(amountEVMToSend, CORE_SPOT_DEX_ID);
+        } else {
+            // For all other tokens, transfer to the asset bridge address on HyperCore
+            IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amountEVMToSend);
+        }
     }
 
     /**

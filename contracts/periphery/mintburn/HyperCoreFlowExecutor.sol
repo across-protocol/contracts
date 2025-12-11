@@ -521,9 +521,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             }
 
             if (amountToSponsor > 0) {
-                if (!_availableInDonationBox(params.quoteNonce, coreTokenInfo.tokenInfo.evmContract, amountToSponsor)) {
+                if (!_availableInDonationBox(params.quoteNonce, finalToken, amountToSponsor)) {
                     // If the full amount is not available in the donation box, use the balance of the token in the donation box
-                    amountToSponsor = IERC20(coreTokenInfo.tokenInfo.evmContract).balanceOf(address(donationBox));
+                    amountToSponsor = IERC20(finalToken).balanceOf(address(donationBox));
                 }
             }
         }
@@ -556,7 +556,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         if (amountToSponsor > 0) {
             // This will succeed because we checked the balance earlier
-            donationBox.withdraw(IERC20(coreTokenInfo.tokenInfo.evmContract), amountToSponsor);
+            donationBox.withdraw(IERC20(finalToken), amountToSponsor);
         }
 
         $.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
@@ -750,6 +750,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 limitOrderOuts[finalized],
                 finalCoreTokenInfo,
                 finalTokenInfo.swapHandler,
+                finalToken,
                 availableBalance
             );
             if (!success) {
@@ -780,7 +781,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             ) {
                 // We expect this situation to be so rare and / or intermittend that we're willing to rely on admin to sweep the funds if this leads to
                 // swaps being impossible to finalize
-                revert UnsafeToBridgeError(finalCoreTokenInfo.tokenInfo.evmContract, totalAdditionalToSend);
+                revert UnsafeToBridgeError(finalToken, totalAdditionalToSend);
             }
 
             $.cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
@@ -804,12 +805,13 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 limitOrderOut,
         CoreTokenInfo memory finalCoreTokenInfo,
         SwapHandler swapHandler,
+        address finalToken,
         uint64 availableBalance
     ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
         SwapFlowState storage swap = _getMainStorage().swaps[quoteNonce];
         if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
         if (swap.finalized) revert SwapAlreadyFinalized();
-        if (swap.finalToken != finalCoreTokenInfo.tokenInfo.evmContract) revert WrongSwapFinalizationToken(quoteNonce);
+        if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
 
         uint64 totalToSend;
         (totalToSend, additionalToSend) = _calcSwapFlowSendAmounts(
@@ -946,7 +948,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 bridgeSafetyBufferCore
     ) internal {
         HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
-        require(tokenInfo.evmContract == token, "Token mismatch");
 
         (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             accountActivationFeeCore,
