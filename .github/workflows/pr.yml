@@ -47,7 +47,6 @@ jobs:
         artifacts
         cache
         typechain
-        typechain-types
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3

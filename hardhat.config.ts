@@ -28,7 +28,6 @@ import { getNodeUrl } from "./utils";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
-import "@typechain/hardhat";
 import "@matterlabs/hardhat-zksync-solc";
 import "@matterlabs/hardhat-zksync-verify";
 import "@matterlabs/hardhat-zksync-upgradable";
@@ -396,10 +395,6 @@ const config: HardhatUserConfig = {
     ],
   },
   namedAccounts: { deployer: 0 },
-  typechain: {
-    outDir: "./typechain",
-    target: "ethers-v5",
-  },
   paths: {
     tests: "./test/evm/hardhat",
   },

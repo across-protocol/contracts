@@ -29,7 +29,7 @@ runs:
       run: forge build --skip test script && rm out/build-info/*.json
     - name: Generate Typechain
       shell: bash
-      run: npx typechain --target ethers-v5 "out/**/*.json" --out-dir typechain-types
+      run: npx typechain --target ethers-v5 "out/**/*.json" --out-dir typechain
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:
