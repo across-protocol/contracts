@@ -43,7 +43,13 @@ contract SwapHandler {
         uint64 amountCore,
         uint32 destinationDex
     ) external onlyParentHandler {
-        HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore, destinationDex);
+        HyperCoreLib.transferERC20CoreToCore(
+            erc20CoreIndex,
+            to,
+            amountCore,
+            HyperCoreLib.CORE_SPOT_DEX_ID,
+            destinationDex
+        );
     }
 
     function submitSpotLimitOrder(

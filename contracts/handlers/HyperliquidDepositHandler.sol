@@ -180,7 +180,13 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      */
     function sweepCoreFundsToUser(address token, uint64 coreAmount, address user) external onlyOwner nonReentrant {
         uint64 tokenIndex = _getTokenInfo(token).tokenId;
-        HyperCoreLib.transferERC20CoreToCore(tokenIndex, user, coreAmount, HyperCoreLib.CORE_SPOT_DEX_ID);
+        HyperCoreLib.transferERC20CoreToCore(
+            tokenIndex,
+            user,
+            coreAmount,
+            HyperCoreLib.CORE_SPOT_DEX_ID,
+            HyperCoreLib.CORE_SPOT_DEX_ID
+        );
     }
 
     /**
@@ -232,7 +238,13 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
                 decimalDiff,
                 HyperCoreLib.CORE_SPOT_DEX_ID
             );
-            HyperCoreLib.transferERC20CoreToCore(tokenIndex, user, 1, HyperCoreLib.CORE_SPOT_DEX_ID);
+            HyperCoreLib.transferERC20CoreToCore(
+                tokenIndex,
+                user,
+                1,
+                HyperCoreLib.CORE_SPOT_DEX_ID,
+                HyperCoreLib.CORE_SPOT_DEX_ID
+            );
             emit UserAccountActivated(user, token, amountRequiredToActivate);
         }
 

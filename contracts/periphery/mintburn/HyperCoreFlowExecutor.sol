@@ -916,20 +916,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         require(safeToBridge, "Not safe to bridge");
         _getMainStorage().cumulativeSponsoredActivationFee[fundingToken] += evmAmountToSend;
 
-        // donationBox @ evm -> Handler @ evm
-        donationBox.withdraw(IERC20(fundingToken), evmAmountToSend);
-        // Handler @ evm -> Handler @ core
-        HyperCoreLib.transferERC20EVMToSelfOnCore(
-            fundingToken,
-            coreTokenInfo.coreIndex,
-            evmAmountToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            HyperCoreLib.CORE_SPOT_DEX_ID
-        );
-        // The total balance withdrawn from Handler @ Core for this operation is activationFee + amountSent, so we set
-        // amountSent to 1 wei to only activate the account
-        // Handler @ core -> finalRecipient @ core
-        HyperCoreLib.transferERC20CoreToCore(coreTokenInfo.coreIndex, finalRecipient, 1, HyperCoreLib.CORE_SPOT_DEX_ID);
+        HyperCoreLib.activateCoreAccountFromEVM(fundingToken, coreTokenInfo.coreIndex, finalRecipient, evmAmountToSend);
 
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, evmAmountToSend);
     }
@@ -1141,6 +1128,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             _getMainStorage().coreTokenInfos[token].coreIndex,
             msg.sender,
             amount,
+            destinationDex,
             destinationDex
         );
     }

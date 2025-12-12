@@ -38,6 +38,7 @@ contract DeployHyperliquidDepositHandler is Script, Test {
             usdhTokenIndex,
             address(hyperliquidDepositHandler),
             1,
+            HyperCoreLib.CORE_SPOT_DEX_ID,
             HyperCoreLib.CORE_SPOT_DEX_ID
         );
         hyperliquidDepositHandler.addSupportedToken(address(usdh), usdhTokenIndex, 1000000, usdhDecimalDiff);
