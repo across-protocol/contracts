@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 import { HubPool } from "../../../../contracts/HubPool.sol";
@@ -18,41 +17,12 @@ import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 // ============ UMA Ecosystem Mocks ============
 
 /**
- * @title MockLpToken
- * @notice LP Token that implements ExpandedIERC20 interface for HubPool compatibility.
- * @dev Can be minted/burned by anyone for testing purposes.
- */
-contract MockLpToken is ERC20 {
-    constructor() ERC20("LP Token", "LPT") {}
-
-    function mint(address to, uint256 amount) external returns (bool) {
-        _mint(to, amount);
-        return true;
-    }
-
-    function burn(uint256 amount) external {
-        _burn(msg.sender, amount);
-    }
-
-    function burnFrom(address from, uint256 amount) external returns (bool) {
-        _spendAllowance(from, msg.sender, amount);
-        _burn(from, amount);
-        return true;
-    }
-
-    // ExpandedIERC20 role management (no-ops for testing)
-    function addMinter(address) external {}
-    function addBurner(address) external {}
-    function resetOwner(address) external {}
-}
-
-/**
  * @title MockLpTokenFactory
- * @notice Factory that creates MockLpToken instances for HubPool.
+ * @notice Factory that creates MintableERC20 instances for HubPool.
  */
 contract MockLpTokenFactory is LpTokenFactoryInterface {
     function createLpToken(address) external override returns (address) {
-        return address(new MockLpToken());
+        return address(new MintableERC20("LP Token", "LPT", 18));
     }
 }
 

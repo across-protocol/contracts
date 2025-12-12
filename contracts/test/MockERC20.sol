@@ -17,13 +17,25 @@ contract MintableERC20 is ERC20 {
         _decimals = decimals_;
     }
 
-    function mint(address to, uint256 amount) external {
+    function mint(address to, uint256 amount) external returns (bool) {
         _mint(to, amount);
+        return true;
     }
 
-    function burn(address from, uint256 amount) external {
-        _burn(from, amount);
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
     }
+
+    function burnFrom(address from, uint256 amount) external returns (bool) {
+        _spendAllowance(from, msg.sender, amount);
+        _burn(from, amount);
+        return true;
+    }
+
+    // ExpandedIERC20 compatibility
+    function addMinter(address) external {}
+    function addBurner(address) external {}
+    function resetOwner(address) external {}
 
     function decimals() public view override returns (uint8) {
         return _decimals;
