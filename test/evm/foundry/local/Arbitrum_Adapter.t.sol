@@ -133,7 +133,12 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             functionData
         );
 
+        uint256 inboxBalanceBefore = address(inbox).balance;
         fixture.hubPool.relaySpokePoolAdminFunction(ARBITRUM_CHAIN_ID, functionData);
+        uint256 inboxBalanceAfter = address(inbox).balance;
+
+        uint256 expectedEth = L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * RELAY_MESSAGE_L2_GAS_LIMIT;
+        assertEq(inboxBalanceAfter - inboxBalanceBefore, expectedEth, "Inbox balance change mismatch");
     }
 
     // ============ relayTokens Tests (ERC20 via Gateway) ============
@@ -178,6 +183,8 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", bytes32(0), bytes32(0))
         );
 
+        uint256 gatewayBalanceBefore = address(gatewayRouter).balance;
+
         // Execute
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -190,6 +197,10 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             leaf.l1Tokens,
             proof
         );
+
+        uint256 gatewayBalanceAfter = address(gatewayRouter).balance;
+        uint256 expectedEth = L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * RELAY_TOKENS_L2_GAS_LIMIT;
+        assertEq(gatewayBalanceAfter - gatewayBalanceBefore, expectedEth, "GatewayRouter balance change mismatch");
 
         // Verify allowance was set (HubPool approved gateway via delegatecall context)
         assertEq(
@@ -246,9 +257,9 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
 
     function test_relayTokens_USDC_SplitsWhenOverLimit() public {
         uint256 usdcAmount = 100e6;
-        addLiquidity(fixture.usdc, usdcAmount);
+        addLiquidity(fixture.usdc, usdcAmount * 2);
 
-        // Set burn limit to less than half of amount (will require 3 calls)
+        // 1) Set limit below amount to send and where amount does not divide evenly into limit.
         uint256 burnLimit = usdcAmount / 2 - 1;
         cctpMinter.setBurnLimit(burnLimit);
 
@@ -260,6 +271,33 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         );
 
         proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+
+        bytes32 expectedRecipient = bytes32(uint256(uint160(mockSpoke)));
+
+        // Expect 3 calls: 2 * burnLimit + remainder
+        vm.expectEmit(true, true, true, true, address(cctpMessenger));
+        emit MockCCTPMessenger.DepositForBurnCalled(
+            burnLimit,
+            ARBITRUM_CIRCLE_DOMAIN,
+            expectedRecipient,
+            address(fixture.usdc)
+        );
+
+        vm.expectEmit(true, true, true, true, address(cctpMessenger));
+        emit MockCCTPMessenger.DepositForBurnCalled(
+            burnLimit,
+            ARBITRUM_CIRCLE_DOMAIN,
+            expectedRecipient,
+            address(fixture.usdc)
+        );
+
+        vm.expectEmit(true, true, true, true, address(cctpMessenger));
+        emit MockCCTPMessenger.DepositForBurnCalled(
+            2,
+            ARBITRUM_CIRCLE_DOMAIN,
+            expectedRecipient,
+            address(fixture.usdc)
+        );
 
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -275,6 +313,43 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
 
         // Should have called depositForBurn 3 times (2 full + 1 remainder)
         assertEq(cctpMessenger.depositForBurnCallCount(), 3, "Should split into 3 CCTP calls");
+
+        // 2) Set limit below amount to send and where amount divides evenly into limit.
+        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+
+        uint256 newLimit = usdcAmount / 2;
+        cctpMinter.setBurnLimit(newLimit);
+
+        // Expect 2 more calls: 2 * newLimit
+        vm.expectEmit(true, true, true, true, address(cctpMessenger));
+        emit MockCCTPMessenger.DepositForBurnCalled(
+            newLimit,
+            ARBITRUM_CIRCLE_DOMAIN,
+            expectedRecipient,
+            address(fixture.usdc)
+        );
+
+        vm.expectEmit(true, true, true, true, address(cctpMessenger));
+        emit MockCCTPMessenger.DepositForBurnCalled(
+            newLimit,
+            ARBITRUM_CIRCLE_DOMAIN,
+            expectedRecipient,
+            address(fixture.usdc)
+        );
+
+        fixture.hubPool.executeRootBundle(
+            leaf.chainId,
+            leaf.groupIndex,
+            leaf.bundleLpFees,
+            leaf.netSendAmounts,
+            leaf.runningBalances,
+            leaf.leafId,
+            leaf.l1Tokens,
+            proof
+        );
+
+        // 2 more calls added to prior 3.
+        assertEq(cctpMessenger.depositForBurnCallCount(), 5, "Should have 5 total CCTP calls");
     }
 
     // ============ relayTokens Tests (USDT via OFT) ============
