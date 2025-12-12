@@ -65,6 +65,7 @@ const tasks = [
   "evmRelayMessageWithdrawal",
   "testChainAdapter",
   "upgradeSpokePool",
+  "updatevkey",
 ];
 
 // eslint-disable-next-line node/no-missing-require
