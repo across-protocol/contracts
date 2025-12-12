@@ -1078,6 +1078,10 @@
         "TokenMessengerMinterV2": {
           "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
           "block_number": 383709630
+        },
+        "SponsoredCctpSrcPeriphery": {
+          "address": "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq",
+          "block_number": 425722812
         }
       }
     },
@@ -1107,6 +1111,10 @@
         "TokenMessengerMinterV2": {
           "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
           "block_number": 343322709
+        },
+        "SponsoredCctpSrcPeriphery": {
+          "address": "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq",
+          "block_number": 385282462
         }
       }
     }

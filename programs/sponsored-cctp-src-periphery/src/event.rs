@@ -1,0 +1,61 @@
+use anchor_lang::prelude::*;
+
+#[event]
+pub struct SignerSet {
+    pub old_signer: Pubkey,
+    pub new_signer: Pubkey,
+}
+
+#[event]
+pub struct WithdrawnRentFund {
+    pub amount: u64,
+    pub recipient: Pubkey,
+}
+
+#[event]
+pub struct MinimumDepositAmountSet {
+    pub amount: u64,
+    pub burn_token: Pubkey,
+}
+
+#[event]
+pub struct SponsoredDepositForBurn {
+    pub quote_nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
+    pub origin_sender: Pubkey,
+    pub final_recipient: Pubkey,
+    pub quote_deadline: u64,
+    pub max_bps_to_sponsor: u64,
+    pub max_user_slippage_bps: u64,
+    pub final_token: Pubkey,
+    pub signature: Vec<u8>, // Signature is fixed 65 bytes, but it is more readable in logs expressed as encoded data blob.
+}
+
+#[event]
+pub struct CreatedEventAccount {
+    pub message_sent_event_data: Pubkey,
+}
+
+#[event]
+pub struct ReclaimedEventAccount {
+    pub message_sent_event_data: Pubkey,
+}
+
+#[event]
+pub struct ReclaimedUsedNonceAccount {
+    pub nonce: Vec<u8>, // Nonce is bytes32 random value, but it is more readable in logs expressed as encoded data blob.
+    pub used_nonce: Pubkey, // PDA derived from above nonce that got closed.
+}
+
+#[event]
+pub struct AccruedRentFundLiability {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub total_user_claim: u64,
+}
+
+#[event]
+pub struct RepaidRentFundDebt {
+    pub user: Pubkey,
+    pub amount: u64,
+    pub remaining_user_claim: u64,
+}

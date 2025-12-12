@@ -298,14 +298,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Solana (34268394551451)
 
-| Contract Name          | Address                                                                                                                 |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| MessageTransmitter     | [CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd](https://solscan.io/account/CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd) |
-| MessageTransmitterV2   | [CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC](https://solscan.io/account/CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC) |
-| MulticallHandler       | [HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be](https://solscan.io/account/HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be) |
-| SvmSpoke               | [DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru](https://solscan.io/account/DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru) |
-| TokenMessengerMinter   | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://solscan.io/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
-| TokenMessengerMinterV2 | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://solscan.io/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
+| Contract Name             | Address                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| MessageTransmitter        | [CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd](https://solscan.io/account/CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd) |
+| MessageTransmitterV2      | [CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC](https://solscan.io/account/CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC) |
+| MulticallHandler          | [HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be](https://solscan.io/account/HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be) |
+| SponsoredCctpSrcPeriphery | [CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq](https://solscan.io/account/CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq) |
+| SvmSpoke                  | [DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru](https://solscan.io/account/DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru) |
+| TokenMessengerMinter      | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://solscan.io/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
+| TokenMessengerMinterV2    | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://solscan.io/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
 
 ## Mode Sepolia (919)
 
@@ -406,11 +407,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Solana Devnet (133268194659241)
 
-| Contract Name          | Address                                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| MessageTransmitter     | [CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd](https://explorer.solana.com/?cluster=devnet/account/CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd) |
-| MessageTransmitterV2   | [CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC](https://explorer.solana.com/?cluster=devnet/account/CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC) |
-| MulticallHandler       | [Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h](https://explorer.solana.com/?cluster=devnet/account/Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h) |
-| SvmSpoke               | [JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq](https://explorer.solana.com/?cluster=devnet/account/JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq) |
-| TokenMessengerMinter   | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://explorer.solana.com/?cluster=devnet/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
-| TokenMessengerMinterV2 | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://explorer.solana.com/?cluster=devnet/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
+| Contract Name             | Address                                                                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| MessageTransmitter        | [CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd](https://explorer.solana.com/?cluster=devnet/account/CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd) |
+| MessageTransmitterV2      | [CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC](https://explorer.solana.com/?cluster=devnet/account/CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC) |
+| MulticallHandler          | [Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h](https://explorer.solana.com/?cluster=devnet/account/Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h) |
+| SponsoredCctpSrcPeriphery | [CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq](https://explorer.solana.com/?cluster=devnet/account/CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq) |
+| SvmSpoke                  | [JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq](https://explorer.solana.com/?cluster=devnet/account/JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq) |
+| TokenMessengerMinter      | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://explorer.solana.com/?cluster=devnet/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
+| TokenMessengerMinterV2    | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://explorer.solana.com/?cluster=devnet/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
