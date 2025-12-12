@@ -46,6 +46,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     struct SwapFlowState {
         address finalRecipient;
         address finalToken;
+        uint32 destinationDex;
         uint64 minAmountToSend; // for sponsored: one to one, non-sponsored: one to one minus slippage
         uint64 maxAmountToSend; // for sponsored: one to one (from total bridged amt), for non-sponsored: one to one, less bridging fees incurred
         bool isSponsored;
@@ -475,6 +476,14 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
      * checked by a handler. Params authorization by a handler is enforced via `onlyAuthorizedFlow` modifier
      */
     function executeFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) external onlyAuthorizedFlow {
+        MainStorage storage $ = _getMainStorage();
+        CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[params.finalToken];
+
+        // If the final token is not USDC, we need to set the destination dex to the spot dex
+        if (coreTokenInfo.coreIndex != HyperCoreLib.USDC_CORE_INDEX) {
+            params.destinationDex = HyperCoreLib.CORE_SPOT_DEX_ID;
+        }
+
         if (params.finalToken == baseToken) {
             _executeSimpleTransferFlow(params);
         } else {
@@ -568,7 +577,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             coreTokenInfo.coreIndex,
             params.finalRecipient,
             quotedEvmAmount,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            params.destinationDex
         );
 
         emit SimpleTransferFlowCompleted(
@@ -687,6 +697,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         $.swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
+            destinationDex: params.destinationDex,
             minAmountToSend: minAllowableAmountToForwardCore,
             maxAmountToSend: maxAllowableAmountToForwardCore,
             isSponsored: params.maxBpsToSponsor > 0,
@@ -711,7 +722,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             initialToken,
             initialCoreTokenInfo.coreIndex,
             tokensToSendEvm,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            HyperCoreLib.CORE_SPOT_DEX_ID
         );
     }
 
@@ -794,7 +806,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 finalToken,
                 finalCoreTokenInfo.coreIndex,
                 totalAdditionalToSendEVM,
-                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+                HyperCoreLib.CORE_SPOT_DEX_ID
             );
         }
     }
@@ -836,7 +849,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        swapHandler.transferFundsToUserOnCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
+        swapHandler.transferFundsToUserOnCore(
+            finalCoreTokenInfo.coreIndex,
+            swap.finalRecipient,
+            totalToSend,
+            swap.destinationDex
+        );
         emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSendEVM);
     }
 
@@ -905,12 +923,13 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             fundingToken,
             coreTokenInfo.coreIndex,
             evmAmountToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            HyperCoreLib.CORE_SPOT_DEX_ID
         );
         // The total balance withdrawn from Handler @ Core for this operation is activationFee + amountSent, so we set
         // amountSent to 1 wei to only activate the account
         // Handler @ core -> finalRecipient @ core
-        HyperCoreLib.transferERC20CoreToCore(coreTokenInfo.coreIndex, finalRecipient, 1);
+        HyperCoreLib.transferERC20CoreToCore(coreTokenInfo.coreIndex, finalRecipient, 1, HyperCoreLib.CORE_SPOT_DEX_ID);
 
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, evmAmountToSend);
     }
@@ -1004,7 +1023,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             token,
             coreTokenInfo.coreIndex,
             amountEVMToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            HyperCoreLib.CORE_SPOT_DEX_ID
         );
     }
 
@@ -1116,8 +1136,13 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepOnCore(address token, uint64 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
-        HyperCoreLib.transferERC20CoreToCore(_getMainStorage().coreTokenInfos[token].coreIndex, msg.sender, amount);
+    function sweepOnCore(address token, uint64 amount, uint32 destinationDex) external onlyRole(FUNDS_SWEEPER_ROLE) {
+        HyperCoreLib.transferERC20CoreToCore(
+            _getMainStorage().coreTokenInfos[token].coreIndex,
+            msg.sender,
+            amount,
+            destinationDex
+        );
     }
 
     function sweepOnCoreFromSwapHandler(
@@ -1130,11 +1155,23 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         $.lastPullFundsBlock[finalToken] = block.number;
 
         SwapHandler swapHandler = $.finalTokenInfos[finalToken].swapHandler;
+
+        // funds in swap handler will always be in spot dex
         if (finalTokenAmount > 0) {
-            swapHandler.transferFundsToUserOnCore($.coreTokenInfos[finalToken].coreIndex, msg.sender, finalTokenAmount);
+            swapHandler.transferFundsToUserOnCore(
+                $.coreTokenInfos[finalToken].coreIndex,
+                msg.sender,
+                finalTokenAmount,
+                HyperCoreLib.CORE_SPOT_DEX_ID
+            );
         }
         if (baseTokenAmount > 0) {
-            swapHandler.transferFundsToUserOnCore($.coreTokenInfos[baseToken].coreIndex, msg.sender, baseTokenAmount);
+            swapHandler.transferFundsToUserOnCore(
+                $.coreTokenInfos[baseToken].coreIndex,
+                msg.sender,
+                baseTokenAmount,
+                HyperCoreLib.CORE_SPOT_DEX_ID
+            );
         }
     }
 }

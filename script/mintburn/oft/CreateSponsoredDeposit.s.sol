@@ -10,6 +10,7 @@ import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters
 import { ComposeMsgCodec } from "../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalLZOptions.sol";
 import { IOFT, SendParam, MessagingFee, IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
+import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -196,6 +197,7 @@ contract CreateSponsoredDeposit is Script, Config {
             maxBpsToSponsor: maxBpsToSponsor,
             finalRecipient: finalRecipient.toBytes32(),
             finalToken: finalToken.toBytes32(),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
             executionMode: 0,
@@ -265,6 +267,7 @@ contract CreateSponsoredDeposit is Script, Config {
             quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken,
+            quote.signedParams.destinationDex,
             quote.signedParams.executionMode,
             quote.signedParams.actionData
         );

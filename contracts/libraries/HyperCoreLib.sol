@@ -60,9 +60,10 @@ library HyperCoreLib {
     bytes4 public constant LIMIT_ORDER_HEADER = 0x01000001; // version=1, action=1
     bytes4 public constant SPOT_SEND_HEADER = 0x01000006; // version=1, action=6
     bytes4 public constant CANCEL_BY_CLOID_HEADER = 0x0100000B; // version=1, action=11
+    bytes4 public constant SEND_ASSET_TO_DEX_HEADER = 0x0100000D; // version=1, action=13
 
     // HyperCore protocol constants
-    uint32 private constant CORE_SPOT_DEX_ID = type(uint32).max;
+    uint32 public constant CORE_SPOT_DEX_ID = type(uint32).max;
 
     // Errors
     error LimitPxIsZero();
@@ -81,6 +82,7 @@ library HyperCoreLib {
      * @param to The address to receive tokens on HyperCore
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
+     * @param destinationDex The destination DEX on HyperCore
      * @return amountEVMSent The amount sent on HyperEVM
      * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
@@ -89,15 +91,16 @@ library HyperCoreLib {
         uint64 erc20CoreIndex,
         address to,
         uint256 amountEVM,
-        int8 decimalDiff
+        int8 decimalDiff,
+        uint32 destinationDex
     ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         // if the transfer amount exceeds the bridge balance, this wil revert
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend != 0) {
-            transferToCore(erc20EVMAddress, erc20CoreIndex, _amountEVMToSend);
+            transferToCore(erc20EVMAddress, erc20CoreIndex, _amountEVMToSend, destinationDex);
             // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-            transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive);
+            transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive, destinationDex);
         }
 
         return (_amountEVMToSend, _amountCoreToReceive);
@@ -111,6 +114,7 @@ library HyperCoreLib {
      * @param erc20CoreIndex The HyperCore index id of the token to transfer
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
+     * @param destinationDex The destination DEX on HyperCore
      * @return amountEVMSent The amount sent on HyperEVM
      * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
@@ -118,12 +122,13 @@ library HyperCoreLib {
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         uint256 amountEVM,
-        int8 decimalDiff
+        int8 decimalDiff,
+        uint32 destinationDex
     ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend != 0) {
-            transferToCore(erc20EVMAddress, erc20CoreIndex, _amountEVMToSend);
+            transferToCore(erc20EVMAddress, erc20CoreIndex, _amountEVMToSend, destinationDex);
         }
 
         return (_amountEVMToSend, _amountCoreToReceive);
@@ -134,10 +139,24 @@ library HyperCoreLib {
      * @param erc20CoreIndex The HyperCore index id of the token
      * @param to The address to receive tokens on HyperCore
      * @param amountCore The amount to transfer on HyperCore
+     * @param destinationDex The destination DEX on HyperCore
      */
-    function transferERC20CoreToCore(uint64 erc20CoreIndex, address to, uint64 amountCore) internal {
-        bytes memory action = abi.encode(to, erc20CoreIndex, amountCore);
-        bytes memory payload = abi.encodePacked(SPOT_SEND_HEADER, action);
+    function transferERC20CoreToCore(
+        uint64 erc20CoreIndex,
+        address to,
+        uint64 amountCore,
+        uint32 destinationDex
+    ) internal {
+        bytes memory action;
+        bytes memory payload;
+
+        if (erc20CoreIndex == USDC_CORE_INDEX) {
+            action = abi.encode(to, address(0), destinationDex, destinationDex, erc20CoreIndex, amountCore);
+            payload = abi.encodePacked(SEND_ASSET_TO_DEX_HEADER, action);
+        } else {
+            action = abi.encode(to, erc20CoreIndex, amountCore);
+            payload = abi.encodePacked(SPOT_SEND_HEADER, action);
+        }
 
         ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(payload);
     }
@@ -147,12 +166,18 @@ library HyperCoreLib {
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
      * @param erc20CoreIndex The HyperCore index id of the token to transfer
      * @param amountEVMToSend The amount to transfer on HyperEVM
+     * @param destinationDex The destination DEX on HyperCore
      */
-    function transferToCore(address erc20EVMAddress, uint64 erc20CoreIndex, uint256 amountEVMToSend) internal {
+    function transferToCore(
+        address erc20EVMAddress,
+        uint64 erc20CoreIndex,
+        uint256 amountEVMToSend,
+        uint32 destinationDex
+    ) internal {
         // USDC requires a special transfer to core
         if (erc20CoreIndex == USDC_CORE_INDEX) {
             IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, amountEVMToSend);
-            ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(amountEVMToSend, CORE_SPOT_DEX_ID);
+            ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(amountEVMToSend, destinationDex);
         } else {
             // For all other tokens, transfer to the asset bridge address on HyperCore
             IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), amountEVMToSend);

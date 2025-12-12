@@ -21,30 +21,29 @@ contract SwapHandler {
         _;
     }
 
-    function activateCoreAccount(
-        address erc20EVMAddress,
-        uint64 erc20CoreIndex,
-        uint256 amountEVM,
-        int8 decimalDiff
-    ) external onlyParentHandler {
-        HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
-    }
-
     function transferFundsToSelfOnCore(
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         uint256 amountEVM,
-        int8 decimalDiff
+        int8 decimalDiff,
+        uint32 destinationDex
     ) external onlyParentHandler {
-        HyperCoreLib.transferERC20EVMToSelfOnCore(erc20EVMAddress, erc20CoreIndex, amountEVM, decimalDiff);
+        HyperCoreLib.transferERC20EVMToSelfOnCore(
+            erc20EVMAddress,
+            erc20CoreIndex,
+            amountEVM,
+            decimalDiff,
+            destinationDex
+        );
     }
 
     function transferFundsToUserOnCore(
         uint64 erc20CoreIndex,
         address to,
-        uint64 amountCore
+        uint64 amountCore,
+        uint32 destinationDex
     ) external onlyParentHandler {
-        HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore);
+        HyperCoreLib.transferERC20CoreToCore(erc20CoreIndex, to, amountCore, destinationDex);
     }
 
     function submitSpotLimitOrder(

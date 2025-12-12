@@ -39,6 +39,7 @@ struct CommonFlowParams {
     bytes32 quoteNonce;
     address finalRecipient;
     address finalToken;
+    uint32 destinationDex;
     uint256 maxBpsToSponsor;
     uint256 extraFeesIncurred;
 }

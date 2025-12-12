@@ -92,6 +92,7 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
                 quoteNonce: QUOTE_NONCE,
                 finalRecipient: finalRecipient,
                 finalToken: address(token),
+                destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
                 maxBpsToSponsor: maxBpsToSponsor,
                 extraFeesIncurred: extraFeesIncurred
             });
@@ -143,6 +144,7 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
             quoteNonce: keccak256("quote-2"),
             finalRecipient: unactivated,
             finalToken: address(token),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             maxBpsToSponsor: maxBps,
             extraFeesIncurred: extraFees
         });

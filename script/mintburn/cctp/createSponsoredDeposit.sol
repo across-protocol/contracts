@@ -8,6 +8,7 @@ import { SponsoredCCTPSrcPeriphery } from "../../../contracts/periphery/mintburn
 import { ArbitraryEVMFlowExecutor } from "../../../contracts/periphery/mintburn/ArbitraryEVMFlowExecutor.sol";
 import { SponsoredCCTPInterface } from "../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
+import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 
 interface IHyperSwapRouter {
     struct ExactInputSingleParams {
@@ -97,6 +98,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
             maxUserSlippageBps: 0, // 4% max user slippage (400 basis points)
             finalRecipient: address(0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D).toBytes32(), // Final recipient
             finalToken: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f).toBytes32(), // USDC on HyperEVM
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID, // Spot DEX on HyperCore
             executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore), // DirectToCore mode
             actionData: emptyActionData // Empty for DirectToCore mode
         });

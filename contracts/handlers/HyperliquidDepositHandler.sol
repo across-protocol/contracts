@@ -180,7 +180,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      */
     function sweepCoreFundsToUser(address token, uint64 coreAmount, address user) external onlyOwner nonReentrant {
         uint64 tokenIndex = _getTokenInfo(token).tokenId;
-        HyperCoreLib.transferERC20CoreToCore(tokenIndex, user, coreAmount);
+        HyperCoreLib.transferERC20CoreToCore(tokenIndex, user, coreAmount, HyperCoreLib.CORE_SPOT_DEX_ID);
     }
 
     /**
@@ -225,12 +225,25 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             donationBox.withdraw(IERC20(token), amountRequiredToActivate);
             // Deposit the activation fee + 1 wei into this contract's core account to pay for the user's
             // account activation.
-            HyperCoreLib.transferERC20EVMToSelfOnCore(token, tokenIndex, amountRequiredToActivate, decimalDiff);
-            HyperCoreLib.transferERC20CoreToCore(tokenIndex, user, 1);
+            HyperCoreLib.transferERC20EVMToSelfOnCore(
+                token,
+                tokenIndex,
+                amountRequiredToActivate,
+                decimalDiff,
+                HyperCoreLib.CORE_SPOT_DEX_ID
+            );
+            HyperCoreLib.transferERC20CoreToCore(tokenIndex, user, 1, HyperCoreLib.CORE_SPOT_DEX_ID);
             emit UserAccountActivated(user, token, amountRequiredToActivate);
         }
 
-        HyperCoreLib.transferERC20EVMToCore(token, tokenIndex, user, evmAmount, decimalDiff);
+        HyperCoreLib.transferERC20EVMToCore(
+            token,
+            tokenIndex,
+            user,
+            evmAmount,
+            decimalDiff,
+            HyperCoreLib.CORE_SPOT_DEX_ID
+        );
     }
 
     function _verifySignature(address expectedUser, bytes memory signature) internal view returns (bool) {

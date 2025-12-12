@@ -78,6 +78,8 @@ interface SponsoredCCTPInterface {
         // The final token that final recipient will receive. This is needed as it can be different from the burnToken
         // in which case we perform a swap on the destination chain.
         bytes32 finalToken;
+        // The destination DEX on HyperCore.
+        uint32 destinationDex;
         // Execution mode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
         uint8 executionMode;
         // Encoded action data for arbitrary execution. Empty for DirectToCore mode.

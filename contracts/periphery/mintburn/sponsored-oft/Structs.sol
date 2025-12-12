@@ -30,6 +30,7 @@ struct SignedQuoteParams {
     uint256 maxBpsToSponsor; // max bps (of sent amount) to sponsor for 1:1
     bytes32 finalRecipient; // user address on destination
     bytes32 finalToken; // final token user will receive (might be different from OFT token we're sending)
+    uint32 destinationDex; // destination DEX on HyperCore
     // Signed gas limits for destination-side LZ execution
     uint256 lzReceiveGasLimit; // gas limit for `lzReceive` call on destination side
     uint256 lzComposeGasLimit; // gas limit for `lzCompose` call on destination side

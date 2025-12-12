@@ -34,7 +34,12 @@ contract DeployHyperliquidDepositHandler is Script, Test {
         HyperliquidDepositHandler hyperliquidDepositHandler = new HyperliquidDepositHandler(signer, spokePool);
 
         // Activate Handler account so it can write to CoreWriter by sending 1 core wei.
-        HyperCoreLib.transferERC20CoreToCore(usdhTokenIndex, address(hyperliquidDepositHandler), 1);
+        HyperCoreLib.transferERC20CoreToCore(
+            usdhTokenIndex,
+            address(hyperliquidDepositHandler),
+            1,
+            HyperCoreLib.CORE_SPOT_DEX_ID
+        );
         hyperliquidDepositHandler.addSupportedToken(address(usdh), usdhTokenIndex, 1000000, usdhDecimalDiff);
 
         // Log the deployed addresses

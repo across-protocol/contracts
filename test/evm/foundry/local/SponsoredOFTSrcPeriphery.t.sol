@@ -10,7 +10,7 @@ import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConvert
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
 import { MockEndpoint } from "../../../../contracts/test/MockEndpoint.sol";
-
+import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { DebugQuoteSignLib } from "../../../../script/mintburn/oft/CreateSponsoredDeposit.s.sol";
 
@@ -77,6 +77,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             maxBpsToSponsor: 500, // 5%
             finalRecipient: finalRecipientAddr.toBytes32(),
             finalToken: finalTokenAddr.toBytes32(),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: 500_000,
             lzComposeGasLimit: 500_000,
             executionMode: uint8(0), // DirectToCore
