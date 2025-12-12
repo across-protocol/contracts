@@ -7,6 +7,30 @@ import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
 
 /**
+ * @title MintableERC20
+ * @notice Simple mintable ERC20 with configurable decimals for testing.
+ */
+contract MintableERC20 is ERC20 {
+    uint8 private _decimals;
+
+    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20(name, symbol) {
+        _decimals = decimals_;
+    }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+
+    function burn(address from, uint256 amount) external {
+        _burn(from, amount);
+    }
+
+    function decimals() public view override returns (uint8) {
+        return _decimals;
+    }
+}
+
+/**
  * @title MockERC20
  * @notice Implements mocked ERC20 contract with various features.
  */
