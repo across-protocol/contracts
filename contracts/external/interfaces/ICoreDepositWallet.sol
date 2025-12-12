@@ -20,7 +20,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICoreDepositWallet
  * @notice Interface for the core deposit wallet
- * @dev Source: https://developers.circle.com/cctp/coredepositwallet-contract-interface#deposit-function
+ * @dev Source: https://github.com/circlefin/hyperevm-circle-contracts/blob/master/src/interfaces/ICoreDepositWallet.sol
  */
 interface ICoreDepositWallet {
     /**
@@ -29,4 +29,13 @@ interface ICoreDepositWallet {
      * @param destinationDex The destination dex on HyperCore.
      */
     function deposit(uint256 amount, uint32 destinationDex) external;
+
+    /**
+     * @notice Deposit tokens for a recipient
+     * @param recipient Recipient of the deposit
+     * @param amount Amount of tokens to deposit
+     * @param destinationId Forwarding-address-specific id used in conjunction with
+     * recipient to route the deposit to a specific location.
+     */
+    function depositFor(address recipient, uint256 amount, uint32 destinationId) external;
 }

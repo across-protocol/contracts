@@ -166,6 +166,7 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         uint256 maxUserSlippageBps = composeMsg._getMaxUserSlippageBps();
         address finalRecipient = composeMsg._getFinalRecipient().toAddress();
         address finalToken = composeMsg._getFinalToken().toAddress();
+        uint32 destinationDex = composeMsg._getDestinationDex();
         uint8 executionMode = composeMsg._getExecutionMode();
         bytes memory actionData = composeMsg._getActionData();
 
@@ -174,6 +175,7 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
             quoteNonce: quoteNonce,
             finalRecipient: finalRecipient,
             finalToken: finalToken,
+            destinationDex: destinationDex,
             maxBpsToSponsor: maxBpsToSponsor,
             extraFeesIncurred: EXTRA_FEES_TO_SPONSOR
         });

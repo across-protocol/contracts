@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Test, console } from "forge-std/Test.sol";
 import { SponsoredCCTPDstPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IHyperCoreFlowExecutor.sol";
+import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { IMessageTransmitterV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
@@ -230,6 +231,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 maxUserSlippageBps: 50, // 0.5%
                 finalRecipient: finalRecipient.toBytes32(),
                 finalToken: address(usdc).toBytes32(),
+                destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
                 executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
                 actionData: bytes("")
             });
