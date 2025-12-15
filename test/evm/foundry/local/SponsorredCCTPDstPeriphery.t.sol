@@ -143,6 +143,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             quote.maxUserSlippageBps,
             quote.finalRecipient,
             quote.finalToken,
+            quote.destinationDex,
             quote.executionMode,
             quote.actionData
         );
@@ -202,6 +203,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 quote.maxUserSlippageBps,
                 quote.finalRecipient,
                 quote.finalToken,
+                quote.destinationDex,
                 quote.executionMode,
                 keccak256(quote.actionData)
             )

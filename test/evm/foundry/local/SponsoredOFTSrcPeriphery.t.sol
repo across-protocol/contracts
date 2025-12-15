@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import { Test } from "forge-std/Test.sol";
-
+import { console } from "forge-std/console.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
@@ -157,9 +157,10 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             uint256 gotMaxUserSlippageBps,
             bytes32 gotFinalRecipient,
             bytes32 gotFinalToken,
+            uint32 gotDestinationDex,
             uint8 gotExecutionMode,
             bytes memory gotActionData
-        ) = abi.decode(spComposeMsg, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes));
+        ) = abi.decode(spComposeMsg, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes));
 
         assertEq(gotNonce, nonce, "nonce mismatch");
         assertEq(gotDeadline, deadline, "deadline mismatch");
@@ -167,6 +168,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
         assertEq(gotFinalRecipient, finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
         assertEq(gotFinalToken, finalTokenAddr.toBytes32(), "finalToken mismatch");
+        assertEq(gotDestinationDex, HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
         assertEq(gotExecutionMode, 0, "executionMode mismatch");
         assertEq(keccak256(gotActionData), keccak256(""), "actionData mismatch");
 

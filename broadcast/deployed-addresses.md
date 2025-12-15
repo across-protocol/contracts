@@ -167,6 +167,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | HyperliquidDepositHandler    | [0x861E127036B28D32f3777B4676F6bbb9e007d195](https://hyperevmscan.io//address/0x861E127036B28D32f3777B4676F6bbb9e007d195) |
 | MulticallHandler             | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
 | PermissionedMulticallHandler | [0x0980D0F6799CA06C71fFAFdc0E423cF2B0f20502](https://hyperevmscan.io//address/0x0980D0F6799CA06C71fFAFdc0E423cF2B0f20502) |
+| Sample                       | [0x27E3c9fD88f15B8F512E58e231a45679cd8cf238](https://hyperevmscan.io//address/0x27E3c9fD88f15B8F512E58e231a45679cd8cf238) |
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
 | SpokePoolPeriphery           | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
