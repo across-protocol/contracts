@@ -476,14 +476,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
      * checked by a handler. Params authorization by a handler is enforced via `onlyAuthorizedFlow` modifier
      */
     function executeFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) external onlyAuthorizedFlow {
-        MainStorage storage $ = _getMainStorage();
-        CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[params.finalToken];
-
-        // If the final token is not USDC, we need to set the destination dex to the spot dex
-        if (coreTokenInfo.coreIndex != HyperCoreLib.USDC_CORE_INDEX) {
-            params.destinationDex = HyperCoreLib.CORE_SPOT_DEX_ID;
-        }
-
         if (params.finalToken == baseToken) {
             _executeSimpleTransferFlow(params);
         } else {

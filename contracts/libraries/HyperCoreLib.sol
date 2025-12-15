@@ -162,7 +162,7 @@ library HyperCoreLib {
         bytes memory action;
         bytes memory payload;
 
-        if (erc20CoreIndex == USDC_CORE_INDEX) {
+        if (destinationDex != CORE_SPOT_DEX_ID) {
             action = abi.encode(to, address(0), sourceDex, destinationDex, erc20CoreIndex, amountCore);
             payload = abi.encodePacked(SEND_ASSET_TO_DEX_HEADER, action);
         } else {
