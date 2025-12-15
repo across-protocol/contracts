@@ -136,7 +136,7 @@ solana program deploy \
   --keypair $KEYPAIR \
   --program-id target/deploy/$PROGRAM-keypair.json \
   --max-len $MAX_LEN \
-  --with-compute-unit-price 50000 \
+  --with-compute-unit-price 100000 \
   --max-sign-attempts 100 \
   --use-rpc \
   target/deploy/$PROGRAM.so
@@ -189,6 +189,22 @@ anchor run createVault \
   --originToken $MINT
 ```
 
+`sponsored_cctp_src_periphery` requires initialization and setting minimum deposit amount for supported burn token:
+
+```shell
+# Replace --quoteSigner with actual quote signer address
+anchor run initializeSponsoredCctpSrc \
+  --provider.cluster $RPC_URL \
+  --provider.wallet $KEYPAIR -- \
+  --quoteSigner 0x0000000000000000000000000000000000000000
+# Below is USDC on devnet, replace --burnToken with mainnet burn token and --amount with required minimum deposit amount (raw value)
+anchor run setMinimumDepositSponsoredCctpSrc \
+  --provider.cluster $RPC_URL \
+  --provider.wallet $KEYPAIR -- \
+  --burnToken 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU \
+  --amount 0
+```
+
 #### Upgrades
 
 Initiate the program upgrade:
@@ -197,7 +213,7 @@ Initiate the program upgrade:
 solana program write-buffer \
   --url $RPC_URL \
   --keypair $KEYPAIR \
-  --with-compute-unit-price 50000 \
+  --with-compute-unit-price 100000 \
   --max-sign-attempts 100 \
   --use-rpc \
   target/deploy/$PROGRAM.so

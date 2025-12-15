@@ -23,7 +23,6 @@ contract DeploySponsoredCCTPSrcPeriphery is DeploymentUtils {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // TODO: use create2 for final deployment
         SponsoredCCTPSrcPeriphery sponsoredCCTPSrcPeriphery = new SponsoredCCTPSrcPeriphery(
             cctpTokenMessenger,
             sourceDomain,
