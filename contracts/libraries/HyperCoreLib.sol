@@ -104,7 +104,7 @@ library HyperCoreLib {
             } else {
                 IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
                 // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-                transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive, destinationDex, destinationDex);
+                transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive, CORE_SPOT_DEX_ID, destinationDex);
             }
         }
 
