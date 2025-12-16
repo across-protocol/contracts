@@ -53,6 +53,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     error InvalidSignature();
     error NotSpokePool();
     error AccountAlreadyActivated();
+    error CannotActivateAccount();
 
     event UserAccountActivated(address user, address indexed token, uint256 amountRequiredToActivate);
     event AddedSupportedToken(address evmAddress, uint64 tokenId, uint256 activationFeeEvm, int8 decimalDiff);
@@ -86,19 +87,15 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * @dev Requires msg.sender to have approved this contract to spend the tokens.
      * @param token The address of the token to deposit.
      * @param amount The amount of tokens on HyperEVM to deposit.
-     * @param user The address of the user on Hypercore to send the tokens to.
-     * @param signature Encoded signed message containing the end user address. The payload is designed to be signed
-     * by the Across API to prevent griefing attacks that attempt to drain the Donation Box.
+     * @param message The first byte selects the type of encoded message. If the first byte is 0, then
+     * the remainder of the message should be equal to abi.encode(user). If the first byte is 1, then the
+     * remainder of the message should be abi.encode(user, signature) where signature is an encoded signed message
+     * containing the end user address. The payload is designed to be signed by the Across API to prevent
+     * griefing attacks that attempt to drain the Donation Box.
      */
-    function depositToHypercore(
-        address token,
-        uint256 amount,
-        address user,
-        bytes memory signature
-    ) external nonReentrant {
-        _verifySignature(user, signature);
+    function depositToHypercore(address token, uint256 amount, bytes calldata message) external nonReentrant {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-        _depositToHypercore(token, amount, user);
+        _decodeMessageAndDepositToHypercore(token, amount, message);
     }
 
     /**
@@ -108,18 +105,30 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * to drain funds that were accidentally dropped onto this contract.
      * @param token The address of the token sent.
      * @param amount The amount of tokens received by this contract.
-     * @param message Encoded signed message containing the end user address. The payload is designed to be signed
-     * by the Across API to prevent griefing attacks that attempt to drain the Donation Box.
+     * @param message The first byte selects the type of encoded message. If the first byte is 0, then
+     * the remainder of the message should be equal to abi.encode(user). If the first byte is 1, then the
+     * remainder of the message should be abi.encode(user, signature) where signature is an encoded signed message
+     * containing the end user address. The payload is designed to be signed by the Across API to prevent
+     * griefing attacks that attempt to drain the Donation Box.
      */
     function handleV3AcrossMessage(
         address token,
         uint256 amount,
         address /* relayer */,
-        bytes memory message
+        bytes calldata message
     ) external nonReentrant onlySpokePool {
-        (address user, bytes memory signature) = abi.decode(message, (address, bytes));
-        _verifySignature(user, signature);
-        _depositToHypercore(token, amount, user);
+        _decodeMessageAndDepositToHypercore(token, amount, message);
+    }
+
+    function _decodeMessageAndDepositToHypercore(address token, uint256 amount, bytes calldata message) internal {
+        if (message[0] == 0) {
+            address user = abi.decode(message[1:], (address));
+            _depositToHypercore(token, amount, user, false);
+        } else if (message[0] == bytes1("1")) {
+            (address user, bytes memory signature) = abi.decode(message[1:], (address, bytes));
+            _verifySignature(user, signature);
+            _depositToHypercore(token, amount, user, true);
+        }
     }
 
     /// -------------------------------------------------------------------------------------------------------------
@@ -208,13 +217,14 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     /// - INTERNAL FUNCTIONS -
     /// -------------------------------------------------------------------------------------------------------------
 
-    function _depositToHypercore(address token, uint256 evmAmount, address user) internal {
+    function _depositToHypercore(address token, uint256 evmAmount, address user, bool canActivateAccount) internal {
         TokenInfo memory tokenInfo = _getTokenInfo(token);
         uint64 tokenIndex = tokenInfo.tokenId;
         int8 decimalDiff = tokenInfo.decimalDiff;
 
         bool userExists = HyperCoreLib.coreUserExists(user);
         if (!userExists) {
+            if (!canActivateAccount) revert CannotActivateAccount();
             if (accountsActivated[user]) revert AccountAlreadyActivated();
             accountsActivated[user] = true;
             // To activate an account, we must pay the activation fee from this contract's core account and then send 1
