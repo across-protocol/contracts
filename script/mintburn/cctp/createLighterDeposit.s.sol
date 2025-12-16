@@ -102,7 +102,7 @@ contract CreateLighterDeposit is Script, Config {
             amount: amount,
             burnToken: env.srcUsdc.toBytes32(),
             destinationCaller: env.dstPeriphery.toBytes32(),
-            maxFee: 100,
+            maxFee: (amount * 5) / 10000 + 1000000, // 5 bips + 1 USDC to get a fast transfer guaranteed
             minFinalityThreshold: 1000,
             nonce: keccak256(abi.encodePacked(block.timestamp, deployer, vm.getNonce(deployer))),
             deadline: block.timestamp + 10800, // 3 hours
