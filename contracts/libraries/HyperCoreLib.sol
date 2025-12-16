@@ -83,8 +83,9 @@ library HyperCoreLib {
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param destinationDex The destination DEX on HyperCore
+     * @param accountCreationFee Present (> 0) if we have to create an account for the user, in which case we have to
+     *                             subtract this amount from the amount that we're sending
      * @return amountEVMSent The amount sent on HyperEVM
-     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
     function transferERC20EVMToCore(
         address erc20EVMAddress,
@@ -92,7 +93,8 @@ library HyperCoreLib {
         address to,
         uint256 amountEVM,
         int8 decimalDiff,
-        uint32 destinationDex
+        uint32 destinationDex,
+        uint64 accountCreationFee
     ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         // if the transfer amount exceeds the bridge balance, this wil revert
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
@@ -104,7 +106,15 @@ library HyperCoreLib {
             } else {
                 IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
                 // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-                transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive, CORE_SPOT_DEX_ID, destinationDex);
+                if (_amountCoreToReceive > accountCreationFee) {
+                    transferERC20CoreToCore(
+                        erc20CoreIndex,
+                        to,
+                        _amountCoreToReceive - accountCreationFee,
+                        CORE_SPOT_DEX_ID,
+                        destinationDex
+                    );
+                }
             }
         }
 
