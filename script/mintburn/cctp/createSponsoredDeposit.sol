@@ -135,7 +135,9 @@ contract CreateSponsoredDeposit is DeploymentUtils {
                 quote.maxUserSlippageBps,
                 quote.finalRecipient,
                 quote.finalToken,
+                quote.destinationDex,
                 quote.executionMode,
+                quote.accountCreationMode,
                 keccak256(quote.actionData)
             )
         );
