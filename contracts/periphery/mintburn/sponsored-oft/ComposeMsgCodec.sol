@@ -11,7 +11,7 @@ library ComposeMsgCodec {
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 128;
     uint256 internal constant FINAL_TOKEN_OFFSET = 160;
     uint256 internal constant DESTINATION_DEX_OFFSET = 192;
-    uint256 internal constant EXECUTION_MODE_OFFSET = 196;
+    uint256 internal constant EXECUTION_MODE_OFFSET = 224;
     // Minimum length with empty actionData: 8 regular params (32 bytes each) and 1 dynamic byte array (minumum 64 bytes)
     uint256 internal constant MIN_COMPOSE_MSG_BYTE_LENGTH = 320;
 
