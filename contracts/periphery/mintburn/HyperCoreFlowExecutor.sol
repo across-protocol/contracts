@@ -914,9 +914,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             return false;
         }
 
-        require(tokenOnHandInfo.canBeUsedForAccountActivation, "tokenOnHand cannot be used for activation");
-
         if (params.accountCreationMode == AccountCreationMode.FromUserFunds) {
+            require(tokenOnHandInfo.canBeUsedForAccountActivation, "tokenOnHand cannot be used for activation");
+
             if (params.amountInEVM <= tokenOnHandInfo.accountActivationFeeEVM) {
                 return true;
             }
