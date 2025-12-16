@@ -33,7 +33,9 @@ contract SwapHandler {
             erc20CoreIndex,
             amountEVM,
             decimalDiff,
-            destinationDex
+            destinationDex,
+            // SwapHandler is guaranteed to have an HCore account, so account creation fee is zero
+            0
         );
     }
 

@@ -504,9 +504,10 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         (
             uint256 accountActivationFeeEVM,
             uint64 accountActivationFeeCore,
-            bool fallbackOccurred
+            bool evmFallbackRequired
         ) = _handleHyperCoreAccount(params, finalToken, coreTokenInfo);
-        if (fallbackOccurred) {
+        if (evmFallbackRequired) {
+            _fallbackHyperEVMFlow(params);
             return;
         }
 
@@ -597,8 +598,10 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         CoreTokenInfo memory initialCoreTokenInfo = $.coreTokenInfos[initialToken];
 
         // Check account activation
-        (, , bool fallbackOccurred) = _handleHyperCoreAccount(params, initialToken, initialCoreTokenInfo);
-        if (fallbackOccurred) {
+        (, , bool evmFallbackRequired) = _handleHyperCoreAccount(params, initialToken, initialCoreTokenInfo);
+        if (evmFallbackRequired) {
+            params.finalToken = initialToken;
+            _fallbackHyperEVMFlow(params);
             return;
         }
 
@@ -915,7 +918,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         CommonFlowParams memory params,
         address tokenOnHandAddress,
         CoreTokenInfo memory tokenOnHandInfo
-    ) internal returns (uint256 activationFeeEVM, uint64 activationFeeCore, bool fallbackOccurred) {
+    ) internal returns (uint256 activationFeeEVM, uint64 activationFeeCore, bool evmFallbackRequired) {
         if (HyperCoreLib.coreUserExists(params.finalRecipient)) {
             return (0, 0, false);
         }
@@ -948,12 +951,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 // `activateUserAccount` call
                 revert AccountNotActivatedError(params.finalRecipient);
             } else {
-                // For non-sponsored flow, we fall back to HyperEVM
+                // For non-sponsored flow, we require a fall back to evm flow
                 emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                if (isSwapFlow) {
-                    params.finalToken = tokenOnHandAddress;
-                }
-                _fallbackHyperEVMFlow(params);
                 return (0, 0, true);
             }
         }

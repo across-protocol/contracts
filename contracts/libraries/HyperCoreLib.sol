@@ -83,9 +83,8 @@ library HyperCoreLib {
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param destinationDex The destination DEX on HyperCore
-     * @param accountCreationFee Present (> 0) if we have to create an account for the user, in which case we have to
-     *                             subtract this amount from the amount that we're sending
-     * @return amountEVMSent The amount sent on HyperEVM
+     * @param accountCreationFee Present (> 0) if we have to create an account for the `to`, in which case we have to
+     *                           subtract this amount from the amount that we're sending on core
      */
     function transferERC20EVMToCore(
         address erc20EVMAddress,
@@ -95,30 +94,42 @@ library HyperCoreLib {
         int8 decimalDiff,
         uint32 destinationDex,
         uint64 accountCreationFee
-    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
-        // if the transfer amount exceeds the bridge balance, this wil revert
-        (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
+    ) internal {
+        bool transferToSelf = to == address(this);
 
-        if (_amountEVMToSend != 0) {
+        // If the transfer amount exceeds the bridge balance, the funds will get blackholed
+        (uint256 _amountEVMToSend, uint64 _amountCoreEq) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
+
+        if (_amountEVMToSend > 0) {
             if (erc20CoreIndex == USDC_CORE_INDEX) {
                 IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, _amountEVMToSend);
-                ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(to, _amountEVMToSend, destinationDex);
+                // 2 Options:
+                // 1. destinatonDex == spot: a single evm -> spot transfer
+                // 2. destinatonDex != spot: evm -> spot followed by a spot -> perp
+                if (transferToSelf) {
+                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(_amountEVMToSend, destinationDex);
+                } else {
+                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(
+                        to,
+                        _amountEVMToSend,
+                        destinationDex
+                    );
+                }
             } else {
+                // Transfer 1: self @ evm -> self @ spot
                 IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
-                // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-                if (_amountCoreToReceive > accountCreationFee) {
+                // Transfer 2: self @ spot -> to @ destinationDex
+                if (!transferToSelf && _amountCoreEq > accountCreationFee) {
                     transferERC20CoreToCore(
                         erc20CoreIndex,
                         to,
-                        _amountCoreToReceive - accountCreationFee,
+                        _amountCoreEq - accountCreationFee,
                         CORE_SPOT_DEX_ID,
                         destinationDex
                     );
                 }
             }
         }
-
-        return (_amountEVMToSend, _amountCoreToReceive);
     }
 
     /**
@@ -130,28 +141,26 @@ library HyperCoreLib {
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param destinationDex The destination DEX on HyperCore
-     * @return amountEVMSent The amount sent on HyperEVM
-     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
+     * @param accountCreationFee Whether or not an account creation fee will be charged
      */
     function transferERC20EVMToSelfOnCore(
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         uint256 amountEVM,
         int8 decimalDiff,
-        uint32 destinationDex
-    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
-        (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
-
-        if (_amountEVMToSend != 0) {
-            if (erc20CoreIndex == USDC_CORE_INDEX) {
-                IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, _amountEVMToSend);
-                ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(_amountEVMToSend, destinationDex);
-            } else {
-                IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
-            }
-        }
-
-        return (_amountEVMToSend, _amountCoreToReceive);
+        uint32 destinationDex,
+        uint64 accountCreationFee
+    ) internal {
+        transferERC20EVMToCore(
+            erc20EVMAddress,
+            erc20CoreIndex,
+            address(this),
+            amountEVM,
+            decimalDiff,
+            destinationDex,
+            // todo? Consider hardcoding it at zero (as all of our accounts' HCore account will be created)
+            accountCreationFee
+        );
     }
 
     /**
