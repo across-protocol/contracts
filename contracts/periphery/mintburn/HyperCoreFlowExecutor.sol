@@ -493,6 +493,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         _fallbackHyperEVMFlow(params);
     }
 
+    // todo: testing. This code has to live elsewhere
+    enum AccountCreationMode {
+        Standard,
+        FromUserFunds
+    }
+
     /// @notice Execute a simple transfer flow in which we transfer `finalToken` to the user on HyperCore after receiving
     /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(CommonFlowParams memory params) internal {
@@ -500,21 +506,35 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[finalToken];
 
-        // // Check account activation
-        // if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-        //     if (params.maxBpsToSponsor > 0) {
-        //         revert AccountNotActivatedError(params.finalRecipient);
-        //     } else {
-        //         emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-        //         _fallbackHyperEVMFlow(params);
-        //         return;
-        //     }
-        // }
+        // todo: testing
+        AccountCreationMode mode = AccountCreationMode.FromUserFunds;
 
-        // todo: if the mode is Standard, use logic above, otherwise calculate the amounts mentioned below
+        bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
+        uint256 accountActivationFeeEVM;
+        uint64 accountActivationFeeCore;
+        if (!userAccountExists) {
+            if (mode == AccountCreationMode.Standard) {
+                if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
+                    if (params.maxBpsToSponsor > 0) {
+                        revert AccountNotActivatedError(params.finalRecipient);
+                    } else {
+                        emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                        _fallbackHyperEVMFlow(params);
+                        return;
+                    }
+                }
+            } else {
+                // Notice. If the amount is too small to be able to activate an account, the funds will land there, but
+                // the account won't show up as active until an eligible transfer activates it
+                if (!coreTokenInfo.canBeUsedForAccountActivation) {
+                    _fallbackHyperEVMFlow(params);
+                    return;
+                }
+                accountActivationFeeEVM = coreTokenInfo.accountActivationFeeEVM;
+                accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
+            }
+        }
 
-        // todo: change the calculation here based on Standard / FromUserBalance account creation
-        // todo: something like _accountCreationAmountsToSponsor(tokenOnHand) uint256, uint64
         uint256 amountToSponsor;
         {
             uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
@@ -565,9 +585,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         $.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
 
-        // todo: based on sponsored / not sponsored, we have to potentially reduce our core -> core send amount by
-        // todo: the fee it takes to sponsor an account
-
         // There is a very slim change that someone is sending > buffer amount in the same EVM block and the balance of
         // the bridge is not enough to cover our transfer, so the funds are lost.
         HyperCoreLib.transferERC20EVMToCore(
@@ -576,7 +593,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             params.finalRecipient,
             quotedEvmAmount,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            params.destinationDex
+            params.destinationDex,
+            accountActivationFeeCore
         );
 
         emit SimpleTransferFlowCompleted(
@@ -599,29 +617,38 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
         address initialToken = baseToken;
 
-        // // Check account activation
-        // if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-        //     if (params.maxBpsToSponsor > 0) {
-        //         revert AccountNotActivatedError(params.finalRecipient);
-        //     } else {
-        //         emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-        //         params.finalToken = initialToken;
-        //         _fallbackHyperEVMFlow(params);
-        //         return;
-        //     }
-        // }
-
-        // todo: if mode == Standard, implement logic above (perhaps in a function)
-        // todo: otherwise, reduce params.amountInEVM for the calculations below (calculate amounts similarly to simple transfer flow)
-        // todo: when bridging below and checking for bridge safety, add that core amount to the safety check
-        // todo: send amountInEvm + amountForAccountCreationEvm
-        // todo: send 1 wei to user on core (funded by amountForAccountCreationEvm)
-        // todo: tokensToSendEvm needs to be reduced, and we need to just send baseToken from out main Handler account separately
-
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory initialCoreTokenInfo = $.coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
+
+        // todo: testing
+        AccountCreationMode mode = AccountCreationMode.FromUserFunds;
+
+        bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
+        if (!userAccountExists) {
+            if (mode == AccountCreationMode.Standard) {
+                if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
+                    if (params.maxBpsToSponsor > 0) {
+                        revert AccountNotActivatedError(params.finalRecipient);
+                    } else {
+                        emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                        params.finalToken = initialToken;
+                        _fallbackHyperEVMFlow(params);
+                        return;
+                    }
+                }
+            } else {
+                // In the FromUserFunds logic for the swap flow, we only allow account creation if the final token is
+                // usable for it. Finilazing the swap flow should handle account creation automatically when doing the
+                // final transfer of tokens to the user
+                if (!finalCoreTokenInfo.canBeUsedForAccountActivation) {
+                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                    params.finalToken = initialToken;
+                    _fallbackHyperEVMFlow(params);
+                }
+            }
+        }
 
         // Calculate limit order amounts and check if feasible
         uint64 minAllowableAmountToForwardCore;
