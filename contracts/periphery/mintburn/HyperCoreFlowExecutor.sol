@@ -510,7 +510,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         AccountCreationMode mode = AccountCreationMode.FromUserFunds;
 
         bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
-        uint256 accountActivationFeeEVM;
         uint64 accountActivationFeeCore;
         if (!userAccountExists) {
             if (mode == AccountCreationMode.Standard) {
@@ -530,7 +529,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                     _fallbackHyperEVMFlow(params);
                     return;
                 }
-                accountActivationFeeEVM = coreTokenInfo.accountActivationFeeEVM;
                 accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
             }
         }
