@@ -82,6 +82,8 @@ interface SponsoredCCTPInterface {
         uint32 destinationDex;
         // Execution mode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
         uint8 executionMode;
+        // Account creation mode: Sponsored or FromUserFunds
+        uint8 accountCreationMode;
         // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
         bytes actionData;
     }

@@ -26,6 +26,7 @@ library QuoteSignLib {
                     p.lzReceiveGasLimit,
                     p.lzComposeGasLimit,
                     p.executionMode,
+                    p.accountCreationMode,
                     keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
                 )
             );

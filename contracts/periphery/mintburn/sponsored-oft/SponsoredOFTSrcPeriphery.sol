@@ -170,6 +170,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.finalToken,
             quote.signedParams.destinationDex,
             quote.signedParams.executionMode,
+            quote.signedParams.accountCreationMode,
             quote.signedParams.actionData
         );
 

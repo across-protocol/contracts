@@ -33,6 +33,12 @@ struct FinalTokenInfo {
     SwapHandler swapHandler;
 }
 
+/// @notice Modes for account creation on HyperCore
+enum AccountCreationMode {
+    Standard,
+    FromUserFunds
+}
+
 /// @notice Common parameters shared across flow execution functions
 struct CommonFlowParams {
     uint256 amountInEVM;
@@ -42,6 +48,7 @@ struct CommonFlowParams {
     uint32 destinationDex;
     uint256 maxBpsToSponsor;
     uint256 extraFeesIncurred;
+    AccountCreationMode accountCreationMode;
 }
 
 /// @notice Parameters for executing flows with arbitrary EVM actions

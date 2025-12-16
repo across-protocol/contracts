@@ -10,7 +10,7 @@ import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressCo
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
-import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
+import { CommonFlowParams, EVMFlowParams, AccountCreationMode } from "../Structs.sol";
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
@@ -168,6 +168,7 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         address finalToken = composeMsg._getFinalToken().toAddress();
         uint32 destinationDex = composeMsg._getDestinationDex();
         uint8 executionMode = composeMsg._getExecutionMode();
+        uint8 accountCreationMode = composeMsg._getAccountCreationMode();
         bytes memory actionData = composeMsg._getActionData();
 
         CommonFlowParams memory commonParams = CommonFlowParams({
@@ -177,7 +178,8 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
             finalToken: finalToken,
             destinationDex: destinationDex,
             maxBpsToSponsor: maxBpsToSponsor,
-            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR
+            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR,
+            accountCreationMode: AccountCreationMode(accountCreationMode)
         });
 
         // Route to appropriate execution based on executionMode
