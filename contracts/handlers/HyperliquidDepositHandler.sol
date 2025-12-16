@@ -236,8 +236,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
                 tokenIndex,
                 amountRequiredToActivate,
                 decimalDiff,
-                HyperCoreLib.CORE_SPOT_DEX_ID,
-                0
+                HyperCoreLib.CORE_SPOT_DEX_ID
             );
             HyperCoreLib.transferERC20CoreToCore(
                 tokenIndex,
@@ -255,9 +254,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             user,
             evmAmount,
             decimalDiff,
-            HyperCoreLib.CORE_SPOT_DEX_ID,
-            // Zero here, because account was activated by previous actions
-            0
+            HyperCoreLib.CORE_SPOT_DEX_ID
         );
     }
 

@@ -76,6 +76,7 @@ library HyperCoreLib {
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
+     * @dev Only works correctly for already created HyperCore account recipients
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
      * @param erc20CoreIndex The HyperCore index id of the token to transfer
@@ -83,8 +84,8 @@ library HyperCoreLib {
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param destinationDex The destination DEX on HyperCore
-     * @param accountCreationFee Present (> 0) if we have to create an account for the `to`, in which case we have to
-     *                           subtract this amount from the amount that we're sending on core
+     * @return amountEVMSent The amount sent on HyperEVM
+     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
     function transferERC20EVMToCore(
         address erc20EVMAddress,
@@ -92,13 +93,12 @@ library HyperCoreLib {
         address to,
         uint256 amountEVM,
         int8 decimalDiff,
-        uint32 destinationDex,
-        uint64 accountCreationFee
-    ) internal {
+        uint32 destinationDex
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         bool transferToSelf = to == address(this);
 
         // If the transfer amount exceeds the bridge balance, the funds will get blackholed
-        (uint256 _amountEVMToSend, uint64 _amountCoreEq) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
+        (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend > 0) {
             if (erc20CoreIndex == USDC_CORE_INDEX) {
@@ -118,18 +118,14 @@ library HyperCoreLib {
             } else {
                 // Transfer 1: self @ evm -> self @ spot
                 IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
-                // Transfer 2: self @ spot -> to @ destinationDex
-                if (!transferToSelf && _amountCoreEq > accountCreationFee) {
-                    transferERC20CoreToCore(
-                        erc20CoreIndex,
-                        to,
-                        _amountCoreEq - accountCreationFee,
-                        CORE_SPOT_DEX_ID,
-                        destinationDex
-                    );
+                // Optional transfer 2: self @ spot -> to @ destinationDex
+                if (!transferToSelf || destinationDex != CORE_SPOT_DEX_ID) {
+                    transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive, CORE_SPOT_DEX_ID, destinationDex);
                 }
             }
         }
+
+        return (_amountEVMToSend, _amountCoreToReceive);
     }
 
     /**
@@ -141,26 +137,25 @@ library HyperCoreLib {
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param destinationDex The destination DEX on HyperCore
-     * @param accountCreationFee Whether or not an account creation fee will be charged
+     * @return amountEVMSent The amount sent on HyperEVM
+     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
     function transferERC20EVMToSelfOnCore(
         address erc20EVMAddress,
         uint64 erc20CoreIndex,
         uint256 amountEVM,
         int8 decimalDiff,
-        uint32 destinationDex,
-        uint64 accountCreationFee
-    ) internal {
-        transferERC20EVMToCore(
-            erc20EVMAddress,
-            erc20CoreIndex,
-            address(this),
-            amountEVM,
-            decimalDiff,
-            destinationDex,
-            // todo? Consider hardcoding it at zero (as all of our accounts' HCore account will be created)
-            accountCreationFee
-        );
+        uint32 destinationDex
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+        return
+            transferERC20EVMToCore(
+                erc20EVMAddress,
+                erc20CoreIndex,
+                address(this),
+                amountEVM,
+                decimalDiff,
+                destinationDex
+            );
     }
 
     /**
