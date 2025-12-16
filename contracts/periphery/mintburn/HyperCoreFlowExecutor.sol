@@ -714,8 +714,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             initialToken,
             initialCoreTokenInfo.coreIndex,
             tokensToSendEvm,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            HyperCoreLib.CORE_SPOT_DEX_ID
+            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
     }
 
@@ -798,8 +797,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                 finalToken,
                 finalCoreTokenInfo.coreIndex,
                 totalAdditionalToSendEVM,
-                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-                HyperCoreLib.CORE_SPOT_DEX_ID
+                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
     }
@@ -908,6 +906,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         require(safeToBridge, "Not safe to bridge");
         _getMainStorage().cumulativeSponsoredActivationFee[fundingToken] += evmAmountToSend;
 
+        // donationBox @ evm -> Handler @ evm
+        donationBox.withdraw(IERC20(fundingToken), evmAmountToSend);
+
         HyperCoreLib.activateCoreAccountFromEVM(fundingToken, coreTokenInfo.coreIndex, finalRecipient, evmAmountToSend);
 
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, evmAmountToSend);
@@ -1002,8 +1003,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             token,
             coreTokenInfo.coreIndex,
             amountEVMToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            HyperCoreLib.CORE_SPOT_DEX_ID
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
     }
 

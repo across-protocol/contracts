@@ -112,6 +112,32 @@ library HyperCoreLib {
     }
 
     /**
+     * @notice Bridges `amountEVM` of `erc20` from this address on HyperEVM to this address on HyperCore on the Spot DEX.
+     * @dev Returns the amount sent on HyperEVM and the amount credited on Core in Core units (post conversion).
+     * @dev The decimal difference is evmDecimals - coreDecimals
+     * @param erc20EVMAddress The address of the ERC20 token on HyperEVM
+     * @param erc20CoreIndex The HyperCore index id of the token to transfer
+     * @param amountEVM The amount to transfer on HyperEVM
+     * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
+     * @return amountEVMSent The amount sent on HyperEVM
+     * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
+     */
+    function transferERC20EVMToSelfOnSpot(
+        address erc20EVMAddress,
+        uint64 erc20CoreIndex,
+        uint256 amountEVM,
+        int8 decimalDiff
+    ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
+        (amountEVMSent, amountCoreToReceive) = transferERC20EVMToSelfOnCore(
+            erc20EVMAddress,
+            erc20CoreIndex,
+            amountEVM,
+            decimalDiff,
+            CORE_SPOT_DEX_ID
+        );
+    }
+
+    /**
      * @notice Bridges `amountEVM` of `erc20` from this address on HyperEVM to this address on HyperCore.
      * @dev Returns the amount credited on Core in Core units (post conversion).
      * @dev The decimal difference is evmDecimals - coreDecimals
@@ -142,6 +168,16 @@ library HyperCoreLib {
         }
 
         return (_amountEVMToSend, _amountCoreToReceive);
+    }
+
+    /**
+     * @notice Transfers tokens from this contract on HyperCore to the `to` address on HyperCore on the Spot DEX.
+     * @param erc20CoreIndex The HyperCore index id of the token
+     * @param to The address to receive tokens on HyperCore
+     * @param amountCore The amount to transfer on HyperCore
+     */
+    function transferERC20SpotToSpot(uint64 erc20CoreIndex, address to, uint64 amountCore) internal {
+        transferERC20CoreToCore(erc20CoreIndex, to, amountCore, CORE_SPOT_DEX_ID, CORE_SPOT_DEX_ID);
     }
 
     /**
