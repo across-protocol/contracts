@@ -201,6 +201,7 @@ contract CreateSponsoredDeposit is Script, Config {
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
             executionMode: 0,
+            accountCreationMode: 0,
             actionData: ""
         });
 
@@ -269,6 +270,7 @@ contract CreateSponsoredDeposit is Script, Config {
             quote.signedParams.finalToken,
             quote.signedParams.destinationDex,
             quote.signedParams.executionMode,
+            quote.signedParams.accountCreationMode,
             quote.signedParams.actionData
         );
 

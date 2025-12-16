@@ -100,6 +100,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
             finalToken: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f).toBytes32(), // USDC on HyperEVM
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID, // Spot DEX on HyperCore
             executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore), // DirectToCore mode
+            accountCreationMode: 0, // Standard mode
             actionData: emptyActionData // Empty for DirectToCore mode
         });
 

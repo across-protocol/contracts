@@ -235,6 +235,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 finalToken: address(usdc).toBytes32(),
                 destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
                 executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
+                accountCreationMode: 0, // Standard
                 actionData: bytes("")
             });
     }

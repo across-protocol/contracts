@@ -81,6 +81,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             lzReceiveGasLimit: 500_000,
             lzComposeGasLimit: 500_000,
             executionMode: uint8(0), // DirectToCore
+            accountCreationMode: uint8(0), // Standard
             actionData: ""
         });
 
