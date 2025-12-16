@@ -208,7 +208,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             extraFeesIncurred: feeExecuted,
             accountCreationMode: isQuoteValid
                 ? AccountCreationMode(quote.accountCreationMode)
-                : AccountCreationMode.Standard
+                : AccountCreationMode.FromUserFunds
         });
 
         // Route to appropriate execution based on executionMode
