@@ -134,7 +134,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         uint256 feeExecuted
     ) internal view returns (bytes memory) {
-        // (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes)
+        // (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
         // BurnMessage body
         bytes memory hookData = abi.encode(
             quote.nonce,
@@ -145,6 +145,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             quote.finalToken,
             quote.destinationDex,
             quote.executionMode,
+            quote.accountCreationMode,
             quote.actionData
         );
 
@@ -205,6 +206,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 quote.finalToken,
                 quote.destinationDex,
                 quote.executionMode,
+                quote.accountCreationMode,
                 keccak256(quote.actionData)
             )
         );

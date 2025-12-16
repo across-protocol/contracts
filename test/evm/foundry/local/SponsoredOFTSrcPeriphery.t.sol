@@ -160,8 +160,12 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             bytes32 gotFinalToken,
             uint32 gotDestinationDex,
             uint8 gotExecutionMode,
+            uint8 gotAccountCreationMode,
             bytes memory gotActionData
-        ) = abi.decode(spComposeMsg, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes));
+        ) = abi.decode(
+                spComposeMsg,
+                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+            );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
         assertEq(gotDeadline, deadline, "deadline mismatch");
@@ -171,6 +175,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(gotFinalToken, finalTokenAddr.toBytes32(), "finalToken mismatch");
         assertEq(gotDestinationDex, HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
         assertEq(gotExecutionMode, 0, "executionMode mismatch");
+        assertEq(gotAccountCreationMode, 0, "accountCreationMode mismatch");
         assertEq(keccak256(gotActionData), keccak256(""), "actionData mismatch");
 
         // ERC20 was pulled and approved

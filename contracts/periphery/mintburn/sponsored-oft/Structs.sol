@@ -36,7 +36,7 @@ struct SignedQuoteParams {
     uint256 lzComposeGasLimit; // gas limit for `lzCompose` call on destination side
     // Execution mode and action data
     uint8 executionMode; // ExecutionMode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
-    uint8 accountCreationMode; // AccountCreationMode: Sponsored or FromUserFunds
+    uint8 accountCreationMode; // AccountCreationMode: Standard or FromUserFunds
     bytes actionData; // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
 }
 
