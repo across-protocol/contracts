@@ -17,7 +17,7 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        _loadConfig("./script/mintburn/cctp/config.toml", true);
+        _loadConfig("./script/mintburn/cctp/configLighter.toml", true);
 
         address cctpMessageTransmitter = config.get("cctpMessageTransmitter").toAddress();
 
