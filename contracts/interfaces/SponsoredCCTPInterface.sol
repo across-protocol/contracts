@@ -30,6 +30,8 @@ interface SponsoredCCTPInterface {
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
         bytes32 finalToken,
+        uint32 destinationDex,
+        uint8 accountCreationMode,
         bytes signature
     );
 
