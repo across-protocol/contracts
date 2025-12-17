@@ -32,7 +32,7 @@ runs:
       run: npx ts-node scripts/typechainArtifacts.ts
     - name: Generate Typechain
       shell: bash
-      run: npx typechain --target ethers-v5 "typechain-artifacts" --out-dir typechain
+      run: npx typechain --target ethers-v5 "typechain-artifacts/**/*.json" --out-dir typechain
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:

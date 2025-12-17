@@ -32,7 +32,7 @@ zkout
 cache-foundry
 
 # Typechain
-.typechain-artifacts
+typechain-artifacts
 
 # Upgradeability files
 .openzeppelin

@@ -27,8 +27,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/IOFT.sol/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/IOFT.sol/IOFT__factory";
+} from "../../../../typechain/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/IOFT__factory";
 import { hubPoolFixture, enableTokensForLP } from "../fixtures/HubPool.Fixture";
 import { constructSingleChainTree } from "../MerkleLib.utils";
 import { CIRCLE_DOMAIN_IDs } from "../../../../deploy/consts";
