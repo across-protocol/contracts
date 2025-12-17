@@ -2,13 +2,8 @@ import fs from "fs";
 import path from "path";
 import fg from "fast-glob";
 
-type ArtifactJson = {
-  contractName?: string;
-  [key: string]: unknown;
-};
-
 const OUT_DIR = "out";
-const STAGE_DIR = ".typechain-artifacts";
+const STAGE_DIR = "typechain-artifacts";
 
 function main() {
   if (fs.existsSync(STAGE_DIR)) {
