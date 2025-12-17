@@ -8,7 +8,7 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
-import { CommonFlowParams, EVMFlowParams, AccountCreationMode } from "../Structs.sol";
+import { CommonFlowParams, EVMFlowParams, AccountCreationMode as StructsAccountCreationMode } from "../Structs.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -206,7 +206,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             // If the quote is invalid we don't sponsor the flow or the extra fees
             maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
             extraFeesIncurred: feeExecuted,
-            accountCreationMode: AccountCreationMode(quote.accountCreationMode)
+            accountCreationMode: StructsAccountCreationMode(quote.accountCreationMode)
         });
 
         // Route to appropriate execution based on executionMode

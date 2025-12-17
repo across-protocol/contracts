@@ -80,6 +80,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: 500_000,
             lzComposeGasLimit: 500_000,
+            accountCreationMode: uint8(0), // Standard
             executionMode: uint8(0), // DirectToCore
             actionData: ""
         });
@@ -158,9 +159,13 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             bytes32 gotFinalRecipient,
             bytes32 gotFinalToken,
             uint32 gotDestinationDex,
+            uint8 gotAccountCreationMode,
             uint8 gotExecutionMode,
             bytes memory gotActionData
-        ) = abi.decode(spComposeMsg, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes));
+        ) = abi.decode(
+                spComposeMsg,
+                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+            );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
         assertEq(gotDeadline, deadline, "deadline mismatch");
@@ -169,6 +174,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(gotFinalRecipient, finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
         assertEq(gotFinalToken, finalTokenAddr.toBytes32(), "finalToken mismatch");
         assertEq(gotDestinationDex, HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
+        assertEq(gotAccountCreationMode, 0, "accountCreationMode mismatch");
         assertEq(gotExecutionMode, 0, "executionMode mismatch");
         assertEq(keccak256(gotActionData), keccak256(""), "actionData mismatch");
 
