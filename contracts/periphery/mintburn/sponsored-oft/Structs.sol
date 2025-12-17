@@ -11,11 +11,6 @@ enum ExecutionMode {
     ArbitraryActionsToEVM
 }
 
-enum AccountCreationMode {
-    Standard,
-    FromUserFunds
-}
-
 /// @notice A structure with all the relevant information about a particular sponsored bridging flow order
 struct Quote {
     SignedQuoteParams signedParams;
