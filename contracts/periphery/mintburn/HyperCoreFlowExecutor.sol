@@ -9,7 +9,7 @@ import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
-import { CommonFlowParams } from "./Structs.sol";
+import { CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -500,18 +500,30 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[finalToken];
 
-        // Check account activation
-        if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-            if (params.maxBpsToSponsor > 0) {
-                revert AccountNotActivatedError(params.finalRecipient);
+        bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
+        uint64 accountActivationFeeCore;
+        if (!userAccountExists) {
+            if (params.accountCreationMode == AccountCreationMode.Standard) {
+                if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
+                    if (params.maxBpsToSponsor > 0) {
+                        revert AccountNotActivatedError(params.finalRecipient);
+                    } else {
+                        emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                        _fallbackHyperEVMFlow(params);
+                        return;
+                    }
+                }
             } else {
-                emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                _fallbackHyperEVMFlow(params);
-                return;
+                // Notice. If the amount is too small to be able to activate an account, the funds will land there, but
+                // the account won't show up as active until an eligible transfer activates it
+                if (!coreTokenInfo.canBeUsedForAccountActivation) {
+                    _fallbackHyperEVMFlow(params);
+                    return;
+                }
+                accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
             }
         }
 
-        // Calculate sponsorship amount in scope
         uint256 amountToSponsor;
         {
             uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
@@ -570,7 +582,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             params.finalRecipient,
             quotedEvmAmount,
             coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
-            params.destinationDex
+            params.destinationDex,
+            accountActivationFeeCore
         );
 
         emit SimpleTransferFlowCompleted(
@@ -593,22 +606,35 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
         address initialToken = baseToken;
 
-        // Check account activation
-        if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-            if (params.maxBpsToSponsor > 0) {
-                revert AccountNotActivatedError(params.finalRecipient);
-            } else {
-                emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                params.finalToken = initialToken;
-                _fallbackHyperEVMFlow(params);
-                return;
-            }
-        }
-
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory initialCoreTokenInfo = $.coreTokenInfos[initialToken];
         CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
+
+        bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
+        if (!userAccountExists) {
+            if (params.accountCreationMode == AccountCreationMode.Standard) {
+                if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
+                    if (params.maxBpsToSponsor > 0) {
+                        revert AccountNotActivatedError(params.finalRecipient);
+                    } else {
+                        emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                        params.finalToken = initialToken;
+                        _fallbackHyperEVMFlow(params);
+                        return;
+                    }
+                }
+            } else {
+                // In the FromUserFunds logic for the swap flow, we only allow account creation if the final token is
+                // usable for it. Finilazing the swap flow should handle account creation automatically when doing the
+                // final transfer of tokens to the user
+                if (!finalCoreTokenInfo.canBeUsedForAccountActivation) {
+                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                    params.finalToken = initialToken;
+                    _fallbackHyperEVMFlow(params);
+                }
+            }
+        }
 
         // Calculate limit order amounts and check if feasible
         uint64 minAllowableAmountToForwardCore;

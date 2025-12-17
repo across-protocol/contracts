@@ -83,6 +83,7 @@ library HyperCoreLib {
      * @param amountEVM The amount to transfer on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @param destinationDex The destination DEX on HyperCore
+     * @param accountActivationFeeCore Present if we have to pay for account activation of `to` (meaning we're reducing our send amount)
      * @return amountEVMSent The amount sent on HyperEVM
      * @return amountCoreToReceive The amount credited on Core in Core units (post conversion)
      */
@@ -92,23 +93,44 @@ library HyperCoreLib {
         address to,
         uint256 amountEVM,
         int8 decimalDiff,
-        uint32 destinationDex
+        uint32 destinationDex,
+        uint64 accountActivationFeeCore
     ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         // if the transfer amount exceeds the bridge balance, this wil revert
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
 
         if (_amountEVMToSend != 0) {
             if (erc20CoreIndex == USDC_CORE_INDEX) {
+                // USDC flow takes care of account creation fee for us, we don't need to reduce `_amountEVMToSend`
                 IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, _amountEVMToSend);
-                ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(to, _amountEVMToSend, destinationDex);
+                if (to == address(this)) {
+                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(_amountEVMToSend, destinationDex);
+                } else {
+                    ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).depositFor(
+                        to,
+                        _amountEVMToSend,
+                        destinationDex
+                    );
+                }
             } else {
                 IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
                 // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-                transferERC20CoreToCore(erc20CoreIndex, to, _amountCoreToReceive, CORE_SPOT_DEX_ID, destinationDex);
+                if (
+                    (to != address(this) || destinationDex != CORE_SPOT_DEX_ID) &&
+                    _amountCoreToReceive > accountActivationFeeCore
+                ) {
+                    transferERC20CoreToCore(
+                        erc20CoreIndex,
+                        to,
+                        _amountCoreToReceive - accountActivationFeeCore,
+                        CORE_SPOT_DEX_ID,
+                        destinationDex
+                    );
+                }
             }
         }
 
-        return (_amountEVMToSend, _amountCoreToReceive);
+        return (_amountEVMToSend, _amountCoreToReceive - accountActivationFeeCore);
     }
 
     /**
@@ -156,18 +178,17 @@ library HyperCoreLib {
         int8 decimalDiff,
         uint32 destinationDex
     ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
-        (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
-
-        if (_amountEVMToSend != 0) {
-            if (erc20CoreIndex == USDC_CORE_INDEX) {
-                IERC20(erc20EVMAddress).forceApprove(USDC_CORE_DEPOSIT_WALLET_ADDRESS, _amountEVMToSend);
-                ICoreDepositWallet(USDC_CORE_DEPOSIT_WALLET_ADDRESS).deposit(_amountEVMToSend, destinationDex);
-            } else {
-                IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
-            }
-        }
-
-        return (_amountEVMToSend, _amountCoreToReceive);
+        return
+            transferERC20EVMToCore(
+                erc20EVMAddress,
+                erc20CoreIndex,
+                address(this),
+                amountEVM,
+                decimalDiff,
+                destinationDex,
+                // Contracts that are using this function HAVE to have their accounts created already
+                0
+            );
     }
 
     /**

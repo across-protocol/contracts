@@ -236,7 +236,9 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             user,
             evmAmount,
             decimalDiff,
-            HyperCoreLib.CORE_SPOT_DEX_ID
+            HyperCoreLib.CORE_SPOT_DEX_ID,
+            // Account activation is handled in separate CoreWriter actions above
+            0
         );
     }
 

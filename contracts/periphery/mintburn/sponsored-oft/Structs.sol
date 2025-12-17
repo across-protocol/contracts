@@ -11,6 +11,11 @@ enum ExecutionMode {
     ArbitraryActionsToEVM
 }
 
+enum AccountCreationMode {
+    Standard,
+    FromUserFunds
+}
+
 /// @notice A structure with all the relevant information about a particular sponsored bridging flow order
 struct Quote {
     SignedQuoteParams signedParams;
@@ -35,6 +40,7 @@ struct SignedQuoteParams {
     uint256 lzReceiveGasLimit; // gas limit for `lzReceive` call on destination side
     uint256 lzComposeGasLimit; // gas limit for `lzCompose` call on destination side
     // Execution mode and action data
+    uint8 accountCreationMode; // AccountCreationMode: Standard or FromUserFunds
     uint8 executionMode; // ExecutionMode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
     bytes actionData; // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
 }

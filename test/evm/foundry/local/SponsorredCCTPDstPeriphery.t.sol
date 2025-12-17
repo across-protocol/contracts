@@ -144,6 +144,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             quote.finalRecipient,
             quote.finalToken,
             quote.destinationDex,
+            quote.accountCreationMode,
             quote.executionMode,
             quote.actionData
         );
@@ -204,6 +205,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 quote.finalRecipient,
                 quote.finalToken,
                 quote.destinationDex,
+                quote.accountCreationMode,
                 quote.executionMode,
                 keccak256(quote.actionData)
             )
@@ -234,6 +236,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 finalRecipient: finalRecipient.toBytes32(),
                 finalToken: address(usdc).toBytes32(),
                 destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
+                accountCreationMode: uint8(SponsoredCCTPInterface.AccountCreationMode.Standard),
                 executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
                 actionData: bytes("")
             });

@@ -33,6 +33,7 @@ library DebugQuoteSignLib {
                     p.finalToken,
                     p.lzReceiveGasLimit,
                     p.lzComposeGasLimit,
+                    p.accountCreationMode,
                     p.executionMode,
                     keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
                 )
@@ -200,6 +201,7 @@ contract CreateSponsoredDeposit is Script, Config {
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
+            accountCreationMode: 0,
             executionMode: 0,
             actionData: ""
         });
@@ -268,6 +270,7 @@ contract CreateSponsoredDeposit is Script, Config {
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken,
             quote.signedParams.destinationDex,
+            quote.signedParams.accountCreationMode,
             quote.signedParams.executionMode,
             quote.signedParams.actionData
         );
