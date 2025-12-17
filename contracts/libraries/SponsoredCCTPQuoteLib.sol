@@ -38,7 +38,7 @@ library SponsoredCCTPQuoteLib {
     uint256 private constant HOOK_DATA_INDEX = 228;
 
     // Minimum length of the message body (can be longer due to variable actionData)
-    uint256 private constant MIN_MSG_BYTES_LENGTH = 696;
+    uint256 private constant MIN_MSG_BYTES_LENGTH = 728;
 
     /**
      * @notice Gets the data for the deposit for burn.
