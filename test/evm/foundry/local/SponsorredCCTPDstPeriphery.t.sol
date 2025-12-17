@@ -11,6 +11,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
 import { BaseSimulatorTest } from "./external/hyper-evm-lib/test/BaseSimulatorTest.sol";
 import { PrecompileLib } from "./external/hyper-evm-lib/src/PrecompileLib.sol";
+import { CoreWriterLib } from "./external/hyper-evm-lib/src/CoreWriterLib.sol";
+import { CoreSimulatorLib } from "./external/hyper-evm-lib/test/simulation/CoreSimulatorLib.sol";
 
 contract MockMessageTransmitter is IMessageTransmitterV2 {
     bool internal shouldSucceed = true;
@@ -104,12 +106,10 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         // Deploy mock contracts
         messageTransmitter = new MockMessageTransmitter();
         donationBox = new MockDonationBox();
-        usdc = new MockUSDC();
+        usdc = MockUSDC(0xb88339CB7199b77E23DB6E890353E22632Ba630f);
 
         // Setup HyperCore precompile mocks using the helper
-        // setupDefaultHyperCoreMocks(address(usdc), "Mock USDC", 6);
         hyperCore.forceAccountActivation(finalRecipient);
-        hyperCore.forceTokenInfo(CORE_INDEX, "USDC", address(usdc), 8, 8, 0);
 
         // Deploy periphery
         vm.startPrank(admin);
@@ -124,8 +124,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         IHyperCoreFlowExecutor(address(periphery)).setCoreTokenInfo(address(usdc), CORE_INDEX, true, 1e6, 1e6);
         vm.stopPrank();
 
-        // Mint USDC to periphery for testing
-        usdc.mint(address(periphery), 10000e6);
+        // Deal USDC to periphery for testing
+        deal(address(usdc), address(periphery), 10000e6);
     }
 
     /// @dev Helper function to create a valid CCTP message
