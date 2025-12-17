@@ -5,6 +5,11 @@ endpoint_url = "${NODE_URL_1}"
 sponsoredCCTPSrcPeriphery = "0x89004EA51Bac007FEc55976967135b2Aa6e838d4"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+baseToken = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+sponsoredCCTPDstPeriphery = "0x5616194d65638086a3191B1fEF436f503ff329eC"
+multicallHandler = "0x64a43393866DBA0044879979fAa7AD3d000622e9"
+zkLighter = "0x3B4D794a66304F130a4Db8F2551B0070dfCf5ca7"
 
 [mainnet.uint]
 cctpDomainId = 0

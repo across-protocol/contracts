@@ -10,10 +10,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { PermissionedMulticallHandler } from "../../contracts/handlers/PermissionedMulticallHandler.sol";
 import { MulticallHandler } from "../../contracts/handlers/MulticallHandler.sol";
 
-/// @notice Approves zkLighter to spend USDC from the deployed MulticallHandler by having the handler call USDC.approve().
-/// @dev Requires msg.sender (broadcast signer) to be whitelisted on PermissionedMulticallHandler.
-
 /**
+Approves zkLighter to spend USDC from the deployed PermissionedMulticallHandler by having the handler call USDC.approve().
+Requires msg.sender (broadcast signer) to be whitelisted on PermissionedMulticallHandler.
+
+@notice This script makes sense only with PermissionedMulticallHandler, with the API controlling what functions can be called
+as a part of custom EVM execution. Otherwise, anyone can rescind the approval
+
 Run:
 forge script script/mintburn/ApproveZkLighterMaxUSDCFromMulticallHandler.s.sol:ApproveZkLighterMaxUSDCFromMulticallHandler \
   --rpc-url <network> -vvvv --broadcast
@@ -28,7 +31,7 @@ contract ApproveZkLighterMaxUSDCFromMulticallHandler is Script, Config {
         address deployer = vm.addr(pk);
         console.log("Deployer:", deployer);
 
-        _loadConfig("./script/mintburn/cctp/configLighter.toml", false);
+        _loadConfig("./script/mintburn/cctp/config.toml", false);
 
         address usdc = config.get("usdc").toAddress();
         address zkLighter = config.get("zkLighter").toAddress();

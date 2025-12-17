@@ -40,7 +40,7 @@ contract CreateLighterDeposit is Script, Config {
         address deployer = vm.addr(deployerPrivateKey);
 
         // Load config and create forks for all chains
-        _loadConfigAndForks("./script/mintburn/cctp/configLighter.toml", false);
+        _loadConfigAndForks("./script/mintburn/cctp/config.toml", false);
 
         // Resolve environment from source and destination chains
         DepositEnv memory env = _resolveEnv();

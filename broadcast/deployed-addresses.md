@@ -245,7 +245,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                 | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
 | SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://arbiscan.io/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://arbiscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPSrcPeriphery | [0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7](https://arbiscan.io/address/0xAA4958EFa0Cf6DdD87e354a90785f1D7291a82c7) |
+| SponsoredCCTPSrcPeriphery | [0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B](https://arbiscan.io/address/0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B) |
 | SponsoredOFTSrcPeriphery  | [0x2ac5Ee3796E027dA274fbDe84c82173a65868940](https://arbiscan.io/address/0x2ac5Ee3796E027dA274fbDe84c82173a65868940) |
 | UniswapV3_SwapAndBridge   | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 

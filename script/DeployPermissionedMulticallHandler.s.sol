@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 
-import { PermissionedMulticallHandler } from "../../contracts/handlers/PermissionedMulticallHandler.sol";
+import { PermissionedMulticallHandler } from "../contracts/handlers/PermissionedMulticallHandler.sol";
 
-// Deploy: forge script script/mintburn/DeployPermissionedMulticallHandler.s.sol:DeployPermissionedMulticallHandler --rpc-url <network> -vvvv --broadcast
+// Deploy: forge script script/DeployPermissionedMulticallHandler.s.sol:DeployPermissionedMulticallHandler --rpc-url <network> -vvvv --broadcast --verify
 contract DeployPermissionedMulticallHandler is Script {
     function run() external {
         console.log("Deploying PermissionedMulticallHandler...");
