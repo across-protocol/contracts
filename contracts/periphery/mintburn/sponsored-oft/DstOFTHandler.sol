@@ -205,6 +205,11 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
 
+        // If the full balance was deposited as a part of EVM action, return early
+        if (params.commonParams.amountInEVM == 0) {
+            return;
+        }
+
         // Route to appropriate destination based on transferToCore flag
         _delegateToHyperCore(
             params.transferToCore
