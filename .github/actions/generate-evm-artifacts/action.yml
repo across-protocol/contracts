@@ -27,9 +27,12 @@ runs:
     - name: Build Foundry
       shell: bash
       run: forge build --skip test script
+    - name: Generate Typechain artifacts
+      shell: bash
+      run: npx ts-node scripts/typechainArtifacts.ts
     - name: Generate Typechain
       shell: bash
-      run: npx typechain --target ethers-v5 "out/!(build-info)/**/+([a-zA-Z0-9_]).json" --out-dir typechain
+      run: npx typechain --target ethers-v5 "typechain-artifacts" --out-dir typechain
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:
