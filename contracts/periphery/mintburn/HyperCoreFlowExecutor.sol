@@ -9,7 +9,7 @@ import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
-import { CommonFlowParams } from "./Structs.sol";
+import { CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -493,12 +493,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         _fallbackHyperEVMFlow(params);
     }
 
-    // todo: testing. This code has to live elsewhere
-    enum AccountCreationMode {
-        Standard,
-        FromUserFunds
-    }
-
     /// @notice Execute a simple transfer flow in which we transfer `finalToken` to the user on HyperCore after receiving
     /// an amount of finalToken from the user on HyperEVM
     function _executeSimpleTransferFlow(CommonFlowParams memory params) internal {
@@ -506,13 +500,10 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[finalToken];
 
-        // todo: testing
-        AccountCreationMode mode = AccountCreationMode.FromUserFunds;
-
         bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
         uint64 accountActivationFeeCore;
         if (!userAccountExists) {
-            if (mode == AccountCreationMode.Standard) {
+            if (params.accountCreationMode == AccountCreationMode.Standard) {
                 if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
                     if (params.maxBpsToSponsor > 0) {
                         revert AccountNotActivatedError(params.finalRecipient);
@@ -620,12 +611,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
 
-        // todo: testing
-        AccountCreationMode mode = AccountCreationMode.FromUserFunds;
-
         bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
         if (!userAccountExists) {
-            if (mode == AccountCreationMode.Standard) {
+            if (params.accountCreationMode == AccountCreationMode.Standard) {
                 if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
                     if (params.maxBpsToSponsor > 0) {
                         revert AccountNotActivatedError(params.finalRecipient);

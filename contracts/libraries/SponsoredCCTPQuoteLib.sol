@@ -83,6 +83,7 @@ library SponsoredCCTPQuoteLib {
             quote.finalRecipient,
             quote.finalToken,
             quote.destinationDex,
+            quote.accountCreationMode,
             quote.executionMode,
             quote.actionData
         );
@@ -110,9 +111,9 @@ library SponsoredCCTPQuoteLib {
         bytes memory hookData = messageBody.slice(HOOK_DATA_INDEX, messageBody.length);
 
         // Decode to check address validity
-        (, , , , bytes32 finalRecipient, bytes32 finalToken, , , ) = abi.decode(
+        (, , , , bytes32 finalRecipient, bytes32 finalToken, , , , ) = abi.decode(
             hookData,
-            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes)
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
         );
 
         return finalRecipient.isValidAddress() && finalToken.isValidAddress();
@@ -149,9 +150,10 @@ library SponsoredCCTPQuoteLib {
             quote.finalRecipient,
             quote.finalToken,
             quote.destinationDex,
+            quote.accountCreationMode,
             quote.executionMode,
             quote.actionData
-        ) = abi.decode(hookData, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes));
+        ) = abi.decode(hookData, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes));
     }
 
     /**
@@ -189,6 +191,7 @@ library SponsoredCCTPQuoteLib {
                 quote.finalRecipient,
                 quote.finalToken,
                 quote.destinationDex,
+                quote.accountCreationMode,
                 quote.executionMode,
                 keccak256(quote.actionData) // Hash the actionData to keep signature size reasonable
             )

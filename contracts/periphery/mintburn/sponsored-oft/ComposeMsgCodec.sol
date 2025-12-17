@@ -11,9 +11,10 @@ library ComposeMsgCodec {
     uint256 internal constant FINAL_RECIPIENT_OFFSET = 128;
     uint256 internal constant FINAL_TOKEN_OFFSET = 160;
     uint256 internal constant DESTINATION_DEX_OFFSET = 192;
-    uint256 internal constant EXECUTION_MODE_OFFSET = 224;
-    // Minimum length with empty actionData: 8 regular params (32 bytes each) and 1 dynamic byte array (minumum 64 bytes)
-    uint256 internal constant MIN_COMPOSE_MSG_BYTE_LENGTH = 320;
+    uint256 internal constant ACCOUNT_CREATION_MODE_OFFSET = 224;
+    uint256 internal constant EXECUTION_MODE_OFFSET = 256;
+    // Minimum length with empty actionData: 9 regular params (32 bytes each) and 1 dynamic byte array (minumum 64 bytes)
+    uint256 internal constant MIN_COMPOSE_MSG_BYTE_LENGTH = 352;
 
     function _encode(
         bytes32 nonce,
@@ -23,6 +24,7 @@ library ComposeMsgCodec {
         bytes32 finalRecipient,
         bytes32 finalToken,
         uint32 destinationDex,
+        uint8 accountCreationMode,
         uint8 executionMode,
         bytes memory actionData
     ) internal pure returns (bytes memory) {
@@ -35,6 +37,7 @@ library ComposeMsgCodec {
                 finalRecipient,
                 finalToken,
                 destinationDex,
+                accountCreationMode,
                 executionMode,
                 actionData
             );
@@ -68,18 +71,26 @@ library ComposeMsgCodec {
         return BytesLib.toUint32(data, DESTINATION_DEX_OFFSET);
     }
 
-    function _getExecutionMode(bytes memory data) internal pure returns (uint8 v) {
-        (, , , , , , , uint8 executionMode, ) = abi.decode(
+    function _getAccountCreationMode(bytes memory data) internal pure returns (uint8 v) {
+        (, , , , , , , uint8 accountCreationMode, , ) = abi.decode(
             data,
-            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes)
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+        );
+        return accountCreationMode;
+    }
+
+    function _getExecutionMode(bytes memory data) internal pure returns (uint8 v) {
+        (, , , , , , , , uint8 executionMode, ) = abi.decode(
+            data,
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
         );
         return executionMode;
     }
 
     function _getActionData(bytes memory data) internal pure returns (bytes memory v) {
-        (, , , , , , , , bytes memory actionData) = abi.decode(
+        (, , , , , , , , , bytes memory actionData) = abi.decode(
             data,
-            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, bytes)
+            (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
         );
         return actionData;
     }

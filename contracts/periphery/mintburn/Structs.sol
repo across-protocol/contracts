@@ -20,6 +20,11 @@ struct CoreTokenInfo {
     uint64 bridgeSafetyBufferCore;
 }
 
+enum AccountCreationMode {
+    Standard,
+    FromUserFunds
+}
+
 struct FinalTokenInfo {
     // The index of the market where we're going to swap baseToken -> finalToken
     uint32 spotIndex;
@@ -40,6 +45,7 @@ struct CommonFlowParams {
     address finalRecipient;
     address finalToken;
     uint32 destinationDex;
+    AccountCreationMode accountCreationMode;
     uint256 maxBpsToSponsor;
     uint256 extraFeesIncurred;
 }

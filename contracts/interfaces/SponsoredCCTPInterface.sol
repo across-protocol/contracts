@@ -46,6 +46,11 @@ interface SponsoredCCTPInterface {
         ArbitraryActionsToEVM
     }
 
+    enum AccountCreationMode {
+        Standard,
+        FromUserFunds
+    }
+
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
         // The domain ID of the source chain.
@@ -80,6 +85,8 @@ interface SponsoredCCTPInterface {
         bytes32 finalToken;
         // The destination DEX on HyperCore.
         uint32 destinationDex;
+        // AccountCreationMode: Standard or FromUserFunds
+        uint8 accountCreationMode;
         // Execution mode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
         uint8 executionMode;
         // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
