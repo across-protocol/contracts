@@ -504,14 +504,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 accountActivationFeeCore;
         if (!userAccountExists) {
             if (params.accountCreationMode == AccountCreationMode.Standard) {
-                if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-                    if (params.maxBpsToSponsor > 0) {
-                        revert AccountNotActivatedError(params.finalRecipient);
-                    } else {
-                        emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                        _fallbackHyperEVMFlow(params);
-                        return;
-                    }
+                if (params.maxBpsToSponsor > 0) {
+                    revert AccountNotActivatedError(params.finalRecipient);
+                } else {
+                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                    _fallbackHyperEVMFlow(params);
+                    return;
                 }
             } else {
                 // Notice. If the amount is too small to be able to activate an account, the funds will land there, but
@@ -614,15 +612,13 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
         if (!userAccountExists) {
             if (params.accountCreationMode == AccountCreationMode.Standard) {
-                if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-                    if (params.maxBpsToSponsor > 0) {
-                        revert AccountNotActivatedError(params.finalRecipient);
-                    } else {
-                        emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                        params.finalToken = initialToken;
-                        _fallbackHyperEVMFlow(params);
-                        return;
-                    }
+                if (params.maxBpsToSponsor > 0) {
+                    revert AccountNotActivatedError(params.finalRecipient);
+                } else {
+                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                    params.finalToken = initialToken;
+                    _fallbackHyperEVMFlow(params);
+                    return;
                 }
             } else {
                 // In the FromUserFunds logic for the swap flow, we only allow account creation if the final token is
