@@ -232,6 +232,20 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     );
 
     /**
+     * @notice Emitted whenever a user account is activated using funds from the user's transfer/swap
+     * @param quoteNonce Unique identifier for this quote/transaction
+     * @param user The address of the user whose account is being activated
+     * @param token The token used to fund the account activation
+     * @param amountCore The amount paid for activation (in Core token units)
+     */
+    event AccountActivatedFromUserBalance(
+        bytes32 indexed quoteNonce,
+        address indexed user,
+        address indexed token,
+        uint64 amountCore
+    );
+
+    /**
      * @notice Emitted whenever a new CoreTokenInfo is configured
      * @param token The token address being configured
      * @param coreIndex The index of the token on HyperCore
@@ -283,6 +297,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
     /// @notice Thrown when we can't bridge some token from HyperEVM to HyperCore
     error UnsafeToBridgeError(address token, uint64 amount);
+
+    /// @notice Thrown when finalizing a swap flow, if a finalToken used to be eligible for account activation, but is no longer
+    error TokenNotEligibleForActivation();
+
+    /// @notice Thrown when a user order total is not enough to cover account activation when finalizing a swap flow
+    error InsufficientFundsForActivation();
 
     /**************************************
      *            MODIFIERS               *
@@ -584,6 +604,15 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             accountActivationFeeCore
         );
 
+        if (accountActivationFeeCore > 0) {
+            emit AccountActivatedFromUserBalance(
+                params.quoteNonce,
+                params.finalRecipient,
+                finalToken,
+                accountActivationFeeCore
+            );
+        }
+
         emit SimpleTransferFlowCompleted(
             params.quoteNonce,
             params.finalRecipient,
@@ -839,23 +868,33 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         if (swap.finalized) revert SwapAlreadyFinalized();
         if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
 
-        uint64 totalToSend;
-        (totalToSend, additionalToSend) = _calcSwapFlowSendAmounts(
+        uint64 accountActivationFee;
+        // User account can be absent if our AccountCreationMode is `FromUserBalance`. We need to adjust our transfer amount to user based on this
+        if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
+            // This is enforced by `_initiateSwapFlow`. If the setting changed, this revert can trigger. Requires manual resolution (creating an account)
+            if (!finalCoreTokenInfo.canBeUsedForAccountActivation) revert TokenNotEligibleForActivation();
+            accountActivationFee = finalCoreTokenInfo.accountActivationFeeCore;
+        }
+
+        uint64 amountToTransfer;
+        uint64 totalConsumed;
+        (amountToTransfer, additionalToSend, totalConsumed) = _calcSwapFlowSendAmounts(
             limitOrderOut,
             swap.minAmountToSend,
             swap.maxAmountToSend,
-            swap.isSponsored
+            swap.isSponsored,
+            accountActivationFee
         );
 
         // `additionalToSend` will land on HCore before this core > core send will need to be executed
         balanceRemaining = availableBalance + additionalToSend;
-        if (totalToSend > balanceRemaining) {
+        if (totalConsumed > balanceRemaining) {
             return (false, 0, availableBalance);
         }
 
         swap.finalized = true;
         success = true;
-        balanceRemaining -= totalToSend;
+        balanceRemaining -= totalConsumed;
 
         (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             additionalToSend,
@@ -865,10 +904,20 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         swapHandler.transferFundsToUserOnCore(
             finalCoreTokenInfo.coreIndex,
             swap.finalRecipient,
-            totalToSend,
+            amountToTransfer,
             swap.destinationDex
         );
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSendEVM);
+
+        if (accountActivationFee > 0) {
+            emit AccountActivatedFromUserBalance(
+                quoteNonce,
+                swap.finalRecipient,
+                swap.finalToken,
+                accountActivationFee
+            );
+        }
+
+        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, amountToTransfer, additionalToSendEVM);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
@@ -1072,24 +1121,33 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     }
 
     /**
-     * @return totalToSend What we will forward to user on HCore
+     * @return amountToTransfer What we will forward to user on HCore
      * @return additionalToSend What we will send from donationBox right now
+     * @return totalAttributableToUser Total amount that we reserve for this user. The amount consumed from SwapHandler
+                                       during send execution. Differs from `amountToTransfer` if account creation fee is
+                                       present
      */
     function _calcSwapFlowSendAmounts(
         uint64 limitOrderOut,
         uint64 minAmountToSend,
         uint64 maxAmountToSend,
-        bool isSponsored
-    ) internal pure returns (uint64 totalToSend, uint64 additionalToSend) {
+        bool isSponsored,
+        uint64 accountActivationFee
+    ) internal pure returns (uint64 amountToTransfer, uint64 additionalToSend, uint64 totalAttributableToUser) {
         if (isSponsored) {
             // `minAmountToSend` is equal to `maxAmountToSend` for the sponsored flow
-            totalToSend = minAmountToSend;
-            additionalToSend = totalToSend > limitOrderOut ? totalToSend - limitOrderOut : 0;
+            totalAttributableToUser = minAmountToSend;
+            additionalToSend = totalAttributableToUser > limitOrderOut ? totalAttributableToUser - limitOrderOut : 0;
         } else {
             additionalToSend = limitOrderOut < minAmountToSend ? minAmountToSend - limitOrderOut : 0;
             uint64 proposedToSend = limitOrderOut + additionalToSend;
-            totalToSend = proposedToSend > maxAmountToSend ? maxAmountToSend : proposedToSend;
+            totalAttributableToUser = proposedToSend > maxAmountToSend ? maxAmountToSend : proposedToSend;
         }
+
+        // If the order total is not enough to cover account creation, the account has to be created separately (by the User or Bot) to be able to finalize this swap flow
+        require(totalAttributableToUser < accountActivationFee + 1, InsufficientFundsForActivation());
+
+        amountToTransfer = totalAttributableToUser - accountActivationFee;
     }
 
     /// @notice Reads the current spot price from HyperLiquid and applies a configured suggested discount for faster execution
