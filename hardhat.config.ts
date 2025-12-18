@@ -81,6 +81,7 @@ const solcVersion = "0.8.30";
 
 // Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
 const evmVersion = isTest ? "paris" : "prague";
+const revertStrings = isTest || process.env.CI === "true" ? "debug" : "strip";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -90,7 +91,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
     evmVersion,
-    debug: { revertStrings: isTest ? "debug" : "strip" },
+    debug: { revertStrings },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -100,7 +101,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     viaIR: true,
     evmVersion,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "debug" : "strip" },
+    debug: { revertStrings },
   },
 };
 // This is only used by Blast_SpokePool for now, as it's the largest bytecode-wise
@@ -110,7 +111,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
     evmVersion,
-    debug: { revertStrings: isTest ? "debug" : "strip" },
+    debug: { revertStrings },
   },
 };
 
