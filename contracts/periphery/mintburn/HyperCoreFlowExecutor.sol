@@ -238,7 +238,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
      * @param token The token used to fund the account activation
      * @param amountCore The amount paid for activation (in Core token units)
      */
-    event AccountActivatedFromUserBalance(
+    event AccountActivatedFromUserFunds(
         bytes32 indexed quoteNonce,
         address indexed user,
         address indexed token,
@@ -520,26 +520,25 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[finalToken];
 
-        bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
         uint64 accountActivationFeeCore;
-        if (!userAccountExists) {
-            if (params.accountCreationMode == AccountCreationMode.Standard) {
-                if (params.maxBpsToSponsor > 0) {
-                    revert AccountNotActivatedError(params.finalRecipient);
-                } else {
-                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                    _fallbackHyperEVMFlow(params);
-                    return;
-                }
-            } else {
-                // Notice. If the amount is too small to be able to activate an account, the funds will land there, but
-                // the account won't show up as active until an eligible transfer activates it
-                if (!coreTokenInfo.canBeUsedForAccountActivation) {
-                    _fallbackHyperEVMFlow(params);
-                    return;
-                }
-                accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
+        if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
+            bool isStandard = params.accountCreationMode == AccountCreationMode.Standard;
+
+            // Standard, sponsored
+            if (isStandard && params.maxBpsToSponsor > 0) {
+                revert AccountNotActivatedError(params.finalRecipient);
             }
+
+            // Standard, non-sponsored OR
+            // FromUserAccount AND token can't be used for account activation
+            if (isStandard || !coreTokenInfo.canBeUsedForAccountActivation) {
+                emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                _fallbackHyperEVMFlow(params);
+                return;
+            }
+
+            // FromUserAccount AND token can be used for account activation
+            accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
         }
 
         uint256 amountToSponsor;
@@ -605,7 +604,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         );
 
         if (accountActivationFeeCore > 0) {
-            emit AccountActivatedFromUserBalance(
+            emit AccountActivatedFromUserFunds(
                 params.quoteNonce,
                 params.finalRecipient,
                 finalToken,
@@ -638,27 +637,21 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
         FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
 
-        bool userAccountExists = HyperCoreLib.coreUserExists(params.finalRecipient);
-        if (!userAccountExists) {
-            if (params.accountCreationMode == AccountCreationMode.Standard) {
-                if (params.maxBpsToSponsor > 0) {
-                    revert AccountNotActivatedError(params.finalRecipient);
-                } else {
-                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                    params.finalToken = initialToken;
-                    _fallbackHyperEVMFlow(params);
-                    return;
-                }
-            } else {
-                // In the FromUserFunds logic for the swap flow, we only allow account creation if the final token is
-                // usable for it. Finilazing the swap flow should handle account creation automatically when doing the
-                // final transfer of tokens to the user
-                if (!finalCoreTokenInfo.canBeUsedForAccountActivation) {
-                    emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
-                    params.finalToken = initialToken;
-                    _fallbackHyperEVMFlow(params);
-                    return;
-                }
+        if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
+            bool isStandard = params.accountCreationMode == AccountCreationMode.Standard;
+
+            // Standard, sponsored
+            if (isStandard && params.maxBpsToSponsor > 0) {
+                revert AccountNotActivatedError(params.finalRecipient);
+            }
+
+            // Standard, non-sponsored OR
+            // FromUserFunds AND final token can't be used for account creation
+            if (isStandard || !finalCoreTokenInfo.canBeUsedForAccountActivation) {
+                emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
+                params.finalToken = initialToken;
+                _fallbackHyperEVMFlow(params);
+                return;
             }
         }
 
@@ -869,7 +862,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
 
         uint64 accountActivationFee;
-        // User account can be absent if our AccountCreationMode is `FromUserBalance`. We need to adjust our transfer amount to user based on this
+        // User account can be absent if our AccountCreationMode is `FromUserFunds`. We need to adjust our transfer amount to user based on this
         if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
             // This is enforced by `_initiateSwapFlow`. If the setting changed, this revert can trigger. Requires manual resolution (creating an account)
             if (!finalCoreTokenInfo.canBeUsedForAccountActivation) revert TokenNotEligibleForActivation();
@@ -909,12 +902,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         );
 
         if (accountActivationFee > 0) {
-            emit AccountActivatedFromUserBalance(
-                quoteNonce,
-                swap.finalRecipient,
-                swap.finalToken,
-                accountActivationFee
-            );
+            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, swap.finalToken, accountActivationFee);
         }
 
         emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, amountToTransfer, additionalToSendEVM);

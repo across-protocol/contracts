@@ -48,11 +48,6 @@ interface SponsoredCCTPInterface {
         ArbitraryActionsToEVM
     }
 
-    enum AccountCreationMode {
-        Standard,
-        FromUserFunds
-    }
-
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {
         // The domain ID of the source chain.
