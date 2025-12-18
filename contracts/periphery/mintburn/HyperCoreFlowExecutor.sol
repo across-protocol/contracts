@@ -628,6 +628,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
                     emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
                     params.finalToken = initialToken;
                     _fallbackHyperEVMFlow(params);
+                    return;
                 }
             }
         }
