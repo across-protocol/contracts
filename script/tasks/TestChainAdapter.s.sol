@@ -12,6 +12,8 @@ import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
  * @notice Foundry script to test a chain adapter by bridging tokens from L1 to L2
  * @dev Equivalent to the Hardhat task `testChainAdapter`
  *
+ * Requires MNEMONIC to be set in .env file.
+ *
  * Usage:
  *   forge script script/tasks/TestChainAdapter.s.sol:TestChainAdapter \
  *     --sig "run(uint256,address,address,uint256,address)" \
@@ -35,7 +37,10 @@ contract TestChainAdapter is Script, Constants, DeployedAddresses {
         uint256 hubChainId = block.chainid;
         require(hubChainId == 1 || hubChainId == 11155111, "Must run on mainnet (1) or sepolia (11155111)");
 
-        address sender = vm.envOr("SENDER", msg.sender);
+        // Derive signer from mnemonic in .env
+        string memory mnemonic = vm.envString("MNEMONIC");
+        uint256 privateKey = vm.deriveKey(mnemonic, 0);
+        address sender = vm.addr(privateKey);
 
         console.log("");
         console.log("=============== Test Chain Adapter ===============");
@@ -45,7 +50,7 @@ contract TestChainAdapter is Script, Constants, DeployedAddresses {
         console.log("L1 Token:", l1Token);
         console.log("L2 Token:", l2Token);
         console.log("Amount:", amount);
-        console.log("Recipient:", sender);
+        console.log("Sender/Recipient:", sender);
         console.log("--------------------------------------------------");
 
         IERC20 token = IERC20(l1Token);
@@ -53,7 +58,7 @@ contract TestChainAdapter is Script, Constants, DeployedAddresses {
 
         console.log("Adapter token balance:", adapterBalance);
 
-        vm.startBroadcast();
+        vm.startBroadcast(privateKey);
 
         // If adapter doesn't have enough tokens, transfer them
         if (adapterBalance < amount) {
