@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Test, console } from "forge-std/Test.sol";
+import { AccountCreationMode } from "../../../../contracts/periphery/mintburn/Structs.sol";
 import { SponsoredCCTPDstPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IHyperCoreFlowExecutor.sol";
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
@@ -236,7 +237,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 finalRecipient: finalRecipient.toBytes32(),
                 finalToken: address(usdc).toBytes32(),
                 destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
-                accountCreationMode: uint8(SponsoredCCTPInterface.AccountCreationMode.Standard),
+                accountCreationMode: uint8(AccountCreationMode.Standard),
                 executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
                 actionData: bytes("")
             });

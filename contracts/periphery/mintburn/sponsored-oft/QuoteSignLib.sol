@@ -23,6 +23,7 @@ library QuoteSignLib {
                     p.maxBpsToSponsor,
                     p.finalRecipient,
                     p.finalToken,
+                    p.destinationDex,
                     p.lzReceiveGasLimit,
                     p.lzComposeGasLimit,
                     p.accountCreationMode,
