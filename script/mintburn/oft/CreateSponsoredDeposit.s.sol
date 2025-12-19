@@ -9,7 +9,6 @@ import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../contract
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { ComposeMsgCodec } from "../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalLZOptions.sol";
-import { SharedDecimalsLib } from "../../../contracts/external/libraries/SharedDecimalsLib.sol";
 import { IOFT, SendParam, MessagingFee, IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -277,7 +276,11 @@ contract CreateSponsoredDeposit is Script, Config {
         uint8 localDecimals = IERC20Metadata(token).decimals();
         uint8 sharedDecimals = IOFT(oftMessenger).sharedDecimals();
 
-        uint256 amountSD = SharedDecimalsLib.toSD(quote.signedParams.amountLD, localDecimals, sharedDecimals);
+        require(localDecimals >= sharedDecimals, "InvalidLocalDecimals");
+        uint256 decimalConversionRate = 10 ** (localDecimals - sharedDecimals);
+        uint256 _amountSD = quote.signedParams.amountLD / decimalConversionRate;
+        require(_amountSD <= type(uint64).max, "AmountSDOverflowed");
+        uint256 amountSD = uint256(uint64(_amountSD));
 
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
@@ -298,7 +301,8 @@ contract CreateSponsoredDeposit is Script, Config {
             .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
-        uint256 minAmountLD = SharedDecimalsLib.removeDust(quote.signedParams.amountLD, localDecimals, sharedDecimals);
+        require(quote.signedParams.maxOftFeeBps <= 10_000, "maxOftFeeBps > 10000");
+        uint256 minAmountLD = (quote.signedParams.amountLD * (10_000 - quote.signedParams.maxOftFeeBps)) / 10_000;
 
         SendParam memory sendParam = SendParam({
             dstEid: quote.signedParams.dstEid,

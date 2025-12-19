@@ -23,7 +23,7 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
  * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
     `BaseModuleHandler` contract code to learn more.
  */
-contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is BaseModuleHandler, SharedDecimalsLib, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -84,7 +84,11 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    )
+        BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
+        ArbitraryEVMFlowExecutor(_multicallHandler)
+        SharedDecimalsLib(IERC20Metadata(_baseToken).decimals(), address(0), address(0))
+    {
         baseToken = _baseToken;
 
         if (_baseToken != IOFT(_ioft).token()) {
@@ -162,14 +166,10 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         // Amount received from `lzReceive` on destination. May be different from the amount the user originally sent (if the OFT takes a fee in the bridged token)
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
 
-        // We trust src periphery to encode the correct amount.
-        // We decode amountSD and convert it to local decimals to compare against amountLD
+        // We trust src periphery to encode the correct amountSD. It pulls amountLD from the user, using IOFT's sharedDecimals()
+        // for further conversion to SD. The DEFAULT_ADMIN is responsible for keeping a correct mapping of authorized src peripheries.
         uint256 amountSentSD = composeMsg._getAmountSD();
-        uint256 amountSentLD = SharedDecimalsLib.toLD(
-            uint64(amountSentSD),
-            IERC20Metadata(baseToken).decimals(),
-            IOFT(IOFT_ADDRESS).sharedDecimals()
-        );
+        uint256 amountSentLD = _toLD(uint64(amountSentSD));
 
         uint256 extraFeesIncurred = 0;
         if (amountSentLD > amountLD) {

@@ -17,7 +17,7 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge
-contract SponsoredOFTSrcPeriphery is Ownable {
+contract SponsoredOFTSrcPeriphery is Ownable, SharedDecimalsLib {
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
@@ -87,8 +87,15 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     error InsufficientNativeFee();
     /// @notice Thrown when array lengths do not match
     error ArrayLengthMismatch();
+    /// @notice Thrown when maxOftFeeBps is greater than 10000
+    error InvalidMaxOftFeeBps();
 
-    constructor(address _token, address _oftMessenger, uint32 _srcEid, address _signer) {
+    constructor(
+        address _token,
+        address _oftMessenger,
+        uint32 _srcEid,
+        address _signer
+    ) SharedDecimalsLib(IERC20Metadata(_token).decimals(), address(0), address(0)) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
         SRC_EID = _srcEid;
@@ -165,14 +172,11 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     function _buildOftTransfer(
         Quote calldata quote
     ) internal view returns (SendParam memory, MessagingFee memory, address) {
-        uint8 localDecimals = IERC20Metadata(TOKEN).decimals();
-        uint8 sharedDecimals = IOFT(OFT_MESSENGER).sharedDecimals();
-
-        uint256 amountSD = SharedDecimalsLib.toSD(quote.signedParams.amountLD, localDecimals, sharedDecimals);
+        uint64 amountSD = _toSD(quote.signedParams.amountLD);
 
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
-            amountSD,
+            uint256(amountSD),
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
@@ -189,8 +193,12 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
-        // Use removeDust to calculate minAmountLD in local decimals (on src)
-        uint256 minAmountLD = SharedDecimalsLib.removeDust(quote.signedParams.amountLD, localDecimals, sharedDecimals);
+        // Apply maxOftFeeBps in src-local decimals.
+        // If maxOftFeeBps == 0, this preserves strict behavior: OFT will revert if dust removal reduces amount below min.
+        if (quote.signedParams.maxOftFeeBps > 10_000) {
+            revert InvalidMaxOftFeeBps();
+        }
+        uint256 minAmountLD = (quote.signedParams.amountLD * (10_000 - quote.signedParams.maxOftFeeBps)) / 10_000;
 
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
