@@ -11,8 +11,10 @@ import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams, AccountCreationMode } from "../Structs.sol";
+import { SharedDecimalsLib } from "../../../external/libraries/SharedDecimalsLib.sol";
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
@@ -160,9 +162,14 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         // Amount received from `lzReceive` on destination. May be different from the amount the user originally sent (if the OFT takes a fee in the bridged token)
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
 
-        // We trust src periphery to encode the correct amount. This is safe because src periphery pulls the amount it
-        // encodes here from the user. Decimal conversion is done on src side as well, so no coversions are needed here
-        uint256 amountSentLD = composeMsg._getAmountLD();
+        // We trust src periphery to encode the correct amount.
+        // We decode amountSD and convert it to local decimals to compare against amountLD
+        uint256 amountSentSD = composeMsg._getAmountSD();
+        uint256 amountSentLD = SharedDecimalsLib.toLD(
+            uint64(amountSentSD),
+            IERC20Metadata(baseToken).decimals(),
+            IOFT(IOFT_ADDRESS).sharedDecimals()
+        );
 
         uint256 extraFeesIncurred = 0;
         if (amountSentLD > amountLD) {

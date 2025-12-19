@@ -7,7 +7,7 @@ import { ComposeMsgCodec } from "contracts/periphery/mintburn/sponsored-oft/Comp
 contract ComposeMsgCodecTest is Test {
     function test_EncodeDecode() public {
         bytes32 nonce = keccak256("nonce");
-        uint256 amountLD = 100 ether;
+        uint256 amountSD = 100 ether;
         uint256 deadline = 1234567890;
         uint256 maxBpsToSponsor = 500;
         uint256 maxUserSlippageBps = 100;
@@ -20,7 +20,7 @@ contract ComposeMsgCodecTest is Test {
 
         bytes memory encoded = ComposeMsgCodec._encode(
             nonce,
-            amountLD,
+            amountSD,
             deadline,
             maxBpsToSponsor,
             maxUserSlippageBps,
@@ -33,7 +33,7 @@ contract ComposeMsgCodecTest is Test {
         );
 
         assertEq(ComposeMsgCodec._getNonce(encoded), nonce, "Nonce mismatch");
-        assertEq(ComposeMsgCodec._getAmountLD(encoded), amountLD, "AmountLD mismatch");
+        assertEq(ComposeMsgCodec._getAmountSD(encoded), amountSD, "AmountSD mismatch");
         assertEq(ComposeMsgCodec._getDeadline(encoded), deadline, "Deadline mismatch");
         assertEq(ComposeMsgCodec._getMaxBpsToSponsor(encoded), maxBpsToSponsor, "MaxBpsToSponsor mismatch");
         assertEq(ComposeMsgCodec._getMaxUserSlippageBps(encoded), maxUserSlippageBps, "MaxUserSlippageBps mismatch");
@@ -48,7 +48,7 @@ contract ComposeMsgCodecTest is Test {
 
     function testFuzz_EncodeDecode(
         bytes32 nonce,
-        uint256 amountLD,
+        uint256 amountSD,
         uint256 deadline,
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
@@ -61,7 +61,7 @@ contract ComposeMsgCodecTest is Test {
     ) public {
         bytes memory encoded = ComposeMsgCodec._encode(
             nonce,
-            amountLD,
+            amountSD,
             deadline,
             maxBpsToSponsor,
             maxUserSlippageBps,
@@ -74,7 +74,7 @@ contract ComposeMsgCodecTest is Test {
         );
 
         assertEq(ComposeMsgCodec._getNonce(encoded), nonce, "Nonce mismatch");
-        assertEq(ComposeMsgCodec._getAmountLD(encoded), amountLD, "AmountLD mismatch");
+        assertEq(ComposeMsgCodec._getAmountSD(encoded), amountSD, "AmountSD mismatch");
         assertEq(ComposeMsgCodec._getDeadline(encoded), deadline, "Deadline mismatch");
         assertEq(ComposeMsgCodec._getMaxBpsToSponsor(encoded), maxBpsToSponsor, "MaxBpsToSponsor mismatch");
         assertEq(ComposeMsgCodec._getMaxUserSlippageBps(encoded), maxUserSlippageBps, "MaxUserSlippageBps mismatch");

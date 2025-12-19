@@ -9,9 +9,11 @@ import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../contract
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { ComposeMsgCodec } from "../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalLZOptions.sol";
+import { SharedDecimalsLib } from "../../../contracts/external/libraries/SharedDecimalsLib.sol";
 import { IOFT, SendParam, MessagingFee, IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Used in place of // import { QuoteSignLib } from "../contracts/periphery/mintburn/sponsored-oft/QuoteSignLib.sol";
@@ -270,10 +272,16 @@ contract CreateSponsoredDeposit is Script, Config {
         Quote memory quote
     ) internal view returns (MessagingFee memory) {
         address oftMessenger = srcPeripheryContract.OFT_MESSENGER();
+        address token = srcPeripheryContract.TOKEN();
+
+        uint8 localDecimals = IERC20Metadata(token).decimals();
+        uint8 sharedDecimals = IOFT(oftMessenger).sharedDecimals();
+
+        uint256 amountSD = SharedDecimalsLib.toSD(quote.signedParams.amountLD, localDecimals, sharedDecimals);
 
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
-            quote.signedParams.amountLD,
+            amountSD,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
@@ -290,11 +298,13 @@ contract CreateSponsoredDeposit is Script, Config {
             .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
+        uint256 minAmountLD = SharedDecimalsLib.removeDust(quote.signedParams.amountLD, localDecimals, sharedDecimals);
+
         SendParam memory sendParam = SendParam({
             dstEid: quote.signedParams.dstEid,
             to: quote.signedParams.destinationHandler,
             amountLD: quote.signedParams.amountLD,
-            minAmountLD: quote.signedParams.amountLD,
+            minAmountLD: minAmountLD,
             extraOptions: extraOptions,
             composeMsg: composeMsg,
             oftCmd: srcPeripheryContract.EMPTY_OFT_COMMAND()

@@ -55,6 +55,12 @@ interface IOFT {
     function token() external view returns (address);
 
     /**
+     * @notice Retrieves the shared decimals of the OFT.
+     * @return sharedDecimals The shared decimals of the OFT.
+     */
+    function sharedDecimals() external view returns (uint8);
+
+    /**
      * @notice Provides a quote for the send() operation.
      * @param _sendParam The parameters for the send() operation.
      * @param _payInLzToken Flag indicating whether the caller is paying in the LZ token.

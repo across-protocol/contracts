@@ -5,7 +5,7 @@ import { BytesLib } from "../../../external/libraries/BytesLib.sol";
 /// @notice Codec for params passed in OFT `composeMsg`.
 library ComposeMsgCodec {
     uint256 internal constant NONCE_OFFSET = 0;
-    uint256 internal constant AMOUNT_LD_OFFSET = 32;
+    uint256 internal constant AMOUNT_SD_OFFSET = 32;
     uint256 internal constant DEADLINE_OFFSET = 64;
     uint256 internal constant MAX_BPS_TO_SPONSOR_OFFSET = 96;
     uint256 internal constant MAX_USER_SLIPPAGE_BPS_OFFSET = 128;
@@ -19,7 +19,7 @@ library ComposeMsgCodec {
 
     function _encode(
         bytes32 nonce,
-        uint256 amountLD,
+        uint256 amountSD,
         uint256 deadline,
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
@@ -33,7 +33,7 @@ library ComposeMsgCodec {
         return
             abi.encode(
                 nonce,
-                amountLD,
+                amountSD,
                 deadline,
                 maxBpsToSponsor,
                 maxUserSlippageBps,
@@ -50,8 +50,8 @@ library ComposeMsgCodec {
         return BytesLib.toBytes32(data, NONCE_OFFSET);
     }
 
-    function _getAmountLD(bytes memory data) internal pure returns (uint256 v) {
-        return BytesLib.toUint256(data, AMOUNT_LD_OFFSET);
+    function _getAmountSD(bytes memory data) internal pure returns (uint256 v) {
+        return BytesLib.toUint256(data, AMOUNT_SD_OFFSET);
     }
 
     function _getDeadline(bytes memory data) internal pure returns (uint256 v) {

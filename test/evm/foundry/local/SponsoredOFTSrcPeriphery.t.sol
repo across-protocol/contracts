@@ -148,13 +148,13 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(spDstEid, quote.signedParams.dstEid, "dstEid mismatch");
         assertEq(spTo, quote.signedParams.destinationHandler, "destination handler mismatch");
         assertEq(spAmountLD, SEND_AMOUNT, "amountLD mismatch");
-        assertEq(spMinAmountLD, SEND_AMOUNT, "minAmountLD should equal amountLD (no fee-in-token)");
+        assertEq(spMinAmountLD, SEND_AMOUNT, "minAmountLD should be SEND_AMOUNT (no dust loss)");
         assertEq(spOftCmd.length, 0, "oftCmd must be empty");
 
         // Validate composeMsg encoding (layout from ComposeMsgCodec._encode)
         (
             bytes32 gotNonce,
-            uint256 gotAmountLD,
+            uint256 gotAmountSD,
             uint256 gotDeadline,
             uint256 gotMaxBpsToSponsor,
             uint256 gotMaxUserSlippageBps,
@@ -170,7 +170,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
-        assertEq(gotAmountLD, SEND_AMOUNT, "amountLD mismatch");
+        assertEq(gotAmountSD, SEND_AMOUNT / 1e12, "amountSD mismatch");
         assertEq(gotDeadline, deadline, "deadline mismatch");
         assertEq(gotMaxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
         assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
