@@ -865,7 +865,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         // User account can be absent if our AccountCreationMode is `FromUserFunds`. We need to adjust our transfer amount to user based on this
         if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
             // This is enforced by `_initiateSwapFlow`. If the setting changed, this revert can trigger. Requires manual resolution (creating an account)
-            if (!finalCoreTokenInfo.canBeUsedForAccountActivation) revert TokenNotEligibleForActivation();
+            require(finalCoreTokenInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
             accountActivationFee = finalCoreTokenInfo.accountActivationFeeCore;
         }
 
@@ -1133,7 +1133,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         }
 
         // If the order total is not enough to cover account creation, the account has to be created separately (by the User or Bot) to be able to finalize this swap flow
-        require(totalAttributableToUser < accountActivationFee + 1, InsufficientFundsForActivation());
+        require(totalAttributableToUser > accountActivationFee, InsufficientFundsForActivation());
 
         amountToTransfer = totalAttributableToUser - accountActivationFee;
     }
