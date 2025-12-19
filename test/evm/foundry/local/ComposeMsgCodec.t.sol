@@ -7,6 +7,7 @@ import { ComposeMsgCodec } from "contracts/periphery/mintburn/sponsored-oft/Comp
 contract ComposeMsgCodecTest is Test {
     function test_EncodeDecode() public {
         bytes32 nonce = keccak256("nonce");
+        uint256 amountLD = 100 ether;
         uint256 deadline = 1234567890;
         uint256 maxBpsToSponsor = 500;
         uint256 maxUserSlippageBps = 100;
@@ -19,6 +20,7 @@ contract ComposeMsgCodecTest is Test {
 
         bytes memory encoded = ComposeMsgCodec._encode(
             nonce,
+            amountLD,
             deadline,
             maxBpsToSponsor,
             maxUserSlippageBps,
@@ -31,6 +33,7 @@ contract ComposeMsgCodecTest is Test {
         );
 
         assertEq(ComposeMsgCodec._getNonce(encoded), nonce, "Nonce mismatch");
+        assertEq(ComposeMsgCodec._getAmountLD(encoded), amountLD, "AmountLD mismatch");
         assertEq(ComposeMsgCodec._getDeadline(encoded), deadline, "Deadline mismatch");
         assertEq(ComposeMsgCodec._getMaxBpsToSponsor(encoded), maxBpsToSponsor, "MaxBpsToSponsor mismatch");
         assertEq(ComposeMsgCodec._getMaxUserSlippageBps(encoded), maxUserSlippageBps, "MaxUserSlippageBps mismatch");
@@ -45,6 +48,7 @@ contract ComposeMsgCodecTest is Test {
 
     function testFuzz_EncodeDecode(
         bytes32 nonce,
+        uint256 amountLD,
         uint256 deadline,
         uint256 maxBpsToSponsor,
         uint256 maxUserSlippageBps,
@@ -57,6 +61,7 @@ contract ComposeMsgCodecTest is Test {
     ) public {
         bytes memory encoded = ComposeMsgCodec._encode(
             nonce,
+            amountLD,
             deadline,
             maxBpsToSponsor,
             maxUserSlippageBps,
@@ -69,6 +74,7 @@ contract ComposeMsgCodecTest is Test {
         );
 
         assertEq(ComposeMsgCodec._getNonce(encoded), nonce, "Nonce mismatch");
+        assertEq(ComposeMsgCodec._getAmountLD(encoded), amountLD, "AmountLD mismatch");
         assertEq(ComposeMsgCodec._getDeadline(encoded), deadline, "Deadline mismatch");
         assertEq(ComposeMsgCodec._getMaxBpsToSponsor(encoded), maxBpsToSponsor, "MaxBpsToSponsor mismatch");
         assertEq(ComposeMsgCodec._getMaxUserSlippageBps(encoded), maxUserSlippageBps, "MaxUserSlippageBps mismatch");
@@ -82,13 +88,13 @@ contract ComposeMsgCodecTest is Test {
     }
 
     function test_IsValidComposeMsgBytelength_Boundary() public pure {
-        // Minimum length is 352 bytes (9 static params + actionData offset + actionData length + 0 bytes actionData)
-        // 9 * 32 + 32 + 32 = 352 bytes
+        // Minimum length is 384 bytes (10 static params + actionData offset + actionData length + 0 bytes actionData)
+        // 10 * 32 + 32 + 32 = 384 bytes
 
-        bytes memory data = new bytes(352);
+        bytes memory data = new bytes(384);
         assertTrue(ComposeMsgCodec._isValidComposeMsgBytelength(data));
 
-        bytes memory tooShort = new bytes(351);
+        bytes memory tooShort = new bytes(383);
         assertFalse(ComposeMsgCodec._isValidComposeMsgBytelength(tooShort));
     }
 }

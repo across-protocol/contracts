@@ -38,6 +38,7 @@ library DebugQuoteSignLib {
                 p.destinationDex,
                 p.lzReceiveGasLimit,
                 p.lzComposeGasLimit,
+                p.maxOftFeeBps,
                 p.accountCreationMode,
                 p.executionMode,
                 keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
@@ -208,6 +209,7 @@ contract CreateSponsoredDeposit is Script, Config {
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
+            maxOftFeeBps: 0,
             accountCreationMode: 0,
             executionMode: 0,
             actionData: ""
@@ -271,6 +273,7 @@ contract CreateSponsoredDeposit is Script, Config {
 
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
+            quote.signedParams.amountLD,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,

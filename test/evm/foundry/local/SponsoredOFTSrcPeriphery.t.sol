@@ -80,6 +80,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: 500_000,
             lzComposeGasLimit: 500_000,
+            maxOftFeeBps: 0,
             accountCreationMode: uint8(0), // Standard
             executionMode: uint8(0), // DirectToCore
             actionData: ""
@@ -153,6 +154,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         // Validate composeMsg encoding (layout from ComposeMsgCodec._encode)
         (
             bytes32 gotNonce,
+            uint256 gotAmountLD,
             uint256 gotDeadline,
             uint256 gotMaxBpsToSponsor,
             uint256 gotMaxUserSlippageBps,
@@ -164,10 +166,11 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             bytes memory gotActionData
         ) = abi.decode(
                 spComposeMsg,
-                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+                (bytes32, uint256, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
             );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
+        assertEq(gotAmountLD, SEND_AMOUNT, "amountLD mismatch");
         assertEq(gotDeadline, deadline, "deadline mismatch");
         assertEq(gotMaxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
         assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
