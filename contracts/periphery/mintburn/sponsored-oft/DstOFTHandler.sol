@@ -157,9 +157,11 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         }
         $.usedNonces[quoteNonce] = true;
 
+        // Amount received from `lzReceive` on destination. May be different from the amount the user originally sent (if the OFT takes a fee in the bridged token)
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
-        // We trust the src keyword to record the real send amount.
-        // This is safe because the source contract validates the signature of the quote.
+
+        // We trust src periphery to encode the correct amount. This is safe because src periphery pulls the amount it
+        // encodes here from the user. Decimal conversion is done on src side as well, so no coversions are needed here
         uint256 amountSentLD = composeMsg._getAmountLD();
 
         uint256 extraFeesIncurred = 0;

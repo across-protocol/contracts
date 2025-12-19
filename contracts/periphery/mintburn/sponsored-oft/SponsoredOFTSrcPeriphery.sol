@@ -30,6 +30,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     /// @notice Source endpoint id
     uint32 public immutable SRC_EID;
 
+    /// @notice Trusted mapping of dst decimal difference with src decimals for TOKEN
     mapping(uint32 dstEid => int8 decimalDiff) public dstEidToDecimalsDiff;
 
     /// @custom:storage-location erc7201:SponsoredOFTSrcPeriphery.main
