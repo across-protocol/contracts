@@ -95,7 +95,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, SharedDecimalsLib {
         address _oftMessenger,
         uint32 _srcEid,
         address _signer
-    ) SharedDecimalsLib(IERC20Metadata(_token).decimals(), address(0), address(0)) {
+    ) SharedDecimalsLib(IERC20Metadata(_token).decimals(), IOFT(_oftMessenger).sharedDecimals()) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
         SRC_EID = _srcEid;

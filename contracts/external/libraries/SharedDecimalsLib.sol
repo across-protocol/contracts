@@ -25,18 +25,17 @@ abstract contract SharedDecimalsLib {
     //  @dev To preserve the dust that would otherwise be lost on that conversion,
     //  we need to unify a denomination that can be represented on ALL chains inside of the OFT mesh
     uint256 public immutable decimalConversionRate;
+    uint8 internal immutable _sharedDecimals;
 
     /**
      * @dev Constructor.
      * @param _localDecimals The decimals of the token on the local chain (this chain).
-     * @param _endpoint Unused (kept for parity with OFTCore signature).
-     * @param _delegate Unused (kept for parity with OFTCore signature).
+     * @param _sharedDecimalsArg The shared decimals used by the OFT.
      */
-    constructor(uint8 _localDecimals, address _endpoint, address _delegate) {
-        _endpoint;
-        _delegate;
-        if (_localDecimals < sharedDecimals()) revert InvalidLocalDecimals();
-        decimalConversionRate = 10 ** (_localDecimals - sharedDecimals());
+    constructor(uint8 _localDecimals, uint8 _sharedDecimalsArg) {
+        _sharedDecimals = _sharedDecimalsArg;
+        if (_localDecimals < _sharedDecimalsArg) revert InvalidLocalDecimals();
+        decimalConversionRate = 10 ** (_localDecimals - _sharedDecimalsArg);
     }
 
     /**
@@ -50,7 +49,7 @@ abstract contract SharedDecimalsLib {
      * ie. 4 sharedDecimals would be 1,844,674,407,370,955.1615
      */
     function sharedDecimals() public view virtual returns (uint8) {
-        return 6;
+        return _sharedDecimals;
     }
 
     /**

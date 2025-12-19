@@ -87,7 +87,7 @@ contract DstOFTHandler is BaseModuleHandler, SharedDecimalsLib, ILayerZeroCompos
     )
         BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
         ArbitraryEVMFlowExecutor(_multicallHandler)
-        SharedDecimalsLib(IERC20Metadata(_baseToken).decimals(), address(0), address(0))
+        SharedDecimalsLib(IERC20Metadata(_baseToken).decimals(), IOFT(_ioft).sharedDecimals())
     {
         baseToken = _baseToken;
 
