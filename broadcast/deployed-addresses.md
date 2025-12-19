@@ -170,12 +170,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name                | Address                                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | DonationBox                  | [0x039d62C549F27ead0eB9B567d8776289e5020583](https://hyperevmscan.io//address/0x039d62C549F27ead0eB9B567d8776289e5020583) |
-| DonationBox                  | [0xf42bB7EC88d065dF48D60cb672B88F8330f9f764](https://hyperevmscan.io//address/0xf42bB7EC88d065dF48D60cb672B88F8330f9f764) |
-| DstOFTHandler                | [0x52a0c0D440baE2E9E5603C752a886f6622513769](https://hyperevmscan.io//address/0x52a0c0D440baE2E9E5603C752a886f6622513769) |
+| DonationBox                  | [0xC97500909f31b99FDD62982Efd2c17E7209022c9](https://hyperevmscan.io//address/0xC97500909f31b99FDD62982Efd2c17E7209022c9) |
+| DstOFTHandler                | [0xa738e39d3436e4EA0aeCF255BceaA7b70Cc0271F](https://hyperevmscan.io//address/0xa738e39d3436e4EA0aeCF255BceaA7b70Cc0271F) |
 | Helios                       | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | HyperliquidDepositHandler    | [0x861E127036B28D32f3777B4676F6bbb9e007d195](https://hyperevmscan.io//address/0x861E127036B28D32f3777B4676F6bbb9e007d195) |
 | MulticallHandler             | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
-| PermissionedMulticallHandler | [0xACceA2061BfbeA0dbB4A7Af1907b0Dd9b2853Cec](https://hyperevmscan.io//address/0xACceA2061BfbeA0dbB4A7Af1907b0Dd9b2853Cec) |
+| PermissionedMulticallHandler | [0xf692e93f0915336BA0F9a2C7aEd93D6dCa493fDA](https://hyperevmscan.io//address/0xf692e93f0915336BA0F9a2C7aEd93D6dCa493fDA) |
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
 | SpokePoolPeriphery           | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
