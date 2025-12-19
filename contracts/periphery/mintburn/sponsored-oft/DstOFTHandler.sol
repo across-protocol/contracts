@@ -27,10 +27,6 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
     using AddressToBytes32 for address;
     using SafeERC20 for IERC20;
 
-    /// @notice We expect bridge amount that comes through to this Handler to be 1:1 with the src send amount, and we
-    /// require our src handler to ensure that it is. We don't sponsor extra bridge fees in this handler
-    uint256 public constant EXTRA_FEES_TO_SPONSOR = 0;
-
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
 
@@ -162,6 +158,15 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         $.usedNonces[quoteNonce] = true;
 
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
+        // We trust the src keyword to record the real send amount.
+        // This is safe because the source contract validates the signature of the quote.
+        uint256 amountSentLD = composeMsg._getAmountLD();
+
+        uint256 extraFeesIncurred = 0;
+        if (amountSentLD > amountLD) {
+            extraFeesIncurred = amountSentLD - amountLD;
+        }
+
         uint256 maxBpsToSponsor = composeMsg._getMaxBpsToSponsor();
         uint256 maxUserSlippageBps = composeMsg._getMaxUserSlippageBps();
         address finalRecipient = composeMsg._getFinalRecipient().toAddress();
@@ -178,7 +183,7 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
             finalToken: finalToken,
             destinationDex: destinationDex,
             maxBpsToSponsor: maxBpsToSponsor,
-            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR,
+            extraFeesIncurred: extraFeesIncurred,
             accountCreationMode: AccountCreationMode(accountCreationMode)
         });
 

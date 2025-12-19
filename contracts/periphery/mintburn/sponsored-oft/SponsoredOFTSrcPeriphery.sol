@@ -30,6 +30,8 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     /// @notice Source endpoint id
     uint32 public immutable SRC_EID;
 
+    mapping(uint32 dstEid => int8 decimalDiff) public dstEidToDecimalsDiff;
+
     /// @custom:storage-location erc7201:SponsoredOFTSrcPeriphery.main
     struct MainStorage {
         /// @notice Signer public key to check the signed quote against
@@ -83,6 +85,8 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     error NonceAlreadyUsed();
     /// @notice Thrown when provided msg.value is not sufficient to cover OFT bridging fee
     error InsufficientNativeFee();
+    /// @notice Thrown when array lengths do not match
+    error ArrayLengthMismatch();
 
     constructor(address _token, address _oftMessenger, uint32 _srcEid, address _signer) {
         TOKEN = _token;
@@ -161,8 +165,14 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     function _buildOftTransfer(
         Quote calldata quote
     ) internal view returns (SendParam memory, MessagingFee memory, address) {
+        uint256 amountDstLD = _applyDecimalDiff(
+            quote.signedParams.amountLD,
+            dstEidToDecimalsDiff[quote.signedParams.dstEid]
+        );
+
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
+            amountDstLD,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
@@ -179,12 +189,14 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
+        // Use maxOftFeeBps to calculate minAmountLD based on expected destination amount
+        uint256 minAmountLD = (amountDstLD * (10000 - quote.signedParams.maxOftFeeBps)) / 10000;
+
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
             quote.signedParams.destinationHandler,
-            // Only support OFT sends that don't take fees in sent token. Set `minAmountLD = amountLD` to enforce this
             quote.signedParams.amountLD,
-            quote.signedParams.amountLD,
+            minAmountLD,
             extraOptions,
             composeMsg,
             // Only support empty OFT commands
@@ -194,6 +206,21 @@ contract SponsoredOFTSrcPeriphery is Ownable {
         MessagingFee memory fee = IOFT(OFT_MESSENGER).quoteSend(sendParam, false);
 
         return (sendParam, fee, quote.unsignedParams.refundRecipient);
+    }
+
+    /**
+     * @notice Applies decimal difference to the amount
+     * @param amount The amount to adjust
+     * @param diff The decimal difference (positive: multiply, negative: divide)
+     * @return The adjusted amount
+     */
+    function _applyDecimalDiff(uint256 amount, int8 diff) internal pure returns (uint256) {
+        if (diff > 0) {
+            return amount * (10 ** uint8(diff));
+        } else if (diff < 0) {
+            return amount / (10 ** uint8(-diff));
+        }
+        return amount;
     }
 
     function _validateQuote(Quote calldata quote, bytes calldata signature) internal view {
@@ -214,5 +241,19 @@ contract SponsoredOFTSrcPeriphery is Ownable {
 
     function setSigner(address _newSigner) external onlyOwner {
         _getMainStorage().signer = _newSigner;
+    }
+
+    /**
+     * @notice Sets the decimal difference for destination chains
+     * @param dstEids Array of destination endpoint IDs
+     * @param decimalDiffs Array of decimal differences (positive for Src < Dst, negative for Src > Dst)
+     */
+    function setDstEidToDecimalsDiff(uint32[] calldata dstEids, int8[] calldata decimalDiffs) external onlyOwner {
+        if (dstEids.length != decimalDiffs.length) {
+            revert ArrayLengthMismatch();
+        }
+        for (uint256 i = 0; i < dstEids.length; ++i) {
+            dstEidToDecimalsDiff[dstEids[i]] = decimalDiffs[i];
+        }
     }
 }
