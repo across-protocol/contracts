@@ -19,25 +19,32 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 library DebugQuoteSignLib {
     /// @notice Compute the keccak of all `SignedQuoteParams` fields. Accept memory arg
     function hashMemory(SignedQuoteParams memory p) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    p.srcEid,
-                    p.dstEid,
-                    p.destinationHandler,
-                    p.amountLD,
-                    p.nonce,
-                    p.deadline,
-                    p.maxBpsToSponsor,
-                    p.finalRecipient,
-                    p.finalToken,
-                    p.lzReceiveGasLimit,
-                    p.lzComposeGasLimit,
-                    p.accountCreationMode,
-                    p.executionMode,
-                    keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
-                )
-            );
+        bytes32 hash1 = keccak256(
+            abi.encode(
+                p.srcEid,
+                p.dstEid,
+                p.destinationHandler,
+                p.amountLD,
+                p.nonce,
+                p.deadline,
+                p.maxBpsToSponsor,
+                p.finalRecipient
+            )
+        );
+
+        bytes32 hash2 = keccak256(
+            abi.encode(
+                p.finalToken,
+                p.destinationDex,
+                p.lzReceiveGasLimit,
+                p.lzComposeGasLimit,
+                p.accountCreationMode,
+                p.executionMode,
+                keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
+            )
+        );
+
+        return keccak256(abi.encode(hash1, hash2));
     }
 
     /// @notice Sign the quote using Foundry's Vm cheatcode and return concatenated bytes signature (r,s,v).
