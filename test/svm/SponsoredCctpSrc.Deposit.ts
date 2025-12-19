@@ -504,6 +504,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     );
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
+    assert.strictEqual(depositEvent.destinationDex, destinationDex, "Invalid destinationDex");
+    assert.strictEqual(depositEvent.accountCreationMode, accountCreationMode, "Invalid accountCreationMode");
     assert.isTrue(depositEvent.signature.equals(Buffer.from(signature)), "Invalid signature");
 
     const createdEventAccountEvent = events.find((event) => event.name === "createdEventAccount")?.data;
