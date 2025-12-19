@@ -211,7 +211,7 @@ contract CreateSponsoredDeposit is Script, Config {
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
             maxOftFeeBps: 0,
-            accountCreationMode: 0,
+            accountCreationMode: 1,
             executionMode: 0,
             actionData: ""
         });
