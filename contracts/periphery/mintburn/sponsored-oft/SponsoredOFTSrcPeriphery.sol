@@ -8,7 +8,7 @@ import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
-import { SharedDecimalsLib } from "../../../external/libraries/SharedDecimalsLib.sol";
+import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
 
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
@@ -17,7 +17,7 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge
-contract SponsoredOFTSrcPeriphery is Ownable, SharedDecimalsLib {
+contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
@@ -95,7 +95,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, SharedDecimalsLib {
         address _oftMessenger,
         uint32 _srcEid,
         address _signer
-    ) SharedDecimalsLib(IERC20Metadata(_token).decimals(), IOFT(_oftMessenger).sharedDecimals()) {
+    ) OFTCoreMath(IERC20Metadata(_token).decimals(), IOFT(_oftMessenger).sharedDecimals()) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
         SRC_EID = _srcEid;

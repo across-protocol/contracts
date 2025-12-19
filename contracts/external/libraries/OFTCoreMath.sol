@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title SharedDecimalsLib
+ * @title OFTCoreMath
  * @notice Copied from LZ implementation here:
  * `https://github.com/LayerZero-Labs/devtools/blob/16daaee36fe802d11aa99b89c29bb74447354483/packages/oft-evm/contracts/OFTCore.sol#L364`
- * Code was not modified beyond removing unrelated OFT/OApp concerns.
+ * Code was not modified beyond adding `uint8 _sharedDecimals` to constructor args and substituting `sharedDecimals()` calls with it
  */
-abstract contract SharedDecimalsLib {
+abstract contract OFTCoreMath {
     error InvalidLocalDecimals();
     error AmountSDOverflowed(uint256 amountSD);
 
@@ -25,43 +25,15 @@ abstract contract SharedDecimalsLib {
     //  @dev To preserve the dust that would otherwise be lost on that conversion,
     //  we need to unify a denomination that can be represented on ALL chains inside of the OFT mesh
     uint256 public immutable decimalConversionRate;
-    uint8 internal immutable _sharedDecimals;
 
     /**
      * @dev Constructor.
      * @param _localDecimals The decimals of the token on the local chain (this chain).
-     * @param _sharedDecimalsArg The shared decimals used by the OFT.
+     * @param _sharedDecimals The shared decimals used by the OFT.
      */
-    constructor(uint8 _localDecimals, uint8 _sharedDecimalsArg) {
-        _sharedDecimals = _sharedDecimalsArg;
-        if (_localDecimals < _sharedDecimalsArg) revert InvalidLocalDecimals();
-        decimalConversionRate = 10 ** (_localDecimals - _sharedDecimalsArg);
-    }
-
-    /**
-     * @dev Retrieves the shared decimals of the OFT.
-     * @return The shared decimals of the OFT.
-     *
-     * @dev Sets an implicit cap on the amount of tokens, over uint64.max() will need some sort of outbound cap / totalSupply cap
-     * Lowest common decimal denominator between chains.
-     * Defaults to 6 decimal places to provide up to 18,446,744,073,709.551615 units (max uint64).
-     * For tokens exceeding this totalSupply(), they will need to override the sharedDecimals function with something smaller.
-     * ie. 4 sharedDecimals would be 1,844,674,407,370,955.1615
-     */
-    function sharedDecimals() public view virtual returns (uint8) {
-        return _sharedDecimals;
-    }
-
-    /**
-     * @dev Internal function to remove dust from the given local decimal amount.
-     * @param _amountLD The amount in local decimals.
-     * @return amountLD The amount after removing dust.
-     *
-     * @dev Prevents the loss of dust when moving amounts between chains with different decimals.
-     * @dev eg. uint(123) with a conversion rate of 100 becomes uint(100).
-     */
-    function _removeDust(uint256 _amountLD) internal view virtual returns (uint256 amountLD) {
-        return (_amountLD / decimalConversionRate) * decimalConversionRate;
+    constructor(uint8 _localDecimals, uint8 _sharedDecimals) {
+        if (_localDecimals < _sharedDecimals) revert InvalidLocalDecimals();
+        decimalConversionRate = 10 ** (_localDecimals - _sharedDecimals);
     }
 
     /**

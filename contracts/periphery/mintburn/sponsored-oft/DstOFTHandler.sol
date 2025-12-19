@@ -11,7 +11,7 @@ import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams, AccountCreationMode } from "../Structs.sol";
-import { SharedDecimalsLib } from "../../../external/libraries/SharedDecimalsLib.sol";
+import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
@@ -23,7 +23,7 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
  * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
     `BaseModuleHandler` contract code to learn more.
  */
-contract DstOFTHandler is BaseModuleHandler, SharedDecimalsLib, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -87,7 +87,7 @@ contract DstOFTHandler is BaseModuleHandler, SharedDecimalsLib, ILayerZeroCompos
     )
         BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
         ArbitraryEVMFlowExecutor(_multicallHandler)
-        SharedDecimalsLib(IERC20Metadata(_baseToken).decimals(), IOFT(_ioft).sharedDecimals())
+        OFTCoreMath(IERC20Metadata(_baseToken).decimals(), IOFT(_ioft).sharedDecimals())
     {
         baseToken = _baseToken;
 
