@@ -18,7 +18,7 @@ import { Constants } from "./utils/Constants.sol";
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
 // 5. forge script script/056DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
-contract DeployOPAdapter is Script, Test, Constants {
+contract DeployOPAdapter is Script, DeployedAddress, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 spokeChainId = vm.envUint("SPOKE_CHAIN_ID");
@@ -29,6 +29,9 @@ contract DeployOPAdapter is Script, Test, Constants {
         bool hasCctpDomain = hasCctpDomain(destinationChainId);
         uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(spokeChainId) : CCTP_NO_DOMAIN;
         address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
+        address adapterStore = getDeployedAddress(chainId, "AdapterStore");
+        uint256 oftDstEid = getOftEid(spokeChainId);
+        uint256 oftFeeCap = 1 ether; // @todo
 
         // Verify this is being deployed on Ethereum mainnet or Sepolia
         require(
@@ -51,7 +54,10 @@ contract DeployOPAdapter is Script, Test, Constants {
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
             IOpUSDCBridgeAdapter(opStack.L1OpUSDCBridgeAdapter), // L1 OP USDC Bridge
             ITokenMessenger(cctpTokenMessenger), // CCTP (V2) Token Messenger
-            cctpDomain
+            cctpDomain,
+            adapterStore,
+            oftDstEid,
+            oftFeeCap
         );
 
         // Log the deployed addresses
