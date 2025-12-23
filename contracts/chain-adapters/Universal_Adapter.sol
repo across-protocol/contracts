@@ -78,7 +78,12 @@ contract Universal_Adapter is AdapterInterface, CircleCCTPAdapter, OFTTransportA
      * @param amount Amount of tokens to relay.
      * @param to Address to receive the tokens on L2. Should be SpokePool address.
      */
-    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
+    function relayTokens(
+        address l1Token,
+        address l2Token,
+        uint256 amount,
+        address to
+    ) external payable override {
         address oftMessenger = _getOftMessenger(l1Token);
         if (_isCCTPEnabled() && l1Token == address(usdcToken)) {
             _transferUsdc(to, amount);
