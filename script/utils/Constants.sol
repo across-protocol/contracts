@@ -85,7 +85,6 @@ contract Constants is Script {
     struct OpStackAddresses {
         address L1CrossDomainMessenger;
         address L1StandardBridge;
-        address L1BlastBridge;
         address L1OpUSDCBridgeAdapter;
     }
 
@@ -216,7 +215,6 @@ contract Constants is Script {
             OpStackAddresses({
                 L1CrossDomainMessenger: vm.parseJsonAddress(file, string.concat(path, ".L1CrossDomainMessenger")),
                 L1StandardBridge: vm.parseJsonAddress(file, string.concat(path, ".L1StandardBridge")),
-                L1BlastBridge: vm.parseJsonAddress(file, string.concat(path, ".L1BlastBridge")),
                 L1OpUSDCBridgeAdapter: vm.parseJsonAddress(file, string.concat(path, ".L1OpUSDCBridgeAdapter"))
             });
     }

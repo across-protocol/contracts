@@ -34,7 +34,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | LpTokenFactory             | [0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d](https://etherscan.io/address/0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d) |
 | Mode_Adapter               | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | MulticallHandler           | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| OP_Adapter                 | [0x91769164bb5B820818ce816426D10A725f785330](https://etherscan.io/address/0x91769164bb5B820818ce816426D10A725f785330) |
+| OP_Adapter                 | [0x83057C549C6489899651012F84A36fA58FE2079e](https://etherscan.io/address/0x83057C549C6489899651012F84A36fA58FE2079e) |
 | Optimism_Adapter           | [0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b](https://etherscan.io/address/0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b) |
 | Optimism_Adapter           | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionSplitterProxy    | [0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7](https://etherscan.io/address/0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7) |
