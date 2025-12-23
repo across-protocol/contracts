@@ -172,10 +172,10 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 22789839
         },
-        "OP_Adapter": {
-          "address": "0x83057c549c6489899651012f84a36fa58fe2079e",
-          "block_number": 24075419,
-          "transaction_hash": "0x21e319a839aa693f4a219dd27b9babdc2721b973be32b959393273487319becc"
+        "OP_Adapter_57073": {
+          "address": "0x44857a6b740d2c7eb362901017971d42427f3838",
+          "block_number": 24075822,
+          "transaction_hash": "0x7ac780398b1c615d246de6de420d9c965c91ba23ea66e56282cda339fbcc458e"
         },
         "PermissionSplitterProxy": {
           "address": "0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7",
