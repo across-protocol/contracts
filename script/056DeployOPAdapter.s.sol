@@ -18,7 +18,6 @@ import { Constants } from "./utils/Constants.sol";
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
 // 5. forge script script/056DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
-
 contract DeployOPAdapter is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
