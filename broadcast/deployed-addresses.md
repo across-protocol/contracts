@@ -115,14 +115,14 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Monad (143)
 
-| Contract Name             | Address                                                                                                                  |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Helios                    | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadvision.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| MulticallHandler          | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
-| SpokePool                 | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadvision.com/address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
-| SpokePoolPeriphery        | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadvision.com/address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
-| SponsoredCCTPSrcPeriphery | [0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5](https://monadvision.com/address/0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5) |
-| SponsoredOFTSrcPeriphery  | [0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1](https://monadvision.com/address/0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1) |
+| Contract Name             | Address                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Helios                    | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler          | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
+| SpokePool                 | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| SpokePoolPeriphery        | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
+| SponsoredCCTPSrcPeriphery | [0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5](https://monadscan.com//address/0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5) |
+| SponsoredOFTSrcPeriphery  | [0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1](https://monadscan.com//address/0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1) |
 
 ## Lens (232)
 
