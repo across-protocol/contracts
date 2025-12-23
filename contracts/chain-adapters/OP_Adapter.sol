@@ -5,8 +5,6 @@ import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
-import { IOFT } from "../interfaces/IOFT.sol";
-import { OFTTransportAdapterWithStore } from "../libraries/OFTTransportAdapterWithStore.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { IOpUSDCBridgeAdapter } from "../external/interfaces/IOpUSDCBridgeAdapter.sol";
@@ -28,7 +26,7 @@ import { CrossDomainEnabled } from "./CrossDomainEnabled.sol";
  */
 
 // solhint-disable-next-line contract-name-camelcase
-contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, OFTTransportAdapterWithStore {
+contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter {
     using SafeERC20 for IERC20;
     uint32 public constant L2_GAS_LIMIT = 200_000;
 
@@ -48,9 +46,6 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, 
      * @param _l1USDCBridge OP USDC bridge contract.
      * @param _cctpTokenMessenger CCTP token messenger contract.
      * @param _recipientCircleDomainId Circle domain ID of the destination chain.
-     * @param _adapterStore Helper storage contract to support bridging via OFT.
-     * @param _oftDstEid destination endpoint id for OFT messaging.
-     * @param _oftFeeCap A fee cap we apply to OFT bridge native payment. A good default is 1 ether.
      */
     constructor(
         WETH9Interface _l1Weth,
@@ -59,15 +54,10 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, 
         IL1StandardBridge _l1StandardBridge,
         IOpUSDCBridgeAdapter _l1USDCBridge,
         ITokenMessenger _cctpTokenMessenger,
-        uint32 _recipientCircleDomainId,
-        address _adapterStore,
-        uint32 _oftDstEid,
-        uint256 _oftFeeCap
+        uint32 _recipientCircleDomainId
     )
         CrossDomainEnabled(_crossDomainMessenger)
         CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _recipientCircleDomainId)
-        CircleCCTPAdapter(_l1Usdc, _cctpTokenMessenger, _recipientCircleDomainId)
-        OFTTransportAdapterWithStore(_oftDstEid, _oftFeeCap, _adapterStore)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
@@ -102,14 +92,10 @@ contract OP_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapter, 
      * @param to Bridge recipient.
      */
     function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
-        address oftMessenger = _getOftMessenger(l1Token);
-
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);
             L1_STANDARD_BRIDGE.depositETHTo{ value: amount }(to, L2_GAS_LIMIT, "");
-        } else if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l1Token), IOFT(oftMessenger), to, amount);
         } else if (l1Token == address(usdcToken)) {
             if (_isCCTPEnabled()) {
                 _transferUsdc(to, amount);
