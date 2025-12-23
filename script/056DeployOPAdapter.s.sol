@@ -26,7 +26,7 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         // Get the current chain ID
         uint256 chainId = block.chainid;
-        uint32 cctpDomain = getCircleDomainId(spokeChainId);
+        uint32 cctpDomain = hasCctpDomain(spokeChainId) ? getCircleDomainId(spokeChainId) : CCTP_NO_DOMAIN;
 
         // Verify this is being deployed on Ethereum mainnet or Sepolia
         require(

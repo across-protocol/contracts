@@ -11,6 +11,8 @@ import { Script } from "forge-std/Script.sol";
 contract Constants is Script {
     string public file;
 
+    uint32 constant CCTP_NO_DOMAIN = 2 ** 32 - 1;
+
     constructor() {
         file = vm.readFile("generated/constants.json");
     }
