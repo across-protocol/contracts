@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title MultiCallerUpgradeable
- * @notice Logic is 100% copied from "@uma/core/contracts/common/implementation/MultiCaller.sol" but one
+ * @notice Logic is 100% copied from "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol" but one
  * comment is added to clarify why we allow delegatecall() in this contract, which is typically unsafe for use in
  * upgradeable implementation contracts.
  * @dev See https://docs.openzeppelin.com/upgrades-plugins/1.x/faq#delegatecall-selfdestruct for more details.
@@ -73,6 +73,8 @@ contract MultiCallerUpgradeable {
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
     uint256[1000] private __gap;
 }

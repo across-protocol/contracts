@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
@@ -16,6 +16,11 @@ library CircleDomainIds {
     uint32 public constant DoctorWho = 10;
     uint32 public constant Linea = 11;
     uint32 public constant WorldChain = 14;
+    uint32 public constant Monad = 15;
+    uint32 public constant BSC = 17;
+    uint32 public constant HyperEVM = 19;
+    uint32 public constant Ink = 21;
+    uint32 public constant Arc = 26;
     uint32 public constant UNINITIALIZED = type(uint32).max;
 }
 

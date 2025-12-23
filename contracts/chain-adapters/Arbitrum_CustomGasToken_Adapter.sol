@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { ITokenMessenger as ICCTPTokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
 import { CircleCCTPAdapter, CircleDomainIds } from "../libraries/CircleCCTPAdapter.sol";
 import { ArbitrumERC20Bridge as ArbitrumL1ERC20Bridge, ArbitrumCustomGasTokenInbox as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../interfaces/ArbitrumBridge.sol";
@@ -243,7 +243,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
             return amount;
         } else if (NATIVE_TOKEN_DECIMALS < 18) {
             // Round up the division result so that the L1 call value is always sufficient to cover the submission fee.
-            uint256 reductionFactor = 10**(18 - NATIVE_TOKEN_DECIMALS);
+            uint256 reductionFactor = 10 ** (18 - NATIVE_TOKEN_DECIMALS);
             uint256 divFloor = amount / reductionFactor;
             uint256 mod = amount % reductionFactor;
             if (mod != 0) {
@@ -252,7 +252,7 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
                 return divFloor;
             }
         } else {
-            return amount * 10**(NATIVE_TOKEN_DECIMALS - 18);
+            return amount * 10 ** (NATIVE_TOKEN_DECIMALS - 18);
         }
     }
 
@@ -260,9 +260,9 @@ contract Arbitrum_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter 
         if (NATIVE_TOKEN_DECIMALS == 18) {
             return amount;
         } else if (NATIVE_TOKEN_DECIMALS < 18) {
-            return amount * 10**(18 - NATIVE_TOKEN_DECIMALS);
+            return amount * 10 ** (18 - NATIVE_TOKEN_DECIMALS);
         } else {
-            return amount / 10**(NATIVE_TOKEN_DECIMALS - 18);
+            return amount / 10 ** (NATIVE_TOKEN_DECIMALS - 18);
         }
     }
 }

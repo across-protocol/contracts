@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
 import "./external/interfaces/WETH9Interface.sol";
+import { IOFT } from "./interfaces/IOFT.sol";
 import "./interfaces/SpokePoolInterface.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 
@@ -21,11 +22,7 @@ interface IFxMessageProcessor {
      * @param rootMessageSender Original L1 sender of data.
      * @param data ABI encoded function call to execute on this contract.
      */
-    function processMessageFromRoot(
-        uint256 stateId,
-        address rootMessageSender,
-        bytes calldata data
-    ) external;
+    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
 }
 
 /**
@@ -85,9 +82,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer, _oftDstEid, _oftFeeCap)
         CircleCCTPAdapter(_l2Usdc, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {} // solhint-disable-line no-empty-blocks
 
@@ -146,7 +145,7 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
      * @param data ABI encoded function call to execute on this contract.
      */
     function processMessageFromRoot(
-        uint256, /*stateId*/
+        uint256 /*stateId*/,
         address rootMessageSender,
         bytes calldata data
     ) public validateInternalCalls {
@@ -239,9 +238,11 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         emit SetPolygonTokenBridger(address(_polygonTokenBridger));
     }
 
-    function _preExecuteLeafHook(address) internal override {
-        // Wraps MATIC --> WMATIC before distributing tokens from this contract.
-        _wrap();
+    function _preExecuteLeafHook(address l2TokenAddress) internal override {
+        // Wraps MATIC --> WMATIC before distributing tokens from this contract. Only wrap if the token is not an OFT token
+        if (_getOftMessenger(l2TokenAddress) == address(0)) {
+            _wrap();
+        }
     }
 
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
@@ -249,10 +250,13 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         // due to a MAX_LOGS constraint imposed by the ERC20Predicate, so if this SpokePool will be used to withdraw
         // MATIC then additional constraints need to be imposed to limit the # of logs produed by the L2 withdrawal
         // transaction. Currently, MATIC is not a supported token in Across for this SpokePool.
+        address oftMessenger = _getOftMessenger(l2TokenAddress);
 
         // If the token is USDC, we need to use the CCTP bridge to transfer it to the hub pool.
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
+        } else if (oftMessenger != address(0)) {
+            _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             PolygonIERC20Upgradeable(l2TokenAddress).safeIncreaseAllowance(
                 address(polygonTokenBridger),

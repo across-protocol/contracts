@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "../external/interfaces/IPermit2.sol";
 import { V3SpokePoolInterface } from "../interfaces/V3SpokePoolInterface.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 import { Output, GaslessCrossChainOrder, OnchainCrossChainOrder, ResolvedCrossChainOrder, IOriginSettler, FillInstruction } from "./ERC7683.sol";
 import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Permit2Lib.sol";
@@ -122,11 +122,10 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
      * @param order the ERC-7683 compliant order.
      * @param originFillerData Across-specific fillerData.
      */
-    function resolveFor(GaslessCrossChainOrder calldata order, bytes calldata originFillerData)
-        public
-        view
-        returns (ResolvedCrossChainOrder memory resolvedOrder)
-    {
+    function resolveFor(
+        GaslessCrossChainOrder calldata order,
+        bytes calldata originFillerData
+    ) public view returns (ResolvedCrossChainOrder memory resolvedOrder) {
         (resolvedOrder, , ) = _resolveFor(order, originFillerData);
     }
 
@@ -134,11 +133,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
      * @notice Constructs a ResolvedOrder from a CrossChainOrder.
      * @param order the ERC7683 compliant order.
      */
-    function resolve(OnchainCrossChainOrder calldata order)
-        public
-        view
-        returns (ResolvedCrossChainOrder memory resolvedOrder)
-    {
+    function resolve(
+        OnchainCrossChainOrder calldata order
+    ) public view returns (ResolvedCrossChainOrder memory resolvedOrder) {
         (resolvedOrder, ) = _resolve(order);
     }
 
@@ -149,11 +146,10 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
      * @return acrossOrderData decoded AcrossOrderData.
      * @return acrossOriginFillerData decoded AcrossOriginFillerData.
      */
-    function decode(bytes memory orderData, bytes memory fillerData)
-        public
-        pure
-        returns (AcrossOrderData memory, AcrossOriginFillerData memory)
-    {
+    function decode(
+        bytes memory orderData,
+        bytes memory fillerData
+    ) public pure returns (AcrossOrderData memory, AcrossOriginFillerData memory) {
         return (abi.decode(orderData, (AcrossOrderData)), abi.decode(fillerData, (AcrossOriginFillerData)));
     }
 
@@ -176,7 +172,10 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
      */
     function computeDepositId(uint256 depositNonce, address depositor) public view virtual returns (uint256);
 
-    function _resolveFor(GaslessCrossChainOrder calldata order, bytes calldata fillerData)
+    function _resolveFor(
+        GaslessCrossChainOrder calldata order,
+        bytes calldata fillerData
+    )
         internal
         view
         returns (
@@ -260,11 +259,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         });
     }
 
-    function _resolve(OnchainCrossChainOrder calldata order)
-        internal
-        view
-        returns (ResolvedCrossChainOrder memory resolvedOrder, AcrossOrderData memory acrossOrderData)
-    {
+    function _resolve(
+        OnchainCrossChainOrder calldata order
+    ) internal view returns (ResolvedCrossChainOrder memory resolvedOrder, AcrossOrderData memory acrossOrderData) {
         if (order.orderDataType != ACROSS_ORDER_DATA_TYPE_HASH) {
             revert WrongOrderDataType();
         }

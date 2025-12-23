@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { ArbitrumL2ERC20GatewayLike } from "../../interfaces/ArbitrumBridge.sol";
 import { WithdrawalHelperBase } from "./WithdrawalHelperBase.sol";
 import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
@@ -62,11 +62,7 @@ contract Arbitrum_WithdrawalHelper is WithdrawalHelperBase {
      * @param l2Token Address of the L2 token to send back.
      * @param amountToReturn Amount of l2Token to send back.
      */
-    function withdrawToken(
-        address l1Token,
-        address l2Token,
-        uint256 amountToReturn
-    ) public override {
+    function withdrawToken(address l1Token, address l2Token, uint256 amountToReturn) public override {
         // If the l2TokenAddress is UDSC, we need to use the CCTP bridge.
         if (l2Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(TOKEN_RECIPIENT, amountToReturn);

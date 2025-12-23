@@ -17,6 +17,20 @@ artifacts
 cache-zk
 artifacts-zk
 
+# Broadcast files
+/broadcast/**
+!/broadcast/**/
+!/broadcast/**/run-latest.json
+/broadcast/**/dry-run/
+!/broadcast/deployed-addresses.md
+!/broadcast/deployed-addresses.json
+!/broadcast/DeployedAddresses.sol
+
+# Foundry files
+out
+zkout
+cache-foundry
+
 # Upgradeability files
 .openzeppelin
 
@@ -25,6 +39,7 @@ storage-layouts/proposed*
 
 # IDE
 .idea
+.vscode
 
 # Anchor files
 .anchor

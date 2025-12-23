@@ -1,8 +1,30 @@
-import * as dotenv from "dotenv";
+const { subtask } = require("hardhat/config");
+const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
 
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
+  const paths = await runSuper();
+
+  // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
+  // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
+  if (process.env.IS_TEST === "true") {
+    return paths.filter((p: any) => {
+      return (
+        !p.includes("contracts/periphery/mintburn") &&
+        !p.includes("contracts/external/libraries/BytesLib.sol") &&
+        !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
+        !p.includes("contracts/external/libraries/MinimalLZOptions.sol")
+      );
+    });
+  }
+
+  return paths;
+});
+
+import * as dotenv from "dotenv";
+dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
-import { getNodeUrl, getMnemonic } from "@uma/common";
 import { CHAIN_IDs } from "./utils/constants";
+import { getNodeUrl } from "./utils";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -15,12 +37,31 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
+const getMnemonic = () => {
+  // Publicly-disclosed mnemonic. This is required for hre deployments in test.
+  const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+  const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
+  return MNEMONIC;
+};
+const mnemonic = getMnemonic();
+
+const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): any => {
+  return {
+    chainId,
+    url: getNodeUrl(chainId),
+    accounts: { mnemonic },
+    saveDeployments: true,
+    companionNetworks: { l1: isTestnet ? "sepolia" : "mainnet" },
+  };
+};
+
 // Custom tasks to add to HRE.
 const tasks = [
   "enableL1TokenAcrossEcosystem",
   "finalizeScrollClaims",
   "rescueStuckScrollTxn",
   "verifySpokePool",
+  "verifyBytecode",
   "evmRelayMessageWithdrawal",
   "testChainAdapter",
   "upgradeSpokePool",
@@ -29,9 +70,7 @@ const tasks = [
 // eslint-disable-next-line node/no-missing-require
 tasks.forEach((task) => require(`./tasks/${task}`));
 
-dotenv.config();
-
-const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+const isTest = process.env.IS_TEST === "true";
 
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
@@ -39,8 +78,10 @@ const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
 // the following config is true.
 const compileZk = process.env.COMPILE_ZK === "true";
 
-const solcVersion = "0.8.23";
-const mnemonic = getMnemonic();
+const solcVersion = "0.8.30";
+
+// Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
+const evmVersion = isTest ? "paris" : "prague";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -49,6 +90,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -57,7 +99,18 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
   settings: {
     optimizer: { enabled: true, runs: 1000000 },
     viaIR: true,
+    evmVersion,
     // Only strip revert strings if not testing or in ci.
+    debug: { revertStrings: isTest ? "debug" : "strip" },
+  },
+};
+// This is only used by Blast_SpokePool for now, as it's the largest bytecode-wise
+const LARGEST_CONTRACT_COMPILER_SETTINGS = {
+  version: solcVersion,
+  settings: {
+    optimizer: { enabled: true, runs: 50 },
+    viaIR: true,
+    evmVersion,
     debug: { revertStrings: isTest ? "debug" : "strip" },
   },
 };
@@ -67,33 +120,19 @@ const config: HardhatUserConfig = {
     compilers: [DEFAULT_CONTRACT_COMPILER_SETTINGS],
     overrides: {
       "contracts/HubPool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Linea_SpokePool.sol": {
-        ...LARGE_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
-      "contracts/SpokePoolVerifier.sol": {
-        ...DEFAULT_CONTRACT_COMPILER_SETTINGS,
-        // NOTE: Linea only supports 0.8.19.
-        // See https://docs.linea.build/build-on-linea/ethereum-differences#evm-opcodes
-        version: "0.8.19",
-      },
+      "contracts/Linea_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Universal_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Arbitrum_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Scroll_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Blast_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Lisk_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Redstone_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Zora_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Mode_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Base_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/OP_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Optimism_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/WorldChain_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-      "contracts/DoctorWho_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
       "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/HyperCoreFlowExecutor.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -102,6 +141,15 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
       },
+      suppressedErrors: ["sendtransfer"],
+      contractsToCompile: [
+        "SpokePoolPeriphery",
+        "MulticallHandler",
+        "SpokePoolVerifier",
+        "ZkSync_SpokePool",
+        "Lens_SpokePool",
+        "AcrossEventEmitter",
+      ],
     },
   },
   networks: {
@@ -110,16 +158,10 @@ const config: HardhatUserConfig = {
       zksync: compileZk,
       allowUnlimitedContractSize: true,
     },
-    mainnet: {
-      url: getNodeUrl("mainnet", true, 1),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.MAINNET,
-      companionNetworks: { l1: "mainnet" },
-    },
+    mainnet: getDefaultHardhatConfig(CHAIN_IDs.MAINNET),
     zksync: {
       chainId: CHAIN_IDs.ZK_SYNC,
-      url: "https://mainnet.era.zksync.io",
+      url: getNodeUrl(CHAIN_IDs.ZK_SYNC),
       saveDeployments: true,
       accounts: { mnemonic },
       ethNetwork: "mainnet",
@@ -127,110 +169,29 @@ const config: HardhatUserConfig = {
       zksync: true,
       verifyURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
     },
-    optimism: {
-      url: getNodeUrl("optimism-mainnet", true, CHAIN_IDs.OPTIMISM),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.OPTIMISM,
-      companionNetworks: { l1: "mainnet" },
-    },
-    "optimism-sepolia": {
-      url: getNodeUrl("optimism-sepolia", true, CHAIN_IDs.OPTIMISM_SEPOLIA),
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
-      companionNetworks: { l1: "sepolia" },
-    },
-    arbitrum: {
-      chainId: CHAIN_IDs.ARBITRUM,
-      url: getNodeUrl("arbitrum-mainnet", true, CHAIN_IDs.ARBITRUM),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "arbitrum-sepolia": {
-      chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
-      url: getNodeUrl("arbitrum-sepolia", true, CHAIN_IDs.ARBITRUM_SEPOLIA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    sepolia: {
-      url: `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      accounts: { mnemonic },
-      saveDeployments: true,
-      chainId: CHAIN_IDs.SEPOLIA,
-      companionNetworks: { l1: "sepolia" },
-    },
-    polygon: {
-      chainId: CHAIN_IDs.POLYGON,
-      url: "https://polygon-rpc.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
+    optimism: getDefaultHardhatConfig(CHAIN_IDs.OPTIMISM),
+    "optimism-sepolia": getDefaultHardhatConfig(CHAIN_IDs.OPTIMISM_SEPOLIA, true),
+    arbitrum: getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM),
+    "arbitrum-sepolia": getDefaultHardhatConfig(CHAIN_IDs.ARBITRUM_SEPOLIA, true),
+    sepolia: getDefaultHardhatConfig(CHAIN_IDs.SEPOLIA, true),
+    polygon: getDefaultHardhatConfig(CHAIN_IDs.POLYGON),
     bsc: {
-      chainId: 56,
-      url: "https://binance.llamarpc.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
+      ...getDefaultHardhatConfig(CHAIN_IDs.BSC),
+      gas: "auto",
+      gasPrice: 3e8, // 0.3 GWEI
+      gasMultiplier: 4.0,
     },
-    boba: {
-      chainId: CHAIN_IDs.BOBA,
-      url: getNodeUrl("boba", true, CHAIN_IDs.BOBA),
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "polygon-amoy": {
-      chainId: CHAIN_IDs.POLYGON_AMOY,
-      url: "https://rpc-amoy.polygon.technology",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    base: {
-      chainId: CHAIN_IDs.BASE,
-      url: "https://mainnet.base.org",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "base-sepolia": {
-      chainId: CHAIN_IDs.BASE_SEPOLIA,
-      url: `https://base-sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    ink: {
-      chainId: CHAIN_IDs.INK,
-      url: "https://rpc-gel.inkonchain.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    linea: {
-      chainId: CHAIN_IDs.LINEA,
-      url: `https://linea-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    scroll: {
-      chainId: CHAIN_IDs.SCROLL,
-      url: "https://rpc.scroll.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "scroll-sepolia": {
-      chainId: CHAIN_IDs.SCROLL_SEPOLIA,
-      url: "https://sepolia-rpc.scroll.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
+    monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
+    "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
+    base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
+    "base-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BASE_SEPOLIA, true),
+    ink: getDefaultHardhatConfig(CHAIN_IDs.INK),
+    linea: getDefaultHardhatConfig(CHAIN_IDs.LINEA),
+    plasma: getDefaultHardhatConfig(CHAIN_IDs.PLASMA),
+    scroll: getDefaultHardhatConfig(CHAIN_IDs.SCROLL),
+    "scroll-sepolia": getDefaultHardhatConfig(CHAIN_IDs.SCROLL_SEPOLIA, true),
     "polygon-zk-evm": {
       chainId: 1101,
       url: "https://zkevm-rpc.com",
@@ -245,23 +206,11 @@ const config: HardhatUserConfig = {
       accounts: { mnemonic },
       companionNetworks: { l1: "goerli" },
     },
-    mode: {
-      chainId: CHAIN_IDs.MODE,
-      url: "https://mainnet.mode.network",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "mode-sepolia": {
-      chainId: CHAIN_IDs.MODE_SEPOLIA,
-      url: "https://sepolia.mode.network",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    mode: getDefaultHardhatConfig(CHAIN_IDs.MODE),
+    "mode-sepolia": getDefaultHardhatConfig(CHAIN_IDs.MODE_SEPOLIA, true),
     tatara: {
       chainId: CHAIN_IDs.TATARA,
-      url: "https://rpc.tatara.katanarpc.com/<apikey>",
+      url: getNodeUrl(CHAIN_IDs.TATARA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
@@ -269,17 +218,17 @@ const config: HardhatUserConfig = {
     },
     lens: {
       chainId: CHAIN_IDs.LENS,
-      url: "https://api.lens.matterhosted.dev",
+      url: getNodeUrl(CHAIN_IDs.LENS),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "mainnet" },
       ethNetwork: "mainnet",
-      verifyURL: "", // @todo
+      verifyURL: "https://verify.lens.xyz/contract_verification",
       zksync: true,
     },
     "lens-sepolia": {
       chainId: CHAIN_IDs.LENS_SEPOLIA,
-      url: "https://rpc.testnet.lens.dev",
+      url: getNodeUrl(CHAIN_IDs.LENS_SEPOLIA),
       saveDeployments: true,
       accounts: { mnemonic },
       companionNetworks: { l1: "sepolia" },
@@ -287,174 +236,44 @@ const config: HardhatUserConfig = {
       verifyURL: "https://block-explorer-verify.testnet.lens.dev/contract_verification",
       zksync: true,
     },
-    lisk: {
-      chainId: CHAIN_IDs.LISK,
-      url: "https://rpc.api.lisk.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "lisk-sepolia": {
-      chainId: CHAIN_IDs.LISK_SEPOLIA,
-      url: "https://rpc.sepolia-api.lisk.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    redstone: {
-      chainId: CHAIN_IDs.REDSTONE,
-      url: "https://rpc.redstonechain.com",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    blast: {
-      chainId: CHAIN_IDs.BLAST,
-      url: "https://rpc.blast.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "blast-sepolia": {
-      chainId: CHAIN_IDs.BLAST_SEPOLIA,
-      url: "https://sepolia.blast.io",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
-    worldchain: {
-      chainId: CHAIN_IDs.WORLD_CHAIN,
-      url: "https://worldchain-mainnet.g.alchemy.com/public",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    zora: {
-      chainId: CHAIN_IDs.ZORA,
-      url: "https://rpc.zora.energy",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    alephzero: {
-      chainId: CHAIN_IDs.ALEPH_ZERO,
-      url: "https://rpc.alephzero.raas.gelato.cloud",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    soneium: {
-      chainId: CHAIN_IDs.SONEIUM,
-      url: "https://soneium.drpc.org",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    unichain: {
-      chainId: CHAIN_IDs.UNICHAIN,
-      url: "https://mainnet.unichain.org",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "mainnet" },
-    },
-    "unichain-sepolia": {
-      chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
-      url: "https://sepolia.unichain.org",
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-    },
+    lisk: getDefaultHardhatConfig(CHAIN_IDs.LISK),
+    "lisk-sepolia": getDefaultHardhatConfig(CHAIN_IDs.LISK_SEPOLIA, true),
+    redstone: getDefaultHardhatConfig(CHAIN_IDs.REDSTONE),
+    blast: getDefaultHardhatConfig(CHAIN_IDs.BLAST),
+    "blast-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BLAST_SEPOLIA, true),
+    worldchain: getDefaultHardhatConfig(CHAIN_IDs.WORLD_CHAIN),
+    zora: getDefaultHardhatConfig(CHAIN_IDs.ZORA),
+    soneium: getDefaultHardhatConfig(CHAIN_IDs.SONEIUM),
+    unichain: getDefaultHardhatConfig(CHAIN_IDs.UNICHAIN),
+    "unichain-sepolia": getDefaultHardhatConfig(CHAIN_IDs.UNICHAIN_SEPOLIA, true),
+    "bob-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BOB_SEPOLIA, true),
   },
   gasReporter: { enabled: process.env.REPORT_GAS !== undefined, currency: "USD" },
   etherscan: {
-    apiKey: {
-      mainnet: process.env.ETHERSCAN_API_KEY!,
-      sepolia: process.env.ETHERSCAN_API_KEY!,
-      optimisticEthereum: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      optimisticSepolia: process.env.OPTIMISM_ETHERSCAN_API_KEY!,
-      arbitrumOne: process.env.ARBITRUM_ETHERSCAN_API_KEY!,
-      "arbitrum-sepolia": process.env.ARBITRUM_ETHERSCAN_API_KEY!,
-      polygon: process.env.POLYGON_ETHERSCAN_API_KEY!,
-      "polygon-amoy": process.env.POLYGON_ETHERSCAN_API_KEY!,
-      base: process.env.BASE_ETHERSCAN_API_KEY!,
-      "base-sepolia": process.env.BASE_ETHERSCAN_API_KEY!,
-      linea: process.env.LINEA_ETHERSCAN_API_KEY!,
-      scroll: process.env.SCROLL_ETHERSCAN_API_KEY!,
-      "scroll-sepolia": process.env.SCROLL_ETHERSCAN_API_KEY!,
-      "polygon-zk-evm": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      "polygon-zk-evm-testnet": process.env.POLYGON_ZK_EVM_ETHERSCAN_API_KEY!,
-      bsc: process.env.BNB_ETHERSCAN_API_KEY!,
-      mode: "blockscout",
-      "mode-sepolia": "blockscout",
-      tatara: "blockscout",
-      lisk: "blockscout",
-      "lisk-sepolia": "blockscout",
-      redstone: "blockscout",
-      blast: process.env.BLAST_ETHERSCAN_API_KEY!,
-      "blast-sepolia": process.env.BLAST_ETHERSCAN_API_KEY!,
-      zora: "routescan",
-      worldchain: "blockscout",
-      alephzero: "blockscout",
-      ink: "blockscout",
-      soneium: "blockscout",
-      unichain: process.env.UNICHAIN_ETHERSCAN_API_KEY!,
-      "unichain-sepolia": process.env.UNICHAIN_ETHERSCAN_API_KEY!,
-    },
+    apiKey: process.env.ETHERSCAN_API_KEY!,
     customChains: [
       {
-        network: "alephzero",
-        chainId: CHAIN_IDs.ALEPH_ZERO,
+        network: "blast",
+        chainId: CHAIN_IDs.BLAST,
         urls: {
-          apiURL: "https://evm-explorer.alephzero.org/api",
-          browserURL: "https://evm-explorer.alephzero.org",
+          apiURL: "https://blastscan.io/api",
+          browserURL: "https://blastscan.io",
         },
       },
       {
-        network: "base",
-        chainId: CHAIN_IDs.BASE,
+        network: "hyperevm",
+        chainId: CHAIN_IDs.HYPEREVM,
         urls: {
-          apiURL: "https://api.basescan.org/api",
-          browserURL: "https://basescan.org",
-        },
-      },
-      {
-        network: "base-sepolia",
-        chainId: CHAIN_IDs.BASE_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org",
-        },
-      },
-      {
-        network: "ink",
-        chainId: CHAIN_IDs.INK,
-        urls: {
-          apiURL: "https://explorer.inkonchain.com/api",
-          browserURL: "https://explorer.inkonchain.com",
-        },
-      },
-      {
-        network: "soneium",
-        chainId: CHAIN_IDs.SONEIUM,
-        urls: {
-          apiURL: "https://soneium.blockscout.com/api",
-          browserURL: "https://soneium.blockscout.com",
+          apiURL: "https://hyperevmscan.io/api",
+          browserURL: "https://hyperevmscan.io",
         },
       },
       {
         network: "linea",
         chainId: CHAIN_IDs.LINEA,
         urls: {
-          apiURL: "https://api.lineascan.build/api",
+          apiURL: "https://lineascan.build/api",
           browserURL: "https://lineascan.build",
-        },
-      },
-      {
-        network: "sepolia",
-        chainId: CHAIN_IDs.SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.etherscan.io/api",
-          browserURL: "https://sepolia.etherscan.io",
         },
       },
       {
@@ -466,75 +285,48 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "scroll-sepolia",
-        chainId: CHAIN_IDs.SCROLL_SEPOLIA,
+        network: "unichain",
+        chainId: CHAIN_IDs.UNICHAIN,
         urls: {
-          apiURL: "https://api-sepolia.scrollscan.com/api",
-          browserURL: "https://api-sepolia.scrollscan.com",
+          apiURL: "https://api.uniscan.xyz/api",
+          browserURL: "https://uniscan.xyz",
         },
       },
       {
-        network: "optimisticSepolia",
-        chainId: CHAIN_IDs.OPTIMISM_SEPOLIA,
+        network: "zksync",
+        chainId: CHAIN_IDs.ZK_SYNC,
         urls: {
-          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
-          browserURL: "https://sepolia-optimism.etherscan.io",
+          apiURL: "https://zksync2-mainnet-explorer.zksync.io/contract_verification",
+          browserURL: "https://era.zksync.network/",
         },
       },
       {
-        network: "polygon-zk-evm",
-        chainId: 1101,
+        network: "lens",
+        chainId: CHAIN_IDs.LENS,
         urls: {
-          apiURL: "https://api-zkevm.polygonscan.com/api",
-          browserURL: "https://zkevm.polygonscan.com",
+          apiURL: "https://verify.lens.xyz/contract_verification",
+          browserURL: "https://explorer.lens.xyz/",
+        },
+      },
+    ],
+  },
+  blockscout: {
+    enabled: true,
+    customChains: [
+      {
+        network: "bob-sepolia",
+        chainId: CHAIN_IDs.BOB_SEPOLIA,
+        urls: {
+          apiURL: "https://bob-sepolia.explorer.gobob.xyz/api",
+          browserURL: "https://bob-sepolia.explorer.gobob.xyz",
         },
       },
       {
-        network: "polygon-zk-evm-testnet",
-        chainId: 1442,
+        network: "ink",
+        chainId: CHAIN_IDs.INK,
         urls: {
-          apiURL: "https://api-testnet-zkevm.polygonscan.com/api",
-          browserURL: "https://testnet-zkevm.polygonscan.com/",
-        },
-      },
-      {
-        network: "polygon-amoy",
-        chainId: CHAIN_IDs.POLYGON_AMOY,
-        urls: {
-          apiURL: "https://api-amoy.polygonscan.com/api",
-          browserURL: "https://amoy.polygonscan.com",
-        },
-      },
-      {
-        network: "arbitrum-sepolia",
-        chainId: CHAIN_IDs.ARBITRUM_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.arbiscan.io/api",
-          browserURL: "https://sepolia.arbiscan.io",
-        },
-      },
-      {
-        network: "mode-sepolia",
-        chainId: CHAIN_IDs.MODE_SEPOLIA,
-        urls: {
-          apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
-          browserURL: "https://testnet.modescan.io",
-        },
-      },
-      {
-        network: "mode",
-        chainId: CHAIN_IDs.MODE,
-        urls: {
-          apiURL: "https://explorer.mode.network/api",
-          browserURL: "https://explorer.mode.network/",
-        },
-      },
-      {
-        network: "tatara",
-        chainId: CHAIN_IDs.TATARA,
-        urls: {
-          apiURL: "https://explorer.tatara.katana.network/api",
-          browserURL: "https://explorer.tatara.katana.network",
+          apiURL: "https://explorer.inkonchain.com/api",
+          browserURL: "https://explorer.inkonchain.com",
         },
       },
       {
@@ -554,6 +346,22 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "mode",
+        chainId: CHAIN_IDs.MODE,
+        urls: {
+          apiURL: "https://explorer.mode.network/api",
+          browserURL: "https://explorer.mode.network/",
+        },
+      },
+      {
+        network: "mode-sepolia",
+        chainId: CHAIN_IDs.MODE_SEPOLIA,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
+          browserURL: "https://testnet.modescan.io",
+        },
+      },
+      {
         network: "redstone",
         chainId: CHAIN_IDs.REDSTONE,
         urls: {
@@ -562,51 +370,27 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "blast",
-        chainId: CHAIN_IDs.BLAST,
+        network: "plasma",
+        chainId: 9745,
         urls: {
-          apiURL: "https://api.blastscan.io/api",
-          browserURL: "https://blastscan.io",
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/9745/etherscan",
+          browserURL: "https://plasmascan.to",
         },
       },
       {
-        network: "blast-sepolia",
-        chainId: CHAIN_IDs.BLAST_SEPOLIA,
+        network: "soneium",
+        chainId: CHAIN_IDs.SONEIUM,
         urls: {
-          apiURL: "https://api-sepolia.blastscan.io/api",
-          browserURL: "https://sepolia.blastscan.io",
+          apiURL: "https://soneium.blockscout.com/api",
+          browserURL: "https://soneium.blockscout.com",
         },
       },
       {
-        network: "worldchain",
-        chainId: CHAIN_IDs.WORLD_CHAIN,
+        network: "tatara",
+        chainId: CHAIN_IDs.TATARA,
         urls: {
-          apiURL: "https://worldchain-mainnet.explorer.alchemy.com/api",
-          browserURL: "https://worldchain-mainnet.explorer.alchemy.com",
-        },
-      },
-      {
-        network: "zora",
-        chainId: CHAIN_IDs.ZORA,
-        urls: {
-          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/7777777/etherscan",
-          browserURL: "https://zorascan.xyz",
-        },
-      },
-      {
-        network: "unichain",
-        chainId: CHAIN_IDs.UNICHAIN,
-        urls: {
-          apiURL: "https://api.uniscan.xyz/api",
-          browserURL: "https://uniscan.xyz",
-        },
-      },
-      {
-        network: "unichain-sepolia",
-        chainId: CHAIN_IDs.UNICHAIN_SEPOLIA,
-        urls: {
-          apiURL: "https://api-sepolia.uniscan.xyz/api",
-          browserURL: "https://sepolia.uniscan.xyz",
+          apiURL: "https://explorer.tatara.katana.network/api",
+          browserURL: "https://explorer.tatara.katana.network",
         },
       },
     ],

@@ -45,7 +45,7 @@ export type RelayData = {
   exclusiveRelayer: PublicKey;
   inputToken: PublicKey;
   outputToken: PublicKey;
-  inputAmount: BN;
+  inputAmount: number[];
   outputAmount: BN;
   originChainId: BN;
   depositId: number[];
@@ -63,7 +63,7 @@ export interface DepositData {
   inputToken: PublicKey | null;
   outputToken: PublicKey;
   inputAmount: BN;
-  outputAmount: BN;
+  outputAmount: number[];
   destinationChainId: BN;
   exclusiveRelayer: PublicKey;
   quoteTimestamp: BN;
@@ -78,7 +78,7 @@ export type DepositDataValues = [
   PublicKey,
   PublicKey,
   BN,
-  BN,
+  number[],
   BN,
   PublicKey,
   number,

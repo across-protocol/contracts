@@ -36,7 +36,7 @@ const argv = yargs(hideBin(process.argv))
   .option("exclusiveRelayer", { type: "string", demandOption: false, describe: "Exclusive relayer public key" })
   .option("inputToken", { type: "string", demandOption: true, describe: "Input token public key" })
   .option("outputToken", { type: "string", demandOption: true, describe: "Output token public key" })
-  .option("inputAmount", { type: "number", demandOption: true, describe: "Input amount" })
+  .option("inputAmount", { type: "string", demandOption: true, describe: "Input amount" })
   .option("outputAmount", { type: "number", demandOption: true, describe: "Output amount" })
   .option("originChainId", { type: "string", demandOption: true, describe: "Origin chain ID" })
   .option("depositId", { type: "string", demandOption: true, describe: "Deposit ID" })
@@ -50,12 +50,12 @@ async function fillRelay(): Promise<void> {
   const exclusiveRelayer = new PublicKey(resolvedArgv.exclusiveRelayer || "11111111111111111111111111111111");
   const inputToken = new PublicKey(resolvedArgv.inputToken);
   const outputToken = new PublicKey(resolvedArgv.outputToken);
-  const inputAmount = new BN(resolvedArgv.inputAmount);
+  const inputAmount = intToU8Array32(new BN(resolvedArgv.inputAmount));
   const outputAmount = new BN(resolvedArgv.outputAmount);
   const originChainId = new BN(resolvedArgv.originChainId);
   const depositId = intToU8Array32(new BN(resolvedArgv.depositId));
   const fillDeadline = resolvedArgv.fillDeadline || Math.floor(Date.now() / 1000) + 60; // Current time + 1 minute
-  const exclusivityDeadline = resolvedArgv.exclusivityDeadline || Math.floor(Date.now() / 1000) + 30; // Current time + 30 seconds
+  const exclusivityDeadline = resolvedArgv.exclusivityDeadline ?? 0; // default to 0
   const message = Buffer.from("");
   const seed = new BN(resolvedArgv.seed);
 

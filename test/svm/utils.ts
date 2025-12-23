@@ -6,7 +6,7 @@ import {
   generateKeyPairSigner,
   lamports,
 } from "@solana/kit";
-import { AccountMeta, Keypair, PublicKey } from "@solana/web3.js";
+import { AccountMeta, Commitment, Connection, Keypair, PublicKey } from "@solana/web3.js";
 import * as crypto from "crypto";
 import { BigNumber, ethers } from "ethers";
 import {
@@ -167,4 +167,22 @@ export const generateKeyPairSignerWithSol = async (rpcClient: RpcClient, putativ
     commitment: "confirmed",
   });
   return signer;
+};
+
+export const requestAndConfirmAirdrop = async (
+  connection: Connection,
+  to: PublicKey,
+  lamports: number,
+  commitment: Commitment = "confirmed"
+) => {
+  const airdropTx = await connection.requestAirdrop(to, lamports);
+  const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+  await connection.confirmTransaction(
+    {
+      blockhash,
+      lastValidBlockHeight,
+      signature: airdropTx,
+    },
+    commitment
+  );
 };

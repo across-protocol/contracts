@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/security/ReentrancyGuardUpgradeable.sol";
 import { ForwarderInterface } from "./interfaces/ForwarderInterface.sol";
 import { AdapterInterface } from "./interfaces/AdapterInterface.sol";
-import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { MultiCaller } from "../external/uma/core/contracts/common/implementation/MultiCaller.sol";
 import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 
 /**
@@ -214,6 +214,8 @@ abstract contract ForwarderBase is UUPSUpgradeable, ForwarderInterface, MultiCal
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
     uint256[1000] private __gap;
 }

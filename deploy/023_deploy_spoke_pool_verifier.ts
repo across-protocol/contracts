@@ -1,5 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { verifyContract } from "../utils/utils.hre";
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -11,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deterministicDeployment: "0x1234", // Salt for the create2 call.
   });
   console.log(`Deployed at block ${deployment.receipt.blockNumber} (tx: ${deployment.transactionHash})`);
-  await hre.run("verify:verify", { address: deployment.address, constructorArguments: [] });
+  await verifyContract(deployment.address, []);
 };
 
 module.exports = func;

@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 
 contract RootChainManagerMock {
     function depositEtherFor(address user) external payable {} // solhint-disable-line no-empty-blocks
 
-    function depositFor(
-        address user,
-        address rootToken,
-        bytes calldata depositData
-    ) external {} // solhint-disable-line no-empty-blocks
+    function depositFor(address user, address rootToken, bytes calldata depositData) external {} // solhint-disable-line no-empty-blocks
 }
 
 contract FxStateSenderMock {

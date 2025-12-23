@@ -1,18 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "./libraries/CircleCCTPAdapter.sol";
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import "./SpokePool.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
-    function withdraw(
-        address _l1Receiver,
-        address _l2Token,
-        uint256 _amount
-    ) external;
+    function withdraw(address _l1Receiver, address _l2Token, uint256 _amount) external;
 }
 
 interface IL2ETH {
@@ -67,7 +63,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
     )
-        SpokePool(_wrappedNativeTokenAddress, _depositQuoteTimeBuffer, _fillDeadlineBuffer)
+        SpokePool(
+            _wrappedNativeTokenAddress,
+            _depositQuoteTimeBuffer,
+            _fillDeadlineBuffer,
+            // ZkSync_SpokePool does not use OFT messaging; setting destination eid and fee cap to 0
+            0,
+            0
+        )
         CircleCCTPAdapter(_circleUSDC, _cctpTokenMessenger, CircleDomainIds.Ethereum)
     {
         address zero = address(0);
@@ -125,6 +128,14 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
      **************************************/
 
     /**
+     * @notice Checks if an address is a 7702 delegated wallet (EOA with delegated code).
+     * @return False Since eraVM does not support 7702 delegated wallets, this function always returns false.
+     */
+    function _is7702DelegatedWallet(address) internal pure override returns (bool) {
+        return false;
+    }
+
+    /**
      * @notice Wraps any ETH into WETH before executing base function. This is necessary because SpokePool receives
      * ETH over the canonical token bridge instead of WETH.
      */
@@ -173,6 +184,8 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure its always at the end of storage.
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
     uint256[999] private __gap;
 }

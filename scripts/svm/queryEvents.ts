@@ -41,7 +41,7 @@ async function queryEvents(): Promise<void> {
   const eventName = argv.eventName || "any";
   const events = await readProgramEvents(provider.connection, program, "confirmed");
   const filteredEvents = events.filter((event) => (eventName == "any" ? true : event.name == eventName));
-  const formattedEvents = filteredEvents.map((event) => stringifyCpiEvent(event));
+  const formattedEvents = filteredEvents.map((event) => stringifyCpiEvent(event.data, event.name));
   console.log(JSON.stringify(formattedEvents, null, 2));
 }
 

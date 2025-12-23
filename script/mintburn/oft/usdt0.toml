@@ -1,0 +1,47 @@
+[1]
+endpoint_url = "${NODE_URL_1}"
+
+[1.address]
+token = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+oft_messenger = "0x6C96dE32CEa08842dcc4058c14d3aaAD7Fa41dee"
+src_periphery = "0x4607BceaF7b22cb0c46882FFc9fAB3c6efe66e5a"
+
+[42161]
+endpoint_url = "${NODE_URL_42161}"
+
+[42161.address]
+token = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9"
+oft_messenger = "0x14E4A1B13bf7F943c8ff7C51fb60FA964A298D92"
+src_periphery = "0x2ac5Ee3796E027dA274fbDe84c82173a65868940"
+
+[130]
+endpoint_url = "${NODE_URL_130}"
+
+[130.address]
+token = "0x9151434b16b9763660705744891fA906F660EcC5"
+oft_messenger = "0xc07bE8994D035631c36fb4a89C918CeFB2f03EC3"
+src_periphery = "0x0Bf1A44AE69869cF7AEA7e0cbA76624792fAD4DE"
+
+[137]
+endpoint_url = "${NODE_URL_137}"
+
+[137.address]
+token = "0xc2132D05D31c914a87C6611C10748AEb04B58e8F"
+oft_messenger = "0x6BA10300f0DC58B7a1e4c0e41f5daBb7D7829e13"
+src_periphery = "0xC6A21E6A57777F2183312c19e614DD6054b1A54F"
+
+[143]
+endpoint_url = "${NODE_URL_143}"
+
+[143.address]
+token = "0xe7cd86e13AC4309349F30B3435a9d337750fC82D"
+oft_messenger = "0x9151434b16b9763660705744891fA906F660EcC5"
+src_periphery = "0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1"
+
+[999]
+endpoint_url = "${NODE_URL_999}"
+
+[999.address]
+token = "0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb"
+oft_messenger = "0x904861a24F30EC96ea7CFC3bE9EA4B476d237e98"
+dst_handler = "0xc8786D517b4e224bB43985A38dBeF8588D7354CD"
