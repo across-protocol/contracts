@@ -146,7 +146,6 @@ export const OP_STACK_ADDRESS_MAP: {
     [CHAIN_IDs.WORLD_CHAIN]: {
       L1CrossDomainMessenger: "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
       L1StandardBridge: "0x470458C91978D2d929704489Ad730DC3E3001113",
-      L1OpUSDCBridgeAdapter: "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB",
     },
     [CHAIN_IDs.ZORA]: {
       L1CrossDomainMessenger: "0xdC40a14d9abd6F410226f1E6de71aE03441ca506",
@@ -317,6 +316,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.WORLD_CHAIN]: {
+    cctpTokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpMessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.INK]: {

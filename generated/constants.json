@@ -630,6 +630,8 @@
       "permit2": "0x0000000000225e31d15943971f47ad3022f714fa"
     },
     "480": {
+      "cctpTokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpMessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "690": {
@@ -816,8 +818,7 @@
       },
       "480": {
         "L1CrossDomainMessenger": "0xf931a81D18B1766d15695ffc7c1920a62b7e710a",
-        "L1StandardBridge": "0x470458C91978D2d929704489Ad730DC3E3001113",
-        "L1OpUSDCBridgeAdapter": "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB"
+        "L1StandardBridge": "0x470458C91978D2d929704489Ad730DC3E3001113"
       },
       "690": {
         "L1CrossDomainMessenger": "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
