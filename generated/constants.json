@@ -54,8 +54,8 @@
       "name": "Monad",
       "family": "NONE",
       "nativeToken": "MON",
-      "publicRPC": "https://rpc-mainnet.monadinfra.com/",
-      "blockExplorer": "https://monadscan.com/",
+      "publicRPC": "https://rpc-mainnet.monadinfra.com",
+      "blockExplorer": "https://monadvision.com",
       "cctpDomain": 15,
       "oftEid": 30390,
       "hypDomainId": 143
@@ -244,8 +244,8 @@
       "name": "Monad Testnet",
       "family": "NONE",
       "nativeToken": "MON",
-      "publicRPC": "https://testnet-rpc.monad.xyz/",
-      "blockExplorer": "https://testnet.monvision.io/",
+      "publicRPC": "https://testnet-rpc.monad.xyz",
+      "blockExplorer": "https://testnet.monvision.io",
       "cctpDomain": 15,
       "oftEid": 40204,
       "hypDomainId": 10143
@@ -296,8 +296,8 @@
       "nativeToken": "ETH",
       "publicRPC": "https://rpc-gel.inkonchain.com",
       "blockExplorer": "https://explorer.inkonchain.com",
-      "cctpDomain": -1,
-      "oftEid": -1,
+      "cctpDomain": 21,
+      "oftEid": 30339,
       "hypDomainId": 57073
     },
     "59144": {
@@ -896,6 +896,7 @@
     "8453": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "10143": "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
     "42161": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "57073": "0x2D270e6886d130D724215A266106e6832161EAEd",
     "59144": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
     "80002": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
     "84532": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",

@@ -34,6 +34,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | LpTokenFactory             | [0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d](https://etherscan.io/address/0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d) |
 | Mode_Adapter               | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | MulticallHandler           | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| OP_Adapter                 | [0x91769164bb5B820818ce816426D10A725f785330](https://etherscan.io/address/0x91769164bb5B820818ce816426D10A725f785330) |
 | Optimism_Adapter           | [0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b](https://etherscan.io/address/0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b) |
 | Optimism_Adapter           | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionSplitterProxy    | [0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7](https://etherscan.io/address/0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7) |
@@ -105,12 +106,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Monad (143)
 
-| Contract Name      | Address                                                                                                                 |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadscan.com//address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadscan.com//address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
-| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadscan.com//address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
-| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadscan.com//address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
+| Contract Name      | Address                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Helios             | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadvision.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| MulticallHandler   | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
+| SpokePool          | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadvision.com/address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| SpokePoolPeriphery | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadvision.com/address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
 
 ## Lens (232)
 

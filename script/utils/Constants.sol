@@ -222,12 +222,14 @@ contract Constants is Script {
     }
 
     // Circle domain IDs mapping
-    function getCircleDomainId(uint256 chainId) public view returns (uint256) {
+    function getCircleDomainId(uint256 chainId) public view returns (uint32) {
         int256 cctpDomain = _getCctpDomain(chainId);
         if (cctpDomain == -1) {
-            revert("Circle domain ID not found");
+            revert("Circle CCTP domain ID not found");
+        } else if (cctpDomain < 0 || cctpDomain > 2 ** 32 - 1) {
+            revert("Invalid Circle CCTP domain ID");
         }
-        return uint256(cctpDomain);
+        return uint32(uint256(cctpDomain));
     }
 
     function hasCctpDomain(uint256 chainId) public view returns (bool) {

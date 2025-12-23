@@ -172,6 +172,11 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 22789839
         },
+        "OP_Adapter": {
+          "address": "0x91769164bb5b820818ce816426d10a725f785330",
+          "block_number": 24075306,
+          "transaction_hash": "0x8ce62f9d54ecbde224ecb79804b14e8df03b2b55689588c80c3a6dacf56bf97f"
+        },
         "PermissionSplitterProxy": {
           "address": "0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7",
           "block_number": 19084679,
