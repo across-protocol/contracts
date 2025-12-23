@@ -26,7 +26,9 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         // Get the current chain ID
         uint256 chainId = block.chainid;
-        uint32 cctpDomain = hasCctpDomain(spokeChainId) ? getCircleDomainId(spokeChainId) : CCTP_NO_DOMAIN;
+        bool hasCctpDomain = hasCctpDomain(destinationChainId);
+        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(spokeChainId) : CCTP_NO_DOMAIN;
+        address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
 
         // Verify this is being deployed on Ethereum mainnet or Sepolia
         require(
@@ -48,7 +50,7 @@ contract DeployOPAdapter is Script, Test, Constants {
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
             IOpUSDCBridgeAdapter(opStack.L1OpUSDCBridgeAdapter), // L1 OP USDC Bridge
-            ITokenMessenger(getL1Addresses(chainId).cctpV2TokenMessenger), // CCTP V2 Token Messenger
+            ITokenMessenger(cctpTokenMessenger), // CCTP (V2) Token Messenger
             cctpDomain
         );
 
