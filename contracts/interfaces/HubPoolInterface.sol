@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 /**
  * @notice Concise list of functions in HubPool implementation.
@@ -106,11 +106,7 @@ interface HubPoolInterface {
 
     function setIdentifier(bytes32 newIdentifier) external;
 
-    function setCrossChainContracts(
-        uint256 l2ChainId,
-        address adapter,
-        address spokePool
-    ) external;
+    function setCrossChainContracts(uint256 l2ChainId, address adapter, address spokePool) external;
 
     function enableL1TokenForLiquidityProvision(address l1Token) external;
 
@@ -118,11 +114,7 @@ interface HubPoolInterface {
 
     function addLiquidity(address l1Token, uint256 l1TokenAmount) external payable;
 
-    function removeLiquidity(
-        address l1Token,
-        uint256 lpTokenAmount,
-        bool sendEth
-    ) external;
+    function removeLiquidity(address l1Token, uint256 lpTokenAmount, bool sendEth) external;
 
     function exchangeRateCurrent(address l1Token) external returns (uint256);
 
@@ -155,11 +147,7 @@ interface HubPoolInterface {
 
     function claimProtocolFeesCaptured(address l1Token) external;
 
-    function setPoolRebalanceRoute(
-        uint256 destinationChainId,
-        address l1Token,
-        address destinationToken
-    ) external;
+    function setPoolRebalanceRoute(uint256 destinationChainId, address l1Token, address destinationToken) external;
 
     function setDepositRoute(
         uint256 originChainId,
@@ -168,10 +156,10 @@ interface HubPoolInterface {
         bool depositsEnabled
     ) external;
 
-    function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
-        external
-        view
-        returns (address destinationToken);
+    function poolRebalanceRoute(
+        uint256 destinationChainId,
+        address l1Token
+    ) external view returns (address destinationToken);
 
     function loadEthForL2Calls() external payable;
 }

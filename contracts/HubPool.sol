@@ -8,22 +8,22 @@ import "./Lockable.sol";
 import "./interfaces/LpTokenFactoryInterface.sol";
 import "./external/interfaces/WETH9Interface.sol";
 
-import "@uma/core/contracts/common/implementation/Testable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
-import "@uma/core/contracts/common/interfaces/AddressWhitelistInterface.sol";
+import "contracts/external/uma/core/contracts/common/implementation/Testable.sol";
+import "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol";
+import "contracts/external/uma/core/contracts/common/interfaces/AddressWhitelistInterface.sol";
 
-import "@uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
-import "@uma/core/contracts/data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
-import "@uma/core/contracts/data-verification-mechanism/interfaces/StoreInterface.sol";
-import "@uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
+import "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
+import "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/IdentifierWhitelistInterface.sol";
+import "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/StoreInterface.sol";
+import "contracts/external/uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
 
-import "@uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
-import "@uma/core/contracts/common/interfaces/ExpandedIERC20.sol";
+import "contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
+import "contracts/external/uma/core/contracts/common/interfaces/ExpandedIERC20.sol";
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-v4/access/Ownable.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/utils/Address.sol";
 
 /**
  * @notice Contract deployed on Ethereum that houses L1 token liquidity for all SpokePools. A dataworker can interact
@@ -246,12 +246,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param chainId Chain with SpokePool to send message to.
      * @param functionData ABI encoded function call to send to SpokePool, but can be any arbitrary data technically.
      */
-    function relaySpokePoolAdminFunction(uint256 chainId, bytes memory functionData)
-        public
-        override
-        onlyOwner
-        nonReentrant
-    {
+    function relaySpokePoolAdminFunction(
+        uint256 chainId,
+        bytes memory functionData
+    ) public override onlyOwner nonReentrant {
         _relaySpokePoolAdminFunction(chainId, functionData);
     }
 
@@ -260,12 +258,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param newProtocolFeeCaptureAddress New protocol fee capture address.
      * @param newProtocolFeeCapturePct New protocol fee capture %.
      */
-    function setProtocolFeeCapture(address newProtocolFeeCaptureAddress, uint256 newProtocolFeeCapturePct)
-        public
-        override
-        onlyOwner
-        nonReentrant
-    {
+    function setProtocolFeeCapture(
+        address newProtocolFeeCaptureAddress,
+        uint256 newProtocolFeeCapturePct
+    ) public override onlyOwner nonReentrant {
         require(newProtocolFeeCapturePct <= 1e18, "Bad protocolFeeCapturePct");
         require(newProtocolFeeCaptureAddress != address(0), "Bad protocolFeeCaptureAddress");
         protocolFeeCaptureAddress = newProtocolFeeCaptureAddress;
@@ -278,13 +274,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param newBondToken New bond currency.
      * @param newBondAmount New bond amount.
      */
-    function setBond(IERC20 newBondToken, uint256 newBondAmount)
-        public
-        override
-        onlyOwner
-        noActiveRequests
-        nonReentrant
-    {
+    function setBond(
+        IERC20 newBondToken,
+        uint256 newBondAmount
+    ) public override onlyOwner noActiveRequests nonReentrant {
         // Bond should not equal final fee otherwise every proposal will get cancelled in a dispute.
         // In practice we expect that bond amounts are set >> final fees so this shouldn't be an inconvenience.
         // The only way for the bond amount to be equal to the final fee is if the newBondAmount == 0.
@@ -527,11 +520,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @param relayedAmount The higher this amount, the higher the utilization.
      * @return % of liquid reserves currently being "used" and sitting in SpokePools plus the relayedAmount.
      */
-    function liquidityUtilizationPostRelay(address l1Token, uint256 relayedAmount)
-        public
-        nonReentrant
-        returns (uint256)
-    {
+    function liquidityUtilizationPostRelay(
+        address l1Token,
+        uint256 relayedAmount
+    ) public nonReentrant returns (uint256) {
         return _liquidityUtilizationPostRelay(l1Token, relayedAmount);
     }
 
@@ -826,12 +818,10 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
      * @return destinationToken address The destination token that is sent to spoke pools after this contract bridges
      * the l1Token to the destination chain.
      */
-    function poolRebalanceRoute(uint256 destinationChainId, address l1Token)
-        external
-        view
-        override
-        returns (address destinationToken)
-    {
+    function poolRebalanceRoute(
+        uint256 destinationChainId,
+        address l1Token
+    ) external view override returns (address destinationToken) {
         return poolRebalanceRoutes[_poolRebalanceRouteKey(l1Token, destinationChainId)];
     }
 
@@ -1043,11 +1033,9 @@ contract HubPool is HubPoolInterface, Testable, Lockable, MultiCaller, Ownable {
         return keccak256(abi.encode(l1Token, destinationChainId));
     }
 
-    function _getInitializedCrossChainContracts(uint256 chainId)
-        internal
-        view
-        returns (address adapter, address spokePool)
-    {
+    function _getInitializedCrossChainContracts(
+        uint256 chainId
+    ) internal view returns (address adapter, address spokePool) {
         adapter = crossChainContracts[chainId].adapter;
         spokePool = crossChainContracts[chainId].spokePool;
         require(spokePool != address(0), "SpokePool not initialized");

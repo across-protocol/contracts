@@ -15,7 +15,7 @@ contract DeployedAddresses is Test {
     using stdJson for string;
 
     // Path to the JSON file containing deployed addresses
-    string private constant JSON_PATH = "../broadcast/deployed-addresses.json";
+    string private constant JSON_PATH = "broadcast/deployed-addresses.json";
 
     /**
      * @notice Get contract address by chain ID and contract name
@@ -32,7 +32,8 @@ contract DeployedAddresses is Test {
             contractName,
             '"].address'
         );
-        return jsonData.readAddress(path);
+        bool keyExists = vm.keyExists(jsonData, path);
+        return keyExists ? jsonData.readAddress(path) : address(0);
     }
 
     /**

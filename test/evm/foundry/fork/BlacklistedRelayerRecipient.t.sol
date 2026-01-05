@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 
 // Define a minimal interface for USDT. Note USDT does NOT return anything after a transfer.
 interface IUSDT {
@@ -12,11 +12,7 @@ interface IUSDT {
 
     function transfer(address recipient, uint256 amount) external;
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external;
+    function transferFrom(address from, address to, uint256 value) external;
 
     function addBlackList(address _evilUser) external;
 
@@ -29,11 +25,7 @@ interface IUSDC {
 
     function transfer(address recipient, uint256 amount) external returns (bool);
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 value
-    ) external returns (bool);
+    function transferFrom(address from, address to, uint256 value) external returns (bool);
 
     function blacklist(address _account) external;
 
@@ -48,7 +40,7 @@ contract MockSpokePoolTest is Test {
 
     address largeUSDTAccount = 0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1;
     address largeUSDCAccount = 0x37305B1cD40574E4C5Ce33f8e8306Be057fD7341;
-    uint256 seedAmount = 10_000 * 10**6;
+    uint256 seedAmount = 10_000 * 10 ** 6;
 
     address recipient1 = address(0x6969691111111420);
     address recipient2 = address(0x6969692222222420);
@@ -78,7 +70,7 @@ contract MockSpokePoolTest is Test {
         assertEq(usdt.balanceOf(address(spokePool)), seedAmount, "SpokePool should have seed USDT balance");
 
         uint256[] memory refundAmounts = new uint256[](1);
-        refundAmounts[0] = 420 * 10**6;
+        refundAmounts[0] = 420 * 10 ** 6;
 
         address[] memory refundAddresses = new address[](1);
         refundAddresses[0] = recipient1;
@@ -110,8 +102,8 @@ contract MockSpokePoolTest is Test {
         assertEq(usdt.balanceOf(recipient2), 0, "Recipient2 should start with 0 USDT balance");
 
         uint256[] memory refundAmounts = new uint256[](2);
-        refundAmounts[0] = 420 * 10**6;
-        refundAmounts[1] = 69 * 10**6;
+        refundAmounts[0] = 420 * 10 ** 6;
+        refundAmounts[1] = 69 * 10 ** 6;
 
         address[] memory refundAddresses = new address[](2);
         refundAddresses[0] = recipient1;
@@ -137,8 +129,8 @@ contract MockSpokePoolTest is Test {
         assertEq(usdc.balanceOf(recipient2), 0, "Recipient2 should start with 0 USDc balance");
 
         uint256[] memory refundAmounts = new uint256[](2);
-        refundAmounts[0] = 420 * 10**6;
-        refundAmounts[1] = 69 * 10**6;
+        refundAmounts[0] = 420 * 10 ** 6;
+        refundAmounts[1] = 69 * 10 ** 6;
 
         address[] memory refundAddresses = new address[](2);
         refundAddresses[0] = recipient1;

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { IOFT, SendParam, MessagingFee, OFTReceipt } from "../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
@@ -67,6 +67,25 @@ contract OFTTransportAdapter {
      * @param _amount amount to send.
      */
     function _transferViaOFT(IERC20 _token, IOFT _messenger, address _to, uint256 _amount) internal {
+        (SendParam memory sendParam, MessagingFee memory fee) = _buildOftTransfer(_messenger, _to, _amount);
+        _sendOftTransfer(_token, _messenger, sendParam, fee);
+    }
+
+    /**
+     * @notice Build OFT send params and quote the native fee.
+     * @dev Sets `minAmountLD == amountLD` to disallow silent deductions (e.g. dust removal) by OFT.
+     *      The fee is quoted for payment in native token.
+     * @param _messenger OFT messenger contract on the current chain for the token being sent.
+     * @param _to Destination address on the remote chain.
+     * @param _amount Amount of tokens to transfer.
+     * @return sendParam The encoded OFT send parameters.
+     * @return fee The quoted MessagingFee required for the transfer.
+     */
+    function _buildOftTransfer(
+        IOFT _messenger,
+        address _to,
+        uint256 _amount
+    ) internal view returns (SendParam memory, MessagingFee memory) {
         bytes32 to = _to.toBytes32();
 
         SendParam memory sendParam = SendParam(
@@ -90,6 +109,24 @@ contract OFTTransportAdapter {
 
         // `false` in the 2nd param here refers to `bool _payInLzToken`. We will pay in native token, so set to `false`
         MessagingFee memory fee = _messenger.quoteSend(sendParam, false);
+
+        return (sendParam, fee);
+    }
+
+    /**
+     * @notice Execute an OFT transfer using pre-built params and fee.
+     * @dev Verifies fee bounds and equality of sent/received amounts. Pays native fee from this contract.
+     * @param _token ERC-20 token to transfer.
+     * @param _messenger OFT messenger contract on the current chain for `_token`.
+     * @param sendParam Pre-built OFT send parameters.
+     * @param fee Quoted MessagingFee to pay for this transfer.
+     */
+    function _sendOftTransfer(
+        IERC20 _token,
+        IOFT _messenger,
+        SendParam memory sendParam,
+        MessagingFee memory fee
+    ) internal {
         // Create a stack variable to optimize gas usage on subsequent reads
         uint256 nativeFee = fee.nativeFee;
         if (nativeFee > OFT_FEE_CAP) revert OftFeeCapExceeded();
@@ -97,6 +134,7 @@ contract OFTTransportAdapter {
         if (fee.lzTokenFee != 0) revert OftLzFeeNotZero();
 
         // Approve the exact _amount for `_messenger` to spend. Fee will be paid in native token
+        uint256 _amount = sendParam.amountLD;
         _token.forceApprove(address(_messenger), _amount);
 
         (, OFTReceipt memory oftReceipt) = _messenger.send{ value: nativeFee }(sendParam, fee, address(this));

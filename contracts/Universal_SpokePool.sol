@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/access/OwnableUpgradeable.sol";
 
 import { IHelios } from "./external/interfaces/IHelios.sol";
 import "./libraries/CircleCCTPAdapter.sol";
@@ -185,7 +185,7 @@ contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter
         if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
             _transferUsdc(withdrawalRecipient, amountToReturn);
         } else if (oftMessenger != address(0)) {
-            _transferViaOFT(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
+            _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
         } else {
             revert NotImplemented();
         }

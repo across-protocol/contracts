@@ -7,8 +7,8 @@ pragma solidity ^0.8.19;
 import "./SpokePool.sol";
 import "./libraries/CircleCCTPAdapter.sol";
 import { IMessageService, ITokenBridge, IUSDCBridge } from "./external/interfaces/LineaInterfaces.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Linea specific SpokePool.

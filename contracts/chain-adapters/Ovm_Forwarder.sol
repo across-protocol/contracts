@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { ForwarderBase } from "./ForwarderBase.sol";
-import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable/crosschain/optimism/LibOptimismUpgradeable.sol";
+import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/crosschain/optimism/LibOptimismUpgradeable.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 

@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/SpokePoolMessageHandler.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/utils/Address.sol";
+import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 
 /**
  * @title Across Multicall contract that allows a user to specify a series of calls that should be made by the handler
@@ -58,10 +58,11 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
      * @dev This will execute all calls encoded in the msg. The caller is responsible for making sure all tokens are
      * drained from this contract by the end of the series of calls. If not, they can be stolen.
      * A drainLeftoverTokens call can be included as a way to drain any remaining tokens from this contract.
+     * @param token The token address that was received from the relay
      * @param message abi encoded array of Call structs, containing a target, callData, and value for each call that
      * the contract should make.
      */
-    function handleV3AcrossMessage(address token, uint256, address, bytes memory message) external nonReentrant {
+    function handleV3AcrossMessage(address token, uint256, address, bytes memory message) public virtual nonReentrant {
         Instructions memory instructions = abi.decode(message, (Instructions));
 
         // If there is no fallback recipient, call and revert if the inner call fails.
@@ -130,7 +131,7 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         uint256 value,
         Replacement[] calldata replacement
     ) external onlySelf {
-        for (uint256 i = 0; i < replacement.length; i++) {
+        for (uint256 i = 0; i < replacement.length; ++i) {
             uint256 bal = 0;
             if (replacement[i].token != address(0)) {
                 bal = IERC20(replacement[i].token).balanceOf(address(this));

@@ -22,6 +22,16 @@ export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
 export const ZK_L2_GAS_LIMIT = 2000000;
 export const ZK_MAX_GASPRICE = "10000000000000"; // 10k gwei
 
+// Expected Safe address for Universal SpokePool
+export const EXPECTED_SAFE_ADDRESS = "0x0Fc8E2BB9bEd4FDb51a0d36f2415c4C7F9e75F6e";
+export const EXPECTED_SAFE_OWNERS = [
+  "0x868CF19464e17F76D6419ACC802B122c22D2FD34",
+  "0xcc400c09ecBAC3e0033e4587BdFAABB26223e37d",
+  "0x837219D7a9C666F5542c4559Bf17D7B804E5c5fe",
+  "0x1d933Fd71FF07E69f066d50B39a7C34EB3b69F05",
+  "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9",
+];
+
 export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
   [CHAIN_IDs.MAINNET]: {
     finder: "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
@@ -84,6 +94,8 @@ export const OP_STACK_ADDRESS_MAP: {
 } = {
   [CHAIN_IDs.MAINNET]: {
     [CHAIN_IDs.BASE]: {
+      L1BlastBridge: ZERO_ADDRESS,
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x866E82a600A1414e583f7F13623F1aC5d58b0Afa",
       L1StandardBridge: "0x3154Cf16ccdb4C6d922629664174b904d80F2C35",
     },
@@ -97,6 +109,8 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0x697402166Fbf2F22E970df8a6486Ef171dbfc524",
     },
     [CHAIN_IDs.UNICHAIN]: {
+      L1BlastBridge: ZERO_ADDRESS,
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x9A3D64E386C18Cb1d6d5179a9596A4B5736e98A6",
       L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
     },
@@ -115,6 +129,8 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0x735aDBbE72226BD52e818E7181953f42E3b0FF21",
     },
     [CHAIN_IDs.OPTIMISM]: {
+      L1BlastBridge: ZERO_ADDRESS,
+      L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments
       L1StandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
     },
@@ -177,20 +193,36 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.ARBITRUM]: {
     l2GatewayRouter: "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
-    cctpTokenMessenger: "0x19330d10D9Cc8751218eaf51E8885D058642E08A",
-    cctpMessageTransmitter: "0xC30362313FBBA5cf9163F0bb16a0e01f01A896ca",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.BSC]: {
-    helios: "0xB04926aF663cB52899361B1F6313bcFEa5A58B29",
+    helios: "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.HYPEREVM]: {
+    helios: "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    oftEndpoint: "0x3A73033C0b1407574C76BdBAc67f126f6b4a9AA9",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.MONAD]: {
+    helios: "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    permit2: "0x000000000022d473030f116ddee9f6b43ac78ba3",
+  },
+  [CHAIN_IDs.PLASMA]: {
+    helios: "0x6f1cd5f317a7228269eab2b496313862de712ccb",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.POLYGON]: {
     fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
-    cctpTokenMessenger: "0x9daF8c91AEFAE50b9c0E69629D3F6Ca40cA3B3FE",
-    cctpMessageTransmitter: "0xF3be9355363857F3e001be68856A2f96b4C39Ba9",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -207,8 +239,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x0000000000225e31d15943971f47ad3022f714fa",
   },
   [CHAIN_IDs.OPTIMISM]: {
-    cctpTokenMessenger: "0x2B4069517957735bE00ceE0fadAE88a26365528f",
-    cctpMessageTransmitter: "0x4d41f22c5a0e5c74090899e5a8fb597a8842b3e8",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -219,8 +251,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     uniswapV3SwapRouter: "0xd8866E76441df243fc98B892362Fc6264dC3ca80", // Mock_UniswapV3SwapRouter.sol
   },
   [CHAIN_IDs.BASE]: {
-    cctpTokenMessenger: "0x1682Ae6375C4E4A97e4B583BC394c861A46D8962",
-    cctpMessageTransmitter: "0xAD09780d193884d503182aD4588450C416D6F9D4",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     uniswapV3SwapRouter: "0x2626664c2603336E57B271c5C0b26F421741e481",
     "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
@@ -229,6 +261,12 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
+  },
+  [CHAIN_IDs.BOB]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
+  },
+  [CHAIN_IDs.BOB_SEPOLIA]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
   },
   [CHAIN_IDs.LENS]: {
     zkErc20Bridge: "0xfBEC23c5BB0E076F2ef4d0AaD7fe331aE5A01143",
@@ -242,6 +280,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.LINEA]: {
     lineaMessageService: "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
     permit2: "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768", // PancakeSwap Permit2
   },
@@ -262,8 +301,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     polygonZkEvmBridge: "0xF6BEEeBB578e214CA9E23B0e9683454Ff88Ed2A7",
   },
   [CHAIN_IDs.UNICHAIN]: {
-    cctpTokenMessenger: "0x4e744b28E787c3aD0e810eD65A24461D4ac5a762",
-    cctpMessageTransmitter: "0x353bE9E2E38AB1D19104534e4edC21c643Df86f4",
+    cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+    cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.UNICHAIN_SEPOLIA]: {
@@ -274,6 +313,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.ZORA]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.WORLD_CHAIN]: {
@@ -289,10 +329,15 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.REDSTONE]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.MODE]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+  },
+  [CHAIN_IDs.MODE_SEPOLIA]: {
+    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
   },
 };
 

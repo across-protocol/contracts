@@ -5,7 +5,7 @@ import "./interfaces/SpokePoolInterface.sol";
 import "./interfaces/V3SpokePoolInterface.sol";
 import "./interfaces/HubPoolInterface.sol";
 
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-v4/utils/cryptography/MerkleProof.sol";
 
 /**
  * @notice Library to help with merkle roots, proofs, and claims.

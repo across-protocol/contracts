@@ -14,9 +14,9 @@ import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol
 import { MockPermit2, Permit2EIP712, SignatureVerification } from "../../../../contracts/test/MockPermit2.sol";
 import { PeripherySigningLib } from "../../../../contracts/libraries/PeripherySigningLib.sol";
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { IERC1271 } from "@openzeppelin/contracts-v4/interfaces/IERC1271.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 contract Exchange {

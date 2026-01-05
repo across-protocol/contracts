@@ -26,8 +26,8 @@ import {
   MessagingReceiptStructOutput,
   OFTReceiptStructOutput,
   SendParamStruct,
-} from "../../../../typechain/contracts/interfaces/IOFT";
-import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT__factory";
+} from "../../../../typechain/contracts/interfaces/IOFT.sol/IOFT";
+import { IOFT__factory } from "../../../../typechain/factories/contracts/interfaces/IOFT.sol/IOFT__factory";
 import { CHAIN_IDs } from "@across-protocol/constants";
 
 let hubPool: Contract, arbitrumSpokePool: Contract, dai: Contract, weth: Contract, l2UsdtContract: Contract;
@@ -235,16 +235,8 @@ describe("Arbitrum Spoke Pool", function () {
       ] as MessagingFeeStructOutput;
       l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
-      // Fund the spoke pool with enough ETH to cover the fee as `executeRelayerRefundLeaf` is not payable.
-      await hre.network.provider.send("hardhat_setBalance", [
-        arbitrumSpokePool.address,
-        // @dev Notice, this value is very sensitive to change. It wants a hex string WITHOUT leading zeroes after 0x, whereas
-        // BigNumber's .toHexString() can easily return a leading zero (probably because just converting from bytes)
-        toWei("2").toHexString(),
-      ]);
-
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: nativeFee })
       ).to.be.revertedWith("OftLzFeeNotZero");
     });
 
@@ -256,20 +248,12 @@ describe("Arbitrum Spoke Pool", function () {
       ] as MessagingFeeStructOutput;
       l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
-      // Fund the spoke pool with enough ETH to cover the fee as `executeRelayerRefundLeaf` is not payable.
-      await hre.network.provider.send("hardhat_setBalance", [
-        arbitrumSpokePool.address,
-        // @dev Notice, this value is very sensitive to change. It wants a hex string WITHOUT leading zeroes after 0x, whereas
-        // BigNumber's .toHexString() can easily return a leading zero (probably because just converting from bytes)
-        highNativeFee.toHexString(),
-      ]);
-
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: highNativeFee })
       ).to.be.revertedWith("OftFeeCapExceeded");
     });
 
-    it("reverts with OftInsufficientBalanceForFee if spoke pool has not enough ETH for fee", async function () {
+    it("reverts with OFTFeeUnderpaid if caller does not supply the required OFT fee", async function () {
       const nativeFee = toWei("0.1");
       const msgFeeStruct: MessagingFeeStructOutput = [
         nativeFee, // nativeFee
@@ -277,10 +261,9 @@ describe("Arbitrum Spoke Pool", function () {
       ] as MessagingFeeStructOutput;
       l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
-      // Note: the `executeRelayerRefundLeaf` is not payable, so the native fee must be covered by the contract's balance
       await expect(
         arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
-      ).to.be.revertedWith("OftInsufficientBalanceForFee");
+      ).to.be.revertedWith("OFTFeeUnderpaid");
     });
 
     it("reverts with OftIncorrectAmountReceivedLD if OFT receipt has wrong received amount", async function () {

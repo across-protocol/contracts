@@ -11,8 +11,8 @@ import "../external/interfaces/CCTPInterfaces.sol";
 import "./CrossDomainEnabled.sol";
 import "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Interface for Synthetix custom bridge to Optimism.
@@ -93,12 +93,7 @@ contract Optimism_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAda
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         // If the l1Token is weth then unwrap it to ETH then send the ETH to the standard bridge.
         if (l1Token == address(L1_WETH)) {
             L1_WETH.withdraw(amount);

@@ -8,14 +8,17 @@ skip-lint = false
 multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
 svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
 test = "8tsEfDSiE4WUMf97oyyyasLAvWwjeRZb2GByh4w7HckA"
+sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 
 [programs.devnet]
 multicall_handler = "Fk1RpqsfeWt8KnFCTW9NQVdVxYvxuqjGn6iPB9wrmM8h"
 svm_spoke = "JAZWcGrpSWNPTBj8QtJ9UyQqhJCDhG9GJkDeMf5NQBiq"
+sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 
 [programs.mainnet]
 multicall_handler = "HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be"
 svm_spoke = "DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru"
+sponsored_cctp_src_periphery = "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq"
 
 [registry]
 url = "https://api.apr.dev"
@@ -25,6 +28,7 @@ cluster = "localnet"
 wallet = "test/svm/keys/localnet-wallet.json"
 
 [scripts]
+### SvmSpoke scripts:
 test = "anchor run generateExternalTypes && yarn run ts-mocha -p ./tsconfig.json -t 1000000 test/svm/**/*.ts"
 queryEvents = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEvents.ts"
 queryEventsV2 = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/queryEventsV2.ts"
@@ -56,6 +60,23 @@ findFillStatusFromFillStatusPda = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts
 nativeDeposit = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/nativeDeposit.ts"
 squadsIdlUpgrade = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/squadsIdlUpgrade.ts"
 
+### SponsoredCctpSrc scripts:
+initializeSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/initialize.ts"
+setSignerSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/setSigner.ts"
+setMinimumDepositSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/setMinimumDeposit.ts"
+withdrawRentFundSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/withdrawRentFund.ts"
+depositRentFundSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/depositRentFund.ts"
+setupLookupTableSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/setupLookupTable.ts"
+depositForBurnSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/depositForBurn.ts"
+queryDepositsSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/queryDeposits.ts"
+reclaimUsedNonceAccountsSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/reclaimUsedNonceAccounts.ts"
+reclaimEventAccountsSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/reclaimEventAccounts.ts"
+receiveMessageSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/receiveMessage.ts"
+repayRentFundDebtSponsoredCctpSrc = "NODE_NO_WARNINGS=1 yarn run ts-node ./scripts/svm/SponsoredCctpSrc/repayRentFundDebt.ts"
+
+[test]
+upgradeable = true
+
 [test.validator]
 url = "https://api.mainnet-beta.solana.com"
 
@@ -84,3 +105,28 @@ address = "Afgq3BHEfCE7d78D2XE9Bfyu2ieDqvE24xX8KDwreBms"
 ### Circle Token Messenger Minter PDA -- Ethereum Remote Token Messenger
 [[test.validator.clone]]
 address = "Hazwi3jFQtLKc2ughi7HFXPkpDeso7DQaMR9Ks4afh3j"
+
+### Forked Circle MessageTransmitterV2 Program
+[[test.validator.clone]]
+address = "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC"
+
+### Forked Circle TokenMessengerMinterV2 Program
+[[test.validator.clone]]
+address = "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe"
+
+### Forked Circle MessageTransmitterV2 PDA -- Message Transmitter Config
+[[test.validator.clone]]
+address = "W1k5ijkaSTo5iA5zChNpfzcy796fLhkBxfmJuR8W8HU"
+
+### Forked Circle TokenMessengerMinterV2 PDA -- Token Messenger
+[[test.validator.clone]]
+address = "AawthJCGRmggpfv9MMWV6Jmo9cue4gL9wUZgRBShg58W"
+
+### Circle TokenMessengerMinterV2 PDA -- Ethereum Remote Token Messenger
+[[test.validator.clone]]
+address = "3EzN2mcmdfSNGXRCAixSpTteK6ywdmFDZZWvkMnznFt9"
+
+### Circle TokenMessengerMinterV2 PDA -- Token Minter (Modified with token_controller set to test wallet)
+[[test.validator.account]]
+address = "E1bQJ8eMMn3zmeSewW3HQ8zmJr7KR75JonbwAtWx2bux"
+filename = "test/svm/accounts/token_minter_v2.json"

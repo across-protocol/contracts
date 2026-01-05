@@ -2,10 +2,11 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { Universal_SpokePool, IHelios } from "../../../../contracts/Universal_SpokePool.sol";
+import "../../../../contracts/SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import "../../../../contracts/test/MockCCTP.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
@@ -26,11 +27,7 @@ contract MockHelios is IHelios {
         headTimestamp = _timestamp;
     }
 
-    function getStorageSlot(
-        uint256,
-        address,
-        bytes32 _key
-    ) external view returns (bytes32) {
+    function getStorageSlot(uint256, address, bytes32 _key) external view returns (bytes32) {
         return storageSlots[_key];
     }
 }
@@ -62,7 +59,7 @@ contract MockUniversalSpokePool is Universal_SpokePool {
         )
     {}
 
-    function test_bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) external {
+    function test_bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) external payable {
         _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
     }
 }
@@ -365,13 +362,10 @@ contract UniversalSpokePoolTest is Test {
         spokePool.executeMessage(nonce, value, 100);
         nonce++; // Increment nonce for the next message
 
-        // Fund the spokePool with enough native currency to attempt the transaction but less than the high fee
-        // The check for OFT_FEE_CAP happens before the balance check.
-        deal(address(spokePool), spokePool.OFT_FEE_CAP());
-
-        // Expect the OftFeeCapExceeded error from OFTTransportAdapter
+        // Expect the OftFeeCapExceeded error from OFTTransportAdapter.
+        // Provide msg.value to cover the quoted fee so the cap guard is triggered.
         vm.expectRevert(OFTTransportAdapter.OftFeeCapExceeded.selector);
-        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+        spokePool.test_bridgeTokensToHubPool{ value: highNativeFee }(usdcMintAmount, address(usdt));
     }
 
     function testBridgeTokensToHubPool_oft() public {
@@ -423,12 +417,9 @@ contract UniversalSpokePoolTest is Test {
         spokePool.executeMessage(nonce, value, 100);
         nonce++;
 
-        // Ensure spokePool has less balance than nativeFee
-        deal(address(spokePool), nativeFee - 1);
-
-        // Expect revert due to insufficient balance for fee
-        vm.expectRevert(OFTTransportAdapter.OftInsufficientBalanceForFee.selector);
-        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+        // Expect revert due to caller underpaying the required OFT native fee
+        vm.expectRevert(SpokePool.OFTFeeUnderpaid.selector);
+        spokePool.test_bridgeTokensToHubPool{ value: nativeFee - 1 }(usdcMintAmount, address(usdt));
     }
 
     function testBridgeTokensToHubPool_oft_incorrectAmountReceived() public {

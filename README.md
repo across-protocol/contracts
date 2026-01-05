@@ -61,9 +61,36 @@ yarn lint-fix
 
 ### EVM
 
+#### Hardhat
+
 ```shell
 NODE_URL_1=https://mainnet.infura.com/xxx yarn hardhat deploy --tags HubPool --network mainnet
 ETHERSCAN_API_KEY=XXX yarn hardhat etherscan-verify --network mainnet --license AGPL-3.0 --force-license --solc-input
+```
+
+#### Foundry
+
+```shell
+forge build
+
+forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url ethereum --broadcast --verify -vvvv
+
+```
+
+#### Foundry (ZKSync)
+
+To enable ZKSync support, the zksync fork of foundry must be installed (see [here](https://foundry-book.zksync.io/introduction/installation#using-foundryup-zksync) for instructions).
+
+Also, the `FOUNDRY_PROFILE` environment variable must be set to `zksync`.
+
+```shell
+FOUNDRY_PROFILE=zksync forge script script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
+```
+
+Alternatively, the `yarn forge-script-zksync` command can be used to deploy the contract.
+
+```shell
+yarn forge-script-zksync script/016DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync --broadcast --verify -vvvv
 ```
 
 ### SVM
@@ -109,7 +136,7 @@ solana program deploy \
   --keypair $KEYPAIR \
   --program-id target/deploy/$PROGRAM-keypair.json \
   --max-len $MAX_LEN \
-  --with-compute-unit-price 50000 \
+  --with-compute-unit-price 100000 \
   --max-sign-attempts 100 \
   --use-rpc \
   target/deploy/$PROGRAM.so
@@ -162,6 +189,22 @@ anchor run createVault \
   --originToken $MINT
 ```
 
+`sponsored_cctp_src_periphery` requires initialization and setting minimum deposit amount for supported burn token:
+
+```shell
+# Replace --quoteSigner with actual quote signer address
+anchor run initializeSponsoredCctpSrc \
+  --provider.cluster $RPC_URL \
+  --provider.wallet $KEYPAIR -- \
+  --quoteSigner 0x0000000000000000000000000000000000000000
+# Below is USDC on devnet, replace --burnToken with mainnet burn token and --amount with required minimum deposit amount (raw value)
+anchor run setMinimumDepositSponsoredCctpSrc \
+  --provider.cluster $RPC_URL \
+  --provider.wallet $KEYPAIR -- \
+  --burnToken 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU \
+  --amount 0
+```
+
 #### Upgrades
 
 Initiate the program upgrade:
@@ -170,7 +213,7 @@ Initiate the program upgrade:
 solana program write-buffer \
   --url $RPC_URL \
   --keypair $KEYPAIR \
-  --with-compute-unit-price 50000 \
+  --with-compute-unit-price 100000 \
   --max-sign-attempts 100 \
   --use-rpc \
   target/deploy/$PROGRAM.so
