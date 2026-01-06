@@ -14,19 +14,15 @@ import { SP1MockVerifier } from "@sp1-contracts/SP1MockVerifier.sol";
 /// How to run:
 /// 1. Set environment variables in .env:
 ///    - MNEMONIC or PRIVATE_KEY for deployment
-///    - CONSENSUS_RPC_URL - Ethereum consensus layer RPC
+///    - SP1_RELEASE - Genesis binary version (e.g., "0.1.0-alpha.17")
+///    - SP1_PROVER_MODE - SP1 prover type: "mock", "cpu", "cuda", or "network"
 ///    - SP1_VERIFIER_ADDRESS - SP1 verifier contract address
 ///    - SP1_UPDATERS - Comma-separated list of updater addresses
 ///    - SP1_VKEY_UPDATER - VKey updater address
+///    - SP1_CONSENSUS_RPCS_LIST - Comma-separated list of consensus RPC URLs
 ///
 /// 2. Run the script:
-///    forge script script/DeploySP1Helios.s.sol \
-///      --sig "run(string,string)" "0.1.0-alpha.17" "mock" \
-///      --rpc-url <RPC_URL> --broadcast --ffi -vvvv
-///
-///    Arguments:
-///      - version: Genesis binary version (e.g., "0.1.0-alpha.17")
-///      - sp1Prover: SP1 prover type - "mock", "cpu", "cuda", or "network"
+///    forge script script/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
 ///
 /// Binary naming convention:
 ///    - macOS (arm64): genesis_{version}_arm64_darwin
@@ -36,10 +32,12 @@ contract DeploySP1Helios is Script {
     string internal constant GITHUB_RELEASE_URL = "https://github.com/across-protocol/sp1-helios/releases";
 
     /// @notice Main entry point for deploying SP1Helios
-    /// @param version Genesis binary version (e.g., "0.1.0-alpha.17")
-    /// @param sp1Prover SP1 prover type: "mock", "cpu", "cuda", or "network"
     /// @return The address of the deployed SP1Helios contract
-    function run(string calldata version, string calldata sp1Prover) external returns (address) {
+    function run() external returns (address) {
+        // Read version and prover mode from env
+        string memory version = vm.envString("SP1_RELEASE");
+        string memory sp1Prover = vm.envString("SP1_PROVER_MODE");
+
         console.log("=== SP1Helios Deployment ===");
         console.log("Version:", version);
         console.log("SP1 Prover:", sp1Prover);
@@ -115,10 +113,7 @@ contract DeploySP1Helios is Script {
     /// @notice Downloads the genesis binary from GitHub releases and runs it
     /// @param version Genesis binary version
     /// @param sp1Prover SP1 prover type
-    function downloadAndRunGenesisBinary(string calldata version, string calldata sp1Prover) internal {
-        string memory envFile = vm.envOr("ENV_FILE", string(".env"));
-        console.log("Env file:", envFile);
-
+    function downloadAndRunGenesisBinary(string memory version, string memory sp1Prover) internal {
         // Derive private key from mnemonic to pass to genesis binary
         string memory mnemonic = vm.envString("MNEMONIC");
         uint256 privateKey = vm.deriveKey(mnemonic, 0);
@@ -128,9 +123,11 @@ contract DeploySP1Helios is Script {
         string memory sp1VerifierAddress = vm.envString("SP1_VERIFIER_ADDRESS");
         string memory updaters = vm.envString("SP1_UPDATERS");
         string memory vkeyUpdater = vm.envString("SP1_VKEY_UPDATER");
+        string memory consensusRpcsList = vm.envString("SP1_CONSENSUS_RPCS_LIST");
         console.log("SP1_VERIFIER_ADDRESS:", sp1VerifierAddress);
         console.log("UPDATERS:", updaters);
         console.log("VKEY_UPDATER:", vkeyUpdater);
+        console.log("CONSENSUS_RPCS_LIST:", consensusRpcsList);
 
         // Detect OS/arch and construct binary name
         // Format: genesis_{version}_{arch}_{os}
@@ -168,9 +165,6 @@ contract DeploySP1Helios is Script {
 
         console.log("Running genesis binary...");
 
-        // Read additional env vars needed by genesis binary
-        string memory consensusRpcUrl = vm.envString("CONSENSUS_RPC_URL");
-
         // Run the genesis binary with all required env vars passed directly
         // (not using --env-file to avoid potential override issues)
         string[] memory runCmd = new string[](9);
@@ -181,7 +175,7 @@ contract DeploySP1Helios is Script {
         runCmd[4] = string.concat("SP1_VERIFIER_ADDRESS=", sp1VerifierAddress);
         runCmd[5] = string.concat("UPDATERS=", updaters);
         runCmd[6] = string.concat("VKEY_UPDATER=", vkeyUpdater);
-        runCmd[7] = string.concat("CONSENSUS_RPC_URL=", consensusRpcUrl);
+        runCmd[7] = string.concat("CONSENSUS_RPCS_LIST=", consensusRpcsList);
         runCmd[8] = binaryPath;
         vm.ffi(runCmd);
 
