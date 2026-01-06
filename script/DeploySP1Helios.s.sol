@@ -15,8 +15,9 @@ import { SP1MockVerifier } from "@sp1-contracts/SP1MockVerifier.sol";
 /// 1. Set environment variables in .env:
 ///    - MNEMONIC or PRIVATE_KEY for deployment
 ///    - CONSENSUS_RPC_URL - Ethereum consensus layer RPC
-///    - RPC_URL - Ethereum execution layer RPC (for genesis binary)
-///    - Optional: ENV_FILE - path to env file for genesis binary (defaults to .env)
+///    - SP1_VERIFIER_ADDRESS - SP1 verifier contract address
+///    - SP1_UPDATERS - Comma-separated list of updater addresses
+///    - SP1_VKEY_UPDATER - VKey updater address
 ///
 /// 2. Run the script:
 ///    forge script script/DeploySP1Helios.s.sol \
@@ -169,11 +170,10 @@ contract DeploySP1Helios is Script {
 
         // Read additional env vars needed by genesis binary
         string memory consensusRpcUrl = vm.envString("CONSENSUS_RPC_URL");
-        string memory rpcUrl = vm.envString("RPC_URL");
 
         // Run the genesis binary with all required env vars passed directly
         // (not using --env-file to avoid potential override issues)
-        string[] memory runCmd = new string[](10);
+        string[] memory runCmd = new string[](9);
         runCmd[0] = "env";
         runCmd[1] = "SOURCE_CHAIN_ID=1";
         runCmd[2] = string.concat("SP1_PROVER=", sp1Prover);
@@ -182,8 +182,7 @@ contract DeploySP1Helios is Script {
         runCmd[5] = string.concat("UPDATERS=", updaters);
         runCmd[6] = string.concat("VKEY_UPDATER=", vkeyUpdater);
         runCmd[7] = string.concat("CONSENSUS_RPC_URL=", consensusRpcUrl);
-        runCmd[8] = string.concat("RPC_URL=", rpcUrl);
-        runCmd[9] = binaryPath;
+        runCmd[8] = binaryPath;
         vm.ffi(runCmd);
 
         console.log("Genesis config updated successfully");
