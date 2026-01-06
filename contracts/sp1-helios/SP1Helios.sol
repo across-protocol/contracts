@@ -171,24 +171,22 @@ contract SP1Helios is AccessControlEnumerable {
 
         uint256 fromHead = po.prevHead;
         // Ensure that po.newHead is strictly greater than po.prevHead
-        require(po.newHead > fromHead, NonIncreasingHead(po.newHead));
+        if (po.newHead <= fromHead) revert NonIncreasingHead(po.newHead);
 
         bytes32 storedPrevHeader = headers[fromHead];
-        require(storedPrevHeader != bytes32(0), PreviousHeaderNotSet(fromHead));
-        require(storedPrevHeader == po.prevHeader, PreviousHeaderMismatch(po.prevHeader, storedPrevHeader));
+        if (storedPrevHeader == bytes32(0)) revert PreviousHeaderNotSet(fromHead);
+        if (storedPrevHeader != po.prevHeader) revert PreviousHeaderMismatch(po.prevHeader, storedPrevHeader);
 
         // Check if the head being proved against is older than allowed.
-        require(block.timestamp - slotTimestamp(fromHead) <= MAX_SLOT_AGE, PreviousHeadTooOld(fromHead));
+        if (block.timestamp - slotTimestamp(fromHead) > MAX_SLOT_AGE) revert PreviousHeadTooOld(fromHead);
 
         uint256 currentPeriod = getSyncCommitteePeriod(fromHead);
 
         // Note: We should always have a sync committee for the current head.
         // The "start" sync committee hash is the hash of the sync committee that should sign the next update.
         bytes32 currentSyncCommitteeHash = syncCommittees[currentPeriod];
-        require(
-            currentSyncCommitteeHash == po.startSyncCommitteeHash,
-            SyncCommitteeStartMismatch(po.startSyncCommitteeHash, currentSyncCommitteeHash)
-        );
+        if (currentSyncCommitteeHash != po.startSyncCommitteeHash)
+            revert SyncCommitteeStartMismatch(po.startSyncCommitteeHash, currentSyncCommitteeHash);
 
         // Verify the proof with the associated public values. This will revert if proof invalid.
         ISP1Verifier(verifier).verifyProof(heliosProgramVkey, publicValues, proof);
@@ -241,7 +239,7 @@ contract SP1Helios is AccessControlEnumerable {
 
             // If the next sync committee is already correct, we don't need to update it.
             if (syncCommittees[nextPeriod] != po.nextSyncCommitteeHash) {
-                require(syncCommittees[nextPeriod] == bytes32(0), SyncCommitteeAlreadySet(nextPeriod));
+                if (syncCommittees[nextPeriod] != bytes32(0)) revert SyncCommitteeAlreadySet(nextPeriod);
 
                 syncCommittees[nextPeriod] = po.nextSyncCommitteeHash;
                 emit SyncCommitteeUpdate(nextPeriod, po.nextSyncCommitteeHash);
@@ -256,7 +254,7 @@ contract SP1Helios is AccessControlEnumerable {
         bytes32 oldHeliosProgramVkey = heliosProgramVkey;
         heliosProgramVkey = newHeliosProgramVkey;
 
-        require(oldHeliosProgramVkey != newHeliosProgramVkey, VkeyNotChanged(newHeliosProgramVkey));
+        if (oldHeliosProgramVkey == newHeliosProgramVkey) revert VkeyNotChanged(newHeliosProgramVkey);
 
         emit HeliosProgramVkeyUpdated(oldHeliosProgramVkey, newHeliosProgramVkey);
     }
