@@ -1,9 +1,8 @@
-import { getContractFactory, ethers, SignerWithAddress } from "../utils/utils";
-import { hre } from "../utils/utils.hre";
-import { L1_ADDRESS_MAP, L2_ADDRESS_MAP, CIRCLE_DOMAIN_IDs } from "../deploy/consts";
-import { getNodeUrl } from "@uma/common";
-import { Event, Wallet, providers } from "ethers";
 import fetch from "node-fetch";
+import { Event, Wallet, providers } from "ethers";
+import { getContractFactory, ethers, SignerWithAddress } from "../utils/utils";
+import { getNodeUrl } from "../utils";
+import { L1_ADDRESS_MAP, L2_ADDRESS_MAP, CIRCLE_DOMAIN_IDs } from "../deploy/consts";
 
 const MAX_L1_BLOCK_LOOKBACK = 1000;
 const MAX_L2_BLOCK_LOOKBACK = 1000;
@@ -87,9 +86,7 @@ async function main() {
 
   const l1ChainId = parseInt(await hre.companionNetworks.l1.getChainId());
   const l2ChainId = parseInt(await hre.getChainId());
-  const l1Provider = new ethers.providers.JsonRpcProvider(
-    getNodeUrl(l1ChainId === 1 ? "mainnet" : "goerli", true, l1ChainId)
-  );
+  const l1Provider = new ethers.providers.JsonRpcProvider(getNodeUrl(l1ChainId));
   const l2Provider = ethers.provider;
   const l1Signer = ethers.Wallet.fromMnemonic((hre.network.config.accounts as any).mnemonic).connect(l1Provider);
   const [l2Signer] = await ethers.getSigners();
