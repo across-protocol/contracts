@@ -1,8 +1,8 @@
 import assert from "assert";
+import { getMnemonic } from "@uma/common";
 import { task } from "hardhat/config";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils/constants";
-import { getMnemonic } from "../utils/network";
 import { askYesNoQuestion, resolveTokenOnChain } from "./utils";
 
 // Chain adapter names are not 1:1 consistent with chain names, so some overrides are needed.

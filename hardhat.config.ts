@@ -24,7 +24,7 @@ import * as dotenv from "dotenv";
 dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
 import { CHAIN_IDs } from "./utils/constants";
-import { getNodeUrl, getMnemonic } from "./utils";
+import { getNodeUrl } from "./utils";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
@@ -37,6 +37,12 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
+const getMnemonic = () => {
+  // Publicly-disclosed mnemonic. This is required for hre deployments in test.
+  const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+  const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
+  return MNEMONIC;
+};
 const mnemonic = getMnemonic();
 
 const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): any => {
