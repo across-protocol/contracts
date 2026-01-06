@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
 import { Event, Wallet, providers } from "ethers";
+import { hre } from "../utils/utils.hre";
 import { getContractFactory, ethers, SignerWithAddress } from "../utils/utils";
 import { getNodeUrl } from "../utils";
 import { L1_ADDRESS_MAP, L2_ADDRESS_MAP, CIRCLE_DOMAIN_IDs } from "../deploy/consts";
