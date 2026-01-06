@@ -79,7 +79,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | Helios             | [0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922](https://bscscan.com/address/0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://bscscan.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SP1Helios          | [0x647aFB7d935Ff0aaE4F0DdEfE0499d13AdE69178](https://bscscan.com/address/0x647aFB7d935Ff0aaE4F0DdEfE0499d13AdE69178) |
 | SpokePool          | [0x4e8E101924eDE233C13e2D8622DC8aED2872d505](https://bscscan.com/address/0x4e8E101924eDE233C13e2D8622DC8aED2872d505) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://bscscan.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://bscscan.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |

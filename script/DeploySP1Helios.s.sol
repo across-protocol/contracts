@@ -13,13 +13,14 @@ import { SP1MockVerifier } from "@sp1-contracts/SP1MockVerifier.sol";
 ///
 /// How to run:
 /// 1. Set environment variables in .env:
-///    - MNEMONIC or PRIVATE_KEY for deployment
+///    - MNEMONIC - To derive the private key for the deployer
+///    - SP1_CONSENSUS_RPCS_LIST - Comma-separated list of consensus RPC URLs
 ///    - SP1_RELEASE - Genesis binary version (e.g., "0.1.0-alpha.17")
 ///    - SP1_PROVER_MODE - SP1 prover type: "mock", "cpu", "cuda", or "network"
 ///    - SP1_VERIFIER_ADDRESS - SP1 verifier contract address
-///    - SP1_UPDATERS - Comma-separated list of updater addresses
+///    - SP1_STATE_UPDATERS - Comma-separated list of state updater addresses
 ///    - SP1_VKEY_UPDATER - VKey updater address
-///    - SP1_CONSENSUS_RPCS_LIST - Comma-separated list of consensus RPC URLs
+
 ///
 /// 2. Run the script:
 ///    forge script script/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
@@ -42,14 +43,8 @@ contract DeploySP1Helios is Script {
         console.log("Version:", version);
         console.log("SP1 Prover:", sp1Prover);
 
-        // Get deployer private key
-        uint256 deployerPrivateKey;
-        try vm.envUint("PRIVATE_KEY") returns (uint256 pk) {
-            deployerPrivateKey = pk;
-        } catch {
-            string memory mnemonic = vm.envString("MNEMONIC");
-            deployerPrivateKey = vm.deriveKey(mnemonic, 0);
-        }
+        // Derive deployer private key from mnemonic
+        uint256 deployerPrivateKey = vm.deriveKey(vm.envString("MNEMONIC"), 0);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -79,9 +74,9 @@ contract DeploySP1Helios is Script {
         console.log("Slots Per Period:", params.slotsPerPeriod);
         console.log("Verifier:", params.verifier);
         console.log("VKey Updater:", params.vkeyUpdater);
-        console.log("Number of Updaters:", params.updaters.length);
+        console.log("State Updaters:");
         for (uint256 i = 0; i < params.updaters.length; i++) {
-            console.log("  Updater", i, ":", params.updaters[i]);
+            console.log("  ", params.updaters[i]);
         }
 
         vm.stopBroadcast();
@@ -121,11 +116,11 @@ contract DeploySP1Helios is Script {
 
         // Read additional env vars to pass to genesis binary
         string memory sp1VerifierAddress = vm.envString("SP1_VERIFIER_ADDRESS");
-        string memory updaters = vm.envString("SP1_UPDATERS");
+        string memory stateUpdaters = vm.envString("SP1_STATE_UPDATERS");
         string memory vkeyUpdater = vm.envString("SP1_VKEY_UPDATER");
         string memory consensusRpcsList = vm.envString("SP1_CONSENSUS_RPCS_LIST");
         console.log("SP1_VERIFIER_ADDRESS:", sp1VerifierAddress);
-        console.log("UPDATERS:", updaters);
+        console.log("STATE_UPDATERS:", stateUpdaters);
         console.log("VKEY_UPDATER:", vkeyUpdater);
         console.log("CONSENSUS_RPCS_LIST:", consensusRpcsList);
 
@@ -166,14 +161,13 @@ contract DeploySP1Helios is Script {
         console.log("Running genesis binary...");
 
         // Run the genesis binary with all required env vars passed directly
-        // (not using --env-file to avoid potential override issues)
         string[] memory runCmd = new string[](9);
         runCmd[0] = "env";
         runCmd[1] = "SOURCE_CHAIN_ID=1";
         runCmd[2] = string.concat("SP1_PROVER=", sp1Prover);
         runCmd[3] = string.concat("PRIVATE_KEY=", privateKeyHex);
         runCmd[4] = string.concat("SP1_VERIFIER_ADDRESS=", sp1VerifierAddress);
-        runCmd[5] = string.concat("UPDATERS=", updaters);
+        runCmd[5] = string.concat("UPDATERS=", stateUpdaters);
         runCmd[6] = string.concat("VKEY_UPDATER=", vkeyUpdater);
         runCmd[7] = string.concat("CONSENSUS_RPCS_LIST=", consensusRpcsList);
         runCmd[8] = binaryPath;
