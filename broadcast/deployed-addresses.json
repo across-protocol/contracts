@@ -269,6 +269,11 @@
         "Helios": {
           "address": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
           "block_number": 69434159
+        },
+        "SP1Helios": {
+          "address": "0x50e976ce22072e2c393fa24f5a0f12a6c1f1635d",
+          "block_number": 74294263,
+          "transaction_hash": "0xf97fad8eb3045286a337c6419beec7df4fcfd3db6de706a91b1252e11cf42913"
         }
       }
     },
