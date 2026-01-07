@@ -1,0 +1,37 @@
+# Chain Adapter Tests Migration Progress
+
+## Ethereum_Adapter
+
+**Date**: 2026-01-07
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 2 | Correctly transfers tokens when executing pool rebalance | test_relayTokens_TransfersTokensOnPoolRebalance |
+
+### Mocks Used
+
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol` - Deployed as UUPS proxy via `ERC1967Proxy`
+
+### New Mocks/Utilities Created
+
+- None - used existing MockSpokePool
+
+### Deviations from Original
+
+- None significant. The Foundry test additionally verifies the DAI token balance change after pool rebalance execution.
+
+### Notes
+
+- Ethereum_Adapter is a pass-through adapter for same-chain communication (HubPool to Ethereum_SpokePool)
+- The adapter's `relayMessage` directly calls the target contract
+- The adapter's `relayTokens` uses safeTransfer to send tokens
+- No external bridge mocks are needed as this is L1-to-L1 communication
+- HubPool must be the owner of MockSpokePool since the adapter calls target directly via delegatecall context, and MockSpokePool's `_requireAdminSender` is `onlyOwner`
+- MockSpokePool requires UUPS proxy deployment pattern: `new ERC1967Proxy(address(new MockSpokePool(weth)), abi.encodeCall(MockSpokePool.initialize, (...)))`
+- Address constants used instead of inline `makeAddr()` calls
+
+---

@@ -35,11 +35,38 @@ Use `chain-adapter-tests-migration.txt` to log:
 - **Merkle utils**: `test/evm/foundry/utils/MerkleTreeUtils.sol` - merkle tree building
 - **Existing mocks**: `contracts/test/` - MockCCTP.sol, MockOFTMessenger.sol, ArbitrumMocks.sol, PolygonMocks.sol, SuccinctMocks.sol, etc.
 
+### Mock reuse guidelines
+
+**IMPORTANT**: Always check `contracts/test/` for existing mock implementations before creating new ones.
+
+1. **Use existing mocks** - Many mocks already exist and should be reused:
+
+   - `MockSpokePool.sol` - Full SpokePool mock (use with ERC1967Proxy for UUPS pattern)
+   - `MockCCTP.sol` - CCTP messenger and minter mocks
+   - `MockOFTMessenger.sol` - OFT bridge mock
+   - `ArbitrumMocks.sol` - Arbitrum bridge mocks (Inbox, GatewayRouter)
+   - `PolygonMocks.sol` - Polygon bridge mocks
+   - `SuccinctMocks.sol` - Succinct/Telepathy mocks
+
+2. **Extend existing mocks** - If an existing mock is missing functionality:
+
+   - Add the new function/event to the existing mock in `contracts/test/`
+   - This keeps mocks centralized and reusable across tests
+
+3. **Create new mocks only when necessary** - If no suitable mock exists:
+
+   - Create in `contracts/test/` with naming pattern `<Chain>Mocks.sol`
+   - Document the mock's purpose and usage
+
+4. **Use constants for addresses** - Avoid inline `makeAddr()` calls:
+   - Define address constants at the contract level
+   - Example: `address constant CROSS_DOMAIN_ADMIN = address(0xAD1);`
+
 ---
 
 ## Tasks
 
-### [ ] Ethereum_Adapter
+### [x] Ethereum_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Ethereum_Adapter.ts`
 **Target**: `test/evm/foundry/local/Ethereum_Adapter.t.sol`
@@ -274,7 +301,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 | Adapter                    | Test Count | New Mocks Needed         | Status |
 | -------------------------- | ---------- | ------------------------ | ------ |
-| Ethereum_Adapter           | 2          | None                     | [ ]    |
+| Ethereum_Adapter           | 2          | None                     | [x]    |
 | Succinct_Adapter           | 1          | None (exists)            | [ ]    |
 | Arbitrum_SendTokensAdapter | 1          | None (exists)            | [ ]    |
 | Solana_Adapter             | 2          | Maybe transmitter mock   | [ ]    |

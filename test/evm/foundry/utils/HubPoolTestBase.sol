@@ -194,7 +194,7 @@ abstract contract HubPoolTestBase is Test, Constants {
      * @param relayerRefundRoot The relayer refund merkle root (use bytes32(0) if not needed)
      * @param slowRelayRoot The slow relay merkle root (use bytes32(0) if not needed)
      */
-    function proposeAndExecuteBundle(
+    function proposeBundleAndAdvanceTime(
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot

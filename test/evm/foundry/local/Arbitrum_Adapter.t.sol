@@ -153,7 +153,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             LP_FEES
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         // Expected data sent to gateway
         bytes memory expectedData = abi.encode(L2_MAX_SUBMISSION_COST, "");
@@ -223,7 +223,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6 // LP fees
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32 expectedRecipient = bytes32(uint256(uint160(mockSpoke)));
 
@@ -270,7 +270,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32 expectedRecipient = bytes32(uint256(uint160(mockSpoke)));
 
@@ -315,7 +315,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         assertEq(cctpMessenger.depositForBurnCallCount(), 3, "Should split into 3 CCTP calls");
 
         // 2) Set limit below amount to send and where amount divides evenly into limit.
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         uint256 newLimit = usdcAmount / 2;
         cctpMinter.setBurnLimit(newLimit);
@@ -377,7 +377,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -431,7 +431,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         vm.expectRevert();
@@ -468,7 +468,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         vm.expectRevert();
@@ -505,7 +505,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         // Drain HubPool's ETH balance (leave 1 wei to avoid zero balance issues)
         uint256 hubPoolBalance = address(fixture.hubPool).balance;
@@ -549,7 +549,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         vm.expectRevert();
@@ -587,7 +587,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             10e6
         );
 
-        proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
+        proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         vm.expectRevert();
