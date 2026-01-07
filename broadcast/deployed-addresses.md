@@ -315,13 +315,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.explorer.mode.network/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0xbd886FC0725Cc459b55BbFEb3E4278610331f83b](https://sepolia.explorer.mode.network/address/0xbd886FC0725Cc459b55BbFEb3E4278610331f83b) |
 
-## HyperEVM Testnet (998)
-
-| Contract Name             | Address                                                                                                                       |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| DonationBox               | [0x0246FBF444cAe32867b410464664f8F02e1822C7](https://testnet.purrsec.com//address/0x0246FBF444cAe32867b410464664f8F02e1822C7) |
-| SponsoredCCTPDstPeriphery | [0xB3De1e212B49e68f4a68b5993f31f63946FCA2a6](https://testnet.purrsec.com//address/0xB3De1e212B49e68f4a68b5993f31f63946FCA2a6) |
-
 ## Unichain Sepolia (1301)
 
 | Contract Name    | Address                                                                                                                      |
@@ -342,14 +335,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | MulticallHandler | [0x02D2B95F631E0CF6c203E77f827381B0885F7822](https://block-explorer.testnet.lens.dev/address/0x02D2B95F631E0CF6c203E77f827381B0885F7822) |
 | SpokePool        | [0x6A0a7f39530923911832Dd60667CE5da5449967B](https://block-explorer.testnet.lens.dev/address/0x6A0a7f39530923911832Dd60667CE5da5449967B) |
-
-## Chain 42220 (42220)
-
-| Contract Name                | Address                                    |
-| ---------------------------- | ------------------------------------------ |
-| DonationBox                  | 0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64 |
-| DstOFTHandler                | 0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96 |
-| PermissionedMulticallHandler | 0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75 |
 
 ## Polygon Amoy (80002)
 
@@ -377,11 +362,10 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Arbitrum Sepolia (421614)
 
-| Contract Name             | Address                                                                                                                      |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool                 | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://sepolia.arbiscan.io/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
-| SponsoredCCTPSrcPeriphery | [0xAa9a71E1D7b13dCA4AD9f5e83c73C2BDBee19218](https://sepolia.arbiscan.io/address/0xAa9a71E1D7b13dCA4AD9f5e83c73C2BDBee19218) |
+| Contract Name    | Address                                                                                                                      |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool        | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://sepolia.arbiscan.io/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
 
 ## BOB Sepolia (808813)
 
