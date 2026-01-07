@@ -44,8 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ARTIFACTS_PATHS: |
-        artifacts
-        cache
         typechain
     steps:
       - name: Checkout repo
