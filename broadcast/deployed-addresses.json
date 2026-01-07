@@ -500,6 +500,21 @@
         }
       }
     },
+    "998": {
+      "chain_name": "HyperEVM Testnet",
+      "contracts": {
+        "DonationBox": {
+          "address": "0x0246fbf444cae32867b410464664f8f02e1822c7",
+          "block_number": 42291351,
+          "transaction_hash": "0x45efb5a0e4c4e10637d594b203e612444a85621aed59162d85f7ed850d327bff"
+        },
+        "SponsoredCCTPDstPeriphery": {
+          "address": "0xb3de1e212b49e68f4a68b5993f31f63946fca2a6",
+          "block_number": 42291351,
+          "transaction_hash": "0xff3d7179c32358e1d38dc53a70401e9b4d0a0974acdd7302c22876f3b0d225a4"
+        }
+      }
+    },
     "999": {
       "chain_name": "HyperEVM",
       "contracts": {
@@ -766,6 +781,26 @@
         }
       }
     },
+    "42220": {
+      "chain_name": "Chain 42220",
+      "contracts": {
+        "DonationBox": {
+          "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
+          "block_number": 55826632,
+          "transaction_hash": "0xbb0e7cc0a27244818f698181f139a5e7898d8461602c1c1bca262a726f749107"
+        },
+        "PermissionedMulticallHandler": {
+          "address": "0x7e63a5f1a8f0b4d0934b2f2327daed3f6bb2ee75",
+          "block_number": 55826633,
+          "transaction_hash": "0xf5781e7dd06ac08b69698cae8a35492a0c83b92fa96143610f207067e3fccf8c"
+        },
+        "DstOFTHandler": {
+          "address": "0x3bad7ad0728f9917d1bf08af5782dcbd516cdd96",
+          "block_number": 55826634,
+          "transaction_hash": "0x9ce9a12778d9b1f83ed44631eecd1a7c680c16f5985f288d312b81eb30c93fef"
+        }
+      }
+    },
     "57073": {
       "chain_name": "Ink",
       "contracts": {
@@ -905,6 +940,11 @@
         "MulticallHandler": {
           "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E",
           "block_number": 175845768
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0xaa9a71e1d7b13dca4ad9f5e83c73c2bdbee19218",
+          "block_number": 231149376,
+          "transaction_hash": "0x62e668d07cac14bd289f1151d2c34163385f392fec81c07e29245354350e9a71"
         }
       }
     },
