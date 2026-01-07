@@ -3,8 +3,8 @@ pragma solidity ^0.8.28;
 
 import { Test, console2 } from "forge-std/Test.sol";
 import { SP1Helios } from "../../../../contracts/sp1-helios/SP1Helios.sol";
-import { SP1MockVerifier } from "@sp1-contracts/SP1MockVerifier.sol";
-import { ISP1Verifier } from "@sp1-contracts/ISP1Verifier.sol";
+import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
+import { ISP1Verifier } from "@sp1-contracts/src/ISP1Verifier.sol";
 import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract SP1HeliosTest is Test {

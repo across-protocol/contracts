@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 import { SP1Helios } from "../contracts/sp1-helios/SP1Helios.sol";
-import { SP1MockVerifier } from "@sp1-contracts/SP1MockVerifier.sol";
+import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 
 /// @title DeploySP1Helios
 /// @notice Deploy script for the SP1Helios contract.

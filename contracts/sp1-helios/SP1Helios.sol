@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import { ISP1Verifier } from "@sp1-contracts/ISP1Verifier.sol";
-import { AccessControlEnumerable } from "@openzeppelin/contracts/access/extensions/AccessControlEnumerable.sol";
+import { ISP1Verifier } from "@sp1-contracts/src/ISP1Verifier.sol";
+import { AccessControlEnumerable } from "@sp1-contracts/lib/openzeppelin-contracts/contracts/access/extensions/AccessControlEnumerable.sol";
 
 /// @title SP1Helios
 /// @notice An Ethereum beacon chain light client, built with SP1 and Helios.
