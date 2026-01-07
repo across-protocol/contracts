@@ -86,24 +86,6 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Succinct_Adapter
-
-**Source**: `test/evm/hardhat/chain-adapters/Succinct_Adapter.ts`
-**Target**: `test/evm/foundry/local/Succinct_Adapter.t.sol`
-
-**Tests to migrate (1 test)**:
-
-- `relayMessage calls spoke pool functions`
-
-**Dependencies**:
-
-- HubPoolTestBase (exists)
-- SuccinctMocks.sol (exists at `contracts/test/SuccinctMocks.sol`)
-
-**Notes**: Only mocks Telepathy broadcaster.
-
----
-
 ### [ ] Arbitrum_SendTokensAdapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Arbitrum_SendTokensAdapter.ts`
@@ -302,7 +284,6 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Adapter                    | Test Count | New Mocks Needed         | Status |
 | -------------------------- | ---------- | ------------------------ | ------ |
 | Ethereum_Adapter           | 2          | None                     | [x]    |
-| Succinct_Adapter           | 1          | None (exists)            | [ ]    |
 | Arbitrum_SendTokensAdapter | 1          | None (exists)            | [ ]    |
 | Solana_Adapter             | 2          | Maybe transmitter mock   | [ ]    |
 | Optimism_Adapter           | 4          | Messenger + Bridge mocks | [ ]    |
@@ -316,3 +297,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 ## Already Migrated (Reference)
 
 - [x] Arbitrum_Adapter.ts → Arbitrum_Adapter.t.sol
+- [x] Ethereum_Adapter.ts → Ethereum_Adapter.t.sol
