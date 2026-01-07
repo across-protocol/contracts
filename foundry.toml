@@ -60,5 +60,8 @@ ethereum = { key = "${ETHERSCAN_API_KEY}" }
 # A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local forge test`
 [profile.local]
 test = "test/evm/foundry/local"
+revert_strings = "default"
+cache_path = "cache-foundry-local"
+out = "out-local"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
