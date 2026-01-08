@@ -18,12 +18,6 @@ import { Constants } from "../utils/Constants.sol";
  *     --sig "run(uint256,address,address,uint256,address)" \
  *     <spokeChainId> <adapterAddress> <l1Token> <amount> <l2Token> \
  *     --rpc-url mainnet --broadcast
- *
- * Example (bridge 1 USDC to Optimism):
- *   forge script script/tasks/TestChainAdapter.s.sol:TestChainAdapter \
- *     --sig "run(uint256,address,address,uint256,address)" \
- *     10 0x... 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 1000000 0x... \
- *     --rpc-url mainnet --broadcast
  */
 contract TestChainAdapter is Script, Constants {
     function run(
