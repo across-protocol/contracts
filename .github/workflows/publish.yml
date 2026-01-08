@@ -19,6 +19,7 @@ env:
   NODE_VERSION: 22.18
   EVM_ARTIFACTS_PATHS: |
     typechain
+    out
   SVM_ARTIFACTS_PATHS: |
     target/idl
     target/types
