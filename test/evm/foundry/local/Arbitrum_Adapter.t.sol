@@ -53,13 +53,10 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
     uint32 ARBITRUM_OFT_EID;
     uint32 ARBITRUM_CIRCLE_DOMAIN;
 
-    // ============ Adapter Constants ============
+    // ============ Test Configuration ============
 
-    uint256 constant OFT_FEE_CAP = 1 ether;
-    uint256 constant L2_MAX_SUBMISSION_COST = 0.01 ether;
-    uint256 constant L2_GAS_PRICE = 5 gwei;
-    uint32 constant RELAY_MESSAGE_L2_GAS_LIMIT = 2_000_000;
-    uint32 constant RELAY_TOKENS_L2_GAS_LIMIT = 300_000;
+    // OFT fee cap is an immutable set via constructor - this is a test configuration choice
+    uint256 constant TEST_OFT_FEE_CAP = 1 ether;
 
     // ============ Test Amounts ============
 
@@ -102,7 +99,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             ITokenMessenger(address(cctpMessenger)),
             address(adapterStore),
             ARBITRUM_OFT_EID,
-            OFT_FEE_CAP
+            TEST_OFT_FEE_CAP
         );
 
         // Configure HubPool with adapter
@@ -125,11 +122,11 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         emit Inbox.RetryableTicketCreated(
             mockSpoke,
             0, // l2CallValue
-            L2_MAX_SUBMISSION_COST,
+            adapter.L2_MAX_SUBMISSION_COST(),
             refundAddress,
             refundAddress,
-            RELAY_MESSAGE_L2_GAS_LIMIT,
-            L2_GAS_PRICE,
+            adapter.RELAY_MESSAGE_L2_GAS_LIMIT(),
+            adapter.L2_GAS_PRICE(),
             functionData
         );
 
@@ -137,7 +134,9 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         fixture.hubPool.relaySpokePoolAdminFunction(ARBITRUM_CHAIN_ID, functionData);
         uint256 inboxBalanceAfter = address(inbox).balance;
 
-        uint256 expectedEth = L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * RELAY_MESSAGE_L2_GAS_LIMIT;
+        uint256 expectedEth = adapter.L2_MAX_SUBMISSION_COST() +
+            adapter.L2_GAS_PRICE() *
+            adapter.RELAY_MESSAGE_L2_GAS_LIMIT();
         assertEq(inboxBalanceAfter - inboxBalanceBefore, expectedEth, "Inbox balance change mismatch");
     }
 
@@ -156,7 +155,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         proposeAndExecuteBundle(root, bytes32(0), bytes32(0));
 
         // Expected data sent to gateway
-        bytes memory expectedData = abi.encode(L2_MAX_SUBMISSION_COST, "");
+        bytes memory expectedData = abi.encode(adapter.L2_MAX_SUBMISSION_COST(), "");
 
         // Expect gateway call
         vm.expectEmit(true, true, true, true, address(gatewayRouter));
@@ -165,8 +164,8 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
             refundAddress,
             mockSpoke,
             TOKENS_TO_SEND,
-            RELAY_TOKENS_L2_GAS_LIMIT,
-            L2_GAS_PRICE,
+            adapter.RELAY_TOKENS_L2_GAS_LIMIT(),
+            adapter.L2_GAS_PRICE(),
             expectedData
         );
 
@@ -175,11 +174,11 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         emit Inbox.RetryableTicketCreated(
             mockSpoke,
             0,
-            L2_MAX_SUBMISSION_COST,
+            adapter.L2_MAX_SUBMISSION_COST(),
             refundAddress,
             refundAddress,
-            RELAY_MESSAGE_L2_GAS_LIMIT,
-            L2_GAS_PRICE,
+            adapter.RELAY_MESSAGE_L2_GAS_LIMIT(),
+            adapter.L2_GAS_PRICE(),
             abi.encodeWithSignature("relayRootBundle(bytes32,bytes32)", bytes32(0), bytes32(0))
         );
 
@@ -199,7 +198,9 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         );
 
         uint256 gatewayBalanceAfter = address(gatewayRouter).balance;
-        uint256 expectedEth = L2_MAX_SUBMISSION_COST + L2_GAS_PRICE * RELAY_TOKENS_L2_GAS_LIMIT;
+        uint256 expectedEth = adapter.L2_MAX_SUBMISSION_COST() +
+            adapter.L2_GAS_PRICE() *
+            adapter.RELAY_TOKENS_L2_GAS_LIMIT();
         assertEq(gatewayBalanceAfter - gatewayBalanceBefore, expectedEth, "GatewayRouter balance change mismatch");
 
         // Verify allowance was set (HubPool approved gateway via delegatecall context)
