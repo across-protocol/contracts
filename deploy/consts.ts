@@ -7,15 +7,12 @@ export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
-export const WAZERO = TOKEN_SYMBOLS_MAP.WAZERO.addresses;
-export const AZERO = TOKEN_SYMBOLS_MAP.AZERO;
 export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
 export const WGHO = TOKEN_SYMBOLS_MAP.WGHO.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
 export const FILL_DEADLINE_BUFFER = 6 * 3600;
 export const ARBITRUM_MAX_SUBMISSION_COST = "10000000000000000";
-export const AZERO_GAS_PRICE = "240000000000";
 export const CIRCLE_UNINITIALIZED_DOMAIN_ID = 4294967295; // 2^32 - 1
 
 export const ZK_L1_GAS_TO_L2_GAS_PER_PUBDATA_LIMIT = 800;
@@ -52,8 +49,6 @@ export const L1_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     scrollGasPriceOracle: "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
     blastYieldManager: "0xa230285d5683C74935aD14c446e137c8c8828438",
     blastDaiRetriever: "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
-    l1AlephZeroInbox: "0x56D8EC76a421063e1907503aDd3794c395256AEb",
-    l1AlephZeroERC20GatewayRouter: "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
     donationBox: "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
     adapterStore: "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
     hubPoolStore: "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
@@ -183,9 +178,6 @@ export const OP_STACK_ADDRESS_MAP: {
 };
 
 export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string } } = {
-  [CHAIN_IDs.ALEPH_ZERO]: {
-    l2GatewayRouter: "0xD296d45171B97720D3aBdb68B0232be01F1A9216",
-  },
   [CHAIN_IDs.ARBITRUM_SEPOLIA]: {
     l2GatewayRouter: "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",

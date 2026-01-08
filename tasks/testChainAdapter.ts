@@ -8,7 +8,6 @@ import { askYesNoQuestion, resolveTokenOnChain } from "./utils";
 // Chain adapter names are not 1:1 consistent with chain names, so some overrides are needed.
 const chains = {
   [CHAIN_IDs.ARBITRUM]: "Arbitrum_Adapter",
-  [CHAIN_IDs.ALEPH_ZERO]: "Arbitrum_CustomGasToken_Adapter",
   [CHAIN_IDs.WORLD_CHAIN]: "WorldChain_Adapter",
 };
 

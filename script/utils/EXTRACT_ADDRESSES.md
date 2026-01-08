@@ -171,7 +171,6 @@ The script recognizes these chains:
 - Mode (Chain ID: 34443)
 - Mode Testnet (Chain ID: 919)
 - Lens Testnet (Chain ID: 37111)
-- Aleph Zero (Chain ID: 41455)
 - Ink (Chain ID: 57073)
 - Tatara Testnet (Chain ID: 129399)
 - BOB Sepolia (Chain ID: 808813)

@@ -143,10 +143,6 @@
           "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32",
           "block_number": 20963234
         },
-        "AlephZero_Adapter": {
-          "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af",
-          "block_number": 21131132
-        },
         "Ink_Adapter": {
           "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2",
           "block_number": 21438590
