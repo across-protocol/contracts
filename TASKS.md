@@ -104,7 +104,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Solana_Adapter
+### [x] Solana_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Solana_Adapter.ts`
 **Target**: `test/evm/foundry/local/Solana_Adapter.t.sol`
@@ -118,12 +118,11 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 - HubPoolTestBase (exists)
 - MerkleTreeUtils (exists)
-- MockCCTP.sol (exists - MockCCTPMessenger, MockCCTPMinter)
-- May need: MockCCTPMessageTransmitter (check if exists or create)
+- MockCCTP.sol (exists - MockCCTPMessenger, MockCCTPMinter, MockCCTPMessageTransmitter)
 
 **Special handling**:
 
-- Solana addresses are bytes32, need to implement `trimSolanaAddress` utility
+- Solana addresses are bytes32, use `Bytes32ToAddress.toAddressUnchecked()` from AddressConverters.sol
 - CCTP message transmission to Solana domain (domain ID 5)
 
 **Notes**: CCTP-only adapter with Solana address handling.
@@ -281,16 +280,16 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ## Summary
 
-| Adapter                    | Test Count | New Mocks Needed         | Status |
-| -------------------------- | ---------- | ------------------------ | ------ |
-| Ethereum_Adapter           | 2          | None                     | [x]    |
-| Arbitrum_SendTokensAdapter | 1          | None (exists)            | [x]    |
-| Solana_Adapter             | 2          | Maybe transmitter mock   | [ ]    |
-| Optimism_Adapter           | 4          | Messenger + Bridge mocks | [ ]    |
-| Scroll_Adapter             | 3          | ScrollMocks.sol          | [ ]    |
-| PolygonZkEVM_Adapter       | 3          | PolygonZkEVMMocks.sol    | [ ]    |
-| Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2 | [ ]    |
-| Polygon_Adapter            | 6          | Check PolygonMocks.sol   | [ ]    |
+| Adapter                    | Test Count | New Mocks Needed           | Status |
+| -------------------------- | ---------- | -------------------------- | ------ |
+| Ethereum_Adapter           | 2          | None                       | [x]    |
+| Arbitrum_SendTokensAdapter | 1          | None (exists)              | [x]    |
+| Solana_Adapter             | 2          | MockCCTPMessageTransmitter | [x]    |
+| Optimism_Adapter           | 4          | Messenger + Bridge mocks   | [ ]    |
+| Scroll_Adapter             | 3          | ScrollMocks.sol            | [ ]    |
+| PolygonZkEVM_Adapter       | 3          | PolygonZkEVMMocks.sol      | [ ]    |
+| Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2   | [ ]    |
+| Polygon_Adapter            | 6          | Check PolygonMocks.sol     | [ ]    |
 
 ---
 
@@ -299,3 +298,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 - [x] Arbitrum_Adapter.ts → Arbitrum_Adapter.t.sol
 - [x] Arbitrum_SendTokensAdapter.ts → Arbitrum_SendTokensAdapter.t.sol
 - [x] Ethereum_Adapter.ts → Ethereum_Adapter.t.sol
+- [x] Solana_Adapter.ts → Solana_Adapter.t.sol

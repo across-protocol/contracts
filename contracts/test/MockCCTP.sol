@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/CircleCCTPAdapter.sol";
+import { IMessageTransmitter } from "../external/interfaces/CCTPInterfaces.sol";
 
 contract MockCCTPMinter is ITokenMinter {
     uint256 private _burnLimit = type(uint256).max;
@@ -38,5 +39,21 @@ contract MockCCTPMessenger is ITokenMessenger {
 
     function localMinter() external view returns (ITokenMinter) {
         return minter;
+    }
+}
+
+contract MockCCTPMessageTransmitter is IMessageTransmitter {
+    uint256 public sendMessageCallCount;
+
+    event SendMessageCalled(uint32 destinationDomain, bytes32 recipient, bytes messageBody);
+
+    function sendMessage(
+        uint32 _destinationDomain,
+        bytes32 _recipient,
+        bytes calldata _messageBody
+    ) external returns (uint64) {
+        sendMessageCallCount++;
+        emit SendMessageCalled(_destinationDomain, _recipient, _messageBody);
+        return 0;
     }
 }

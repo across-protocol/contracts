@@ -69,3 +69,42 @@
 - Constants match the adapter: `l2MaxSubmissionCost = 0.01 ether`, `l2GasPrice = 5 gwei`, `RELAY_TOKENS_L2_GAS_LIMIT = 300_000`
 
 ---
+
+## Solana_Adapter
+
+**Date**: 2026-01-07
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 2 | Correctly calls the CCTP bridge adapter when attempting to bridge USDC | test_relayTokens_BridgesUsdcViaCCTP |
+
+### Mocks Used
+
+- `MockCCTPMinter` from `contracts/test/MockCCTP.sol`
+- `MockCCTPMessenger` from `contracts/test/MockCCTP.sol`
+- `MockCCTPMessageTransmitter` from `contracts/test/MockCCTP.sol` (newly added)
+
+### New Mocks/Utilities Created
+
+- `MockCCTPMessageTransmitter` in `contracts/test/MockCCTP.sol` - Implements `IMessageTransmitter.sendMessage()` for testing CCTP message relay functionality
+
+### Deviations from Original
+
+- None significant. The Foundry test verifies the same behavior and event emissions.
+
+### Notes
+
+- Solana_Adapter is a CCTP-only adapter for bridging to Solana (non-EVM chain)
+- Uses `IMessageTransmitter.sendMessage()` for relaying messages via CCTP
+- Uses `ITokenMessenger.depositForBurn()` for bridging USDC via CCTP
+- Solana addresses are bytes32 (base58-decoded), converted to EVM address via `Bytes32ToAddress.toAddressUnchecked()` (lowest 20 bytes)
+- Circle domain ID for Solana is 5 (`CircleDomainIds.Solana`)
+- Test chain ID is a placeholder (1234567890) since Solana is not an EVM chain
+- The adapter sends tokens to `solanaSpokePoolUsdcVaultBytes32` (the vault ATA), not directly to spoke pool
+- Event emission order is important for `vm.expectEmit`: mock events emit before adapter events
+
+---
