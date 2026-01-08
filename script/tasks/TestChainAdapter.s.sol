@@ -5,7 +5,6 @@ import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Constants } from "../utils/Constants.sol";
-import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
 
 /**
  * @title TestChainAdapter
@@ -26,7 +25,7 @@ import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
  *     10 0x... 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 1000000 0x... \
  *     --rpc-url mainnet --broadcast
  */
-contract TestChainAdapter is Script, Constants, DeployedAddresses {
+contract TestChainAdapter is Script, Constants {
     function run(
         uint256 spokeChainId,
         address adapterAddress,
@@ -85,23 +84,6 @@ contract TestChainAdapter is Script, Constants, DeployedAddresses {
         console.log("=================================================");
 
         vm.stopBroadcast();
-    }
-
-    /// @notice Simplified version that looks up adapter from deployed addresses
-    function runWithLookup(
-        uint256 spokeChainId,
-        string calldata adapterName,
-        address l1Token,
-        uint256 amount,
-        address l2Token
-    ) external {
-        uint256 hubChainId = block.chainid;
-
-        // Try to get adapter from deployed addresses
-        address adapterAddress = getAddress(hubChainId, adapterName);
-        require(adapterAddress != address(0), string.concat("Adapter not found: ", adapterName));
-
-        this.run(spokeChainId, adapterAddress, l1Token, amount, l2Token);
     }
 }
 
