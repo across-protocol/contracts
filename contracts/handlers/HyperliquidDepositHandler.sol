@@ -124,7 +124,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         if (message[0] == 0) {
             address user = abi.decode(message[1:], (address));
             _depositToHypercore(token, amount, user, false);
-        } else if (message[0] == bytes1("1")) {
+        } else if (message[0] == bytes1(0x01)) {
             (address user, bytes memory signature) = abi.decode(message[1:], (address, bytes));
             _verifySignature(user, signature);
             _depositToHypercore(token, amount, user, true);
