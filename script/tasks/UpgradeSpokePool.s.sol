@@ -21,11 +21,6 @@ interface ISpokePoolUpgradeable {
  *   forge script script/tasks/UpgradeSpokePool.s.sol:UpgradeSpokePool \
  *     --sig "run(address)" <NEW_IMPLEMENTATION_ADDRESS> \
  *     -vvvv
- *
- * Example:
- *   forge script script/tasks/UpgradeSpokePool.s.sol:UpgradeSpokePool \
- *     --sig "run(address)" 0x1234567890123456789012345678901234567890 \
- *     -vvvv
  */
 contract UpgradeSpokePool is Script {
     function run(address implementation) external view {
