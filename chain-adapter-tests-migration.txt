@@ -35,3 +35,37 @@
 - Address constants used instead of inline `makeAddr()` calls
 
 ---
+
+## Arbitrum_SendTokensAdapter
+
+**Date**: 2026-01-07
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage sends desired ERC20 in specified amount to SpokePool | test_relayMessage_SendsDesiredERC20InSpecifiedAmountToSpokePool |
+
+### Mocks Used
+
+- `ArbitrumMockErc20GatewayRouter` from `contracts/test/ArbitrumMocks.sol`
+
+### New Mocks/Utilities Created
+
+- None - used existing ArbitrumMocks.sol
+
+### Deviations from Original
+
+- None. The test verifies the same behavior: event emission, ETH balance change, and WETH allowance set.
+
+### Notes
+
+- Arbitrum_SendTokensAdapter is an emergency adapter for sending tokens from HubPool to SpokePool
+- Unlike the main Arbitrum_Adapter, this only implements `relayMessage` (not `relayTokens`)
+- The message format is `abi.encode(address token, uint256 amount)`
+- Uses `relaySpokePoolAdminFunction` instead of `executeRootBundle`
+- The adapter approves the gateway (obtained via `getGateway`), not the router itself
+- Constants match the adapter: `l2MaxSubmissionCost = 0.01 ether`, `l2GasPrice = 5 gwei`, `RELAY_TOKENS_L2_GAS_LIMIT = 300_000`
+
+---

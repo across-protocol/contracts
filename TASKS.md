@@ -86,7 +86,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Arbitrum_SendTokensAdapter
+### [x] Arbitrum_SendTokensAdapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Arbitrum_SendTokensAdapter.ts`
 **Target**: `test/evm/foundry/local/Arbitrum_SendTokensAdapter.t.sol`
@@ -284,7 +284,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Adapter                    | Test Count | New Mocks Needed         | Status |
 | -------------------------- | ---------- | ------------------------ | ------ |
 | Ethereum_Adapter           | 2          | None                     | [x]    |
-| Arbitrum_SendTokensAdapter | 1          | None (exists)            | [ ]    |
+| Arbitrum_SendTokensAdapter | 1          | None (exists)            | [x]    |
 | Solana_Adapter             | 2          | Maybe transmitter mock   | [ ]    |
 | Optimism_Adapter           | 4          | Messenger + Bridge mocks | [ ]    |
 | Scroll_Adapter             | 3          | ScrollMocks.sol          | [ ]    |
@@ -297,4 +297,5 @@ Use `chain-adapter-tests-migration.txt` to log:
 ## Already Migrated (Reference)
 
 - [x] Arbitrum_Adapter.ts → Arbitrum_Adapter.t.sol
+- [x] Arbitrum_SendTokensAdapter.ts → Arbitrum_SendTokensAdapter.t.sol
 - [x] Ethereum_Adapter.ts → Ethereum_Adapter.t.sol
