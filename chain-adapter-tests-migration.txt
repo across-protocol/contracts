@@ -108,3 +108,56 @@
 - Event emission order is important for `vm.expectEmit`: mock events emit before adapter events
 
 ---
+
+## Optimism_Adapter
+
+**Date**: 2026-01-08
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 2 | Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls | test_relayTokens_BridgesERC20ViaStandardBridge |
+| 3 | Correctly unwraps WETH and bridges ETH | test_relayTokens_UnwrapsWETHAndBridgesETH |
+| 4 | Correctly calls the CCTP bridge adapter when attempting to bridge USDC | test_relayTokens_BridgesUsdcViaCCTP |
+
+### Mocks Used
+
+- `MockBedrockL1StandardBridge` from `contracts/test/MockBedrockStandardBridge.sol` (enhanced)
+- `MockBedrockCrossDomainMessenger` from `contracts/test/MockBedrockStandardBridge.sol` (enhanced)
+- `MockCCTPMinter` from `contracts/test/MockCCTP.sol`
+- `MockCCTPMessenger` from `contracts/test/MockCCTP.sol`
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol`
+
+### New Mocks/Utilities Created
+
+- Enhanced `MockBedrockL1StandardBridge` with:
+  - `depositERC20ToCallCount` - call counter
+  - `depositETHToCallCount` - call counter
+  - `DepositERC20ToCalled` event - detailed event with all parameters
+  - `DepositETHToCalled` event - detailed event with all parameters
+
+- Enhanced `MockBedrockCrossDomainMessenger` with:
+  - `sendMessageCallCount` - call counter
+  - `SendMessageCalled` event - detailed event with target, message, and l2Gas parameters
+
+### Deviations from Original
+
+- None significant. The Foundry test verifies the same behavior using `vm.recordLogs()` to capture and verify events instead of `vm.expectEmit` due to event ordering complexity with HubPool's additional events (SpokePoolAdminFunctionTriggered, RootBundleExecuted).
+
+### Notes
+
+- Optimism_Adapter bridges via three mechanisms:
+  1. L1CrossDomainMessenger.sendMessage() for admin messages
+  2. L1StandardBridge.depositETHTo() for WETH (unwraps to ETH first)
+  3. L1StandardBridge.depositERC20To() for ERC20 tokens (except USDC)
+  4. CCTP depositForBurn() for USDC
+- The adapter also supports custom bridges for DAI and SNX, but these are not tested in the Hardhat suite
+- L2_GAS constant is 200,000
+- WETH test requires extra ETH/WETH for the HubPool bond (BOND_AMOUNT = 5 ether)
+- Circle domain ID for Optimism is obtained via `CircleDomainIds.Optimism`
+- The adapter is called via delegatecall from HubPool, so events appear from HubPool's address
+
+---

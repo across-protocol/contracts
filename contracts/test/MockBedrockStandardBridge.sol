@@ -7,13 +7,7 @@ import "../Ovm_SpokePool.sol";
 contract MockBedrockL2StandardBridge is IL2ERC20Bridge {
     event ERC20WithdrawalInitiated(address indexed l2Token, address indexed to, uint256 amount);
 
-    function withdrawTo(
-        address _l2Token,
-        address _to,
-        uint256 _amount,
-        uint32,
-        bytes calldata
-    ) external payable {
+    function withdrawTo(address _l2Token, address _to, uint256 _amount, uint32, bytes calldata) external payable {
         emit ERC20WithdrawalInitiated(_l2Token, _to, _amount);
     }
 
@@ -35,38 +29,56 @@ contract MockBedrockL1StandardBridge {
     event ETHDepositInitiated(address indexed to, uint256 amount);
     event ERC20DepositInitiated(address indexed to, address l1Token, address l2Token, uint256 amount);
 
+    // Enhanced events with all parameters for detailed test verification
+    event DepositERC20ToCalled(
+        address indexed l1Token,
+        address indexed l2Token,
+        address to,
+        uint256 amount,
+        uint32 l2Gas,
+        bytes data
+    );
+    event DepositETHToCalled(address indexed to, uint32 l2Gas, bytes data);
+
+    // Call counters for test assertions
+    uint256 public depositERC20ToCallCount;
+    uint256 public depositETHToCallCount;
+
     function depositERC20To(
         address l1Token,
         address l2Token,
         address to,
         uint256 amount,
-        uint32,
-        bytes calldata
+        uint32 l2Gas,
+        bytes calldata data
     ) external {
+        depositERC20ToCallCount++;
         IERC20(l1Token).transferFrom(msg.sender, address(this), amount);
         emit ERC20DepositInitiated(to, l1Token, l2Token, amount);
+        emit DepositERC20ToCalled(l1Token, l2Token, to, amount, l2Gas, data);
     }
 
-    function depositETHTo(
-        address to,
-        uint32,
-        bytes calldata
-    ) external payable {
+    function depositETHTo(address to, uint32 l2Gas, bytes calldata data) external payable {
+        depositETHToCallCount++;
         emit ETHDepositInitiated(to, msg.value);
+        emit DepositETHToCalled(to, l2Gas, data);
     }
 }
 
 contract MockBedrockCrossDomainMessenger {
     event MessageSent(address indexed target);
+    // Enhanced event with all parameters for detailed test verification
+    event SendMessageCalled(address indexed target, bytes message, uint32 l2Gas);
+
+    // Call counter for test assertions
+    uint256 public sendMessageCallCount;
 
     address private msgSender;
 
-    function sendMessage(
-        address target,
-        bytes calldata,
-        uint32
-    ) external {
+    function sendMessage(address target, bytes calldata message, uint32 l2Gas) external {
+        sendMessageCallCount++;
         emit MessageSent(target);
+        emit SendMessageCalled(target, message, l2Gas);
     }
 
     // Impersonates making a call on L2 from L1.

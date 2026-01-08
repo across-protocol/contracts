@@ -129,7 +129,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Optimism_Adapter
+### [x] Optimism_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Optimism_Adapter.ts`
 **Target**: `test/evm/foundry/local/Optimism_Adapter.t.sol`
@@ -146,7 +146,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 - HubPoolTestBase (exists)
 - MerkleTreeUtils (exists)
 - MockCCTP.sol (exists)
-- Need: Mock L1CrossDomainMessenger, Mock L1StandardBridge (may exist in MockBedrockStandardBridge.sol or need to create)
+- MockBedrockStandardBridge.sol (enhanced with call counters and detailed events)
 
 **Notes**: Tests standard Optimism bridge + CCTP.
 
@@ -285,7 +285,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Ethereum_Adapter           | 2          | None                       | [x]    |
 | Arbitrum_SendTokensAdapter | 1          | None (exists)              | [x]    |
 | Solana_Adapter             | 2          | MockCCTPMessageTransmitter | [x]    |
-| Optimism_Adapter           | 4          | Messenger + Bridge mocks   | [ ]    |
+| Optimism_Adapter           | 4          | None (enhanced existing)   | [x]    |
 | Scroll_Adapter             | 3          | ScrollMocks.sol            | [ ]    |
 | PolygonZkEVM_Adapter       | 3          | PolygonZkEVMMocks.sol      | [ ]    |
 | Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2   | [ ]    |
@@ -299,3 +299,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 - [x] Arbitrum_SendTokensAdapter.ts → Arbitrum_SendTokensAdapter.t.sol
 - [x] Ethereum_Adapter.ts → Ethereum_Adapter.t.sol
 - [x] Solana_Adapter.ts → Solana_Adapter.t.sol
+- [x] Optimism_Adapter.ts → Optimism_Adapter.t.sol
