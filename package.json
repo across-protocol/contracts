@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.19-alpha.9",
+  "version": "4.1.19-alpha.10",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -13,7 +13,8 @@
   "files": [
     "/contracts/**/*.sol",
     "/artifacts/**/*",
-    "/dist/**/*"
+    "/dist/**/*",
+    "/out/**/*"
   ],
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
