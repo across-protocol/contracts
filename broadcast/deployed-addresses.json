@@ -131,10 +131,6 @@
           "address": "0xE5Dea263511F5caC27b15cBd58Ff103F4Ce90957",
           "block_number": 20378872
         },
-        "Redstone_Adapter": {
-          "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA",
-          "block_number": 20432774
-        },
         "Zora_Adapter": {
           "address": "0x024f2fc31cbdd8de17194b1892c834f98ef5169b",
           "block_number": 20512287
@@ -473,32 +469,6 @@
           "address": "0x1c8243198570658f818fc56538f2c837c2a32958",
           "block_number": 22990173,
           "transaction_hash": "0xff9b08ba5af4e295cca1c3877bb461c01503e9bcee324cbb67b45de5e445a12e"
-        }
-      }
-    },
-    "690": {
-      "chain_name": "Redstone",
-      "contracts": {
-        "SpokePool": {
-          "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97",
-          "block_number": 5512122
-        },
-        "SpokePoolVerifier": {
-          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
-          "block_number": 17147100
-        },
-        "MulticallHandler": {
-          "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E",
-          "block_number": 20457079
-        },
-        "SpokePoolPeriphery": {
-          "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
-          "block_number": 16783149
-        },
-        "Redstone_SpokePool": {
-          "address": "0x78d8cb7284b14c123a2e81a3246494e8dad873e4",
-          "block_number": 21978768,
-          "transaction_hash": "0xa57c46d87a2f441460948eee80f1301db9881360e82158d1dae50e73f3d32166"
         }
       }
     },

@@ -223,7 +223,6 @@ const config: HardhatUserConfig = {
     },
     lisk: getDefaultHardhatConfig(CHAIN_IDs.LISK),
     "lisk-sepolia": getDefaultHardhatConfig(CHAIN_IDs.LISK_SEPOLIA, true),
-    redstone: getDefaultHardhatConfig(CHAIN_IDs.REDSTONE),
     blast: getDefaultHardhatConfig(CHAIN_IDs.BLAST),
     "blast-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BLAST_SEPOLIA, true),
     worldchain: getDefaultHardhatConfig(CHAIN_IDs.WORLD_CHAIN),
@@ -344,14 +343,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
           browserURL: "https://testnet.modescan.io",
-        },
-      },
-      {
-        network: "redstone",
-        chainId: CHAIN_IDs.REDSTONE,
-        urls: {
-          apiURL: "https://explorer.redstone.xyz/api",
-          browserURL: "https://explorer.redstone.xyz",
         },
       },
       {

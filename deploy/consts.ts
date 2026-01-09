@@ -134,10 +134,6 @@ export const OP_STACK_ADDRESS_MAP: {
       L1CrossDomainMessenger: "0x25ace71c97B33Cc4729CF772ae268934F7ab5fA1", // Source: https://github.com/ethereum-optimism/optimism/tree/develop/packages/contracts/deployments
       L1StandardBridge: "0x99C9fc46f92E8a1c0deC1b1747d010903E884bE1",
     },
-    [CHAIN_IDs.REDSTONE]: {
-      L1CrossDomainMessenger: "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
-      L1StandardBridge: "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69",
-    },
     [CHAIN_IDs.SONEIUM]: {
       L1CrossDomainMessenger: "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
       L1StandardBridge: "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
@@ -326,10 +322,6 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.LISK]: {
-    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-  },
-  [CHAIN_IDs.REDSTONE]: {
-    cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.MODE]: {
