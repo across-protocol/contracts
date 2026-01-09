@@ -28,8 +28,10 @@ artifacts-zk
 
 # Foundry files
 out
+out-local
 zkout
 cache-foundry
+cache-foundry-local
 
 # Upgradeability files
 .openzeppelin

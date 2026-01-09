@@ -44,16 +44,45 @@ contract MockFinder is FinderInterface {
 
 /**
  * @title MockAddressWhitelist
- * @notice Mock collateral whitelist that approves all tokens.
+ * @notice Mock collateral whitelist that tracks whitelisted addresses.
  */
 contract MockAddressWhitelist {
-    function addToWhitelist(address) external {}
-    function removeFromWhitelist(address) external {}
-    function isOnWhitelist(address) external pure returns (bool) {
-        return true;
+    mapping(address => bool) private _whitelist;
+
+    function addToWhitelist(address token) external {
+        _whitelist[token] = true;
     }
+
+    function removeFromWhitelist(address token) external {
+        _whitelist[token] = false;
+    }
+
+    function isOnWhitelist(address token) external view returns (bool) {
+        return _whitelist[token];
+    }
+
     function getWhitelist() external pure returns (address[] memory) {
         return new address[](0);
+    }
+}
+
+/**
+ * @title MockIdentifierWhitelist
+ * @notice Mock identifier whitelist for testing setIdentifier.
+ */
+contract MockIdentifierWhitelist {
+    mapping(bytes32 => bool) public supportedIdentifiers;
+
+    function addSupportedIdentifier(bytes32 identifier) external {
+        supportedIdentifiers[identifier] = true;
+    }
+
+    function removeSupportedIdentifier(bytes32 identifier) external {
+        supportedIdentifiers[identifier] = false;
+    }
+
+    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
+        return supportedIdentifiers[identifier];
     }
 }
 
@@ -91,6 +120,7 @@ struct HubPoolFixtureData {
     MockLpTokenFactory lpTokenFactory;
     MockFinder finder;
     MockAddressWhitelist addressWhitelist;
+    MockIdentifierWhitelist identifierWhitelist;
     MockStore store;
     // L2 token addresses
     address l2Weth;
@@ -128,10 +158,15 @@ abstract contract HubPoolTestBase is Test, Constants {
         data.lpTokenFactory = new MockLpTokenFactory();
         data.finder = new MockFinder();
         data.addressWhitelist = new MockAddressWhitelist();
+        data.identifierWhitelist = new MockIdentifierWhitelist();
         data.store = new MockStore();
 
         // Configure finder with UMA ecosystem addresses
         data.finder.changeImplementationAddress(OracleInterfaces.CollateralWhitelist, address(data.addressWhitelist));
+        data.finder.changeImplementationAddress(
+            OracleInterfaces.IdentifierWhitelist,
+            address(data.identifierWhitelist)
+        );
         data.finder.changeImplementationAddress(OracleInterfaces.Store, address(data.store));
 
         // Deploy WETH and tokens
@@ -139,6 +174,12 @@ abstract contract HubPoolTestBase is Test, Constants {
         data.dai = new MintableERC20("DAI", "DAI", 18);
         data.usdc = new MintableERC20("USDC", "USDC", 6);
         data.usdt = new MintableERC20("USDT", "USDT", 6);
+
+        // Whitelist tokens for collateral (required for bond token)
+        data.addressWhitelist.addToWhitelist(address(data.weth));
+        data.addressWhitelist.addToWhitelist(address(data.dai));
+        data.addressWhitelist.addToWhitelist(address(data.usdc));
+        data.addressWhitelist.addToWhitelist(address(data.usdt));
 
         // Create L2 token addresses
         data.l2Weth = makeAddr("l2Weth");
