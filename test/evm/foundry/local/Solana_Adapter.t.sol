@@ -52,12 +52,6 @@ contract Solana_AdapterTest is HubPoolTestBase {
     // Placeholder chain ID for Solana (not an EVM chain, so no official chain ID)
     uint256 constant SOLANA_CHAIN_ID = 1234567890;
 
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100e6; // USDC has 6 decimals
-    uint256 constant LP_FEES = 10e6;
-    uint256 constant BURN_LIMIT = 1_000_000e6; // 1M USDC per message
-
     // ============ Setup ============
 
     function setUp() public {
@@ -131,14 +125,14 @@ contract Solana_AdapterTest is HubPoolTestBase {
      */
     function test_relayTokens_BridgesUsdcViaCCTP() public {
         // Add liquidity for USDC
-        addLiquidity(fixture.usdc, TOKENS_TO_SEND);
+        addLiquidity(fixture.usdc, USDC_TO_SEND);
 
         // Build merkle tree with single USDC leaf
         (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(
             SOLANA_CHAIN_ID,
             address(fixture.usdc),
-            TOKENS_TO_SEND,
-            LP_FEES
+            USDC_TO_SEND,
+            USDC_LP_FEES
         );
 
         // Propose root bundle and advance past liveness
@@ -163,7 +157,7 @@ contract Solana_AdapterTest is HubPoolTestBase {
         // Verify depositForBurn parameters (similar to smock's calledWith)
         (uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken) = cctpMessenger
             .lastDepositForBurnCall();
-        assertEq(amount, TOKENS_TO_SEND, "Amount should match");
+        assertEq(amount, USDC_TO_SEND, "Amount should match");
         assertEq(destinationDomain, CircleDomainIds.Solana, "Destination domain should be Solana");
         assertEq(mintRecipient, solanaSpokePoolUsdcVaultBytes32, "Mint recipient should be solanaSpokePoolUsdcVault");
         assertEq(burnToken, address(fixture.usdc), "Burn token should be USDC");
@@ -171,7 +165,7 @@ contract Solana_AdapterTest is HubPoolTestBase {
         // Verify HubPool approved the CCTP TokenMessenger to spend USDC
         assertEq(
             fixture.usdc.allowance(address(fixture.hubPool), address(cctpMessenger)),
-            TOKENS_TO_SEND,
+            USDC_TO_SEND,
             "Allowance should be set for CCTP TokenMessenger"
         );
     }

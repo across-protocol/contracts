@@ -11,7 +11,6 @@ import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterf
 
 // Mocks - only need MockSpokePool for the target
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 // Scroll interfaces
 import { IL1GatewayRouter } from "@scroll-tech/contracts/L1/gateways/IL1GatewayRouter.sol";
@@ -51,39 +50,20 @@ contract Scroll_AdapterTest is HubPoolTestBase {
     uint256 constant SCROLL_CHAIN_ID = 534351;
     uint32 constant L2_MESSAGE_GAS_LIMIT = 2_000_000;
     uint32 constant L2_TOKEN_GAS_LIMIT = 250_000;
-
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
     uint256 constant MOCKED_RELAYER_FEE = 10_000;
-
-    // ============ Mock Roots ============
-
-    bytes32 constant MOCK_TREE_ROOT = keccak256("mockTreeRoot");
 
     // ============ Setup ============
 
     function setUp() public {
         createHubPoolFixture();
 
-        // Deploy MockSpokePool (still needed as a real target)
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(fixture.weth))),
-            abi.encodeCall(MockSpokePool.initialize, (0, address(this), address(fixture.hubPool)))
-        );
-        mockSpoke = MockSpokePool(payable(proxy));
+        // Deploy MockSpokePool using helper
+        mockSpoke = deployMockSpokePool(address(this));
 
-        // Create fake addresses for the Scroll bridge contracts
-        l1Messenger = makeAddr("l1Messenger");
-        l1GasPriceOracle = makeAddr("l1GasPriceOracle");
-        l1GatewayRouter = makeAddr("l1GatewayRouter");
-
-        // IMPORTANT: Use vm.etch to put dummy code at these addresses
-        // Otherwise Solidity's extcodesize check will cause calls to revert
-        vm.etch(l1Messenger, hex"00");
-        vm.etch(l1GasPriceOracle, hex"00");
-        vm.etch(l1GatewayRouter, hex"00");
+        // Create fake addresses for the Scroll bridge contracts using helper
+        l1Messenger = makeFakeContract("l1Messenger");
+        l1GasPriceOracle = makeFakeContract("l1GasPriceOracle");
+        l1GatewayRouter = makeFakeContract("l1GatewayRouter");
 
         // Deploy Scroll_Adapter with fake addresses
         adapter = new Scroll_Adapter(

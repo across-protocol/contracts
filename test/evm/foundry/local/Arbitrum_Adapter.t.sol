@@ -58,11 +58,6 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
     // OFT fee cap is an immutable set via constructor - this is a test configuration choice
     uint256 constant TEST_OFT_FEE_CAP = 1 ether;
 
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
-
     // ============ Setup ============
 
     function setUp() public {

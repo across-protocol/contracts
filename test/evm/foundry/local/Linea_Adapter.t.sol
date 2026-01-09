@@ -14,7 +14,6 @@ import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9I
 // Mocks
 import { MockCCTPMinter, MockCCTPMessengerV2 } from "../../../../contracts/test/MockCCTP.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { ITokenMessenger, ITokenMinter } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // Linea interfaces
@@ -53,40 +52,18 @@ contract Linea_AdapterTest is HubPoolTestBase {
     // ============ Chain Constants ============
 
     uint256 constant LINEA_CHAIN_ID = 59144;
-    uint256 constant BURN_LIMIT = 1_000_000e6; // 1M USDC per message
-
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
-    uint256 constant USDC_TO_SEND = 100e6; // USDC has 6 decimals
-    uint256 constant USDC_LP_FEES = 10e6;
-
-    // ============ Mock Roots ============
-
-    bytes32 constant MOCK_TREE_ROOT = keccak256("mockTreeRoot");
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = keccak256("mockRelayerRefundRoot");
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = keccak256("mockSlowRelayRoot");
 
     // ============ Setup ============
 
     function setUp() public {
         createHubPoolFixture();
 
-        // Deploy MockSpokePool
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(fixture.weth))),
-            abi.encodeCall(MockSpokePool.initialize, (0, address(this), address(fixture.hubPool)))
-        );
-        mockSpoke = MockSpokePool(payable(proxy));
+        // Deploy MockSpokePool using helper
+        mockSpoke = deployMockSpokePool(address(this));
 
-        // Create fake addresses for the Linea bridge contracts
-        lineaMessageService = makeAddr("lineaMessageService");
-        lineaTokenBridge = makeAddr("lineaTokenBridge");
-
-        // Put dummy code at fake addresses to avoid extcodesize check
-        vm.etch(lineaMessageService, hex"00");
-        vm.etch(lineaTokenBridge, hex"00");
+        // Create fake addresses for the Linea bridge contracts using helper
+        lineaMessageService = makeFakeContract("lineaMessageService");
+        lineaTokenBridge = makeFakeContract("lineaTokenBridge");
 
         // Mock sendMessage to succeed by default
         vm.mockCall(lineaMessageService, abi.encodeWithSelector(SEND_MESSAGE_SELECTOR), abi.encode());
@@ -111,14 +88,9 @@ contract Linea_AdapterTest is HubPoolTestBase {
 
         // Configure HubPool
         fixture.hubPool.setCrossChainContracts(LINEA_CHAIN_ID, address(adapter), address(mockSpoke));
-        fixture.hubPool.setPoolRebalanceRoute(LINEA_CHAIN_ID, address(fixture.weth), fixture.l2Weth);
-        fixture.hubPool.setPoolRebalanceRoute(LINEA_CHAIN_ID, address(fixture.dai), fixture.l2Dai);
-        fixture.hubPool.setPoolRebalanceRoute(LINEA_CHAIN_ID, address(fixture.usdc), fixture.l2Usdc);
 
-        // Enable tokens for LP
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.dai));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdc));
+        // Set pool rebalance routes and enable tokens for LP
+        setupTokenRoutes(LINEA_CHAIN_ID, fixture.l2Weth, fixture.l2Dai, fixture.l2Usdc);
     }
 
     // ============ relayMessage Tests ============
@@ -379,12 +351,8 @@ contract Linea_AdapterTest is HubPoolTestBase {
      * @dev Verifies that when bridging WETH, the adapter unwraps it and sends ETH via MessageService.
      */
     function test_relayTokens_UnwrapsWETHAndBridgesETH() public {
-        // Add liquidity for WETH - need to deposit ETH first and ensure approval for both liquidity and bond
-        uint256 wethNeeded = TOKENS_TO_SEND + BOND_AMOUNT;
-        vm.deal(address(this), wethNeeded);
-        fixture.weth.deposit{ value: wethNeeded }();
-        fixture.weth.approve(address(fixture.hubPool), type(uint256).max);
-        fixture.hubPool.addLiquidity(address(fixture.weth), TOKENS_TO_SEND);
+        // Add liquidity for WETH using helper (handles bond requirement)
+        addWethLiquidityWithBond(TOKENS_TO_SEND);
 
         // Build merkle tree with single WETH leaf
         (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(

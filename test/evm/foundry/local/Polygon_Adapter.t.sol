@@ -21,7 +21,6 @@ import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { RootChainManagerMock, FxStateSenderMock, DepositManagerMock } from "../../../../contracts/test/PolygonMocks.sol";
 import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { ITokenMessenger, ITokenMinter } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
@@ -63,42 +62,22 @@ contract Polygon_AdapterTest is HubPoolTestBase {
     // ============ Chain Constants ============
 
     uint256 constant POLYGON_CHAIN_ID = 137;
-    uint256 constant BURN_LIMIT = 1_000_000e6; // 1M USDC per message
 
     // ERC20 predicate address (doesn't need actual logic for approval testing)
     address erc20Predicate;
-
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
-    uint256 constant USDC_TO_SEND = 100e6; // USDC has 6 decimals
-    uint256 constant USDC_LP_FEES = 10e6;
-    uint256 constant USDT_TO_SEND = 100e6; // USDT has 6 decimals
-    uint256 constant USDT_LP_FEES = 10e6;
 
     // ============ OFT Constants ============
 
     uint32 oftPolygonEid;
     uint256 constant OFT_FEE_CAP = 1 ether;
 
-    // ============ Mock Roots ============
-
-    bytes32 constant MOCK_TREE_ROOT = keccak256("mockTreeRoot");
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = keccak256("mockRelayerRefundRoot");
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = keccak256("mockSlowRelayRoot");
-
     // ============ Setup ============
 
     function setUp() public {
         createHubPoolFixture();
 
-        // Deploy MockSpokePool
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(fixture.weth))),
-            abi.encodeCall(MockSpokePool.initialize, (0, address(this), address(fixture.hubPool)))
-        );
-        mockSpoke = MockSpokePool(payable(proxy));
+        // Deploy MockSpokePool using helper
+        mockSpoke = deployMockSpokePool(address(this));
 
         // Deploy Polygon bridge mocks
         rootChainManager = new RootChainManagerMock();
@@ -147,17 +126,12 @@ contract Polygon_AdapterTest is HubPoolTestBase {
 
         // Configure HubPool
         fixture.hubPool.setCrossChainContracts(POLYGON_CHAIN_ID, address(adapter), address(mockSpoke));
-        fixture.hubPool.setPoolRebalanceRoute(POLYGON_CHAIN_ID, address(fixture.weth), fixture.l2Weth);
-        fixture.hubPool.setPoolRebalanceRoute(POLYGON_CHAIN_ID, address(fixture.dai), fixture.l2Dai);
-        fixture.hubPool.setPoolRebalanceRoute(POLYGON_CHAIN_ID, address(fixture.usdc), fixture.l2Usdc);
-        fixture.hubPool.setPoolRebalanceRoute(POLYGON_CHAIN_ID, address(fixture.usdt), fixture.l2Usdt);
-        fixture.hubPool.setPoolRebalanceRoute(POLYGON_CHAIN_ID, address(matic), l2WMatic);
 
-        // Enable tokens for LP
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.dai));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdc));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdt));
+        // Set pool rebalance routes and enable tokens for LP
+        setupTokenRoutesWithUsdt(POLYGON_CHAIN_ID, fixture.l2Weth, fixture.l2Dai, fixture.l2Usdc, fixture.l2Usdt);
+
+        // Set up MATIC route (Polygon-specific)
+        fixture.hubPool.setPoolRebalanceRoute(POLYGON_CHAIN_ID, address(matic), l2WMatic);
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(matic));
     }
 
@@ -247,12 +221,8 @@ contract Polygon_AdapterTest is HubPoolTestBase {
      *      RootChainManager.depositEtherFor.
      */
     function test_relayTokens_UnwrapsWETHAndBridgesETH() public {
-        // Add liquidity for WETH
-        uint256 wethNeeded = TOKENS_TO_SEND + BOND_AMOUNT;
-        vm.deal(address(this), wethNeeded);
-        fixture.weth.deposit{ value: wethNeeded }();
-        fixture.weth.approve(address(fixture.hubPool), type(uint256).max);
-        fixture.hubPool.addLiquidity(address(fixture.weth), TOKENS_TO_SEND);
+        // Add liquidity for WETH using helper (handles bond requirement)
+        addWethLiquidityWithBond(TOKENS_TO_SEND);
 
         // Build merkle tree with single WETH leaf
         (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(

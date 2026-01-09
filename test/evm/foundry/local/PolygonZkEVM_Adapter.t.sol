@@ -13,7 +13,6 @@ import { IPolygonZkEVMBridge } from "../../../../contracts/external/interfaces/I
 
 // Mocks - only need MockSpokePool for the target
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 // Function selectors
 bytes4 constant BRIDGE_MESSAGE_SELECTOR = bytes4(keccak256("bridgeMessage(uint32,address,bool,bytes)"));
@@ -44,33 +43,16 @@ contract PolygonZkEVM_AdapterTest is HubPoolTestBase {
     uint256 constant POLYGON_ZKEVM_CHAIN_ID = 1101;
     uint32 constant POLYGON_ZKEVM_L2_NETWORK_ID = 1;
 
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
-
-    // ============ Mock Roots ============
-
-    bytes32 constant MOCK_TREE_ROOT = keccak256("mockTreeRoot");
-
     // ============ Setup ============
 
     function setUp() public {
         createHubPoolFixture();
 
-        // Deploy MockSpokePool (needed as real target)
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(fixture.weth))),
-            abi.encodeCall(MockSpokePool.initialize, (0, address(this), address(fixture.hubPool)))
-        );
-        mockSpoke = MockSpokePool(payable(proxy));
+        // Deploy MockSpokePool using helper
+        mockSpoke = deployMockSpokePool(address(this));
 
-        // Create fake address for the bridge contract
-        polygonZkEvmBridge = makeAddr("polygonZkEvmBridge");
-
-        // IMPORTANT: Use vm.etch to put dummy code at the address
-        // Otherwise Solidity's extcodesize check will cause calls to revert
-        vm.etch(polygonZkEvmBridge, hex"00");
+        // Create fake address for the bridge contract using helper
+        polygonZkEvmBridge = makeFakeContract("polygonZkEvmBridge");
 
         // Deploy PolygonZkEVM_Adapter with fake bridge address
         adapter = new PolygonZkEVM_Adapter(

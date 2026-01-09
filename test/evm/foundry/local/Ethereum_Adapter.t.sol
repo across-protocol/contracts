@@ -12,7 +12,6 @@ import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterf
 
 // Existing mocks
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 /**
  * @title Ethereum_AdapterTest
@@ -39,11 +38,6 @@ contract Ethereum_AdapterTest is HubPoolTestBase {
 
     uint256 l1ChainId;
 
-    // ============ Test Amounts ============
-
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
-
     // ============ Setup ============
 
     function setUp() public {
@@ -53,12 +47,8 @@ contract Ethereum_AdapterTest is HubPoolTestBase {
         // Create HubPool fixture (deploys HubPool, WETH, tokens, UMA mocks)
         createHubPoolFixture();
 
-        // Deploy MockSpokePool using existing mock from contracts/test/
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            address(new MockSpokePool(address(fixture.weth))),
-            abi.encodeCall(MockSpokePool.initialize, (0, CROSS_DOMAIN_ADMIN, address(fixture.hubPool)))
-        );
-        mockSpoke = MockSpokePool(payable(proxy));
+        // Deploy MockSpokePool using helper
+        mockSpoke = deployMockSpokePool(CROSS_DOMAIN_ADMIN);
 
         // Deploy Ethereum_Adapter
         adapter = new Ethereum_Adapter();
