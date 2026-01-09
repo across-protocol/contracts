@@ -286,7 +286,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Arbitrum_SendTokensAdapter | 1          | None (exists)              | [x]    |
 | Solana_Adapter             | 2          | MockCCTPMessageTransmitter | [x]    |
 | Optimism_Adapter           | 4          | None (enhanced existing)   | [x]    |
-| Scroll_Adapter             | 3          | ScrollMocks.sol            | [x]    |
+| Scroll_Adapter             | 3          | None (vm.mockCall)         | [x]    |
 | PolygonZkEVM_Adapter       | 3          | PolygonZkEVMMocks.sol      | [ ]    |
 | Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2   | [ ]    |
 | Polygon_Adapter            | 6          | Check PolygonMocks.sol     | [ ]    |

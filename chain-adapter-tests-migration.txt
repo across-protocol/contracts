@@ -183,25 +183,28 @@
 
 ### Mocks Used
 
-- `MockScrollL1Messenger` from `contracts/test/ScrollMocks.sol` (new)
-- `MockScrollL1GasPriceOracle` from `contracts/test/ScrollMocks.sol` (new)
-- `MockScrollL1GatewayRouter` from `contracts/test/ScrollMocks.sol` (new)
-- `MockSpokePool` from `contracts/test/MockSpokePool.sol`
+- **No custom mock contracts** - uses `vm.mockCall` and `vm.expectCall` cheatcodes instead
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol` (still needed as a real target)
 
 ### New Mocks/Utilities Created
 
-- `ScrollMocks.sol` in `contracts/test/` containing:
-  - `MockScrollL1Messenger` - Implements `IL1ScrollMessenger.sendMessage()` with call counter and last call parameter tracking
-  - `MockScrollL1GasPriceOracle` - Implements `IL2GasPriceOracle.estimateCrossDomainMessageFee()` with configurable fee via `setMockedFee()`
-  - `MockScrollL1GatewayRouter` - Implements `IL1GatewayRouter.depositERC20()` and `getL2ERC20Address()` with call counter and L2 token mapping
+- None - this test demonstrates using Foundry's native mocking capabilities:
+  - `vm.etch(address, hex"00")` - puts dummy bytecode at addresses to pass `extcodesize` checks
+  - `vm.mockCall(address, selector, returnData)` - mocks return values for external calls
+  - `vm.expectCall(address, value, calldata)` - verifies calls are made with correct parameters
 
 ### Deviations from Original
 
-- None significant. The Foundry test verifies the same behavior.
-- For the revert test, used `vm.expectRevert()` without specific error message since delegatecall context can strip error data.
+- Uses `vm.mockCall`/`vm.expectCall` instead of custom mock contracts (FakeContract equivalent)
+- For the revert test, used `vm.expectRevert()` without specific error message since delegatecall context can strip error data
 
 ### Notes
 
+- **Pattern: vm.mockCall + vm.expectCall as FakeContract alternative**
+  - `vm.mockCall` replaces mock contracts that return specific values
+  - `vm.expectCall` replaces call counters and parameter verification (smock's `calledWith`)
+  - `vm.etch` ensures addresses have code (avoids extcodesize check failures)
+  - Limitation: Cannot implement side effects (e.g., token transfers) - only mocks return values
 - Scroll_Adapter bridges via two mechanisms:
   1. L1ScrollMessenger.sendMessage() for admin messages - pays relayer fee from gas price oracle
   2. L1GatewayRouter.depositERC20() for all ERC20 tokens including WETH - also pays relayer fee
@@ -209,9 +212,7 @@
   - L2_MESSAGE_RELAY_GAS_LIMIT = 2,000,000 for messages
   - L2_TOKEN_RELAY_GAS_LIMIT = 250,000 for tokens
 - Relayer fees are obtained from IL2GasPriceOracle.estimateCrossDomainMessageFee()
-- The adapter requires sufficient ETH balance to pay relayer fees
 - Test chain ID is 534351 (Scroll Sepolia testnet, matching Hardhat test)
 - Scroll uses the same gateway for WETH and ERC20s (no special WETH unwrapping like Optimism)
-- The gateway router provides L2 token address lookup via getL2ERC20Address()
 
 ---
