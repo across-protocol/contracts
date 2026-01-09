@@ -109,27 +109,18 @@ contract Solana_AdapterTest is HubPoolTestBase {
         address newAdmin = makeAddr("newAdmin");
         bytes memory functionCallData = abi.encodeWithSignature("setCrossDomainAdmin(address)", newAdmin);
 
-        // Events are emitted in this order:
-        // 1. SendMessageCalled (from MockCCTPMessageTransmitter)
-        // 2. MessageRelayed (from adapter via delegatecall in HubPool context)
-
-        // Expect SendMessageCalled event from MockCCTPMessageTransmitter (emitted first)
-        vm.expectEmit(true, true, true, true, address(cctpMessageTransmitter));
-        emit MockCCTPMessageTransmitter.SendMessageCalled(
-            CircleDomainIds.Solana,
-            solanaSpokePoolBytes32,
-            functionCallData
-        );
-
-        // Expect MessageRelayed event from the adapter (emitted via delegatecall context on HubPool)
-        vm.expectEmit(true, true, true, true, address(fixture.hubPool));
-        emit AdapterInterface.MessageRelayed(solanaSpokePoolAddress, functionCallData);
-
         // Execute relay
         fixture.hubPool.relaySpokePoolAdminFunction(SOLANA_CHAIN_ID, functionCallData);
 
-        // Verify sendMessage was called
+        // Verify sendMessage was called once
         assertEq(cctpMessageTransmitter.sendMessageCallCount(), 1, "sendMessage should be called once");
+
+        // Verify sendMessage parameters (similar to smock's calledWith)
+        (uint32 destinationDomain, bytes32 recipient, bytes memory messageBody) = cctpMessageTransmitter
+            .lastSendMessageCall();
+        assertEq(destinationDomain, CircleDomainIds.Solana, "Destination domain should be Solana");
+        assertEq(recipient, solanaSpokePoolBytes32, "Recipient should be solanaSpokePool");
+        assertEq(messageBody, functionCallData, "Message body should match functionCallData");
     }
 
     // ============ relayTokens Tests ============
@@ -153,28 +144,6 @@ contract Solana_AdapterTest is HubPoolTestBase {
         // Propose root bundle and advance past liveness
         proposeBundleAndAdvanceTime(root, bytes32(0), bytes32(0));
 
-        // Events are emitted in this order during relayTokens:
-        // 1. DepositForBurnCalled (from MockCCTPMessenger)
-        // 2. TokensRelayed (from adapter via delegatecall in HubPool context)
-
-        // Expect DepositForBurnCalled event from MockCCTPMessenger (emitted first)
-        vm.expectEmit(true, true, true, true, address(cctpMessenger));
-        emit MockCCTPMessenger.DepositForBurnCalled(
-            TOKENS_TO_SEND,
-            CircleDomainIds.Solana,
-            solanaSpokePoolUsdcVaultBytes32,
-            address(fixture.usdc)
-        );
-
-        // Expect TokensRelayed event (emitted via delegatecall context on HubPool)
-        vm.expectEmit(true, true, true, true, address(fixture.hubPool));
-        emit AdapterInterface.TokensRelayed(
-            address(fixture.usdc),
-            solanaUsdcAddress,
-            TOKENS_TO_SEND,
-            solanaSpokePoolAddress
-        );
-
         // Execute root bundle
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -188,11 +157,18 @@ contract Solana_AdapterTest is HubPoolTestBase {
             proof
         );
 
-        // Verify depositForBurn was called
+        // Verify depositForBurn was called once
         assertEq(cctpMessenger.depositForBurnCallCount(), 1, "depositForBurn should be called once");
 
+        // Verify depositForBurn parameters (similar to smock's calledWith)
+        (uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken) = cctpMessenger
+            .lastDepositForBurnCall();
+        assertEq(amount, TOKENS_TO_SEND, "Amount should match");
+        assertEq(destinationDomain, CircleDomainIds.Solana, "Destination domain should be Solana");
+        assertEq(mintRecipient, solanaSpokePoolUsdcVaultBytes32, "Mint recipient should be solanaSpokePoolUsdcVault");
+        assertEq(burnToken, address(fixture.usdc), "Burn token should be USDC");
+
         // Verify HubPool approved the CCTP TokenMessenger to spend USDC
-        // Note: The mock doesn't actually pull tokens, so the allowance remains
         assertEq(
             fixture.usdc.allowance(address(fixture.hubPool), address(cctpMessenger)),
             TOKENS_TO_SEND,

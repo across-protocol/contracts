@@ -105,7 +105,7 @@
 - Circle domain ID for Solana is 5 (`CircleDomainIds.Solana`)
 - Test chain ID is a placeholder (1234567890) since Solana is not an EVM chain
 - The adapter sends tokens to `solanaSpokePoolUsdcVaultBytes32` (the vault ATA), not directly to spoke pool
-- Event emission order is important for `vm.expectEmit`: mock events emit before adapter events
+- Updated to use smock-style `lastXxxCall()` pattern for parameter verification (consistent with other adapter tests)
 
 ---
 
@@ -136,16 +136,22 @@
 - Enhanced `MockBedrockL1StandardBridge` with:
   - `depositERC20ToCallCount` - call counter
   - `depositETHToCallCount` - call counter
-  - `DepositERC20ToCalled` event - detailed event with all parameters
-  - `DepositETHToCalled` event - detailed event with all parameters
+  - `lastDepositERC20ToCall` - struct storing last call parameters (smock-style)
+  - `lastDepositETHToCall` - struct storing last call parameters (smock-style)
 
 - Enhanced `MockBedrockCrossDomainMessenger` with:
   - `sendMessageCallCount` - call counter
-  - `SendMessageCalled` event - detailed event with target, message, and l2Gas parameters
+  - `lastSendMessageCall` - struct storing last call parameters (smock-style)
+
+- Enhanced `MockCCTPMessenger` with:
+  - `lastDepositForBurnCall` - struct storing last call parameters (smock-style)
+
+- Enhanced `MockCCTPMessageTransmitter` with:
+  - `lastSendMessageCall` - struct storing last call parameters (smock-style)
 
 ### Deviations from Original
 
-- None significant. The Foundry test verifies the same behavior using `vm.recordLogs()` to capture and verify events instead of `vm.expectEmit` due to event ordering complexity with HubPool's additional events (SpokePoolAdminFunctionTriggered, RootBundleExecuted).
+- None significant. The Foundry test verifies the same behavior using the smock-style `lastXxxCall()` pattern instead of `vm.expectEmit` due to event ordering complexity with HubPool's additional events (SpokePoolAdminFunctionTriggered, RootBundleExecuted). This pattern is closer to how Hardhat's smock library works with `calledWith` assertions.
 
 ### Notes
 

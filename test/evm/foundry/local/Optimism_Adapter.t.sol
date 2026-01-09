@@ -19,7 +19,6 @@ import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPI
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import { Vm } from "forge-std/Vm.sol";
 
 /**
  * @title Optimism_AdapterTest
@@ -119,33 +118,17 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         address newAdmin = makeAddr("newAdmin");
         bytes memory functionCallData = abi.encodeWithSignature("setCrossDomainAdmin(address)", newAdmin);
 
-        // Record logs to verify events
-        vm.recordLogs();
-
         // Execute relay
         fixture.hubPool.relaySpokePoolAdminFunction(OPTIMISM_CHAIN_ID, functionCallData);
 
         // Verify sendMessage was called once
         assertEq(l1CrossDomainMessenger.sendMessageCallCount(), 1, "sendMessage should be called once");
 
-        // rid of the for loop?
-        // Verify the SendMessageCalled event was emitted with correct parameters
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        bool foundSendMessageEvent = false;
-        for (uint256 i = 0; i < entries.length; i++) {
-            // SendMessageCalled event signature
-            if (entries[i].topics[0] == keccak256("SendMessageCalled(address,bytes,uint32)")) {
-                foundSendMessageEvent = true;
-                // topics[1] is the indexed target address
-                address target = address(uint160(uint256(entries[i].topics[1])));
-                assertEq(target, address(mockSpoke), "Target should be mockSpoke");
-                // Decode non-indexed parameters
-                (bytes memory message, uint32 l2Gas) = abi.decode(entries[i].data, (bytes, uint32));
-                assertEq(message, functionCallData, "Message should match functionCallData");
-                assertEq(l2Gas, L2_GAS, "L2 gas should be 200000");
-            }
-        }
-        assertTrue(foundSendMessageEvent, "SendMessageCalled event should be emitted");
+        // Verify call parameters (similar to smock's calledWith)
+        (address target, bytes memory message, uint32 l2Gas) = l1CrossDomainMessenger.lastSendMessageCall();
+        assertEq(target, address(mockSpoke), "Target should be mockSpoke");
+        assertEq(message, functionCallData, "Message should match functionCallData");
+        assertEq(l2Gas, L2_GAS, "L2 gas should be 200000");
     }
 
     // ============ relayTokens Tests ============
@@ -169,9 +152,6 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         // Propose root bundle and advance past liveness
         proposeBundleAndAdvanceTime(root, MOCK_TREE_ROOT, MOCK_TREE_ROOT);
 
-        // Record logs to verify events
-        vm.recordLogs();
-
         // Execute root bundle
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -190,31 +170,32 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         assertEq(l1StandardBridge.depositETHToCallCount(), 0, "depositETHTo should not be called");
         assertEq(l1CrossDomainMessenger.sendMessageCallCount(), 1, "sendMessage should be called once");
 
-        // Verify the DepositERC20ToCalled event parameters
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        bool foundDepositEvent = false;
-        for (uint256 i = 0; i < entries.length; i++) {
-            if (
-                entries[i].topics[0] == keccak256("DepositERC20ToCalled(address,address,address,uint256,uint32,bytes)")
-            ) {
-                // todo: can we decode it better using an interface or no?
-                foundDepositEvent = true;
-                address l1Token = address(uint160(uint256(entries[i].topics[1])));
-                address l2Token = address(uint160(uint256(entries[i].topics[2])));
-                assertEq(l1Token, address(fixture.dai), "L1 token should be DAI");
-                assertEq(l2Token, fixture.l2Dai, "L2 token should be l2Dai");
-                // Decode non-indexed parameters
-                (address to, uint256 amount, uint32 l2Gas, bytes memory data) = abi.decode(
-                    entries[i].data,
-                    (address, uint256, uint32, bytes)
-                );
-                assertEq(to, address(mockSpoke), "Recipient should be mockSpoke");
-                assertEq(amount, TOKENS_TO_SEND, "Amount should match");
-                assertEq(l2Gas, L2_GAS, "L2 gas should be 200000");
-                assertEq(data, "", "Data should be empty");
-            }
-        }
-        assertTrue(foundDepositEvent, "DepositERC20ToCalled event should be emitted");
+        // Verify depositERC20To parameters (similar to smock's calledWith)
+        (
+            address l1Token,
+            address l2Token,
+            address to,
+            uint256 amount,
+            uint32 l2Gas,
+            bytes memory data
+        ) = l1StandardBridge.lastDepositERC20ToCall();
+        assertEq(l1Token, address(fixture.dai), "L1 token should be DAI");
+        assertEq(l2Token, fixture.l2Dai, "L2 token should be l2Dai");
+        assertEq(to, address(mockSpoke), "Recipient should be mockSpoke");
+        assertEq(amount, TOKENS_TO_SEND, "Amount should match");
+        assertEq(l2Gas, L2_GAS, "L2 gas should be 200000");
+        assertEq(data, "", "Data should be empty");
+
+        // Verify sendMessage parameters for relayRootBundle call
+        bytes memory expectedRelayRootBundleData = abi.encodeWithSignature(
+            "relayRootBundle(bytes32,bytes32)",
+            MOCK_TREE_ROOT,
+            MOCK_TREE_ROOT
+        );
+        (address msgTarget, bytes memory msgData, uint32 msgL2Gas) = l1CrossDomainMessenger.lastSendMessageCall();
+        assertEq(msgTarget, address(mockSpoke), "Message target should be mockSpoke");
+        assertEq(msgData, expectedRelayRootBundleData, "Message should be relayRootBundle call");
+        assertEq(msgL2Gas, L2_GAS, "Message L2 gas should be 200000");
     }
 
     /**
@@ -240,10 +221,6 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         // Propose root bundle and advance past liveness
         proposeBundleAndAdvanceTime(root, MOCK_TREE_ROOT, MOCK_TREE_ROOT);
 
-        // Record logs to verify events
-        vm.recordLogs();
-
-        // todo: why empty proof here?
         // Execute root bundle
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -262,20 +239,23 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         assertEq(l1StandardBridge.depositERC20ToCallCount(), 0, "depositERC20To should not be called");
         assertEq(l1CrossDomainMessenger.sendMessageCallCount(), 1, "sendMessage should be called once");
 
-        // Verify the DepositETHToCalled event parameters
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        bool foundDepositEvent = false;
-        for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("DepositETHToCalled(address,uint32,bytes)")) {
-                foundDepositEvent = true;
-                address to = address(uint160(uint256(entries[i].topics[1])));
-                assertEq(to, address(mockSpoke), "Recipient should be mockSpoke");
-                (uint32 l2Gas, bytes memory data) = abi.decode(entries[i].data, (uint32, bytes));
-                assertEq(l2Gas, L2_GAS, "L2 gas should be 200000");
-                assertEq(data, "", "Data should be empty");
-            }
-        }
-        assertTrue(foundDepositEvent, "DepositETHToCalled event should be emitted");
+        // Verify depositETHTo parameters (similar to smock's calledWith)
+        (address to, uint256 value, uint32 l2Gas, bytes memory data) = l1StandardBridge.lastDepositETHToCall();
+        assertEq(to, address(mockSpoke), "Recipient should be mockSpoke");
+        assertEq(value, TOKENS_TO_SEND, "ETH value should match tokens sent");
+        assertEq(l2Gas, L2_GAS, "L2 gas should be 200000");
+        assertEq(data, "", "Data should be empty");
+
+        // Verify sendMessage parameters for relayRootBundle call
+        bytes memory expectedRelayRootBundleData = abi.encodeWithSignature(
+            "relayRootBundle(bytes32,bytes32)",
+            MOCK_TREE_ROOT,
+            MOCK_TREE_ROOT
+        );
+        (address msgTarget, bytes memory msgData, uint32 msgL2Gas) = l1CrossDomainMessenger.lastSendMessageCall();
+        assertEq(msgTarget, address(mockSpoke), "Message target should be mockSpoke");
+        assertEq(msgData, expectedRelayRootBundleData, "Message should be relayRootBundle call");
+        assertEq(msgL2Gas, L2_GAS, "Message L2 gas should be 200000");
     }
 
     /**
@@ -297,9 +277,6 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         // Propose root bundle and advance past liveness
         proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
 
-        // Record logs to verify events
-        vm.recordLogs();
-
         // Execute root bundle
         bytes32[] memory proof = MerkleTreeUtils.emptyProof();
         fixture.hubPool.executeRootBundle(
@@ -316,27 +293,13 @@ contract Optimism_AdapterTest is HubPoolTestBase {
         // Verify depositForBurn was called
         assertEq(cctpMessenger.depositForBurnCallCount(), 1, "depositForBurn should be called once");
 
-        // Verify the DepositForBurnCalled event parameters
-        Vm.Log[] memory entries = vm.getRecordedLogs();
-        bool foundDepositEvent = false;
-        for (uint256 i = 0; i < entries.length; i++) {
-            if (entries[i].topics[0] == keccak256("DepositForBurnCalled(uint256,uint32,bytes32,address)")) {
-                foundDepositEvent = true;
-                (uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken) = abi.decode(
-                    entries[i].data,
-                    (uint256, uint32, bytes32, address)
-                );
-                assertEq(amount, USDC_TO_SEND, "Amount should match");
-                assertEq(destinationDomain, CircleDomainIds.Optimism, "Destination domain should be Optimism");
-                assertEq(
-                    mintRecipient,
-                    bytes32(uint256(uint160(address(mockSpoke)))),
-                    "Mint recipient should be mockSpoke"
-                );
-                assertEq(burnToken, address(fixture.usdc), "Burn token should be USDC");
-            }
-        }
-        assertTrue(foundDepositEvent, "DepositForBurnCalled event should be emitted");
+        // Verify depositForBurn parameters (similar to smock's calledWith)
+        (uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken) = cctpMessenger
+            .lastDepositForBurnCall();
+        assertEq(amount, USDC_TO_SEND, "Amount should match");
+        assertEq(destinationDomain, CircleDomainIds.Optimism, "Destination domain should be Optimism");
+        assertEq(mintRecipient, bytes32(uint256(uint160(address(mockSpoke)))), "Mint recipient should be mockSpoke");
+        assertEq(burnToken, address(fixture.usdc), "Burn token should be USDC");
 
         // Verify HubPool approved the CCTP TokenMessenger to spend USDC
         assertEq(
