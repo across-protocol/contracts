@@ -1,8 +1,22 @@
-# Chain Adapter Tests Migration: Hardhat to Foundry
+# Chain Adapter Tests Polish: Foundry Best Practices
 
 ## Prompt for Task Picker
 
-Pick the next highest priority item to implement and go implement it, implementing the common dependencies if any and putting them into some common folders to reuse for later tasks as well. Pick only a single task and complete it fully. Then stop. Run a targeted test command when done (e.g., `forge test --match-contract Ethereum_AdapterTest -vvv`). Also compare the tests implemented with the Hardhat version. The number and the semantics of each test should match.
+Pick the next highest priority item from the tasks below and complete it fully. Then stop.
+
+**For each task:**
+
+1. Read the Foundry test file
+2. Read the corresponding Hardhat test file (`test/evm/hardhat/chain-adapters/<Name>_Adapter.ts`)
+3. Compare the tests:
+   - Does the Foundry test have the same number of test cases?
+   - Does each test verify the same conditions/assertions?
+   - Is the Foundry test more lax (fewer checks) than the Hardhat test?
+4. Apply the fix described in the task
+5. Run the targeted test command (e.g., `forge test --match-contract Arbitrum_AdapterTest -vvv`)
+6. Verify all tests pass
+
+**Critical: Test semantics must match the original Hardhat tests.** If the Foundry test is missing checks that the Hardhat test has, add them. We cannot have weaker tests after migration.
 
 ---
 
@@ -10,296 +24,263 @@ Pick the next highest priority item to implement and go implement it, implementi
 
 ### How to work with this file
 
-1. Assess and pick the next task based on your priority criteria
-2. Migrate the test following the patterns in existing Foundry tests
-3. Create any common mocks/utilities in reusable locations
-4. Run the new Foundry test to verify it works
-5. Compare test count and semantics with original Hardhat test
-6. Append progress notes to `chain-adapter-tests-migration.txt`
-7. Mark task complete by adding `[x]` or remove the task from this file
+1. Pick the next task based on priority
+2. Read both Foundry and Hardhat tests to understand current state
+3. Apply the fix following patterns in existing polished tests
+4. Run the test to verify it passes
+5. Mark task complete by adding `[x]`
 
-### Progress tracking
+### Reference patterns
 
-Use `chain-adapter-tests-migration.txt` to log:
+**Preferred: `vm.mockCall` + `vm.expectCall`** (see `Scroll_Adapter.t.sol`, `PolygonZkEVM_Adapter.t.sol`):
 
-- Date of migration
-- Any issues encountered
-- New mocks or utilities created (and their locations)
-- Deviations from original test behavior
-- Notes for future migrations
+```solidity
+// Put dummy bytecode at fake address (avoids extcodesize check)
+vm.etch(fakeAddress, hex"00");
 
-### Reference files
+// Mock return values
+vm.mockCall(fakeAddress, abi.encodeWithSelector(SELECTOR), abi.encode(returnValue));
 
-- **Example migration**: Compare `test/evm/hardhat/chain-adapters/Arbitrum_Adapter.ts` with `test/evm/foundry/local/Arbitrum_Adapter.t.sol`
-- **Test base**: `test/evm/foundry/utils/HubPoolTestBase.sol` - provides fixture, constants, utilities
-- **Merkle utils**: `test/evm/foundry/utils/MerkleTreeUtils.sol` - merkle tree building
-- **Existing mocks**: `contracts/test/` - MockCCTP.sol, MockOFTMessenger.sol, ArbitrumMocks.sol, PolygonMocks.sol, SuccinctMocks.sol, etc.
+// Verify calls with correct params (call BEFORE the action)
+vm.expectCall(fakeAddress, msgValue, abi.encodeWithSelector(SELECTOR, arg1, arg2));
+```
 
-### Mock reuse guidelines
+**Alternative: Mock contracts with call tracking** (see `Optimism_Adapter.t.sol`, `Polygon_Adapter.t.sol`):
 
-**IMPORTANT**: Always check `contracts/test/` for existing mock implementations before creating new ones.
+```solidity
+// In mock contract:
+uint256 public myFunctionCallCount;
+struct MyFunctionCall { address arg1; uint256 arg2; }
+MyFunctionCall public lastMyFunctionCall;
 
-1. **Use existing mocks** - Many mocks already exist and should be reused:
+function myFunction(address arg1, uint256 arg2) external {
+    myFunctionCallCount++;
+    lastMyFunctionCall = MyFunctionCall(arg1, arg2);
+    // ... actual mock logic
+}
 
-   - `MockSpokePool.sol` - Full SpokePool mock (use with ERC1967Proxy for UUPS pattern)
-   - `MockCCTP.sol` - CCTP messenger and minter mocks
-   - `MockOFTMessenger.sol` - OFT bridge mock
-   - `ArbitrumMocks.sol` - Arbitrum bridge mocks (Inbox, GatewayRouter)
-   - `PolygonMocks.sol` - Polygon bridge mocks
-   - `SuccinctMocks.sol` - Succinct/Telepathy mocks
+// In test:
+assertEq(mock.myFunctionCallCount(), 1, "myFunction should be called once");
+(address a1, uint256 a2) = mock.lastMyFunctionCall();
+assertEq(a1, expectedArg1);
+assertEq(a2, expectedArg2);
+```
 
-2. **Extend existing mocks** - If an existing mock is missing functionality:
+**Avoid: Events to signal mock calls** (anti-pattern):
 
-   - Add the new function/event to the existing mock in `contracts/test/`
-   - This keeps mocks centralized and reusable across tests
+```solidity
+// DON'T DO THIS - events are indirect and harder to debug
+event MyFunctionCalled(address arg1, uint256 arg2);
 
-3. **Create new mocks only when necessary** - If no suitable mock exists:
+function myFunction(address arg1, uint256 arg2) external {
+    emit MyFunctionCalled(arg1, arg2);
+}
 
-   - Create in `contracts/test/` with naming pattern `<Chain>Mocks.sol`
-   - Document the mock's purpose and usage
+// In test:
+vm.expectEmit(...);
+emit MockContract.MyFunctionCalled(expectedArg1, expectedArg2);
+```
 
-4. **Use constants for addresses** - Avoid inline `makeAddr()` calls:
+### When to use each pattern
 
-   - Define address constants at the contract level
-   - Example: `address constant CROSS_DOMAIN_ADMIN = address(0xAD1);`
-
-5. **Prefer vm.mockCall over custom mocks** - For simple return value mocking:
-   ```solidity
-   // Put dummy bytecode at fake address (avoids extcodesize check)
-   vm.etch(fakeAddress, hex"00");
-   // Mock return values
-   vm.mockCall(fakeAddress, abi.encodeWithSelector(SELECTOR), abi.encode(returnValue));
-   // Verify calls with correct params (call before the actual call)
-   vm.expectCall(fakeAddress, msgValue, abi.encodeWithSelector(SELECTOR, arg1, arg2));
-   ```
-   - See `Scroll_Adapter.t.sol` for complete example
-   - Limitation: Cannot implement side effects (e.g., token transfers)
-   - Use custom mocks when you need: call counting, side effects, or complex state
+| Pattern                       | Use When                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `vm.mockCall`/`vm.expectCall` | Simple return value mocking, no side effects needed                             |
+| Mock with call tracking       | Need side effects (token transfers), complex state, or multiple calls to verify |
+| Events                        | Only for testing actual contract events, NOT for mock verification              |
 
 ---
 
 ## Tasks
 
-### [x] Ethereum_Adapter
+### [ ] Arbitrum_Adapter: Replace event-based verification with call tracking
 
-**Source**: `test/evm/hardhat/chain-adapters/Ethereum_Adapter.ts`
-**Target**: `test/evm/foundry/local/Ethereum_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/Arbitrum_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Arbitrum_Adapter.ts`
 
-**Tests to migrate (2 tests)**:
+**Current pattern (anti-pattern)**:
 
-- `relayMessage calls spoke pool functions`
-- `Correctly transfers tokens when executing pool rebalance`
+- Uses `vm.expectEmit` with `Inbox.RetryableTicketCreated`
+- Uses `vm.expectEmit` with `ArbitrumMockErc20GatewayRouter.OutboundTransferCustomRefundCalled`
+- Uses `vm.expectEmit` with `MockCCTPMessenger.DepositForBurnCalled`
 
-**Dependencies**:
+**Target pattern**:
 
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- No external bridge mocks needed (direct L1 adapter)
+- Add call tracking to `Inbox` mock (`createRetryableTicketCallCount`, `lastCreateRetryableTicketCall`)
+- Add call tracking to `ArbitrumMockErc20GatewayRouter` (`outboundTransferCustomRefundCallCount`, `lastOutboundTransferCustomRefundCall`)
+- Use existing `MockCCTPMessenger.lastDepositForBurnCall()` (already has call tracking)
+- Replace `vm.expectEmit` with assertions on call counts and parameters
 
-**Notes**: No fake external contracts needed. Tests direct L1 message relay and token transfer.
+**Also verify**: Test coverage matches Hardhat test (same number of tests, same assertions).
 
----
-
-### [x] Arbitrum_SendTokensAdapter
-
-**Source**: `test/evm/hardhat/chain-adapters/Arbitrum_SendTokensAdapter.ts`
-**Target**: `test/evm/foundry/local/Arbitrum_SendTokensAdapter.t.sol`
-
-**Tests to migrate (1 test)**:
-
-- `relayMessage sends desired ERC20 in specified amount to SpokePool`
-
-**Dependencies**:
-
-- HubPoolTestBase (exists)
-- ArbitrumMocks.sol (exists - ArbitrumMockErc20GatewayRouter)
-
-**Notes**: Emergency/simplified token adapter. Uses same mocks as main Arbitrum adapter.
+**Mocks to update**: `contracts/test/ArbitrumMocks.sol`
 
 ---
 
-### [x] Solana_Adapter
+### [ ] Arbitrum_SendTokensAdapter: Replace event-based verification with call tracking
 
-**Source**: `test/evm/hardhat/chain-adapters/Solana_Adapter.ts`
-**Target**: `test/evm/foundry/local/Solana_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/Arbitrum_SendTokensAdapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Arbitrum_SendTokensAdapter.ts`
 
-**Tests to migrate (2 tests)**:
+**Current pattern (anti-pattern)**:
 
-- `relayMessage calls spoke pool functions`
-- `Correctly calls the CCTP bridge adapter when attempting to bridge USDC`
+- Uses `vm.expectEmit` with `ArbitrumMockErc20GatewayRouter.OutboundTransferCustomRefundCalled`
 
-**Dependencies**:
+**Target pattern**:
 
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- MockCCTP.sol (exists - MockCCTPMessenger, MockCCTPMinter, MockCCTPMessageTransmitter)
+- Reuse the call tracking added to `ArbitrumMockErc20GatewayRouter` from the Arbitrum_Adapter task
+- Replace `vm.expectEmit` with assertions on call counts and parameters
 
-**Special handling**:
-
-- Solana addresses are bytes32, use `Bytes32ToAddress.toAddressUnchecked()` from AddressConverters.sol
-- CCTP message transmission to Solana domain (domain ID 5)
-
-**Notes**: CCTP-only adapter with Solana address handling.
+**Also verify**: Test coverage matches Hardhat test.
 
 ---
 
-### [x] Optimism_Adapter
+### [ ] Ethereum_Adapter: Verify test coverage matches Hardhat
 
-**Source**: `test/evm/hardhat/chain-adapters/Optimism_Adapter.ts`
-**Target**: `test/evm/foundry/local/Optimism_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/Ethereum_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Ethereum_Adapter.ts`
 
-**Tests to migrate (4 tests)**:
+**Current state**:
 
-- `relayMessage calls spoke pool functions`
-- `Correctly calls appropriate Optimism bridge functions when making ERC20 cross chain calls`
-- `Correctly unwraps WETH and bridges ETH`
-- `Correctly calls the CCTP bridge adapter when attempting to bridge USDC`
+- Uses `vm.expectEmit` with `AdapterInterface.MessageRelayed` and `AdapterInterface.TokensRelayed`
+- These are actual adapter interface events, so the pattern is acceptable
 
-**Dependencies**:
+**Task**:
 
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- MockCCTP.sol (exists)
-- MockBedrockStandardBridge.sol (enhanced with call counters and detailed events)
-
-**Notes**: Tests standard Optimism bridge + CCTP.
+- Compare test coverage with Hardhat test
+- Ensure all assertions from Hardhat test are present in Foundry test
+- No pattern change needed unless coverage is lacking
 
 ---
 
-### [x] Scroll_Adapter
+### [ ] Scroll_Adapter: Verify test coverage matches Hardhat
 
-**Source**: `test/evm/hardhat/chain-adapters/Scroll_Adapter.ts`
-**Target**: `test/evm/foundry/local/Scroll_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/Scroll_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Scroll_Adapter.ts`
 
-**Tests to migrate (3 tests)**:
+**Current state**: Uses `vm.mockCall`/`vm.expectCall` pattern (correct)
 
-- `relayMessage fails when there's not enough fees`
-- `relayMessage calls spoke pool functions`
-- `Correctly calls appropriate scroll bridge functions when transferring tokens to different chains`
+**Task**:
 
-**Dependencies**:
-
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- Need: ScrollMocks.sol with:
-  - MockScrollL1Messenger
-  - MockScrollL1GasPriceOracle
-  - MockScrollL1GatewayRouter
-
-**Special handling**:
-
-- Gas price oracle mocking for fee calculation
-- Parametrized gas limits
-
-**Notes**: Custom ABIs defined inline in Hardhat test - need to create proper mock contracts.
+- Compare test coverage with Hardhat test
+- Ensure all assertions are equivalent
+- Verify the `test_relayMessage_RevertsWhenInsufficientFees` test has equivalent behavior
 
 ---
 
-### [x] PolygonZkEVM_Adapter
+### [ ] PolygonZkEVM_Adapter: Verify test coverage matches Hardhat
 
-**Source**: `test/evm/hardhat/chain-adapters/PolygonZkEVM_Adapter.ts`
-**Target**: `test/evm/foundry/local/PolygonZkEVM_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/PolygonZkEVM_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/PolygonZkEVM_Adapter.ts`
 
-**Tests to migrate (3 tests)**:
+**Current state**: Uses `vm.mockCall`/`vm.expectCall` pattern (correct)
 
-- `relayMessage calls spoke pool functions`
-- `Correctly calls appropriate bridge functions when making WETH cross chain calls`
-- `Correctly calls appropriate bridge functions when making ERC20 cross chain calls`
+**Task**:
 
-**Dependencies**:
-
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- None needed - uses vm.mockCall/vm.expectCall pattern
-
-**Notes**: Uses vm.mockCall/vm.expectCall pattern (same as Scroll_Adapter). No custom mocks required.
+- Compare test coverage with Hardhat test
+- Ensure all assertions are equivalent
 
 ---
 
-### [x] Linea_Adapter
+### [ ] Linea_Adapter: Verify test coverage matches Hardhat
 
-**Source**: `test/evm/hardhat/chain-adapters/Linea_Adapter.ts`
-**Target**: `test/evm/foundry/local/Linea_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/Linea_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Linea_Adapter.ts`
 
-**Tests to migrate (5 tests)**:
+**Current state**: Mix of `vm.expectCall` and `MockCCTPMessengerV2` with call tracking (correct)
 
-- `relayMessage calls spoke pool functions`
-- `Correctly calls appropriate bridge functions when making ERC20 cross chain calls`
-- `Correctly calls the CCTP bridge adapter when attempting to bridge USDC`
-- `Splits USDC into parts to stay under per-message limit when attempting to bridge USDC`
-- `Correctly unwraps WETH and bridges ETH`
+**Task**:
 
-**Dependencies**:
-
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- MockCCTPMessengerV2 (added to MockCCTP.sol)
-
-**Notes**: Uses vm.mockCall for Linea bridge contracts, MockCCTPMessengerV2 for CCTP V2.
+- Compare test coverage with Hardhat test
+- Ensure all 5 tests have equivalent assertions
 
 ---
 
-### [x] Polygon_Adapter
+### [ ] Optimism_Adapter: Verify test coverage matches Hardhat
 
-**Source**: `test/evm/hardhat/chain-adapters/Polygon_Adapter.ts`
-**Target**: `test/evm/foundry/local/Polygon_Adapter.t.sol`
+**Source**: `test/evm/foundry/local/Optimism_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Optimism_Adapter.ts`
 
-**Tests to migrate (6 tests)**:
+**Current state**: Uses call tracking pattern (correct)
 
-- `relayMessage calls spoke pool functions`
-- `Correctly calls appropriate Polygon bridge functions when making ERC20 cross chain calls`
-- `Correctly unwraps WETH and bridges ETH`
-- `Correctly bridges matic`
-- `Correctly calls the CCTP bridge adapter when attempting to bridge USDC`
-- `Correctly calls the OFT bridge adapter when attempting to bridge USDT`
+**Task**:
 
-**Dependencies**:
+- Compare test coverage with Hardhat test
+- Ensure all 4 tests have equivalent assertions
 
-- HubPoolTestBase (exists)
-- MerkleTreeUtils (exists)
-- MockCCTP.sol (exists)
-- MockOFTMessenger.sol (exists)
-- PolygonMocks.sol (exists - check what's included)
-- AdapterStore.sol (exists)
-- May need additional mocks:
-  - MockRootChainManager
-  - MockFxStateSender
-  - MockDepositManager (for Plasma/MATIC)
+---
 
-**Special handling**:
+### [ ] Polygon_Adapter: Verify test coverage matches Hardhat
 
-- Multiple bridge mechanisms: PoS (most tokens), Plasma (MATIC), CCTP (USDC), OFT (USDT)
-- WETH unwrapping to ETH
-- MATIC special routing via deposit manager
-- Uses ExpandedERC20 for MATIC token (Uma dependency)
+**Source**: `test/evm/foundry/local/Polygon_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Polygon_Adapter.ts`
 
-**Notes**: Tests 4 different bridge mechanisms. Check PolygonMocks.sol for existing mocks before creating new ones.
+**Current state**: Uses call tracking pattern (correct)
+
+**Task**:
+
+- Compare test coverage with Hardhat test
+- Ensure all 6 tests have equivalent assertions
+
+---
+
+### [ ] Solana_Adapter: Verify test coverage matches Hardhat
+
+**Source**: `test/evm/foundry/local/Solana_Adapter.t.sol`
+**Hardhat reference**: `test/evm/hardhat/chain-adapters/Solana_Adapter.ts`
+
+**Current state**: Uses call tracking pattern (correct)
+
+**Task**:
+
+- Compare test coverage with Hardhat test
+- Ensure all 2 tests have equivalent assertions
 
 ---
 
 ## Summary
 
-| Adapter                    | Test Count | New Mocks Needed           | Status |
-| -------------------------- | ---------- | -------------------------- | ------ |
-| Ethereum_Adapter           | 2          | None                       | [x]    |
-| Arbitrum_SendTokensAdapter | 1          | None (exists)              | [x]    |
-| Solana_Adapter             | 2          | MockCCTPMessageTransmitter | [x]    |
-| Optimism_Adapter           | 4          | None (enhanced existing)   | [x]    |
-| Scroll_Adapter             | 3          | None (vm.mockCall)         | [x]    |
-| PolygonZkEVM_Adapter       | 3          | None (vm.mockCall)         | [x]    |
-| Linea_Adapter              | 5          | MockCCTPMessengerV2        | [x]    |
-| Polygon_Adapter            | 6          | Enhanced PolygonMocks.sol  | [x]    |
+| Adapter                    | Issue                         | Priority |
+| -------------------------- | ----------------------------- | -------- |
+| Arbitrum_Adapter           | Event-based mock verification | High     |
+| Arbitrum_SendTokensAdapter | Event-based mock verification | High     |
+| Ethereum_Adapter           | Verify coverage               | Medium   |
+| Scroll_Adapter             | Verify coverage               | Medium   |
+| PolygonZkEVM_Adapter       | Verify coverage               | Medium   |
+| Linea_Adapter              | Verify coverage               | Medium   |
+| Optimism_Adapter           | Verify coverage               | Medium   |
+| Polygon_Adapter            | Verify coverage               | Medium   |
+| Solana_Adapter             | Verify coverage               | Medium   |
 
 ---
 
-## Already Migrated (Reference)
+## Best Practices Reference (from CLAUDE.md)
 
-- [x] Arbitrum_Adapter.ts → Arbitrum_Adapter.t.sol
-- [x] Arbitrum_SendTokensAdapter.ts → Arbitrum_SendTokensAdapter.t.sol
-- [x] Ethereum_Adapter.ts → Ethereum_Adapter.t.sol
-- [x] Solana_Adapter.ts → Solana_Adapter.t.sol
-- [x] Optimism_Adapter.ts → Optimism_Adapter.t.sol
-- [x] Scroll_Adapter.ts → Scroll_Adapter.t.sol
-- [x] PolygonZkEVM_Adapter.ts → PolygonZkEVM_Adapter.t.sol
-- [x] Linea_Adapter.ts → Linea_Adapter.t.sol
-- [x] Polygon_Adapter.ts → Polygon_Adapter.t.sol
+### Mock patterns
+
+1. **Check existing mocks first**: `contracts/test/` has `MockCCTP.sol`, `ArbitrumMocks.sol`, `PolygonMocks.sol`, etc.
+
+2. **MockSpokePool requires UUPS proxy**:
+
+   ```solidity
+   new ERC1967Proxy(
+       address(new MockSpokePool(weth)),
+       abi.encodeCall(MockSpokePool.initialize, (...))
+   )
+   ```
+
+3. **`vm.mockCall` pattern** (preferred for simple cases):
+
+   ```solidity
+   vm.etch(fakeAddr, hex"00");  // Bypass extcodesize check
+   vm.mockCall(fakeAddr, abi.encodeWithSelector(SELECTOR), abi.encode(returnVal));
+   vm.expectCall(fakeAddr, msgValue, abi.encodeWithSelector(SELECTOR, arg1));
+   ```
+
+4. **Delegatecall context**: Adapter tests via HubPool emit events from HubPool's address; `vm.expectRevert()` may lose error data
+
+### Test gotchas
+
+- Events emitted in delegatecall appear from HubPool's address, not adapter's
+- Use `vm.expectRevert()` without message when error data might be stripped
+- Call `vm.expectCall` BEFORE the action that triggers the call
