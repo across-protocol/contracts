@@ -262,3 +262,60 @@
 - Unlike Scroll, no relayer fee is required - calls are made with msg.value=0 for messages
 
 ---
+
+## Linea_Adapter
+
+**Date**: 2026-01-08
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 2 | Correctly calls appropriate bridge functions when making ERC20 cross chain calls | test_relayTokens_BridgesERC20ViaTokenBridge |
+| 3 | Correctly calls the CCTP bridge adapter when attempting to bridge USDC | test_relayTokens_BridgesUsdcViaCCTP |
+| 4 | Splits USDC into parts to stay under per-message limit when attempting to bridge USDC | test_relayTokens_SplitsUsdcWhenOverBurnLimit |
+| 5 | Correctly unwraps WETH and bridges ETH | test_relayTokens_UnwrapsWETHAndBridgesETH |
+
+### Mocks Used
+
+- `MockCCTPMinter` from `contracts/test/MockCCTP.sol`
+- `MockCCTPMessengerV2` from `contracts/test/MockCCTP.sol` (newly added)
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol`
+- `vm.mockCall` pattern for Linea message service and token bridge
+
+### New Mocks/Utilities Created
+
+- `MockCCTPMessengerV2` in `contracts/test/MockCCTP.sol` - Implements CCTP V2 `depositForBurn()` interface with 7 parameters (amount, destinationDomain, mintRecipient, burnToken, destinationCaller, maxFee, minFinalityThreshold). Includes:
+  - `feeRecipient()` - returns non-zero address for V2 detection
+  - `localMinter()` - returns ITokenMinter
+  - `depositForBurnCallCount` - call counter
+  - `lastDepositForBurnCall` - struct for last call parameters
+  - `depositForBurnCalls[]` - array of all calls for multi-call verification
+  - `getDepositForBurnCall(index)` - getter for specific call parameters
+
+### Deviations from Original
+
+- None significant. The Foundry test verifies the same behavior.
+- Uses `vm.mockCall`/`vm.expectCall` for Linea bridge contracts instead of smock FakeContract.
+
+### Notes
+
+- **CCTP V2 Detection**: The `CircleCCTPAdapter` detects V2 by checking if `feeRecipient()` returns a non-zero address. The mock must implement this for V2 behavior to activate.
+- **CCTP V2 Parameters**: V2's `depositForBurn()` has additional parameters:
+  - `destinationCaller = bytes32(0)` - anyone can call receiveMessage
+  - `maxFee = 0` - standard transfer (no speedup fee)
+  - `minFinalityThreshold = 2000` - standard finality threshold
+- Linea_Adapter bridges via three mechanisms:
+  1. `IMessageService.sendMessage()` for admin messages - fee is always 0 (Linea doesn't support auto-claiming for non-empty calldata)
+  2. `ITokenBridge.bridgeToken()` for ERC20 tokens (except USDC and WETH)
+  3. `IMessageService.sendMessage{value: amount}()` for WETH - unwraps to ETH first and sends via message service
+  4. CCTP V2 `depositForBurn()` for USDC
+- **USDC Splitting**: When USDC amount exceeds `burnLimitsPerMessage`, the adapter splits into multiple calls. Test covers:
+  - Uneven split (limit = amount/2 - 1): 3 calls with amounts [limit, limit, 2]
+  - Even split (limit = amount/2): 2 calls with amounts [limit, limit]
+- Circle domain ID for Linea is 11 (`CircleDomainIds.Linea`)
+- Chain ID: 59144 (Linea mainnet)
+
+---

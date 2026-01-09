@@ -216,7 +216,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Linea_Adapter
+### [x] Linea_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Linea_Adapter.ts`
 **Target**: `test/evm/foundry/local/Linea_Adapter.t.sol`
@@ -233,19 +233,9 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 - HubPoolTestBase (exists)
 - MerkleTreeUtils (exists)
-- MockCCTP.sol (exists, but need CCTP V2 variant)
-- Need: LineaMocks.sol with:
-  - MockLineaMessageService
-  - MockLineaTokenBridge
+- MockCCTPMessengerV2 (added to MockCCTP.sol)
 
-**Special handling**:
-
-- Uses Smock library - convert to Foundry
-- CCTP V2 messenger (different interface from V1)
-- Heavy ETH funding for message fees
-- WETH unwrap test
-
-**Notes**: CCTP V2 may require new mock or extending existing MockCCTP.
+**Notes**: Uses vm.mockCall for Linea bridge contracts, MockCCTPMessengerV2 for CCTP V2.
 
 ---
 
@@ -297,7 +287,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Optimism_Adapter           | 4          | None (enhanced existing)   | [x]    |
 | Scroll_Adapter             | 3          | None (vm.mockCall)         | [x]    |
 | PolygonZkEVM_Adapter       | 3          | None (vm.mockCall)         | [x]    |
-| Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2   | [ ]    |
+| Linea_Adapter              | 5          | MockCCTPMessengerV2        | [x]    |
 | Polygon_Adapter            | 6          | Check PolygonMocks.sol     | [ ]    |
 
 ---
@@ -311,3 +301,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 - [x] Optimism_Adapter.ts → Optimism_Adapter.t.sol
 - [x] Scroll_Adapter.ts → Scroll_Adapter.t.sol
 - [x] PolygonZkEVM_Adapter.ts → PolygonZkEVM_Adapter.t.sol
+- [x] Linea_Adapter.ts → Linea_Adapter.t.sol
