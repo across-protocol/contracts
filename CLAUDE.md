@@ -89,6 +89,18 @@ contract MyContractTest is Test {
 }
 ```
 
+### Test Gotchas
+
+- **Mocks**: Check `contracts/test/` for existing mocks before creating new ones (MockCCTP.sol, ArbitrumMocks.sol, etc.)
+- **MockSpokePool**: Requires UUPS proxy deployment: `new ERC1967Proxy(address(new MockSpokePool(weth)), abi.encodeCall(MockSpokePool.initialize, (...)))`
+- **vm.mockCall pattern** (prefer over custom mocks for simple return values):
+  ```solidity
+  vm.etch(fakeAddr, hex"00");  // Bypass extcodesize check
+  vm.mockCall(fakeAddr, abi.encodeWithSelector(SELECTOR), abi.encode(returnVal));
+  vm.expectCall(fakeAddr, msgValue, abi.encodeWithSelector(SELECTOR, arg1));
+  ```
+- **Delegatecall context**: Adapter tests via HubPool emit events from HubPool's address; `vm.expectRevert()` may lose error data
+
 ## Deployment Scripts
 
 Scripts follow a numbered pattern and use shared utilities from `script/utils/`.
