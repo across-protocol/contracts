@@ -59,8 +59,22 @@ Use `chain-adapter-tests-migration.txt` to log:
    - Document the mock's purpose and usage
 
 4. **Use constants for addresses** - Avoid inline `makeAddr()` calls:
+
    - Define address constants at the contract level
    - Example: `address constant CROSS_DOMAIN_ADMIN = address(0xAD1);`
+
+5. **Prefer vm.mockCall over custom mocks** - For simple return value mocking:
+   ```solidity
+   // Put dummy bytecode at fake address (avoids extcodesize check)
+   vm.etch(fakeAddress, hex"00");
+   // Mock return values
+   vm.mockCall(fakeAddress, abi.encodeWithSelector(SELECTOR), abi.encode(returnValue));
+   // Verify calls with correct params (call before the actual call)
+   vm.expectCall(fakeAddress, msgValue, abi.encodeWithSelector(SELECTOR, arg1, arg2));
+   ```
+   - See `Scroll_Adapter.t.sol` for complete example
+   - Limitation: Cannot implement side effects (e.g., token transfers)
+   - Use custom mocks when you need: call counting, side effects, or complex state
 
 ---
 
