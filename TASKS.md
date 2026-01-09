@@ -152,7 +152,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Scroll_Adapter
+### [x] Scroll_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Scroll_Adapter.ts`
 **Target**: `test/evm/foundry/local/Scroll_Adapter.t.sol`
@@ -286,7 +286,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Arbitrum_SendTokensAdapter | 1          | None (exists)              | [x]    |
 | Solana_Adapter             | 2          | MockCCTPMessageTransmitter | [x]    |
 | Optimism_Adapter           | 4          | None (enhanced existing)   | [x]    |
-| Scroll_Adapter             | 3          | ScrollMocks.sol            | [ ]    |
+| Scroll_Adapter             | 3          | ScrollMocks.sol            | [x]    |
 | PolygonZkEVM_Adapter       | 3          | PolygonZkEVMMocks.sol      | [ ]    |
 | Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2   | [ ]    |
 | Polygon_Adapter            | 6          | Check PolygonMocks.sol     | [ ]    |
@@ -300,3 +300,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 - [x] Ethereum_Adapter.ts → Ethereum_Adapter.t.sol
 - [x] Solana_Adapter.ts → Solana_Adapter.t.sol
 - [x] Optimism_Adapter.ts → Optimism_Adapter.t.sol
+- [x] Scroll_Adapter.ts → Scroll_Adapter.t.sol

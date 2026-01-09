@@ -167,3 +167,51 @@
 - The adapter is called via delegatecall from HubPool, so events appear from HubPool's address
 
 ---
+
+## Scroll_Adapter
+
+**Date**: 2026-01-08
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage fails when there's not enough fees | test_relayMessage_RevertsWhenInsufficientFees |
+| 2 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 3 | Correctly calls appropriate scroll bridge functions when transferring tokens to different chains | test_relayTokens_BridgesTokensViaGatewayRouter |
+
+### Mocks Used
+
+- `MockScrollL1Messenger` from `contracts/test/ScrollMocks.sol` (new)
+- `MockScrollL1GasPriceOracle` from `contracts/test/ScrollMocks.sol` (new)
+- `MockScrollL1GatewayRouter` from `contracts/test/ScrollMocks.sol` (new)
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol`
+
+### New Mocks/Utilities Created
+
+- `ScrollMocks.sol` in `contracts/test/` containing:
+  - `MockScrollL1Messenger` - Implements `IL1ScrollMessenger.sendMessage()` with call counter and last call parameter tracking
+  - `MockScrollL1GasPriceOracle` - Implements `IL2GasPriceOracle.estimateCrossDomainMessageFee()` with configurable fee via `setMockedFee()`
+  - `MockScrollL1GatewayRouter` - Implements `IL1GatewayRouter.depositERC20()` and `getL2ERC20Address()` with call counter and L2 token mapping
+
+### Deviations from Original
+
+- None significant. The Foundry test verifies the same behavior.
+- For the revert test, used `vm.expectRevert()` without specific error message since delegatecall context can strip error data.
+
+### Notes
+
+- Scroll_Adapter bridges via two mechanisms:
+  1. L1ScrollMessenger.sendMessage() for admin messages - pays relayer fee from gas price oracle
+  2. L1GatewayRouter.depositERC20() for all ERC20 tokens including WETH - also pays relayer fee
+- The adapter has configurable gas limits:
+  - L2_MESSAGE_RELAY_GAS_LIMIT = 2,000,000 for messages
+  - L2_TOKEN_RELAY_GAS_LIMIT = 250,000 for tokens
+- Relayer fees are obtained from IL2GasPriceOracle.estimateCrossDomainMessageFee()
+- The adapter requires sufficient ETH balance to pay relayer fees
+- Test chain ID is 534351 (Scroll Sepolia testnet, matching Hardhat test)
+- Scroll uses the same gateway for WETH and ERC20s (no special WETH unwrapping like Optimism)
+- The gateway router provides L2 token address lookup via getL2ERC20Address()
+
+---
