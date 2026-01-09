@@ -56,21 +56,6 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
   };
 };
 
-// Custom tasks to add to HRE.
-const tasks = [
-  "enableL1TokenAcrossEcosystem",
-  "finalizeScrollClaims",
-  "rescueStuckScrollTxn",
-  "verifySpokePool",
-  "verifyBytecode",
-  "evmRelayMessageWithdrawal",
-  "testChainAdapter",
-  "upgradeSpokePool",
-];
-
-// eslint-disable-next-line node/no-missing-require
-tasks.forEach((task) => require(`./tasks/${task}`));
-
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
