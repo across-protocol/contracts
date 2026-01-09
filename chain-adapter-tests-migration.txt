@@ -216,3 +216,49 @@
 - Scroll uses the same gateway for WETH and ERC20s (no special WETH unwrapping like Optimism)
 
 ---
+
+## PolygonZkEVM_Adapter
+
+**Date**: 2026-01-08
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 2 | Correctly calls appropriate bridge functions when making WETH cross chain calls | test_relayTokens_BridgesWethAsEth |
+| 3 | Correctly calls appropriate bridge functions when making ERC20 cross chain calls | test_relayTokens_BridgesErc20 |
+
+### Mocks Used
+
+- **No custom mock contracts** - uses `vm.mockCall` and `vm.expectCall` cheatcodes
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol` (still needed as a real target)
+
+### New Mocks/Utilities Created
+
+- None - uses Foundry's native mocking capabilities (same pattern as Scroll_Adapter.t.sol)
+
+### Deviations from Original
+
+- None significant. Uses `vm.mockCall`/`vm.expectCall` instead of smock FakeContract, but verifies the same behavior.
+
+### Notes
+
+- **Pattern: vm.mockCall + vm.expectCall (following Scroll_Adapter precedent)**
+  - `vm.etch(address, hex"00")` puts dummy bytecode at bridge address
+  - `vm.mockCall` mocks `bridgeMessage` and `bridgeAsset` return values
+  - `vm.expectCall` verifies calls with correct parameters and msg.value
+- PolygonZkEVM_Adapter bridges via:
+  1. `IPolygonZkEVMBridge.bridgeMessage()` for admin messages (no fee required)
+  2. `IPolygonZkEVMBridge.bridgeAsset()` for tokens - with special WETH handling
+- WETH bridging: Adapter unwraps WETH to ETH, calls `bridgeAsset{value: amount}` with `token=address(0)`
+- ERC20 bridging: Adapter approves bridge, calls `bridgeAsset` with token address (no msg.value)
+- Constants:
+  - `POLYGON_ZKEVM_CHAIN_ID = 1101`
+  - `POLYGON_ZKEVM_L2_NETWORK_ID = 1` (Polygon's internal network ID)
+  - `forceUpdateGlobalExitRoot = true` (always set for immediate finality)
+  - `permitData = ""` (not used in these tests)
+- Unlike Scroll, no relayer fee is required - calls are made with msg.value=0 for messages
+
+---

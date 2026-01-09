@@ -195,7 +195,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] PolygonZkEVM_Adapter
+### [x] PolygonZkEVM_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/PolygonZkEVM_Adapter.ts`
 **Target**: `test/evm/foundry/local/PolygonZkEVM_Adapter.t.sol`
@@ -210,14 +210,9 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 - HubPoolTestBase (exists)
 - MerkleTreeUtils (exists)
-- Need: PolygonZkEVMMocks.sol with MockPolygonZkEVMBridge
+- None needed - uses vm.mockCall/vm.expectCall pattern
 
-**Special handling**:
-
-- Hardhat test uses Smock library - convert to native Foundry vm.mockCall or create mock contract
-- Bridge asset and message methods with permit data support
-
-**Notes**: Uses Smock in Hardhat - convert to Foundry mocking patterns.
+**Notes**: Uses vm.mockCall/vm.expectCall pattern (same as Scroll_Adapter). No custom mocks required.
 
 ---
 
@@ -301,7 +296,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Solana_Adapter             | 2          | MockCCTPMessageTransmitter | [x]    |
 | Optimism_Adapter           | 4          | None (enhanced existing)   | [x]    |
 | Scroll_Adapter             | 3          | None (vm.mockCall)         | [x]    |
-| PolygonZkEVM_Adapter       | 3          | PolygonZkEVMMocks.sol      | [ ]    |
+| PolygonZkEVM_Adapter       | 3          | None (vm.mockCall)         | [x]    |
 | Linea_Adapter              | 5          | LineaMocks.sol + CCTP V2   | [ ]    |
 | Polygon_Adapter            | 6          | Check PolygonMocks.sol     | [ ]    |
 
@@ -315,3 +310,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 - [x] Solana_Adapter.ts → Solana_Adapter.t.sol
 - [x] Optimism_Adapter.ts → Optimism_Adapter.t.sol
 - [x] Scroll_Adapter.ts → Scroll_Adapter.t.sol
+- [x] PolygonZkEVM_Adapter.ts → PolygonZkEVM_Adapter.t.sol
