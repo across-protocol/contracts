@@ -319,3 +319,78 @@
 - Chain ID: 59144 (Linea mainnet)
 
 ---
+
+## Polygon_Adapter
+
+**Date**: 2026-01-08
+**Status**: Completed
+
+### Tests Migrated
+
+| # | Hardhat Test Name | Foundry Test Name |
+|---|------------------|-------------------|
+| 1 | relayMessage calls spoke pool functions | test_relayMessage_CallsSpokePoolFunctions |
+| 2 | Correctly calls appropriate Polygon bridge functions when making ERC20 cross chain calls | test_relayTokens_BridgesERC20ViaRootChainManager |
+| 3 | Correctly unwraps WETH and bridges ETH | test_relayTokens_UnwrapsWETHAndBridgesETH |
+| 4 | Correctly bridges matic | test_relayTokens_BridgesMaticViaPlasma |
+| 5 | Correctly calls the CCTP bridge adapter when attempting to bridge USDC | test_relayTokens_BridgesUsdcViaCCTP |
+| 6 | Correctly calls the OFT bridge adapter when attempting to bridge USDT | test_relayTokens_BridgesUsdtViaOFT |
+
+### Mocks Used
+
+- `RootChainManagerMock` from `contracts/test/PolygonMocks.sol` (enhanced)
+- `FxStateSenderMock` from `contracts/test/PolygonMocks.sol` (enhanced)
+- `DepositManagerMock` from `contracts/test/PolygonMocks.sol` (enhanced)
+- `MockCCTPMinter` from `contracts/test/MockCCTP.sol`
+- `MockCCTPMessenger` from `contracts/test/MockCCTP.sol`
+- `MockOFTMessenger` from `contracts/test/MockOFTMessenger.sol`
+- `AdapterStore` from `contracts/AdapterStore.sol` (actual contract, not mock)
+- `MockSpokePool` from `contracts/test/MockSpokePool.sol`
+
+### New Mocks/Utilities Created
+
+Enhanced `PolygonMocks.sol` with call tracking (smock-style pattern):
+- `RootChainManagerMock`:
+  - `depositEtherForCallCount` - call counter
+  - `lastDepositEtherForCall` - struct storing (user, value) parameters
+  - `depositForCallCount` - call counter
+  - `lastDepositForCall` - struct storing (user, rootToken, depositData) parameters
+- `FxStateSenderMock`:
+  - `sendMessageToChildCallCount` - call counter
+  - `lastSendMessageToChildCall` - struct storing (receiver, data) parameters
+- `DepositManagerMock`:
+  - `depositERC20ForUserCallCount` - call counter
+  - `lastDepositERC20ForUserCall` - struct storing (token, user, amount) parameters
+
+### Deviations from Original
+
+- None significant. The Foundry test verifies all the same conditions as Hardhat:
+  - Call counts for each bridge function
+  - Negative verification (e.g., depositFor NOT called when bridging ETH)
+  - Parameter verification for all calls
+  - FxStateSender message verification with relayRootBundle encoded data
+
+### Notes
+
+- **Four Bridge Mechanisms**: Polygon_Adapter is complex with four different token bridging paths:
+  1. `IRootChainManager.depositEtherFor()` for WETH - unwraps to ETH first
+  2. `IRootChainManager.depositFor()` for standard ERC20 tokens (DAI, etc.) via PoS bridge
+  3. `DepositManager.depositERC20ForUser()` for MATIC via Plasma bridge
+  4. CCTP `depositForBurn()` for USDC
+  5. OFT `send()` for USDT (via AdapterStore lookup)
+- **Message Relay**: Uses `IFxStateSender.sendMessageToChild()` for admin messages to Polygon
+- **OFT Setup**: Uses `AdapterStore` contract to store token -> OFT messenger mappings. The adapter calls `_getOftMessenger(token)` which looks up `AdapterStore.crossChainMessengers(OFT_MESSENGER, dstEid, token)`.
+- **MATIC Token**: Created a local `MintableERC20` for MATIC (the Hardhat test uses UMA's ExpandedERC20, but MintableERC20 works the same)
+- **Test Verification**: Each test verifies:
+  - Correct bridge function was called (call count = 1)
+  - Other bridge functions were NOT called (call count = 0)
+  - Parameters match expected values
+  - FxStateSender received relayRootBundle call with correct roots
+- **Constants**:
+  - `POLYGON_CHAIN_ID = 137`
+  - `CircleDomainIds.Polygon = 7`
+  - `OFT_FEE_CAP = 1 ether`
+  - OFT destination EID obtained via `getOftEid(POLYGON_CHAIN_ID)` from Constants.sol
+- This completes the chain adapter tests migration - all 8 adapters have been migrated!
+
+---

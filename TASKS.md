@@ -239,7 +239,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 
 ---
 
-### [ ] Polygon_Adapter
+### [x] Polygon_Adapter
 
 **Source**: `test/evm/hardhat/chain-adapters/Polygon_Adapter.ts`
 **Target**: `test/evm/foundry/local/Polygon_Adapter.t.sol`
@@ -288,7 +288,7 @@ Use `chain-adapter-tests-migration.txt` to log:
 | Scroll_Adapter             | 3          | None (vm.mockCall)         | [x]    |
 | PolygonZkEVM_Adapter       | 3          | None (vm.mockCall)         | [x]    |
 | Linea_Adapter              | 5          | MockCCTPMessengerV2        | [x]    |
-| Polygon_Adapter            | 6          | Check PolygonMocks.sol     | [ ]    |
+| Polygon_Adapter            | 6          | Enhanced PolygonMocks.sol  | [x]    |
 
 ---
 
@@ -302,3 +302,4 @@ Use `chain-adapter-tests-migration.txt` to log:
 - [x] Scroll_Adapter.ts → Scroll_Adapter.t.sol
 - [x] PolygonZkEVM_Adapter.ts → PolygonZkEVM_Adapter.t.sol
 - [x] Linea_Adapter.ts → Linea_Adapter.t.sol
+- [x] Polygon_Adapter.ts → Polygon_Adapter.t.sol
