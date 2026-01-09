@@ -55,21 +55,6 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
   };
 };
 
-// Custom tasks to add to HRE.
-const tasks = [
-  "enableL1TokenAcrossEcosystem",
-  "finalizeScrollClaims",
-  "rescueStuckScrollTxn",
-  "verifySpokePool",
-  "verifyBytecode",
-  "evmRelayMessageWithdrawal",
-  "testChainAdapter",
-  "upgradeSpokePool",
-];
-
-// eslint-disable-next-line node/no-missing-require
-tasks.forEach((task) => require(`./tasks/${task}`));
-
 const isTest = process.env.IS_TEST === "true";
 
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.

@@ -292,12 +292,6 @@ solana-verify remote submit-job \
 
 ## Miscellaneous topics
 
-### Manually Finalizing Scroll Claims from L2 -> L1 (Mainnet | Sepolia)
-
-```shell
-yarn hardhat finalize-scroll-claims --l2-address {operatorAddress}
-```
-
 ### Slither
 
 [Slither](https://github.com/crytic/slither) is a Solidity static analysis framework written in Python 3. It runs a
