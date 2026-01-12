@@ -158,7 +158,6 @@ The script recognizes these chains:
 - Boba (Chain ID: 288)
 - zkSync Era (Chain ID: 324)
 - World Chain (Chain ID: 480)
-- Redstone (Chain ID: 690)
 - Lisk (Chain ID: 1135)
 - Lisk Sepolia (Chain ID: 4202)
 - Unichain Sepolia (Chain ID: 1301)
