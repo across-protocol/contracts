@@ -43,7 +43,7 @@ import {
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { CHAIN_IDs, getNodeUrl } from "../../utils";
+import { CHAIN_IDs } from "../../utils/constants";
 // eslint-disable-next-line camelcase
 import { HubPool__factory } from "../../typechain";
 import {
@@ -53,7 +53,7 @@ import {
   requireEnv,
 } from "./utils/helpers";
 
-import { MerkleTree } from "@uma/common";
+import { getNodeUrl, MerkleTree } from "@uma/common";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
@@ -96,7 +96,7 @@ const [eventAuthority] = PublicKey.findProgramAddressSync(
 
 // Set up Ethereum provider and signer.
 const isDevnet = isSolanaDevnet(provider);
-const nodeURL = getNodeUrl(isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET);
+const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
 const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 

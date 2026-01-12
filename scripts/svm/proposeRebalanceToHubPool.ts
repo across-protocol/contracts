@@ -26,12 +26,13 @@
  */
 
 import { PublicKey } from "@solana/web3.js";
+import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getSolanaChainId, SOLANA_USDC_DEVNET, SOLANA_USDC_MAINNET } from "../../src/svm/web3-v1";
 import { BondToken__factory, HubPool__factory } from "../../typechain";
-import { CHAIN_IDs, getNodeUrl } from "../../utils";
+import { CHAIN_IDs } from "../../utils/constants";
 import {
   constructEmptyPoolRebalanceTree,
   constructSimpleRebalanceTreeToHubPool,
@@ -40,7 +41,7 @@ import {
 } from "./utils/helpers";
 
 // Set up Ethereum provider and signer.
-const nodeURL = getNodeUrl(process.env.TESTNET === "true" ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET);
+const nodeURL = process.env.TESTNET === "true" ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
 const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
