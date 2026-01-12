@@ -11,6 +11,8 @@ import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpToke
 import { FinderInterface } from "../../../../contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 import { OracleInterfaces } from "../../../../contracts/external/uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
 import { Timer } from "../../../../contracts/external/uma/core/contracts/common/implementation/Timer.sol";
+import { SkinnyOptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
+import { OptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
 import { Constants } from "../../../../script/utils/Constants.sol";
 
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -114,39 +116,19 @@ contract MockStore {
  * @title MockOptimisticOracle
  * @notice Minimal mock of UMA's SkinnyOptimisticOracle for testing dispute functionality.
  * @dev This mock allows HubPool to complete the dispute flow without the full UMA ecosystem.
+ *      Inherits from SkinnyOptimisticOracleInterface to ensure correct function signatures.
  */
-contract MockOptimisticOracle {
-    event ProposePrice(
-        address indexed requester,
-        bytes32 identifier,
-        uint32 timestamp,
-        bytes ancillaryData,
-        address proposer
-    );
-
-    event DisputePrice(
-        address indexed requester,
-        bytes32 identifier,
-        uint32 timestamp,
-        bytes ancillaryData,
-        address disputer
-    );
-
+contract MockOptimisticOracle is SkinnyOptimisticOracleInterface {
     uint256 public defaultLiveness;
 
-    struct Request {
-        address proposer;
-        address disputer;
-        IERC20 currency;
-        bool settled;
-        uint256 bond;
-    }
-
+    // Store requests by their ID (we use our own storage, not the interface's)
     mapping(bytes32 => Request) public requests;
 
     constructor(uint256 _defaultLiveness) {
         defaultLiveness = _defaultLiveness;
     }
+
+    // ============ Implemented Functions ============
 
     function requestAndProposePriceFor(
         bytes32 identifier,
@@ -155,10 +137,10 @@ contract MockOptimisticOracle {
         IERC20 currency,
         uint256 /* reward */,
         uint256 bond,
-        uint256 /* customLiveness */,
+        uint256 customLiveness,
         address proposer,
-        int256 /* proposedPrice */
-    ) external returns (uint256 totalBond) {
+        int256 proposedPrice
+    ) external override returns (uint256 totalBond) {
         bytes32 requestId = keccak256(abi.encode(msg.sender, identifier, timestamp, ancillaryData));
 
         // Pull bond from caller
@@ -170,10 +152,14 @@ contract MockOptimisticOracle {
             disputer: address(0),
             currency: currency,
             settled: false,
-            bond: bond
+            proposedPrice: proposedPrice,
+            resolvedPrice: 0,
+            expirationTime: block.timestamp + customLiveness,
+            reward: 0,
+            finalFee: 0,
+            bond: bond,
+            customLiveness: customLiveness
         });
-
-        emit ProposePrice(msg.sender, identifier, timestamp, ancillaryData, proposer);
 
         return totalBond;
     }
@@ -182,21 +168,95 @@ contract MockOptimisticOracle {
         bytes32 identifier,
         uint32 timestamp,
         bytes memory ancillaryData,
+        Request memory /* request - ignored, we use our stored version */,
         address disputer,
         address requester
-    ) external returns (uint256 totalBond) {
+    ) public override returns (uint256 totalBond) {
         bytes32 requestId = keccak256(abi.encode(requester, identifier, timestamp, ancillaryData));
-        Request storage request = requests[requestId];
+        Request storage storedRequest = requests[requestId];
 
-        // Pull bond from disputer
-        totalBond = request.bond;
-        request.currency.transferFrom(msg.sender, address(this), totalBond);
+        // Pull bond from disputer (use the bond from the stored request)
+        totalBond = storedRequest.bond;
+        storedRequest.currency.transferFrom(msg.sender, address(this), totalBond);
 
-        request.disputer = disputer;
-
-        emit DisputePrice(requester, identifier, timestamp, ancillaryData, disputer);
+        storedRequest.disputer = disputer;
 
         return totalBond;
+    }
+
+    // ============ Stub Functions (not used in tests but required by interface) ============
+
+    function requestPrice(
+        bytes32,
+        uint32,
+        bytes memory,
+        IERC20,
+        uint256,
+        uint256,
+        uint256
+    ) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function proposePriceFor(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory,
+        address,
+        int256
+    ) public pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function proposePrice(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory,
+        int256
+    ) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function disputePrice(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory
+    ) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function settle(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory
+    ) external pure override returns (uint256, int256) {
+        revert("Not implemented");
+    }
+
+    function getState(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory
+    ) external pure override returns (OptimisticOracleInterface.State) {
+        revert("Not implemented");
+    }
+
+    function hasPrice(address, bytes32, uint32, bytes memory, Request memory) public pure override returns (bool) {
+        revert("Not implemented");
+    }
+
+    function stampAncillaryData(bytes memory, address) public pure override returns (bytes memory) {
+        revert("Not implemented");
     }
 }
 
