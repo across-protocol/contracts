@@ -114,18 +114,20 @@ contract MockStore {
 
 /**
  * @title MockOptimisticOracle
- * @notice Minimal mock of UMA's SkinnyOptimisticOracle for testing dispute functionality.
- * @dev This mock allows HubPool to complete the dispute flow without the full UMA ecosystem.
+ * @notice Mock of UMA's SkinnyOptimisticOracle matching the real implementation behavior.
+ * @dev This mock replicates the real oracle's behavior for testing dispute functionality.
  *      Inherits from SkinnyOptimisticOracleInterface to ensure correct function signatures.
  */
 contract MockOptimisticOracle is SkinnyOptimisticOracleInterface {
     uint256 public defaultLiveness;
+    MockStore public store;
 
     // Store requests by their ID (we use our own storage, not the interface's)
     mapping(bytes32 => Request) public requests;
 
-    constructor(uint256 _defaultLiveness) {
+    constructor(uint256 _defaultLiveness, MockStore _store) {
         defaultLiveness = _defaultLiveness;
+        store = _store;
     }
 
     // ============ Implemented Functions ============
@@ -143,8 +145,11 @@ contract MockOptimisticOracle is SkinnyOptimisticOracleInterface {
     ) external override returns (uint256 totalBond) {
         bytes32 requestId = keccak256(abi.encode(msg.sender, identifier, timestamp, ancillaryData));
 
-        // Pull bond from caller
-        totalBond = bond;
+        // Get final fee from store (matching real oracle behavior)
+        uint256 finalFee = store.computeFinalFee(address(currency)).rawValue;
+
+        // Pull bond + finalFee from caller (matching real oracle: bond + finalFee)
+        totalBond = bond + finalFee;
         currency.transferFrom(msg.sender, address(this), totalBond);
 
         requests[requestId] = Request({
@@ -156,7 +161,7 @@ contract MockOptimisticOracle is SkinnyOptimisticOracleInterface {
             resolvedPrice: 0,
             expirationTime: block.timestamp + customLiveness,
             reward: 0,
-            finalFee: 0,
+            finalFee: finalFee,
             bond: bond,
             customLiveness: customLiveness
         });
@@ -168,17 +173,34 @@ contract MockOptimisticOracle is SkinnyOptimisticOracleInterface {
         bytes32 identifier,
         uint32 timestamp,
         bytes memory ancillaryData,
-        Request memory /* request - ignored, we use our stored version */,
+        Request memory request,
         address disputer,
         address requester
     ) public override returns (uint256 totalBond) {
         bytes32 requestId = keccak256(abi.encode(requester, identifier, timestamp, ancillaryData));
         Request storage storedRequest = requests[requestId];
 
-        // Pull bond from disputer (use the bond from the stored request)
-        totalBond = storedRequest.bond;
+        // Pull full bondAmount from disputer (bond + finalFee from the Request parameter)
+        // This matches what HubPool approves: bondAmount = bond + finalFee
+        // Matching real oracle: totalBond = request.requestSettings.bond.add(request.finalFee)
+        totalBond = request.bond + request.finalFee;
         storedRequest.currency.transferFrom(msg.sender, address(this), totalBond);
 
+        // Compute burned bond: floor(bond / 2)
+        // Matching real oracle: _computeBurnedBond()
+        uint256 burnedBond = request.bond / 2;
+
+        // The total fee is the burned bond and the final fee added together
+        // Matching real oracle: totalFee = request.finalFee.add(burnedBond)
+        uint256 totalFee = request.finalFee + burnedBond;
+
+        // Send totalFee to store (matching real oracle behavior)
+        if (totalFee > 0) {
+            storedRequest.currency.transfer(address(store), totalFee);
+            store.payOracleFeesErc20(address(storedRequest.currency), totalFee);
+        }
+
+        // Update stored request with disputer
         storedRequest.disputer = disputer;
 
         return totalBond;
@@ -329,7 +351,8 @@ abstract contract HubPoolTestBase is Test, Constants {
         data.store = new MockStore();
 
         // Deploy OptimisticOracle with liveness * 10 (matches UmaEcosystem.Fixture)
-        data.optimisticOracle = new MockOptimisticOracle(REFUND_PROPOSAL_LIVENESS * 10);
+        // Pass store reference so oracle can distribute final fees (matching real oracle)
+        data.optimisticOracle = new MockOptimisticOracle(REFUND_PROPOSAL_LIVENESS * 10, data.store);
 
         // Configure finder with UMA ecosystem addresses
         data.finder.changeImplementationAddress(OracleInterfaces.CollateralWhitelist, address(data.addressWhitelist));
