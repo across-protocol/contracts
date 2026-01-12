@@ -689,9 +689,6 @@
     "37111": {
       "zkErc20Bridge": "0x427373Be173120D7A042b44D0804E37F25E7330b"
     },
-    "41455": {
-      "l2GatewayRouter": "0xD296d45171B97720D3aBdb68B0232be01F1A9216"
-    },
     "42161": {
       "l2GatewayRouter": "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
@@ -775,8 +772,6 @@
       "scrollGasPriceOracle": "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
       "blastYieldManager": "0xa230285d5683C74935aD14c446e137c8c8828438",
       "blastDaiRetriever": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
-      "l1AlephZeroInbox": "0x56D8EC76a421063e1907503aDd3794c395256AEb",
-      "l1AlephZeroERC20GatewayRouter": "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
       "donationBox": "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
       "adapterStore": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
       "hubPoolStore": "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",

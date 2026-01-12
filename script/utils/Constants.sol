@@ -51,8 +51,6 @@ contract Constants is Script {
         address scrollGasPriceOracle;
         address blastYieldManager;
         address blastDaiRetriever;
-        address l1AlephZeroInbox;
-        address l1AlephZeroERC20GatewayRouter;
         address adapterStore;
         address donationBox;
         address hubPoolStore;
@@ -143,14 +141,6 @@ contract Constants is Script {
                     blastDaiRetriever: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastDaiRetriever")
-                    ),
-                    l1AlephZeroInbox: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroInbox")
-                    ),
-                    l1AlephZeroERC20GatewayRouter: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroERC20GatewayRouter")
                     ),
                     adapterStore: vm.parseJsonAddress(
                         file,

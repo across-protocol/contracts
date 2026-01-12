@@ -9,7 +9,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | AcrossConfigStore            | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | AcrossMerkleDistributor      | [0xE50b2cEAC4f60E840Ae513924033E753e2366487](https://etherscan.io/address/0xE50b2cEAC4f60E840Ae513924033E753e2366487) |
 | AdapterStore                 | [0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b](https://etherscan.io/address/0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b) |
-| AlephZero_Adapter            | [0x6F4083304C2cA99B077ACE06a5DcF670615915Af](https://etherscan.io/address/0x6F4083304C2cA99B077ACE06a5DcF670615915Af) |
 | Arbitrum_Adapter             | [0x5eC9844936875E27eBF22172f4d92E107D35B57C](https://etherscan.io/address/0x5eC9844936875E27eBF22172f4d92E107D35B57C) |
 | Arbitrum_Adapter             | [0xc0b6d2f794cc787C71f2cA5ceCD57102C32379B3](https://etherscan.io/address/0xc0b6d2f794cc787C71f2cA5ceCD57102C32379B3) |
 | Arbitrum_RescueAdapter       | [0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375](https://etherscan.io/address/0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375) |
