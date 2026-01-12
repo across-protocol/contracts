@@ -5,7 +5,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, BN, web3 } from "@coral-xyz/anchor";
 import { AccountMeta, PublicKey } from "@solana/web3.js";
-import { getNodeUrl } from "@uma/common";
 import "dotenv/config";
 import { ethers } from "ethers";
 import yargs from "yargs";
@@ -21,7 +20,7 @@ import {
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
 } from "../../src/svm/web3-v1";
-import { CHAIN_IDs } from "../../utils/constants";
+import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import { requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
@@ -51,7 +50,7 @@ async function remotePauseDeposits(): Promise<void> {
 
   // Set up Ethereum provider and signer.
   const isDevnet = isSolanaDevnet(provider);
-  const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+  const nodeURL = getNodeUrl(isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET);
   const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
   const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 

@@ -37,7 +37,7 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
-const getMnemonic = () => {
+export const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.
   const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
   const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
