@@ -160,6 +160,10 @@
           "address": "0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3",
           "block_number": 22595936
         },
+        "Megaeth_Adapter": {
+          "address": "0xE1f04404b74F996A311F13aE291849fC153578Ac",
+          "block_number": 24220587
+        },
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 22789839
@@ -612,15 +616,15 @@
     "4326": {
       "chain_name": "MegaETH",
       "contracts": {
-        "OP_SpokePool": {
-          "address": "0x9b4a302a548c7e313c2b74c461db7b84d3074a84",
-          "block_number": 5450614,
-          "transaction_hash": "0x506e135d1b3717b0a0de9553f48f835d9da1c11a7fb8e06e84c2673cdf6ed56b"
-        },
         "SpokePool": {
           "address": "0x3db06da8f0a24a525f314eec954fc5c6a973d40e",
           "block_number": 5450616,
           "transaction_hash": "0xe7eb021032841de0e2183c8135f633f18487637ca363abe777cd9e9360d57c49"
+        },
+        "OP_SpokePool": {
+          "address": "0x9b4a302a548c7e313c2b74c461db7b84d3074a84",
+          "block_number": 5450614,
+          "transaction_hash": "0x506e135d1b3717b0a0de9553f48f835d9da1c11a7fb8e06e84c2673cdf6ed56b"
         }
       }
     },

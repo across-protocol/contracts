@@ -38,6 +38,7 @@
     "Lens_Adapter": { "address": "0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf", "blockNumber": 22382942 },
     "DoctorWho_Adapter": { "address": "0xFADcC43096756e1527306FD92982FEbBe3c629Fa", "blockNumber": 21773451 },
     "Solana_Adapter": { "address": "0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3", "blockNumber": 22595936 },
+    "Megaeth_Adapter": { "address": "0xE1f04404b74F996A311F13aE291849fC153578Ac", "blockNumber": 24220587 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 22789839 }
   },
   "10": {
@@ -217,6 +218,9 @@
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 12980498 },
     "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 19600021 },
     "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 17456376 }
+  },
+  "4326": {
+    "SpokePool": { "address": "0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E", "blockNumber": 5450616 }
   },
   "1868": {
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 1709997 },
