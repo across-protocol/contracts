@@ -39,9 +39,7 @@ import {
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
 } from "../../src/svm/web3-v1";
-
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
-import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import {
   getMessageTransmitterProgram,
@@ -49,6 +47,7 @@ import {
   getTokenMessengerMinterProgram,
 } from "../../src/svm/web3-v1";
 import { BondToken__factory } from "../../typechain";
+import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import { formatUsdc, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
@@ -64,7 +63,7 @@ const solanaDomain = 5; // Solana
 
 // Set up Ethereum provider and signer.
 const isDevnet = isSolanaDevnet(provider);
-const nodeURL = isDevnet ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+const nodeURL = getNodeUrl(isDevnet ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET);
 const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 
