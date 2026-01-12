@@ -26,7 +26,7 @@ runs:
       run: forge install
     - name: Build Foundry
       shell: bash
-      run: forge build --skip test script
+      run: forge build
     - name: Generate Typechain artifacts
       shell: bash
       run: npx ts-node scripts/typechainArtifacts.ts
