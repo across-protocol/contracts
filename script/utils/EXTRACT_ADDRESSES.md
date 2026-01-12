@@ -171,7 +171,6 @@ The script recognizes these chains:
 - Mode Testnet (Chain ID: 919)
 - Lens Testnet (Chain ID: 37111)
 - Ink (Chain ID: 57073)
-- Tatara Testnet (Chain ID: 129399)
 - BOB Sepolia (Chain ID: 808813)
 - Zora (Chain ID: 7777777)
 - Solana (Chain ID: 34268394551451)
