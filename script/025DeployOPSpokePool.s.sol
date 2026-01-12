@@ -45,7 +45,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
             OP_SpokePool.initialize.selector,
             // Note: If this is a re-deployment of the spoke pool proxy, set this to a very high number of
             // deposits to avoid duplicate deposit IDs with deprecated spoke pool. Should be set to 1 otherwise.
-            1_000_000, // _initialDepositId
+            1, // _initialDepositId
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
         );

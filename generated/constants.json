@@ -667,6 +667,10 @@
     "1868": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
+    "4326": {
+      "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
     "8453": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
@@ -830,6 +834,12 @@
         "L1CrossDomainMessenger": "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
         "L1StandardBridge": "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
         "L1OpUSDCBridgeAdapter": "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb"
+      },
+      "4326": {
+        "L1CrossDomainMessenger": "0x6C7198250087B29A8040eC63903Bc130f4831Cc9",
+        "L1StandardBridge": "0x0CA3A2FBC3D770b578223FBB6b062fa875a2eE75",
+        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
+        "L1BlastBridge": "0x0000000000000000000000000000000000000000"
       },
       "8453": {
         "L1BlastBridge": "0x0000000000000000000000000000000000000000",

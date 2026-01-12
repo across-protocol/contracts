@@ -34,6 +34,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | LpTokenFactory               | [0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d](https://etherscan.io/address/0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d) |
 | Mode_Adapter                 | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | MulticallHandler             | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| OP_Adapter                   | [0xE1f04404b74F996A311F13aE291849fC153578Ac](https://etherscan.io/address/0xE1f04404b74F996A311F13aE291849fC153578Ac) |
 | Optimism_Adapter             | [0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b](https://etherscan.io/address/0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b) |
 | Optimism_Adapter             | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionedMulticallHandler | [0x64a43393866DBA0044879979fAa7AD3d000622e9](https://etherscan.io/address/0x64a43393866DBA0044879979fAa7AD3d000622e9) |
@@ -190,6 +191,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://soneium.blockscout.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://soneium.blockscout.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+
+## MegaETH (4326)
+
+| Contract Name | Address                                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| OP_SpokePool  | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://megaeth.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool     | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
 
 ## Base (8453)
 
