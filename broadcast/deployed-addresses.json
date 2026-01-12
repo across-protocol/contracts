@@ -621,6 +621,14 @@
           "block_number": 5450616,
           "transaction_hash": "0xe7eb021032841de0e2183c8135f633f18487637ca363abe777cd9e9360d57c49"
         },
+        "MulticallHandler": {
+          "address": "0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4",
+          "block_number": 5456066
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xf0aBCe137a493185c5E768F275E7E931109f8981",
+          "block_number": 5456246
+        },
         "OP_SpokePool": {
           "address": "0x9b4a302a548c7e313c2b74c461db7b84d3074a84",
           "block_number": 5450614,

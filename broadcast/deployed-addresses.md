@@ -195,11 +195,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## MegaETH (4326)
 
-| Contract Name | Address                                                                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| OP_SpokePool  | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://megaeth.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
-| SpokePool     | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
-| SpokePool     | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| Contract Name      | Address                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4](https://megaeth.blockscout.com/address/0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4) |
+| OP_SpokePool       | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://megaeth.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool          | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| SpokePool          | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| SpokePoolPeriphery | [0xf0aBCe137a493185c5E768F275E7E931109f8981](https://megaeth.blockscout.com/address/0xf0aBCe137a493185c5E768F275E7E931109f8981) |
 
 ## Base (8453)
 
