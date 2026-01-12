@@ -40,7 +40,7 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
-const getMnemonic = () => {
+export const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.
   const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
   const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
@@ -57,21 +57,6 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
     companionNetworks: { l1: isTestnet ? "sepolia" : "mainnet" },
   };
 };
-
-// Custom tasks to add to HRE.
-const tasks = [
-  "enableL1TokenAcrossEcosystem",
-  "finalizeScrollClaims",
-  "rescueStuckScrollTxn",
-  "verifySpokePool",
-  "verifyBytecode",
-  "evmRelayMessageWithdrawal",
-  "testChainAdapter",
-  "upgradeSpokePool",
-];
-
-// eslint-disable-next-line node/no-missing-require
-tasks.forEach((task) => require(`./tasks/${task}`));
 
 const isTest = process.env.IS_TEST === "true";
 
@@ -241,7 +226,6 @@ const config: HardhatUserConfig = {
     },
     lisk: getDefaultHardhatConfig(CHAIN_IDs.LISK),
     "lisk-sepolia": getDefaultHardhatConfig(CHAIN_IDs.LISK_SEPOLIA, true),
-    redstone: getDefaultHardhatConfig(CHAIN_IDs.REDSTONE),
     blast: getDefaultHardhatConfig(CHAIN_IDs.BLAST),
     "blast-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BLAST_SEPOLIA, true),
     worldchain: getDefaultHardhatConfig(CHAIN_IDs.WORLD_CHAIN),
@@ -362,14 +346,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.routescan.io/v2/network/testnet/evm/919/etherscan",
           browserURL: "https://testnet.modescan.io",
-        },
-      },
-      {
-        network: "redstone",
-        chainId: CHAIN_IDs.REDSTONE,
-        urls: {
-          apiURL: "https://explorer.redstone.xyz/api",
-          browserURL: "https://explorer.redstone.xyz",
         },
       },
       {

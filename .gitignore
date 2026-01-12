@@ -55,3 +55,6 @@ src/svm/clients/*
 # SP1Helios deploy artifacts
 genesis-binary
 contracts/genesis.json
+
+# Claude
+.claude
