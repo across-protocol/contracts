@@ -23,13 +23,12 @@ contract HubPool_AdminTest is HubPoolTestBase {
     // ============ Constants ============
 
     uint256 constant DESTINATION_CHAIN_ID = 1342;
-    uint32 constant REFUND_PROPOSAL_LIVENESS = 7200;
-    bytes32 constant DEFAULT_IDENTIFIER = bytes32("ACROSS-V2");
 
     // ============ Setup ============
 
     function setUp() public {
         // Create base fixture (deploys HubPool, WETH, tokens, UMA mocks)
+        // Also sets liveness and identifier in the HubPool
         createHubPoolFixture();
 
         // Create test addresses
@@ -41,9 +40,6 @@ contract HubPool_AdminTest is HubPoolTestBase {
 
         // Set up cross-chain contracts for destination chain
         fixture.hubPool.setCrossChainContracts(DESTINATION_CHAIN_ID, address(mockAdapter), mockSpoke);
-
-        // Set liveness
-        fixture.hubPool.setLiveness(REFUND_PROPOSAL_LIVENESS);
     }
 
     // ============ enableL1TokenForLiquidityProvision Tests ============
@@ -163,16 +159,22 @@ contract HubPool_AdminTest is HubPoolTestBase {
     // ============ setBond Tests ============
 
     function test_SetBond() public {
-        // Default bond is WETH
+        // Default bond is WETH (bondAmount = BOND_AMOUNT + FINAL_FEE for WETH)
         assertEq(address(fixture.hubPool.bondToken()), address(fixture.weth), "Default bond token should be WETH");
-        assertEq(fixture.hubPool.bondAmount(), BOND_AMOUNT, "Default bond amount mismatch");
+        assertEq(fixture.hubPool.bondAmount(), BOND_AMOUNT + FINAL_FEE, "Default bond amount mismatch");
 
         // Set bond to USDC with 1000 USDC
+        // Note: setBond adds the final fee to the bond amount
         uint256 newBondAmount = 1000e6; // 1000 USDC
+        uint256 usdcFinalFee = fixture.store.finalFees(address(fixture.usdc));
         fixture.hubPool.setBond(IERC20(address(fixture.usdc)), newBondAmount);
 
         assertEq(address(fixture.hubPool.bondToken()), address(fixture.usdc), "Bond token should be USDC");
-        assertEq(fixture.hubPool.bondAmount(), newBondAmount, "Bond amount should be 1000 USDC");
+        assertEq(
+            fixture.hubPool.bondAmount(),
+            newBondAmount + usdcFinalFee,
+            "Bond amount should be 1001 USDC (1000 + finalFee)"
+        );
     }
 
     function test_SetBond_RevertsIfZeroAmount() public {
