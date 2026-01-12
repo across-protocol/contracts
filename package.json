@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.18",
+  "version": "4.1.19",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -68,7 +68,7 @@
     "@solana-developers/helpers": "^2.4.0",
     "@solana-program/address-lookup-table": "^0.7.0",
     "@solana-program/token": "^0.5.1",
-    "@solana/kit": "^2.1.0",
+    "@solana/kit": "^2.3.0",
     "@solana/spl-token": "^0.4.6",
     "@solana/web3.js": "1.98.2",
     "@types/yargs": "^17.0.33",
@@ -98,7 +98,7 @@
     "@types/bn.js": "^5.1.0",
     "@types/chai": "^4.3.5",
     "@types/mocha": "^9.0.0",
-    "@types/node": "^12.0.0",
+    "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.3.7",
