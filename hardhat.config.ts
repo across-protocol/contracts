@@ -168,6 +168,7 @@ const config: HardhatUserConfig = {
     },
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
     "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
+    megaeth: getDefaultHardhatConfig(CHAIN_IDs.MEGAETH),
     monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
@@ -327,6 +328,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://sepolia-blockscout.lisk.com/api",
           browserURL: "https://sepolia-blockscout.lisk.com",
+        },
+      },
+      {
+        network: "megaeth",
+        chainId: CHAIN_IDs.MEGAETH,
+        urls: {
+          apiURL: "https://megaeth.blockscout.com/api",
+          browserURL: "https://megaeth.blockscout.com",
         },
       },
       {
