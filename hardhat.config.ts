@@ -116,7 +116,6 @@ const config: HardhatUserConfig = {
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/periphery/mintburn/HyperCoreFlowExecutor.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
@@ -194,14 +193,6 @@ const config: HardhatUserConfig = {
     },
     mode: getDefaultHardhatConfig(CHAIN_IDs.MODE),
     "mode-sepolia": getDefaultHardhatConfig(CHAIN_IDs.MODE_SEPOLIA, true),
-    tatara: {
-      chainId: CHAIN_IDs.TATARA,
-      url: getNodeUrl(CHAIN_IDs.TATARA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-      ethNetwork: "sepolia",
-    },
     lens: {
       chainId: CHAIN_IDs.LENS,
       url: getNodeUrl(CHAIN_IDs.LENS),
@@ -368,14 +359,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://soneium.blockscout.com/api",
           browserURL: "https://soneium.blockscout.com",
-        },
-      },
-      {
-        network: "tatara",
-        chainId: CHAIN_IDs.TATARA,
-        urls: {
-          apiURL: "https://explorer.tatara.katana.network/api",
-          browserURL: "https://explorer.tatara.katana.network",
         },
       },
     ],
