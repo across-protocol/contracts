@@ -47,6 +47,7 @@ unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
+megaeth = "${NODE_URL_4326}"
 
 # testnet
 arbitrum_sepolia = "${NODE_URL_421614}"

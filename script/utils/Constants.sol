@@ -229,6 +229,11 @@ contract Constants is Script {
         return vm.parseJsonAddress(file, string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId)));
     }
 
+    // Get the permit2 address for the input chain.
+    function getPermit2(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".L2_ADDRESS_MAP.", vm.toString(chainId), ".permit2"));
+    }
+
     /**
      * @notice Get L2 address from constants.json
      * @param chainId The chain ID to get the address for
