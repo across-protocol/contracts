@@ -18,8 +18,11 @@ permissions:
 env:
   NODE_VERSION: 22.18
   EVM_ARTIFACTS_PATHS: |
+    artifacts
+    cache
     typechain
     out
+    cache-foundry
   SVM_ARTIFACTS_PATHS: |
     target/idl
     target/types
