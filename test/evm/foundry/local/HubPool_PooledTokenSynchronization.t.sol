@@ -431,8 +431,7 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         fixture.hubPool.removeLiquidity(address(fixture.weth), AMOUNT_TO_LP, false);
 
         // Exchange rate is now set to 1.0 as all fees have been withdrawn.
-        // Note: When LP token supply is 0, exchangeRateCurrent returns early without updating lastLpFeeUpdate
-        // So we skip the state-modifying call here and just verify the state
+        assertEq(fixture.hubPool.exchangeRateCurrent(address(fixture.weth)), 1e18);
         _forceSync(address(fixture.weth));
         (, , , int256 utilizedReserves, uint256 liquidReserves, uint256 undistributedLpFees) = fixture
             .hubPool
