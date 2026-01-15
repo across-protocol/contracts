@@ -66,13 +66,17 @@ forge test -vvv                       # Verbose output
 ```solidity
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
+
 import { Test } from "forge-std/Test.sol";
 import { MyContract } from "../contracts/MyContract.sol";
+
 contract MyContractTest is Test {
   MyContract public myContract;
+
   function setUp() public {
     myContract = new MyContract();
   }
+
   function testBasicFunctionality() public {
     // Test implementation
     assertEq(myContract.value(), expected);
@@ -83,6 +87,18 @@ contract MyContractTest is Test {
   }
 }
 ```
+
+### Test Gotchas
+
+- **Mocks**: Check `contracts/test/` for existing mocks before creating new ones (MockCCTP.sol, ArbitrumMocks.sol, etc.)
+- **MockSpokePool**: Requires UUPS proxy deployment: `new ERC1967Proxy(address(new MockSpokePool(weth)), abi.encodeCall(MockSpokePool.initialize, (...)))`
+- **vm.mockCall pattern** (prefer over custom mocks for simple return values):
+  ```solidity
+  vm.etch(fakeAddr, hex"00");  // Bypass extcodesize check
+  vm.mockCall(fakeAddr, abi.encodeWithSelector(SELECTOR), abi.encode(returnVal));
+  vm.expectCall(fakeAddr, msgValue, abi.encodeWithSelector(SELECTOR, arg1));
+  ```
+- **Delegatecall context**: Adapter tests via HubPool emit events from HubPool's address; `vm.expectRevert()` may lose error data
 
 ## Deployment Scripts
 
@@ -105,13 +121,18 @@ contract DeployMyContract is Script, Test, Constants {
   function run() external {
     string memory deployerMnemonic = vm.envString("MNEMONIC");
     uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+
     uint256 chainId = block.chainid;
     // Validate chain if needed
     require(chainId == getChainId("MAINNET"), "Deploy on mainnet only");
+
     vm.startBroadcast(deployerPrivateKey);
+
     MyContract myContract = new MyContract /* constructor args */();
+
     console.log("Chain ID:", chainId);
     console.log("MyContract deployed to:", address(myContract));
+
     vm.stopBroadcast();
   }
 }

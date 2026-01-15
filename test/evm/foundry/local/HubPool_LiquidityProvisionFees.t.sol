@@ -26,8 +26,6 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
     // ============ Constants ============
 
     uint256 constant REPAYMENT_CHAIN_ID = 777;
-    uint256 constant TOKENS_TO_SEND = 100 ether;
-    uint256 constant LP_FEES = 10 ether;
 
     // ============ Setup ============
 

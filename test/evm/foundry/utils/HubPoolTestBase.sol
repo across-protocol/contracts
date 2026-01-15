@@ -5,6 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 import { HubPool } from "../../../../contracts/HubPool.sol";
+import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpTokenFactoryInterface.sol";
@@ -14,9 +15,11 @@ import { Timer } from "../../../../contracts/external/uma/core/contracts/common/
 import { SkinnyOptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
 import { OptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
 import { Constants } from "../../../../script/utils/Constants.sol";
-
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
+import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { MerkleTreeUtils } from "./MerkleTreeUtils.sol";
 
 // ============ UMA Ecosystem Mocks ============
 
@@ -329,13 +332,23 @@ abstract contract HubPoolTestBase is Test, Constants {
     uint32 public constant REFUND_PROPOSAL_LIVENESS = 7200; // 2 hours
     bytes32 public constant DEFAULT_IDENTIFIER = bytes32("ACROSS-V2");
 
-    // Common test amounts
+    // ============ Common Test Amounts ============
+
+    uint256 public constant TOKENS_TO_SEND = 100 ether;
+    uint256 public constant LP_FEES = 10 ether;
+    uint256 public constant USDC_TO_SEND = 100e6; // USDC has 6 decimals
+    uint256 public constant USDC_LP_FEES = 10e6;
+    uint256 public constant USDT_TO_SEND = 100e6; // USDT has 6 decimals
+    uint256 public constant USDT_LP_FEES = 10e6;
+    uint256 public constant BURN_LIMIT = 1_000_000e6; // 1M USDC per message
     uint256 public constant AMOUNT_TO_LP = 1000 ether;
 
-    // Mock roots for bundle proposals
-    bytes32 public constant MOCK_POOL_REBALANCE_ROOT = bytes32(uint256(0xabc));
-    bytes32 public constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
-    bytes32 public constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
+    // ============ Common Mock Roots ============
+
+    bytes32 public constant MOCK_TREE_ROOT = keccak256("mockTreeRoot");
+    bytes32 public constant MOCK_RELAYER_REFUND_ROOT = keccak256("mockRelayerRefundRoot");
+    bytes32 public constant MOCK_SLOW_RELAY_ROOT = keccak256("mockSlowRelayRoot");
+    bytes32 public constant MOCK_POOL_REBALANCE_ROOT = keccak256("mockPoolRebalanceRoot");
 
     // ============ Internal Storage ============
 
@@ -460,7 +473,7 @@ abstract contract HubPoolTestBase is Test, Constants {
      * @param relayerRefundRoot The relayer refund merkle root (use bytes32(0) if not needed)
      * @param slowRelayRoot The slow relay merkle root (use bytes32(0) if not needed)
      */
-    function proposeAndExecuteBundle(
+    function proposeBundleAndAdvanceTime(
         bytes32 poolRebalanceRoot,
         bytes32 relayerRefundRoot,
         bytes32 slowRelayRoot
@@ -478,20 +491,6 @@ abstract contract HubPoolTestBase is Test, Constants {
 
         // Warp past liveness period
         vm.warp(block.timestamp + fixture.hubPool.liveness() + 1);
-    }
-
-    /**
-     * @notice Proposes a root bundle and warps past liveness period.
-     * @param poolRebalanceRoot The pool rebalance merkle root
-     * @param relayerRefundRoot The relayer refund merkle root
-     * @param slowRelayRoot The slow relay merkle root
-     */
-    function proposeBundleAndAdvanceTime(
-        bytes32 poolRebalanceRoot,
-        bytes32 relayerRefundRoot,
-        bytes32 slowRelayRoot
-    ) internal {
-        proposeAndExecuteBundle(poolRebalanceRoot, relayerRefundRoot, slowRelayRoot);
     }
 
     /**
@@ -523,8 +522,25 @@ abstract contract HubPoolTestBase is Test, Constants {
         fixture.weth.deposit{ value: amount }();
     }
 
+    // ============ MockSpokePool Deployment ============
+
     /**
-     * @notice Sets up token routes for a destination chain.
+     * @notice Deploys a MockSpokePool with UUPS proxy pattern.
+     * @param crossDomainAdmin The cross-domain admin address for the spoke pool
+     * @return The deployed MockSpokePool instance
+     */
+    function deployMockSpokePool(address crossDomainAdmin) internal returns (MockSpokePool) {
+        ERC1967Proxy proxy = new ERC1967Proxy(
+            address(new MockSpokePool(address(fixture.weth))),
+            abi.encodeCall(MockSpokePool.initialize, (0, crossDomainAdmin, address(fixture.hubPool)))
+        );
+        return MockSpokePool(payable(proxy));
+    }
+
+    // ============ Token Route Setup ============
+
+    /**
+     * @notice Sets up standard token routes (WETH, DAI, USDC) for a given chain.
      * @param chainId The destination chain ID
      * @param l2Weth The L2 WETH address
      * @param l2Dai The L2 DAI address
@@ -538,5 +554,102 @@ abstract contract HubPoolTestBase is Test, Constants {
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.dai));
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdc));
+    }
+
+    /**
+     * @notice Sets up standard token routes including USDT for a given chain.
+     * @param chainId The destination chain ID
+     * @param l2Weth The L2 WETH address
+     * @param l2Dai The L2 DAI address
+     * @param l2Usdc The L2 USDC address
+     * @param l2Usdt The L2 USDT address
+     */
+    function setupTokenRoutesWithUsdt(
+        uint256 chainId,
+        address l2Weth,
+        address l2Dai,
+        address l2Usdc,
+        address l2Usdt
+    ) internal {
+        setupTokenRoutes(chainId, l2Weth, l2Dai, l2Usdc);
+        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.usdt), l2Usdt);
+        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdt));
+    }
+
+    // ============ WETH Liquidity Helpers ============
+
+    /**
+     * @notice Adds WETH liquidity while handling the bond requirement.
+     * @dev WETH tests require extra funds because the HubPool uses WETH for bond.
+     *      This helper ensures there's enough WETH for both liquidity and bond.
+     * @param amount The amount of WETH liquidity to add
+     */
+    function addWethLiquidityWithBond(uint256 amount) internal {
+        uint256 wethNeeded = amount + BOND_AMOUNT;
+        vm.deal(address(this), wethNeeded);
+        fixture.weth.deposit{ value: wethNeeded }();
+        fixture.weth.approve(address(fixture.hubPool), type(uint256).max);
+        fixture.hubPool.addLiquidity(address(fixture.weth), amount);
+    }
+
+    // ============ Root Bundle Execution ============
+
+    /**
+     * @notice Full flow: build merkle leaf, propose, advance time, and execute root bundle.
+     * @param chainId The destination chain ID
+     * @param l1Token The L1 token to bridge
+     * @param amount The amount to send
+     * @param lpFees The LP fees
+     * @param relayerRefundRoot The relayer refund root (use MOCK_RELAYER_REFUND_ROOT or bytes32(0))
+     * @param slowRelayRoot The slow relay root (use MOCK_SLOW_RELAY_ROOT or bytes32(0))
+     * @return leaf The executed pool rebalance leaf
+     */
+    function executeRootBundleForToken(
+        uint256 chainId,
+        address l1Token,
+        uint256 amount,
+        uint256 lpFees,
+        bytes32 relayerRefundRoot,
+        bytes32 slowRelayRoot
+    ) internal returns (HubPoolInterface.PoolRebalanceLeaf memory leaf) {
+        bytes32 root;
+        (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(chainId, l1Token, amount, lpFees);
+
+        proposeBundleAndAdvanceTime(root, relayerRefundRoot, slowRelayRoot);
+
+        bytes32[] memory proof = MerkleTreeUtils.emptyProof();
+        fixture.hubPool.executeRootBundle(
+            leaf.chainId,
+            leaf.groupIndex,
+            leaf.bundleLpFees,
+            leaf.netSendAmounts,
+            leaf.runningBalances,
+            leaf.leafId,
+            leaf.l1Tokens,
+            proof
+        );
+    }
+
+    // ============ vm.etch Helper ============
+
+    /**
+     * @notice Puts dummy bytecode at an address to pass extcodesize checks.
+     * @dev Use this when mocking external contracts with vm.mockCall.
+     *      Without code, calls to the address will revert due to Solidity's extcodesize check.
+     * @param target The address to put dummy code at
+     */
+    function etchDummyCode(address target) internal {
+        vm.etch(target, hex"00");
+    }
+
+    /**
+     * @notice Creates a fake address and puts dummy bytecode at it.
+     * @dev Combines makeAddr and vm.etch for convenience.
+     * @param name The name for the address (used by makeAddr)
+     * @return target The created address with dummy code
+     */
+    function makeFakeContract(string memory name) internal returns (address target) {
+        target = makeAddr(name);
+        vm.etch(target, hex"00");
     }
 }

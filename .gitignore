@@ -51,3 +51,6 @@ test-ledger
 src/svm/assets 
 src/svm/clients/*
 !src/svm/clients/index.ts
+
+# Claude
+.claude
