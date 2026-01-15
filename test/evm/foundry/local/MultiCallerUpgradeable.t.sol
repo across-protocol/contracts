@@ -102,10 +102,8 @@ contract MultiCallerUpgradeableTest is Test {
                 assert(results[i].success);
             } else {
                 assert(!results[i].success);
-                assertEq(
-                    "", // Error messages are stripped.
-                    results[i].returnData
-                );
+                // Revert data is preserved by tryMulticall
+                assert(results[i].returnData.length > 0);
             }
         }
     }
