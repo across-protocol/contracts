@@ -193,16 +193,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://soneium.blockscout.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://soneium.blockscout.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 
-## MegaETH (4326)
-
-| Contract Name      | Address                                                                                                                         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4](https://megaeth.blockscout.com/address/0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4) |
-| OP_SpokePool       | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://megaeth.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
-| SpokePool          | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
-| SpokePool          | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
-| SpokePoolPeriphery | [0xf0aBCe137a493185c5E768F275E7E931109f8981](https://megaeth.blockscout.com/address/0xf0aBCe137a493185c5E768F275E7E931109f8981) |
-
 ## Base (8453)
 
 | Contract Name             | Address                                                                                                               |
@@ -331,6 +321,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia-blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://sepolia-blockscout.lisk.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
+
+## Chain 4326 (4326)
+
+| Contract Name      | Address                                    |
+| ------------------ | ------------------------------------------ |
+| MulticallHandler   | 0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4 |
+| OP_SpokePool       | 0x9b4A302A548c7e313c2b74C461db7b84d3074A84 |
+| SpokePool          | 0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E |
+| SpokePool          | 0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E |
+| SpokePoolPeriphery | 0xf0aBCe137a493185c5E768F275E7E931109f8981 |
 
 ## Lens Sepolia (37111)
 

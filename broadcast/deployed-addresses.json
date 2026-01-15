@@ -614,7 +614,7 @@
       }
     },
     "4326": {
-      "chain_name": "MegaETH",
+      "chain_name": "Chain 4326",
       "contracts": {
         "SpokePool": {
           "address": "0x3db06da8f0a24a525f314eec954fc5c6a973d40e",
