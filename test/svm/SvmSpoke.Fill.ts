@@ -10,7 +10,6 @@ import {
   createKeyPairFromBytes,
   createSignerFromKeyPair,
   getProgramDerivedAddress,
-  IAccountMeta,
   pipe,
 } from "@solana/kit";
 import {
@@ -782,11 +781,11 @@ describe("svm_spoke.fill", () => {
           account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
         ),
       };
-      const remainingAccounts: IAccountMeta<string>[] = fillRemainingAccounts.map((account) => ({
+      const remainingAccounts = fillRemainingAccounts.map((account) => ({
         address: address(account.pubkey.toString()),
         role: AccountRole.WRITABLE,
       }));
-      (fillRelayIx.accounts as IAccountMeta<string>[]).push(...remainingAccounts);
+      fillRelayIx.accounts.push(...remainingAccounts);
 
       const tx = await pipe(
         await createDefaultTransaction(rpcClient, signer),
@@ -887,11 +886,11 @@ describe("svm_spoke.fill", () => {
           account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
         ),
       };
-      const remainingAccounts: IAccountMeta<string>[] = fillRemainingAccounts.map((account) => ({
+      const remainingAccounts = fillRemainingAccounts.map((account) => ({
         address: address(account.pubkey.toString()),
         role: AccountRole.WRITABLE,
       }));
-      (fillRelayIx.accounts as IAccountMeta<string>[]).push(...remainingAccounts);
+      fillRelayIx.accounts.push(...remainingAccounts);
 
       const alt = await createLookupTable(rpcClient, signer);
 
