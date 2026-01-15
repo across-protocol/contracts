@@ -26,15 +26,10 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
     // ============ Constants ============
 
     uint256 constant REPAYMENT_CHAIN_ID = 777;
-    // REFUND_PROPOSAL_LIVENESS, BOND_AMOUNT, FINAL_FEE inherited from HubPoolTestBase
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
     uint256 constant WETH_TO_SEND = 100 ether;
     uint256 constant DAI_TO_SEND = 1000 ether;
     uint256 constant WETH_LP_FEE = 1 ether;
     uint256 constant DAI_LP_FEE = 10 ether;
-
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
 
     // ============ Setup ============
 
@@ -63,18 +58,12 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
         liquidityProvider = makeAddr("liquidityProvider");
 
         // Seed dataWorker wallet: DAI tokens and WETH (bondAmount + finalFee) * 2
-        uint256 dataWorkerAmount = (BOND_AMOUNT + FINAL_FEE) * 2;
-        fixture.dai.mint(dataWorker, dataWorkerAmount);
-        vm.deal(dataWorker, dataWorkerAmount);
-        vm.prank(dataWorker);
-        fixture.weth.deposit{ value: dataWorkerAmount }();
+        fixture.dai.mint(dataWorker, TOTAL_BOND * 2);
+        seedUserWithWeth(dataWorker, TOTAL_BOND * 2);
 
         // Seed liquidityProvider wallet: DAI tokens and WETH amountToLp * 10
-        uint256 liquidityProviderAmount = AMOUNT_TO_LP * 10;
-        fixture.dai.mint(liquidityProvider, liquidityProviderAmount);
-        vm.deal(liquidityProvider, liquidityProviderAmount);
-        vm.prank(liquidityProvider);
-        fixture.weth.deposit{ value: liquidityProviderAmount }();
+        fixture.dai.mint(liquidityProvider, AMOUNT_TO_LP * 10);
+        seedUserWithWeth(liquidityProvider, AMOUNT_TO_LP * 10);
 
         // Add liquidity for WETH from liquidityProvider
         vm.prank(liquidityProvider);

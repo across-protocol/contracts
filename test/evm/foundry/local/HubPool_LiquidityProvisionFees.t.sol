@@ -25,13 +25,9 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
 
     // ============ Constants ============
 
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
     uint256 constant REPAYMENT_CHAIN_ID = 777;
-    uint256 constant TOKENS_SEND_TO_L2 = 100 ether;
-    uint256 constant REALIZED_LP_FEES = 10 ether;
-
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
+    uint256 constant TOKENS_TO_SEND = 100 ether;
+    uint256 constant LP_FEES = 10 ether;
 
     // ============ Setup ============
 
@@ -45,16 +41,10 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         liquidityProvider = makeAddr("liquidityProvider");
 
         // Seed dataWorker with WETH (bondAmount + finalFee) * 2
-        uint256 dataWorkerAmount = (BOND_AMOUNT + FINAL_FEE) * 2;
-        vm.deal(dataWorker, dataWorkerAmount);
-        vm.prank(dataWorker);
-        fixture.weth.deposit{ value: dataWorkerAmount }();
+        seedUserWithWeth(dataWorker, TOTAL_BOND * 2);
 
         // Seed liquidityProvider with WETH amountToLp * 10
-        uint256 liquidityProviderAmount = AMOUNT_TO_LP * 10;
-        vm.deal(liquidityProvider, liquidityProviderAmount);
-        vm.prank(liquidityProvider);
-        fixture.weth.deposit{ value: liquidityProviderAmount }();
+        seedUserWithWeth(liquidityProvider, AMOUNT_TO_LP * 10);
 
         // Enable WETH for LP (creates LP token)
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
@@ -94,45 +84,8 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(
             REPAYMENT_CHAIN_ID,
             address(0), // Will be set to WETH in tests
-            TOKENS_SEND_TO_L2,
-            REALIZED_LP_FEES
-        );
-    }
-
-    /**
-     * @notice Proposes a root bundle and warps past liveness period.
-     */
-    function _proposeRootBundle(bytes32 poolRebalanceRoot) internal {
-        uint256[] memory bundleEvaluationBlockNumbers = new uint256[](1);
-        bundleEvaluationBlockNumbers[0] = block.number;
-
-        vm.prank(dataWorker);
-        fixture.hubPool.proposeRootBundle(
-            bundleEvaluationBlockNumbers,
-            1,
-            poolRebalanceRoot,
-            MOCK_RELAYER_REFUND_ROOT,
-            MOCK_SLOW_RELAY_ROOT
-        );
-
-        // Warp past liveness period
-        vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
-    }
-
-    /**
-     * @notice Executes a leaf from the root bundle.
-     */
-    function _executeLeaf(HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32[] memory proof) internal {
-        vm.prank(dataWorker);
-        fixture.hubPool.executeRootBundle(
-            leaf.chainId,
-            leaf.groupIndex,
-            leaf.bundleLpFees,
-            leaf.netSendAmounts,
-            leaf.runningBalances,
-            leaf.leafId,
-            leaf.l1Tokens,
-            proof
+            TOKENS_TO_SEND,
+            LP_FEES
         );
     }
 
@@ -162,8 +115,9 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
 
         // Validate the post execution values have updated as expected. Liquid reserves should be the original LPed amount
         // minus the amount sent to L2. Utilized reserves should be the amount sent to L2 plus the attribute to LPs.
@@ -171,10 +125,10 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         (, , , utilizedReserves, liquidReserves, undistributedLpFees) = fixture.hubPool.pooledTokens(
             address(fixture.weth)
         );
-        assertEq(liquidReserves, AMOUNT_TO_LP - TOKENS_SEND_TO_L2);
+        assertEq(liquidReserves, AMOUNT_TO_LP - TOKENS_TO_SEND);
         // UtilizedReserves contains both the amount sent to L2 and the attributed LP fees.
-        assertEq(utilizedReserves, int256(TOKENS_SEND_TO_L2 + REALIZED_LP_FEES));
-        assertEq(undistributedLpFees, REALIZED_LP_FEES);
+        assertEq(utilizedReserves, int256(TOKENS_TO_SEND + LP_FEES));
+        assertEq(undistributedLpFees, LP_FEES);
     }
 
     function test_ExchangeRateCurrent_CorrectlyAttributesFeesOverSmearPeriod() public {
@@ -190,8 +144,9 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         // Exchange rate current before any fees are attributed execution should be 1.
         assertEq(fixture.hubPool.exchangeRateCurrent(address(fixture.weth)), 1e18);
 
-        _proposeRootBundle(root);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
 
         // Exchange rate current right after the refund execution should be the amount deposited, grown by the 100 second
         // liveness period. Of the 10 ETH attributed to LPs, a total of 10*0.0000015*7201=0.108015 was attributed to LPs.

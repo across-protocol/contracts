@@ -25,14 +25,9 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
 
     // ============ Constants ============
 
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
     uint256 constant REPAYMENT_CHAIN_ID = 3117;
     uint256 constant TOKENS_SEND_TO_L2 = 100 ether;
     uint256 constant REALIZED_LP_FEES = 10 ether;
-
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
-    bytes32 constant MOCK_TREE_ROOT = bytes32(uint256(0xabcd));
 
     // ============ Setup ============
 
@@ -47,16 +42,10 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
 
         // Seed dataWorker with WETH (bondAmount + finalFee) * 10 + extra for token transfers
         // Need enough for bonds + large token transfers (500 ether for dropped tokens test)
-        uint256 dataWorkerAmount = (BOND_AMOUNT + FINAL_FEE) * 10 + 600 ether;
-        vm.deal(dataWorker, dataWorkerAmount);
-        vm.prank(dataWorker);
-        fixture.weth.deposit{ value: dataWorkerAmount }();
+        seedUserWithWeth(dataWorker, TOTAL_BOND * 10 + 600 ether);
 
         // Seed liquidityProvider with WETH amountToLp * 10
-        uint256 liquidityProviderAmount = AMOUNT_TO_LP * 10;
-        vm.deal(liquidityProvider, liquidityProviderAmount);
-        vm.prank(liquidityProvider);
-        fixture.weth.deposit{ value: liquidityProviderAmount }();
+        seedUserWithWeth(liquidityProvider, AMOUNT_TO_LP * 10);
 
         // Enable WETH for LP (creates LP token)
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
@@ -93,51 +82,14 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
     function constructSingleChainTree(
         uint256 scalingSize
     ) internal pure returns (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) {
-        uint256 tokensSendToL2 = TOKENS_SEND_TO_L2 * scalingSize;
-        uint256 realizedLpFees = REALIZED_LP_FEES * scalingSize;
+        uint256 tokensToSend = TOKENS_SEND_TO_L2 * scalingSize;
+        uint256 lpFees = REALIZED_LP_FEES * scalingSize;
 
         (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(
             REPAYMENT_CHAIN_ID,
             address(0), // Will be set to WETH in tests
-            tokensSendToL2,
-            realizedLpFees
-        );
-    }
-
-    /**
-     * @notice Proposes a root bundle and warps past liveness period.
-     */
-    function _proposeRootBundle(bytes32 poolRebalanceRoot) internal {
-        uint256[] memory bundleEvaluationBlockNumbers = new uint256[](1);
-        bundleEvaluationBlockNumbers[0] = block.number;
-
-        vm.prank(dataWorker);
-        fixture.hubPool.proposeRootBundle(
-            bundleEvaluationBlockNumbers,
-            1,
-            poolRebalanceRoot,
-            MOCK_RELAYER_REFUND_ROOT,
-            MOCK_SLOW_RELAY_ROOT
-        );
-
-        // Warp past liveness period
-        vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
-    }
-
-    /**
-     * @notice Executes a leaf from the root bundle.
-     */
-    function _executeLeaf(HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32[] memory proof) internal {
-        vm.prank(dataWorker);
-        fixture.hubPool.executeRootBundle(
-            leaf.chainId,
-            leaf.groupIndex,
-            leaf.bundleLpFees,
-            leaf.netSendAmounts,
-            leaf.runningBalances,
-            leaf.leafId,
-            leaf.l1Tokens,
-            proof
+            tokensToSend,
+            lpFees
         );
     }
 
@@ -173,7 +125,8 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
 
         // Bond being paid in should not impact liquid reserves.
         _forceSync(address(fixture.weth));
@@ -181,7 +134,7 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         assertEq(liquidReserves, AMOUNT_TO_LP);
 
         // Counters should move once the root bundle is executed.
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
         (, , , utilizedReserves, liquidReserves, ) = fixture.hubPool.pooledTokens(address(fixture.weth));
         assertEq(liquidReserves, AMOUNT_TO_LP - TOKENS_SEND_TO_L2);
         assertEq(utilizedReserves, int256(TOKENS_SEND_TO_L2 + REALIZED_LP_FEES));
@@ -257,11 +210,12 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
 
         // Liquidity is not used until the relayerRefund is executed(i.e "pending" reserves are not considered).
         assertEq(fixture.hubPool.liquidityUtilizationCurrent(address(fixture.weth)), 0);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
 
         // Now that the liquidity is used (sent to L2) we should be able to find the utilization. This should simply be
         // the utilizedReserves / (liquidReserves + utilizedReserves) = 110 / (900 + 110) = 0.108910891089108910
@@ -340,11 +294,12 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
 
         // Liquidity is not used until the relayerRefund is executed(i.e "pending" reserves are not considered).
         assertEq(fixture.hubPool.liquidityUtilizationCurrent(address(fixture.weth)), 0);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
 
         // Now that the liquidity is used (sent to L2) we should be able to find the utilization. This should simply be
         // the utilizedReserves / (liquidReserves + utilizedReserves) = 110 / (900 + 110) = 0.108910891089108910
@@ -361,8 +316,9 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
         vm.warp(block.timestamp + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
         // Liquidity utilization should now be (550) / (500 + 550) = 0.523809523809523809. I.e utilization is over 50%.
@@ -410,11 +366,12 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
         vm.warp(block.timestamp + 10 * 24 * 60 * 60); // Move time to accumulate all fees.
 
-        // Send back to L1 the tokensSendToL2 + realizedLpFees, i.e to mimic the finalization of the relay.
+        // Send back to L1 the TOKENS_SEND_TO_L2 + REALIZED_LP_FEES, i.e to mimic the finalization of the relay.
         vm.prank(dataWorker);
         fixture.weth.transfer(address(fixture.hubPool), TOKENS_SEND_TO_L2 + REALIZED_LP_FEES);
 
@@ -450,8 +407,9 @@ contract HubPool_PooledTokenSynchronizationTest is HubPoolTestBase {
         assertEq(fixture.hubPool.exchangeRateCurrent(address(fixture.weth)), 1e18);
 
         // Going through a full refund lifecycle does returns to where we were before, with no memory of previous fees.
-        _proposeRootBundle(root);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
         // Note: Use getCurrentTime() instead of block.timestamp because block.timestamp may not reflect
         // the warp that happened inside _proposeRootBundle due to Foundry's handling of vm.warp in internal calls.
         vm.warp(fixture.hubPool.getCurrentTime() + 10 * 24 * 60 * 60); // Move time to accumulate all fees.

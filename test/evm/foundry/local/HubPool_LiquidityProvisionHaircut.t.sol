@@ -25,13 +25,9 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
 
     // ============ Constants ============
 
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
     uint256 constant REPAYMENT_CHAIN_ID = 777;
     uint256 constant TOKENS_SEND_TO_L2 = 100 ether;
     uint256 constant REALIZED_LP_FEES = 10 ether;
-
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
 
     // ============ Setup ============
 
@@ -45,16 +41,10 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
         liquidityProvider = makeAddr("liquidityProvider");
 
         // Seed dataWorker with WETH (bondAmount + finalFee) * 2
-        uint256 dataWorkerAmount = (BOND_AMOUNT + FINAL_FEE) * 2;
-        vm.deal(dataWorker, dataWorkerAmount);
-        vm.prank(dataWorker);
-        fixture.weth.deposit{ value: dataWorkerAmount }();
+        seedUserWithWeth(dataWorker, TOTAL_BOND * 2);
 
         // Seed liquidityProvider with WETH amountToLp * 10
-        uint256 liquidityProviderAmount = AMOUNT_TO_LP * 10;
-        vm.deal(liquidityProvider, liquidityProviderAmount);
-        vm.prank(liquidityProvider);
-        fixture.weth.deposit{ value: liquidityProviderAmount }();
+        seedUserWithWeth(liquidityProvider, AMOUNT_TO_LP * 10);
 
         // Enable WETH for LP (creates LP token)
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
@@ -99,43 +89,6 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
         );
     }
 
-    /**
-     * @notice Proposes a root bundle and warps past liveness period.
-     */
-    function _proposeRootBundle(bytes32 poolRebalanceRoot) internal {
-        uint256[] memory bundleEvaluationBlockNumbers = new uint256[](1);
-        bundleEvaluationBlockNumbers[0] = block.number;
-
-        vm.prank(dataWorker);
-        fixture.hubPool.proposeRootBundle(
-            bundleEvaluationBlockNumbers,
-            1,
-            poolRebalanceRoot,
-            MOCK_RELAYER_REFUND_ROOT,
-            MOCK_SLOW_RELAY_ROOT
-        );
-
-        // Warp past liveness period
-        vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
-    }
-
-    /**
-     * @notice Executes a leaf from the root bundle.
-     */
-    function _executeLeaf(HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32[] memory proof) internal {
-        vm.prank(dataWorker);
-        fixture.hubPool.executeRootBundle(
-            leaf.chainId,
-            leaf.groupIndex,
-            leaf.bundleLpFees,
-            leaf.netSendAmounts,
-            leaf.runningBalances,
-            leaf.leafId,
-            leaf.l1Tokens,
-            proof
-        );
-    }
-
     // ============ Tests ============
 
     function test_HaircutCanCorrectlyOffsetExchangeRateCurrentToEncapsulateLostTokens() public {
@@ -148,8 +101,9 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
         // Recalculate root with correct token address
         root = keccak256(abi.encode(leaf));
 
-        _proposeRootBundle(root);
-        _executeLeaf(leaf, MerkleTreeUtils.emptyProof());
+        vm.prank(dataWorker);
+        proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
 
         // Exchange rate current right after the refund execution should be the amount deposited, grown by the 100 second
         // liveness period. Of the 10 ETH attributed to LPs, a total of 10*0.0000015*7201=0.108015 was attributed to LPs.
@@ -165,7 +119,7 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
         vm.expectRevert();
         fixture.hubPool.removeLiquidity(address(fixture.weth), AMOUNT_TO_LP, false);
 
-        // Now, consider that the funds sent over the bridge (tokensSendToL2) are actually lost due to the L2 breaking.
+        // Now, consider that the funds sent over the bridge (TOKENS_SEND_TO_L2) are actually lost due to the L2 breaking.
         // We now need to haircut the LPs be modifying the exchange rate current such that they get a commensurate
         // redemption rate against the lost funds.
         fixture.hubPool.haircutReserves(address(fixture.weth), int256(TOKENS_SEND_TO_L2));

@@ -24,7 +24,6 @@ contract HubPool_LiquidityProvisionTest is HubPoolTestBase {
     // ============ Constants ============
 
     uint256 constant AMOUNT_TO_SEED_WALLETS = 1500 ether;
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
 
     // ============ Setup ============
 
@@ -54,9 +53,7 @@ contract HubPool_LiquidityProvisionTest is HubPoolTestBase {
         // Seed liquidity provider with tokens and ETH
         fixture.usdc.mint(liquidityProvider, AMOUNT_TO_SEED_WALLETS);
         fixture.dai.mint(liquidityProvider, AMOUNT_TO_SEED_WALLETS);
-        vm.deal(liquidityProvider, AMOUNT_TO_SEED_WALLETS);
-        vm.prank(liquidityProvider);
-        fixture.weth.deposit{ value: AMOUNT_TO_SEED_WALLETS }();
+        seedUserWithWeth(liquidityProvider, AMOUNT_TO_SEED_WALLETS);
     }
 
     // ============ Tests ============

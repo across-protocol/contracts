@@ -18,14 +18,6 @@ contract HubPool_DisputeRootBundleTest is HubPoolTestBase {
     address dataWorker;
     address liquidityProvider;
 
-    // ============ Constants ============
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
-    uint256 constant TOTAL_BOND = BOND_AMOUNT + FINAL_FEE;
-
-    bytes32 constant MOCK_POOL_REBALANCE_ROOT = bytes32(uint256(0xabc));
-    bytes32 constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
-    bytes32 constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
-
     // ============ Setup ============
 
     function setUp() public {
@@ -35,19 +27,16 @@ contract HubPool_DisputeRootBundleTest is HubPoolTestBase {
         liquidityProvider = makeAddr("liquidityProvider");
 
         // Fund data worker with WETH for bonds
-        vm.deal(dataWorker, TOTAL_BOND * 3); // Enough for multiple proposals/disputes
-        vm.startPrank(dataWorker);
-        fixture.weth.deposit{ value: TOTAL_BOND * 2 }();
+        seedUserWithWeth(dataWorker, TOTAL_BOND * 2);
+        vm.prank(dataWorker);
         fixture.weth.approve(address(fixture.hubPool), type(uint256).max);
-        vm.stopPrank();
 
         // Enable token for LP (as owner, matching Hardhat test)
         fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
 
         // Fund liquidity provider and add liquidity (matching Hardhat test structure)
-        vm.deal(liquidityProvider, AMOUNT_TO_LP + 10 ether);
+        seedUserWithWeth(liquidityProvider, AMOUNT_TO_LP);
         vm.startPrank(liquidityProvider);
-        fixture.weth.deposit{ value: AMOUNT_TO_LP }();
         fixture.weth.approve(address(fixture.hubPool), AMOUNT_TO_LP);
         fixture.hubPool.addLiquidity(address(fixture.weth), AMOUNT_TO_LP);
         vm.stopPrank();

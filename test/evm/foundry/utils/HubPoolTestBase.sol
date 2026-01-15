@@ -16,6 +16,7 @@ import { OptimisticOracleInterface } from "../../../../contracts/external/uma/co
 import { Constants } from "../../../../script/utils/Constants.sol";
 
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
+import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 
 // ============ UMA Ecosystem Mocks ============
 
@@ -322,10 +323,19 @@ abstract contract HubPoolTestBase is Test, Constants {
 
     uint256 public constant BOND_AMOUNT = 5 ether;
     uint256 public constant FINAL_FEE = 1 ether;
+    uint256 public constant TOTAL_BOND = BOND_AMOUNT + FINAL_FEE;
     uint256 public constant INITIAL_ETH = 100 ether;
     uint256 public constant LP_ETH_FUNDING = 10 ether;
     uint32 public constant REFUND_PROPOSAL_LIVENESS = 7200; // 2 hours
     bytes32 public constant DEFAULT_IDENTIFIER = bytes32("ACROSS-V2");
+
+    // Common test amounts
+    uint256 public constant AMOUNT_TO_LP = 1000 ether;
+
+    // Mock roots for bundle proposals
+    bytes32 public constant MOCK_POOL_REBALANCE_ROOT = bytes32(uint256(0xabc));
+    bytes32 public constant MOCK_RELAYER_REFUND_ROOT = bytes32(uint256(0x1234));
+    bytes32 public constant MOCK_SLOW_RELAY_ROOT = bytes32(uint256(0x5678));
 
     // ============ Internal Storage ============
 
@@ -468,5 +478,65 @@ abstract contract HubPoolTestBase is Test, Constants {
 
         // Warp past liveness period
         vm.warp(block.timestamp + fixture.hubPool.liveness() + 1);
+    }
+
+    /**
+     * @notice Proposes a root bundle and warps past liveness period.
+     * @param poolRebalanceRoot The pool rebalance merkle root
+     * @param relayerRefundRoot The relayer refund merkle root
+     * @param slowRelayRoot The slow relay merkle root
+     */
+    function proposeBundleAndAdvanceTime(
+        bytes32 poolRebalanceRoot,
+        bytes32 relayerRefundRoot,
+        bytes32 slowRelayRoot
+    ) internal {
+        proposeAndExecuteBundle(poolRebalanceRoot, relayerRefundRoot, slowRelayRoot);
+    }
+
+    /**
+     * @notice Executes a pool rebalance leaf from a root bundle.
+     * @param leaf The pool rebalance leaf to execute
+     * @param proof The merkle proof for the leaf
+     */
+    function executeLeaf(HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32[] memory proof) internal {
+        fixture.hubPool.executeRootBundle(
+            leaf.chainId,
+            leaf.groupIndex,
+            leaf.bundleLpFees,
+            leaf.netSendAmounts,
+            leaf.runningBalances,
+            leaf.leafId,
+            leaf.l1Tokens,
+            proof
+        );
+    }
+
+    /**
+     * @notice Seeds a user with ETH and WETH.
+     * @param user The address to seed
+     * @param amount The amount of ETH/WETH to seed
+     */
+    function seedUserWithWeth(address user, uint256 amount) internal {
+        vm.deal(user, amount);
+        vm.prank(user);
+        fixture.weth.deposit{ value: amount }();
+    }
+
+    /**
+     * @notice Sets up token routes for a destination chain.
+     * @param chainId The destination chain ID
+     * @param l2Weth The L2 WETH address
+     * @param l2Dai The L2 DAI address
+     * @param l2Usdc The L2 USDC address
+     */
+    function setupTokenRoutes(uint256 chainId, address l2Weth, address l2Dai, address l2Usdc) internal {
+        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.weth), l2Weth);
+        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.dai), l2Dai);
+        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.usdc), l2Usdc);
+
+        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
+        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.dai));
+        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdc));
     }
 }
