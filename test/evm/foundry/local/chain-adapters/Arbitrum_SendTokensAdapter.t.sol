@@ -118,5 +118,31 @@ contract Arbitrum_SendTokensAdapterTest is HubPoolTestBase {
             tokensToSendToL2,
             "Gateway allowance mismatch"
         );
+
+        // Verify outboundTransferCustomRefund was called exactly once
+        assertEq(
+            gatewayRouter.outboundTransferCustomRefundCallCount(),
+            1,
+            "outboundTransferCustomRefund should be called once"
+        );
+
+        // Verify outboundTransferCustomRefund was called with correct arguments
+        (
+            address calledL1Token,
+            address calledRefundTo,
+            address calledTo,
+            uint256 calledAmount,
+            uint256 calledMaxGas,
+            uint256 calledGasPriceBid,
+            bytes memory calledData
+        ) = gatewayRouter.lastOutboundTransferCustomRefundCall();
+
+        assertEq(calledL1Token, address(fixture.weth), "l1Token mismatch");
+        assertEq(calledRefundTo, refundAddress, "refundTo mismatch");
+        assertEq(calledTo, mockSpoke, "to mismatch");
+        assertEq(calledAmount, tokensToSendToL2, "amount mismatch");
+        assertEq(calledMaxGas, adapter.RELAY_TOKENS_L2_GAS_LIMIT(), "maxGas mismatch");
+        assertEq(calledGasPriceBid, adapter.l2GasPrice(), "gasPriceBid mismatch");
+        assertEq(calledData, expectedData, "data mismatch");
     }
 }
