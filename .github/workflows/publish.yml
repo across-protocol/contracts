@@ -23,6 +23,7 @@ env:
     typechain
     out
     cache-foundry
+    typechain-types
   SVM_ARTIFACTS_PATHS: |
     target/idl
     target/types

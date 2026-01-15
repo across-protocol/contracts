@@ -1,7 +1,8 @@
 const { subtask } = require("hardhat/config");
 const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
 
-const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+// add || process.env.CI === "true" once migrated away from hardhat typechain
+const isTest = process.env.IS_TEST === "true";
 
 subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
   const paths = await runSuper();
@@ -30,6 +31,7 @@ import { getNodeUrl } from "./utils";
 
 import "@nomicfoundation/hardhat-verify"; // Must be above hardhat-upgrades
 import "@nomiclabs/hardhat-waffle";
+import "@typechain/hardhat";
 import "@matterlabs/hardhat-zksync-solc";
 import "@matterlabs/hardhat-zksync-verify";
 import "@matterlabs/hardhat-zksync-upgradable";
@@ -381,6 +383,10 @@ const config: HardhatUserConfig = {
     ],
   },
   namedAccounts: { deployer: 0 },
+  typechain: {
+    outDir: "./typechain",
+    target: "ethers-v5",
+  },
   paths: {
     tests: "./test/evm/hardhat",
   },
