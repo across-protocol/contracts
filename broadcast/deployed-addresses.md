@@ -9,7 +9,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | AcrossConfigStore            | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
 | AcrossMerkleDistributor      | [0xE50b2cEAC4f60E840Ae513924033E753e2366487](https://etherscan.io/address/0xE50b2cEAC4f60E840Ae513924033E753e2366487) |
 | AdapterStore                 | [0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b](https://etherscan.io/address/0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b) |
-| AlephZero_Adapter            | [0x6F4083304C2cA99B077ACE06a5DcF670615915Af](https://etherscan.io/address/0x6F4083304C2cA99B077ACE06a5DcF670615915Af) |
 | Arbitrum_Adapter             | [0x5eC9844936875E27eBF22172f4d92E107D35B57C](https://etherscan.io/address/0x5eC9844936875E27eBF22172f4d92E107D35B57C) |
 | Arbitrum_Adapter             | [0xc0b6d2f794cc787C71f2cA5ceCD57102C32379B3](https://etherscan.io/address/0xc0b6d2f794cc787C71f2cA5ceCD57102C32379B3) |
 | Arbitrum_RescueAdapter       | [0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375](https://etherscan.io/address/0xC6fA0a4EBd802c01157d6E7fB1bbd2ae196ae375) |
@@ -33,8 +32,10 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Linea_Adapter                | [0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787](https://etherscan.io/address/0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787) |
 | Lisk_Adapter                 | [0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b](https://etherscan.io/address/0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b) |
 | LpTokenFactory               | [0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d](https://etherscan.io/address/0x7dB69eb9F52eD773E9b03f5068A1ea0275b2fD9d) |
+| Megaeth_Adapter              | [0xE1f04404b74F996A311F13aE291849fC153578Ac](https://etherscan.io/address/0xE1f04404b74F996A311F13aE291849fC153578Ac) |
 | Mode_Adapter                 | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | MulticallHandler             | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| OP_Adapter                   | [0xE1f04404b74F996A311F13aE291849fC153578Ac](https://etherscan.io/address/0xE1f04404b74F996A311F13aE291849fC153578Ac) |
 | Optimism_Adapter             | [0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b](https://etherscan.io/address/0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b) |
 | Optimism_Adapter             | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionedMulticallHandler | [0x64a43393866DBA0044879979fAa7AD3d000622e9](https://etherscan.io/address/0x64a43393866DBA0044879979fAa7AD3d000622e9) |
@@ -42,7 +43,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Polygon_Adapter              | [0xF71F1e20F75820b484F8A0959C2D9E5cdd89c9F0](https://etherscan.io/address/0xF71F1e20F75820b484F8A0959C2D9E5cdd89c9F0) |
 | Polygon_Adapter              | [0x537abE038C223066B50312474409924487D2E655](https://etherscan.io/address/0x537abE038C223066B50312474409924487D2E655) |
 | PolygonTokenBridger          | [0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57](https://etherscan.io/address/0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57) |
-| Redstone_Adapter             | [0x188F8C95B7cfB7993B53a4F643efa687916f73fA](https://etherscan.io/address/0x188F8C95B7cfB7993B53a4F643efa687916f73fA) |
 | Scroll_Adapter               | [0x2DA799c2223c6ffB595e578903AE6b95839160d8](https://etherscan.io/address/0x2DA799c2223c6ffB595e578903AE6b95839160d8) |
 | Solana_Adapter               | [0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3](https://etherscan.io/address/0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3) |
 | SpokePool                    | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
@@ -158,16 +158,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://worldchain-mainnet-explorer.alchemy.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery | [0x1c8243198570658f818FC56538f2c837C2a32958](https://worldchain-mainnet-explorer.alchemy.com/address/0x1c8243198570658f818FC56538f2c837C2a32958) |
 
-## Redstone (690)
-
-| Contract Name      | Address                                                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.redstone.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| Redstone_SpokePool | [0x78D8CB7284B14c123a2e81A3246494e8DAd873E4](https://explorer.redstone.xyz/address/0x78D8CB7284B14c123a2e81A3246494e8DAd873E4) |
-| SpokePool          | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://explorer.redstone.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
-| SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://explorer.redstone.xyz/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.redstone.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-
 ## HyperEVM (999)
 
 | Contract Name                | Address                                                                                                                   |
@@ -202,6 +192,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://soneium.blockscout.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://soneium.blockscout.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+
+## MegaETH (4326)
+
+| Contract Name      | Address                                                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4](https://megaeth.blockscout.com/address/0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4) |
+| OP_SpokePool       | [0x9b4A302A548c7e313c2b74C461db7b84d3074A84](https://megaeth.blockscout.com/address/0x9b4A302A548c7e313c2b74C461db7b84d3074A84) |
+| SpokePool          | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| SpokePool          | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| SpokePoolPeriphery | [0xf0aBCe137a493185c5E768F275E7E931109f8981](https://megaeth.blockscout.com/address/0xf0aBCe137a493185c5E768F275E7E931109f8981) |
 
 ## Base (8453)
 

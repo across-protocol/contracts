@@ -51,8 +51,6 @@ contract Constants is Script {
         address scrollGasPriceOracle;
         address blastYieldManager;
         address blastDaiRetriever;
-        address l1AlephZeroInbox;
-        address l1AlephZeroERC20GatewayRouter;
         address adapterStore;
         address donationBox;
         address hubPoolStore;
@@ -144,14 +142,6 @@ contract Constants is Script {
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastDaiRetriever")
                     ),
-                    l1AlephZeroInbox: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroInbox")
-                    ),
-                    l1AlephZeroERC20GatewayRouter: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroERC20GatewayRouter")
-                    ),
                     adapterStore: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".adapterStore")
@@ -237,6 +227,11 @@ contract Constants is Script {
 
     function getWrappedNativeToken(uint256 chainId) public view returns (address) {
         return vm.parseJsonAddress(file, string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId)));
+    }
+
+    // Get the permit2 address for the input chain.
+    function getPermit2(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".L2_ADDRESS_MAP.", vm.toString(chainId), ".permit2"));
     }
 
     /**
