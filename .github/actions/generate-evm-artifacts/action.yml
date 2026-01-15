@@ -27,12 +27,6 @@ runs:
     - name: Build Foundry
       shell: bash
       run: FOUNDRY_PROFILE=local forge build
-    - name: Generate Typechain artifacts
-      shell: bash
-      run: npx ts-node scripts/typechainArtifacts.ts
-    - name: Generate Typechain
-      shell: bash
-      run: npx typechain --target ethers-v5 "typechain-artifacts/**/*.json" --out-dir typechain-types
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:
