@@ -3,6 +3,7 @@ import {
   AddressesByLookupTableAddress,
   appendTransactionMessageInstruction,
   appendTransactionMessageInstructions,
+  assertIsTransactionWithBlockhashLifetime,
   assertIsTransactionWithinSizeLimit,
   BaseTransactionMessage,
   Commitment,
@@ -38,6 +39,7 @@ export const signAndSendTransaction = async (
   commitment: Commitment = "confirmed"
 ) => {
   const signedTransaction = await signTransactionMessageWithSigners(transactionMessage);
+  assertIsTransactionWithBlockhashLifetime(signedTransaction);
   assertIsTransactionWithinSizeLimit(signedTransaction);
   const signature = getSignatureFromTransaction(signedTransaction);
   await sendAndConfirmTransactionFactory(rpcClient)(signedTransaction, {
@@ -71,6 +73,7 @@ export async function sendTransactionWithLookupTable(
     (tx) => signTransactionMessageWithSigners(tx),
     async (tx) => {
       const signedTx = await tx;
+      assertIsTransactionWithBlockhashLifetime(signedTx);
       assertIsTransactionWithinSizeLimit(signedTx);
       await sendAndConfirmTransactionFactory(client)(signedTx, {
         commitment: "confirmed",
