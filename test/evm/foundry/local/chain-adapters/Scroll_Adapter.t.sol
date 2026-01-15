@@ -2,15 +2,15 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
-import { Scroll_Adapter } from "../../../../contracts/chain-adapters/Scroll_Adapter.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
+import { Scroll_Adapter } from "../../../../../contracts/chain-adapters/Scroll_Adapter.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
 
 // Mocks - only need MockSpokePool for the target
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
+import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 
 // Scroll interfaces
 import { IL1GatewayRouter } from "@scroll-tech/contracts/L1/gateways/IL1GatewayRouter.sol";

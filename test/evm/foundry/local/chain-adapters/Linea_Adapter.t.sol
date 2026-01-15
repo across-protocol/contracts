@@ -2,22 +2,22 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
-import { Linea_Adapter } from "../../../../contracts/chain-adapters/Linea_Adapter.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
-import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
-import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
+import { Linea_Adapter } from "../../../../../contracts/chain-adapters/Linea_Adapter.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
+import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAdapter.sol";
+import { WETH9Interface } from "../../../../../contracts/external/interfaces/WETH9Interface.sol";
 
 // Mocks
-import { MockCCTPMinter, MockCCTPMessengerV2 } from "../../../../contracts/test/MockCCTP.sol";
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-import { ITokenMessenger, ITokenMinter } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { MockCCTPMinter, MockCCTPMessengerV2 } from "../../../../../contracts/test/MockCCTP.sol";
+import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
+import { ITokenMessenger, ITokenMinter } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // Linea interfaces
-import { IMessageService, ITokenBridge } from "../../../../contracts/external/interfaces/LineaInterfaces.sol";
+import { IMessageService, ITokenBridge } from "../../../../../contracts/external/interfaces/LineaInterfaces.sol";
 
 // Function selectors
 bytes4 constant SEND_MESSAGE_SELECTOR = bytes4(keccak256("sendMessage(address,uint256,bytes)"));

@@ -23,6 +23,20 @@ contract ArbitrumMockErc20GatewayRouter {
         bytes data
     );
 
+    // Call tracking for test assertions (smock-like behavior)
+    uint256 public outboundTransferCustomRefundCallCount;
+
+    struct OutboundTransferCustomRefundCall {
+        address l1Token;
+        address refundTo;
+        address to;
+        uint256 amount;
+        uint256 maxGas;
+        uint256 gasPriceBid;
+        bytes data;
+    }
+    OutboundTransferCustomRefundCall public lastOutboundTransferCustomRefundCall;
+
     function setGateway(address _gateway) external {
         gateway = _gateway;
     }
@@ -36,6 +50,16 @@ contract ArbitrumMockErc20GatewayRouter {
         uint256 _gasPriceBid,
         bytes calldata _data
     ) external payable returns (bytes memory) {
+        outboundTransferCustomRefundCallCount++;
+        lastOutboundTransferCustomRefundCall = OutboundTransferCustomRefundCall(
+            _l1Token,
+            _refundTo,
+            _to,
+            _amount,
+            _maxGas,
+            _gasPriceBid,
+            _data
+        );
         emit OutboundTransferCustomRefundCalled(_l1Token, _refundTo, _to, _amount, _maxGas, _gasPriceBid, _data);
         return _data;
     }
@@ -70,6 +94,21 @@ contract Inbox {
         bytes data
     );
 
+    // Call tracking for test assertions (smock-like behavior)
+    uint256 public createRetryableTicketCallCount;
+
+    struct CreateRetryableTicketCall {
+        address destAddr;
+        uint256 l2CallValue;
+        uint256 maxSubmissionCost;
+        address excessFeeRefundAddress;
+        address callValueRefundAddress;
+        uint256 maxGas;
+        uint256 gasPriceBid;
+        bytes data;
+    }
+    CreateRetryableTicketCall public lastCreateRetryableTicketCall;
+
     function createRetryableTicket(
         address _destAddr,
         uint256 _l2CallValue,
@@ -80,6 +119,17 @@ contract Inbox {
         uint256 _gasPriceBid,
         bytes memory _data
     ) external payable returns (uint256) {
+        createRetryableTicketCallCount++;
+        lastCreateRetryableTicketCall = CreateRetryableTicketCall(
+            _destAddr,
+            _l2CallValue,
+            _maxSubmissionCost,
+            _excessFeeRefundAddress,
+            _callValueRefundAddress,
+            _maxGas,
+            _gasPriceBid,
+            _data
+        );
         emit RetryableTicketCreated(
             _destAddr,
             _l2CallValue,

@@ -5,22 +5,22 @@ import { Test } from "forge-std/Test.sol";
 
 import { ERC20, IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import { IOpUSDCBridgeAdapter } from "../../../../contracts/external/interfaces/IOpUSDCBridgeAdapter.sol";
-import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { IOpUSDCBridgeAdapter } from "../../../../../contracts/external/interfaces/IOpUSDCBridgeAdapter.sol";
+import { ITokenMessenger } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
-import { OP_Adapter } from "../../../../contracts/chain-adapters/OP_Adapter.sol";
-import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
-import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
-import { WETH9 } from "../../../../contracts/external/WETH9.sol";
+import { OP_Adapter } from "../../../../../contracts/chain-adapters/OP_Adapter.sol";
+import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAdapter.sol";
+import { WETH9Interface } from "../../../../../contracts/external/interfaces/WETH9Interface.sol";
+import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Mocks
-import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
+import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
+import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
 
 /**
  * @title MockOpUSDCBridge

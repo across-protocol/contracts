@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
 
 // Contract under test
-import { Arbitrum_SendTokensAdapter, ArbitrumL1ERC20GatewayLike } from "../../../../contracts/chain-adapters/Arbitrum_SendTokensAdapter.sol";
+import { Arbitrum_SendTokensAdapter, ArbitrumL1ERC20GatewayLike } from "../../../../../contracts/chain-adapters/Arbitrum_SendTokensAdapter.sol";
 
 // Existing mocks
-import { ArbitrumMockErc20GatewayRouter } from "../../../../contracts/test/ArbitrumMocks.sol";
+import { ArbitrumMockErc20GatewayRouter } from "../../../../../contracts/test/ArbitrumMocks.sol";
 
 /**
  * @title Arbitrum_SendTokensAdapterTest

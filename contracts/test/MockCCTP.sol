@@ -32,6 +32,9 @@ contract MockCCTPMessenger is ITokenMessenger {
     }
     DepositForBurnCall public lastDepositForBurnCall;
 
+    // Store all calls for multi-call verification (smock's atCall behavior)
+    DepositForBurnCall[] public depositForBurnCalls;
+
     constructor(ITokenMinter _minter) {
         minter = _minter;
     }
@@ -44,12 +47,23 @@ contract MockCCTPMessenger is ITokenMessenger {
     ) external returns (uint64 _nonce) {
         depositForBurnCallCount++;
         lastDepositForBurnCall = DepositForBurnCall(_amount, _destinationDomain, _mintRecipient, _burnToken);
+        depositForBurnCalls.push(lastDepositForBurnCall);
         emit DepositForBurnCalled(_amount, _destinationDomain, _mintRecipient, _burnToken);
         return 0;
     }
 
     function localMinter() external view returns (ITokenMinter) {
         return minter;
+    }
+
+    /**
+     * @notice Get a specific depositForBurn call by index (smock's atCall behavior).
+     */
+    function getDepositForBurnCall(
+        uint256 index
+    ) external view returns (uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken) {
+        DepositForBurnCall memory call = depositForBurnCalls[index];
+        return (call.amount, call.destinationDomain, call.mintRecipient, call.burnToken);
     }
 }
 

@@ -2,16 +2,16 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
-import { Ethereum_Adapter } from "../../../../contracts/chain-adapters/Ethereum_Adapter.sol";
-import { AdapterInterface } from "../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
+import { Ethereum_Adapter } from "../../../../../contracts/chain-adapters/Ethereum_Adapter.sol";
+import { AdapterInterface } from "../../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
 
 // Existing mocks
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
+import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 
 /**
  * @title Ethereum_AdapterTest

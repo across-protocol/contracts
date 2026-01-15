@@ -2,17 +2,17 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
-import { PolygonZkEVM_Adapter } from "../../../../contracts/chain-adapters/PolygonZkEVM_Adapter.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
-import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
-import { IPolygonZkEVMBridge } from "../../../../contracts/external/interfaces/IPolygonZkEVMBridge.sol";
+import { PolygonZkEVM_Adapter } from "../../../../../contracts/chain-adapters/PolygonZkEVM_Adapter.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
+import { WETH9Interface } from "../../../../../contracts/external/interfaces/WETH9Interface.sol";
+import { IPolygonZkEVMBridge } from "../../../../../contracts/external/interfaces/IPolygonZkEVMBridge.sol";
 
 // Mocks - only need MockSpokePool for the target
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
+import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 
 // Function selectors
 bytes4 constant BRIDGE_MESSAGE_SELECTOR = bytes4(keccak256("bridgeMessage(uint32,address,bool,bytes)"));

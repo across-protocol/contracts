@@ -2,19 +2,19 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
-import { Solana_Adapter } from "../../../../contracts/chain-adapters/Solana_Adapter.sol";
-import { AdapterInterface } from "../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
-import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
-import { Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
+import { Solana_Adapter } from "../../../../../contracts/chain-adapters/Solana_Adapter.sol";
+import { AdapterInterface } from "../../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
+import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAdapter.sol";
+import { Bytes32ToAddress } from "../../../../../contracts/libraries/AddressConverters.sol";
 
 // CCTP mocks
-import { MockCCTPMinter, MockCCTPMessenger, MockCCTPMessageTransmitter } from "../../../../contracts/test/MockCCTP.sol";
-import { ITokenMessenger, IMessageTransmitter } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { MockCCTPMinter, MockCCTPMessenger, MockCCTPMessageTransmitter } from "../../../../../contracts/test/MockCCTP.sol";
+import { ITokenMessenger, IMessageTransmitter } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 /**
  * @title Solana_AdapterTest

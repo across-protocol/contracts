@@ -2,21 +2,21 @@
 pragma solidity ^0.8.0;
 
 // Test utilities
-import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
+import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
-import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_Adapter.sol";
-import { AdapterInterface } from "../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
-import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
-import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
+import { Optimism_Adapter } from "../../../../../contracts/chain-adapters/Optimism_Adapter.sol";
+import { AdapterInterface } from "../../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
+import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
+import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAdapter.sol";
+import { WETH9Interface } from "../../../../../contracts/external/interfaces/WETH9Interface.sol";
 
 // Mocks
-import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
-import { MockCCTPMinter, MockCCTPMessenger } from "../../../../contracts/test/MockCCTP.sol";
-import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
+import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
+import { MockCCTPMinter, MockCCTPMessenger } from "../../../../../contracts/test/MockCCTP.sol";
+import { ITokenMessenger } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
 /**
