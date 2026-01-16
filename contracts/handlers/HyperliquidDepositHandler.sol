@@ -54,6 +54,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     error NotSpokePool();
     error AccountAlreadyActivated();
     error CannotActivateAccount();
+    error UnknownAccountActivationMode();
 
     enum AccountActivationMode {
         None, // 0: No activation expected/needed (revert if user doesn't exist)
@@ -136,6 +137,8 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             (address user, bytes memory signature) = abi.decode(message[1:], (address, bytes));
             _verifySignature(user, signature);
             _depositToHypercore(token, amount, user, mode);
+        } else {
+            revert UnknownAccountActivationMode();
         }
     }
 
