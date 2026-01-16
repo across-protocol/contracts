@@ -200,10 +200,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             quoteNonce: quote.nonce,
             finalRecipient: quote.finalRecipient.toAddress(),
             // If the quote is invalid we don't want to swap, so we use the base token as the final token
-            finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
+            finalToken: quote.finalToken.toAddress(),
             destinationDex: quote.destinationDex,
             // If the quote is invalid we don't sponsor the flow or the extra fees
-            maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
+            maxBpsToSponsor: quote.maxBpsToSponsor,
             extraFeesIncurred: feeExecuted,
             accountCreationMode: StructsAccountCreationMode(quote.accountCreationMode)
         });
