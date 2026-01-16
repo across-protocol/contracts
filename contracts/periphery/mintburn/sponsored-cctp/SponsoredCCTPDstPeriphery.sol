@@ -191,7 +191,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         // Validate the quote and the signature. Revert on invalid to prevent griefing attacks
         // where an attacker provides correct message/attestation but invalid signature.
         _validateQuoteOrRevert(quote, signature);
-        _getMainStorage().usedNonces[quote.nonce] = true;
 
         uint256 amountAfterFees = quote.amount - feeExecuted;
 
@@ -249,7 +248,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     function _validateQuoteOrRevert(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         bytes memory signature
-    ) internal view {
+    ) internal {
         MainStorage storage $ = _getMainStorage();
 
         if (!SponsoredCCTPQuoteLib.validateSignature($.signer, quote, signature)) {
@@ -261,6 +260,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         if (quote.deadline + $.quoteDeadlineBuffer < block.timestamp) {
             revert InvalidDeadline();
         }
+
+        $.usedNonces[quote.nonce] = true;
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
