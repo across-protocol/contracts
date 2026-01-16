@@ -227,31 +227,29 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
 
     function _depositToHypercore(address token, uint256 evmAmount, address user, AccountActivationMode mode) internal {
         TokenInfo memory tokenInfo = _getTokenInfo(token);
-        uint256 accountActivationFeeEVM = tokenInfo.activationFeeEvm;
         int8 decimalDiff = tokenInfo.decimalDiff;
         uint256 totalEvmAmount = evmAmount;
         uint64 accountActivationFeeCore = 0;
 
-        if (!HyperCoreLib.coreUserExists(user)) {
+        bool userExists = HyperCoreLib.coreUserExists(user);
+        if (!userExists) {
             if (mode == AccountActivationMode.None) revert CannotActivateAccount();
             if (accountsActivated[user]) revert AccountAlreadyActivated();
             accountsActivated[user] = true;
+            uint256 activationFee = tokenInfo.activationFeeEvm;
 
-            (, accountActivationFeeCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-                accountActivationFeeEVM,
-                decimalDiff
-            );
+            (, accountActivationFeeCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(activationFee, decimalDiff);
 
             if (mode == AccountActivationMode.FromDonationBox) {
-                donationBox.withdraw(IERC20(token), accountActivationFeeEVM);
-                totalEvmAmount += accountActivationFeeEVM;
+                donationBox.withdraw(IERC20(token), activationFee);
+                totalEvmAmount += activationFee;
             } else {
                 // todo? We might want to actually just skip this branch. Or keep it for the event w/ clear revert reason
                 (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
                 if (depositCore <= accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
             }
 
-            emit UserAccountActivated(user, token, accountActivationFeeEVM);
+            emit UserAccountActivated(user, token, activationFee);
         }
 
         HyperCoreLib.transferERC20EVMToCore(
