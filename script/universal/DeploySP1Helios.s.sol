@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { SP1Helios } from "../contracts/sp1-helios/SP1Helios.sol";
+import { SP1Helios } from "../../contracts/sp1-helios/SP1Helios.sol";
 import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 
 /// @title DeploySP1Helios
@@ -151,6 +151,9 @@ contract DeploySP1Helios is Script {
         vm.ffi(downloadCmd);
         console.log("Download complete");
 
+        // Verify checksum before executing the binary
+        verifyBinaryChecksum(binaryName, binaryPath);
+
         // Make executable
         string[] memory chmodCmd = new string[](3);
         chmodCmd[0] = "chmod";
@@ -198,5 +201,57 @@ contract DeploySP1Helios is Script {
             console.log("Detected platform: Linux (amd64_linux)");
             return "amd64_linux";
         }
+    }
+
+    /// @notice Verifies the downloaded binary's checksum against the expected value from checksums.json
+    /// @param binaryName The name of the binary (used as key in checksums.json)
+    /// @param binaryPath The path to the downloaded binary
+    function verifyBinaryChecksum(string memory binaryName, string memory binaryPath) internal {
+        console.log("Verifying binary checksum...");
+
+        // Read expected checksum from checksums.json
+        string memory root = vm.projectRoot();
+        string memory checksumsPath = string.concat(root, "/script/universal/checksums.json");
+        string memory checksumsJson = vm.readFile(checksumsPath);
+
+        // Get expected checksum for this binary
+        // Use bracket notation to handle dots/hyphens in the key (e.g., "0.1.0-alpha.19")
+        string memory jsonKey = string.concat('["', binaryName, '"]');
+
+        // Check if the binary version exists in checksums.json
+        if (!vm.keyExistsJson(checksumsJson, jsonKey)) {
+            console.log("ERROR: No checksum found for binary:", binaryName);
+            console.log("Please add the checksum to script/universal/checksums.json");
+            console.log("To calculate the checksum, run: sha256sum <binary-path>");
+            revert("Binary version not found in checksums.json - please add checksum or use a supported version");
+        }
+
+        string memory expectedChecksum = vm.parseJsonString(checksumsJson, jsonKey);
+        console.log("Expected checksum:", expectedChecksum);
+
+        // Calculate actual checksum using sha256sum
+        string[] memory checksumCmd = new string[](2);
+        checksumCmd[0] = "sha256sum";
+        checksumCmd[1] = binaryPath;
+        bytes memory checksumOutput = vm.ffi(checksumCmd);
+
+        // sha256sum output format: "<hash>  <filename>\n"
+        // Extract just the hash (first 64 characters)
+        bytes memory actualChecksumBytes = new bytes(64);
+        for (uint256 i = 0; i < 64; i++) {
+            actualChecksumBytes[i] = checksumOutput[i];
+        }
+        string memory actualChecksum = string(actualChecksumBytes);
+        console.log("Actual checksum:", actualChecksum);
+
+        // Compare checksums
+        if (keccak256(bytes(expectedChecksum)) != keccak256(bytes(actualChecksum))) {
+            console.log("ERROR: Checksum mismatch!");
+            console.log("Expected:", expectedChecksum);
+            console.log("Actual:", actualChecksum);
+            revert("Binary checksum verification failed - possible tampering detected");
+        }
+
+        console.log("Checksum verified successfully");
     }
 }
