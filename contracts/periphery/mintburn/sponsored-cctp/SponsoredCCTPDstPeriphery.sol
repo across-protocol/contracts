@@ -188,11 +188,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
-        // Validate the quote and the signature.
-        bool isQuoteValid = _isQuoteValid(quote, signature);
-        if (isQuoteValid) {
-            _getMainStorage().usedNonces[quote.nonce] = true;
-        }
+        // Validate the quote and the signature. Revert on invalid to prevent griefing attacks
+        // where an attacker provides correct message/attestation but invalid signature.
+        _validateQuoteOrRevert(quote, signature);
+        _getMainStorage().usedNonces[quote.nonce] = true;
 
         uint256 amountAfterFees = quote.amount - feeExecuted;
 
@@ -211,9 +210,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
         // Route to appropriate execution based on executionMode
         if (
-            isQuoteValid &&
-            (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
-                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
+            quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
+            quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM)
         ) {
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
@@ -241,15 +239,28 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         return SponsoredCCTPQuoteLib.validateMessage(message);
     }
 
-    function _isQuoteValid(
+    /**
+     * @notice Validates the quote and signature, reverting with specific errors if invalid.
+     * @dev This prevents griefing attacks where an attacker provides correct message/attestation
+     * but an invalid signature, which would otherwise cause loss of sponsorship and custom actions.
+     * @param quote The quote to validate.
+     * @param signature The signature to validate against the quote.
+     */
+    function _validateQuoteOrRevert(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         bytes memory signature
-    ) internal view returns (bool) {
+    ) internal view {
         MainStorage storage $ = _getMainStorage();
-        return
-            SponsoredCCTPQuoteLib.validateSignature($.signer, quote, signature) &&
-            !$.usedNonces[quote.nonce] &&
-            quote.deadline + $.quoteDeadlineBuffer >= block.timestamp;
+
+        if (!SponsoredCCTPQuoteLib.validateSignature($.signer, quote, signature)) {
+            revert InvalidSignature();
+        }
+        if ($.usedNonces[quote.nonce]) {
+            revert InvalidNonce();
+        }
+        if (quote.deadline + $.quoteDeadlineBuffer < block.timestamp) {
+            revert InvalidDeadline();
+        }
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
