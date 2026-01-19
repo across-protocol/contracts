@@ -162,8 +162,8 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                | Address                                                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| DonationBox                  | [0x039d62C549F27ead0eB9B567d8776289e5020583](https://hyperevmscan.io//address/0x039d62C549F27ead0eB9B567d8776289e5020583) |
 | DonationBox                  | [0x3D589D40312Bf2d20f13cD0AF26A11144a9cA844](https://hyperevmscan.io//address/0x3D589D40312Bf2d20f13cD0AF26A11144a9cA844) |
+| DonationBox                  | [0x039d62C549F27ead0eB9B567d8776289e5020583](https://hyperevmscan.io//address/0x039d62C549F27ead0eB9B567d8776289e5020583) |
 | DstOFTHandler                | [0xc8786D517b4e224bB43985A38dBeF8588D7354CD](https://hyperevmscan.io//address/0xc8786D517b4e224bB43985A38dBeF8588D7354CD) |
 | Helios                       | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | HyperliquidDepositHandler    | [0x861E127036B28D32f3777B4676F6bbb9e007d195](https://hyperevmscan.io//address/0x861E127036B28D32f3777B4676F6bbb9e007d195) |
