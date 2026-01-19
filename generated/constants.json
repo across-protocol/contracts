@@ -698,6 +698,8 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "57073": {
+      "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "59144": {
@@ -852,6 +854,7 @@
         "L1StandardBridge": "0x735aDBbE72226BD52e818E7181953f42E3b0FF21"
       },
       "57073": {
+        "L1BlastBridge": "0x0000000000000000000000000000000000000000",
         "L1CrossDomainMessenger": "0x69d3cf86b2bf1a9e99875b7e2d9b6a84426c171f",
         "L1StandardBridge": "0x88ff1e5b602916615391f55854588efcbb7663f0",
         "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000"
