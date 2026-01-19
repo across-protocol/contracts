@@ -258,7 +258,7 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 52135703
         },
-        "Helios": {
+        "SP1Helios": {
           "address": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
           "block_number": 69434159
         }
@@ -363,7 +363,7 @@
     "143": {
       "chain_name": "Monad",
       "contracts": {
-        "Helios": {
+        "SP1Helios": {
           "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
           "block_number": 36241473
         },
@@ -492,7 +492,7 @@
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
           "block_number": 14459886
         },
-        "Helios": {
+        "SP1Helios": {
           "address": "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
           "block_number": 20185101
         },
@@ -642,7 +642,7 @@
     "9745": {
       "chain_name": "Plasma",
       "contracts": {
-        "Helios": {
+        "SP1Helios": {
           "address": "0x6f1cd5f317a7228269eab2b496313862de712ccb",
           "block_number": 7166956
         },
