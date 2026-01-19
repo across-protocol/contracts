@@ -64,13 +64,8 @@ interface JsonOutput {
  * Get the git repository root directory.
  */
 function getGitRoot(): string {
-  try {
-    const output = execSync("git rev-parse --show-toplevel", { encoding: "utf8" });
-    return output.trim();
-  } catch (error) {
-    // Fallback to current working directory if not in a git repo
-    return process.cwd();
-  }
+  const output = execSync("git rev-parse --show-toplevel", { encoding: "utf8" });
+  return output.trim();
 }
 
 /**
@@ -78,27 +73,22 @@ function getGitRoot(): string {
  * This excludes untracked local files that haven't been staged.
  */
 function getTrackedFiles(directory: string): Set<string> {
-  try {
-    const gitRoot = getGitRoot();
-    const relativeDir = path.relative(gitRoot, directory);
+  const gitRoot = getGitRoot();
+  const relativeDir = path.relative(gitRoot, directory);
 
-    // git ls-files returns files that are in the index (committed or staged)
-    const output = execSync(`git ls-files "${relativeDir}"`, {
-      encoding: "utf8",
-      cwd: gitRoot,
-    });
+  // git ls-files returns files that are in the index (committed or staged)
+  const output = execSync(`git ls-files "${relativeDir}"`, {
+    encoding: "utf8",
+    cwd: gitRoot,
+  });
 
-    return new Set(
-      output
-        .trim()
-        .split("\n")
-        .filter(Boolean)
-        .map((f) => path.resolve(gitRoot, f))
-    );
-  } catch (error) {
-    console.error("Error getting tracked files from git:", error);
-    return new Set();
-  }
+  return new Set(
+    output
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((f) => path.resolve(gitRoot, f))
+  );
 }
 
 function findBroadcastFiles(broadcastDir: string): BroadcastFile[] {
