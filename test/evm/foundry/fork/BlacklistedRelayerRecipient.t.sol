@@ -121,7 +121,7 @@ contract MockSpokePoolTest is Test {
         // USDC blacklist blocks both the sender and recipient. Therefore if we a recipient within a bundle is
         // blacklisted, they should be credited for the refund amount that can be claimed later to a new address.
         assertEq(usdc.isBlacklisted(recipient1), false, "Recipient1 should not be blacklisted");
-        vm.prank(0x10DF6B6fe66dd319B1f82BaB2d054cbb61cdAD2e); // USDC blacklister
+        vm.prank(0x0A06BE16275B95a7d2567fBdAE118b36C7DA78F9); // USDC blacklister
         usdc.blacklist(recipient1);
         assertEq(usdc.isBlacklisted(recipient1), true, "Recipient1 should be blacklisted");
 
