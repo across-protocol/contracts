@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Universal_SpokePool } from "../contracts/Universal_SpokePool.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
-import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
+import { Universal_SpokePool } from "../../contracts/Universal_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
+import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
