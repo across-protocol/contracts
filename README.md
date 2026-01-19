@@ -262,8 +262,8 @@ Start with verifying locally that the deployed program matches the source code o
 solana-verify verify-from-repo \
   --url $RPC_URL \
   --program-id $PROGRAM_ID \
-   --library-name $PROGRAM \
-   --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
+  --library-name $PROGRAM \
+  --base-image "solanafoundation/solana-verifiable-build:$SOLANA_VERSION" \
   https://github.com/across-protocol/contracts
 ```
 
@@ -299,7 +299,7 @@ suite of vulnerability detectors, prints visual information about contract detai
 custom analyses. Slither enables developers to find vulnerabilities, enhance their code comprehension, and quickly
 prototype custom analyses.
 
-Spire-Contracts has been analyzed using `Slither@0.9.2` and no major bugs was found. To rerun the analytics, run:
+Spire-Contracts has been analyzed using `Slither@0.9.2` and no major bugs were found. To rerun the analytics, run:
 
 ```sh
 slither contracts/SpokePool.sol
