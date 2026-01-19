@@ -92,7 +92,7 @@ The genesis binary is downloaded from:
 https://github.com/across-protocol/sp1-helios/releases/download/v{version}/{binary_name}
 ```
 
-The binary is saved to `{project_root}/genesis-binary`.
+The binary is saved to `script/universal/genesis-binary`.
 
 ### Step 3: Checksum Verification
 
@@ -116,7 +116,7 @@ The genesis binary connects to the Ethereum consensus layer RPCs and:
 3. Retrieves execution state roots
 4. Generates the SP1 verification key
 
-The output is written to `contracts/genesis.json` containing:
+The output is written to `script/universal/genesis.json` containing:
 
 - `executionStateRoot` - Current execution layer state root
 - `genesisTime` - Beacon chain genesis timestamp
@@ -211,12 +211,12 @@ The script uses `DeploymentUtils` to load chain-specific configuration from `gen
 
 Based on the spoke chain ID, the script automatically resolves:
 
-- **Wrapped Native Token** - WETH, WBNB, etc. depending on the chain
-- **USDC Address** - Native USDC on the chain
-- **Helios Address** - The deployed SP1Helios light client
-- **HubPoolStore Address** - L1 contract storing relay message hashes
-- **CCTP Token Messenger** - Circle's CCTP v2 messenger (if available on chain)
-- **OFT Endpoint ID** - LayerZero endpoint ID for the hub chain
+- **Wrapped Native Token** - WETH, WBNB, etc. depending on the chain (from `constants.json`)
+- **USDC Address** - Native USDC on the chain (from `constants.json`)
+- **Helios Address** - The deployed SP1Helios light client (from `deployed-addresses.json`)
+- **HubPoolStore Address** - L1 contract storing relay message hashes (from `constants.json`)
+- **CCTP Token Messenger** - Circle's CCTP v2 messenger if available (from `constants.json`)
+- **OFT Endpoint ID** - LayerZero endpoint ID for the hub chain (from `constants.json`)
 
 ### Step 3: Prepare Constructor Arguments
 
@@ -252,96 +252,84 @@ The proxy is initialized with:
 
 ---
 
-# Supported Genesis Binary Versions
+# Full Deployment to a New Chain
 
-Only versions with entries in `checksums.json` can be deployed. Currently supported:
+This section covers the complete end-to-end process for deploying the Universal SpokePool infrastructure to a new chain.
 
-| Version          | Platforms                     |
-| ---------------- | ----------------------------- |
-| `0.1.0-alpha.20` | `amd64_linux`, `arm64_darwin` |
+## Step 1: Deploy SP1Helios
 
-## Adding New Genesis Binary Versions
-
-To add support for a new genesis binary version:
-
-1. Download the binary for each platform
-2. Calculate the SHA256 checksum:
-   ```bash
-   sha256sum genesis_X.Y.Z_amd64_linux
-   sha256sum genesis_X.Y.Z_arm64_darwin
-   ```
-3. Add entries to `checksums.json`:
-   ```json
-   {
-     "genesis_X.Y.Z_amd64_linux": "<hash>",
-     "genesis_X.Y.Z_arm64_darwin": "<hash>"
-   }
-   ```
-
----
-
-# Troubleshooting
-
-## SP1Helios Issues
-
-### "Binary version not found in checksums.json"
-
-The `SP1_RELEASE` version doesn't have a matching entry in `checksums.json`. Either:
-
-- Use a supported version listed in `checksums.json`
-- Add the checksum for your version (see "Adding New Genesis Binary Versions")
-
-### "Binary checksum verification failed"
-
-The downloaded binary's checksum doesn't match the expected value. This could indicate:
-
-- Network corruption during download
-- Binary was modified/tampered with
-- Wrong checksum in `checksums.json`
-
-Re-run the script. If it persists, verify the checksum manually and update `checksums.json`.
-
-### "FFI is not enabled"
-
-Add `--ffi` flag to your forge command. FFI is required for shell command execution.
-
-### Consensus RPC errors
-
-Ensure your `SP1_CONSENSUS_RPCS_LIST` contains valid, accessible beacon node endpoints. Multiple RPCs provide redundancy if one is unavailable.
-
-### Permission denied running genesis binary
-
-The script should automatically make the binary executable with `chmod +x`. If issues persist, check file permissions on your project directory.
-
-## Universal SpokePool Issues
-
-### "Not implemented, see script for run instructions"
-
-You called `run()` without the `oftFeeCap` parameter. Use:
+Deploy the SP1Helios light client contract:
 
 ```bash
-forge script ... --sig "run(uint256)" <OFT_FEE_CAP>
+forge script script/universal/DeploySP1Helios.s.sol \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --broadcast \
+  --verify \
+  --etherscan-api-key <API_KEY> \
+  --ffi \
+  -vvvv
 ```
 
-### Chain not found in constants.json
+Note the deployed SP1Helios address from the output.
 
-Ensure `generated/constants.json` has the required configuration for your target chain, including:
+## Step 2: Update Deployed Addresses
 
-- Chain ID in `PUBLIC_NETWORKS`
-- Wrapped native token in `WRAPPED_NATIVE_TOKENS`
-- USDC address in `USDC`
-- L2 addresses in `L2_ADDRESS_MAP`
+After the forge script completes, update `deployed-addresses.json` so the SpokePool deployment can find the SP1Helios address:
 
-### Helios address not found
+```bash
+yarn extract-addresses
+```
 
-Deploy SP1Helios first, then add the deployed address to `constants.json` under `L2_ADDRESS_MAP.<chainId>.helios`.
+## Step 3: Deploy Universal SpokePool
+
+The script reads the SP1Helios address from `broadcast/deployed-addresses.json`.
+
+```bash
+forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
+  --sig "run(uint256)" <OFT_FEE_CAP> \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --broadcast \
+  --verify \
+  --etherscan-api-key <API_KEY> \
+  -vvvv
+```
+
+Note the deployed Universal_SpokePool proxy address from the output.
+
+## Step 4: Transfer SP1Helios Admin Role to SpokePool
+
+The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds the `DEFAULT_ADMIN_ROLE`. This role must be transferred to the Universal_SpokePool so that admin functions can be called through the cross-chain admin flow.
+
+Using cast:
+
+```bash
+# Grant DEFAULT_ADMIN_ROLE to the SpokePool
+cast send <SP1_HELIOS_ADDRESS> \
+  "grantRole(bytes32,address)" \
+  0x0000000000000000000000000000000000000000000000000000000000000000 \
+  <SPOKE_POOL_ADDRESS> \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --private-key <DEPLOYER_PRIVATE_KEY>
+
+# Renounce DEFAULT_ADMIN_ROLE from the deployer
+cast send <SP1_HELIOS_ADDRESS> \
+  "renounceRole(bytes32,address)" \
+  0x0000000000000000000000000000000000000000000000000000000000000000 \
+  <DEPLOYER_ADDRESS> \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --private-key <DEPLOYER_PRIVATE_KEY>
+```
+
+> **Note**: `0x00...00` (32 zero bytes) is the `DEFAULT_ADMIN_ROLE` constant defined in OpenZeppelin's AccessControl.
+
+## Verification Checklist
+
+After completing all steps, verify:
+
+- [ ] SP1Helios is deployed and verified on block explorer
+- [ ] Universal_SpokePool proxy and implementation are deployed and verified
+- [ ] SP1Helios `DEFAULT_ADMIN_ROLE` is held by the SpokePool (not the deployer)
+- [ ] SpokePool's `crossDomainAdmin` is set to the HubPool address
+- [ ] `yarn extract-addresses` has been run and both contracts appear in `deployed-addresses.json`
 
 ---
-
-# Security Considerations
-
-- **Checksum verification**: Always verify binary checksums are correct before adding to `checksums.json`
-- **Mnemonic security**: Never commit your `.env` file or expose your mnemonic
-- **RPC trust**: Use trusted consensus RPC endpoints to prevent receiving malicious genesis data
-- **Verifier contract**: In production, use a deployed SP1 verifier—not the mock verifier
-- **OFT Fee Cap**: Set an appropriate fee cap to prevent excessive fees on OFT transfers

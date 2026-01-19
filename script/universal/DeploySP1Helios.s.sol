@@ -81,13 +81,16 @@ contract DeploySP1Helios is Script {
 
         vm.stopBroadcast();
 
+        console.log("");
+        console.log("NOTE: Run 'yarn extract-addresses' after this script completes to update deployed-addresses.json");
+
         return address(helios);
     }
 
     /// @notice Reads the genesis configuration from genesis.json
     function readGenesisConfig() public view returns (SP1Helios.InitParams memory params) {
         string memory root = vm.projectRoot();
-        string memory path = string.concat(root, "/contracts/genesis.json");
+        string memory path = string.concat(root, "/script/universal/genesis.json");
         string memory json = vm.readFile(path);
 
         // Parse each field from the JSON
@@ -137,8 +140,8 @@ contract DeploySP1Helios is Script {
         string memory downloadUrl = string.concat(GITHUB_RELEASE_URL, "/download/v", version, "/", binaryName);
         console.log("Download URL:", downloadUrl);
 
-        // Download to project root
-        string memory binaryPath = string.concat(vm.projectRoot(), "/genesis-binary");
+        // Download to script/universal directory
+        string memory binaryPath = string.concat(vm.projectRoot(), "/script/universal/genesis-binary");
 
         console.log("Downloading genesis binary...");
         string[] memory downloadCmd = new string[](6);
@@ -164,7 +167,9 @@ contract DeploySP1Helios is Script {
         console.log("Running genesis binary...");
 
         // Run the genesis binary with all required env vars passed directly
-        string[] memory runCmd = new string[](9);
+        // Use --out to specify output directory for genesis.json
+        string memory outputDir = string.concat(vm.projectRoot(), "/script/universal");
+        string[] memory runCmd = new string[](11);
         runCmd[0] = "env";
         runCmd[1] = "SOURCE_CHAIN_ID=1";
         runCmd[2] = string.concat("SP1_PROVER=", sp1Prover);
@@ -174,6 +179,8 @@ contract DeploySP1Helios is Script {
         runCmd[6] = string.concat("VKEY_UPDATER=", vkeyUpdater);
         runCmd[7] = string.concat("CONSENSUS_RPCS_LIST=", consensusRpcsList);
         runCmd[8] = binaryPath;
+        runCmd[9] = "--out";
+        runCmd[10] = outputDir;
         vm.ffi(runCmd);
 
         console.log("Genesis config updated successfully");

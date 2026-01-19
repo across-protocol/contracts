@@ -8,17 +8,16 @@ import { Universal_SpokePool } from "../../contracts/Universal_SpokePool.sol";
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
 
-// How to run:
-// 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/111DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool --sig "run(uint256)" <OFT_FEE_CAP> --rpc-url $NODE_URL_143 -vvvv
-// 3. Verify the above works in simulation mode.
-// 4. Deploy with:
-//        forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(uint256)" <OFT_FEE_CAP e.g. 78000> --rpc-url \
-//        $NODE_URL_143 --broadcast --verifier @todo --verifier-url @todo
-
+/// @title DeployUniversalSpokePool
+/// @notice Deploy script for the Universal_SpokePool contract.
+/// @dev See script/universal/README.md for detailed usage instructions.
+///
+/// Example:
+///   forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
+///     --sig "run(uint256)" 78000 --rpc-url <RPC_URL> --broadcast -vvvv
 contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
     function run() external pure {
-        revert("Not implemented, see script for run instructions");
+        revert("Usage: forge script ... --sig 'run(uint256)' <OFT_FEE_CAP>");
     }
     function run(uint256 oftFeeCap) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
@@ -36,7 +35,7 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         uint256 heliosAdminBufferUpdateSeconds = 1 days;
-        address helios = getL2Address(info.spokeChainId, "helios");
+        address helios = getDeployedAddress("SP1Helios", info.spokeChainId, true);
         address l1HubPoolStore = getL1Addresses(info.hubChainId).hubPoolStore;
 
         bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
@@ -94,5 +93,8 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
 
         vm.stopBroadcast();
+
+        console.log("");
+        console.log("NOTE: Run 'yarn extract-addresses' after this script completes to update deployed-addresses.json");
     }
 }

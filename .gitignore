@@ -53,8 +53,8 @@ src/svm/clients/*
 !src/svm/clients/index.ts
 
 # SP1Helios deploy artifacts
-genesis-binary
-contracts/genesis.json
+script/universal/genesis-binary
+script/universal/genesis.json
 
 # Claude
 .claude
