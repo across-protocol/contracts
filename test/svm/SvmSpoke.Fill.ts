@@ -452,7 +452,7 @@ describe("svm_spoke.fill", () => {
     const customRelayerTA = await createAccount(connection, payer, mint, relayer.publicKey, customKeypair);
     await mintTo(connection, payer, mint, customRelayerTA, owner, seedBalance);
 
-    // Save balances before the the fill
+    // Save balances before the fill
     const iRelayerBal = (await getAccount(connection, customRelayerTA)).amount;
     const iRecipientBal = (await getAccount(connection, recipientTA)).amount;
 
@@ -537,7 +537,7 @@ describe("svm_spoke.fill", () => {
     assertSE(recipientAccount.amount, relayAmount, "Recipient's balance should be increased by the relay amount");
   });
   it("Max fills in one transaction with account creation", async () => {
-    // Save relayer balance before the the fills
+    // Save relayer balance before the fills
     const iRelayerBal = (await getAccount(connection, relayerTA)).amount;
 
     // Larger number of fills would exceed the transaction size limit.
