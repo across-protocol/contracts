@@ -10,7 +10,7 @@ import { Mock_Adapter } from "../../../../contracts/chain-adapters/Mock_Adapter.
 
 /**
  * @title HubPool_LiquidityProvisionHaircutTest
- * @notice Foundry tests for HubPool liquidity provision haircut, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool liquidity provision haircut.
  */
 contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
     // ============ Test Infrastructure ============
@@ -25,7 +25,6 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
 
     // ============ Constants ============
 
-    uint256 constant REPAYMENT_CHAIN_ID = 777;
     uint256 constant TOKENS_SEND_TO_L2 = 100 ether;
     uint256 constant REALIZED_LP_FEES = 10 ether;
 
@@ -70,36 +69,16 @@ contract HubPool_LiquidityProvisionHaircutTest is HubPoolTestBase {
         fixture.hubPool.setPoolRebalanceRoute(REPAYMENT_CHAIN_ID, address(fixture.weth), fixture.l2Weth);
     }
 
-    // ============ Helper Functions ============
-
-    /**
-     * @notice Constructs a single-chain tree for testing.
-     * @dev Mirrors the constructSingleChainTree function from Hardhat tests.
-     */
-    function constructSingleChainTree()
-        internal
-        pure
-        returns (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root)
-    {
-        (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(
-            REPAYMENT_CHAIN_ID,
-            address(0), // Will be set to WETH in tests
-            TOKENS_SEND_TO_L2,
-            REALIZED_LP_FEES
-        );
-    }
-
     // ============ Tests ============
 
     function test_HaircutCanCorrectlyOffsetExchangeRateCurrentToEncapsulateLostTokens() public {
         // Construct the tree with WETH
-        HubPoolInterface.PoolRebalanceLeaf memory leaf;
-        bytes32 root;
-        (leaf, root) = constructSingleChainTree();
-        leaf.l1Tokens[0] = address(fixture.weth);
-
-        // Recalculate root with correct token address
-        root = keccak256(abi.encode(leaf));
+        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(
+            REPAYMENT_CHAIN_ID,
+            address(fixture.weth),
+            TOKENS_SEND_TO_L2,
+            REALIZED_LP_FEES
+        );
 
         vm.prank(dataWorker);
         proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);

@@ -10,7 +10,7 @@ import { Mock_Adapter } from "../../../../contracts/chain-adapters/Mock_Adapter.
 
 /**
  * @title HubPool_LiquidityProvisionFeesTest
- * @notice Foundry tests for HubPool liquidity provision fees, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool liquidity provision fees.
  */
 contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
     // ============ Test Infrastructure ============
@@ -24,8 +24,6 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
     address mockSpoke;
 
     // ============ Constants ============
-
-    uint256 constant REPAYMENT_CHAIN_ID = 777;
 
     // ============ Setup ============
 
@@ -68,25 +66,6 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         fixture.hubPool.setPoolRebalanceRoute(REPAYMENT_CHAIN_ID, address(fixture.weth), fixture.l2Weth);
     }
 
-    // ============ Helper Functions ============
-
-    /**
-     * @notice Constructs a single-chain tree for testing.
-     * @dev Mirrors the constructSingleChainTree function from Hardhat tests.
-     */
-    function constructSingleChainTree()
-        internal
-        pure
-        returns (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root)
-    {
-        (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(
-            REPAYMENT_CHAIN_ID,
-            address(0), // Will be set to WETH in tests
-            TOKENS_TO_SEND,
-            LP_FEES
-        );
-    }
-
     // ============ Tests ============
 
     function test_FeeTrackingVariables_AreCorrectlyUpdatedAtExecutionOfRefund() public {
@@ -105,13 +84,12 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
         assertEq(lastLpFeeUpdate, block.timestamp);
 
         // Construct the tree with WETH
-        HubPoolInterface.PoolRebalanceLeaf memory leaf;
-        bytes32 root;
-        (leaf, root) = constructSingleChainTree();
-        leaf.l1Tokens[0] = address(fixture.weth);
-
-        // Recalculate root with correct token address
-        root = keccak256(abi.encode(leaf));
+        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(
+            REPAYMENT_CHAIN_ID,
+            address(fixture.weth),
+            TOKENS_TO_SEND,
+            LP_FEES
+        );
 
         vm.prank(dataWorker);
         proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
@@ -131,13 +109,12 @@ contract HubPool_LiquidityProvisionFeesTest is HubPoolTestBase {
 
     function test_ExchangeRateCurrent_CorrectlyAttributesFeesOverSmearPeriod() public {
         // Construct the tree with WETH
-        HubPoolInterface.PoolRebalanceLeaf memory leaf;
-        bytes32 root;
-        (leaf, root) = constructSingleChainTree();
-        leaf.l1Tokens[0] = address(fixture.weth);
-
-        // Recalculate root with correct token address
-        root = keccak256(abi.encode(leaf));
+        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(
+            REPAYMENT_CHAIN_ID,
+            address(fixture.weth),
+            TOKENS_TO_SEND,
+            LP_FEES
+        );
 
         // Exchange rate current before any fees are attributed execution should be 1.
         assertEq(fixture.hubPool.exchangeRateCurrent(address(fixture.weth)), 1e18);

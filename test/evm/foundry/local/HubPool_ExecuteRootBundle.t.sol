@@ -13,7 +13,7 @@ import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 /**
  * @title HubPool_ExecuteRootBundleTest
- * @notice Foundry tests for HubPool.executeRootBundle, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool.executeRootBundle.
  */
 contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
     // ============ Test Infrastructure ============
@@ -25,7 +25,6 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
 
     // ============ Constants ============
 
-    uint256 constant REPAYMENT_CHAIN_ID = 777;
     uint256 constant WETH_TO_SEND = 100 ether;
     uint256 constant DAI_TO_SEND = 1000 ether;
     uint256 constant WETH_LP_FEE = 1 ether;
@@ -87,7 +86,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
 
     /**
      * @notice Constructs a simple 2-leaf merkle tree for testing.
-     * @dev Mirrors the constructSimpleTree function from Hardhat tests.
+     * @dev Builds a simple two-leaf tree for pool rebalance testing.
      */
     function constructSimpleTree()
         internal

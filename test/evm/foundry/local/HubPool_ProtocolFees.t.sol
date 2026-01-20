@@ -10,7 +10,7 @@ import { Mock_Adapter } from "../../../../contracts/chain-adapters/Mock_Adapter.
 
 /**
  * @title HubPool_ProtocolFeesTest
- * @notice Foundry tests for HubPool protocol fees, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool protocol fees.
  */
 contract HubPool_ProtocolFeesTest is HubPoolTestBase {
     // ============ Test Infrastructure ============
@@ -25,7 +25,7 @@ contract HubPool_ProtocolFeesTest is HubPoolTestBase {
 
     // ============ Constants ============
 
-    uint256 constant REPAYMENT_CHAIN_ID = 3117;
+    uint256 constant TEST_CHAIN_ID = 3117;
     uint256 constant TOKENS_SEND_TO_L2 = 100 ether;
     uint256 constant REALIZED_LP_FEES = 10 ether;
 
@@ -68,31 +68,11 @@ contract HubPool_ProtocolFeesTest is HubPoolTestBase {
         // Deploy Mock_Adapter and set up cross-chain contracts
         mockAdapter = new Mock_Adapter();
         mockSpoke = makeAddr("mockSpoke");
-        fixture.hubPool.setCrossChainContracts(REPAYMENT_CHAIN_ID, address(mockAdapter), mockSpoke);
-        fixture.hubPool.setPoolRebalanceRoute(REPAYMENT_CHAIN_ID, address(fixture.weth), fixture.l2Weth);
+        fixture.hubPool.setCrossChainContracts(TEST_CHAIN_ID, address(mockAdapter), mockSpoke);
+        fixture.hubPool.setPoolRebalanceRoute(TEST_CHAIN_ID, address(fixture.weth), fixture.l2Weth);
 
         // Set initial protocol fee capture
         fixture.hubPool.setProtocolFeeCapture(owner, INITIAL_PROTOCOL_FEE_CAPTURE_PCT);
-    }
-
-    // ============ Helper Functions ============
-
-    /**
-     * @notice Constructs a single-chain tree for testing.
-     * @return leaf The pool rebalance leaf
-     * @return root The merkle root
-     */
-    function constructSingleChainTree()
-        internal
-        view
-        returns (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root)
-    {
-        (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(
-            REPAYMENT_CHAIN_ID,
-            address(fixture.weth),
-            TOKENS_SEND_TO_L2,
-            REALIZED_LP_FEES
-        );
     }
 
     // ============ Tests ============
@@ -119,7 +99,12 @@ contract HubPool_ProtocolFeesTest is HubPoolTestBase {
     }
 
     function test_WhenFeeCaptureNotZeroFeesCorrectlyAttributeBetweenLPsAndProtocol() public {
-        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = constructSingleChainTree();
+        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(
+            TEST_CHAIN_ID,
+            address(fixture.weth),
+            TOKENS_SEND_TO_L2,
+            REALIZED_LP_FEES
+        );
 
         vm.prank(dataWorker);
         proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);
@@ -153,7 +138,12 @@ contract HubPool_ProtocolFeesTest is HubPoolTestBase {
     function test_WhenFeeCaptureZeroAllFeesAccumulateToLPs() public {
         fixture.hubPool.setProtocolFeeCapture(owner, 0);
 
-        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = constructSingleChainTree();
+        (HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32 root) = MerkleTreeUtils.buildSingleTokenLeaf(
+            TEST_CHAIN_ID,
+            address(fixture.weth),
+            TOKENS_SEND_TO_L2,
+            REALIZED_LP_FEES
+        );
 
         vm.prank(dataWorker);
         proposeBundleAndAdvanceTime(root, MOCK_RELAYER_REFUND_ROOT, MOCK_SLOW_RELAY_ROOT);

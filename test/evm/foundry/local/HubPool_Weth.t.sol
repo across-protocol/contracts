@@ -6,7 +6,7 @@ import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
 
 /**
  * @title HubPool_WethTest
- * @notice Foundry tests for HubPool ETH handling, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool ETH handling.
  */
 contract HubPool_WethTest is HubPoolTestBase {
     // ============ Test Infrastructure ============

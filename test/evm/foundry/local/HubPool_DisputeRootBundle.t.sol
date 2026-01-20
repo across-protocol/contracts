@@ -9,8 +9,7 @@ import { SkinnyOptimisticOracleInterface } from "../../../../contracts/external/
 
 /**
  * @title HubPool_DisputeRootBundleTest
- * @notice Foundry tests for HubPool.disputeRootBundle, ported from Hardhat tests.
- * @dev Some tests that require full UMA ecosystem integration are simplified or skipped.
+ * @notice Foundry tests for HubPool.disputeRootBundle.
  */
 contract HubPool_DisputeRootBundleTest is HubPoolTestBase {
     // ============ Test Infrastructure ============

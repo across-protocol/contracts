@@ -341,6 +341,7 @@ abstract contract HubPoolTestBase is Test, Constants {
     uint256 public constant USDT_LP_FEES = 10e6;
     uint256 public constant BURN_LIMIT = 1_000_000e6; // 1M USDC per message
     uint256 public constant AMOUNT_TO_LP = 1000 ether;
+    uint256 public constant REPAYMENT_CHAIN_ID = 777;
 
     // ============ Common Mock Roots ============
 

@@ -7,7 +7,7 @@ import { HubPool } from "../../../../contracts/HubPool.sol";
 
 /**
  * @title HubPool_ProposeRootBundleTest
- * @notice Foundry tests for HubPool root bundle proposal, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool root bundle proposal.
  */
 contract HubPool_ProposeRootBundleTest is HubPoolTestBase {
     // ============ Test Infrastructure ============

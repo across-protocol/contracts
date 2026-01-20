@@ -8,7 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 /**
  * @title HubPool_LiquidityProvisionTest
- * @notice Foundry tests for HubPool liquidity provision, ported from Hardhat tests.
+ * @notice Foundry tests for HubPool liquidity provision.
  */
 contract HubPool_LiquidityProvisionTest is HubPoolTestBase {
     // ============ Test Infrastructure ============
