@@ -102,10 +102,12 @@ contract MultiCallerUpgradeableTest is Test {
                 assert(results[i].success);
             } else {
                 assert(!results[i].success);
-                assertEq(
-                    "", // Error messages are stripped.
-                    results[i].returnData
+                // Verify the revert reason is "Ownable: caller is not the owner"
+                bytes memory expectedError = abi.encodeWithSignature(
+                    "Error(string)",
+                    "Ownable: caller is not the owner"
                 );
+                assertEq(results[i].returnData, expectedError);
             }
         }
     }
