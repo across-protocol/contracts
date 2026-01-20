@@ -30,7 +30,7 @@ if tool_name == "Read" or tool_name == "Grep":
             }
         }
         print(json.dumps(output))
-        sys.exit(0)
+        sys.exit(2)
 
 
 # Allow the tool call
