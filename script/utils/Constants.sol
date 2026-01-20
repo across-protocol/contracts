@@ -11,8 +11,6 @@ import { Script } from "forge-std/Script.sol";
 contract Constants is Script {
     string public file;
 
-    uint32 constant CCTP_NO_DOMAIN = 2 ** 32 - 1;
-
     constructor() {
         file = vm.readFile("generated/constants.json");
     }
@@ -65,6 +63,7 @@ contract Constants is Script {
     struct OpStackAddresses {
         address L1CrossDomainMessenger;
         address L1StandardBridge;
+        address L1BlastBridge;
         address L1OpUSDCBridgeAdapter;
     }
 
@@ -187,19 +186,18 @@ contract Constants is Script {
             OpStackAddresses({
                 L1CrossDomainMessenger: vm.parseJsonAddress(file, string.concat(path, ".L1CrossDomainMessenger")),
                 L1StandardBridge: vm.parseJsonAddress(file, string.concat(path, ".L1StandardBridge")),
+                L1BlastBridge: vm.parseJsonAddress(file, string.concat(path, ".L1BlastBridge")),
                 L1OpUSDCBridgeAdapter: vm.parseJsonAddress(file, string.concat(path, ".L1OpUSDCBridgeAdapter"))
             });
     }
 
     // Circle domain IDs mapping
     function getCircleDomainId(uint256 chainId) public view returns (uint32) {
-        int256 cctpDomain = _getCctpDomain(chainId);
-        if (cctpDomain == -1) {
-            revert("Circle CCTP domain ID not found");
-        } else if (cctpDomain < 0 || cctpDomain > 2 ** 32 - 1) {
-            revert("Invalid Circle CCTP domain ID");
+        int32 cctpDomain = _getCctpDomain(chainId);
+        if (cctpDomain == -1 || false) {
+            revert("Circle domain ID not found");
         }
-        return uint32(uint256(cctpDomain));
+        return uint32(cctpDomain);
     }
 
     function hasCctpDomain(uint256 chainId) public view returns (bool) {

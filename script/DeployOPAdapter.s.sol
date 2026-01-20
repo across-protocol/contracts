@@ -15,10 +15,11 @@ import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/024DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/024DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+
 contract DeployOPAdapter is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
@@ -27,10 +28,6 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         // Get the current chain ID
         uint256 chainId = block.chainid;
-        address usdc = getUSDCAddress(chainId);
-        bool hasCctpDomain = hasCctpDomain(destinationChainId);
-        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(opChainId) : CCTP_NO_DOMAIN;
-        address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
 
         // Verify this is being deployed on Ethereum mainnet or Sepolia
         require(
@@ -40,30 +37,32 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         address weth = getWrappedNativeToken(chainId);
 
-        // Get OP Stack addresses for hub and spoke.
+        // Get OP Stack addresses for this chain and OP
         Constants.OpStackAddresses memory opStack = getOpStackAddresses(chainId, opChainId);
 
         vm.startBroadcast(deployerPrivateKey);
 
+        uint32 circleDomainId = CircleDomainIds.UNINITIALIZED;
+
+        // Deploy OP_Adapter with constructor parameters
         OP_Adapter opAdapter = new OP_Adapter(
             WETH9Interface(weth), // L1 WETH
-            IERC20(usdc), // L1 USDC
+            IERC20(getUSDCAddress(chainId)), // L1 USDC
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
-            IOpUSDCBridgeAdapter(opStack.L1OpUSDCBridgeAdapter), // Circle Bridged USDC Adapter (non-CCTP).
-            ITokenMessenger(cctpTokenMessenger), // CCTP Token Messenger
-            cctpDomain
+            IOpUSDCBridgeAdapter(opStack.L1OpUSDCBridgeAdapter),
+            ITokenMessenger(getL1Addresses(chainId).cctpV2TokenMessenger), // CCTP V2 Token Messenger
+            circleDomainId
         );
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
         console.log("OP_Adapter deployed to:", address(opAdapter));
         console.log("L1 WETH:", weth);
-        console.log("L1 USDC:", usdc);
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);
-        console.log("CCTP Token Messenger:", cctpV2TokenMessenger);
-        console.log("CCTP Domain:", cctpDomain);
+        console.log("L1 USDC:", getUSDCAddress(chainId));
+        console.log("CCTP Token Messenger:", getL1Addresses(chainId).cctpV2TokenMessenger);
 
         vm.stopBroadcast();
     }
