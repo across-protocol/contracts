@@ -16,7 +16,6 @@ import { SkinnyOptimisticOracleInterface } from "../../../../contracts/external/
 import { OptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
 import { Constants } from "../../../../script/utils/Constants.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
-import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { MerkleTreeUtils } from "./MerkleTreeUtils.sol";
@@ -547,13 +546,9 @@ abstract contract HubPoolTestBase is Test, Constants {
      * @param l2Usdc The L2 USDC address
      */
     function setupTokenRoutes(uint256 chainId, address l2Weth, address l2Dai, address l2Usdc) internal {
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.weth), l2Weth);
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.dai), l2Dai);
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.usdc), l2Usdc);
-
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.dai));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdc));
+        enableToken(chainId, address(fixture.weth), l2Weth);
+        enableToken(chainId, address(fixture.dai), l2Dai);
+        enableToken(chainId, address(fixture.usdc), l2Usdc);
     }
 
     /**
@@ -572,8 +567,7 @@ abstract contract HubPoolTestBase is Test, Constants {
         address l2Usdt
     ) internal {
         setupTokenRoutes(chainId, l2Weth, l2Dai, l2Usdc);
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.usdt), l2Usdt);
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdt));
+        enableToken(chainId, address(fixture.usdt), l2Usdt);
     }
 
     // ============ WETH Liquidity Helpers ============
@@ -617,17 +611,7 @@ abstract contract HubPoolTestBase is Test, Constants {
 
         proposeBundleAndAdvanceTime(root, relayerRefundRoot, slowRelayRoot);
 
-        bytes32[] memory proof = MerkleTreeUtils.emptyProof();
-        fixture.hubPool.executeRootBundle(
-            leaf.chainId,
-            leaf.groupIndex,
-            leaf.bundleLpFees,
-            leaf.netSendAmounts,
-            leaf.runningBalances,
-            leaf.leafId,
-            leaf.l1Tokens,
-            proof
-        );
+        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
     }
 
     // ============ vm.etch Helper ============
