@@ -199,7 +199,7 @@ contract Constants is Script {
         } else if (cctpDomain < 0 || cctpDomain > 2 ** 32 - 1) {
             revert("Invalid Circle CCTP domain ID");
         }
-        return uint32(cctpDomain);
+        return uint32(uint256(cctpDomain));
     }
 
     function hasCctpDomain(uint256 chainId) public view returns (bool) {
