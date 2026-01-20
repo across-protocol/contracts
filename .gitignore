@@ -33,8 +33,6 @@ zkout
 cache-foundry
 cache-foundry-local
 
-# Typechain
-typechain-artifacts
 
 # Upgradeability files
 .openzeppelin
