@@ -39,7 +39,7 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         address weth = getWrappedNativeToken(chainId);
 
-        // Get OP Stack addresses for hub and spoke chain IDs.
+        // Get OP Stack addresses for hub and spoke.
         Constants.OpStackAddresses memory opStack = getOpStackAddresses(chainId, opChainId);
 
         vm.startBroadcast(deployerPrivateKey);
