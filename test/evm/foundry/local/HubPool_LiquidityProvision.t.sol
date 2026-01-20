@@ -185,7 +185,7 @@ contract HubPool_LiquidityProvisionTest is HubPoolTestBase {
         // amountToLp = 1000 ether = 1000 * 1e18 = 1e21
         // fromWei(amountToLp) = 1000
         // scaledAmountToLp = 1000 * 1e6 = 1e9
-        uint256 scaledAmountToLp = (AMOUNT_TO_LP / 1e12) * 1e6; // Convert from 18 decimals to 6 decimals
+        uint256 scaledAmountToLp = AMOUNT_TO_LP / 1e12; // Convert from 18 decimals to 6 decimals: 1e21 / 1e12 = 1e9
 
         vm.prank(liquidityProvider);
         fixture.usdc.approve(address(fixture.hubPool), scaledAmountToLp);
