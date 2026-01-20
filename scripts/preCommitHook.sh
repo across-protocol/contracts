@@ -31,7 +31,8 @@ if [ -n "$STAGED_RUST_FILES" ]; then
 fi
 
 echo "Running generate-constants-json on staged files ..."
-yarn generate-constants-json && yarn prettier --write generated/constants.json
+# install dependencies first to make sure we're using the latest version of the constants
+yarn && yarn generate-constants-json && yarn prettier --write generated/constants.json
 if git diff --name-only | grep -E 'generated/constants.json$' >/dev/null; then
     echo "Generated constants have changed."
     git add generated/constants.json
