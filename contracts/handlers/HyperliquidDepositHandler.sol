@@ -238,7 +238,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         TokenInfo memory tokenInfo = _getTokenInfo(token);
         int8 decimalDiff = tokenInfo.decimalDiff;
         uint256 totalEvmAmount = evmAmount;
-        uint64 activationCost = 0;
+        uint64 accountActivationFeeCore = 0;
         uint64 sponsoredAmount = 0;
 
         bool userExists = HyperCoreLib.coreUserExists(user);
@@ -246,31 +246,31 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             if (mode == AccountActivationMode.None) revert CannotActivateAccount();
             if (accountsActivated[user]) revert AccountAlreadyActivated();
             accountsActivated[user] = true;
+            uint256 activationFee = tokenInfo.activationFeeEvm;
 
-            uint256 activationFeeEvm = tokenInfo.activationFeeEvm;
-            (, activationCost) = HyperCoreLib.maximumEVMSendAmountToAmounts(activationFeeEvm, decimalDiff);
+            (, accountActivationFeeCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(activationFee, decimalDiff);
 
             if (mode == AccountActivationMode.FromDonationBox) {
-                donationBox.withdraw(IERC20(token), activationFeeEvm);
-                totalEvmAmount += activationFeeEvm;
-                sponsoredAmount = activationCost;
+                donationBox.withdraw(IERC20(token), activationFee);
+                totalEvmAmount += activationFee;
+                sponsoredAmount = accountActivationFeeCore;
             } else {
                 (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
-                if (depositCore <= activationCost) revert InsufficientEvmAmountForActivation();
+                if (depositCore <= accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
             }
         }
 
-        (, uint64 userCoreAmount) = HyperCoreLib.transferERC20EVMToCore(
+        (, uint64 userAmount) = HyperCoreLib.transferERC20EVMToCore(
             token,
             tokenInfo.tokenId,
             user,
             totalEvmAmount,
             decimalDiff,
             HyperCoreLib.CORE_SPOT_DEX_ID,
-            activationCost
+            accountActivationFeeCore
         );
 
-        emit DepositToHypercore(user, token, userCoreAmount, activationCost, sponsoredAmount);
+        emit DepositToHypercore(user, token, userAmount, accountActivationFeeCore, sponsoredAmount);
     }
 
     function _verifySignature(address expectedUser, bytes memory signature) internal view returns (bool) {
