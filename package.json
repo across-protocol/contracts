@@ -52,7 +52,7 @@
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.95",
+    "@across-protocol/constants": "3.1.97",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",
