@@ -27,6 +27,7 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         // Get the current chain ID
         uint256 chainId = block.chainid;
+        address usdc = getUSDCAddress(chainId);
         bool hasCctpDomain = hasCctpDomain(destinationChainId);
         uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(opChainId) : CCTP_NO_DOMAIN;
         address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
@@ -44,24 +45,24 @@ contract DeployOPAdapter is Script, Test, Constants {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        OP_Adapter op_adapter = new OP_Adapter(
+        OP_Adapter opAdapter = new OP_Adapter(
             WETH9Interface(weth), // L1 WETH
-            IERC20(getUSDCAddress(chainId)), // L1 USDC
+            IERC20(usdc), // L1 USDC
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
-            IOpUSDCBridgeAdapter(opStack.L1OpUSDCBridgeAdapter), // L1 OP USDC Bridge
-            ITokenMessenger(cctpTokenMessenger), // CCTP (V2) Token Messenger
+            IOpUSDCBridgeAdapter(opStack.L1OpUSDCBridgeAdapter), // Circle Bridged USDC Adapter (non-CCTP).
+            ITokenMessenger(cctpTokenMessenger), // CCTP Token Messenger
             cctpDomain
         );
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
-        console.log("OP Adapter deployed to:", address(op_adapter));
+        console.log("OP_Adapter deployed to:", address(opAdapter));
         console.log("L1 WETH:", weth);
+        console.log("L1 USDC:", usdc);
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);
-        console.log("L1 USDC:", getUSDCAddress(chainId));
-        console.log("CCTP Token Messenger:", getL1Addresses(chainId).cctpV2TokenMessenger);
+        console.log("CCTP Token Messenger:", cctpV2TokenMessenger);
         console.log("CCTP Domain:", cctpDomain);
 
         vm.stopBroadcast();
