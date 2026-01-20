@@ -62,7 +62,13 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         FromDonationBox // 2: Activate from DonationBox if needed (signature required)
     }
 
-    event UserAccountActivated(address user, address indexed token, uint256 amountRequiredToActivate);
+    event DepositToHypercore(
+        address indexed user,
+        address indexed token,
+        uint64 userCoreAmount,
+        uint64 activationFeePaid,
+        uint64 activationFeeSponsored
+    );
     event AddedSupportedToken(address evmAddress, uint64 tokenId, uint256 activationFeeEvm, int8 decimalDiff);
     event SignerSet(address signer);
     event SpokePoolSet(address spokePool);
@@ -232,38 +238,39 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         TokenInfo memory tokenInfo = _getTokenInfo(token);
         int8 decimalDiff = tokenInfo.decimalDiff;
         uint256 totalEvmAmount = evmAmount;
-        uint64 accountActivationFeeCore = 0;
+        uint64 activationCost = 0;
+        uint64 sponsoredAmount = 0;
 
         bool userExists = HyperCoreLib.coreUserExists(user);
         if (!userExists) {
             if (mode == AccountActivationMode.None) revert CannotActivateAccount();
             if (accountsActivated[user]) revert AccountAlreadyActivated();
             accountsActivated[user] = true;
-            uint256 activationFee = tokenInfo.activationFeeEvm;
 
-            (, accountActivationFeeCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(activationFee, decimalDiff);
+            uint256 activationFeeEvm = tokenInfo.activationFeeEvm;
+            (, activationCost) = HyperCoreLib.maximumEVMSendAmountToAmounts(activationFeeEvm, decimalDiff);
 
             if (mode == AccountActivationMode.FromDonationBox) {
-                donationBox.withdraw(IERC20(token), activationFee);
-                totalEvmAmount += activationFee;
+                donationBox.withdraw(IERC20(token), activationFeeEvm);
+                totalEvmAmount += activationFeeEvm;
+                sponsoredAmount = activationCost;
             } else {
-                // todo? We might want to actually just skip this branch. Or keep it for the event w/ clear revert reason
                 (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
-                if (depositCore <= accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
+                if (depositCore <= activationCost) revert InsufficientEvmAmountForActivation();
             }
-
-            emit UserAccountActivated(user, token, activationFee);
         }
 
-        HyperCoreLib.transferERC20EVMToCore(
+        (, uint64 userCoreAmount) = HyperCoreLib.transferERC20EVMToCore(
             token,
             tokenInfo.tokenId,
             user,
             totalEvmAmount,
             decimalDiff,
             HyperCoreLib.CORE_SPOT_DEX_ID,
-            accountActivationFeeCore
+            activationCost
         );
+
+        emit DepositToHypercore(user, token, userCoreAmount, activationCost, sponsoredAmount);
     }
 
     function _verifySignature(address expectedUser, bytes memory signature) internal view returns (bool) {
