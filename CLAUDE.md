@@ -81,6 +81,7 @@ contract MyContractTest is Test {
     // Test implementation
     assertEq(myContract.value(), expected);
   }
+
   function testRevertOnInvalidInput() public {
     vm.expectRevert();
     myContract.doSomething(invalidInput);
@@ -107,16 +108,19 @@ Scripts follow a numbered pattern and use shared utilities from `script/utils/`.
 ```solidity
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
+
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Constants } from "./utils/Constants.sol";
 import { MyContract } from "../contracts/MyContract.sol";
+
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 2. forge script script/00XDeployMyContract.s.sol:DeployMyContract --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify simulation works
 // 4. Deploy: forge script script/00XDeployMyContract.s.sol:DeployMyContract --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+
 contract DeployMyContract is Script, Test, Constants {
   function run() external {
     string memory deployerMnemonic = vm.envString("MNEMONIC");
