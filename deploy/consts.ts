@@ -110,7 +110,6 @@ export const OP_STACK_ADDRESS_MAP: {
       L1StandardBridge: "0x81014F44b0a345033bB2b3B21C7a1A308B35fEeA",
     },
     [CHAIN_IDs.INK]: {
-      L1BlastBridge: ZERO_ADDRESS,
       L1CrossDomainMessenger: "0x69d3cf86b2bf1a9e99875b7e2d9b6a84426c171f",
       L1StandardBridge: "0x88ff1e5b602916615391f55854588efcbb7663f0",
       L1OpUSDCBridgeAdapter: ZERO_ADDRESS,
