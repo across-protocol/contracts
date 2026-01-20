@@ -1,3 +1,25 @@
+const { subtask } = require("hardhat/config");
+const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
+
+subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
+  const paths = await runSuper();
+
+  // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
+  // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
+  if (process.env.IS_TEST === "true") {
+    return paths.filter((p: any) => {
+      return (
+        !p.includes("contracts/periphery/mintburn") &&
+        !p.includes("contracts/external/libraries/BytesLib.sol") &&
+        !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
+        !p.includes("contracts/external/libraries/MinimalLZOptions.sol")
+      );
+    });
+  }
+
+  return paths;
+});
+
 import * as dotenv from "dotenv";
 dotenv.config();
 import { HardhatUserConfig } from "hardhat/config";
@@ -15,7 +37,7 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "@openzeppelin/hardhat-upgrades";
 
-const getMnemonic = () => {
+export const getMnemonic = () => {
   // Publicly-disclosed mnemonic. This is required for hre deployments in test.
   const PUBLIC_MNEMONIC = "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
   const { MNEMONIC = PUBLIC_MNEMONIC } = process.env;
@@ -33,22 +55,7 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
   };
 };
 
-// Custom tasks to add to HRE.
-const tasks = [
-  "enableL1TokenAcrossEcosystem",
-  "finalizeScrollClaims",
-  "rescueStuckScrollTxn",
-  "verifySpokePool",
-  "verifyBytecode",
-  "evmRelayMessageWithdrawal",
-  "testChainAdapter",
-  "upgradeSpokePool",
-];
-
-// eslint-disable-next-line node/no-missing-require
-tasks.forEach((task) => require(`./tasks/${task}`));
-
-const isTest = process.env.IS_TEST === "true" || process.env.CI === "true";
+const isTest = process.env.IS_TEST === "true";
 
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
@@ -109,7 +116,7 @@ const config: HardhatUserConfig = {
       "contracts/Ink_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Cher_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       "contracts/Blast_SpokePool.sol": LARGEST_CONTRACT_COMPILER_SETTINGS,
-      "contracts/Tatara_SpokePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      "contracts/periphery/mintburn/HyperCoreFlowExecutor.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
     },
   },
   zksolc: {
@@ -125,6 +132,7 @@ const config: HardhatUserConfig = {
         "SpokePoolVerifier",
         "ZkSync_SpokePool",
         "Lens_SpokePool",
+        "AcrossEventEmitter",
       ],
     },
   },
@@ -158,6 +166,8 @@ const config: HardhatUserConfig = {
       gasMultiplier: 4.0,
     },
     hyperevm: getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM),
+    "hyperevm-testnet": getDefaultHardhatConfig(CHAIN_IDs.HYPEREVM_TESTNET, true),
+    megaeth: getDefaultHardhatConfig(CHAIN_IDs.MEGAETH),
     monad: getDefaultHardhatConfig(CHAIN_IDs.MONAD),
     "polygon-amoy": getDefaultHardhatConfig(CHAIN_IDs.POLYGON_AMOY),
     base: getDefaultHardhatConfig(CHAIN_IDs.BASE),
@@ -183,14 +193,6 @@ const config: HardhatUserConfig = {
     },
     mode: getDefaultHardhatConfig(CHAIN_IDs.MODE),
     "mode-sepolia": getDefaultHardhatConfig(CHAIN_IDs.MODE_SEPOLIA, true),
-    tatara: {
-      chainId: CHAIN_IDs.TATARA,
-      url: getNodeUrl(CHAIN_IDs.TATARA),
-      saveDeployments: true,
-      accounts: { mnemonic },
-      companionNetworks: { l1: "sepolia" },
-      ethNetwork: "sepolia",
-    },
     lens: {
       chainId: CHAIN_IDs.LENS,
       url: getNodeUrl(CHAIN_IDs.LENS),
@@ -213,7 +215,6 @@ const config: HardhatUserConfig = {
     },
     lisk: getDefaultHardhatConfig(CHAIN_IDs.LISK),
     "lisk-sepolia": getDefaultHardhatConfig(CHAIN_IDs.LISK_SEPOLIA, true),
-    redstone: getDefaultHardhatConfig(CHAIN_IDs.REDSTONE),
     blast: getDefaultHardhatConfig(CHAIN_IDs.BLAST),
     "blast-sepolia": getDefaultHardhatConfig(CHAIN_IDs.BLAST_SEPOLIA, true),
     worldchain: getDefaultHardhatConfig(CHAIN_IDs.WORLD_CHAIN),
@@ -321,6 +322,14 @@ const config: HardhatUserConfig = {
         },
       },
       {
+        network: "megaeth",
+        chainId: CHAIN_IDs.MEGAETH,
+        urls: {
+          apiURL: "https://megaeth.blockscout.com/api",
+          browserURL: "https://megaeth.blockscout.com",
+        },
+      },
+      {
         network: "mode",
         chainId: CHAIN_IDs.MODE,
         urls: {
@@ -337,14 +346,6 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        network: "redstone",
-        chainId: CHAIN_IDs.REDSTONE,
-        urls: {
-          apiURL: "https://explorer.redstone.xyz/api",
-          browserURL: "https://explorer.redstone.xyz",
-        },
-      },
-      {
         network: "plasma",
         chainId: 9745,
         urls: {
@@ -358,14 +359,6 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://soneium.blockscout.com/api",
           browserURL: "https://soneium.blockscout.com",
-        },
-      },
-      {
-        network: "tatara",
-        chainId: CHAIN_IDs.TATARA,
-        urls: {
-          apiURL: "https://explorer.tatara.katana.network/api",
-          browserURL: "https://explorer.tatara.katana.network",
         },
       },
     ],

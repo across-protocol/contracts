@@ -1,0 +1,151 @@
+[mainnet]
+endpoint_url = "${NODE_URL_1}"
+
+[mainnet.address]
+sponsoredCCTPSrcPeriphery = "0x89004EA51Bac007FEc55976967135b2Aa6e838d4"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+baseToken = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+sponsoredCCTPDstPeriphery = "0x5616194d65638086a3191B1fEF436f503ff329eC"
+multicallHandler = "0x64a43393866DBA0044879979fAa7AD3d000622e9"
+zkLighter = "0x3B4D794a66304F130a4Db8F2551B0070dfCf5ca7"
+
+[mainnet.uint]
+cctpDomainId = 0
+
+[base]
+endpoint_url = "${NODE_URL_8453}"
+
+[base.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+sponsoredCCTPSrcPeriphery = "0xA7A8d1efC1EE3E69999D370380949092251a5c20"
+usdc = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+
+[base.uint]
+cctpDomainId = 6
+
+[arbitrum]
+endpoint_url = "${NODE_URL_42161}"
+
+[arbitrum.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+sponsoredCCTPSrcPeriphery = "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B"
+usdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+
+[arbitrum.uint]
+cctpDomainId = 3
+
+# Arbitrum Sepolia
+[arbitrum-sepolia]
+endpoint_url = "${NODE_URL_421614}"
+
+[arbitrum-sepolia.address]
+cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+
+[arbitrum-sepolia.uint]
+cctpDomainId = 3
+
+[optimism]
+endpoint_url = "${NODE_URL_10}"
+
+[optimism.address]
+sponsoredCCTPSrcPeriphery = "0x986E476F93a423d7a4CD0baF362c5E0903268142"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
+
+[optimism.uint]
+cctpDomainId = 2
+
+[unichain]
+endpoint_url = "${NODE_URL_130}"
+
+[unichain.address]
+sponsoredCCTPSrcPeriphery = "0x2918236893EC1ec739a96C381e00403d52ac560F"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x078D782b760474a361dDA0AF3839290b0EF57AD6"
+
+[unichain.uint]
+cctpDomainId = 10
+
+[world]
+endpoint_url = "${NODE_URL_480}"
+
+[world.address]
+sponsoredCCTPSrcPeriphery = "0x1c8243198570658f818FC56538f2c837C2a32958"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x79A02482A880bCE3F13e09Da970dC34db4CD24d1"
+
+[world.uint]
+cctpDomainId = 14
+
+[linea]
+endpoint_url = "${NODE_URL_59144}"
+
+[linea.address]
+sponsoredCCTPSrcPeriphery = "0x60eB88A83434f13095B0A138cdCBf5078Aa5005C"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff"
+
+[linea.uint]
+cctpDomainId = 11
+
+[polygon]
+endpoint_url = "${NODE_URL_137}"
+
+[polygon.address]
+sponsoredCCTPSrcPeriphery = "0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+
+[polygon.uint]
+cctpDomainId = 7
+
+[143]
+endpoint_url = "${NODE_URL_143}"
+
+[143.address]
+sponsoredCCTPSrcPeriphery = "0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5"
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
+
+[143.uint]
+cctpDomainId = 15
+
+# HyperEVM Mainnet
+[999]
+endpoint_url = "${NODE_URL_999}"
+
+[999.address]
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+# USDC
+baseToken = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
+multicallHandler = "0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC"
+
+[999.uint]
+cctpDomainId = 19
+coreIndex = 0
+accountActivationFeeCore = 100000000
+bridgeSafetyBufferCore = 100000000
+
+[999.bool]
+canBeUsedForAccountActivation = true
+
+# HyperEVM testnet
+[998]
+endpoint_url = "${NODE_URL_998}"
+
+[998.address]
+cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
+cctpMessageTransmitter = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
+# USDC
+baseToken = "0x2B3370eE501B4a559b57D449569354196457D8Ab"
+
+[998.uint]
+cctpDomainId = 19
+coreIndex = 0
+accountActivationFeeCore = 100000000
+bridgeSafetyBufferCore = 100000000
+
+[998.bool]
+canBeUsedForAccountActivation = true
