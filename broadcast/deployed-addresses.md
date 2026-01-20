@@ -27,7 +27,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Ethereum_Adapter             | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
 | HubPool                      | [0xc186fA914353c44b2E33eBE05f21846F1048bEda](https://etherscan.io/address/0xc186fA914353c44b2E33eBE05f21846F1048bEda) |
 | HubPoolStore                 | [0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61](https://etherscan.io/address/0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61) |
-| Ink_Adapter                  | [0x545E43B6eC2f9a44CAa531298699Ff05958670B5](https://etherscan.io/address/0x545E43B6eC2f9a44CAa531298699Ff05958670B5) |
 | Lens_Adapter                 | [0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf](https://etherscan.io/address/0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf) |
 | Linea_Adapter                | [0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787](https://etherscan.io/address/0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787) |
 | Lisk_Adapter                 | [0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b](https://etherscan.io/address/0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b) |
