@@ -28,8 +28,10 @@ artifacts-zk
 
 # Foundry files
 out
+out-local
 zkout
 cache-foundry
+cache-foundry-local
 
 # Upgradeability files
 .openzeppelin
@@ -50,5 +52,6 @@ src/svm/assets
 src/svm/clients/*
 !src/svm/clients/index.ts
 
-# Claude
-.claude
+# SP1Helios deploy artifacts
+script/universal/genesis-binary
+script/universal/genesis.json
