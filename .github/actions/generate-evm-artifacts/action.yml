@@ -26,7 +26,7 @@ runs:
       run: forge install
     - name: Build Foundry
       shell: bash
-      run: FOUNDRY_PROFILE=local forge build
+      run: yarn build-evm-foundry
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:

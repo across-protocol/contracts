@@ -37,6 +37,7 @@
     "export-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
     "build": "yarn build-hardhat && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
     "build-verified": "yarn build-hardhat && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
+    "build-evm-foundry": "forge build",
     "test-evm": "yarn test-evm-hardhat && yarn test-evm-foundry",
     "test-evm-hardhat": "IS_TEST=true hardhat test",
     "test-evm-foundry": "FOUNDRY_PROFILE=local-test forge test",
