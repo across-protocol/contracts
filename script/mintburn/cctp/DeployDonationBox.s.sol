@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
-import { Config } from "forge-std/Config.sol";
 import { console } from "forge-std/console.sol";
 
 import { DonationBox } from "../../../contracts/chain-adapters/DonationBox.sol";
@@ -28,10 +27,6 @@ contract DeployDonationBox is Script {
         console.log("DonationBox deployed to:", address(donationBox));
         console.log("DEFAULT_ADMIN_ROLE granted to:", deployer);
         console.log("WITHDRAWER_ROLE granted to:", deployer);
-
-        _loadConfig("./script/mintburn/cctp/config.toml", true);
-        config.set("donationBox", address(donationBox));
-        console.log("DonationBox address set in config to:", address(donationBox));
 
         vm.stopBroadcast();
     }

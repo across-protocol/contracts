@@ -13,8 +13,8 @@ import { CommonFlowParams } from "./Structs.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title HyperCoreFlowExecutor
@@ -556,7 +556,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         if (amountToSponsor > 0) {
             // This will succeed because we checked the balance earlier
-            donationBox.withdraw(IERC20(finalToken), amountToSponsor);
+            donationBox.withdraw(finalToken, amountToSponsor);
         }
 
         $.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
@@ -788,7 +788,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
             // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
             // Get additional amount to send from donation box, and send it to self on core
-            donationBox.withdraw(IERC20(finalToken), totalAdditionalToSendEVM);
+            donationBox.withdraw(finalToken, totalAdditionalToSendEVM);
             IERC20(finalToken).safeTransfer(address(finalTokenInfo.swapHandler), totalAdditionalToSendEVM);
             finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
                 finalToken,
@@ -852,7 +852,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             sponsorshipFundsToForward = 0;
         }
         if (sponsorshipFundsToForward > 0) {
-            donationBox.withdraw(IERC20(params.finalToken), sponsorshipFundsToForward);
+            donationBox.withdraw(params.finalToken, sponsorshipFundsToForward);
         }
         uint256 totalAmountToForward = params.amountInEVM + sponsorshipFundsToForward;
         IERC20(params.finalToken).safeTransfer(params.finalRecipient, totalAmountToForward);
@@ -899,7 +899,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         _getMainStorage().cumulativeSponsoredActivationFee[fundingToken] += evmAmountToSend;
 
         // donationBox @ evm -> Handler @ evm
-        donationBox.withdraw(IERC20(fundingToken), evmAmountToSend);
+        donationBox.withdraw(fundingToken, evmAmountToSend);
         // Handler @ evm -> Handler @ core
         HyperCoreLib.transferERC20EVMToSelfOnCore(
             fundingToken,
@@ -998,7 +998,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         emit SentSponsorshipFundsToSwapHandler(token, amountEVMToSend);
 
-        donationBox.withdraw(IERC20(token), amountEVMToSend);
+        donationBox.withdraw(token, amountEVMToSend);
         IERC20(token).safeTransfer(address(finalTokenInfo.swapHandler), amountEVMToSend);
         finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
             token,
@@ -1106,7 +1106,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     }
 
     function sweepErc20FromDonationBox(address token, uint256 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
-        donationBox.withdraw(IERC20(token), amount);
+        donationBox.withdraw(token, amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 

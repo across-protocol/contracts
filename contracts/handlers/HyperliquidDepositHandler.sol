@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/SpokePoolMessageHandler.sol";
-import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
-import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { HyperCoreLib } from "../libraries/HyperCoreLib.sol";
-import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { DonationBox } from "../chain-adapters/DonationBox.sol";
 
 /**
@@ -66,7 +66,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * should be one controlled by the Across API to prevent griefing attacks that attempt to drain the Donation Box.
      * @param _spokePool Address of the SpokePool contract that can call handleV3AcrossMessage.
      */
-    constructor(address _signer, address _spokePool) {
+    constructor(address _signer, address _spokePool) Ownable(msg.sender) {
         donationBox = new DonationBox();
         signer = _signer;
         spokePool = _spokePool;
@@ -190,7 +190,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * @param user The address of the user to send the tokens to
      */
     function sweepDonationBoxFundsToUser(address token, uint256 amount, address user) external onlyOwner nonReentrant {
-        donationBox.withdraw(IERC20(token), amount);
+        donationBox.withdraw(token, amount);
         IERC20(token).safeTransfer(user, amount);
     }
 
@@ -222,7 +222,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             // does not allow the end user subtracting part of their received amount to use for the activation fee.
             uint256 activationFee = tokenInfo.activationFeeEvm;
             uint256 amountRequiredToActivate = activationFee + 1;
-            donationBox.withdraw(IERC20(token), amountRequiredToActivate);
+            donationBox.withdraw(token, amountRequiredToActivate);
             // Deposit the activation fee + 1 wei into this contract's core account to pay for the user's
             // account activation.
             HyperCoreLib.transferERC20EVMToSelfOnCore(token, tokenIndex, amountRequiredToActivate, decimalDiff);

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { AccessControl } from "@openzeppelin/contracts-v4/access/AccessControl.sol";
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice Users can donate tokens to this contract that only authorized withdrawers can withdraw.
@@ -30,7 +30,7 @@ contract DonationBox is AccessControl {
      * @param token Token to withdraw.
      * @param amount Amount of tokens to withdraw.
      */
-    function withdraw(IERC20 token, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
-        token.safeTransfer(msg.sender, amount);
+    function withdraw(address token, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
+        IERC20(token).safeTransfer(msg.sender, amount);
     }
 }
