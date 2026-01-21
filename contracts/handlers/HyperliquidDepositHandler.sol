@@ -62,7 +62,13 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         FromDonationBox // 2: Activate from DonationBox if needed (signature required)
     }
 
-    event UserAccountActivated(address user, address indexed token, uint256 amountRequiredToActivate);
+    event DepositToHypercore(
+        address indexed user,
+        address indexed token,
+        uint64 userCoreAmount,
+        uint64 activationFeePaid,
+        uint64 activationFeeSponsored
+    );
     event AddedSupportedToken(address evmAddress, uint64 tokenId, uint256 activationFeeEvm, int8 decimalDiff);
     event SignerSet(address signer);
     event SpokePoolSet(address spokePool);
@@ -95,9 +101,9 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * @param token The address of the token to deposit.
      * @param amount The amount of tokens on HyperEVM to deposit.
      * @param message The first byte selects the AccountActivationMode:
-     * - 0 (None): No activation expected. Remainder is abi.encode(user). Reverts if user doesn't exist.
-     * - 1 (FromUserFunds): Activate from user's deposit if needed. Remainder is abi.encode(user). No signature required.
-     * - 2 (FromDonationBox): Activate from DonationBox if needed. Remainder is abi.encode(user, signature).
+     * - 0 (None): No activation expected. Remainder is abi.encode(user, destinationDex). Reverts if user doesn't exist.
+     * - 1 (FromUserFunds): Activate from user's deposit if needed. Remainder is abi.encode(user, destinationDex). No signature required.
+     * - 2 (FromDonationBox): Activate from DonationBox if needed. Remainder is abi.encode(user, destinationDex, signature).
      *   Signature must be from the authorized signer (Across API) to prevent griefing attacks on the DonationBox.
      */
     function depositToHypercore(address token, uint256 amount, bytes calldata message) external nonReentrant {
@@ -113,9 +119,9 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * @param token The address of the token sent.
      * @param amount The amount of tokens received by this contract.
      * @param message The first byte selects the AccountActivationMode:
-     * - 0 (None): No activation expected. Remainder is abi.encode(user). Reverts if user doesn't exist.
-     * - 1 (FromUserFunds): Activate from user's deposit if needed. Remainder is abi.encode(user). No signature required.
-     * - 2 (FromDonationBox): Activate from DonationBox if needed. Remainder is abi.encode(user, signature).
+     * - 0 (None): No activation expected. Remainder is abi.encode(user, destinationDex). Reverts if user doesn't exist.
+     * - 1 (FromUserFunds): Activate from user's deposit if needed. Remainder is abi.encode(user, destinationDex). No signature required.
+     * - 2 (FromDonationBox): Activate from DonationBox if needed. Remainder is abi.encode(user, destinationDex, signature).
      *   Signature must be from the authorized signer (Across API) to prevent griefing attacks on the DonationBox.
      */
     function handleV3AcrossMessage(
@@ -131,12 +137,15 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         AccountActivationMode mode = AccountActivationMode(uint8(message[0]));
 
         if (mode == AccountActivationMode.None || mode == AccountActivationMode.FromUserFunds) {
-            address user = abi.decode(message[1:], (address));
-            _depositToHypercore(token, amount, user, mode);
+            (address user, uint32 destinationDex) = abi.decode(message[1:], (address, uint32));
+            _depositToHypercore(token, amount, user, mode, destinationDex);
         } else if (mode == AccountActivationMode.FromDonationBox) {
-            (address user, bytes memory signature) = abi.decode(message[1:], (address, bytes));
+            (address user, uint32 destinationDex, bytes memory signature) = abi.decode(
+                message[1:],
+                (address, uint32, bytes)
+            );
             _verifySignature(user, signature);
-            _depositToHypercore(token, amount, user, mode);
+            _depositToHypercore(token, amount, user, mode, destinationDex);
         } else {
             revert UnknownAccountActivationMode();
         }
@@ -228,11 +237,18 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     /// - INTERNAL FUNCTIONS -
     /// -------------------------------------------------------------------------------------------------------------
 
-    function _depositToHypercore(address token, uint256 evmAmount, address user, AccountActivationMode mode) internal {
+    function _depositToHypercore(
+        address token,
+        uint256 evmAmount,
+        address user,
+        AccountActivationMode mode,
+        uint32 destinationDex
+    ) internal {
         TokenInfo memory tokenInfo = _getTokenInfo(token);
         int8 decimalDiff = tokenInfo.decimalDiff;
         uint256 totalEvmAmount = evmAmount;
         uint64 accountActivationFeeCore = 0;
+        uint64 sponsoredAmount = 0;
 
         bool userExists = HyperCoreLib.coreUserExists(user);
         if (!userExists) {
@@ -246,24 +262,24 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             if (mode == AccountActivationMode.FromDonationBox) {
                 donationBox.withdraw(IERC20(token), activationFee);
                 totalEvmAmount += activationFee;
+                sponsoredAmount = accountActivationFeeCore;
             } else {
-                // todo? We might want to actually just skip this branch. Or keep it for the event w/ clear revert reason
                 (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
                 if (depositCore <= accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
             }
-
-            emit UserAccountActivated(user, token, activationFee);
         }
 
-        HyperCoreLib.transferERC20EVMToCore(
+        (, uint64 userAmount) = HyperCoreLib.transferERC20EVMToCore(
             token,
             tokenInfo.tokenId,
             user,
             totalEvmAmount,
             decimalDiff,
-            HyperCoreLib.CORE_SPOT_DEX_ID,
+            destinationDex,
             accountActivationFeeCore
         );
+
+        emit DepositToHypercore(user, token, userAmount, accountActivationFeeCore, sponsoredAmount);
     }
 
     function _verifySignature(address expectedUser, bytes memory signature) internal view returns (bool) {
