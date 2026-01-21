@@ -587,45 +587,7 @@ abstract contract HubPoolTestBase is Test, Constants {
         fixture.hubPool.addLiquidity(address(fixture.weth), amount);
     }
 
-    // ============ Root Bundle Execution ============
-
-    /**
-     * @notice Full flow: build merkle leaf, propose, advance time, and execute root bundle.
-     * @param chainId The destination chain ID
-     * @param l1Token The L1 token to bridge
-     * @param amount The amount to send
-     * @param lpFees The LP fees
-     * @param relayerRefundRoot The relayer refund root (use MOCK_RELAYER_REFUND_ROOT or bytes32(0))
-     * @param slowRelayRoot The slow relay root (use MOCK_SLOW_RELAY_ROOT or bytes32(0))
-     * @return leaf The executed pool rebalance leaf
-     */
-    function executeRootBundleForToken(
-        uint256 chainId,
-        address l1Token,
-        uint256 amount,
-        uint256 lpFees,
-        bytes32 relayerRefundRoot,
-        bytes32 slowRelayRoot
-    ) internal returns (HubPoolInterface.PoolRebalanceLeaf memory leaf) {
-        bytes32 root;
-        (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(chainId, l1Token, amount, lpFees);
-
-        proposeBundleAndAdvanceTime(root, relayerRefundRoot, slowRelayRoot);
-
-        executeLeaf(leaf, MerkleTreeUtils.emptyProof());
-    }
-
     // ============ vm.etch Helper ============
-
-    /**
-     * @notice Puts dummy bytecode at an address to pass extcodesize checks.
-     * @dev Use this when mocking external contracts with vm.mockCall.
-     *      Without code, calls to the address will revert due to Solidity's extcodesize check.
-     * @param target The address to put dummy code at
-     */
-    function etchDummyCode(address target) internal {
-        vm.etch(target, hex"00");
-    }
 
     /**
      * @notice Creates a fake address and puts dummy bytecode at it.
