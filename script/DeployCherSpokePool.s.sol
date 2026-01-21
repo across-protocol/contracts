@@ -4,57 +4,46 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { OP_SpokePool } from "../contracts/OP_SpokePool.sol";
+import { Cher_SpokePool } from "../contracts/Cher_SpokePool.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/025DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/060DeployCherSpokePool.s.sol:DeployCherSpokePool --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        forge script script/025DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url \
-//        $NODE_URL_1 --broadcast --verify --verifier blockscout --verifier-url https://explorer.mode.network/api
+//        forge script script/060DeployCherSpokePool.s.sol:DeployCherSpokePool --rpc-url \
+//        $NODE_URL_1 --broadcast --verify --verifier blockscout --verifier-url https://soneium.blockscout.com/api
 
-contract DeployOPSpokePool is Script, Test, DeploymentUtils {
+contract DeployCherSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-        uint256 chainId = block.chainid;
 
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
-        require(info.spokeChainId != 1135 && info.spokeChainId != 1868, "Use DeployOPBridgedSpokePool");
-
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
-        address l2Usdc = getUSDCAddress(info.spokeChainId);
 
-        bool hasCctpDomain = hasCctpDomain(destinationChainId);
-        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(spokeChainId) : CCTP_NO_DOMAIN;
-
-        address cctpTokenMessenger = hasCctpDomain ? getL2Addresses(chainId).cctpV2TokenMessenger : address(0);
-        address adapterStore = getDeployedAddress(chainId, "AdapterStore");
-        uint256 oftDstEid = getOftEid(spokeChainId);
-        uint256 oftFeeCap = 1 ether; // @todo
+        // Get USDC address for Cher
+        address usdcAddress = getUSDCeAddress(info.spokeChainId);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Prepare constructor arguments for OP_SpokePool
+        // Prepare constructor arguments for Cher_SpokePool
         bytes memory constructorArgs = abi.encode(
             weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
-            l2Usdc, // _l2Usdc
-            cctpTokenMessenger // _cctpTokenMessenger
+            usdcAddress, // _l2Usdc (Cher's bridged USDC that's upgradeable to native)
+            address(0) // _cctpTokenMessenger (set to zero address as per original script)
         );
 
         // Initialize deposit counter to 1
         // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
         bytes memory initArgs = abi.encodeWithSelector(
-            OP_SpokePool.initialize.selector,
-            // Note: If this is a re-deployment of the spoke pool proxy, set this to a very high number of
-            // deposits to avoid duplicate deposit IDs with deprecated spoke pool. Should be set to 1 otherwise.
+            Cher_SpokePool.initialize.selector,
             1, // _initialDepositId
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
@@ -62,10 +51,10 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
 
         // Deploy the proxy
         DeploymentResult memory result = deployNewProxy(
-            "OP_SpokePool",
+            "Cher_SpokePool",
             constructorArgs,
             initArgs,
-            false // implementationOnly
+            true // implementationOnly
         );
 
         // Log the deployed addresses
@@ -73,13 +62,9 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
         console.log("WETH address:", weth);
-        console.log("CCTP Domain ID:", cctpDomain);
-        console.log("CCTP Token Messenger:", cctpTokenMessenger);
-        console.log("AdapterStore:", adapterStore);
-        console.log("OFT Destination ID:", oftDstEid);
-        console.log("OFT Fee Cap:", oftFeeCap);
-        console.log("OP_SpokePool proxy deployed to:", result.proxy);
-        console.log("OP_SpokePool implementation deployed to:", result.implementation);
+        console.log("USDC address:", usdcAddress);
+        console.log("Cher_SpokePool proxy deployed to:", result.proxy);
+        console.log("Cher_SpokePool implementation deployed to:", result.implementation);
 
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
