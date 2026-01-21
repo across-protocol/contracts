@@ -30,12 +30,13 @@ if [ -n "$STAGED_RUST_FILES" ]; then
     echo "$STAGED_RUST_FILES" | xargs git add
 fi
 
-# check if the installed version of @across-protocol/constants matches the version in yarn.lock
-instaled_version=$(node -p "JSON.parse(require('fs').readFileSync('node_modules/@across-protocol/constants/package.json','utf8')).version")
-expected_version=$(awk '/^"?@across-protocol\/constants@/{f=1} f && $1=="version"{gsub(/"/,"",$2); print $2; exit}' yarn.lock)
+# check if the integrity of the installed dependencies is the same as the integrity in yarn.lock
+yarn check --integrity >/dev/null 2>&1
+yarn_integrity_exit=$?
 
-if [ "$instaled_version" != "$expected_version" ]; then
-    echo "Installed version of @across-protocol/constants does not match the version in yarn.lock. Please run 'yarn install' to update the version."
+
+if [ $yarn_integrity_exit -ne 0 ]; then
+    echo "yarn check --integrity encountered an error. Running yarn install to update the version."
     exit 1
 fi
 
