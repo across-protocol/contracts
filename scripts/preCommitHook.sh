@@ -30,9 +30,17 @@ if [ -n "$STAGED_RUST_FILES" ]; then
     echo "$STAGED_RUST_FILES" | xargs git add
 fi
 
+# check if the installed version of @across-protocol/constants matches the version in yarn.lock
+instaled_version=$(node -p "JSON.parse(require('fs').readFileSync('node_modules/@across-protocol/constants/package.json','utf8')).version")
+expected_version=$(awk '/^"?@across-protocol\/constants@/{f=1} f && $1=="version"{gsub(/"/,"",$2); print $2; exit}' yarn.lock)
+
+if [ "$instaled_version" != "$expected_version" ]; then
+    echo "Installed version of @across-protocol/constants does not match the version in yarn.lock. Please run 'yarn install' to update the version."
+    exit 1
+fi
+
 echo "Running generate-constants-json on staged files ..."
-# install dependencies first to make sure we're using the latest version of the constants
-yarn && yarn generate-constants-json && yarn prettier --write generated/constants.json
+yarn generate-constants-json && yarn prettier --write generated/constants.json
 if git diff --name-only | grep -E 'generated/constants.json$' >/dev/null; then
     echo "Generated constants have changed."
     git add generated/constants.json
