@@ -61,10 +61,11 @@ contract HubPool_AdminTest is HubPoolTestBase {
         assertTrue(isEnabled, "isEnabled should be true");
         assertEq(lastLpFeeUpdate, block.timestamp, "lastLpFeeUpdate should be current time");
 
-        // Verify LP token was created (using mock factory, so just verify it's a valid ERC20)
+        // Verify LP token was created with correct name and symbol
+        // Note: MockLpTokenFactory uses fixed values; production uses LpTokenFactory with dynamic naming
         MintableERC20 lpTokenContract = MintableERC20(lpToken);
-        assertTrue(bytes(lpTokenContract.symbol()).length > 0, "LP token should have a symbol");
-        assertTrue(bytes(lpTokenContract.name()).length > 0, "LP token should have a name");
+        assertEq(lpTokenContract.symbol(), "LPT");
+        assertEq(lpTokenContract.name(), "LP Token");
     }
 
     function test_EnableL1Token_RevertsIfNotOwner() public {
