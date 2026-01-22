@@ -191,7 +191,7 @@ describe("svm_spoke.fill", () => {
       exclusiveRelayer: relayer.publicKey,
       inputToken: mint, // This is lazy. it should be an encoded token from a separate domain most likely.
       outputToken: mint,
-      inputAmount: new BN(relayAmount),
+      inputAmount: intToU8Array32(relayAmount),
       outputAmount: new BN(relayAmount),
       originChainId: new BN(1),
       depositId: intToU8Array32(Math.floor(Math.random() * 1000000)), // force that we always have a new deposit id.
@@ -749,7 +749,7 @@ describe("svm_spoke.fill", () => {
           exclusiveRelayer: address(relayData.exclusiveRelayer.toString()),
           inputToken: address(relayData.inputToken.toString()),
           outputToken: address(relayData.outputToken.toString()),
-          inputAmount: relayData.inputAmount.toNumber(),
+          inputAmount: new Uint8Array(relayData.inputAmount),
           outputAmount: relayData.outputAmount.toNumber(),
           originChainId: relayData.originChainId.toNumber(),
           depositId: new Uint8Array(relayData.depositId),
@@ -854,7 +854,7 @@ describe("svm_spoke.fill", () => {
           exclusiveRelayer: address(relayData.exclusiveRelayer.toString()),
           inputToken: address(relayData.inputToken.toString()),
           outputToken: address(relayData.outputToken.toString()),
-          inputAmount: relayData.inputAmount.toNumber(),
+          inputAmount: new Uint8Array(relayData.inputAmount),
           outputAmount: relayData.outputAmount.toNumber(),
           originChainId: relayData.originChainId.toNumber(),
           depositId: new Uint8Array(relayData.depositId),

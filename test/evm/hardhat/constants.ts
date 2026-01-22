@@ -36,7 +36,7 @@ export const amountToRelayPreModifiedFees = toBN(amountToRelay).mul(toBN(oneHund
 
 export const amountToRelayPreLPFee = amountToRelayPreFees.mul(oneHundredPct.sub(realizedLpFeePct)).div(oneHundredPct);
 
-export const destinationChainId = 1337; // Should be equal to MockSpokePool.chainId() return value.
+export const destinationChainId = 1342; // Should be equal to MockSpokePool.chainId() return value.
 
 export const originChainId = 666;
 
@@ -49,6 +49,8 @@ export const bondAmount = toWei("5");
 export const finalFee = toWei("1");
 
 export const finalFeeUsdc = ethers.utils.parseUnits("1", 6);
+
+export const finalFeeUsdt = ethers.utils.parseUnits("1", 6);
 
 export const totalBond = bondAmount.add(finalFee);
 

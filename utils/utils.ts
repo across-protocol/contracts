@@ -7,8 +7,10 @@ import * as optimismContracts from "@eth-optimism/contracts";
 import { smock, FakeContract } from "@defi-wonderland/smock";
 import { FactoryOptions } from "hardhat/types";
 import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
+import { BigNumber, Signer, Contract, ContractFactory, BaseContract } from "ethers";
+import { EXPECTED_SAFE_OWNERS, OFT_EIDs } from "../deploy/consts";
 export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
 
 chai.use(smock.matchers);
 
@@ -166,8 +168,12 @@ export async function createFake(contractName: string, targetAddress: string = "
 }
 
 export async function createFakeFromABI(abi: any[], targetAddress: string = "") {
+  return createTypedFakeFromABI(abi, targetAddress);
+}
+
+export async function createTypedFakeFromABI<T extends BaseContract>(abi: any[], targetAddress: string = "") {
   const signer = new ethers.VoidSigner(ethers.constants.AddressZero);
-  return smock.fake(abi, {
+  return smock.fake<T>(abi, {
     address: !targetAddress ? undefined : targetAddress,
     provider: signer.provider,
   });
@@ -205,3 +211,24 @@ export function hashNonEmptyMessage(message: string) {
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
 export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
+
+export function getOftEid(chainId: number): number {
+  const value = OFT_EIDs.get(chainId);
+  if (value === undefined) {
+    throw new Error(`Chain id ${chainId} not present in OFT_EIDs`);
+  }
+  return value;
+}
+
+export const safeAccountConfig: SafeAccountConfig = {
+  owners: EXPECTED_SAFE_OWNERS,
+  threshold: 2,
+};
+
+export const predictedSafe: PredictedSafeProps = {
+  safeAccountConfig,
+  safeDeploymentConfig: {
+    // Safe addresses are deterministic based on owners and salt nonce.
+    saltNonce: "0x1234",
+  },
+};

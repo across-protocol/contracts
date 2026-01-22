@@ -1,12 +1,36 @@
+import { MerkleTree } from "@uma/common";
 import { bondTokenFixture } from "./fixtures/BondToken.Fixture";
 import { enableTokensForLP, hubPoolFixture } from "./fixtures/HubPool.Fixture";
-import { Contract, ethers, seedWallet, SignerWithAddress, expect } from "../../../utils/utils";
-import { constructSimpleTree } from "./HubPool.ExecuteRootBundle";
+import { Contract, ethers, seedWallet, SignerWithAddress, expect, toBNWei, BigNumber } from "../../../utils/utils";
+import { buildPoolRebalanceLeafTree, buildPoolRebalanceLeaves, PoolRebalanceLeaf } from "./MerkleLib.utils";
 import * as consts from "./constants";
 
 let bondToken: Contract, hubPool: Contract, timer: Contract;
 let owner: SignerWithAddress, dataworker: SignerWithAddress, other: SignerWithAddress, lp: SignerWithAddress;
 let weth: Contract, dai: Contract;
+
+// Construct the leaves that will go into the merkle tree. For this function create a simple set of leaves that will
+// repay two token to one chain Id with simple lpFee, netSend and running balance amounts.
+async function constructSimpleTree(): Promise<{
+  wethToSendToL2: BigNumber;
+  daiToSend: BigNumber;
+  leaves: PoolRebalanceLeaf[];
+  tree: MerkleTree<PoolRebalanceLeaf>;
+}> {
+  const wethToSendToL2 = toBNWei(100);
+  const daiToSend = toBNWei(1000);
+  const leaves = buildPoolRebalanceLeaves(
+    [consts.repaymentChainId, consts.repaymentChainId], // repayment chain.
+    [[weth.address, dai.address], []], // l1Token. We will only be sending WETH and DAI to the associated repayment chain.
+    [[toBNWei(1), toBNWei(10)], []], // bundleLpFees. Set to 1 ETH and 10 DAI respectively to attribute to the LPs.
+    [[wethToSendToL2, daiToSend], []], // netSendAmounts. Set to 100 ETH and 1000 DAI as the amount to send from L1->L2.
+    [[wethToSendToL2, daiToSend], []], // runningBalances. Set to 100 ETH and 1000 DAI.
+    [0, 1] // groupIndex. Second leaf should not relay roots to spoke pool.
+  );
+  const tree = await buildPoolRebalanceLeafTree(leaves);
+
+  return { wethToSendToL2, daiToSend, leaves, tree };
+}
 
 export const proposeRootBundle = (hubPool: Contract, dataworker: SignerWithAddress) => {
   return hubPool

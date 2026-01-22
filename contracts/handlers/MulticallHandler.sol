@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import "../interfaces/SpokePoolMessageHandler.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/utils/Address.sol";
+import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 
 /**
  * @title Across Multicall contract that allows a user to specify a series of calls that should be made by the handler
@@ -20,6 +20,11 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
         address target;
         bytes callData;
         uint256 value;
+    }
+
+    struct Replacement {
+        address token;
+        uint256 offset;
     }
 
     struct Instructions {
@@ -40,6 +45,8 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     error CallReverted(uint256 index, Call[] calls);
     error NotSelf();
     error InvalidCall(uint256 index, Call[] calls);
+    error ReplacementCallFailed(bytes callData);
+    error CalldataTooShort(uint256 callDataLength, uint256 offset);
 
     modifier onlySelf() {
         _requireSelf();
@@ -51,15 +58,11 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
      * @dev This will execute all calls encoded in the msg. The caller is responsible for making sure all tokens are
      * drained from this contract by the end of the series of calls. If not, they can be stolen.
      * A drainLeftoverTokens call can be included as a way to drain any remaining tokens from this contract.
+     * @param token The token address that was received from the relay
      * @param message abi encoded array of Call structs, containing a target, callData, and value for each call that
      * the contract should make.
      */
-    function handleV3AcrossMessage(
-        address token,
-        uint256,
-        address,
-        bytes memory message
-    ) external nonReentrant {
+    function handleV3AcrossMessage(address token, uint256, address, bytes memory message) public virtual nonReentrant {
         Instructions memory instructions = abi.decode(message, (Instructions));
 
         // If there is no fallback recipient, call and revert if the inner call fails.
@@ -110,6 +113,64 @@ contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
                 destination.sendValue(amount);
             }
         }
+    }
+
+    /**
+     * @notice Executes a call while replacing specified calldata offsets with current token/native balances.
+     * @dev Modifies calldata in-place using OR operations. Target calldata positions must be zeroed out.
+     * Cannot handle negative balances, making it incompatible with DEXs requiring negative input amounts.
+     * For native balance (token = address(0)), the entire balance is used as call value.
+     * @param target The contract address to call
+     * @param callData The calldata to execute, with zero values at replacement positions
+     * @param value The native token value to send (ignored if native balance replacement is used)
+     * @param replacement Array of Replacement structs specifying token addresses and byte offsets for balance injection
+     */
+    function makeCallWithBalance(
+        address target,
+        bytes memory callData,
+        uint256 value,
+        Replacement[] calldata replacement
+    ) external onlySelf {
+        for (uint256 i = 0; i < replacement.length; ++i) {
+            uint256 bal = 0;
+            if (replacement[i].token != address(0)) {
+                bal = IERC20(replacement[i].token).balanceOf(address(this));
+            } else {
+                bal = address(this).balance;
+
+                // If we're using the native balance, we assume that the caller wants to send the full value to the target.
+                value = bal;
+            }
+
+            // + 32 to skip the length of the calldata
+            uint256 offset = replacement[i].offset + 32;
+
+            // 32 has already been added to the offset, and the replacement value is 32 bytes long, so
+            // we don't need to add 32 here. We just directly compare the offset with the length of the calldata.
+            if (offset > callData.length) revert CalldataTooShort(callData.length, offset);
+
+            assembly ("memory-safe") {
+                // Get the pointer to the offset that the caller wants to overwrite.
+                let ptr := add(callData, offset)
+                // Get the current value at the offset.
+                let current := mload(ptr)
+                // Or the current value with the new value.
+                // Reasoning:
+                // - caller should 0-out any portion that they want overwritten.
+                // - if the caller is representing the balance in a smaller integer, like a uint160 or uint128,
+                //   the higher bits will be 0 and not overwrite any other data in the calldata assuming
+                //   the balance is small enough to fit in the smaller integer.
+                // - The catch: the smaller integer where they want to store the balance must end no
+                //   earlier than the 32nd byte in their calldata. Otherwise, this would require a
+                //   negative offset, which is not possible.
+                let val := or(bal, current)
+                // Store the new value at the offset.
+                mstore(ptr, val)
+            }
+        }
+
+        (bool success, ) = target.call{ value: value }(callData);
+        if (!success) revert ReplacementCallFailed(callData);
     }
 
     function _requireSelf() internal view {

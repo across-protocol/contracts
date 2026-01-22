@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of typed structured data.
@@ -81,6 +81,8 @@ abstract contract EIP712CrossChainUpgradeable is Initializable {
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
     uint256[1000] private __gap;
 }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/LpTokenFactoryInterface.sol";
 
-import "@uma/core/contracts/common/implementation/ExpandedERC20.sol";
+import "contracts/external/uma/core/contracts/common/implementation/ExpandedERC20.sol";
 
 /**
  * @notice Factory to create new LP ERC20 tokens that represent a liquidity provider's position. HubPool is the
@@ -30,11 +30,7 @@ contract LpTokenFactory is LpTokenFactoryInterface {
         return address(lpToken);
     }
 
-    function _concatenate(
-        string memory a,
-        string memory b,
-        string memory c
-    ) internal pure returns (string memory) {
+    function _concatenate(string memory a, string memory b, string memory c) internal pure returns (string memory) {
         return string(abi.encodePacked(a, b, c));
     }
 }

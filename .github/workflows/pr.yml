@@ -1,7 +1,11 @@
 name: Checks
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - "master"
 env:
-  NODE_VERSION: 20
+  NODE_VERSION: 22.18
 jobs:
   # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
   upload-svm-artifacts:
@@ -43,6 +47,8 @@ jobs:
         artifacts
         cache
         typechain
+        out
+        cache-foundry
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -120,7 +126,7 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test evm-hardhat
         shell: bash
-        run: yarn test-evm
+        run: yarn test-evm-hardhat
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts
@@ -140,6 +146,16 @@ jobs:
         with:
           verify_version: 0.4.3
           node_version: ${{ env.NODE_VERSION }}
+      - name: Check which paths changed
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            svm:
+              - 'programs/**'
+              - 'scripts/svm/**'
+              - 'src/svm/**'
+              - 'test/svm/**'
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -161,6 +177,7 @@ jobs:
         if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
         run: tar -cf svm-verified-test-binaries.tar target/deploy
       - name: Test verified SVM build
+        if: steps.filter.outputs.svm == 'true'
         run: anchor test --skip-build
   build-ts:
     name: Build TypeScript
@@ -190,6 +207,7 @@ jobs:
         run: yarn build-ts
   forge:
     name: Forge
+    needs: upload-evm-artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -207,5 +225,9 @@ jobs:
         run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test evm-foundry
-        run: forge test --match-path test/evm/foundry/local/**/*.t.sol
+        run: yarn test-evm-foundry

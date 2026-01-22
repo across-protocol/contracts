@@ -2,12 +2,17 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 
 import { Universal_SpokePool, IHelios } from "../../../../contracts/Universal_SpokePool.sol";
+import "../../../../contracts/SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import "../../../../contracts/test/MockCCTP.sol";
+import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
+import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
+import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
+import { OFTTransportAdapter } from "../../../../contracts/libraries/OFTTransportAdapter.sol";
 
 contract MockHelios is IHelios {
     mapping(bytes32 => bytes32) public storageSlots;
@@ -22,11 +27,7 @@ contract MockHelios is IHelios {
         headTimestamp = _timestamp;
     }
 
-    function getStorageSlot(
-        uint256,
-        address,
-        bytes32 _key
-    ) external view returns (bytes32) {
+    function getStorageSlot(uint256, address, bytes32 _key) external view returns (bytes32) {
         return storageSlots[_key];
     }
 }
@@ -40,7 +41,9 @@ contract MockUniversalSpokePool is Universal_SpokePool {
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer,
         IERC20 _l2Usdc,
-        ITokenMessenger _cctpTokenMessenger
+        ITokenMessenger _cctpTokenMessenger,
+        uint32 _oftDstId,
+        uint256 _oftFeeCap
     )
         Universal_SpokePool(
             _adminUpdateBuffer,
@@ -50,16 +53,19 @@ contract MockUniversalSpokePool is Universal_SpokePool {
             _depositQuoteTimeBuffer,
             _fillDeadlineBuffer,
             _l2Usdc,
-            _cctpTokenMessenger
+            _cctpTokenMessenger,
+            _oftDstId,
+            _oftFeeCap
         )
     {}
 
-    function test_bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) external {
+    function test_bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) external payable {
         _bridgeTokensToHubPool(amountToReturn, l2TokenAddress);
     }
 }
 
 contract UniversalSpokePoolTest is Test {
+    using AddressToBytes32 for address;
     MockUniversalSpokePool spokePool;
     MockHelios helios;
 
@@ -71,12 +77,15 @@ contract UniversalSpokePoolTest is Test {
     uint256 adminUpdateBuffer = 1 days;
 
     ERC20 usdc;
+    ERC20 usdt;
     uint256 usdcMintAmount = 100e6;
     MockCCTPMessenger cctpMessenger;
+    uint256 oftDstEid = 1;
 
     function setUp() public {
         helios = new MockHelios();
         usdc = new ERC20("USDC", "USDC");
+        usdt = new ERC20("USDT", "USDT");
         MockCCTPMinter minter = new MockCCTPMinter();
         cctpMessenger = new MockCCTPMessenger(ITokenMinter(minter));
         hubPool = makeAddr("hubPool");
@@ -90,7 +99,9 @@ contract UniversalSpokePoolTest is Test {
             7200,
             7200,
             IERC20(address(usdc)),
-            ITokenMessenger(address(cctpMessenger))
+            ITokenMessenger(address(cctpMessenger)),
+            uint32(oftDstEid),
+            1e18
         );
         vm.prank(owner);
         address proxy = address(
@@ -276,5 +287,182 @@ contract UniversalSpokePoolTest is Test {
         vm.expectRevert(Universal_SpokePool.AdminCallNotValidated.selector);
         spokePool.setCrossDomainAdmin(makeAddr("randomAdmin"));
         vm.stopPrank();
+    }
+
+    function testSetOftMessenger() public {
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        assertEq(spokePool.oftMessengers(address(usdt)), address(oftMessenger));
+    }
+
+    function testSetOftMessenger_removeMessenger() public {
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        assertEq(spokePool.oftMessengers(address(usdt)), address(oftMessenger));
+
+        nonce++;
+
+        // Remove the messenger by setting to address(0)
+        message = abi.encodeWithSignature("setOftMessenger(address,address)", address(usdt), address(0));
+        value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        assertEq(spokePool.oftMessengers(address(usdt)), address(0));
+    }
+
+    function testNonZeroLzFee() public {
+        // Mock an OFT messenger that returns a non-zero lzTokenFee
+        MockOFTMessenger oftMessengerWithNonZeroLzFee = new MockOFTMessenger(address(usdt));
+        oftMessengerWithNonZeroLzFee.setFeesToReturn(0, 1); // nativeFee = 0, lzFee = 1
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessengerWithNonZeroLzFee)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++; // Increment nonce for the next message
+
+        // Expect the OftLzFeeNotZero error from OFTTransportAdapter
+        vm.expectRevert(OFTTransportAdapter.OftLzFeeNotZero.selector);
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+    }
+
+    function testFeeTooHigh() public {
+        // Mock an OFT messenger that returns a nativeFee higher than OFT_FEE_CAP
+        uint256 highNativeFee = spokePool.OFT_FEE_CAP() + 1;
+        MockOFTMessenger oftMessengerWithHighFee = new MockOFTMessenger(address(usdt));
+        oftMessengerWithHighFee.setFeesToReturn(highNativeFee, 0); // nativeFee > OFT_FEE_CAP, lzFee = 0
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessengerWithHighFee)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++; // Increment nonce for the next message
+
+        // Expect the OftFeeCapExceeded error from OFTTransportAdapter.
+        // Provide msg.value to cover the quoted fee so the cap guard is triggered.
+        vm.expectRevert(OFTTransportAdapter.OftFeeCapExceeded.selector);
+        spokePool.test_bridgeTokensToHubPool{ value: highNativeFee }(usdcMintAmount, address(usdt));
+    }
+
+    function testBridgeTokensToHubPool_oft() public {
+        IOFT oftMessenger = IOFT(new MockOFTMessenger(address(usdt)));
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+
+        vm.expectCall(
+            address(oftMessenger),
+            abi.encodeCall(
+                oftMessenger.send,
+                (
+                    SendParam({
+                        dstEid: uint32(oftDstEid),
+                        to: hubPool.toBytes32(),
+                        amountLD: usdcMintAmount,
+                        minAmountLD: usdcMintAmount,
+                        extraOptions: bytes(""),
+                        composeMsg: bytes(""),
+                        oftCmd: bytes("")
+                    }),
+                    MessagingFee({ nativeFee: 0, lzTokenFee: 0 }),
+                    address(spokePool)
+                )
+            )
+        );
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+    }
+
+    function testBridgeTokensToHubPool_oft_insufficientBalanceForFee() public {
+        uint256 nativeFee = 1e17; // Less than OFT_FEE_CAP
+        MockOFTMessenger oftMessenger = new MockOFTMessenger(address(usdt));
+        oftMessenger.setFeesToReturn(nativeFee, 0);
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++;
+
+        // Expect revert due to caller underpaying the required OFT native fee
+        vm.expectRevert(SpokePool.OFTFeeUnderpaid.selector);
+        spokePool.test_bridgeTokensToHubPool{ value: nativeFee - 1 }(usdcMintAmount, address(usdt));
+    }
+
+    function testBridgeTokensToHubPool_oft_incorrectAmountReceived() public {
+        MockOFTMessenger oftMessenger = new MockOFTMessenger(address(usdt));
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++;
+
+        // Set amountReceivedLD to be different from the sent amount
+        oftMessenger.setLDAmountsToReturn(usdcMintAmount, usdcMintAmount - 1);
+
+        // Expect revert due to incorrect amount received
+        vm.expectRevert(OFTTransportAdapter.OftIncorrectAmountReceivedLD.selector);
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
+    }
+
+    function testBridgeTokensToHubPool_oft_incorrectAmountSent() public {
+        MockOFTMessenger oftMessenger = new MockOFTMessenger(address(usdt));
+
+        // Set this messenger for USDT
+        bytes memory message = abi.encodeWithSignature(
+            "setOftMessenger(address,address)",
+            address(usdt),
+            address(oftMessenger)
+        );
+        bytes memory value = abi.encode(address(spokePool), message);
+        helios.updateStorageSlot(spokePool.getSlotKey(nonce), keccak256(value));
+        spokePool.executeMessage(nonce, value, 100);
+        nonce++;
+
+        // Set amountSentLD to be different from the sent amount
+        oftMessenger.setLDAmountsToReturn(usdcMintAmount - 1, usdcMintAmount);
+
+        // Expect revert due to incorrect amount sent
+        vm.expectRevert(OFTTransportAdapter.OftIncorrectAmountSentLD.selector);
+        spokePool.test_bridgeTokensToHubPool(usdcMintAmount, address(usdt));
     }
 }

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { MultiCaller } from "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { MultiCaller } from "../../external/uma/core/contracts/common/implementation/MultiCaller.sol";
 import { CircleCCTPAdapter, ITokenMessenger, CircleDomainIds } from "../../libraries/CircleCCTPAdapter.sol";
 import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
 
 /**
  * @title WithdrawalHelperBase
@@ -102,11 +102,7 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
      * L1/L2 given knowledge of only one of the addresses. Both arguments are provided to enable a flexible interface; however, due
      * to this, `withdrawToken` MUST account for situations where the L1/L2 token mapping is incorrect.
      */
-    function withdrawToken(
-        address l1Token,
-        address l2Token,
-        uint256 amountToReturn
-    ) public virtual;
+    function withdrawToken(address l1Token, address l2Token, uint256 amountToReturn) public virtual;
 
     /*
      * @notice Wraps the contract's entire balance of the native token.
@@ -129,6 +125,8 @@ abstract contract WithdrawalHelperBase is CircleCCTPAdapter, MultiCaller, UUPSUp
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
     uint256[1000] private __gap;
 }

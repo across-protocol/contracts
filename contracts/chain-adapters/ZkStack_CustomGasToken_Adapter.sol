@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import "../external/interfaces/WETH9Interface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
 import { CircleCCTPAdapter } from "../libraries/CircleCCTPAdapter.sol";
 import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";

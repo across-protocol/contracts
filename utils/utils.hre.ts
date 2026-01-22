@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { Deployment, DeploymentSubmission } from "hardhat-deploy/types";
 import { CHAIN_IDs } from "@across-protocol/constants";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import { getContractFactory, toBN } from "./utils";
+import { BigNumber, getContractFactory, toBN } from "./utils";
 
 type unsafeAllowTypes = (
   | "delegatecall"
@@ -37,13 +37,13 @@ export async function getSpokePoolDeploymentInfo(
   return { hubPool, hubChainId, spokeChainId };
 }
 
-type FnArgs = number | string;
+type FnArgs = number | string | BigNumber;
 export async function deployNewProxy(
   name: string,
   constructorArgs: FnArgs[],
   initArgs: FnArgs[],
   implementationOnly?: boolean
-): Promise<void> {
+): Promise<{ proxyAddress?: string; implementationAddress: string }> {
   const { deployments, run, upgrades, getChainId } = hre;
   let chainId = Number(await getChainId());
 
@@ -54,11 +54,12 @@ export async function deployNewProxy(
   }
 
   // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
-  const proxy = getDeployedAddress("SpokePool", chainId, false);
-  implementationOnly ??= proxy !== undefined;
+  let proxyAddress = getDeployedAddress("SpokePool", chainId, false);
+  implementationOnly ??= proxyAddress !== undefined;
+  let implementationAddress: string;
   if (implementationOnly) {
-    console.log(`${name} deployment already detected @ ${proxy}, deploying new implementation.`);
-    instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
+    console.log(`${name} deployment already detected @ ${proxyAddress}, deploying new implementation.`);
+    implementationAddress = instance = (await upgrades.deployImplementation(await getContractFactory(name, {}), {
       constructorArgs,
       kind: "uups",
       unsafeAllow: unsafeAllowArgs as unsafeAllowTypes,
@@ -71,9 +72,9 @@ export async function deployNewProxy(
       constructorArgs,
       initializer: "initialize",
     });
-    instance = (await proxy.deployed()).address;
+    proxyAddress = instance = (await proxy.deployed()).address;
     console.log(`New ${name} proxy deployed @ ${instance}`);
-    const implementationAddress = await upgrades.erc1967.getImplementationAddress(instance);
+    implementationAddress = await upgrades.erc1967.getImplementationAddress(instance);
     console.log(`${name} implementation deployed @ ${implementationAddress}`);
   }
 
@@ -82,6 +83,7 @@ export async function deployNewProxy(
   const artifact = await deployments.getExtendedArtifact(name);
   const deployment: DeploymentSubmission = {
     address: instance,
+    args: constructorArgs,
     ...artifact,
   };
   await deployments.save(name, deployment);
@@ -91,7 +93,19 @@ export async function deployNewProxy(
   // to the implementation's ABI on etherscan.
   // https://docs.openzeppelin.com/upgrades-plugins/1.x/api-hardhat-upgrades#verify
   const contract = `contracts/${name}.sol:${name}`;
-  await run("verify:verify", { address: instance, constructorArguments: constructorArgs, contract });
+  await verifyContract(instance, constructorArgs, contract);
+
+  return { proxyAddress, implementationAddress };
+}
+
+export async function verifyContract(address: string, constructorArguments: any[], contract?: string) {
+  const { run, getChainId } = hre;
+  const chainId = Number(await getChainId());
+  if (hre.config.blockscout.enabled && hre.config.blockscout.customChains.some((chain) => chain.chainId === chainId)) {
+    await run("verify:blockscout", { address, constructorArguments, contract });
+  } else {
+    await run("verify:verify", { address, constructorArguments, contract });
+  }
 }
 
 export { hre };

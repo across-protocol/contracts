@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import "./Lockable.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@uma/core/contracts/common/implementation/MultiCaller.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "contracts/external/uma/core/contracts/common/implementation/MultiCaller.sol";
 
 interface USDYieldManager {
     function claimWithdrawal(uint256 _requestId, uint256 _hintId) external returns (bool success);
@@ -36,11 +36,7 @@ contract Blast_DaiRetriever is Lockable, MultiCaller {
      * @param _usdYieldManager USDCYieldManager contract on Ethereum.
      * @param _dai DAI token to be retrieved.
      */
-    constructor(
-        address _hubPool,
-        USDYieldManager _usdYieldManager,
-        IERC20Upgradeable _dai
-    ) {
+    constructor(address _hubPool, USDYieldManager _usdYieldManager, IERC20Upgradeable _dai) {
         //slither-disable-next-line missing-zero-check
         hubPool = _hubPool;
         usdYieldManager = _usdYieldManager;

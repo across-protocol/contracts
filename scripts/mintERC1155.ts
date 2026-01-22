@@ -1,7 +1,7 @@
-import { getContractFactory, ethers } from "../utils/utils";
 import { readFileSync } from "fs";
 import path from "path";
-import { getNodeUrl } from "@uma/common";
+import { getContractFactory, ethers } from "../utils/utils";
+import { CHAIN_IDs, getNodeUrl } from "../utils";
 import { hre } from "../utils/utils.hre";
 
 const RECIPIENTS_CHUNK_SIZE = 100; // TODO: Still need to figure out which size is optimal
@@ -56,7 +56,7 @@ async function main() {
 }
 
 async function parseAndValidateRecipients() {
-  const provider = new ethers.providers.JsonRpcProvider(getNodeUrl("mainnet", true, 1));
+  const provider = new ethers.providers.JsonRpcProvider(getNodeUrl(CHAIN_IDs.MAINNET));
 
   if (!process.env.RECIPIENTS) {
     throw new Error("Missing path to a JSON file with the list of recipients. Pass it via env var RECIPIENTS=<PATH>");

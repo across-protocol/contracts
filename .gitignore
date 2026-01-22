@@ -17,6 +17,23 @@ artifacts
 cache-zk
 artifacts-zk
 
+# Broadcast files
+/broadcast/**
+!/broadcast/**/
+!/broadcast/**/run-latest.json
+/broadcast/**/dry-run/
+!/broadcast/deployed-addresses.md
+!/broadcast/deployed-addresses.json
+!/broadcast/DeployedAddresses.sol
+
+# Foundry files
+out
+out-local
+zkout
+cache-foundry
+cache-foundry-local
+
+
 # Upgradeability files
 .openzeppelin
 
@@ -25,6 +42,7 @@ storage-layouts/proposed*
 
 # IDE
 .idea
+.vscode
 
 # Anchor files
 .anchor
@@ -34,3 +52,7 @@ test-ledger
 src/svm/assets 
 src/svm/clients/*
 !src/svm/clients/index.ts
+
+# SP1Helios deploy artifacts
+script/universal/genesis-binary
+script/universal/genesis.json

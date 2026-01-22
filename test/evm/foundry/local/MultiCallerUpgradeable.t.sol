@@ -6,8 +6,8 @@ import "forge-std/console.sol";
 
 import { SpokePool } from "../../../../contracts/SpokePool.sol";
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 // This test does not require a mainnet fork (since it is testing contracts before deployment).
@@ -35,13 +35,13 @@ contract MultiCallerUpgradeableTest is Test {
         rando2 = vm.addr(2);
         relayer = vm.addr(3);
 
-        deal(address(mockL2WETH), relayer, 10**22, true);
+        deal(address(mockL2WETH), relayer, 10 ** 22, true);
 
         vm.prank(relayer);
-        IERC20(address(mockL2WETH)).approve(address(ethereumSpokePool), 2**256 - 1);
+        IERC20(address(mockL2WETH)).approve(address(ethereumSpokePool), 2 ** 256 - 1);
 
         // Create Dummy Relay Data
-        uint256 depositAmount = 5 * (10**18);
+        uint256 depositAmount = 5 * (10 ** 18);
         uint256 mockRepaymentChainId = 1;
         uint32 fillDeadline = uint32(ethereumSpokePool.getCurrentTime()) + 1000;
 
@@ -102,10 +102,12 @@ contract MultiCallerUpgradeableTest is Test {
                 assert(results[i].success);
             } else {
                 assert(!results[i].success);
-                assertEq(
-                    "", // Error messages are stripped.
-                    results[i].returnData
+                // Verify the revert reason is "Ownable: caller is not the owner"
+                bytes memory expectedError = abi.encodeWithSignature(
+                    "Error(string)",
+                    "Ownable: caller is not the owner"
                 );
+                assertEq(results[i].returnData, expectedError);
             }
         }
     }

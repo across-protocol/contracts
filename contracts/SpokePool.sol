@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.18;
 
 import "./MerkleLib.sol";
 import "./erc7683/ERC7683.sol";
@@ -12,13 +12,15 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 import "./libraries/AddressConverters.sol";
+import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
+import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts/utils/math/SignedMath.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-v4/utils/math/SignedMath.sol";
 
 /**
  * @title SpokePool
@@ -37,7 +39,8 @@ abstract contract SpokePool is
     ReentrancyGuardUpgradeable,
     MultiCallerUpgradeable,
     EIP712CrossChainUpgradeable,
-    IDestinationSettler
+    IDestinationSettler,
+    OFTTransportAdapter
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
@@ -111,6 +114,9 @@ abstract contract SpokePool is
     // reason (eg blacklist) to track their outstanding liability, thereby letting them claim it later.
     mapping(address => mapping(address => uint256)) public relayerRefund;
 
+    // Mapping of L2 token address to L2 IOFT messenger address. Required to support bridging via OFT standard
+    mapping(address l2TokenAddress => address l2OftMessenger) public oftMessengers;
+
     /**************************************************************
      *                CONSTANT/IMMUTABLE VARIABLES                *
      **************************************************************/
@@ -158,6 +164,10 @@ abstract contract SpokePool is
     // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
     // exclusivityDeadline in a deposit event will be set to the current time plus this value.
     uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
+
+    // EIP-7702 prefix for delegated wallets.
+    bytes3 internal constant EIP7702_PREFIX = 0xef0100;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -190,6 +200,14 @@ abstract contract SpokePool is
     event EmergencyDeletedRootBundle(uint256 indexed rootBundleId);
     event PausedDeposits(bool isPaused);
     event PausedFills(bool isPaused);
+    event SetOFTMessenger(address indexed token, address indexed messenger);
+
+    /// @notice Emitted when the call to external contract is executed, triggered by an admin action
+    event AdminExternalCallExecuted(address indexed target, bytes data);
+
+    error OFTTokenMismatch();
+    /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
+    error OFTFeeUnderpaid();
 
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
@@ -205,13 +223,17 @@ abstract contract SpokePool is
      * into the past from the block time of the deposit.
      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
      * into the future from the block time of the deposit.
+     * @param _oftDstEid destination endpoint id for OFT messaging
+     * @param _oftFeeCap fee cap in native token when paying for cross-chain OFT transfers
      */
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         address _wrappedNativeTokenAddress,
         uint32 _depositQuoteTimeBuffer,
-        uint32 _fillDeadlineBuffer
-    ) {
+        uint32 _fillDeadlineBuffer,
+        uint32 _oftDstEid,
+        uint256 _oftFeeCap
+    ) OFTTransportAdapter(_oftDstEid, _oftFeeCap) {
         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
         fillDeadlineBuffer = _fillDeadlineBuffer;
@@ -340,6 +362,36 @@ abstract contract SpokePool is
         //slither-disable-next-line mapping-deletion
         delete rootBundles[rootBundleId];
         emit EmergencyDeletedRootBundle(rootBundleId);
+    }
+
+    /**
+     * @notice Add token -> OFTMessenger relationship. Callable only by admin.
+     * @param token token address on the current chain
+     * @param messenger IOFT contract address on the current chain for the specified token. Acts as a 'mailbox'
+     */
+    function setOftMessenger(address token, address messenger) external onlyAdmin nonReentrant {
+        _setOftMessenger(token, messenger);
+    }
+
+    /**
+     * @notice Execute an external call to a target contract.
+     * @param message The message containing the target address and calldata to execute.
+     * @return returnData The return data from the executed call.
+     */
+    function executeExternalCall(
+        bytes calldata message
+    ) external onlyAdmin nonReentrant returns (bytes memory returnData) {
+        (address target, bytes memory data) = abi.decode(message, (address, bytes));
+
+        if (target == address(0)) revert ZeroAddressTarget();
+        if (data.length < 4) revert MessageTooShort(); // need at least a selector
+
+        // external call to target
+        bool success;
+        (success, returnData) = target.call(data);
+
+        if (!success) revert ExternalCallExecutionFailed();
+        emit AdminExternalCallExecuted(target, data);
     }
 
     /**************************************
@@ -1059,11 +1111,7 @@ abstract contract SpokePool is
      * @param originData Data emitted on the origin to parameterize the fill
      * @param fillerData Data provided by the filler to inform the fill or express their preferences
      */
-    function fill(
-        bytes32 orderId,
-        bytes calldata originData,
-        bytes calldata fillerData
-    ) external {
+    function fill(bytes32 orderId, bytes calldata originData, bytes calldata fillerData) external {
         if (keccak256(abi.encode(originData, chainId())) != orderId) {
             revert WrongERC7683OrderId();
         }
@@ -1382,11 +1430,7 @@ abstract contract SpokePool is
     // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
     // bool indicating if the external call was successful, rather than reverting. Original method:
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
-    function _noRevertTransfer(
-        address token,
-        address to,
-        uint256 amount
-    ) internal returns (bool) {
+    function _noRevertTransfer(address token, address to, uint256 amount) internal returns (bool) {
         bool success;
         uint256 returnSize;
         uint256 returnValue;
@@ -1501,21 +1545,26 @@ abstract contract SpokePool is
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
-        if (address(to).isContract()) {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
-        } else {
+        if (!address(to).isContract() || _is7702DelegatedWallet(to)) {
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
+        } else {
+            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
         }
+    }
+
+    /**
+     * @notice Checks if an address is a 7702 delegated wallet (EOA with delegated code).
+     * @param account The address to check.
+     * @return True if the address is a 7702 delegated wallet, false otherwise.
+     */
+    function _is7702DelegatedWallet(address account) internal view virtual returns (bool) {
+        return bytes3(account.code) == EIP7702_PREFIX;
     }
 
     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-    function _fillRelayV3(
-        V3RelayExecutionParams memory relayExecution,
-        bytes32 relayer,
-        bool isSlowFill
-    ) internal {
+    function _fillRelayV3(V3RelayExecutionParams memory relayExecution, bytes32 relayer, bool isSlowFill) internal {
         V3RelayData memory relayData = relayExecution.relay;
 
         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
@@ -1545,8 +1594,23 @@ abstract contract SpokePool is
         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
         fillStatuses[relayHash] = uint256(FillStatus.Filled);
 
-        // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
-        // successful.
+        _emitFilledRelayEvent(relayExecution, relayData, relayer, fillType);
+        _transferTokensToRecipient(relayExecution, relayData, isSlowFill);
+    }
+
+    /**
+     * @notice Emits the FilledRelay event for a completed relay fill.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param relayer The relayer address.
+     * @param fillType The type of fill being executed.
+     */
+    function _emitFilledRelayEvent(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bytes32 relayer,
+        FillType fillType
+    ) internal {
         emit FilledRelay(
             relayData.inputToken,
             relayData.outputToken,
@@ -1569,13 +1633,25 @@ abstract contract SpokePool is
                 fillType: fillType
             })
         );
+    }
 
+    /**
+     * @notice Transfers tokens to the recipient based on the relay execution parameters.
+     * @param relayExecution The relay execution parameters.
+     * @param relayData The relay data.
+     * @param isSlowFill Whether this is a slow fill execution.
+     */
+    function _transferTokensToRecipient(
+        V3RelayExecutionParams memory relayExecution,
+        V3RelayData memory relayData,
+        bool isSlowFill
+    ) internal {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
+
         // If relay token is wrappedNativeToken then unwrap and send native token.
-        // Stack too deep.
-        if (relayData.outputToken.toAddress() == address(wrappedNativeToken)) {
+        if (outputToken == address(wrappedNativeToken)) {
             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
@@ -1612,6 +1688,42 @@ abstract contract SpokePool is
         else return keccak256(message);
     }
 
+    function _setOftMessenger(address _token, address _messenger) private {
+        if (_messenger != address(0) && IOFT(_messenger).token() != _token) {
+            revert OFTTokenMismatch();
+        }
+        oftMessengers[_token] = _messenger;
+        emit SetOFTMessenger(_token, _messenger);
+    }
+
+    function _getOftMessenger(address _token) internal view returns (address) {
+        return oftMessengers[_token];
+    }
+
+    /**
+     * @notice Perform an OFT transfer where the caller supplies the native fee via msg.value.
+     * @dev Supports overpayment: any excess native token is refunded to msg.sender before executing the transfer.
+     *      This function does not re-quote and uses the provided `fee` with `_sendOftTransfer`.
+     *      Must be invoked from a payable context.
+     * @param _token ERC-20 token to transfer.
+     * @param _messenger OFT messenger contract on the current chain for `_token`.
+     * @param _to Destination address on the remote chain.
+     * @param _amount Amount of tokens to transfer.
+     */
+    function _fundedTransferViaOft(IERC20 _token, IOFT _messenger, address _to, uint256 _amount) internal {
+        (SendParam memory sendParam, MessagingFee memory fee) = _buildOftTransfer(_messenger, _to, _amount);
+
+        if (fee.nativeFee > msg.value) {
+            revert OFTFeeUnderpaid();
+        }
+        // Refund any overpayment to the caller using a safe native transfer.
+        uint256 refund = msg.value - fee.nativeFee;
+        if (refund > 0) {
+            AddressLibUpgradeable.sendValue(payable(msg.sender), refund);
+        }
+        _sendOftTransfer(_token, _messenger, sendParam, fee);
+    }
+
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
     // certain admin functions. For L2 contracts, the cross chain admin refers to some L1 address or contract, and for
     // L1, this would just be the same admin of the HubPool.
@@ -1622,6 +1734,8 @@ abstract contract SpokePool is
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure it's always at the end of storage.
-    uint256[998] private __gap;
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
+    uint256[997] private __gap;
 }
