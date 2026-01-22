@@ -47,6 +47,8 @@ jobs:
         artifacts
         cache
         typechain
+        out
+        cache-foundry
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -205,6 +207,7 @@ jobs:
         run: yarn build-ts
   forge:
     name: Forge
+    needs: upload-evm-artifacts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -222,5 +225,9 @@ jobs:
         run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Test evm-foundry
         run: yarn test-evm-foundry
