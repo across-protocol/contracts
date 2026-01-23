@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
 import { Constants } from "../utils/Constants.sol";
+import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
 
 /**
  * @title UpdateVkey
@@ -22,7 +23,7 @@ import { Constants } from "../utils/Constants.sol";
  *   - newVkey: The new Helios program vkey (bytes32)
  *   - chains: Comma-separated list of chain IDs (e.g., "56,143,999")
  */
-contract UpdateVkey is Script, Constants {
+contract UpdateVkey is Script, Constants, DeployedAddresses {
     // Expected value for VKEY_UPDATER_ROLE to sanity check on-chain value
     bytes32 constant EXPECTED_VKEY_UPDATER_ROLE = 0x07ecc55c8d82c6f82ef86e34d1905e0f2873c085733fa96f8a6e0316b050d174;
 
@@ -38,11 +39,8 @@ contract UpdateVkey is Script, Constants {
         // Parse chain IDs from argument
         uint256[] memory chainIds = parseChainIds(chainsStr);
 
-        // Read deployed addresses
-        string memory deployedAddressesJson = vm.readFile("broadcast/deployed-addresses.json");
-
         // Get HubPool address (from mainnet)
-        address hubPoolAddress = getDeployedAddress(deployedAddressesJson, 1, "HubPool");
+        address hubPoolAddress = getAddress(1, "HubPool");
         require(hubPoolAddress != address(0), "HubPool not found in deployed-addresses.json");
 
         console.log("");
@@ -64,7 +62,7 @@ contract UpdateVkey is Script, Constants {
             uint256 chainId = chainIds[i];
 
             // Get SpokePool address for this chain
-            address spokePoolAddress = getDeployedAddress(deployedAddressesJson, chainId, "SpokePool");
+            address spokePoolAddress = getAddress(chainId, "SpokePool");
             if (spokePoolAddress == address(0)) {
                 console.log("Skipping chain %d: no SpokePool in deployed-addresses.json", chainId);
                 failedChains[failedCount++] = chainId;
@@ -265,25 +263,6 @@ contract UpdateVkey is Script, Constants {
         return result;
     }
 
-    function getDeployedAddress(
-        string memory json,
-        uint256 chainId,
-        string memory contractName
-    ) internal view returns (address) {
-        string memory path = string.concat(
-            ".chains.",
-            vm.toString(chainId),
-            ".contracts.",
-            contractName,
-            ".address"
-        );
-        
-        try vm.parseJsonAddress(json, path) returns (address addr) {
-            return addr;
-        } catch {
-            return address(0);
-        }
-    }
 }
 
 // ============ Minimal Interfaces ============
