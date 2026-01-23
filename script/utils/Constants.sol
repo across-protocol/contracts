@@ -51,34 +51,12 @@ contract Constants is Script {
         address scrollGasPriceOracle;
         address blastYieldManager;
         address blastDaiRetriever;
-        address l1AlephZeroInbox;
-        address l1AlephZeroERC20GatewayRouter;
         address adapterStore;
         address donationBox;
         address hubPoolStore;
         address zkBridgeHub;
         address zkUsdcSharedBridge_232;
         address zkUsdcSharedBridge_324;
-    }
-
-    // L2 Address Map
-    struct L2Addresses {
-        address l2GatewayRouter;
-        address fxChild;
-        address cctpTokenMessenger;
-        address cctpMessageTransmitter;
-        address uniswapV3SwapRouter;
-        address helios;
-        address zkErc20Bridge;
-        address zkUSDCBridge;
-        address lineaMessageService;
-        address cctpV2TokenMessenger;
-        address lineaTokenBridge;
-        address scrollERC20GatewayRouter;
-        address scrollGasPriceOracle;
-        address scrollMessenger;
-        address l2Weth;
-        address polygonZkEvmBridge;
     }
 
     // OP Stack Address Map
@@ -164,14 +142,6 @@ contract Constants is Script {
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastDaiRetriever")
                     ),
-                    l1AlephZeroInbox: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroInbox")
-                    ),
-                    l1AlephZeroERC20GatewayRouter: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroERC20GatewayRouter")
-                    ),
                     adapterStore: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".adapterStore")
@@ -222,20 +192,20 @@ contract Constants is Script {
     }
 
     // Circle domain IDs mapping
-    function getCircleDomainId(uint256 chainId) public view returns (uint256) {
-        int256 cctpDomain = _getCctpDomain(chainId);
+    function getCircleDomainId(uint256 chainId) public view returns (uint32) {
+        int32 cctpDomain = _getCctpDomain(chainId);
         if (cctpDomain == -1) {
             revert("Circle domain ID not found");
         }
-        return uint256(cctpDomain);
+        return uint32(cctpDomain);
     }
 
     function hasCctpDomain(uint256 chainId) public view returns (bool) {
         return _getCctpDomain(chainId) != -1;
     }
 
-    function _getCctpDomain(uint256 chainId) internal view returns (int256) {
-        return vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain"));
+    function _getCctpDomain(uint256 chainId) internal view returns (int32) {
+        return int32(vm.parseJsonInt(file, string.concat(".PUBLIC_NETWORKS.", vm.toString(chainId), ".cctpDomain")));
     }
 
     function getOftEid(uint256 chainId) public view returns (uint256) {
@@ -257,6 +227,11 @@ contract Constants is Script {
 
     function getWrappedNativeToken(uint256 chainId) public view returns (address) {
         return vm.parseJsonAddress(file, string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId)));
+    }
+
+    // Get the permit2 address for the input chain.
+    function getPermit2(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".L2_ADDRESS_MAP.", vm.toString(chainId), ".permit2"));
     }
 
     /**

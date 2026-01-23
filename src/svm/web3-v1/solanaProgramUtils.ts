@@ -52,7 +52,7 @@ export async function readEvents<IDL extends Idl = Idl>(
 /**
  * Processes events from a transaction.
  */
-function processEventFromTx(txResult: web3.VersionedTransactionResponse, programs: Program<any>[]) {
+export function processEventFromTx(txResult: web3.VersionedTransactionResponse, programs: Program<any>[]) {
   const eventAuthorities: Map<string, PublicKey> = new Map();
   for (const program of programs) {
     eventAuthorities.set(

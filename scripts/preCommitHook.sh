@@ -30,6 +30,16 @@ if [ -n "$STAGED_RUST_FILES" ]; then
     echo "$STAGED_RUST_FILES" | xargs git add
 fi
 
+# check if the integrity of the installed dependencies is the same as the integrity in yarn.lock
+yarn check --integrity >/dev/null 2>&1
+yarn_integrity_exit=$?
+
+
+if [ $yarn_integrity_exit -ne 0 ]; then
+    echo "yarn check --integrity encountered an error. Running yarn install to update the version."
+    exit 1
+fi
+
 echo "Running generate-constants-json on staged files ..."
 yarn generate-constants-json && yarn prettier --write generated/constants.json
 if git diff --name-only | grep -E 'generated/constants.json$' >/dev/null; then
@@ -43,7 +53,7 @@ if [ $GENERATE_CONSTANTS_JSON_EXIT -ne 0 ]; then
 fi
 
 echo "Running extract-addresses on staged files ..."
-yarn extract-addresses
+yarn extract-addresses && yarn prettier --write broadcast/deployed-addresses.json && yarn prettier --write broadcast/deployed-addresses.md
 EXTRACT_ADDRESSES_EXIT=$?
 if [ $EXTRACT_ADDRESSES_EXIT -ne 0 ]; then
     echo "extract-addresses encountered an error. Aborting the hook."

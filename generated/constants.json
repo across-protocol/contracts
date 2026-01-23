@@ -54,8 +54,8 @@
       "name": "Monad",
       "family": "NONE",
       "nativeToken": "MON",
-      "publicRPC": "https://rpc-mainnet.monadinfra.com/",
-      "blockExplorer": "https://monadscan.com/",
+      "publicRPC": "https://rpc-mainnet.monadinfra.com",
+      "blockExplorer": "https://monadvision.com",
       "cctpDomain": 15,
       "oftEid": 30390,
       "hypDomainId": 143
@@ -95,7 +95,7 @@
       "family": "NONE",
       "nativeToken": "ETH",
       "publicRPC": "https://mainnet.era.zksync.io",
-      "blockExplorer": "https://era.zksync.network",
+      "blockExplorer": "https://explorer.zksync.io",
       "cctpDomain": -1,
       "oftEid": -1,
       "hypDomainId": 324
@@ -200,6 +200,16 @@
       "oftEid": -1,
       "hypDomainId": -1
     },
+    "4326": {
+      "name": "MegaETH",
+      "family": "OP_STACK",
+      "nativeToken": "ETH",
+      "publicRPC": "https://mainnet.megaeth.com/rpc",
+      "blockExplorer": "https://megaeth.blockscout.com",
+      "cctpDomain": -1,
+      "oftEid": 30398,
+      "hypDomainId": 4326
+    },
     "5330": {
       "name": "Superseed",
       "family": "OP_STACK",
@@ -244,8 +254,8 @@
       "name": "Monad Testnet",
       "family": "NONE",
       "nativeToken": "MON",
-      "publicRPC": "https://testnet-rpc.monad.xyz/",
-      "blockExplorer": "https://testnet.monvision.io/",
+      "publicRPC": "https://testnet-rpc.monad.xyz",
+      "blockExplorer": "https://testnet.monvision.io",
       "cctpDomain": 15,
       "oftEid": 40204,
       "hypDomainId": 10143
@@ -296,8 +306,8 @@
       "nativeToken": "ETH",
       "publicRPC": "https://rpc-gel.inkonchain.com",
       "blockExplorer": "https://explorer.inkonchain.com",
-      "cctpDomain": -1,
-      "oftEid": -1,
+      "cctpDomain": 21,
+      "oftEid": 30339,
       "hypDomainId": 57073
     },
     "59144": {
@@ -344,8 +354,8 @@
       "name": "Tatara",
       "family": "NONE",
       "nativeToken": "ETH",
-      "publicRPC": "https://rpc.tatara.katanarpc.com/<apikey>",
-      "blockExplorer": "https://explorer.tatara.katana.network",
+      "publicRPC": "",
+      "blockExplorer": "",
       "cctpDomain": -1,
       "oftEid": -1,
       "hypDomainId": -1
@@ -466,6 +476,7 @@
     "LINEA": 59144,
     "LISK": 1135,
     "MAINNET": 1,
+    "MEGAETH": 4326,
     "MODE": 34443,
     "MONAD": 143,
     "OPTIMISM": 10,
@@ -521,6 +532,7 @@
     "1301": "0x4200000000000000000000000000000000000006",
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
+    "4326": "0x4200000000000000000000000000000000000006",
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x9895D81bB462A195b4922ED7De0e3ACD007c32CB",
     "34443": "0x4200000000000000000000000000000000000006",
@@ -532,7 +544,6 @@
     "80002": "0x52eF3d68BaB452a294342DC3e5f464d7f610f72E",
     "81457": "0x4300000000000000000000000000000000000004",
     "84532": "0x4200000000000000000000000000000000000006",
-    "129399": "0x17B8Ee96E3bcB3b04b3e8334de4524520C51caB4",
     "421614": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
     "534351": "0x5300000000000000000000000000000000000004",
     "534352": "0x5300000000000000000000000000000000000004",
@@ -562,6 +573,7 @@
     "1301": "0x4200000000000000000000000000000000000006",
     "1868": "0x4200000000000000000000000000000000000006",
     "4202": "0x4200000000000000000000000000000000000006",
+    "4326": "0x4200000000000000000000000000000000000006",
     "8453": "0x4200000000000000000000000000000000000006",
     "9745": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
     "9746": "0x6100E367285b01F48D07953803A2d8dCA5D19873",
@@ -575,7 +587,6 @@
     "80002": "0x360ad4f9a9A8EFe9A8DCB5f461c4Cc1047E1Dcf9",
     "81457": "0x4300000000000000000000000000000000000004",
     "84532": "0x4200000000000000000000000000000000000006",
-    "129399": "0x17B8Ee96E3bcB3b04b3e8334de4524520C51caB4",
     "421614": "0x980B62Da83eFf3D4576C647993b0c1D7faf17c73",
     "534351": "0x5300000000000000000000000000000000000004",
     "534352": "0x5300000000000000000000000000000000000004",
@@ -590,20 +601,24 @@
   "L2_ADDRESS_MAP": {
     "10": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "56": {
+      "helios": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "130": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "137": {
       "fxChild": "0x8397259c983751DAf40400790063935a11afa28a",
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -628,15 +643,14 @@
     "480": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
-    "690": {
-      "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
-      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
-    },
     "919": {
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000"
     },
     "999": {
+      "helios": "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "oftEndpoint": "0x3A73033C0b1407574C76BdBAc67f126f6b4a9AA9",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "1135": {
@@ -653,13 +667,19 @@
     "1868": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
+    "4326": {
+      "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
     "8453": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "uniswapV3SwapRouter": "0x2626664c2603336E57B271c5C0b26F421741e481",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "9745": {
+      "helios": "0x6f1cd5f317a7228269eab2b496313862de712ccb",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "34443": {
@@ -669,12 +689,10 @@
     "37111": {
       "zkErc20Bridge": "0x427373Be173120D7A042b44D0804E37F25E7330b"
     },
-    "41455": {
-      "l2GatewayRouter": "0xD296d45171B97720D3aBdb68B0232be01F1A9216"
-    },
     "42161": {
       "l2GatewayRouter": "0x5288c571Fd7aD117beA99bF60FE0846C4E84F933",
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "uniswapV3SwapRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
       "1inchV6Router": "0x111111125421cA6dc452d289314280a0f8842A65",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -685,6 +703,7 @@
     "59144": {
       "lineaMessageService": "0x508Ca82Df566dCD1B0DE8296e70a96332cD644ec",
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
+      "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "lineaTokenBridge": "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
       "permit2": "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
     },
@@ -753,8 +772,6 @@
       "scrollGasPriceOracle": "0x56971da63A3C0205184FEF096E9ddFc7A8C2D18a",
       "blastYieldManager": "0xa230285d5683C74935aD14c446e137c8c8828438",
       "blastDaiRetriever": "0x98Dd57048d7d5337e92D9102743528ea4Fea64aB",
-      "l1AlephZeroInbox": "0x56D8EC76a421063e1907503aDd3794c395256AEb",
-      "l1AlephZeroERC20GatewayRouter": "0xeBb17f398ed30d02F2e8733e7c1e5cf566e17812",
       "donationBox": "0x0d57392895Db5aF3280e9223323e20F3951E81B1",
       "adapterStore": "0x42df4D71f35ffBD28ae217d52E83C1DA0007D63b",
       "hubPoolStore": "0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61",
@@ -808,10 +825,6 @@
         "L1StandardBridge": "0x470458C91978D2d929704489Ad730DC3E3001113",
         "L1OpUSDCBridgeAdapter": "0x153A69e4bb6fEDBbAaF463CB982416316c84B2dB"
       },
-      "690": {
-        "L1CrossDomainMessenger": "0x592C1299e0F8331D81A28C0FC7352Da24eDB444a",
-        "L1StandardBridge": "0xc473ca7E02af24c129c2eEf51F2aDf0411c1Df69"
-      },
       "1135": {
         "L1CrossDomainMessenger": "0x31B72D76FB666844C41EdF08dF0254875Dbb7edB",
         "L1StandardBridge": "0x2658723Bf70c7667De6B25F99fcce13A16D25d08",
@@ -821,6 +834,12 @@
         "L1CrossDomainMessenger": "0x9cf951e3f74b644e621b36ca9cea147a78d4c39f",
         "L1StandardBridge": "0xeb9bf100225c214efc3e7c651ebbadcf85177607",
         "L1OpUSDCBridgeAdapter": "0xC67A8c5f22b40274Ca7C4A56Db89569Ee2AD3FAb"
+      },
+      "4326": {
+        "L1CrossDomainMessenger": "0x6C7198250087B29A8040eC63903Bc130f4831Cc9",
+        "L1StandardBridge": "0x0CA3A2FBC3D770b578223FBB6b062fa875a2eE75",
+        "L1OpUSDCBridgeAdapter": "0x0000000000000000000000000000000000000000",
+        "L1BlastBridge": "0x0000000000000000000000000000000000000000"
       },
       "8453": {
         "L1BlastBridge": "0x0000000000000000000000000000000000000000",
@@ -893,6 +912,7 @@
     "8453": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     "10143": "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
     "42161": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
+    "57073": "0x2D270e6886d130D724215A266106e6832161EAEd",
     "59144": "0x176211869cA2b568f2A7D4EE941E073a821EE1ff",
     "80002": "0x41E94Eb019C0762f9Bfcf9Fb1E58725BfB0e7582",
     "84532": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",

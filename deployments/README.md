@@ -24,8 +24,8 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | Mode Adapter        | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | Lisk Adapter        | [0x8229E812f20537caA1e8Fb41749b4887B8a75C3B](https://etherscan.io/address/0x8229E812f20537caA1e8Fb41749b4887B8a75C3B) |
 | Blast Adapter       | [0xF2bEf5E905AAE0295003ab14872F811E914EdD81](https://etherscan.io/address/0xF2bEf5E905AAE0295003ab14872F811E914EdD81) |
+| MegaETH Adapter     | [0xE1f04404b74F996A311F13aE291849fC153578Ac](https://etherscan.io/address/0xE1f04404b74F996A311F13aE291849fC153578Ac) |
 | Scroll Adapter      | [0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F](https://etherscan.io/address/0xb6129Ab69aEA75e6884c2D6ecf25293C343C519F) |
-| Redstone Adapter    | [0x188F8C95B7cfB7993B53a4F643efa687916f73fA](https://etherscan.io/address/0x188F8C95B7cfB7993B53a4F643efa687916f73fA) |
 | Zora Adapter        | [0x024F2fC31CBDD8de17194b1892c834f98Ef5169b](https://etherscan.io/address/0x024F2fC31CBDD8de17194b1892c834f98Ef5169b) |
 | WorldChain Adapter  | [0x8eBebfc894047bEE213A561b8792fCa71241731f](https://etherscan.io/address/0x8eBebfc894047bEE213A561b8792fCa71241731f) |
 | AcrossConfigStore   | [0x3B03509645713718B78951126E0A6de6f10043f5](https://etherscan.io/address/0x3B03509645713718B78951126E0A6de6f10043f5) |
@@ -96,13 +96,6 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ---------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Blast_SpokePool  | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |
 | MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://blastscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
-
-## Redstone mainnet (690)
-
-| Contract Name      | Address                                                                                                                        |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Redstone_SpokePool | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://explorer.redstone.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
-| MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://explorer.redstone.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
 ## Scroll mainnet (534352)
 
@@ -180,3 +173,10 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Universal_SpokePool | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadvision.com/address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
 | MulticallHandler    | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
+
+## MegaETH mainnet (4326)
+
+| Contract Name    | Address                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| OP_SpokePool     | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| MulticallHandler | [0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4](https://megaeth.blockscout.com/address/0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4) |

@@ -131,10 +131,6 @@
           "address": "0xE5Dea263511F5caC27b15cBd58Ff103F4Ce90957",
           "block_number": 20378872
         },
-        "Redstone_Adapter": {
-          "address": "0x188F8C95B7cfB7993B53a4F643efa687916f73fA",
-          "block_number": 20432774
-        },
         "Zora_Adapter": {
           "address": "0x024f2fc31cbdd8de17194b1892c834f98ef5169b",
           "block_number": 20512287
@@ -142,10 +138,6 @@
         "WorldChain_Adapter": {
           "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32",
           "block_number": 20963234
-        },
-        "AlephZero_Adapter": {
-          "address": "0x6F4083304C2cA99B077ACE06a5DcF670615915Af",
-          "block_number": 21131132
         },
         "Ink_Adapter": {
           "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2",
@@ -168,14 +160,48 @@
           "address": "0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3",
           "block_number": 22595936
         },
+        "Megaeth_Adapter": {
+          "address": "0xE1f04404b74F996A311F13aE291849fC153578Ac",
+          "block_number": 24220587
+        },
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 22789839
+        },
+        "OP_Adapter": {
+          "address": "0xe1f04404b74f996a311f13ae291849fc153578ac",
+          "block_number": 24220587,
+          "transaction_hash": "0x211a6f322257b67f4e1283844af54d26bfccb76557474165de6490673b38b436"
         },
         "PermissionSplitterProxy": {
           "address": "0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7",
           "block_number": 19084679,
           "transaction_hash": "0xa2a7b2c6812fb8ae34539fb04cd5f2a9112da1c7f6ffce0ddcf1fee7e43acf48"
+        },
+        "PermissionedMulticallHandler": {
+          "address": "0x64a43393866dba0044879979faa7ad3d000622e9",
+          "block_number": 24021499,
+          "transaction_hash": "0x70b3edf99db66aac34338c3686cd708ddfc2b503c2f707f51ced67dc50e5022f"
+        },
+        "DonationBox": {
+          "address": "0x3e73eae5c264c89b1ff429fae58f9639e96e6068",
+          "block_number": 24021559,
+          "transaction_hash": "0xca421a9307ff1c8eeea37952260c7d34fe5d34f5a5189fe501f4bf91984f7fa1"
+        },
+        "SponsoredCCTPDstPeriphery": {
+          "address": "0x5616194d65638086a3191b1fef436f503ff329ec",
+          "block_number": 24021562,
+          "transaction_hash": "0xfbca4a8145622f34c009d3daf15952dfa76ea1c020f0b5e2e1488ddcd8b1197d"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x89004ea51bac007fec55976967135b2aa6e838d4",
+          "block_number": 23977771,
+          "transaction_hash": "0x0b05b7bc28e6d8ea9d9c135bbada908dd2b971e8428054a62598c2cbf9e24baa"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x4607bceaf7b22cb0c46882ffc9fab3c6efe66e5a",
+          "block_number": 23929853,
+          "transaction_hash": "0x644921ba43415194748b1054d7610bc78e0b518b93cc703afc1b1f10af87fb11"
         }
       }
     },
@@ -214,6 +240,11 @@
           "address": "0x21352b3495a6ee1bd2921bdb0a876fadc3a9245e",
           "block_number": 141955483,
           "transaction_hash": "0xc2df23c0f90b79bb4d0cdc77984bce181b2a9e5f50216b21ce62c7e6608d206f"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x986e476f93a423d7a4cd0baf362c5e0903268142",
+          "block_number": 144858096,
+          "transaction_hash": "0xfd04b36a313e44fdc4933366e1212b6072a2c269d929f79e9b7bfc0241fe5ede"
         }
       }
     },
@@ -236,7 +267,7 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 52135703
         },
-        "Helios": {
+        "SP1Helios": {
           "address": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
           "block_number": 69434159
         }
@@ -260,6 +291,16 @@
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 20205357
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x2918236893ec1ec739a96c381e00403d52ac560f",
+          "block_number": 34567327,
+          "transaction_hash": "0x0db9803840bd063fc0cc66b955e23e294c30df22b542aec659f172fdb7305455"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x0bf1a44ae69869cf7aea7e0cba76624792fad4de",
+          "block_number": 34575760,
+          "transaction_hash": "0x50f22e32a3c210fbad83f477359b5351717bd908d32d5dd39227b3322b49c750"
         },
         "DoctorWho_SpokePool": {
           "address": "0x1d82bfdb412415b3ed2514d5eb33574a3c94a72a",
@@ -315,13 +356,23 @@
           "address": "0x8f7b21ff11006f0520b06074d36e39b6cd83cf29",
           "block_number": 77338915,
           "transaction_hash": "0x92801b64851c27c614e68b66dc26ab6831c1f2b95f3f805bd8646d1747105685"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x473debe3db7338e03e3c8dc8e980bb1dacb25bc5",
+          "block_number": 80114069,
+          "transaction_hash": "0x7a3eef4aa95c0825961dae547178b4da40557dbe788d422c53e96b9a01cae059"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0xc6a21e6a57777f2183312c19e614dd6054b1a54f",
+          "block_number": 80109525,
+          "transaction_hash": "0x2c0c9c4b0e995b2c14c57a6317819467c34d092201cc48164e425fc41604d82c"
         }
       }
     },
     "143": {
       "chain_name": "Monad",
       "contracts": {
-        "Helios": {
+        "SP1Helios": {
           "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
           "block_number": 36241473
         },
@@ -336,6 +387,16 @@
         "SpokePool": {
           "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449",
           "block_number": 36437473
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0xcbf361ee59cc74b9d6e7af947fe4136828faf2c5",
+          "block_number": 41031436,
+          "transaction_hash": "0x7f242c56846afe9ca6f5cb25810a5421760cb1547e2a1b39bc4644628e817ff8"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0xa3de5f042efd4c732498883100a2d319bbb3c1a1",
+          "block_number": 41008383,
+          "transaction_hash": "0xddf59bc59f42a56af9975b4d67b13672c60bf0c83946fdc29d222b3ac25c4cab"
         }
       }
     },
@@ -408,32 +469,11 @@
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 15809528
-        }
-      }
-    },
-    "690": {
-      "chain_name": "Redstone",
-      "contracts": {
-        "SpokePool": {
-          "address": "0x13fDac9F9b4777705db45291bbFF3c972c6d1d97",
-          "block_number": 5512122
         },
-        "SpokePoolVerifier": {
-          "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
-          "block_number": 17147100
-        },
-        "MulticallHandler": {
-          "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E",
-          "block_number": 20457079
-        },
-        "SpokePoolPeriphery": {
-          "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
-          "block_number": 16783149
-        },
-        "Redstone_SpokePool": {
-          "address": "0x78d8cb7284b14c123a2e81a3246494e8dad873e4",
-          "block_number": 21978768,
-          "transaction_hash": "0xa57c46d87a2f441460948eee80f1301db9881360e82158d1dae50e73f3d32166"
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x1c8243198570658f818fc56538f2c837c2a32958",
+          "block_number": 22990173,
+          "transaction_hash": "0xff9b08ba5af4e295cca1c3877bb461c01503e9bcee324cbb67b45de5e445a12e"
         }
       }
     },
@@ -461,7 +501,7 @@
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
           "block_number": 14459886
         },
-        "Helios": {
+        "SP1Helios": {
           "address": "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
           "block_number": 20185101
         },
@@ -472,6 +512,31 @@
         "SpokePoolPeriphery": {
           "address": "0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb",
           "block_number": 15142204
+        },
+        "DonationBox": {
+          "address": "0x039d62c549f27ead0eb9b567d8776289e5020583",
+          "block_number": 21416410,
+          "transaction_hash": "0x6875ef9c89d6855fb5019ce5d20f1466ecdced640b3be009fe6de82932469664"
+        },
+        "PermissionedMulticallHandler": {
+          "address": "0xfd0876712dd9003d014cdcd8e5140b4efac9bfcc",
+          "block_number": 21341868,
+          "transaction_hash": "0xc0b5e25643a971a281b9a142a4b146f7833b336a36c68f446bb4e63495e3eeb7"
+        },
+        "DstOFTHandler": {
+          "address": "0xc8786d517b4e224bb43985a38dbef8588d7354cd",
+          "block_number": 21341868,
+          "transaction_hash": "0x7ce545552d4a517bc380951ec35bd5eb86f84e0364a7ac9417aba605b8bf6309"
+        },
+        "HyperliquidDepositHandler": {
+          "address": "0x861e127036b28d32f3777b4676f6bbb9e007d195",
+          "block_number": 20301679,
+          "transaction_hash": "0x187b45f39be413aff2ff526946c64f76ed98763129e7e2ffb7d2d4c5bd997519"
+        },
+        "SponsoredCCTPDstPeriphery": {
+          "address": "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
+          "block_number": 21416410,
+          "transaction_hash": "0x9c7604f9254450f13b0941008f5272f68ec58db61f32e5ee6713e72b4b56de0b"
         }
       }
     },
@@ -548,6 +613,34 @@
         }
       }
     },
+    "4326": {
+      "chain_name": "MegaETH",
+      "contracts": {
+        "SpokePool": {
+          "address": "0x3db06da8f0a24a525f314eec954fc5c6a973d40e",
+          "block_number": 5450616,
+          "transaction_hash": "0xe7eb021032841de0e2183c8135f633f18487637ca363abe777cd9e9360d57c49"
+        },
+        "MulticallHandler": {
+          "address": "0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4",
+          "block_number": 5456066
+        },
+        "SpokePoolPeriphery": {
+          "address": "0xf0aBCe137a493185c5E768F275E7E931109f8981",
+          "block_number": 5456246
+        },
+        "OP_SpokePool": {
+          "address": "0x9b4a302a548c7e313c2b74c461db7b84d3074a84",
+          "block_number": 5450614,
+          "transaction_hash": "0x506e135d1b3717b0a0de9553f48f835d9da1c11a7fb8e06e84c2673cdf6ed56b"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x5be9f2a2f00475406f09e5be82c06eff206721d9",
+          "block_number": 5788108,
+          "transaction_hash": "0xb4551f74f7bd80f172f380bd1f60486486ee0eaf5cd41f869617587235002bb2"
+        }
+      }
+    },
     "8453": {
       "chain_name": "Base",
       "contracts": {
@@ -575,13 +668,18 @@
           "address": "0x2eb5def5cf9635f9d926788a26d424287a045b92",
           "block_number": 36361964,
           "transaction_hash": "0x6ec337bdf00c331fabbfb0e98862aa2b766c613b6d6002c44b53668b7240989c"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0xa7a8d1efc1ee3e69999d370380949092251a5c20",
+          "block_number": 38957833,
+          "transaction_hash": "0xa7a480cad9b735b44890b80945b33b22d171820c6343349343813bb25e5be017"
         }
       }
     },
     "9745": {
       "chain_name": "Plasma",
       "contracts": {
-        "Helios": {
+        "SP1Helios": {
           "address": "0x6f1cd5f317a7228269eab2b496313862de712ccb",
           "block_number": 7166956
         },
@@ -673,6 +771,16 @@
           "address": "0x33d52d76d617126648067401c106923e4a34dbe1",
           "block_number": 385694983,
           "transaction_hash": "0x3a645809d7a2d2a0176afc87f8e565419f94547c9b1521b537b6f233c3bb412c"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b",
+          "block_number": 406495696,
+          "transaction_hash": "0x6c4f6d7537530911757ecc317e0b5a39b5caf7089ab5549cb4299c830a9d854c"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x2ac5ee3796e027da274fbde84c82173a65868940",
+          "block_number": 406587622,
+          "transaction_hash": "0xaf2427171b1d55e27dc75985001ce5a6be8c89a817f51b479f223b4c9799c7eb"
         }
       }
     },
@@ -699,6 +807,16 @@
           "address": "0x5be04e53b465c6fd89ecff3d36ddf666d198e31a",
           "block_number": 22643750,
           "transaction_hash": "0x4be0cb8bd16c8541998b7fb4fe7fb93fb453af9edf96dcdef7c2b48f5f134667"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x1be0bcd689eac8e37346934bfafe8cd0dd231eee",
+          "block_number": 35520683,
+          "transaction_hash": "0x42db2a417e2ef54d9fe40ec3188c34b1427ae85e0fa5241136fa063443d3d10a"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x06c61d54958a0772ee8af41789466d39ffeaeb13",
+          "block_number": 35520282,
+          "transaction_hash": "0x2e8f45bba601703d2b93910a7ed1a9782eab4065c9ce8509f1bd6af1ab7e4b48"
         }
       }
     },
@@ -720,6 +838,11 @@
         "SpokePoolPeriphery": {
           "address": "0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0",
           "block_number": 20348650
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x60eb88a83434f13095b0a138cdcbf5078aa5005c",
+          "block_number": 26510513,
+          "transaction_hash": "0x4e5b9a847b3e119bcb4ee51b4fe0448852b9b470b220aa0cb81b42622d6f9573"
         }
       }
     },
@@ -983,6 +1106,10 @@
         "TokenMessengerMinterV2": {
           "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
           "block_number": 383709630
+        },
+        "SponsoredCctpSrcPeriphery": {
+          "address": "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq",
+          "block_number": 425722812
         }
       }
     },
@@ -1012,6 +1139,10 @@
         "TokenMessengerMinterV2": {
           "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
           "block_number": 343322709
+        },
+        "SponsoredCctpSrcPeriphery": {
+          "address": "CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq",
+          "block_number": 385282462
         }
       }
     }

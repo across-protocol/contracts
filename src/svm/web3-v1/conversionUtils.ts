@@ -92,3 +92,16 @@ export const fromBytes32ToAddress = (input: string): string => {
 
   return "0x" + address;
 };
+
+/**
+ * Converts EVM or SVM address to a bytes32 string.
+ */
+export const addressOrBase58ToBytes32 = (input: string): string => {
+  if (ethers.utils.isAddress(input)) {
+    return ethers.utils.hexZeroPad(input, 32);
+  } else if (ethers.utils.isHexString(input, 32)) {
+    return input;
+  } else {
+    return fromBase58ToBytes32(input);
+  }
+};
