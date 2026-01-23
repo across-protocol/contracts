@@ -62,7 +62,7 @@ contract DeployOPAdapter is Script, Test, Constants {
         console.log("L1 USDC:", usdc);
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);
-        console.log("CCTP Token Messenger:", cctpV2TokenMessenger);
+        console.log("CCTP Token Messenger:", cctpTokenMessenger);
         console.log("CCTP Domain:", cctpDomain);
 
         vm.stopBroadcast();
