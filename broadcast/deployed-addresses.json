@@ -263,7 +263,7 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 52135703
         },
-        "Helios": {
+        "SP1Helios": {
           "address": "0x19256DCEa4B63c56B3EFc8708cd62F595B2d1922",
           "block_number": 69434159
         }
@@ -368,7 +368,7 @@
     "143": {
       "chain_name": "Monad",
       "contracts": {
-        "Helios": {
+        "SP1Helios": {
           "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64",
           "block_number": 36241473
         },
@@ -497,7 +497,7 @@
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",
           "block_number": 14459886
         },
-        "Helios": {
+        "SP1Helios": {
           "address": "0xc19b7ef43a6ebd393446f401d1ecfac01b181ac0",
           "block_number": 20185101
         },
@@ -675,7 +675,7 @@
     "9745": {
       "chain_name": "Plasma",
       "contracts": {
-        "Helios": {
+        "SP1Helios": {
           "address": "0x6f1cd5f317a7228269eab2b496313862de712ccb",
           "block_number": 7166956
         },
@@ -808,6 +808,16 @@
           "address": "0x5be04e53b465c6fd89ecff3d36ddf666d198e31a",
           "block_number": 22643750,
           "transaction_hash": "0x4be0cb8bd16c8541998b7fb4fe7fb93fb453af9edf96dcdef7c2b48f5f134667"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x1be0bcd689eac8e37346934bfafe8cd0dd231eee",
+          "block_number": 35520683,
+          "transaction_hash": "0x42db2a417e2ef54d9fe40ec3188c34b1427ae85e0fa5241136fa063443d3d10a"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x06c61d54958a0772ee8af41789466d39ffeaeb13",
+          "block_number": 35520282,
+          "transaction_hash": "0x2e8f45bba601703d2b93910a7ed1a9782eab4065c9ce8509f1bd6af1ab7e4b48"
         }
       }
     },
