@@ -33,6 +33,7 @@ zkout
 cache-foundry
 cache-foundry-local
 
+
 # Upgradeability files
 .openzeppelin
 
@@ -55,6 +56,3 @@ src/svm/clients/*
 # SP1Helios deploy artifacts
 script/universal/genesis-binary
 script/universal/genesis.json
-
-# Claude
-.claude

@@ -807,6 +807,16 @@
           "address": "0x5be04e53b465c6fd89ecff3d36ddf666d198e31a",
           "block_number": 22643750,
           "transaction_hash": "0x4be0cb8bd16c8541998b7fb4fe7fb93fb453af9edf96dcdef7c2b48f5f134667"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0x1be0bcd689eac8e37346934bfafe8cd0dd231eee",
+          "block_number": 35520683,
+          "transaction_hash": "0x42db2a417e2ef54d9fe40ec3188c34b1427ae85e0fa5241136fa063443d3d10a"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x06c61d54958a0772ee8af41789466d39ffeaeb13",
+          "block_number": 35520282,
+          "transaction_hash": "0x2e8f45bba601703d2b93910a7ed1a9782eab4065c9ce8509f1bd6af1ab7e4b48"
         }
       }
     },

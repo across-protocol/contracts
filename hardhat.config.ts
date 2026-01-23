@@ -1,6 +1,9 @@
 const { subtask } = require("hardhat/config");
 const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-tasks/task-names");
 
+// add || process.env.CI === "true" once migrated away from hardhat typechain
+const isTest = process.env.IS_TEST === "true";
+
 subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
   const paths = await runSuper();
 
@@ -9,7 +12,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any
 
   // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
   // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
-  if (process.env.IS_TEST === "true") {
+  if (isTest) {
     return filteredPaths.filter((p: any) => {
       return (
         !p.includes("contracts/periphery/mintburn") &&
@@ -58,8 +61,6 @@ const getDefaultHardhatConfig = (chainId: number, isTestnet: boolean = false): a
   };
 };
 
-const isTest = process.env.IS_TEST === "true";
-
 // To compile with zksolc, `hardhat` must be the default network and its `zksync` property must be true.
 // So we allow the caller to set this environment variable to toggle compiling zk contracts or not.
 // TODO: Figure out way to only compile specific contracts intended to be deployed on ZkSync (e.g. ZkSync_SpokePool) if
@@ -70,6 +71,7 @@ const solcVersion = "0.8.30";
 
 // Hardhat 2.14.0 doesn't support prague yet, so we use paris instead (need to upgrade to v3 to use prague)
 const evmVersion = isTest ? "paris" : "prague";
+const revertStrings = isTest ? "debug" : "strip";
 
 // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
 // limit.
@@ -79,7 +81,7 @@ const LARGE_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 800 },
     viaIR: true,
     evmVersion,
-    debug: { revertStrings: isTest ? "debug" : "strip" },
+    debug: { revertStrings },
   },
 };
 const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
@@ -89,7 +91,7 @@ const DEFAULT_CONTRACT_COMPILER_SETTINGS = {
     viaIR: true,
     evmVersion,
     // Only strip revert strings if not testing or in ci.
-    debug: { revertStrings: isTest ? "debug" : "strip" },
+    debug: { revertStrings },
   },
 };
 // This is only used by Blast_SpokePool for now, as it's the largest bytecode-wise
@@ -99,7 +101,7 @@ const LARGEST_CONTRACT_COMPILER_SETTINGS = {
     optimizer: { enabled: true, runs: 50 },
     viaIR: true,
     evmVersion,
-    debug: { revertStrings: isTest ? "debug" : "strip" },
+    debug: { revertStrings },
   },
 };
 
