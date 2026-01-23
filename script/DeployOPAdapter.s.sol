@@ -28,7 +28,7 @@ contract DeployOPAdapter is Script, Test, Constants {
         // Get the current chain ID
         uint256 chainId = block.chainid;
         address usdc = getUSDCAddress(chainId);
-        bool hasCctpDomain = hasCctpDomain(destinationChainId);
+        bool hasCctpDomain = hasCctpDomain(opChainId);
         uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(opChainId) : CCTP_NO_DOMAIN;
         address cctpTokenMessenger = hasCctpDomain ? getL1Addresses(chainId).cctpV2TokenMessenger : address(0);
 
