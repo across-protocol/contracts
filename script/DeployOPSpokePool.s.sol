@@ -69,7 +69,6 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         console.log("WETH address:", weth);
         console.log("CCTP Domain ID:", cctpDomain);
         console.log("CCTP Token Messenger:", cctpTokenMessenger);
-        console.log("AdapterStore:", adapterStore);
         console.log("OP_SpokePool proxy deployed to:", result.proxy);
         console.log("OP_SpokePool implementation deployed to:", result.implementation);
 
