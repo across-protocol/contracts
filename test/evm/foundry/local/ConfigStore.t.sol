@@ -16,7 +16,7 @@ contract ConfigStore_Test is Test {
 
     // ============ Constants ============
 
-    // Sample rate model (matches DAI's rate model from Hardhat constants)
+    // Sample rate model
     string constant SAMPLE_RATE_MODEL_JSON =
         '{"rateModel":{"UBar":"800000000000000000","R0":"40000000000000000","R1":"70000000000000000","R2":"750000000000000000"},"tokenTransferThreshold":"100000000000000000000"}';
 
