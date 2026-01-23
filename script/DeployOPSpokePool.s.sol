@@ -30,7 +30,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
 
         bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
         uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(info.spokeChainId) : CCTP_NO_DOMAIN;
-        address cctpTokenMessenger = hasCctpDomain ? getL2Address(chainId).cctpV2TokenMessenger : address(0);
+        address cctpTokenMessenger = hasCctpDomain ? getL2Address(chainId, "cctpV2TokenMessenger") : address(0);
 
         vm.startBroadcast(deployerPrivateKey);
 
