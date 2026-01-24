@@ -1184,12 +1184,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepOnCore(address token, uint64 amount, uint32 destinationDex) external onlyRole(FUNDS_SWEEPER_ROLE) {
+    function sweepOnCore(address token, uint64 amount, uint32 sourceDex, uint32 destinationDex) external onlyRole(FUNDS_SWEEPER_ROLE) {
         HyperCoreLib.transferERC20CoreToCore(
             _getMainStorage().coreTokenInfos[token].coreIndex,
             msg.sender,
             amount,
-            destinationDex,
+            sourceDex,
             destinationDex
         );
     }

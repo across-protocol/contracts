@@ -219,12 +219,12 @@ library HyperCoreLib {
         bytes memory action;
         bytes memory payload;
 
-        if (destinationDex != CORE_SPOT_DEX_ID) {
-            action = abi.encode(to, address(0), sourceDex, destinationDex, erc20CoreIndex, amountCore);
-            payload = abi.encodePacked(SEND_ASSET_TO_DEX_HEADER, action);
-        } else {
+        if (destinationDex == CORE_SPOT_DEX_ID && sourceDex == CORE_SPOT_DEX_ID) {
             action = abi.encode(to, erc20CoreIndex, amountCore);
             payload = abi.encodePacked(SPOT_SEND_HEADER, action);
+        } else {
+            action = abi.encode(to, address(0), sourceDex, destinationDex, erc20CoreIndex, amountCore);
+            payload = abi.encodePacked(SEND_ASSET_TO_DEX_HEADER, action);
         }
 
         ICoreWriter(CORE_WRITER_PRECOMPILE_ADDRESS).sendRawAction(payload);
