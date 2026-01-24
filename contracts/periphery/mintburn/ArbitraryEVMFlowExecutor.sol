@@ -93,7 +93,7 @@ abstract contract ArbitraryEVMFlowExecutor {
                 // This means the swap did happen, so we check the balance of the output token and send it.
                 finalAmount = finalBalance - finalAmountSnapshot;
             } else {
-                // If we somehow lost final tokens(e.g. by depositing into some contract), just set the finalAmount to 0.
+                // If we somehow lost final tokens (e.g. by depositing into some contract), just set the finalAmount to 0.
                 finalAmount = 0;
             }
         }
