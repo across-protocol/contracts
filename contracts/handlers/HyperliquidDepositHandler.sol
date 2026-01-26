@@ -61,6 +61,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         uint64 activationFeePaid,
         uint64 activationFeeSponsored
     );
+    event FallbackToHyperEVM(address indexed user, address indexed token, uint256 evmAmount);
     event AddedSupportedToken(address evmAddress, uint64 tokenId, uint256 activationFeeEvm, int8 decimalDiff);
     event SignerSet(address signer);
     event SpokePoolSet(address spokePool);
@@ -246,26 +247,50 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     ) internal {
         CoreTokenInfo memory coreTokenInfo = _getTokenInfo(token);
         int8 decimalDiff = coreTokenInfo.tokenInfo.evmExtraWeiDecimals;
-        uint256 totalEvmAmount = evmAmount;
-        uint64 accountActivationFeeCore = 0;
-        uint64 sponsoredAmount = 0;
 
-        bool userExists = HyperCoreLib.coreUserExists(user);
-        if (!userExists) {
+        // Calculate total amount including potential activation fee for bridge safety check
+        uint256 totalEvmAmount = evmAmount;
+        bool needsActivation = !HyperCoreLib.coreUserExists(user);
+
+        if (needsActivation) {
             if (mode == AccountActivationMode.None) revert CannotActivateAccount();
             if (!coreTokenInfo.canBeUsedForAccountActivation) revert TokenCannotBeUsedForAccountActivation();
             if (accountsActivated[user]) revert AccountAlreadyActivated();
+
+            if (mode == AccountActivationMode.FromDonationBox) {
+                totalEvmAmount += coreTokenInfo.accountActivationFeeEVM;
+            } else {
+                (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
+                if (depositCore <= coreTokenInfo.accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
+            }
+        }
+
+        // Check bridge safety before making any state changes or withdrawals
+        (, uint64 totalCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(totalEvmAmount, decimalDiff);
+        if (
+            !HyperCoreLib.isCoreAmountSafeToBridge(
+                coreTokenInfo.coreIndex,
+                totalCoreAmount,
+                coreTokenInfo.bridgeSafetyBufferCore
+            )
+        ) {
+            // Fall back to HyperEVM transfer
+            IERC20(token).safeTransfer(user, evmAmount);
+            emit FallbackToHyperEVM(user, token, evmAmount);
+            return;
+        }
+
+        // Now commit state changes after safety check passes
+        uint64 accountActivationFeeCore = 0;
+        uint64 sponsoredAmount = 0;
+
+        if (needsActivation) {
             accountsActivated[user] = true;
-            uint256 activationFee = coreTokenInfo.accountActivationFeeEVM;
             accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
 
             if (mode == AccountActivationMode.FromDonationBox) {
-                donationBox.withdraw(IERC20(token), activationFee);
-                totalEvmAmount += activationFee;
+                donationBox.withdraw(IERC20(token), coreTokenInfo.accountActivationFeeEVM);
                 sponsoredAmount = accountActivationFeeCore;
-            } else {
-                (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
-                if (depositCore <= accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
             }
         }
 
