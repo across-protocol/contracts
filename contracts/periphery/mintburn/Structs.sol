@@ -20,6 +20,38 @@ struct CoreTokenInfo {
     uint64 bridgeSafetyBufferCore;
 }
 
+library CoreTokenInfoLib {
+    /**
+     * @notice Builds a CoreTokenInfo struct by fetching token info from HyperCore and computing derived values.
+     * @param coreIndex The index of the token on HyperCore.
+     * @param canBeUsedForAccountActivation Whether this token can be used to pay for account activation.
+     * @param accountActivationFeeCore The account activation fee in Core units.
+     * @param bridgeSafetyBufferCore Bridge buffer for checking safety of bridging evm -> core. In core units.
+     * @return coreTokenInfo The constructed CoreTokenInfo struct.
+     */
+    function build(
+        uint32 coreIndex,
+        bool canBeUsedForAccountActivation,
+        uint64 accountActivationFeeCore,
+        uint64 bridgeSafetyBufferCore
+    ) internal view returns (CoreTokenInfo memory coreTokenInfo) {
+        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
+        (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+            accountActivationFeeCore,
+            tokenInfo.evmExtraWeiDecimals
+        );
+
+        coreTokenInfo = CoreTokenInfo({
+            tokenInfo: tokenInfo,
+            coreIndex: uint64(coreIndex),
+            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
+            accountActivationFeeEVM: accountActivationFeeEVM,
+            accountActivationFeeCore: accountActivationFeeCore,
+            bridgeSafetyBufferCore: bridgeSafetyBufferCore
+        });
+    }
+}
+
 enum AccountCreationMode {
     Standard,
     FromUserFunds
