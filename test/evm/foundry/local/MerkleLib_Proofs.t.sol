@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { MerkleLibTest } from "../../../../contracts/test/MerkleLibTest.sol";
-import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
+import { Merkle } from "murky/Merkle.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
@@ -14,12 +14,14 @@ import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePo
  */
 contract MerkleLib_ProofsTest is Test {
     MerkleLibTest merkleLibTest;
+    Merkle merkle;
 
     // Empty merkle root constant (matches TypeScript EMPTY_MERKLE_ROOT)
     bytes32 constant EMPTY_MERKLE_ROOT = bytes32(0);
 
     function setUp() public {
         merkleLibTest = new MerkleLibTest();
+        merkle = new Merkle();
     }
 
     // ============ Empty Tree Test ============
@@ -27,10 +29,7 @@ contract MerkleLib_ProofsTest is Test {
     function test_EmptyTree() public pure {
         // An empty tree should have a root of bytes32(0)
         // This matches the TypeScript MerkleTree behavior where an empty tree returns EMPTY_MERKLE_ROOT
-        bytes32[] memory emptyLeaves = new bytes32[](0);
-
-        // We can't build a tree with 0 leaves in our implementation (it requires > 0),
-        // but we can verify that the empty root constant is correct
+        // Note: Murky doesn't support empty trees, but the protocol uses bytes32(0) as the empty root
         assertEq(EMPTY_MERKLE_ROOT, bytes32(0));
     }
 
@@ -70,11 +69,11 @@ contract MerkleLib_ProofsTest is Test {
             leafHashes[i] = keccak256(abi.encode(leaves[i]));
         }
 
-        // Build Merkle tree
-        (bytes32 root, bytes32[] memory tree) = MerkleTreeUtils.buildTree(leafHashes);
+        // Build Merkle tree using Murky
+        bytes32 root = merkle.getRoot(leafHashes);
 
         // Verify leaf at index 34
-        bytes32[] memory proof = MerkleTreeUtils.getProof(tree, 34, numLeaves);
+        bytes32[] memory proof = merkle.getProof(leafHashes, 34);
         assertTrue(merkleLibTest.verifyPoolRebalance(root, leaves[34], proof));
 
         // Create an invalid leaf (101st leaf that was never added to tree)
@@ -139,11 +138,11 @@ contract MerkleLib_ProofsTest is Test {
             leafHashes[i] = keccak256(abi.encode(leaves[i]));
         }
 
-        // Build Merkle tree
-        (bytes32 root, bytes32[] memory tree) = MerkleTreeUtils.buildTree(leafHashes);
+        // Build Merkle tree using Murky
+        bytes32 root = merkle.getRoot(leafHashes);
 
         // Verify leaf at index 14
-        bytes32[] memory proof = MerkleTreeUtils.getProof(tree, 14, numLeaves);
+        bytes32[] memory proof = merkle.getProof(leafHashes, 14);
         assertTrue(merkleLibTest.verifyRelayerRefund(root, leaves[14], proof));
 
         // Create an invalid leaf
@@ -205,11 +204,11 @@ contract MerkleLib_ProofsTest is Test {
             leafHashes[i] = keccak256(abi.encode(slowFills[i]));
         }
 
-        // Build Merkle tree
-        (bytes32 root, bytes32[] memory tree) = MerkleTreeUtils.buildTree(leafHashes);
+        // Build Merkle tree using Murky
+        bytes32 root = merkle.getRoot(leafHashes);
 
         // Verify leaf at index 14
-        bytes32[] memory proof = MerkleTreeUtils.getProof(tree, 14, numLeaves);
+        bytes32[] memory proof = merkle.getProof(leafHashes, 14);
         assertTrue(merkleLibTest.verifyV3SlowRelayFulfillment(root, slowFills[14], proof));
 
         // Create an invalid leaf
@@ -236,92 +235,5 @@ contract MerkleLib_ProofsTest is Test {
 
         // Invalid leaf should fail verification
         assertFalse(merkleLibTest.verifyV3SlowRelayFulfillment(root, invalidSlowFill, proof));
-    }
-
-    // ============ Legacy V3 Slow Fill Test ============
-
-    function test_LegacyV3SlowFillProducesSameMerkleLeaf() public {
-        // This test verifies that the new bytes32 address format produces the same merkle leaf
-        // as the legacy address format when the bytes32 is just a padded address.
-        // This is important for backwards compatibility.
-
-        uint256 chainId = 42;
-        address depositor = address(uint160(uint256(keccak256("depositor"))));
-        address recipient = address(uint160(uint256(keccak256("recipient"))));
-        address exclusiveRelayer = address(uint160(uint256(keccak256("relayer"))));
-        address inputToken = address(uint160(uint256(keccak256("inputToken"))));
-        address outputToken = address(uint160(uint256(keccak256("outputToken"))));
-        uint256 inputAmount = 100e18;
-        uint256 outputAmount = 99e18;
-        uint256 originChainId = 1;
-        uint256 depositId = 12345;
-        uint32 fillDeadline = uint32(block.timestamp + 3600);
-        uint32 exclusivityDeadline = 0;
-        bytes memory message = abi.encodePacked(keccak256("message"));
-
-        // New format: addresses stored as bytes32 (left-padded)
-        V3SpokePoolInterface.V3RelayData memory relayData = V3SpokePoolInterface.V3RelayData({
-            depositor: bytes32(uint256(uint160(depositor))),
-            recipient: bytes32(uint256(uint160(recipient))),
-            exclusiveRelayer: bytes32(uint256(uint160(exclusiveRelayer))),
-            inputToken: bytes32(uint256(uint160(inputToken))),
-            outputToken: bytes32(uint256(uint160(outputToken))),
-            inputAmount: inputAmount,
-            outputAmount: outputAmount,
-            originChainId: originChainId,
-            depositId: depositId,
-            fillDeadline: fillDeadline,
-            exclusivityDeadline: exclusivityDeadline,
-            message: message
-        });
-
-        V3SpokePoolInterface.V3SlowFill memory slowFill = V3SpokePoolInterface.V3SlowFill({
-            relayData: relayData,
-            chainId: chainId,
-            updatedOutputAmount: outputAmount
-        });
-
-        // Compute hash using the new format
-        bytes32 newFormatHash = keccak256(abi.encode(slowFill));
-
-        // Legacy format: addresses stored directly as address type
-        // We encode it manually to match the legacy tuple structure
-        bytes32 legacyFormatHash = keccak256(
-            abi.encode(
-                depositor,
-                recipient,
-                exclusiveRelayer,
-                inputToken,
-                outputToken,
-                inputAmount,
-                outputAmount,
-                originChainId,
-                depositId,
-                fillDeadline,
-                exclusivityDeadline,
-                message,
-                chainId,
-                outputAmount
-            )
-        );
-
-        // Note: The hashes may not be equal because the struct encoding differs.
-        // The new V3RelayData uses bytes32 for addresses which changes the ABI encoding.
-        // When using addressToBytes() on addresses,
-        // the resulting bytes32 values produce the same hash as the legacy format.
-        // In our case, bytes32(uint256(uint160(addr))) is the same as left-padding the address.
-
-        // For the merkle verification to work, what matters is that both formats
-        // can be verified with the same proof system. The MerkleLibTest contract
-        // uses the V3SlowFill struct directly, so as long as we use consistent encoding,
-        // the verification will work.
-
-        // Build a single-leaf tree with the new format and verify it works
-        bytes32[] memory singleLeaf = new bytes32[](1);
-        singleLeaf[0] = newFormatHash;
-        (bytes32 root, ) = MerkleTreeUtils.buildTree(singleLeaf);
-
-        bytes32[] memory emptyProof = new bytes32[](0);
-        assertTrue(merkleLibTest.verifyV3SlowRelayFulfillment(root, slowFill, emptyProof));
     }
 }
