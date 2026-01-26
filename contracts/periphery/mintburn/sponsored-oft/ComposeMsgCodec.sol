@@ -68,18 +68,15 @@ library ComposeMsgCodec {
     }
 
     function _getDestinationDex(bytes memory data) internal pure returns (uint32 v) {
-        // 28 is the offset to read uint32 at the end of the 32-byte long slot
-        return BytesLib.toUint32(data, DESTINATION_DEX_OFFSET + 28);
+        return BytesLib.toUint32FromWord(data, DESTINATION_DEX_OFFSET);
     }
 
     function _getAccountCreationMode(bytes memory data) internal pure returns (uint8 v) {
-        // 31 is the offset to read uint8 at the end of the 32-byte long slot
-        return BytesLib.toUint8(data, ACCOUNT_CREATION_MODE_OFFSET + 31);
+        return BytesLib.toUint8FromWord(data, ACCOUNT_CREATION_MODE_OFFSET);
     }
 
     function _getExecutionMode(bytes memory data) internal pure returns (uint8 v) {
-        // 31 is the offset to read uint8 at the end of the 32-byte long slot
-        return BytesLib.toUint8(data, EXECUTION_MODE_OFFSET + 31);
+        return BytesLib.toUint8FromWord(data, EXECUTION_MODE_OFFSET);
     }
 
     function _getActionData(bytes memory data) internal pure returns (bytes memory v) {
