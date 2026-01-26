@@ -3,235 +3,14 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { MerkleLibTest } from "../../../../contracts/test/MerkleLibTest.sol";
+import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 
 /**
- * @title MerkleTreeBuilder
- * @notice Library for building Merkle trees with multiple leaves in Foundry tests.
- * @dev Uses sorted pair hashing (OpenZeppelin style) to match the TypeScript MerkleTree implementation.
- */
-library MerkleTreeBuilder {
-    /**
-     * @notice Builds a Merkle tree from an array of leaf hashes.
-     * @param leaves Array of leaf hashes (must be power of 2 or will be padded)
-     * @return root The Merkle root
-     * @return tree The full tree (layer by layer, leaves first)
-     */
-    function buildTree(bytes32[] memory leaves) internal pure returns (bytes32 root, bytes32[] memory tree) {
-        require(leaves.length > 0, "Empty leaves array");
-
-        if (leaves.length == 1) {
-            tree = new bytes32[](1);
-            tree[0] = leaves[0];
-            return (leaves[0], tree);
-        }
-
-        // Pad to power of 2 if needed
-        uint256 n = leaves.length;
-        uint256 paddedLength = 1;
-        while (paddedLength < n) {
-            paddedLength *= 2;
-        }
-
-        bytes32[] memory paddedLeaves = new bytes32[](paddedLength);
-        for (uint256 i = 0; i < n; i++) {
-            paddedLeaves[i] = leaves[i];
-        }
-        // Pad with zero hashes (empty nodes)
-        for (uint256 i = n; i < paddedLength; i++) {
-            paddedLeaves[i] = bytes32(0);
-        }
-
-        // Calculate total tree size: sum of all layers = 2*paddedLength - 1
-        uint256 treeSize = 2 * paddedLength - 1;
-        tree = new bytes32[](treeSize);
-
-        // Copy leaves to tree (bottom layer)
-        for (uint256 i = 0; i < paddedLength; i++) {
-            tree[i] = paddedLeaves[i];
-        }
-
-        // Build tree bottom-up
-        uint256 offset = 0;
-        uint256 layerSize = paddedLength;
-        uint256 nextOffset = paddedLength;
-
-        while (layerSize > 1) {
-            for (uint256 i = 0; i < layerSize; i += 2) {
-                bytes32 left = tree[offset + i];
-                bytes32 right = tree[offset + i + 1];
-                // Sorted pair hashing (OpenZeppelin style)
-                tree[nextOffset + i / 2] = hashPair(left, right);
-            }
-            offset = nextOffset;
-            nextOffset = offset + layerSize / 2;
-            layerSize = layerSize / 2;
-        }
-
-        root = tree[treeSize - 1];
-    }
-
-    /**
-     * @notice Gets the Merkle proof for a leaf at a given index.
-     * @param tree The full Merkle tree (from buildTree)
-     * @param leafIndex The index of the leaf
-     * @param numLeaves The original number of leaves (before padding)
-     * @return proof The Merkle proof
-     */
-    function getProof(
-        bytes32[] memory tree,
-        uint256 leafIndex,
-        uint256 numLeaves
-    ) internal pure returns (bytes32[] memory proof) {
-        require(leafIndex < numLeaves, "Leaf index out of bounds");
-
-        // Calculate padded length
-        uint256 paddedLength = 1;
-        while (paddedLength < numLeaves) {
-            paddedLength *= 2;
-        }
-
-        // Calculate proof length (tree depth)
-        uint256 depth = 0;
-        uint256 temp = paddedLength;
-        while (temp > 1) {
-            temp /= 2;
-            depth++;
-        }
-
-        proof = new bytes32[](depth);
-
-        uint256 offset = 0;
-        uint256 layerSize = paddedLength;
-        uint256 idx = leafIndex;
-
-        for (uint256 i = 0; i < depth; i++) {
-            // Get sibling index
-            uint256 siblingIdx = idx % 2 == 0 ? idx + 1 : idx - 1;
-            proof[i] = tree[offset + siblingIdx];
-
-            // Move to next layer
-            offset += layerSize;
-            layerSize /= 2;
-            idx /= 2;
-        }
-    }
-
-    /**
-     * @notice Hash a sorted pair of nodes (OpenZeppelin style).
-     */
-    function hashPair(bytes32 a, bytes32 b) internal pure returns (bytes32) {
-        if (a <= b) {
-            return keccak256(abi.encodePacked(a, b));
-        } else {
-            return keccak256(abi.encodePacked(b, a));
-        }
-    }
-}
-
-/**
- * @title MerkleLib_ClaimsTest
- * @notice Tests for MerkleLib bitmap claim tracking (migrated from MerkleLib.Claims.ts)
- */
-contract MerkleLib_ClaimsTest is Test {
-    MerkleLibTest merkleLibTest;
-
-    function setUp() public {
-        merkleLibTest = new MerkleLibTest();
-    }
-
-    // ============ 2D Bitmap Tests ============
-
-    function test_2D_SetAndReadSingleClaim() public {
-        // Index 1500 should map to slot 5, bit 220
-        // 1500 / 256 = 5 (slot)
-        // 1500 % 256 = 220 (bit)
-
-        assertFalse(merkleLibTest.isClaimed(1500));
-
-        merkleLibTest.setClaimed(1500);
-
-        assertTrue(merkleLibTest.isClaimed(1500));
-
-        // Verify the correct bit is set: 2^220
-        assertEq(merkleLibTest.claimedBitMap(5), 1 << 220);
-    }
-
-    function test_2D_SetAndReadMultipleClaims() public {
-        // Test consecutive indices in the same slot
-        assertFalse(merkleLibTest.isClaimed(1499));
-        assertFalse(merkleLibTest.isClaimed(1500));
-        assertFalse(merkleLibTest.isClaimed(1501));
-
-        merkleLibTest.setClaimed(1499);
-        merkleLibTest.setClaimed(1500);
-        merkleLibTest.setClaimed(1501);
-
-        assertTrue(merkleLibTest.isClaimed(1499));
-        assertTrue(merkleLibTest.isClaimed(1500));
-        assertTrue(merkleLibTest.isClaimed(1501));
-        assertFalse(merkleLibTest.isClaimed(1502)); // Was not set
-
-        // Verify all bits are set correctly in slot 5
-        // 1499 % 256 = 219, 1500 % 256 = 220, 1501 % 256 = 221
-        uint256 expectedBitmap = (1 << 219) | (1 << 220) | (1 << 221);
-        assertEq(merkleLibTest.claimedBitMap(5), expectedBitmap);
-    }
-
-    // ============ 1D Bitmap Tests ============
-
-    function test_1D_SetAndReadSingleClaim() public {
-        assertFalse(merkleLibTest.isClaimed1D(150));
-
-        merkleLibTest.setClaimed1D(150);
-
-        assertTrue(merkleLibTest.isClaimed1D(150));
-
-        // Verify the correct bit is set: 2^150
-        assertEq(merkleLibTest.claimedBitMap1D(), 1 << 150);
-    }
-
-    function test_1D_SetAndReadMultipleClaims() public {
-        assertFalse(merkleLibTest.isClaimed1D(149));
-        assertFalse(merkleLibTest.isClaimed1D(150));
-        assertFalse(merkleLibTest.isClaimed1D(151));
-
-        merkleLibTest.setClaimed1D(149);
-        merkleLibTest.setClaimed1D(150);
-        merkleLibTest.setClaimed1D(151);
-
-        assertTrue(merkleLibTest.isClaimed1D(149));
-        assertTrue(merkleLibTest.isClaimed1D(150));
-        assertTrue(merkleLibTest.isClaimed1D(151));
-        assertFalse(merkleLibTest.isClaimed1D(152)); // Was not set
-
-        // Verify all bits are set
-        uint256 expectedBitmap = (1 << 149) | (1 << 150) | (1 << 151);
-        assertEq(merkleLibTest.claimedBitMap1D(), expectedBitmap);
-    }
-
-    function test_1D_OverflowingMaxIndexHandledCorrectly() public {
-        assertFalse(merkleLibTest.isClaimed1D(150));
-        merkleLibTest.setClaimed1D(150);
-        assertTrue(merkleLibTest.isClaimed1D(150));
-
-        // Note: In Solidity, we can't call setClaimed1D(256) or isClaimed1D(256) because
-        // the function signature takes uint8, which only goes up to 255.
-        // The Solidity compiler will reject any value >= 256 at compile time.
-        // This is equivalent to the Hardhat test expecting a revert.
-
-        // Should be able to set right below the max (255)
-        assertFalse(merkleLibTest.isClaimed1D(255));
-        merkleLibTest.setClaimed1D(255);
-        assertTrue(merkleLibTest.isClaimed1D(255));
-    }
-}
-
-/**
  * @title MerkleLib_ProofsTest
- * @notice Tests for MerkleLib proof verification (migrated from MerkleLib.Proofs.ts)
+ * @notice Tests for MerkleLib proof verification
  */
 contract MerkleLib_ProofsTest is Test {
     MerkleLibTest merkleLibTest;
@@ -258,13 +37,13 @@ contract MerkleLib_ProofsTest is Test {
     // ============ Pool Rebalance Leaf Proof Test ============
 
     function test_PoolRebalanceLeafProof() public {
-        // Create 100 leaves (matching Hardhat test: 101 created, last one removed as invalid)
+        // Create 100 leaves
         uint256 numLeaves = 100;
         bytes32[] memory leafHashes = new bytes32[](numLeaves);
         HubPoolInterface.PoolRebalanceLeaf[] memory leaves = new HubPoolInterface.PoolRebalanceLeaf[](numLeaves);
 
         for (uint256 i = 0; i < numLeaves; i++) {
-            // Create leaf with 10 tokens (matching Hardhat test)
+            // Create leaf with 10 tokens
             uint256 numTokens = 10;
             address[] memory l1Tokens = new address[](numTokens);
             uint256[] memory bundleLpFees = new uint256[](numTokens);
@@ -292,10 +71,10 @@ contract MerkleLib_ProofsTest is Test {
         }
 
         // Build Merkle tree
-        (bytes32 root, bytes32[] memory tree) = MerkleTreeBuilder.buildTree(leafHashes);
+        (bytes32 root, bytes32[] memory tree) = MerkleTreeUtils.buildTree(leafHashes);
 
-        // Verify leaf at index 34 (matching Hardhat test)
-        bytes32[] memory proof = MerkleTreeBuilder.getProof(tree, 34, numLeaves);
+        // Verify leaf at index 34
+        bytes32[] memory proof = MerkleTreeUtils.getProof(tree, 34, numLeaves);
         assertTrue(merkleLibTest.verifyPoolRebalance(root, leaves[34], proof));
 
         // Create an invalid leaf (101st leaf that was never added to tree)
@@ -332,13 +111,13 @@ contract MerkleLib_ProofsTest is Test {
     // ============ Relayer Refund Leaf Proof Test ============
 
     function test_RelayerRefundLeafProof() public {
-        // Create 100 leaves (matching Hardhat test pattern)
+        // Create 100 leaves
         uint256 numLeaves = 100;
         bytes32[] memory leafHashes = new bytes32[](numLeaves);
         SpokePoolInterface.RelayerRefundLeaf[] memory leaves = new SpokePoolInterface.RelayerRefundLeaf[](numLeaves);
 
         for (uint256 i = 0; i < numLeaves; i++) {
-            // Create leaf with 10 refund addresses (matching Hardhat test)
+            // Create leaf with 10 refund addresses
             uint256 numAddresses = 10;
             address[] memory refundAddresses = new address[](numAddresses);
             uint256[] memory refundAmounts = new uint256[](numAddresses);
@@ -361,10 +140,10 @@ contract MerkleLib_ProofsTest is Test {
         }
 
         // Build Merkle tree
-        (bytes32 root, bytes32[] memory tree) = MerkleTreeBuilder.buildTree(leafHashes);
+        (bytes32 root, bytes32[] memory tree) = MerkleTreeUtils.buildTree(leafHashes);
 
-        // Verify leaf at index 14 (matching Hardhat test)
-        bytes32[] memory proof = MerkleTreeBuilder.getProof(tree, 14, numLeaves);
+        // Verify leaf at index 14
+        bytes32[] memory proof = MerkleTreeUtils.getProof(tree, 14, numLeaves);
         assertTrue(merkleLibTest.verifyRelayerRefund(root, leaves[14], proof));
 
         // Create an invalid leaf
@@ -396,7 +175,7 @@ contract MerkleLib_ProofsTest is Test {
     // ============ V3 Slow Fill Proof Test ============
 
     function test_V3SlowFillProof() public {
-        // Create 100 leaves (matching Hardhat test pattern)
+        // Create 100 leaves
         uint256 numLeaves = 100;
         bytes32[] memory leafHashes = new bytes32[](numLeaves);
         V3SpokePoolInterface.V3SlowFill[] memory slowFills = new V3SpokePoolInterface.V3SlowFill[](numLeaves);
@@ -427,10 +206,10 @@ contract MerkleLib_ProofsTest is Test {
         }
 
         // Build Merkle tree
-        (bytes32 root, bytes32[] memory tree) = MerkleTreeBuilder.buildTree(leafHashes);
+        (bytes32 root, bytes32[] memory tree) = MerkleTreeUtils.buildTree(leafHashes);
 
-        // Verify leaf at index 14 (matching Hardhat test)
-        bytes32[] memory proof = MerkleTreeBuilder.getProof(tree, 14, numLeaves);
+        // Verify leaf at index 14
+        bytes32[] memory proof = MerkleTreeUtils.getProof(tree, 14, numLeaves);
         assertTrue(merkleLibTest.verifyV3SlowRelayFulfillment(root, slowFills[14], proof));
 
         // Create an invalid leaf
@@ -528,7 +307,7 @@ contract MerkleLib_ProofsTest is Test {
 
         // Note: The hashes may not be equal because the struct encoding differs.
         // The new V3RelayData uses bytes32 for addresses which changes the ABI encoding.
-        // The actual test in Hardhat verifies that when you use addressToBytes() on addresses,
+        // When using addressToBytes() on addresses,
         // the resulting bytes32 values produce the same hash as the legacy format.
         // In our case, bytes32(uint256(uint160(addr))) is the same as left-padding the address.
 
@@ -540,7 +319,7 @@ contract MerkleLib_ProofsTest is Test {
         // Build a single-leaf tree with the new format and verify it works
         bytes32[] memory singleLeaf = new bytes32[](1);
         singleLeaf[0] = newFormatHash;
-        (bytes32 root, ) = MerkleTreeBuilder.buildTree(singleLeaf);
+        (bytes32 root, ) = MerkleTreeUtils.buildTree(singleLeaf);
 
         bytes32[] memory emptyProof = new bytes32[](0);
         assertTrue(merkleLibTest.verifyV3SlowRelayFulfillment(root, slowFill, emptyProof));
