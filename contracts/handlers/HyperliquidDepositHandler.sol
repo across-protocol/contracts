@@ -61,6 +61,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         uint64 activationFeePaid,
         uint64 activationFeeSponsored
     );
+    event FallbackToHyperEVM(address indexed user, address indexed token, uint256 evmAmount);
     event AddedSupportedToken(address evmAddress, uint64 tokenId, uint256 activationFeeEvm, int8 decimalDiff);
     event SignerSet(address signer);
     event SpokePoolSet(address spokePool);
@@ -246,6 +247,23 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     ) internal {
         CoreTokenInfo memory coreTokenInfo = _getTokenInfo(token);
         int8 decimalDiff = coreTokenInfo.tokenInfo.evmExtraWeiDecimals;
+
+        // Check if safe to bridge before any state changes. Use evmAmount (not including potential
+        // activation fee) since if bridge is unsafe, we won't be activating anyway.
+        (, uint64 quotedCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
+        if (
+            !HyperCoreLib.isCoreAmountSafeToBridge(
+                coreTokenInfo.coreIndex,
+                quotedCoreAmount,
+                coreTokenInfo.bridgeSafetyBufferCore
+            )
+        ) {
+            // Bridge doesn't have enough liquidity - fall back to HyperEVM transfer
+            IERC20(token).safeTransfer(user, evmAmount);
+            emit FallbackToHyperEVM(user, token, evmAmount);
+            return;
+        }
+
         uint256 totalEvmAmount = evmAmount;
         uint64 accountActivationFeeCore = 0;
         uint64 sponsoredAmount = 0;
