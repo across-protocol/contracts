@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.22",
+  "version": "4.1.23-alpha.0",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -65,9 +65,9 @@
     "@openzeppelin/foundry-upgrades": "^0.4.0",
     "@safe-global/protocol-kit": "^6.1.1",
     "@scroll-tech/contracts": "^0.1.0",
-    "@solana-program/address-lookup-table": "0.9.0",
-    "@solana-program/token": "0.7.0",
-    "@solana/kit": "^4.0.0",
+    "@solana-program/address-lookup-table": "0.10.0",
+    "@solana-program/token": "0.9.0",
+    "@solana/kit": "^5.4.0",
     "@solana/spl-token": "0.4.14",
     "@solana/web3.js": "1.98.2",
     "@types/yargs": "^17.0.33",
