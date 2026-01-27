@@ -55,6 +55,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     error AccountAlreadyActivated();
     error CannotActivateAccount();
     error UnknownAccountActivationMode();
+    error OnlyUsdcAllowedForNonSpotDex();
 
     enum AccountActivationMode {
         None, // 0: No activation expected/needed (revert if user doesn't exist)
@@ -245,6 +246,12 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         uint32 destinationDex
     ) internal {
         TokenInfo memory tokenInfo = _getTokenInfo(token);
+
+        // Only USDC is allowed for non-spot destinations (perps).
+        if (destinationDex != HyperCoreLib.CORE_SPOT_DEX_ID && tokenInfo.tokenId != HyperCoreLib.USDC_CORE_INDEX) {
+            revert OnlyUsdcAllowedForNonSpotDex();
+        }
+
         int8 decimalDiff = tokenInfo.decimalDiff;
         uint256 totalEvmAmount = evmAmount;
         uint64 accountActivationFeeCore = 0;
