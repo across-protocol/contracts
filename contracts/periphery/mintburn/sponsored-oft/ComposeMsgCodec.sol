@@ -68,15 +68,15 @@ library ComposeMsgCodec {
     }
 
     function _getDestinationDex(bytes memory data) internal pure returns (uint32 v) {
-        return BytesLib.toUint32FromWord(data, DESTINATION_DEX_OFFSET);
+        return uint32(BytesLib.toUint256(data, DESTINATION_DEX_OFFSET));
     }
 
     function _getAccountCreationMode(bytes memory data) internal pure returns (uint8 v) {
-        return BytesLib.toUint8FromWord(data, ACCOUNT_CREATION_MODE_OFFSET);
+        return uint8(BytesLib.toUint256(data, ACCOUNT_CREATION_MODE_OFFSET));
     }
 
     function _getExecutionMode(bytes memory data) internal pure returns (uint8 v) {
-        return BytesLib.toUint8FromWord(data, EXECUTION_MODE_OFFSET);
+        return uint8(BytesLib.toUint256(data, EXECUTION_MODE_OFFSET));
     }
 
     function _getActionData(bytes memory data) internal pure returns (bytes memory v) {

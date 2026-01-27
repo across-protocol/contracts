@@ -37,23 +37,6 @@ library BytesLib {
     }
 
     /**
-     * @notice Reads a uint8 from the low-order byte of a 32-byte word at a given word offset (for abi.encode data)
-     * @param _bytes The bytes array to convert
-     * @param _wordOffset The start index of the 32-byte word containing the uint8
-     * @return result The uint8 result
-     */
-    function toUint8FromWord(bytes memory _bytes, uint256 _wordOffset) internal pure returns (uint8 result) {
-        if (_bytes.length < _wordOffset + 32) {
-            revert OutOfBounds();
-        }
-
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            result := mload(add(add(_bytes, 0x20), _wordOffset))
-        }
-    }
-
-    /**
      * @notice Reads a uint16 from a bytes array at a given start index (for tightly packed data)
      * @notice Reads a uint16 from a bytes array at a given start index
      * @param _bytes The bytes array to convert
@@ -72,23 +55,6 @@ library BytesLib {
     }
 
     /**
-     * @notice Reads a uint16 from the low-order bytes of a 32-byte word at a given word offset (for abi.encode data)
-     * @param _bytes The bytes array to convert
-     * @param _wordOffset The start index of the 32-byte word containing the uint16
-     * @return result The uint16 result
-     */
-    function toUint16FromWord(bytes memory _bytes, uint256 _wordOffset) internal pure returns (uint16 result) {
-        if (_bytes.length < _wordOffset + 32) {
-            revert OutOfBounds();
-        }
-
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            result := mload(add(add(_bytes, 0x20), _wordOffset))
-        }
-    }
-
-    /**
      * @notice Reads a uint32 from a bytes array at a given start index (for tightly packed data)
      * @notice Reads a uint32 from a bytes array at a given start index
      * @param _bytes The bytes array to convert
@@ -103,23 +69,6 @@ library BytesLib {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             result := mload(add(add(_bytes, 0x4), _start))
-        }
-    }
-
-    /**
-     * @notice Reads a uint32 from the low-order bytes of a 32-byte word at a given word offset (for abi.encode data)
-     * @param _bytes The bytes array to convert
-     * @param _wordOffset The start index of the 32-byte word containing the uint32
-     * @return result The uint32 result
-     */
-    function toUint32FromWord(bytes memory _bytes, uint256 _wordOffset) internal pure returns (uint32 result) {
-        if (_bytes.length < _wordOffset + 32) {
-            revert OutOfBounds();
-        }
-
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            result := mload(add(add(_bytes, 0x20), _wordOffset))
         }
     }
 
