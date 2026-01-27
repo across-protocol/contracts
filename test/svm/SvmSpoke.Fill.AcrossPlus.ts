@@ -8,7 +8,6 @@ import {
   createKeyPairFromBytes,
   createSignerFromKeyPair,
   getProgramDerivedAddress,
-  IAccountMeta,
   pipe,
 } from "@solana/kit";
 import {
@@ -511,11 +510,11 @@ describe("svm_spoke.fill.across_plus", () => {
         { pubkey: handlerProgram.programId, isSigner: false, isWritable: false },
         ...multicallHandlerCoder.compiledKeyMetas,
       ];
-      const remainingAccounts: IAccountMeta<string>[] = _remainingAccounts.map((account) => ({
+      const remainingAccounts = _remainingAccounts.map((account) => ({
         address: address(account.pubkey.toString()),
         role: account.isWritable ? AccountRole.WRITABLE : AccountRole.READONLY,
       }));
-      (fillRelayIx.accounts as IAccountMeta<string>[]).push(...remainingAccounts);
+      fillRelayIx.accounts.push(...remainingAccounts);
 
       await pipe(
         await createDefaultTransaction(rpcClient, signer),
