@@ -191,6 +191,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      */
     function depositNative(
         address spokePool,
+        address depositor,
         bytes32 recipient,
         address inputToken,
         uint256 inputAmount,
@@ -203,9 +204,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint32 exclusivityParameter,
         bytes memory message
     ) external payable override nonReentrant {
-        // Set msg.sender as the depositor so that msg.sender can speed up the deposit.
         V3SpokePoolInterface(spokePool).deposit{ value: msg.value }(
-            msg.sender.toBytes32(),
+            depositor.toBytes32(),
             recipient,
             inputToken.toBytes32(),
             outputToken,

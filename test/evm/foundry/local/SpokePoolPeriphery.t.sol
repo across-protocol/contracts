@@ -470,6 +470,7 @@ contract SpokePoolPeripheryTest is Test {
         );
         spokePoolPeriphery.depositNative{ value: mintAmount }(
             address(ethereumSpokePool), // spokePool address
+            depositor, // depositor
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount,
@@ -492,6 +493,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
         spokePoolPeriphery.depositNative{ value: 1 }( // Send 1 wei but expecting mintAmount
             address(ethereumSpokePool), // spokePool address
+            depositor, // depositor
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount, // This doesn't match msg.value of 1
@@ -521,6 +523,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectRevert();
         spokePoolPeriphery.depositNative{ value: 1 wei }(
             nonContractAddress, // spokePool - this is not a contract
+            depositor, // depositor
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             1 wei, // inputAmount
