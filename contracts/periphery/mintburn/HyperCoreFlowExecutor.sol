@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import { AuthorizedFundedFlow } from "./AuthorizedFundedFlow.sol";
 import { HyperCoreFlowRoles } from "./HyperCoreFlowRoles.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
-import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
-import { CoreTokenInfo, CoreTokenInfoLib, FinalTokenInfo, CommonFlowParams, AccountCreationMode } from "./Structs.sol";
+import { HyperCoreLib, CoreTokenInfo } from "../../libraries/HyperCoreLib.sol";
+import { FinalTokenInfo, CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
 
@@ -1004,7 +1004,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
     ) internal {
-        _getMainStorage().coreTokenInfos[token] = CoreTokenInfoLib.build(
+        _getMainStorage().coreTokenInfos[token] = HyperCoreLib.buildCoreTokenInfo(
             coreIndex,
             canBeUsedForAccountActivation,
             accountActivationFeeCore,

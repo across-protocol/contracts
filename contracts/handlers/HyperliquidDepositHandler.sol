@@ -6,10 +6,9 @@ import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
-import { HyperCoreLib } from "../libraries/HyperCoreLib.sol";
+import { HyperCoreLib, CoreTokenInfo } from "../libraries/HyperCoreLib.sol";
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { DonationBox } from "../chain-adapters/DonationBox.sol";
-import { CoreTokenInfo, CoreTokenInfoLib } from "../periphery/mintburn/Structs.sol";
 
 /**
  * @title Allows caller to bridge tokens from HyperEVM to Hypercore and send them to an end user's account
@@ -185,7 +184,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
     ) external onlyOwner {
-        CoreTokenInfo memory coreTokenInfo = CoreTokenInfoLib.build(
+        CoreTokenInfo memory coreTokenInfo = HyperCoreLib.buildCoreTokenInfo(
             coreIndex,
             canBeUsedForAccountActivation,
             accountActivationFeeCore,
