@@ -154,8 +154,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     mapping(address => uint256) public permitNonces;
 
     // Witness identifiers for the bridge and swap functions. Used to ensure collisions can't happen.
-    bytes32 private constant BRIDGE_AND_SWAP_WITNESS_IDENTIFIER = keccak256("BridgeAndSwapWitness");
-    bytes32 private constant BRIDGE_WITNESS_IDENTIFIER = keccak256("BridgeWitness");
+    bytes32 public constant BRIDGE_AND_SWAP_WITNESS_IDENTIFIER = keccak256("BridgeAndSwapWitness");
+    bytes32 public constant BRIDGE_WITNESS_IDENTIFIER = keccak256("BridgeWitness");
 
     event SwapBeforeBridge(
         address exchange,

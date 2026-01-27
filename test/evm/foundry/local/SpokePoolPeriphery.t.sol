@@ -764,7 +764,12 @@ contract SpokePoolPeripheryTest is Test {
             depositor
         );
 
-        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+
+        // Get the transfer with auth signature using the witness to bind the intent.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -773,20 +778,13 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                bytes32(depositData.nonce)
+                witness
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
-
-        // Get the deposit data signature.
-        bytes32 depositMsgHash = keccak256(
-            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
-        );
-        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
-        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
@@ -835,7 +833,12 @@ contract SpokePoolPeripheryTest is Test {
             true // Enable proportional adjustment by default
         );
 
-        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+
+        // Get the transfer with auth signature using the witness to bind the intent.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -844,24 +847,13 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                bytes32(swapAndDepositData.nonce)
+                witness
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
-
-        // Get the swap and deposit data signature.
-        bytes32 swapAndDepositMsgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                spokePoolPeriphery.domainSeparator(),
-                hashUtils.hashSwapAndDepositData(swapAndDepositData)
-            )
-        );
-        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
-        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
@@ -911,7 +903,12 @@ contract SpokePoolPeripheryTest is Test {
             true // Enable proportional adjustment by default
         );
 
-        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+
+        // Get the transfer with auth signature using the witness to bind the intent.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -920,24 +917,13 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                bytes32(swapAndDepositData.nonce)
+                witness
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
-
-        // Get the swap and deposit data signature.
-        bytes32 swapAndDepositMsgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                spokePoolPeriphery.domainSeparator(),
-                hashUtils.hashSwapAndDepositData(swapAndDepositData)
-            )
-        );
-        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
-        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
         // Make a swapAndDepositStruct which is different from the one the depositor signed off on. For example, make one where we set somebody else as the recipient/depositor.
         SpokePoolPeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
