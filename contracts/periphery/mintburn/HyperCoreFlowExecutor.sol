@@ -4,12 +4,10 @@ pragma solidity ^0.8.0;
 import { AuthorizedFundedFlow } from "./AuthorizedFundedFlow.sol";
 import { HyperCoreFlowRoles } from "./HyperCoreFlowRoles.sol";
 import { DonationBox } from "../../chain-adapters/DonationBox.sol";
-import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
-import { CoreTokenInfo } from "./Structs.sol";
-import { FinalTokenInfo } from "./Structs.sol";
+import { HyperCoreLib, CoreTokenInfo } from "../../libraries/HyperCoreLib.sol";
+import { FinalTokenInfo, CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
-import { CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -1006,21 +1004,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 accountActivationFeeCore,
         uint64 bridgeSafetyBufferCore
     ) internal {
-        HyperCoreLib.TokenInfo memory tokenInfo = HyperCoreLib.tokenInfo(coreIndex);
-
-        (uint256 accountActivationFeeEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
+        _getMainStorage().coreTokenInfos[token] = HyperCoreLib.buildCoreTokenInfo(
+            coreIndex,
+            canBeUsedForAccountActivation,
             accountActivationFeeCore,
-            tokenInfo.evmExtraWeiDecimals
+            bridgeSafetyBufferCore
         );
-
-        _getMainStorage().coreTokenInfos[token] = CoreTokenInfo({
-            tokenInfo: tokenInfo,
-            coreIndex: coreIndex,
-            canBeUsedForAccountActivation: canBeUsedForAccountActivation,
-            accountActivationFeeEVM: accountActivationFeeEVM,
-            accountActivationFeeCore: accountActivationFeeCore,
-            bridgeSafetyBufferCore: bridgeSafetyBufferCore
-        });
 
         emit SetCoreTokenInfo(
             token,
