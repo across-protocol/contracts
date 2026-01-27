@@ -558,11 +558,6 @@
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 18113085
-        },
-        "Lisk_SpokePool": {
-          "address": "0xe58480ca74f1a819fafd777beded4e2d5629943d",
-          "block_number": 27152120,
-          "transaction_hash": "0x0129be4b65f57157e7cbd7a8b8688afed1293a3442620df4d1c85736d451b0fc"
         }
       }
     },
@@ -599,9 +594,9 @@
           "block_number": 8910059
         },
         "Cher_SpokePool": {
-          "address": "0x1c8243198570658f818fc56538f2c837c2a32958",
-          "block_number": 17949038,
-          "transaction_hash": "0x7a3ca40368652c84c2ca47f5722df58e098efcb8af08427192d55ae0baf92e91"
+          "address": "0x48e687205d3962c43891b8cde5a4fe75fa6c8d7a",
+          "block_number": 11504355,
+          "transaction_hash": "0x5e126b5845bf4425d053febf06089e7c02411ee3edf7df6ffa888bc530d85c7f"
         }
       }
     },
