@@ -220,29 +220,33 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
-          } else if (contractName === "Universal_Adapter") {
-            const [, , , cctpDomainId, , oftDstEid] = tx.arguments;
+          } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
+            let cctpDomainId: string | undefined = undefined;
+            let oftDstEid: string | undefined = undefined;
 
-            // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches either cctpDomainId or oftDstEid
-            let matchingChainId: number | undefined = undefined;
-
+            // nb. This is fragile. @todo: Improve.
+            switch (contractName) {
+              case "Universal_Adapter":
+                cctpDomainId = tx.arguments.at(3);
+                oftDstEid = tx.arguments.at(5);
+                break;
+              case "OP_Adapter":
+                cctpDomainId = tx.arguments.at(6);
+                break;
+            }
             const networks = broadcastFile.chainId in TEST_NETWORKS ? TEST_NETWORKS : PRODUCTION_NETWORKS;
 
-            for (const [chainIdString, chainInfo] of Object.entries(networks)) {
-              const chainId = Number(chainIdString);
-
+            // Try to find a chain id in TEST_NETWORKS/PRODUCTION_NETWORKS that matches either cctpDomainId or oftDstEid
+            const chainId = Object.keys(networks).find((chainId) => {
+              const { cctpDomain, oftEid } = networks[Number(chainId)];
               // Some chains may have properties for cctpDomainId or oftDstEid. Try to check both.
-              if (
-                (chainInfo.cctpDomain !== undefined && chainInfo.cctpDomain?.toString() === cctpDomainId?.toString()) ||
-                (chainInfo.oftEid !== undefined && chainInfo.oftEid?.toString() === oftDstEid?.toString())
-              ) {
-                matchingChainId = chainId;
-                break;
-              }
-            }
+              return (
+                (cctpDomain && cctpDomain.toString() === cctpDomainId) || (oftEid && oftEid.toString() === oftDstEid)
+              );
+            });
 
-            if (matchingChainId !== undefined) {
-              contractName = `Universal_Adapter_${matchingChainId}`;
+            if (chainId !== undefined) {
+              contractName += `_${chainId}`;
             } else {
               console.log(
                 `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`

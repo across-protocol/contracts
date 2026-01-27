@@ -27,7 +27,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Ethereum_Adapter             | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
 | HubPool                      | [0xc186fA914353c44b2E33eBE05f21846F1048bEda](https://etherscan.io/address/0xc186fA914353c44b2E33eBE05f21846F1048bEda) |
 | HubPoolStore                 | [0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61](https://etherscan.io/address/0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61) |
-| Ink_Adapter                  | [0x7e90A40c7519b041A7DF6498fBf5662e8cFC61d2](https://etherscan.io/address/0x7e90A40c7519b041A7DF6498fBf5662e8cFC61d2) |
 | Lens_Adapter                 | [0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf](https://etherscan.io/address/0x5e0B7e20a77BDf11812837D30F1326068Bcf24Cf) |
 | Linea_Adapter                | [0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787](https://etherscan.io/address/0x5A44A32c13e2C43416bFDE5dDF5DCb3880c42787) |
 | Lisk_Adapter                 | [0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b](https://etherscan.io/address/0xF039AdCC74936F90fE175e8b3FE0FdC8b8E0c73b) |
@@ -35,7 +34,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Megaeth_Adapter              | [0xE1f04404b74F996A311F13aE291849fC153578Ac](https://etherscan.io/address/0xE1f04404b74F996A311F13aE291849fC153578Ac) |
 | Mode_Adapter                 | [0xf1B59868697f3925b72889ede818B9E7ba0316d0](https://etherscan.io/address/0xf1B59868697f3925b72889ede818B9E7ba0316d0) |
 | MulticallHandler             | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| OP_Adapter                   | [0xE1f04404b74F996A311F13aE291849fC153578Ac](https://etherscan.io/address/0xE1f04404b74F996A311F13aE291849fC153578Ac) |
+| OP_Adapter_57073             | [0x545E43B6eC2f9a44CAa531298699Ff05958670B5](https://etherscan.io/address/0x545E43B6eC2f9a44CAa531298699Ff05958670B5) |
 | Optimism_Adapter             | [0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b](https://etherscan.io/address/0xE1e74B3D6A8E2A479B62958D4E4E6eEaea5B612b) |
 | Optimism_Adapter             | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionedMulticallHandler | [0x64a43393866DBA0044879979fAa7AD3d000622e9](https://etherscan.io/address/0x64a43393866DBA0044879979fAa7AD3d000622e9) |
@@ -178,6 +177,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                      |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Lisk_SpokePool     | [0xE58480CA74f1A819faFd777BEDED4E2D5629943d](https://blockscout.lisk.com/address/0xE58480CA74f1A819faFd777BEDED4E2D5629943d) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool          | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://blockscout.lisk.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
@@ -188,6 +188,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name      | Address                                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | Cher_SpokePool     | [0x48e687205D3962c43891b8Cde5A4Fe75FA6C8D7a](https://soneium.blockscout.com/address/0x48e687205D3962c43891b8Cde5A4Fe75FA6C8D7a) |
+| Cher_SpokePool     | [0x1c8243198570658f818FC56538f2c837C2a32958](https://soneium.blockscout.com/address/0x1c8243198570658f818FC56538f2c837C2a32958) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://soneium.blockscout.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://soneium.blockscout.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
@@ -256,6 +257,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Ink_SpokePool             | [0x5be04e53b465c6fD89ECfF3d36dDf666D198e31a](https://explorer.inkonchain.com/address/0x5be04e53b465c6fD89ECfF3d36dDf666D198e31a) |
 | MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://explorer.inkonchain.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| OP_SpokePool              | [0xF31a4165d0c967383C2Cf34f097B4eBd421A1dB2](https://explorer.inkonchain.com/address/0xF31a4165d0c967383C2Cf34f097B4eBd421A1dB2) |
 | SpokePool                 | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://explorer.inkonchain.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 | SpokePoolPeriphery        | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://explorer.inkonchain.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.inkonchain.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
