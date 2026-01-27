@@ -203,15 +203,13 @@ interface SpokePoolPeripheryInterface {
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @param swapAndDepositDataSignature The signature against the input swapAndDepositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes calldata receiveWithAuthSignature,
-        bytes calldata swapAndDepositDataSignature
+        bytes calldata receiveWithAuthSignature
     ) external;
 
     /**
@@ -265,15 +263,13 @@ interface SpokePoolPeripheryInterface {
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
-     * @param depositDataSignature The signature against the input depositData encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function depositWithAuthorization(
         address signatureOwner,
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes calldata receiveWithAuthSignature,
-        bytes calldata depositDataSignature
+        bytes calldata receiveWithAuthSignature
     ) external;
 
     /**

@@ -810,8 +810,7 @@ contract SpokePoolPeripheryTest is Test {
             depositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            signature, // receiveWithAuthSignature
-            depositDataSignature
+            signature // receiveWithAuthSignature
         );
 
         // Check that fee recipient receives expected amount
@@ -886,8 +885,7 @@ contract SpokePoolPeripheryTest is Test {
             swapAndDepositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            signature, // receiveWithAuthSignature
-            swapAndDepositDataSignature
+            signature // receiveWithAuthSignature
         );
 
         // Check that fee recipient receives expected amount
@@ -956,14 +954,13 @@ contract SpokePoolPeripheryTest is Test {
         );
 
         // Should emit expected deposit event
-        vm.expectRevert(SpokePoolPeriphery.InvalidSignature.selector);
+        vm.expectRevert();
         spokePoolPeriphery.swapAndBridgeWithAuthorization(
             depositor, // signatureOwner
             invalidSwapAndDepositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            signature, // receiveWithAuthSignature
-            swapAndDepositDataSignature
+            signature // receiveWithAuthSignature
         );
     }
 
