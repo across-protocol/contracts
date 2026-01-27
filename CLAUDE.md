@@ -33,7 +33,7 @@ yarn build-evm                        # Hardhat
 
 # Run tests
 yarn test-evm-foundry                 # Foundry local tests (recommended)
-FOUNDRY_PROFILE=local forge test      # Same as above
+FOUNDRY_PROFILE=local-test forge test      # Same as above
 yarn test-evm-hardhat                 # Hardhat tests (legacy)
 
 # Run specific Foundry tests
