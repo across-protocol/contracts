@@ -231,7 +231,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool           | [0x50039fAEfebef707cFD94D6d462fE6D10B39207a](https://plasmascan.to/address/0x50039fAEfebef707cFD94D6d462fE6D10B39207a) |
 | SpokePoolPeriphery  | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://plasmascan.to/address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier   | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://plasmascan.to/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| Universal_SpokePool | [0xA0747016cBD78302A1d35f15640528eDAc1C203a](https://plasmascan.to/address/0xA0747016cBD78302A1d35f15640528eDAc1C203a) |
+| Universal_SpokePool | [0x053Dc4a08302F11d13d8D2B87D8F3c9c28cEDEb4](https://plasmascan.to/address/0x053Dc4a08302F11d13d8D2B87D8F3c9c28cEDEb4) |
 
 ## Mode (34443)
 
