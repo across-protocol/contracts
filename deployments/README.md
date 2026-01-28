@@ -40,7 +40,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | Optimism_SpokePool | [0x6f26Bf09B1C792e3228e5467807a900A503c0281](https://optimistic.etherscan.io/address/0x6f26Bf09B1C792e3228e5467807a900A503c0281) |
 | MulticallHandler   | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://optimistic.etherscan.io/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
-## Polygon mainnet(137)
+## Polygon mainnet (137)
 
 | Contract Name       | Address                                                                                                                  |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -109,7 +109,7 @@ This is because this `deployments.json` file is used by bots in [`@across-protoc
 | Contract Name    | Address                                                                                                                       |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Zora_SpokePool   | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97)         |
-| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://zorascan.xyz/address/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
+| MulticallHandler | [0x924a9f036260DdD5808007E1AA95f08eD08aA569](https://zorascan.xyz/address/0x924a9f036260DdD5808007E1AA95f08eD08aA569) |
 
 ## World Chain mainnet (480)
 
