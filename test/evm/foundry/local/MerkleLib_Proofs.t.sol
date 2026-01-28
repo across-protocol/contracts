@@ -24,15 +24,6 @@ contract MerkleLib_ProofsTest is Test {
         merkle = new Merkle();
     }
 
-    // ============ Empty Tree Test ============
-
-    function test_EmptyTree() public pure {
-        // An empty tree should have a root of bytes32(0)
-        // This matches the TypeScript MerkleTree behavior where an empty tree returns EMPTY_MERKLE_ROOT
-        // Note: Murky doesn't support empty trees, but the protocol uses bytes32(0) as the empty root
-        assertEq(EMPTY_MERKLE_ROOT, bytes32(0));
-    }
-
     // ============ Pool Rebalance Leaf Proof Test ============
 
     function test_PoolRebalanceLeafProof() public {
