@@ -589,7 +589,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                         EDGE CASE TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_ReceiveMessage_ZeroAmount_HandledGracefully() public {
+    function test_ReceiveMessage_ZeroAmount_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         quote.amount = 0;
 
@@ -597,10 +597,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, 0);
         bytes memory attestation = bytes("mock-attestation");
 
-        // Should not revert
+        vm.expectRevert(HyperCoreLib.InsufficientAmountForAccountActivation.selector);
         periphery.receiveMessage(message, attestation, signature);
-
-        assertTrue(periphery.usedNonces(quote.nonce));
     }
 
     function test_ReceiveMessage_EmptyActionData_DirectToCore() public {

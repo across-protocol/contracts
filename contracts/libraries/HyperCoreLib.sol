@@ -73,6 +73,7 @@ library HyperCoreLib {
     error CoreUserExistsPrecompileCallFailed();
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
+    error InsufficientAmountForAccountActivation();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -98,6 +99,7 @@ library HyperCoreLib {
     ) internal returns (uint256 amountEVMSent, uint64 amountCoreToReceive) {
         // if the transfer amount exceeds the bridge balance, this wil revert
         (uint256 _amountEVMToSend, uint64 _amountCoreToReceive) = maximumEVMSendAmountToAmounts(amountEVM, decimalDiff);
+        if (_amountCoreToReceive <= accountActivationFeeCore) revert InsufficientAmountForAccountActivation();
 
         if (_amountEVMToSend != 0) {
             if (erc20CoreIndex == USDC_CORE_INDEX) {
@@ -115,10 +117,7 @@ library HyperCoreLib {
             } else {
                 IERC20(erc20EVMAddress).safeTransfer(toAssetBridgeAddress(erc20CoreIndex), _amountEVMToSend);
                 // Transfer the tokens from this contract on HyperCore to the `to` address on HyperCore
-                if (
-                    (to != address(this) || destinationDex != CORE_SPOT_DEX_ID) &&
-                    _amountCoreToReceive > accountActivationFeeCore
-                ) {
+                if (to != address(this) || destinationDex != CORE_SPOT_DEX_ID) {
                     transferERC20CoreToCore(
                         erc20CoreIndex,
                         to,
