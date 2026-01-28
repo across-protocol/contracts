@@ -5,8 +5,9 @@ import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterf
 
 /**
  * @title MerkleTreeUtils
- * @notice Utility functions for building Merkle trees in Foundry tests.
- * @dev For simple single-leaf trees, the root is just the hash of the leaf with an empty proof.
+ * @notice Across-specific utility functions for building Merkle tree leaves in Foundry tests.
+ * @dev For multi-leaf tree building and proof generation, use Murky (lib/murky).
+ *      This library provides helpers for constructing Across Protocol leaf structures.
  */
 library MerkleTreeUtils {
     /**
