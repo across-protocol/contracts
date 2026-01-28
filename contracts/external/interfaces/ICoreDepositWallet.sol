@@ -18,18 +18,11 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title ICoreDepositWallet
- * @notice Interface for the core deposit wallet
- * @dev Source: https://github.com/circlefin/hyperevm-circle-contracts/blob/master/src/interfaces/ICoreDepositWallet.sol
+ * @title IForwardDepositReceiver
+ * @notice Interface for a contract that can receive deposits from the CCTP Forwarder
+ * @dev Source: https://github.com/circlefin/hyperevm-circle-contracts/blob/master/src/interfaces/IForwardDepositReceiver.sol
  */
-interface ICoreDepositWallet {
-    /**
-     * @notice Deposits tokens for the sender.
-     * @param amount The amount of tokens being deposited.
-     * @param destinationDex The destination dex on HyperCore.
-     */
-    function deposit(uint256 amount, uint32 destinationDex) external;
-
+interface IForwardDepositReceiver {
     /**
      * @notice Deposit tokens for a recipient
      * @param recipient Recipient of the deposit
@@ -37,5 +30,23 @@ interface ICoreDepositWallet {
      * @param destinationId Forwarding-address-specific id used in conjunction with
      * recipient to route the deposit to a specific location.
      */
-    function depositFor(address recipient, uint256 amount, uint32 destinationId) external;
+    function depositFor(
+        address recipient,
+        uint256 amount,
+        uint32 destinationId
+    ) external;
+}
+
+/**
+ * @title ICoreDepositWallet
+ * @notice Minimal useful interface for the core deposit wallet
+ * @dev Source: https://github.com/circlefin/hyperevm-circle-contracts/blob/master/src/interfaces/ICoreDepositWallet.sol
+ */
+interface ICoreDepositWallet is IForwardDepositReceiver {
+    /**
+     * @notice Deposits tokens for the sender.
+     * @param amount The amount of tokens being deposited.
+     * @param destinationDex The destination dex on HyperCore.
+     */
+    function deposit(uint256 amount, uint32 destinationDex) external;
 }
