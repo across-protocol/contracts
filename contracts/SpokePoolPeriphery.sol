@@ -153,6 +153,10 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     // Mapping from user address to their current nonce
     mapping(address => uint256) public permitNonces;
 
+    // Witness identifiers for the bridge and swap functions. Used to ensure collisions can't happen.
+    bytes32 public constant BRIDGE_AND_SWAP_WITNESS_IDENTIFIER = keccak256("BridgeAndSwapWitness");
+    bytes32 public constant BRIDGE_WITNESS_IDENTIFIER = keccak256("BridgeWitness");
+
     event SwapBeforeBridge(
         address exchange,
         bytes exchangeCalldata,
@@ -341,9 +345,12 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         SwapAndDepositData calldata swapAndDepositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes calldata receiveWithAuthSignature,
-        bytes calldata swapAndDepositDataSignature
+        bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
+        bytes32 witness = keccak256(
+            abi.encodePacked(BRIDGE_AND_SWAP_WITNESS_IDENTIFIER, abi.encode(swapAndDepositData))
+        );
+
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
@@ -355,7 +362,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
-            bytes32(swapAndDepositData.nonce),
+            witness,
             v,
             r,
             s
@@ -368,19 +375,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
         // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
-        //
-        // Design Decision: We reuse the receiveWithAuthorization nonce for our signatures,
-        // but not for permit, which creates a theoretical replay attack that we think is
-        // incredibly unlikely because this would require:
-        // 1. A token implementing both ERC-2612 and ERC-3009
-        // 2. A user using the same nonces for swapAndBridgeWithPermit and for swapAndBridgeWithAuthorization
-        // 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
-        // Verify that the signatureOwner signed the input swapAndDepositData.
-        _validateSignature(
-            signatureOwner,
-            PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
-            swapAndDepositDataSignature
-        );
         _swapAndBridge(swapAndDepositData);
     }
 
@@ -485,9 +479,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         DepositData calldata depositData,
         uint256 validAfter,
         uint256 validBefore,
-        bytes calldata receiveWithAuthSignature,
-        bytes calldata depositDataSignature
+        bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
+        bytes32 witness = keccak256(abi.encodePacked(BRIDGE_WITNESS_IDENTIFIER, abi.encode(depositData)));
         // Load variables used multiple times onto the stack.
         uint256 _inputAmount = depositData.inputAmount;
         uint256 _submissionFeeAmount = depositData.submissionFees.amount;
@@ -500,7 +494,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             _inputAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
-            bytes32(depositData.nonce),
+            witness,
             v,
             r,
             s
@@ -513,15 +507,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
         // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
-        //
-        // Design Decision: We reuse the receiveWithAuthorization nonce for our signatures,
-        // but not for permit, which creates a theoretical replay attack that we think is
-        // incredibly unlikely because this would require:
-        // 1. A token implementing both ERC-2612 and ERC-3009
-        // 2. A user using the same nonces for depositWithPermit and for depositWithAuthorization
-        // 3. Issuing these signatures within a short amount of time (limited by fillDeadlineBuffer)
-        // Verify that the signatureOwner signed the input depositData.
-        _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
