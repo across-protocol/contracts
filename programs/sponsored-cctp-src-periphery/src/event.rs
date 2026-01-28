@@ -27,6 +27,8 @@ pub struct SponsoredDepositForBurn {
     pub max_bps_to_sponsor: u64,
     pub max_user_slippage_bps: u64,
     pub final_token: Pubkey,
+    pub destination_dex: u32,
+    pub account_creation_mode: u8,
     pub signature: Vec<u8>, // Signature is fixed 65 bytes, but it is more readable in logs expressed as encoded data blob.
 }
 
