@@ -8,7 +8,7 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
-import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
+import { CommonFlowParams, EVMFlowParams, AccountCreationMode as StructsAccountCreationMode } from "../Structs.sol";
 
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -188,11 +188,9 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
-        // Validate the quote and the signature.
-        bool isQuoteValid = _isQuoteValid(quote, signature);
-        if (isQuoteValid) {
-            _getMainStorage().usedNonces[quote.nonce] = true;
-        }
+        // Validate the quote and the signature. Revert on invalid to prevent griefing attacks
+        // where an attacker provides correct message/attestation but invalid signature.
+        _validateQuoteOrRevert(quote, signature);
 
         uint256 amountAfterFees = quote.amount - feeExecuted;
 
@@ -201,17 +199,18 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             quoteNonce: quote.nonce,
             finalRecipient: quote.finalRecipient.toAddress(),
             // If the quote is invalid we don't want to swap, so we use the base token as the final token
-            finalToken: isQuoteValid ? quote.finalToken.toAddress() : baseToken,
+            finalToken: quote.finalToken.toAddress(),
+            destinationDex: quote.destinationDex,
             // If the quote is invalid we don't sponsor the flow or the extra fees
-            maxBpsToSponsor: isQuoteValid ? quote.maxBpsToSponsor : 0,
-            extraFeesIncurred: feeExecuted
+            maxBpsToSponsor: quote.maxBpsToSponsor,
+            extraFeesIncurred: feeExecuted,
+            accountCreationMode: StructsAccountCreationMode(quote.accountCreationMode)
         });
 
         // Route to appropriate execution based on executionMode
         if (
-            isQuoteValid &&
-            (quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
-                quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM))
+            quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
+            quote.executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM)
         ) {
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
@@ -239,19 +238,39 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         return SponsoredCCTPQuoteLib.validateMessage(message);
     }
 
-    function _isQuoteValid(
+    /**
+     * @notice Validates the quote and signature, reverting with specific errors if invalid.
+     * @dev This prevents griefing attacks where an attacker provides correct message/attestation
+     * but an invalid signature, which would otherwise cause loss of sponsorship and custom actions.
+     * @param quote The quote to validate.
+     * @param signature The signature to validate against the quote.
+     */
+    function _validateQuoteOrRevert(
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         bytes memory signature
-    ) internal view returns (bool) {
+    ) internal {
         MainStorage storage $ = _getMainStorage();
-        return
-            SponsoredCCTPQuoteLib.validateSignature($.signer, quote, signature) &&
-            !$.usedNonces[quote.nonce] &&
-            quote.deadline + $.quoteDeadlineBuffer >= block.timestamp;
+
+        if (!SponsoredCCTPQuoteLib.validateSignature($.signer, quote, signature)) {
+            revert InvalidSignature();
+        }
+        if ($.usedNonces[quote.nonce]) {
+            revert InvalidNonce();
+        }
+        if (quote.deadline + $.quoteDeadlineBuffer < block.timestamp) {
+            revert InvalidDeadline();
+        }
+
+        $.usedNonces[quote.nonce] = true;
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
+
+        // If the full balance was deposited as a part of EVM action, return early
+        if (params.commonParams.amountInEVM == 0) {
+            return;
+        }
 
         // Route to appropriate destination based on transferToCore flag
         _delegateToHyperCore(

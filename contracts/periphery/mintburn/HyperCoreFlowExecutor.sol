@@ -9,7 +9,7 @@ import { CoreTokenInfo } from "./Structs.sol";
 import { FinalTokenInfo } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
 import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
-import { CommonFlowParams } from "./Structs.sol";
+import { CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -46,6 +46,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     struct SwapFlowState {
         address finalRecipient;
         address finalToken;
+        uint32 destinationDex;
         uint64 minAmountToSend; // for sponsored: one to one, non-sponsored: one to one minus slippage
         uint64 maxAmountToSend; // for sponsored: one to one (from total bridged amt), for non-sponsored: one to one, less bridging fees incurred
         bool isSponsored;
@@ -231,6 +232,20 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     );
 
     /**
+     * @notice Emitted whenever a user account is activated using funds from the user's transfer/swap
+     * @param quoteNonce Unique identifier for this quote/transaction
+     * @param user The address of the user whose account is being activated
+     * @param token The token used to fund the account activation
+     * @param amountCore The amount paid for activation (in Core token units)
+     */
+    event AccountActivatedFromUserFunds(
+        bytes32 indexed quoteNonce,
+        address indexed user,
+        address indexed token,
+        uint64 amountCore
+    );
+
+    /**
      * @notice Emitted whenever a new CoreTokenInfo is configured
      * @param token The token address being configured
      * @param coreIndex The index of the token on HyperCore
@@ -282,6 +297,12 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
     /// @notice Thrown when we can't bridge some token from HyperEVM to HyperCore
     error UnsafeToBridgeError(address token, uint64 amount);
+
+    /// @notice Thrown when finalizing a swap flow, if a finalToken used to be eligible for account activation, but is no longer
+    error TokenNotEligibleForActivation();
+
+    /// @notice Thrown when a user order total is not enough to cover account activation when finalizing a swap flow
+    error InsufficientFundsForActivation();
 
     /**************************************
      *            MODIFIERS               *
@@ -499,18 +520,27 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         MainStorage storage $ = _getMainStorage();
         CoreTokenInfo memory coreTokenInfo = $.coreTokenInfos[finalToken];
 
-        // Check account activation
+        uint64 accountActivationFeeCore;
         if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-            if (params.maxBpsToSponsor > 0) {
+            bool isStandard = params.accountCreationMode == AccountCreationMode.Standard;
+
+            // Standard, sponsored
+            if (isStandard && params.maxBpsToSponsor > 0) {
                 revert AccountNotActivatedError(params.finalRecipient);
-            } else {
+            }
+
+            // Standard, non-sponsored OR
+            // FromUserAccount AND token can't be used for account activation
+            if (isStandard || !coreTokenInfo.canBeUsedForAccountActivation) {
                 emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
                 _fallbackHyperEVMFlow(params);
                 return;
             }
+
+            // FromUserAccount AND token can be used for account activation
+            accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
         }
 
-        // Calculate sponsorship amount in scope
         uint256 amountToSponsor;
         {
             uint256 maxEvmAmountToSponsor = ((params.amountInEVM + params.extraFeesIncurred) * params.maxBpsToSponsor) /
@@ -568,8 +598,19 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             coreTokenInfo.coreIndex,
             params.finalRecipient,
             quotedEvmAmount,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals,
+            params.destinationDex,
+            accountActivationFeeCore
         );
+
+        if (accountActivationFeeCore > 0) {
+            emit AccountActivatedFromUserFunds(
+                params.quoteNonce,
+                params.finalRecipient,
+                finalToken,
+                accountActivationFeeCore
+            );
+        }
 
         emit SimpleTransferFlowCompleted(
             params.quoteNonce,
@@ -591,22 +632,28 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
         address initialToken = baseToken;
 
-        // Check account activation
+        MainStorage storage $ = _getMainStorage();
+        CoreTokenInfo memory initialCoreTokenInfo = $.coreTokenInfos[initialToken];
+        CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
+        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
+
         if (!HyperCoreLib.coreUserExists(params.finalRecipient)) {
-            if (params.maxBpsToSponsor > 0) {
+            bool isStandard = params.accountCreationMode == AccountCreationMode.Standard;
+
+            // Standard, sponsored
+            if (isStandard && params.maxBpsToSponsor > 0) {
                 revert AccountNotActivatedError(params.finalRecipient);
-            } else {
+            }
+
+            // Standard, non-sponsored OR
+            // FromUserFunds AND final token can't be used for account creation
+            if (isStandard || !finalCoreTokenInfo.canBeUsedForAccountActivation) {
                 emit AccountNotActivated(params.quoteNonce, params.finalRecipient);
                 params.finalToken = initialToken;
                 _fallbackHyperEVMFlow(params);
                 return;
             }
         }
-
-        MainStorage storage $ = _getMainStorage();
-        CoreTokenInfo memory initialCoreTokenInfo = $.coreTokenInfos[initialToken];
-        CoreTokenInfo memory finalCoreTokenInfo = $.coreTokenInfos[params.finalToken];
-        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(params.finalToken);
 
         // Calculate limit order amounts and check if feasible
         uint64 minAllowableAmountToForwardCore;
@@ -687,6 +734,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         $.swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
+            destinationDex: params.destinationDex,
             minAmountToSend: minAllowableAmountToForwardCore,
             maxAmountToSend: maxAllowableAmountToForwardCore,
             isSponsored: params.maxBpsToSponsor > 0,
@@ -813,31 +861,51 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         if (swap.finalized) revert SwapAlreadyFinalized();
         if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
 
-        uint64 totalToSend;
-        (totalToSend, additionalToSend) = _calcSwapFlowSendAmounts(
+        uint64 accountActivationFee;
+        // User account can be absent if our AccountCreationMode is `FromUserFunds`. We need to adjust our transfer amount to user based on this
+        if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
+            // This is enforced by `_initiateSwapFlow`. If the setting changed, this revert can trigger. Requires manual resolution (creating an account)
+            require(finalCoreTokenInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
+            accountActivationFee = finalCoreTokenInfo.accountActivationFeeCore;
+        }
+
+        uint64 amountToTransfer;
+        uint64 totalConsumed;
+        (amountToTransfer, additionalToSend, totalConsumed) = _calcSwapFlowSendAmounts(
             limitOrderOut,
             swap.minAmountToSend,
             swap.maxAmountToSend,
-            swap.isSponsored
+            swap.isSponsored,
+            accountActivationFee
         );
 
         // `additionalToSend` will land on HCore before this core > core send will need to be executed
         balanceRemaining = availableBalance + additionalToSend;
-        if (totalToSend > balanceRemaining) {
+        if (totalConsumed > balanceRemaining) {
             return (false, 0, availableBalance);
         }
 
         swap.finalized = true;
         success = true;
-        balanceRemaining -= totalToSend;
+        balanceRemaining -= totalConsumed;
 
         (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             additionalToSend,
             finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        swapHandler.transferFundsToUserOnCore(finalCoreTokenInfo.coreIndex, swap.finalRecipient, totalToSend);
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, totalToSend, additionalToSendEVM);
+        swapHandler.transferFundsToUserOnCore(
+            finalCoreTokenInfo.coreIndex,
+            swap.finalRecipient,
+            amountToTransfer,
+            swap.destinationDex
+        );
+
+        if (accountActivationFee > 0) {
+            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, swap.finalToken, accountActivationFee);
+        }
+
+        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, amountToTransfer, additionalToSendEVM);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
@@ -900,17 +968,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         // donationBox @ evm -> Handler @ evm
         donationBox.withdraw(IERC20(fundingToken), evmAmountToSend);
-        // Handler @ evm -> Handler @ core
-        HyperCoreLib.transferERC20EVMToSelfOnCore(
-            fundingToken,
-            coreTokenInfo.coreIndex,
-            evmAmountToSend,
-            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
-        // The total balance withdrawn from Handler @ Core for this operation is activationFee + amountSent, so we set
-        // amountSent to 1 wei to only activate the account
-        // Handler @ core -> finalRecipient @ core
-        HyperCoreLib.transferERC20CoreToCore(coreTokenInfo.coreIndex, finalRecipient, 1);
+
+        HyperCoreLib.activateCoreAccountFromEVM(fundingToken, coreTokenInfo.coreIndex, finalRecipient, evmAmountToSend);
 
         emit SponsoredAccountActivation(quoteNonce, finalRecipient, fundingToken, evmAmountToSend);
     }
@@ -1050,24 +1109,33 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     }
 
     /**
-     * @return totalToSend What we will forward to user on HCore
+     * @return amountToTransfer What we will forward to user on HCore
      * @return additionalToSend What we will send from donationBox right now
+     * @return totalAttributableToUser Total amount that we reserve for this user. The amount consumed from SwapHandler
+                                       during send execution. Differs from `amountToTransfer` if account creation fee is
+                                       present
      */
     function _calcSwapFlowSendAmounts(
         uint64 limitOrderOut,
         uint64 minAmountToSend,
         uint64 maxAmountToSend,
-        bool isSponsored
-    ) internal pure returns (uint64 totalToSend, uint64 additionalToSend) {
+        bool isSponsored,
+        uint64 accountActivationFee
+    ) internal pure returns (uint64 amountToTransfer, uint64 additionalToSend, uint64 totalAttributableToUser) {
         if (isSponsored) {
             // `minAmountToSend` is equal to `maxAmountToSend` for the sponsored flow
-            totalToSend = minAmountToSend;
-            additionalToSend = totalToSend > limitOrderOut ? totalToSend - limitOrderOut : 0;
+            totalAttributableToUser = minAmountToSend;
+            additionalToSend = totalAttributableToUser > limitOrderOut ? totalAttributableToUser - limitOrderOut : 0;
         } else {
             additionalToSend = limitOrderOut < minAmountToSend ? minAmountToSend - limitOrderOut : 0;
             uint64 proposedToSend = limitOrderOut + additionalToSend;
-            totalToSend = proposedToSend > maxAmountToSend ? maxAmountToSend : proposedToSend;
+            totalAttributableToUser = proposedToSend > maxAmountToSend ? maxAmountToSend : proposedToSend;
         }
+
+        // If the order total is not enough to cover account creation, the account has to be created separately (by the User or Bot) to be able to finalize this swap flow
+        require(totalAttributableToUser > accountActivationFee, InsufficientFundsForActivation());
+
+        amountToTransfer = totalAttributableToUser - accountActivationFee;
     }
 
     /// @notice Reads the current spot price from HyperLiquid and applies a configured suggested discount for faster execution
@@ -1116,8 +1184,14 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 
-    function sweepOnCore(address token, uint64 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
-        HyperCoreLib.transferERC20CoreToCore(_getMainStorage().coreTokenInfos[token].coreIndex, msg.sender, amount);
+    function sweepOnCore(address token, uint64 amount, uint32 sourceDex, uint32 destinationDex) external onlyRole(FUNDS_SWEEPER_ROLE) {
+        HyperCoreLib.transferERC20CoreToCore(
+            _getMainStorage().coreTokenInfos[token].coreIndex,
+            msg.sender,
+            amount,
+            sourceDex,
+            destinationDex
+        );
     }
 
     function sweepOnCoreFromSwapHandler(
@@ -1130,11 +1204,23 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         $.lastPullFundsBlock[finalToken] = block.number;
 
         SwapHandler swapHandler = $.finalTokenInfos[finalToken].swapHandler;
+
+        // funds in swap handler will always be in spot dex
         if (finalTokenAmount > 0) {
-            swapHandler.transferFundsToUserOnCore($.coreTokenInfos[finalToken].coreIndex, msg.sender, finalTokenAmount);
+            swapHandler.transferFundsToUserOnCore(
+                $.coreTokenInfos[finalToken].coreIndex,
+                msg.sender,
+                finalTokenAmount,
+                HyperCoreLib.CORE_SPOT_DEX_ID
+            );
         }
         if (baseTokenAmount > 0) {
-            swapHandler.transferFundsToUserOnCore($.coreTokenInfos[baseToken].coreIndex, msg.sender, baseTokenAmount);
+            swapHandler.transferFundsToUserOnCore(
+                $.coreTokenInfos[baseToken].coreIndex,
+                msg.sender,
+                baseTokenAmount,
+                HyperCoreLib.CORE_SPOT_DEX_ID
+            );
         }
     }
 }

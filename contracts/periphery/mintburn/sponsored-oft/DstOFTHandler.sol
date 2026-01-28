@@ -10,7 +10,7 @@ import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressCo
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
-import { CommonFlowParams, EVMFlowParams } from "../Structs.sol";
+import { CommonFlowParams, EVMFlowParams, AccountCreationMode } from "../Structs.sol";
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
@@ -166,6 +166,8 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         uint256 maxUserSlippageBps = composeMsg._getMaxUserSlippageBps();
         address finalRecipient = composeMsg._getFinalRecipient().toAddress();
         address finalToken = composeMsg._getFinalToken().toAddress();
+        uint32 destinationDex = composeMsg._getDestinationDex();
+        uint8 accountCreationMode = composeMsg._getAccountCreationMode();
         uint8 executionMode = composeMsg._getExecutionMode();
         bytes memory actionData = composeMsg._getActionData();
 
@@ -174,8 +176,10 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
             quoteNonce: quoteNonce,
             finalRecipient: finalRecipient,
             finalToken: finalToken,
+            destinationDex: destinationDex,
             maxBpsToSponsor: maxBpsToSponsor,
-            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR
+            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR,
+            accountCreationMode: AccountCreationMode(accountCreationMode)
         });
 
         // Route to appropriate execution based on executionMode
@@ -200,6 +204,11 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
         params.commonParams = ArbitraryEVMFlowExecutor._executeFlow(params);
+
+        // If the full balance was deposited as a part of EVM action, return early
+        if (params.commonParams.amountInEVM == 0) {
+            return;
+        }
 
         // Route to appropriate destination based on transferToCore flag
         _delegateToHyperCore(

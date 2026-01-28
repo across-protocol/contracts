@@ -2,8 +2,10 @@
 pragma solidity ^0.8.0;
 
 import { Test, console } from "forge-std/Test.sol";
+import { AccountCreationMode } from "../../../../contracts/periphery/mintburn/Structs.sol";
 import { SponsoredCCTPDstPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IHyperCoreFlowExecutor.sol";
+import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { IMessageTransmitterV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
@@ -142,6 +144,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             quote.maxUserSlippageBps,
             quote.finalRecipient,
             quote.finalToken,
+            quote.destinationDex,
+            quote.accountCreationMode,
             quote.executionMode,
             quote.actionData
         );
@@ -201,6 +205,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 quote.maxUserSlippageBps,
                 quote.finalRecipient,
                 quote.finalToken,
+                quote.destinationDex,
+                quote.accountCreationMode,
                 quote.executionMode,
                 keccak256(quote.actionData)
             )
@@ -230,6 +236,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 maxUserSlippageBps: 50, // 0.5%
                 finalRecipient: finalRecipient.toBytes32(),
                 finalToken: address(usdc).toBytes32(),
+                destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
+                accountCreationMode: uint8(AccountCreationMode.Standard),
                 executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
                 actionData: bytes("")
             });
@@ -253,7 +261,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         assertTrue(periphery.usedNonces(quote.nonce));
     }
 
-    function test_ReceiveMessage_InvalidSignature_FallsBackToUnsponsoredFlow() public {
+    function test_ReceiveMessage_InvalidSignature_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
 
         // Sign with wrong private key
@@ -263,14 +271,15 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
-        // Should not revert, but should process as unsponsored
+        // Should revert with InvalidSignature to prevent griefing attacks
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
         periphery.receiveMessage(message, attestation, wrongSignature);
 
-        // Nonce should NOT be marked as used since signature was invalid
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
-    function test_ReceiveMessage_ExpiredDeadline_FallsBackToUnsponsoredFlow() public {
+    function test_ReceiveMessage_ExpiredDeadline_Reverts() public {
         vm.warp(block.timestamp + 2 hours);
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         quote.deadline = block.timestamp - 1 hours; // Expired deadline
@@ -279,10 +288,11 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
-        // Should not revert, but should process as unsponsored
+        // Should revert with InvalidDeadline to prevent unauthorized execution
+        vm.expectRevert(SponsoredCCTPInterface.InvalidDeadline.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Nonce should NOT be marked as used
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
@@ -303,7 +313,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         assertTrue(periphery.usedNonces(quote.nonce));
     }
 
-    function test_ReceiveMessage_DeadlineOutsideBuffer_FallsBack() public {
+    function test_ReceiveMessage_DeadlineOutsideBuffer_Reverts() public {
         vm.warp(block.timestamp + 1 hours);
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
 
@@ -314,13 +324,15 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
+        // Should revert with InvalidDeadline
+        vm.expectRevert(SponsoredCCTPInterface.InvalidDeadline.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Should NOT be processed as valid
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
-    function test_ReceiveMessage_ReplayAttack_SecondAttemptNotSponsored() public {
+    function test_ReceiveMessage_ReplayAttack_SecondAttemptReverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         bytes memory signature = signQuote(quote, signerPrivateKey);
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
@@ -330,7 +342,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         periphery.receiveMessage(message, attestation, signature);
         assertTrue(periphery.usedNonces(quote.nonce));
 
-        // Second call with same nonce - should process as unsponsored
+        // Second call with same nonce - should revert with InvalidNonce
         // (CCTP prevents actual replay, but this tests nonce checking)
         quote.deadline = block.timestamp + 2 hours; // Update deadline
         bytes memory newSignature = signQuote(quote, signerPrivateKey);
@@ -338,9 +350,10 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
         // This would fail at CCTP level in practice, but for testing our logic:
         messageTransmitter.setShouldSucceed(true);
+        vm.expectRevert(SponsoredCCTPInterface.InvalidNonce.selector);
         periphery.receiveMessage(newMessage, attestation, newSignature);
 
-        // Nonce already used, so not considered valid
+        // Nonce still marked as used from first attempt
         assertTrue(periphery.usedNonces(quote.nonce));
     }
 
@@ -489,9 +502,11 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
+        // Should revert with InvalidDeadline (no buffer to save expired quotes)
+        vm.expectRevert(SponsoredCCTPInterface.InvalidDeadline.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Should NOT be processed as valid (no buffer)
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
@@ -499,7 +514,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                         SIGNATURE VALIDATION TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_SignatureValidation_DifferentSigner_Fails() public {
+    function test_SignatureValidation_DifferentSigner_Reverts() public {
         // Change signer
         address newSigner = makeAddr("newSigner");
         vm.prank(admin);
@@ -511,13 +526,15 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
+        // Should revert with InvalidSignature since signed with wrong key
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Should not be valid with different signer
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
-    function test_SignatureValidation_ModifiedAmount_Fails() public {
+    function test_SignatureValidation_ModifiedAmount_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         quote.amount = 1000e6;
 
@@ -529,13 +546,15 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
+        // Should revert with InvalidSignature since message was tampered with
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Should fail validation
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
-    function test_SignatureValidation_ModifiedRecipient_Fails() public {
+    function test_SignatureValidation_ModifiedRecipient_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         bytes memory signature = signQuote(quote, signerPrivateKey);
 
@@ -544,13 +563,15 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
+        // Should revert with InvalidSignature since recipient was tampered with
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Should fail validation
+        // Nonce should NOT be marked as used since transaction reverted
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
-    function test_SignatureValidation_ModifiedActionData_Fails() public {
+    function test_SignatureValidation_ModifiedActionData_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToCore);
 
@@ -571,9 +592,103 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
         bytes memory attestation = bytes("mock-attestation");
 
+        // Should revert with InvalidSignature since actionData was tampered with
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
         periphery.receiveMessage(message, attestation, signature);
 
-        // Should fail validation (actionData is hashed in signature)
+        // Nonce should NOT be marked as used since transaction reverted
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        GRIEFING ATTACK PREVENTION TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Test that verifies the fix for ACP-27: griefing attack prevention
+    /// @dev An attacker could previously front-run with valid message/attestation but
+    /// invalid signature, causing victim to lose sponsorship and custom actions.
+    /// The fix ensures invalid signature reverts the entire transaction.
+    function test_GriefingAttack_InvalidSignature_RevertsProtectingUser() public {
+        // Setup: User wants to do a sponsored transfer with custom actions
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToCore);
+        quote.maxBpsToSponsor = 500; // 5% sponsorship
+
+        // Create the CCTP message (this is publicly visible on-chain)
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+        bytes memory attestation = bytes("mock-attestation");
+
+        // Attack scenario: Attacker front-runs with valid message/attestation but INVALID signature
+        uint256 attackerPrivateKey = 0xDEAD;
+        bytes memory invalidSignature = signQuote(quote, attackerPrivateKey);
+
+        // The attack should now FAIL - transaction reverts protecting the user
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
+        periphery.receiveMessage(message, attestation, invalidSignature);
+
+        // CRITICAL: User's nonce is NOT consumed - they can still submit later with valid signature
+        // Before the fix, the nonce would be consumed and user would lose sponsorship
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice Test that legitimate caller can still succeed after attack attempt is blocked
+    /// @dev Uses DirectToCore mode which has simpler execution path
+    function test_GriefingAttack_LegitimateCallerSucceedsAfterBlockedAttack() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        // Use DirectToCore mode for simpler execution
+        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore);
+        quote.maxBpsToSponsor = 500; // 5% sponsorship
+
+        bytes memory validSignature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+        bytes memory attestation = bytes("mock-attestation");
+
+        // First: Attacker tries to grief with invalid signature
+        uint256 attackerPrivateKey = 0xDEAD;
+        bytes memory invalidSignature = signQuote(quote, attackerPrivateKey);
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
+        periphery.receiveMessage(message, attestation, invalidSignature);
+
+        // Nonce not consumed
+        assertFalse(periphery.usedNonces(quote.nonce));
+
+        // Second: Legitimate caller succeeds with valid signature
+        periphery.receiveMessage(message, attestation, validSignature);
+
+        // User gets their sponsored transfer
+        assertTrue(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice Test that attacker cannot grief by submitting empty/garbage signature
+    function test_GriefingAttack_EmptySignature_Reverts() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+        bytes memory attestation = bytes("mock-attestation");
+
+        // Attack with empty signature
+        bytes memory emptySignature = bytes("");
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
+        periphery.receiveMessage(message, attestation, emptySignature);
+
+        // Nonce not consumed
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice Test that attacker cannot grief by submitting malformed signature
+    function test_GriefingAttack_MalformedSignature_Reverts() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+        bytes memory attestation = bytes("mock-attestation");
+
+        // Attack with malformed signature (wrong length)
+        bytes memory malformedSignature = bytes("not-a-valid-signature");
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidSignature.selector);
+        periphery.receiveMessage(message, attestation, malformedSignature);
+
+        // Nonce not consumed
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
@@ -581,7 +696,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                         EDGE CASE TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function test_ReceiveMessage_ZeroAmount_HandledGracefully() public {
+    function test_ReceiveMessage_ZeroAmount_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         quote.amount = 0;
 
@@ -589,10 +704,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         bytes memory message = createCCTPMessage(quote, 0);
         bytes memory attestation = bytes("mock-attestation");
 
-        // Should not revert
+        vm.expectRevert(HyperCoreLib.InsufficientAmountForAccountActivation.selector);
         periphery.receiveMessage(message, attestation, signature);
-
-        assertTrue(periphery.usedNonces(quote.nonce));
     }
 
     function test_ReceiveMessage_EmptyActionData_DirectToCore() public {
