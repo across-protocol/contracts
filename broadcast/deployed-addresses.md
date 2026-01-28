@@ -276,6 +276,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name             | Address                                                                                                                  |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Linea_SpokePool           | [0x9187be534eFEb258933EF7EFF4b67FE80209afCD](https://lineascan.build/address/0x9187be534eFEb258933EF7EFF4b67FE80209afCD) |
 | MulticallHandler          | [0xdF1C940487574EEfa79989a79a4936A0F979cDa2](https://lineascan.build/address/0xdF1C940487574EEfa79989a79a4936A0F979cDa2) |
 | SpokePool                 | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://lineascan.build/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
 | SpokePoolPeriphery        | [0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0](https://lineascan.build/address/0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0) |

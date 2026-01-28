@@ -889,6 +889,11 @@
           "address": "0xE0BCff426509723B18D6b2f0D8F4602d143bE3e0",
           "block_number": 20348650
         },
+        "Linea_SpokePool": {
+          "address": "0x9187be534efeb258933ef7eff4b67fe80209afcd",
+          "block_number": 28399909,
+          "transaction_hash": "0x7f0c1a0d5700457a406a63a04373493d3d5435adc8e29d3b9a58ababf24a06a1"
+        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0x60eb88a83434f13095b0a138cdcbf5078aa5005c",
           "block_number": 26510513,
