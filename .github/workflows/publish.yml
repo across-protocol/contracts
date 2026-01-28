@@ -21,6 +21,8 @@ env:
     artifacts
     cache
     typechain
+    out
+    cache-foundry
   SVM_ARTIFACTS_PATHS: |
     target/idl
     target/types
