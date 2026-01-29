@@ -290,7 +290,10 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
             swapAndDepositDataSignature
         );
-        _swapAndBridge(swapAndDepositData);
+        // Copy struct to memory and set nonce to originalNonce + 1 to avoid 0 (which triggers regular deposit)
+        SwapAndDepositData memory modifiedData = swapAndDepositData;
+        modifiedData.nonce = swapAndDepositData.nonce + 1;
+        _swapAndBridge(modifiedData);
     }
 
     /**
@@ -375,7 +378,10 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
         // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
-        _swapAndBridge(swapAndDepositData);
+        // We use the witness (which serves as the ERC-3009 nonce) as the deposit nonce.
+        SwapAndDepositData memory modifiedData = swapAndDepositData;
+        modifiedData.nonce = uint256(witness);
+        _swapAndBridge(modifiedData);
     }
 
     /**
@@ -407,6 +413,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         _validateAndIncrementNonce(signatureOwner, depositData.nonce);
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
+        // Use nonce + 1 to avoid 0 (which triggers regular deposit) and ensure uniqueness
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
@@ -417,6 +424,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,
+            depositData.nonce + 1, // +1 to avoid 0 (which triggers regular deposit) and ensure uniqueness
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -454,6 +462,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             _submissionFeeAmount
         );
 
+        // User controls the nonce in permit2 flows - if 0, uses regular deposit; if non-zero, uses unsafe deposit
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
@@ -464,6 +473,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,
+            depositData.nonce, // TODO: should we hash this nonce (if nonzero) with the permit2 nonce to protect the user against nonce reuse?
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -507,6 +517,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
         // as EIP-3009 has its own nonce mechanism that prevents replay attacks.
+        // We use the witness (which serves as the ERC-3009 nonce) as the deposit nonce.
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
@@ -517,6 +528,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,
+            uint256(witness),
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
@@ -556,9 +568,10 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     }
 
     /**
-     * @notice Approves the spoke pool and calls `depositV3` function with the specified input parameters.
-     * @param depositor The address on the origin chain which should be treated as the depositor by Across, and will therefore receive refunds if this deposit
-     * is unfilled.
+     * @notice Approves the spoke pool and calls either `depositV3` or `unsafeDeposit` based on whether a nonce is provided.
+     * @dev When depositNonce is 0, calls the regular deposit function. When non-zero, calls the unsafe deposit variant.
+     * @param spokePool The address of the spoke pool to deposit into.
+     * @param depositor The address on the origin chain which should be treated as the depositor by Across.
      * @param recipient The address on the destination chain which should receive outputAmount of outputToken.
      * @param inputToken The token to deposit on the origin chain.
      * @param outputToken The token to receive on the destination chain.
@@ -566,6 +579,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @param outputAmount The amount of the output token to receive.
      * @param destinationChainId The network ID for the destination chain.
      * @param exclusiveRelayer The optional address for an Across relayer which may fill the deposit exclusively.
+     * @param depositNonce The nonce for this deposit. If 0, calls regular deposit; if non-zero, calls unsafe deposit.
      * @param quoteTimestamp The timestamp at which the relay and LP fee was calculated.
      * @param fillDeadline The timestamp at which the deposit must be filled before it will be refunded by Across.
      * @param exclusivityParameter The deadline or offset during which the exclusive relayer has rights to fill the deposit without contention.
@@ -581,33 +595,52 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 outputAmount,
         uint256 destinationChainId,
         bytes32 exclusiveRelayer,
+        uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
-        bytes calldata message
+        bytes memory message
     ) private {
         IERC20(inputToken).forceApprove(spokePool, inputAmount);
-        V3SpokePoolInterface(spokePool).deposit(
-            depositor.toBytes32(),
-            recipient,
-            inputToken.toBytes32(),
-            outputToken,
-            inputAmount,
-            outputAmount,
-            destinationChainId,
-            exclusiveRelayer,
-            quoteTimestamp,
-            fillDeadline,
-            exclusivityParameter,
-            message
-        );
+        if (depositNonce == 0) {
+            V3SpokePoolInterface(spokePool).deposit(
+                depositor.toBytes32(),
+                recipient,
+                inputToken.toBytes32(),
+                outputToken,
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayer,
+                quoteTimestamp,
+                fillDeadline,
+                exclusivityParameter,
+                message
+            );
+        } else {
+            V3SpokePoolInterface(spokePool).unsafeDeposit(
+                depositor.toBytes32(),
+                recipient,
+                inputToken.toBytes32(),
+                outputToken,
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayer,
+                depositNonce,
+                quoteTimestamp,
+                fillDeadline,
+                exclusivityParameter,
+                message
+            );
+        }
     }
 
     /**
      * @notice Swaps a token on the origin chain before depositing into the Across spoke pool atomically.
      * @param swapAndDepositData The parameters to use when calling both the swap on an exchange and bridging via an Across spoke pool.
      */
-    function _swapAndBridge(SwapAndDepositData calldata swapAndDepositData) private {
+    function _swapAndBridge(SwapAndDepositData memory swapAndDepositData) private {
         // Load variables we use multiple times onto the stack.
         IERC20 _swapToken = IERC20(swapAndDepositData.swapToken);
         IERC20 _acrossInputToken = IERC20(swapAndDepositData.depositData.inputToken);
@@ -666,6 +699,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             adjustedOutputAmount,
             swapAndDepositData.depositData.destinationChainId,
             swapAndDepositData.depositData.exclusiveRelayer,
+            swapAndDepositData.nonce,
             swapAndDepositData.depositData.quoteTimestamp,
             swapAndDepositData.depositData.fillDeadline,
             swapAndDepositData.depositData.exclusivityParameter,
