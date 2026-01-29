@@ -7,7 +7,7 @@ import { DonationBox } from "../../chain-adapters/DonationBox.sol";
 import { HyperCoreLib, CoreTokenInfo } from "../../libraries/HyperCoreLib.sol";
 import { FinalTokenInfo, CommonFlowParams, AccountCreationMode } from "./Structs.sol";
 import { SwapHandler } from "./SwapHandler.sol";
-import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
+import { BPS_SCALAR } from "./Constants.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -29,11 +29,6 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
 contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow, HyperCoreFlowRoles {
     using SafeERC20 for IERC20;
 
-    // Common decimals scalars
-    uint256 public constant PPM_DECIMALS = 6;
-    uint256 public constant PPM_SCALAR = 10 ** PPM_DECIMALS;
-    uint64 public constant ONEX1e8 = 10 ** 8;
-
     /// @notice The donation box contract.
     DonationBox public immutable donationBox;
 
@@ -45,8 +40,8 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         address finalRecipient;
         address finalToken;
         uint32 destinationDex;
-        uint64 minAmountToSend; // for sponsored: one to one, non-sponsored: one to one minus slippage
-        uint64 maxAmountToSend; // for sponsored: one to one (from total bridged amt), for non-sponsored: one to one, less bridging fees incurred
+        uint64 amountBridgedCore; // Amount of baseToken bridged to SwapHandler on Core
+        uint64 expectedAmountCore; // Expected 1:1 amount in finalToken decimals (used for sponsored flow guarantees)
         bool isSponsored;
         bool finalized;
     }
@@ -142,9 +137,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
      * @param finalToken The token address to swap to
      * @param evmAmountIn The amount received on HyperEVM (in baseToken)
      * @param bridgingFeesIncurred The bridging fees incurred (in baseToken)
-     * @param coreAmountIn The amount sent to HyperCore (in finalToken)
-     * @param minAmountToSend Minimum amount to send to user after swap (in finalToken)
-     * @param maxAmountToSend Maximum amount to send to user after swap (in finalToken)
+     * @param amountBridgedCore The amount of baseToken bridged to Core
+     * @param expectedAmountCore Expected 1:1 amount in finalToken decimals
+     * @param isSponsored Whether this is a sponsored flow
      */
     event SwapFlowInitialized(
         bytes32 indexed quoteNonce,
@@ -153,27 +148,27 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         // In baseToken
         uint256 evmAmountIn,
         uint256 bridgingFeesIncurred,
-        // In finalToken
-        uint256 coreAmountIn,
-        uint64 minAmountToSend,
-        uint64 maxAmountToSend
+        // In Core units
+        uint64 amountBridgedCore,
+        uint64 expectedAmountCore,
+        bool isSponsored
     );
 
     /**
      * @notice Emitted when a swap flow is finalized
      * @param quoteNonce Unique identifier for this quote/transaction
      * @param finalRecipient The address that received the swapped funds on HyperCore
-     * @param finalToken The token address that was swapped to
-     * @param totalSent Total amount sent to the final recipient on HyperCore (in finalToken)
-     * @param evmAmountSponsored The amount sponsored from the donation box (in EVM finalToken)
+     * @param settlementToken The token address that was actually sent (finalToken or baseToken)
+     * @param totalSent Total amount sent to the final recipient on HyperCore (in settlementToken)
+     * @param evmAmountSponsored The amount sponsored from the donation box (in EVM settlementToken)
      */
     event SwapFlowFinalized(
         bytes32 indexed quoteNonce,
         address indexed finalRecipient,
-        address indexed finalToken,
-        // In finalToken
+        address indexed settlementToken,
+        // In settlementToken
         uint64 totalSent,
-        // In EVM finalToken
+        // In EVM settlementToken
         uint256 evmAmountSponsored
     );
 
@@ -192,20 +187,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
      * @param cloid Client order ID of the submitted limit order
      */
     event SubmittedLimitOrder(address indexed token, uint64 priceX1e8, uint64 sizeX1e8, uint128 indexed cloid);
-
-    /**
-     * @notice Emitted when we have to fall back from the swap flow because it's too expensive (either to sponsor or the slippage is too big)
-     * @param quoteNonce Unique identifier for this quote/transaction
-     * @param finalToken The token address that was intended to be swapped to
-     * @param estBpsSlippage Estimated slippage in basis points
-     * @param maxAllowableBpsSlippage Maximum allowable slippage in basis points
-     */
-    event SwapFlowTooExpensive(
-        bytes32 indexed quoteNonce,
-        address indexed finalToken,
-        uint256 estBpsSlippage,
-        uint256 maxAllowableBpsSlippage
-    );
 
     /**
      * @notice Emitted when we can't bridge some token from HyperEVM to HyperCore
@@ -623,11 +604,11 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     /**
      * @notice Initiates the swap flow. Sends the funds received on EVM side over to a SwapHandler corresponding to a
      * finalToken. This is the first leg of the swap flow. Next, the bot should submit a limit order through a `submitLimitOrderFromBot`
-     * function, and then settle the flow via a `finalizeSwapFlows` function
+     * function, and then settle the flow via a `finalizeSwapFlows` function.
      * @dev Only works for stable -> stable swap flows (or equivalent token flows. Price between tokens is supposed to be approximately one to one)
-     * @param maxUserSlippageBps Describes a configured user setting. Slippage here is wrt the one to one exchange
+     * @dev The bot decides at finalization whether to settle with finalToken or baseToken based on swap economics
      */
-    function _initiateSwapFlow(CommonFlowParams memory params, uint256 maxUserSlippageBps) internal {
+    function _initiateSwapFlow(CommonFlowParams memory params, uint256 /* maxUserSlippageBps */) internal {
         address initialToken = baseToken;
 
         MainStorage storage $ = _getMainStorage();
@@ -653,88 +634,47 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             }
         }
 
-        // Calculate limit order amounts and check if feasible
-        uint64 minAllowableAmountToForwardCore;
-        uint64 maxAllowableAmountToForwardCore;
-        // Estimated slippage in ppm, as compared to a one-to-one totalBridgedAmount -> finalAmount conversion
-        uint256 estSlippagePpm;
-        {
-            // In finalToken
-            (minAllowableAmountToForwardCore, maxAllowableAmountToForwardCore) = _calcAllowableAmtsSwapFlow(
-                params.amountInEVM,
-                params.extraFeesIncurred,
-                initialCoreTokenInfo,
-                finalCoreTokenInfo,
-                params.maxBpsToSponsor > 0,
-                maxUserSlippageBps
-            );
-
-            uint64 approxExecutionPriceX1e8 = _getApproxRealizedPrice(
-                finalTokenInfo,
-                finalCoreTokenInfo,
-                initialCoreTokenInfo
-            );
-            uint256 maxAllowableBpsDeviation = params.maxBpsToSponsor > 0 ? params.maxBpsToSponsor : maxUserSlippageBps;
-            if (finalTokenInfo.isBuy) {
-                if (approxExecutionPriceX1e8 < ONEX1e8) {
-                    estSlippagePpm = 0;
-                } else {
-                    // ceil
-                    estSlippagePpm = ((approxExecutionPriceX1e8 - ONEX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
-                }
-            } else {
-                if (approxExecutionPriceX1e8 > ONEX1e8) {
-                    estSlippagePpm = 0;
-                } else {
-                    // ceil
-                    estSlippagePpm = ((ONEX1e8 - approxExecutionPriceX1e8) * PPM_SCALAR + (ONEX1e8 - 1)) / ONEX1e8;
-                }
-            }
-            // Add `extraFeesIncurred` to "slippage from one to one"
-            estSlippagePpm +=
-                (params.extraFeesIncurred * PPM_SCALAR + (params.amountInEVM + params.extraFeesIncurred) - 1) /
-                (params.amountInEVM + params.extraFeesIncurred);
-
-            if (estSlippagePpm > maxAllowableBpsDeviation * 10 ** (PPM_DECIMALS - BPS_DECIMALS)) {
-                emit SwapFlowTooExpensive(
-                    params.quoteNonce,
-                    params.finalToken,
-                    (estSlippagePpm + 10 ** (PPM_DECIMALS - BPS_DECIMALS) - 1) / 10 ** (PPM_DECIMALS - BPS_DECIMALS),
-                    maxAllowableBpsDeviation
-                );
-                params.finalToken = initialToken;
-                _executeSimpleTransferFlow(params);
-                return;
-            }
-        }
-
-        (uint256 tokensToSendEvm, uint64 coreAmountIn) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+        (uint256 tokensToSendEvm, uint64 amountBridgedCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(
             params.amountInEVM,
             initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
-        // Check that we can safely bridge to HCore (for the trade amount actually needed)
+        // Check that we can safely bridge to HCore
         bool isSafeToBridgeMainToken = HyperCoreLib.isCoreAmountSafeToBridge(
             initialCoreTokenInfo.coreIndex,
-            coreAmountIn,
+            amountBridgedCore,
             initialCoreTokenInfo.bridgeSafetyBufferCore
         );
 
         if (!isSafeToBridgeMainToken) {
-            emit UnsafeToBridge(params.quoteNonce, initialToken, coreAmountIn);
+            emit UnsafeToBridge(params.quoteNonce, initialToken, amountBridgedCore);
             params.finalToken = initialToken;
             _fallbackHyperEVMFlow(params);
             return;
         }
 
-        // Finalize swap flow setup by updating state and funding SwapHandler
-        // State changes
+        // Calculate expected 1:1 amount in finalToken decimals (for sponsored flow guarantees)
+        // This is what the user would get if the swap executed at exactly 1:1
+        uint64 expectedAmountCore;
+        {
+            (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib.maximumEVMSendAmountToAmounts(
+                params.amountInEVM + params.extraFeesIncurred,
+                initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            );
+            expectedAmountCore = HyperCoreLib.convertCoreDecimalsSimple(
+                feelessAmountCoreInitialToken,
+                initialCoreTokenInfo.tokenInfo.weiDecimals,
+                finalCoreTokenInfo.tokenInfo.weiDecimals
+            );
+        }
+
+        // Store swap state - bot will decide settlement token at finalization
         $.swaps[params.quoteNonce] = SwapFlowState({
             finalRecipient: params.finalRecipient,
             finalToken: params.finalToken,
             destinationDex: params.destinationDex,
-            minAmountToSend: minAllowableAmountToForwardCore,
-            maxAmountToSend: maxAllowableAmountToForwardCore,
+            amountBridgedCore: amountBridgedCore,
+            expectedAmountCore: expectedAmountCore,
             isSponsored: params.maxBpsToSponsor > 0,
             finalized: false
         });
@@ -745,9 +685,9 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             params.finalToken,
             params.amountInEVM,
             params.extraFeesIncurred,
-            coreAmountIn,
-            minAllowableAmountToForwardCore,
-            maxAllowableAmountToForwardCore
+            amountBridgedCore,
+            expectedAmountCore,
+            params.maxBpsToSponsor > 0
         );
 
         // Send amount received from user to a corresponding SwapHandler
@@ -762,41 +702,51 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     }
 
     /**
-     * @notice Finalizes multiple swap flows associated with a final token, subject to the L1 Hyperliquid balance
-     * @dev Caller is responsible for providing correct limitOrderOutput amounts per assosicated swap flow. The caller
-     * has to estimate how much final tokens it received on core based on the input of the corresponding quote nonce
-     * swap flow
-     * @param finalToken The token address for the swaps being finalized
+     * @notice Finalizes multiple swap flows, settling with either finalToken or baseToken
+     * @dev Caller (bot) decides whether to settle with finalToken (swap succeeded) or baseToken (swap too expensive).
+     * When settling with baseToken, the bot is saying "don't swap, just give them back their baseToken."
+     * @param settlementToken The token to settle with - either the swap's finalToken or baseToken
      * @param quoteNonces Array of quote nonces identifying the swap flows to finalize
-     * @param limitOrderOuts Array of limit order output amounts corresponding to each quote nonce
+     * @param amountsOut Array of amounts to send to each user (in settlementToken)
      * @return finalized The number of swap flows that were successfully finalized
      */
     function finalizeSwapFlows(
-        address finalToken,
+        address settlementToken,
         bytes32[] calldata quoteNonces,
-        uint64[] calldata limitOrderOuts
+        uint64[] calldata amountsOut
     ) external onlyRole(PERMISSIONED_BOT_ROLE) returns (uint256 finalized) {
         MainStorage storage $ = _getMainStorage();
-        require(quoteNonces.length == limitOrderOuts.length, "length");
-        require($.lastPullFundsBlock[finalToken] < block.number, "too soon");
+        require(quoteNonces.length == amountsOut.length, "length");
+        require($.lastPullFundsBlock[settlementToken] < block.number, "too soon");
 
-        CoreTokenInfo memory finalCoreTokenInfo = _getExistingCoreTokenInfo(finalToken);
-        FinalTokenInfo memory finalTokenInfo = _getExistingFinalTokenInfo(finalToken);
+        CoreTokenInfo memory settlementCoreTokenInfo = _getExistingCoreTokenInfo(settlementToken);
 
-        uint64 availableBalance = HyperCoreLib.spotBalance(
-            address(finalTokenInfo.swapHandler),
-            finalCoreTokenInfo.coreIndex
-        );
+        // Determine which SwapHandler to use based on settlement token
+        // If settling with baseToken, we still need to use the finalToken's SwapHandler (where the baseToken was bridged)
+        // If settling with finalToken, use that token's SwapHandler
+        SwapHandler swapHandler;
+        if (settlementToken == baseToken) {
+            // For baseToken settlement, we need to look at each swap's finalToken to find the SwapHandler
+            // All swaps in a batch must have the same finalToken for baseToken settlement
+            if (quoteNonces.length > 0) {
+                address finalToken = $.swaps[quoteNonces[0]].finalToken;
+                swapHandler = _getExistingFinalTokenInfo(finalToken).swapHandler;
+            }
+        } else {
+            swapHandler = _getExistingFinalTokenInfo(settlementToken).swapHandler;
+        }
+
+        uint64 availableBalance = HyperCoreLib.spotBalance(address(swapHandler), settlementCoreTokenInfo.coreIndex);
         uint64 totalAdditionalToSend = 0;
         for (; finalized < quoteNonces.length; ++finalized) {
             bool success;
             uint64 additionalToSend;
             (success, additionalToSend, availableBalance) = _finalizeSingleSwap(
                 quoteNonces[finalized],
-                limitOrderOuts[finalized],
-                finalCoreTokenInfo,
-                finalTokenInfo.swapHandler,
-                finalToken,
+                amountsOut[finalized],
+                settlementCoreTokenInfo,
+                swapHandler,
+                settlementToken,
                 availableBalance
             );
             if (!success) {
@@ -806,7 +756,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         }
 
         if (finalized > 0) {
-            $.lastPullFundsBlock[finalToken] = block.number;
+            $.lastPullFundsBlock[settlementToken] = block.number;
         } else {
             return 0;
         }
@@ -815,67 +765,96 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             (uint256 totalAdditionalToSendEVM, uint64 totalAdditionalReceivedCore) = HyperCoreLib
                 .minimumCoreReceiveAmountToAmounts(
                     totalAdditionalToSend,
-                    finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                    settlementCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
                 );
 
             if (
                 !HyperCoreLib.isCoreAmountSafeToBridge(
-                    finalCoreTokenInfo.coreIndex,
+                    settlementCoreTokenInfo.coreIndex,
                     totalAdditionalReceivedCore,
-                    finalCoreTokenInfo.bridgeSafetyBufferCore
+                    settlementCoreTokenInfo.bridgeSafetyBufferCore
                 )
             ) {
                 // We expect this situation to be so rare and / or intermittend that we're willing to rely on admin to sweep the funds if this leads to
                 // swaps being impossible to finalize
-                revert UnsafeToBridgeError(finalToken, totalAdditionalToSend);
+                revert UnsafeToBridgeError(settlementToken, totalAdditionalToSend);
             }
 
-            $.cumulativeSponsoredAmount[finalToken] += totalAdditionalToSendEVM;
+            $.cumulativeSponsoredAmount[settlementToken] += totalAdditionalToSendEVM;
 
             // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
             // Get additional amount to send from donation box, and send it to self on core
-            donationBox.withdraw(IERC20(finalToken), totalAdditionalToSendEVM);
-            IERC20(finalToken).safeTransfer(address(finalTokenInfo.swapHandler), totalAdditionalToSendEVM);
-            finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
-                finalToken,
-                finalCoreTokenInfo.coreIndex,
+            donationBox.withdraw(IERC20(settlementToken), totalAdditionalToSendEVM);
+            IERC20(settlementToken).safeTransfer(address(swapHandler), totalAdditionalToSendEVM);
+            swapHandler.transferFundsToSelfOnCore(
+                settlementToken,
+                settlementCoreTokenInfo.coreIndex,
                 totalAdditionalToSendEVM,
-                finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+                settlementCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
             );
         }
     }
 
     /// @notice Finalizes a single swap flow, sending the tokens to user on core. Relies on caller to send the `additionalToSend`
+    /// @param settlementToken The token to settle with - either swap's finalToken or baseToken
     function _finalizeSingleSwap(
         bytes32 quoteNonce,
-        uint64 limitOrderOut,
-        CoreTokenInfo memory finalCoreTokenInfo,
+        uint64 amountOut,
+        CoreTokenInfo memory settlementCoreTokenInfo,
         SwapHandler swapHandler,
-        address finalToken,
+        address settlementToken,
         uint64 availableBalance
     ) internal returns (bool success, uint64 additionalToSend, uint64 balanceRemaining) {
         SwapFlowState storage swap = _getMainStorage().swaps[quoteNonce];
         if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
         if (swap.finalized) revert SwapAlreadyFinalized();
-        if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
+
+        // Validate settlement token - must be either the swap's finalToken or baseToken
+        bool isBaseTokenSettlement = settlementToken == baseToken;
+        if (!isBaseTokenSettlement && swap.finalToken != settlementToken) {
+            revert WrongSwapFinalizationToken(quoteNonce);
+        }
 
         uint64 accountActivationFee;
         // User account can be absent if our AccountCreationMode is `FromUserFunds`. We need to adjust our transfer amount to user based on this
         if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
             // This is enforced by `_initiateSwapFlow`. If the setting changed, this revert can trigger. Requires manual resolution (creating an account)
-            require(finalCoreTokenInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
-            accountActivationFee = finalCoreTokenInfo.accountActivationFeeCore;
+            require(settlementCoreTokenInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
+            accountActivationFee = settlementCoreTokenInfo.accountActivationFeeCore;
         }
 
         uint64 amountToTransfer;
         uint64 totalConsumed;
-        (amountToTransfer, additionalToSend, totalConsumed) = _calcSwapFlowSendAmounts(
-            limitOrderOut,
-            swap.minAmountToSend,
-            swap.maxAmountToSend,
-            swap.isSponsored,
-            accountActivationFee
-        );
+
+        if (isBaseTokenSettlement) {
+            // BaseToken settlement: bot decided swap was too expensive, returning baseToken to user
+            // For non-sponsored: send what the bot says (amountOut), no sponsorship top-up
+            // For sponsored: we need to ensure user gets their full amount back (amountBridgedCore)
+            if (swap.isSponsored) {
+                // Sponsored flow: guarantee user gets back what was bridged
+                totalConsumed = swap.amountBridgedCore;
+                additionalToSend = amountOut < swap.amountBridgedCore ? swap.amountBridgedCore - amountOut : 0;
+            } else {
+                // Non-sponsored flow: send what bot calculated
+                totalConsumed = amountOut;
+                additionalToSend = 0;
+            }
+            amountToTransfer = totalConsumed > accountActivationFee ? totalConsumed - accountActivationFee : 0;
+        } else {
+            // FinalToken settlement: swap succeeded, send finalToken to user
+            if (swap.isSponsored) {
+                // Sponsored flow: guarantee user gets expectedAmountCore (1:1 conversion)
+                totalConsumed = swap.expectedAmountCore;
+                additionalToSend = amountOut < swap.expectedAmountCore ? swap.expectedAmountCore - amountOut : 0;
+            } else {
+                // Non-sponsored flow: send what the swap produced (amountOut)
+                totalConsumed = amountOut;
+                additionalToSend = 0;
+            }
+            amountToTransfer = totalConsumed > accountActivationFee ? totalConsumed - accountActivationFee : 0;
+        }
+
+        require(amountToTransfer > 0, InsufficientFundsForActivation());
 
         // `additionalToSend` will land on HCore before this core > core send will need to be executed
         balanceRemaining = availableBalance + additionalToSend;
@@ -889,21 +868,21 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             additionalToSend,
-            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            settlementCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
 
         swapHandler.transferFundsToUserOnCore(
-            finalCoreTokenInfo.coreIndex,
+            settlementCoreTokenInfo.coreIndex,
             swap.finalRecipient,
             amountToTransfer,
             swap.destinationDex
         );
 
         if (accountActivationFee > 0) {
-            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, swap.finalToken, accountActivationFee);
+            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, settlementToken, accountActivationFee);
         }
 
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, amountToTransfer, additionalToSendEVM);
+        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, settlementToken, amountToTransfer, additionalToSendEVM);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
@@ -1067,86 +1046,6 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         if (!available) {
             emit DonationBoxInsufficientFunds(quoteNonce, token, amount, balance);
         }
-    }
-
-    function _calcAllowableAmtsSwapFlow(
-        uint256 amount,
-        uint256 extraFeesIncurred,
-        CoreTokenInfo memory initialCoreTokenInfo,
-        CoreTokenInfo memory finalCoreTokenInfo,
-        bool isSponsoredFlow,
-        uint256 maxUserSlippageBps
-    ) internal pure returns (uint64 minAllowableAmountToForwardCore, uint64 maxAllowableAmountToForwardCore) {
-        (, uint64 feelessAmountCoreInitialToken) = HyperCoreLib.maximumEVMSendAmountToAmounts(
-            amount + extraFeesIncurred,
-            initialCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
-        );
-        uint64 feelessAmountCoreFinalToken = HyperCoreLib.convertCoreDecimalsSimple(
-            feelessAmountCoreInitialToken,
-            initialCoreTokenInfo.tokenInfo.weiDecimals,
-            finalCoreTokenInfo.tokenInfo.weiDecimals
-        );
-        if (isSponsoredFlow) {
-            minAllowableAmountToForwardCore = feelessAmountCoreFinalToken;
-            maxAllowableAmountToForwardCore = feelessAmountCoreFinalToken;
-        } else {
-            minAllowableAmountToForwardCore = uint64(
-                (feelessAmountCoreFinalToken * (BPS_SCALAR - maxUserSlippageBps)) / BPS_SCALAR
-            );
-            maxAllowableAmountToForwardCore = feelessAmountCoreFinalToken;
-        }
-    }
-
-    /**
-     * @return amountToTransfer What we will forward to user on HCore
-     * @return additionalToSend What we will send from donationBox right now
-     * @return totalAttributableToUser Total amount that we reserve for this user. The amount consumed from SwapHandler
-                                       during send execution. Differs from `amountToTransfer` if account creation fee is
-                                       present
-     */
-    function _calcSwapFlowSendAmounts(
-        uint64 limitOrderOut,
-        uint64 minAmountToSend,
-        uint64 maxAmountToSend,
-        bool isSponsored,
-        uint64 accountActivationFee
-    ) internal pure returns (uint64 amountToTransfer, uint64 additionalToSend, uint64 totalAttributableToUser) {
-        if (isSponsored) {
-            // `minAmountToSend` is equal to `maxAmountToSend` for the sponsored flow
-            totalAttributableToUser = minAmountToSend;
-            additionalToSend = totalAttributableToUser > limitOrderOut ? totalAttributableToUser - limitOrderOut : 0;
-        } else {
-            additionalToSend = limitOrderOut < minAmountToSend ? minAmountToSend - limitOrderOut : 0;
-            uint64 proposedToSend = limitOrderOut + additionalToSend;
-            totalAttributableToUser = proposedToSend > maxAmountToSend ? maxAmountToSend : proposedToSend;
-        }
-
-        // If the order total is not enough to cover account creation, the account has to be created separately (by the User or Bot) to be able to finalize this swap flow
-        require(totalAttributableToUser > accountActivationFee, InsufficientFundsForActivation());
-
-        amountToTransfer = totalAttributableToUser - accountActivationFee;
-    }
-
-    /// @notice Reads the current spot price from HyperLiquid and applies a configured suggested discount for faster execution
-    /// @dev Includes HyperLiquid fees
-    function _getApproxRealizedPrice(
-        FinalTokenInfo memory finalTokenInfo,
-        CoreTokenInfo memory finalCoreTokenInfo,
-        CoreTokenInfo memory initialCoreTokenInfo
-    ) internal view returns (uint64 limitPriceX1e8) {
-        uint256 spotPxRaw = HyperCoreLib.spotPx(finalTokenInfo.spotIndex);
-        // Convert to 10 ** 8 precision (https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm/interacting-with-hypercore)
-        // `szDecimals` of the base aseet for spot market
-        uint8 additionalPowersOf10 = finalTokenInfo.isBuy
-            ? finalCoreTokenInfo.tokenInfo.szDecimals
-            : initialCoreTokenInfo.tokenInfo.szDecimals;
-        uint256 spotX1e8 = spotPxRaw * (10 ** additionalPowersOf10);
-
-        // Buy above spot, sell below spot
-        uint256 adjPpm = finalTokenInfo.isBuy
-            ? (PPM_SCALAR + finalTokenInfo.suggestedDiscountBps * 10 ** 2 + finalTokenInfo.feePpm)
-            : (PPM_SCALAR - finalTokenInfo.suggestedDiscountBps * 10 ** 2 - finalTokenInfo.feePpm);
-        limitPriceX1e8 = uint64((uint256(spotX1e8) * adjPpm) / PPM_SCALAR);
     }
 
     /**************************************
