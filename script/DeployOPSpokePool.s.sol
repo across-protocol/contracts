@@ -25,6 +25,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
         require(info.spokeChainId != 1135 && info.spokeChainId != 1868, "Use DeployOPBridgedSpokePool");
+        require(info.spokeChainId != 81457, "Use DeployBlastSpokePool");
 
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
