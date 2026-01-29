@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
-import { HyperCoreLib } from "../libraries/HyperCoreLib.sol";
+import { HyperCoreLib, CoreTokenInfo } from "../libraries/HyperCoreLib.sol";
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { DonationBox } from "../chain-adapters/DonationBox.sol";
 
@@ -20,19 +20,9 @@ import { DonationBox } from "../chain-adapters/DonationBox.sol";
  */
 contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
-    struct TokenInfo {
-        // HyperEVM token address.
-        address evmAddress;
-        // Hypercore token index.
-        uint64 tokenId;
-        // Activation fee in EVM units. e.g. 1000000 ($1) for USDH.
-        uint256 activationFeeEvm;
-        // coreDecimals - evmDecimals. e.g. -2 for USDH.
-        int8 decimalDiff;
-    }
 
     // Stores hardcoded Hypercore configurations for tokens that this handler supports.
-    mapping(address => TokenInfo) public supportedTokens;
+    mapping(address => CoreTokenInfo) public supportedTokens;
 
     // Donation box contract to store funds for account activation fees.
     DonationBox public immutable donationBox;
@@ -55,6 +45,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     error AccountAlreadyActivated();
     error CannotActivateAccount();
     error UnknownAccountActivationMode();
+    error TokenCannotBeUsedForAccountActivation();
 
     enum AccountActivationMode {
         None, // 0: No activation expected/needed (revert if user doesn't exist)
@@ -69,6 +60,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         uint64 activationFeePaid,
         uint64 activationFeeSponsored
     );
+    event FallbackToHyperEVM(address indexed user, address indexed token, uint256 evmAmount);
     event AddedSupportedToken(address evmAddress, uint64 tokenId, uint256 activationFeeEvm, int8 decimalDiff);
     event SignerSet(address signer);
     event SpokePoolSet(address spokePool);
@@ -179,24 +171,32 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     /**
      * @notice Adds a new token to the supported tokens list.
      * @dev Caller must be owner of this contract.
-     * @param evmAddress The address of the EVM token.
-     * @param tokenId The index of the Hypercore token.
-     * @param activationFeeEvm The activation fee in EVM units.
-     * @param decimalDiff The difference in decimals between the EVM and Hypercore tokens.
+     * @param token The address of the EVM token.
+     * @param coreIndex The index of the Hypercore token.
+     * @param canBeUsedForAccountActivation Whether this token can be used to pay for account activation.
+     * @param accountActivationFeeCore The account activation fee in Core units.
+     * @param bridgeSafetyBufferCore Bridge buffer to use when checking safety of bridging evm -> core. In core units.
      */
     function addSupportedToken(
-        address evmAddress,
-        uint64 tokenId,
-        uint256 activationFeeEvm,
-        int8 decimalDiff
+        address token,
+        uint32 coreIndex,
+        bool canBeUsedForAccountActivation,
+        uint64 accountActivationFeeCore,
+        uint64 bridgeSafetyBufferCore
     ) external onlyOwner {
-        supportedTokens[evmAddress] = TokenInfo({
-            evmAddress: evmAddress,
-            tokenId: tokenId,
-            activationFeeEvm: activationFeeEvm,
-            decimalDiff: decimalDiff
-        });
-        emit AddedSupportedToken(evmAddress, tokenId, activationFeeEvm, decimalDiff);
+        CoreTokenInfo memory coreTokenInfo = HyperCoreLib.buildCoreTokenInfo(
+            coreIndex,
+            canBeUsedForAccountActivation,
+            accountActivationFeeCore,
+            bridgeSafetyBufferCore
+        );
+        supportedTokens[token] = coreTokenInfo;
+        emit AddedSupportedToken(
+            token,
+            coreIndex,
+            coreTokenInfo.accountActivationFeeEVM,
+            coreTokenInfo.tokenInfo.evmExtraWeiDecimals
+        );
     }
 
     /**
@@ -208,7 +208,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * @param user The address of the user to send the tokens to
      */
     function sweepCoreFundsToUser(address token, uint64 coreAmount, address user) external onlyOwner nonReentrant {
-        uint64 tokenIndex = _getTokenInfo(token).tokenId;
+        uint64 tokenIndex = _getTokenInfo(token).coreIndex;
         HyperCoreLib.transferERC20SpotToSpot(tokenIndex, user, coreAmount);
     }
 
@@ -244,34 +244,58 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         AccountActivationMode mode,
         uint32 destinationDex
     ) internal {
-        TokenInfo memory tokenInfo = _getTokenInfo(token);
-        int8 decimalDiff = tokenInfo.decimalDiff;
+        CoreTokenInfo memory coreTokenInfo = _getTokenInfo(token);
+        int8 decimalDiff = coreTokenInfo.tokenInfo.evmExtraWeiDecimals;
+
+        // Calculate total amount including potential activation fee for bridge safety check
         uint256 totalEvmAmount = evmAmount;
+        bool needsActivation = !HyperCoreLib.coreUserExists(user);
+
+        if (needsActivation) {
+            if (mode == AccountActivationMode.None) revert CannotActivateAccount();
+            if (!coreTokenInfo.canBeUsedForAccountActivation) revert TokenCannotBeUsedForAccountActivation();
+            if (accountsActivated[user]) revert AccountAlreadyActivated();
+
+            if (mode == AccountActivationMode.FromDonationBox) {
+                totalEvmAmount += coreTokenInfo.accountActivationFeeEVM;
+            } else {
+                (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
+                if (depositCore <= coreTokenInfo.accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
+            }
+        }
+
+        // Check bridge safety before making any state changes or withdrawals
+        (, uint64 totalCoreAmount) = HyperCoreLib.maximumEVMSendAmountToAmounts(totalEvmAmount, decimalDiff);
+        if (
+            !HyperCoreLib.isCoreAmountSafeToBridge(
+                coreTokenInfo.coreIndex,
+                totalCoreAmount,
+                coreTokenInfo.bridgeSafetyBufferCore
+            )
+        ) {
+            // Fall back to HyperEVM transfer
+            IERC20(token).safeTransfer(user, evmAmount);
+            emit FallbackToHyperEVM(user, token, evmAmount);
+            return;
+        }
+
+        // Now commit state changes after safety check passes
         uint64 accountActivationFeeCore = 0;
         uint64 sponsoredAmount = 0;
 
-        bool userExists = HyperCoreLib.coreUserExists(user);
-        if (!userExists) {
-            if (mode == AccountActivationMode.None) revert CannotActivateAccount();
-            if (accountsActivated[user]) revert AccountAlreadyActivated();
+        if (needsActivation) {
             accountsActivated[user] = true;
-            uint256 activationFee = tokenInfo.activationFeeEvm;
-
-            (, accountActivationFeeCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(activationFee, decimalDiff);
+            accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
 
             if (mode == AccountActivationMode.FromDonationBox) {
-                donationBox.withdraw(IERC20(token), activationFee);
-                totalEvmAmount += activationFee;
+                donationBox.withdraw(IERC20(token), coreTokenInfo.accountActivationFeeEVM);
                 sponsoredAmount = accountActivationFeeCore;
-            } else {
-                (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
-                if (depositCore <= accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
             }
         }
 
         (, uint64 userAmount) = HyperCoreLib.transferERC20EVMToCore(
             token,
-            tokenInfo.tokenId,
+            coreTokenInfo.coreIndex,
             user,
             totalEvmAmount,
             decimalDiff,
@@ -282,15 +306,15 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
         emit DepositToHypercore(user, token, userAmount, accountActivationFeeCore, sponsoredAmount);
     }
 
-    function _verifySignature(address expectedUser, bytes memory signature) internal view returns (bool) {
+    function _verifySignature(address expectedUser, bytes memory signature) internal view {
         /// @dev There is no nonce in this signature because an account on Hypercore can only be activated once
         /// by this contract, so reusing a signature cannot be used to grief the DonationBox.
         bytes32 expectedHash = keccak256(abi.encode(expectedUser));
         if (ECDSA.recover(expectedHash, signature) != signer) revert InvalidSignature();
     }
 
-    function _getTokenInfo(address evmAddress) internal view returns (TokenInfo memory) {
-        if (supportedTokens[evmAddress].evmAddress == address(0)) {
+    function _getTokenInfo(address evmAddress) internal view returns (CoreTokenInfo memory) {
+        if (supportedTokens[evmAddress].tokenInfo.evmContract == address(0)) {
             revert TokenNotSupported();
         }
         return supportedTokens[evmAddress];

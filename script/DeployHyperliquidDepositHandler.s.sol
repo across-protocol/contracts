@@ -25,9 +25,9 @@ contract DeployHyperliquidDepositHandler is Script, Test {
 
         // Set up USDH as a supported token for this handler.
         IERC20 usdh = IERC20(0x111111a1a0667d36bD57c0A9f569b98057111111);
-        uint64 usdhTokenIndex = 360;
-        uint256 usdhActivationFee = 1000000; // 1 USDH
-        int8 usdhDecimalDiff = -2; // USDH has 2 extra decimals on Core compared to EVM.
+        uint32 usdhTokenIndex = 360;
+        uint64 usdhActivationFeeCore = 10000; // 1 USDH in Core units (4 szDecimals)
+        uint64 usdhBridgeSafetyBufferCore = 0; // No buffer for now
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -41,15 +41,20 @@ contract DeployHyperliquidDepositHandler is Script, Test {
             HyperCoreLib.CORE_SPOT_DEX_ID,
             HyperCoreLib.CORE_SPOT_DEX_ID
         );
-        hyperliquidDepositHandler.addSupportedToken(address(usdh), usdhTokenIndex, 1000000, usdhDecimalDiff);
+        hyperliquidDepositHandler.addSupportedToken(
+            address(usdh),
+            usdhTokenIndex,
+            true, // canBeUsedForAccountActivation
+            usdhActivationFeeCore,
+            usdhBridgeSafetyBufferCore
+        );
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
         console.log("HyperliquidDepositHandler deployed to:", address(hyperliquidDepositHandler));
         console.log("Signer required to sign payloads for handleV3AcrossMessage:", signer);
         console.log("USDH token index:", usdhTokenIndex);
-        console.log("USDH activation fee:", usdhActivationFee);
-        console.log("USDH decimal diff:", usdhDecimalDiff);
+        console.log("USDH activation fee (core):", usdhActivationFeeCore);
 
         vm.stopBroadcast();
     }

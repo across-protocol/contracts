@@ -1,24 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { HyperCoreLib } from "../../libraries/HyperCoreLib.sol";
 import { SwapHandler } from "./SwapHandler.sol";
-
-// Info about the token on HyperCore.
-struct CoreTokenInfo {
-    // The token info on HyperCore.
-    HyperCoreLib.TokenInfo tokenInfo;
-    // The HyperCore index id of the token.
-    uint64 coreIndex;
-    // Whether the token can be used for account activation fee.
-    bool canBeUsedForAccountActivation;
-    // The account activation fee for the token.
-    uint256 accountActivationFeeEVM;
-    // The account activation fee for the token on Core.
-    uint64 accountActivationFeeCore;
-    // Bridge buffer to use when checking safety of bridging evm -> core. In core units
-    uint64 bridgeSafetyBufferCore;
-}
 
 enum AccountCreationMode {
     Standard,
