@@ -231,7 +231,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool           | [0x50039fAEfebef707cFD94D6d462fE6D10B39207a](https://plasmascan.to/address/0x50039fAEfebef707cFD94D6d462fE6D10B39207a) |
 | SpokePoolPeriphery  | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://plasmascan.to/address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier   | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://plasmascan.to/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| Universal_SpokePool | [0x053Dc4a08302F11d13d8D2B87D8F3c9c28cEDEb4](https://plasmascan.to/address/0x053Dc4a08302F11d13d8D2B87D8F3c9c28cEDEb4) |
+| Universal_SpokePool | [0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7](https://plasmascan.to/address/0xCdb25d0A6FfFE639BC591a565F2D99507837f2b7) |
 
 ## Mode (34443)
 
@@ -287,7 +287,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                               |
 | ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| Blast_SpokePool    | [0xfcb6f77112951e1995d37542b519Fe0a85a1AA77](https://blastscan.io/address/0xfcb6f77112951e1995d37542b519Fe0a85a1AA77) |
+| Blast_SpokePool    | [0x9B769e2b1A4936B51870d03902A9e2AeEa6Ee933](https://blastscan.io/address/0x9B769e2b1A4936B51870d03902A9e2AeEa6Ee933) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blastscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | OP_SpokePool       | [0x4f617cF2812006059Bd9162624d3f9403331133e](https://blastscan.io/address/0x4f617cF2812006059Bd9162624d3f9403331133e) |
 | SpokePool          | [0x2D509190Ed0172ba588407D4c2df918F955Cc6E1](https://blastscan.io/address/0x2D509190Ed0172ba588407D4c2df918F955Cc6E1) |

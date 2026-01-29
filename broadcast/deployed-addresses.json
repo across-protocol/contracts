@@ -735,9 +735,9 @@
           "block_number": 1619956
         },
         "Universal_SpokePool": {
-          "address": "0x053dc4a08302f11d13d8d2b87d8f3c9c28cedeb4",
-          "block_number": 12619407,
-          "transaction_hash": "0xab5e33a8258e30845c70cd33e870941bf2db168c01bdbe499c47bb2ae3161e7d"
+          "address": "0xcdb25d0a6fffe639bc591a565f2d99507837f2b7",
+          "block_number": 12771173,
+          "transaction_hash": "0x9f17a784429f74c9a6dbb9b47b21c7a13dbf4d661db5566c25431c2a588fd9c5"
         }
       }
     },
@@ -938,9 +938,8 @@
           "block_number": 21071991
         },
         "Blast_SpokePool": {
-          "address": "0xfcb6f77112951e1995d37542b519fe0a85a1aa77",
-          "block_number": 23665884,
-          "transaction_hash": "0x36ddae4eb4e86aab7bcead1e4e18dab4ac19b2e6facdcbc363df0b2f37e2eea0"
+          "address": "0x9b769e2b1a4936b51870d03902a9e2aeea6ee933",
+          "transaction_hash": null
         },
         "OP_SpokePool": {
           "address": "0x4f617cf2812006059bd9162624d3f9403331133e",
