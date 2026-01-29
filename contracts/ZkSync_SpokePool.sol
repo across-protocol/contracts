@@ -66,6 +66,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
     error InvalidBridgeConfig();
+    error InvalidTokenAddress();
 
     /**
      * @notice Constructor.
@@ -191,9 +192,20 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         }
     }
 
-    // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
+    /**
+     * @notice Computes the asset ID for a given L2 token address.
+     * @dev Only tokens that have been bridged from L1 via the L2AssetRouter are supported.
+     * Era-native tokens or tokens without an L1 mapping will cause this function to revert.
+     * Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
+     * @param _l2TokenAddress The L2 token address to compute the asset ID for.
+     * @return The computed asset ID used by the L2AssetRouter for withdrawals.
+     * @custom:reverts InvalidTokenAddress if the token has no L1 mapping (l1TokenAddress == address(0)).
+     */
     function _getAssetId(address _l2TokenAddress) internal view returns (bytes32) {
         address l1TokenAddress = l2AssetRouter.l1TokenAddress(_l2TokenAddress);
+        if (l1TokenAddress == address(0)) {
+            revert InvalidTokenAddress();
+        }
         return keccak256(abi.encode(l1ChainId, L2_NATIVE_TOKEN_VAULT_ADDR, l1TokenAddress));
     }
 
