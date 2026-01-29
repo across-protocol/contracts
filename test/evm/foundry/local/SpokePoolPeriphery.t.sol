@@ -574,6 +574,13 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        // Calculate the expected depositId using unsafeDeposit's formula with nonce + 1
+        uint256 expectedDepositId = uint256(
+            keccak256(
+                abi.encodePacked(address(spokePoolPeriphery), depositor.toBytes32(), uint256(depositData.nonce + 1))
+            )
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -582,7 +589,7 @@ contract SpokePoolPeripheryTest is Test {
             mintAmount,
             mintAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -650,6 +657,17 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
         bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        // Calculate the expected depositId using unsafeDeposit's formula with nonce + 1
+        uint256 expectedDepositId = uint256(
+            keccak256(
+                abi.encodePacked(
+                    address(spokePoolPeriphery),
+                    depositor.toBytes32(),
+                    uint256(swapAndDepositData.nonce + 1)
+                )
+            )
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -658,7 +676,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -768,8 +786,6 @@ contract SpokePoolPeripheryTest is Test {
         bytes32 witness = keccak256(
             abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
         );
-
-        // Get the transfer with auth signature using the witness to bind the intent.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -786,6 +802,18 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
+        // Get the deposit data signature.
+        bytes32 depositMsgHash = keccak256(
+            abi.encodePacked("\x19\x01", spokePoolPeriphery.domainSeparator(), hashUtils.hashDepositData(depositData))
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
+        bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Calculate the expected depositId using unsafeDeposit's formula
+        uint256 expectedDepositId = uint256(
+            keccak256(abi.encodePacked(address(spokePoolPeriphery), depositor.toBytes32(), uint256(witness)))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -794,7 +822,7 @@ contract SpokePoolPeripheryTest is Test {
             mintAmount,
             mintAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -855,6 +883,22 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
+        // Get the swap and deposit data signature.
+        bytes32 swapAndDepositMsgHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                spokePoolPeriphery.domainSeparator(),
+                hashUtils.hashSwapAndDepositData(swapAndDepositData)
+            )
+        );
+        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
+        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
+
+        // Calculate the expected depositId using unsafeDeposit's formula
+        uint256 expectedDepositId = uint256(
+            keccak256(abi.encodePacked(address(spokePoolPeriphery), depositor.toBytes32(), uint256(witness)))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -863,7 +907,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
