@@ -11,8 +11,10 @@ import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
 import { ArbitraryEVMFlowExecutor } from "../ArbitraryEVMFlowExecutor.sol";
 import { CommonFlowParams, EVMFlowParams, AccountCreationMode } from "../Structs.sol";
+import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
@@ -21,15 +23,11 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
  * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
     `BaseModuleHandler` contract code to learn more.
  */
-contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
+contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
     using SafeERC20 for IERC20;
-
-    /// @notice We expect bridge amount that comes through to this Handler to be 1:1 with the src send amount, and we
-    /// require our src handler to ensure that it is. We don't sponsor extra bridge fees in this handler
-    uint256 public constant EXTRA_FEES_TO_SPONSOR = 0;
 
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
@@ -86,7 +84,11 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         address _donationBox,
         address _baseToken,
         address _multicallHandler
-    ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
+    )
+        BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
+        ArbitraryEVMFlowExecutor(_multicallHandler)
+        OFTCoreMath(IERC20Metadata(_baseToken).decimals(), IOFT(_ioft).sharedDecimals())
+    {
         baseToken = _baseToken;
 
         if (_baseToken != IOFT(_ioft).token()) {
@@ -161,7 +163,19 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
         }
         $.usedNonces[quoteNonce] = true;
 
+        // Amount received from `lzReceive` on destination. May be different from the amount the user originally sent (if the OFT takes a fee in the bridged token)
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
+
+        // We trust src periphery to encode the correct amountSD. It pulls amountLD from the user, using IOFT's sharedDecimals()
+        // for further conversion to SD. The DEFAULT_ADMIN is responsible for keeping a correct mapping of authorized src peripheries.
+        uint256 amountSentSD = composeMsg._getAmountSD();
+        uint256 amountSentLD = _toLD(uint64(amountSentSD));
+
+        uint256 extraFeesIncurred = 0;
+        if (amountSentLD > amountLD) {
+            extraFeesIncurred = amountSentLD - amountLD;
+        }
+
         uint256 maxBpsToSponsor = composeMsg._getMaxBpsToSponsor();
         uint256 maxUserSlippageBps = composeMsg._getMaxUserSlippageBps();
         address finalRecipient = composeMsg._getFinalRecipient().toAddress();
@@ -178,7 +192,7 @@ contract DstOFTHandler is BaseModuleHandler, ILayerZeroComposer, ArbitraryEVMFlo
             finalToken: finalToken,
             destinationDex: destinationDex,
             maxBpsToSponsor: maxBpsToSponsor,
-            extraFeesIncurred: EXTRA_FEES_TO_SPONSOR,
+            extraFeesIncurred: extraFeesIncurred,
             accountCreationMode: AccountCreationMode(accountCreationMode)
         });
 

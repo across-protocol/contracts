@@ -12,6 +12,7 @@ import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalL
 import { IOFT, SendParam, MessagingFee, IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Used in place of // import { QuoteSignLib } from "../contracts/periphery/mintburn/sponsored-oft/QuoteSignLib.sol";
@@ -38,6 +39,7 @@ library DebugQuoteSignLib {
                 p.destinationDex,
                 p.lzReceiveGasLimit,
                 p.lzComposeGasLimit,
+                p.maxOftFeeBps,
                 p.accountCreationMode,
                 p.executionMode,
                 keccak256(p.actionData) // Hash the actionData to keep signature size reasonable
@@ -208,6 +210,7 @@ contract CreateSponsoredDeposit is Script, Config {
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
+            maxOftFeeBps: 0,
             accountCreationMode: 0,
             executionMode: 0,
             actionData: ""
@@ -268,9 +271,20 @@ contract CreateSponsoredDeposit is Script, Config {
         Quote memory quote
     ) internal view returns (MessagingFee memory) {
         address oftMessenger = srcPeripheryContract.OFT_MESSENGER();
+        address token = srcPeripheryContract.TOKEN();
+
+        uint8 localDecimals = IERC20Metadata(token).decimals();
+        uint8 sharedDecimals = IOFT(oftMessenger).sharedDecimals();
+
+        require(localDecimals >= sharedDecimals, "InvalidLocalDecimals");
+        uint256 decimalConversionRate = 10 ** (localDecimals - sharedDecimals);
+        uint256 _amountSD = quote.signedParams.amountLD / decimalConversionRate;
+        require(_amountSD <= type(uint64).max, "AmountSDOverflowed");
+        uint256 amountSD = uint256(uint64(_amountSD));
 
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
+            amountSD,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
@@ -287,11 +301,14 @@ contract CreateSponsoredDeposit is Script, Config {
             .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
+        require(quote.signedParams.maxOftFeeBps <= 10_000, "maxOftFeeBps > 10000");
+        uint256 minAmountLD = (quote.signedParams.amountLD * (10_000 - quote.signedParams.maxOftFeeBps)) / 10_000;
+
         SendParam memory sendParam = SendParam({
             dstEid: quote.signedParams.dstEid,
             to: quote.signedParams.destinationHandler,
             amountLD: quote.signedParams.amountLD,
-            minAmountLD: quote.signedParams.amountLD,
+            minAmountLD: minAmountLD,
             extraOptions: extraOptions,
             composeMsg: composeMsg,
             oftCmd: srcPeripheryContract.EMPTY_OFT_COMMAND()
