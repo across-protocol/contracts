@@ -17,3 +17,4 @@ hardhat/=node_modules/hardhat/
 @uma/=node_modules/@uma/
 forge-std/=lib/forge-std/src/
 @sp1-contracts/=lib/sp1-contracts/contracts/
+murky/=lib/murky/src/
