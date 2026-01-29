@@ -258,10 +258,10 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
 
             if (mode == AccountActivationMode.FromDonationBox) {
                 totalEvmAmount += coreTokenInfo.accountActivationFeeEVM;
-            } else {
-                (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(evmAmount, decimalDiff);
-                if (depositCore <= coreTokenInfo.accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
             }
+
+            (, uint64 depositCore) = HyperCoreLib.maximumEVMSendAmountToAmounts(totalEvmAmount, decimalDiff);
+            if (depositCore <= coreTokenInfo.accountActivationFeeCore) revert InsufficientEvmAmountForActivation();
         }
 
         // Check bridge safety before making any state changes or withdrawals
