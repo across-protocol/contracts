@@ -6,6 +6,12 @@ import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "./libraries
 import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
 import "./SpokePool.sol";
 
+// https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/bridge/asset-router/L2AssetRouter.sol#L321
+interface IL2AssetRouter {
+    function withdraw(bytes32 _assetId, bytes memory _assetData) external returns (bytes32);
+    function l1TokenAddress(address _l2TokenAddress) external view returns (address);
+}
+
 // https://github.com/matter-labs/era-contracts/blob/6391c0d7bf6184d7f6718060e3991ba6f0efe4a7/zksync/contracts/bridge/L2ERC20Bridge.sol#L104
 interface ZkBridgeLike {
     function withdraw(address _l1Receiver, address _l2Token, uint256 _amount) external;
@@ -31,10 +37,31 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
     // ETH on ZkSync implements a subset of the ERC-20 interface, with additional built-in support to bridge to L1.
     address public l2Eth;
 
-    // Bridge used to withdraw ERC20's to L1
-    ZkBridgeLike public zkErc20Bridge;
+    // Legacy bridge used to withdraw ERC20's to L1, replaced by `l2AssetRouter`.
+    address public DEPRECATED_zkErc20Bridge;
+
+    /// @dev Legacy bridge used to withdraw USDC to L1, for withdrawing all other ERC20's we use `l2AssetRouter`.
     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     ZkBridgeLike public immutable zkUSDCBridge;
+
+    /// @dev The offset from which the built-in, but user space contracts are located.
+    /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L12C1-L13C58
+    uint160 constant USER_CONTRACTS_OFFSET = 0x10000; // 2^16
+
+    /// Contract used to withdraw ERC20's to L1.
+    /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L68
+    address public constant L2_ASSET_ROUTER_ADDR = address(USER_CONTRACTS_OFFSET + 0x03);
+    IL2AssetRouter public constant l2AssetRouter = IL2AssetRouter(L2_ASSET_ROUTER_ADDR);
+
+    /// @dev An l2 system contract address, used in the assetId calculation for native assets.
+    /// This is needed for automatic bridging, i.e. without deploying the AssetHandler contract,
+    /// if the assetId can be calculated with this address then it is in fact an NTV asset
+    /// Source: https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/l2-helpers/L2ContractAddresses.sol#L70C1-L73C85
+    address public constant L2_NATIVE_TOKEN_VAULT_ADDR = address(USER_CONTRACTS_OFFSET + 0x04);
+
+    /// Used to compute asset ID needed to withdraw tokens.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+    uint256 public immutable l1ChainId;
 
     event SetZkBridge(address indexed erc20Bridge, address indexed oldErc20Bridge);
 
@@ -42,12 +69,13 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
 
     /**
      * @notice Constructor.
-     * @notice Circle bridged & native USDC are optionally supported via configuration, but are mutually exclusive.
+     * @param _zkUSDCBridge Legacy bridge used to withdraw USDC to L1, for withdrawing all other ERC20's we use `l2AssetRouter`.
      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
      * @param _circleUSDC Circle USDC address on the SpokePool. Set to 0x0 to use the standard ERC20 bridge instead.
      * If not set to zero, then either the zkUSDCBridge or cctpTokenMessenger must be set and will be used to
      * bridge this token.
      * @param _zkUSDCBridge Elastic chain custom bridge address for USDC (if deployed, or address(0) to disable).
+     * @param _l1ChainId Chain ID of the L1 chain.
      * @param _cctpTokenMessenger TokenMessenger contract to bridge via CCTP. If the zero address is passed, CCTP bridging will be disabled.
      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
      * into the past from the block time of the deposit.
@@ -59,6 +87,7 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         address _wrappedNativeTokenAddress,
         IERC20 _circleUSDC,
         ZkBridgeLike _zkUSDCBridge,
+        uint256 _l1ChainId,
         ITokenMessenger _cctpTokenMessenger,
         uint32 _depositQuoteTimeBuffer,
         uint32 _fillDeadlineBuffer
@@ -84,43 +113,29 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
         }
 
         zkUSDCBridge = _zkUSDCBridge;
+        l1ChainId = _l1ChainId;
     }
 
     /**
      * @notice Initialize the ZkSync SpokePool.
      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
      * relay hash collisions.
-     * @param _zkErc20Bridge Address of L2 ERC20 gateway. Can be reset by admin.
      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
      * @param _withdrawalRecipient Address which receives token withdrawals. Can be changed by admin. For Spoke Pools on L2, this will
      * likely be the hub pool.
      */
     function initialize(
         uint32 _initialDepositId,
-        ZkBridgeLike _zkErc20Bridge,
         address _crossDomainAdmin,
         address _withdrawalRecipient
     ) public initializer {
         l2Eth = 0x000000000000000000000000000000000000800A;
         __SpokePool_init(_initialDepositId, _crossDomainAdmin, _withdrawalRecipient);
-        _setZkBridge(_zkErc20Bridge);
     }
 
     modifier onlyFromCrossDomainAdmin() {
         require(msg.sender == CrossDomainAddressUtils.applyL1ToL2Alias(crossDomainAdmin), "ONLY_COUNTERPART_GATEWAY");
         _;
-    }
-
-    /********************************************************
-     *      ZKSYNC-SPECIFIC CROSS-CHAIN ADMIN FUNCTIONS     *
-     ********************************************************/
-
-    /**
-     * @notice Change L2 token bridge addresses. Callable only by admin.
-     * @param _zkErc20Bridge New address of L2 ERC20 gateway.
-     */
-    function setZkBridge(ZkBridgeLike _zkErc20Bridge) public onlyAdmin nonReentrant {
-        _setZkBridge(_zkErc20Bridge);
     }
 
     /**************************************
@@ -170,14 +185,25 @@ contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {
                 zkUSDCBridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
             }
         } else {
-            zkErc20Bridge.withdraw(withdrawalRecipient, l2TokenAddress, amountToReturn);
+            bytes32 assetId = _getAssetId(l2TokenAddress);
+            bytes memory data = _encodeBridgeBurnData(amountToReturn, withdrawalRecipient, l2TokenAddress);
+            l2AssetRouter.withdraw(assetId, data);
         }
     }
 
-    function _setZkBridge(ZkBridgeLike _zkErc20Bridge) internal {
-        address oldErc20Bridge = address(zkErc20Bridge);
-        zkErc20Bridge = _zkErc20Bridge;
-        emit SetZkBridge(address(_zkErc20Bridge), oldErc20Bridge);
+    // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L117C14-L117C62
+    function _getAssetId(address _l2TokenAddress) internal view returns (bytes32) {
+        address l1TokenAddress = l2AssetRouter.l1TokenAddress(_l2TokenAddress);
+        return keccak256(abi.encode(l1ChainId, L2_NATIVE_TOKEN_VAULT_ADDR, l1TokenAddress));
+    }
+
+    // Implementation from https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/common/libraries/DataEncoding.sol#L24C1-L30C6
+    function _encodeBridgeBurnData(
+        uint256 _amount,
+        address _remoteReceiver,
+        address _l2TokenAddress
+    ) internal pure returns (bytes memory) {
+        return abi.encode(_amount, _remoteReceiver, _l2TokenAddress);
     }
 
     function _requireAdminSender() internal override onlyFromCrossDomainAdmin {}
