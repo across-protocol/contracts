@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.21",
+  "version": "4.1.22",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -13,7 +13,8 @@
   "files": [
     "/contracts/**/*.sol",
     "/artifacts/**/*",
-    "/dist/**/*"
+    "/dist/**/*",
+    "/out/**/*"
   ],
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
@@ -29,16 +30,17 @@
     "clean": "rm -rf node_modules cache cache-zk artifacts artifacts-zk dist typechain cache-foundry out zkout",
     "generate-svm-artifacts": "bash ./scripts/svm/buildHelpers/buildIdl.sh && sh ./scripts/svm/buildHelpers/generateSvmAssets.sh && yarn generate-svm-clients",
     "generate-svm-clients": "yarn ts-node ./scripts/svm/buildHelpers/generateSvmClients.ts && yarn ts-node ./scripts/svm/buildHelpers/renameClientsImports.ts",
-    "build-evm": "hardhat compile",
+    "build-hardhat": "hardhat compile",
     "build-svm": "bash ./scripts/svm/buildHelpers/buildSvmLocalToolchain.sh",
     "build-svm-solana-verify": "bash ./scripts/svm/buildHelpers/buildSolanaVerify.sh",
     "build-ts": "rm -rf ./dist && tsc && rsync -a --include '*/' --include '*.d.ts' --exclude '*' ./typechain ./dist/ && yarn export-idl",
     "export-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
-    "build": "yarn build-evm && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
-    "build-verified": "yarn build-evm && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
+    "build": "yarn build-hardhat && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
+    "build-verified": "yarn build-hardhat && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
+    "build-evm-foundry": "forge build",
     "test-evm": "yarn test-evm-hardhat && yarn test-evm-foundry",
     "test-evm-hardhat": "IS_TEST=true hardhat test",
-    "test-evm-foundry": "FOUNDRY_PROFILE=local forge test",
+    "test-evm-foundry": "FOUNDRY_PROFILE=local-test forge test",
     "test-svm": "IS_TEST=true yarn build-svm && yarn generate-svm-artifacts && anchor test --skip-build",
     "test-svm-solana-verify": "IS_TEST=true yarn build-svm-solana-verify && yarn generate-svm-artifacts && anchor test --skip-build",
     "test": "yarn test-evm && yarn test-svm",
@@ -52,7 +54,7 @@
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.95",
+    "@across-protocol/constants": "^3.1.97",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",

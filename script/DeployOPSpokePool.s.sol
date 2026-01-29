@@ -31,13 +31,9 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         address weth = getWrappedNativeToken(info.spokeChainId);
         address l2Usdc = getUSDCAddress(info.spokeChainId);
 
-        bool hasCctpDomain = hasCctpDomain(destinationChainId);
-        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(spokeChainId) : CCTP_NO_DOMAIN;
-
-        address cctpTokenMessenger = hasCctpDomain ? getL2Addresses(chainId).cctpV2TokenMessenger : address(0);
-        address adapterStore = getDeployedAddress(chainId, "AdapterStore");
-        uint256 oftDstEid = getOftEid(spokeChainId);
-        uint256 oftFeeCap = 1 ether; // @todo
+        bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
+        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(info.spokeChainId) : CCTP_NO_DOMAIN;
+        address cctpTokenMessenger = hasCctpDomain ? getL2Address(chainId, "cctpV2TokenMessenger") : address(0);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -76,9 +72,6 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         console.log("WETH address:", weth);
         console.log("CCTP Domain ID:", cctpDomain);
         console.log("CCTP Token Messenger:", cctpTokenMessenger);
-        console.log("AdapterStore:", adapterStore);
-        console.log("OFT Destination ID:", oftDstEid);
-        console.log("OFT Fee Cap:", oftFeeCap);
         console.log("OP_SpokePool proxy deployed to:", result.proxy);
         console.log("OP_SpokePool implementation deployed to:", result.implementation);
 
