@@ -202,6 +202,14 @@ describe("ZkSync Spoke Pool", function () {
     );
     expect(l2AssetRouter.withdraw).to.have.been.calledWith(expectedAssetId, expectedData);
   });
+  it("Reverts with InvalidTokenAddress when bridging a token without L1 mapping", async function () {
+    const { leaves, tree } = await constructSingleRelayerRefundTree(l2Dai, await zkSyncSpokePool.callStatic.chainId());
+    l2AssetRouter.l1TokenAddress.returns(ZERO_ADDRESS);
+    await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
+    await expect(
+      zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+    ).to.be.revertedWith("InvalidTokenAddress");
+  });
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for zkSync Bridged USDC.e", async function () {
     // Redeploy the SpokePool with usdc address -> 0x0
     const usdcAddress = ZERO_ADDRESS;
