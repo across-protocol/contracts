@@ -154,7 +154,7 @@ interface SpokePoolPeripheryInterface {
      * Caller can specify their slippage tolerance for the swap and Across deposit params.
      * @dev If the swapToken does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If the swapToken in swapData does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev The nonce for the swapAndDepositData signature must be retrieved from permitNonce(signatureOwner).
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
      * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
      * incredibly unlikely because this would require:
@@ -216,7 +216,7 @@ interface SpokePoolPeripheryInterface {
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
-     * @dev The nonce for the depositData signature must be retrieved from permitNonces(signatureOwner).
+     * @dev The nonce for the depositData signature must be retrieved from permitNonce(signatureOwner).
      * @dev Design Decision: We use separate nonce tracking for permit-based functions versus
      * receiveWithAuthorization-based functions, which creates a theoretical replay attack that we think is
      * incredibly unlikely because this would require:
@@ -277,5 +277,5 @@ interface SpokePoolPeripheryInterface {
      * @param user The user whose nonce to return.
      * @return The current permit nonce for the user.
      */
-    function permitNonces(address user) external view returns (uint256);
+    function permitNonce(address user) external view returns (uint256);
 }

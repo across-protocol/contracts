@@ -151,11 +151,16 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     SwapProxy public immutable swapProxy;
 
     // Mapping from user address to their current nonce
-    mapping(address => uint256) public permitNonces;
+    mapping(address => uint256) private permitNonces;
 
     // Witness identifiers for the bridge and swap functions. Used to ensure collisions can't happen.
     bytes32 public constant BRIDGE_AND_SWAP_WITNESS_IDENTIFIER = keccak256("BridgeAndSwapWitness");
     bytes32 public constant BRIDGE_WITNESS_IDENTIFIER = keccak256("BridgeWitness");
+
+    bytes32 public constant PERMIT_NONCE_IDENTIFIER = keccak256("PermitNonce");
+    bytes32 public constant PERMIT2_NONCE_IDENTIFIER = keccak256("Permit2Nonce");
+    bytes32 public constant AUTHORIZATION_NONCE_IDENTIFIER = keccak256("AuthorizationNonce");
+    bytes32 public constant DEPOSIT_NONCE_IDENTIFIER = keccak256("DepositNonce");
 
     event SwapBeforeBridge(
         address exchange,
@@ -232,6 +237,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * This case should be extremely rare as both values would need to be > 1e18 * 1e18.
      * Users will only see a generic failure without explanatory error message.
      * @dev Does not support native tokens as swap output. Only ERC20 tokens can be deposited via this function.
+     * @dev Requires a zero nonce to prevent accidental nonce repeats causing loss of funds.
      */
     function swapAndBridge(SwapAndDepositData calldata swapAndDepositData) external payable override nonReentrant {
         // If a user performs a swapAndBridge with the swap token as the native token, wrap the value and treat the rest of transaction
@@ -249,7 +255,12 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             );
         }
 
-        _swapAndBridge(swapAndDepositData);
+        // Require the nonce to be zero to force regular deposit, so nonces can never be reused.
+        if (swapAndDepositData.nonce != 0) revert InvalidNonce();
+
+        // DEPOSIT_NONCE_IDENTIFIER isn't technically needed (since it will be unused in the inner function),
+        // but it's here for consistency.
+        _swapAndBridge(swapAndDepositData, DEPOSIT_NONCE_IDENTIFIER);
     }
 
     /**
@@ -290,10 +301,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
             swapAndDepositDataSignature
         );
-        // Copy struct to memory and set nonce to originalNonce + 1 to avoid 0 (which triggers regular deposit)
-        SwapAndDepositData memory modifiedData = swapAndDepositData;
-        modifiedData.nonce = swapAndDepositData.nonce + 1;
-        _swapAndBridge(modifiedData);
+        _swapAndBridge(swapAndDepositData, PERMIT_NONCE_IDENTIFIER);
     }
 
     /**
@@ -311,6 +319,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
     ) external override nonReentrant {
+        // Require permit nonce and depositData nonce to be the same, so we can guarantee the depositId is not reused.
+        if (permit.nonce != swapAndDepositData.nonce) revert InvalidNonce();
         bytes32 witness = PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
@@ -331,7 +341,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             swapAndDepositData.submissionFees.recipient,
             _submissionFeeAmount
         );
-        _swapAndBridge(swapAndDepositData);
+        _swapAndBridge(swapAndDepositData, PERMIT2_NONCE_IDENTIFIER);
     }
 
     /**
@@ -381,7 +391,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         // We use the witness (which serves as the ERC-3009 nonce) as the deposit nonce.
         SwapAndDepositData memory modifiedData = swapAndDepositData;
         modifiedData.nonce = uint256(witness);
-        _swapAndBridge(modifiedData);
+        _swapAndBridge(modifiedData, AUTHORIZATION_NONCE_IDENTIFIER);
     }
 
     /**
@@ -424,11 +434,12 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,
-            depositData.nonce + 1, // +1 to avoid 0 (which triggers regular deposit) and ensure uniqueness
+            depositData.nonce,
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
-            depositData.baseDepositData.message
+            depositData.baseDepositData.message,
+            PERMIT_NONCE_IDENTIFIER
         );
     }
 
@@ -441,6 +452,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         IPermit2.PermitTransferFrom calldata permit,
         bytes calldata signature
     ) external override nonReentrant {
+        // Require permit nonce and depositData nonce to be the same, so we can guarantee the depositId is not reused.
+        if (permit.nonce != depositData.nonce) revert InvalidNonce();
         bytes32 witness = PeripherySigningLib.hashDepositData(depositData);
         uint256 _submissionFeeAmount = depositData.submissionFees.amount;
         IPermit2.SignatureTransferDetails memory transferDetails = IPermit2.SignatureTransferDetails({
@@ -473,11 +486,12 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,
-            depositData.nonce, // TODO: should we hash this nonce (if nonzero) with the permit2 nonce to protect the user against nonce reuse?
+            depositData.nonce,
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
-            depositData.baseDepositData.message
+            depositData.baseDepositData.message,
+            PERMIT2_NONCE_IDENTIFIER
         );
     }
 
@@ -532,8 +546,66 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.quoteTimestamp,
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
-            depositData.baseDepositData.message
+            depositData.baseDepositData.message,
+            AUTHORIZATION_NONCE_IDENTIFIER
         );
+    }
+
+    /**
+     * @notice Returns the deposit ID for a given nonce and depositor.
+     * @param depositor The depositor to use for the deposit.
+     * @param nonceIdentifier The nonce identifier to use for the deposit.
+     * @param nonce The nonce to use for the deposit.
+     * @param spokePool The spoke pool to use for the deposit.
+     * @dev For ERC-3009 (*WithAuthorization), the nonce is the witness, which can be computed using the
+     * getERC3009DepositWitness or getERC3009SwapAndBridgeWitness functions. For ERC-3009 (*WithPermit),
+     * the nonce is the permit nonce.
+     * @return The deposit ID for the given nonce and depositor.
+     */
+    function getDepositId(
+        address depositor,
+        bytes32 nonceIdentifier,
+        uint256 nonce,
+        V3SpokePoolInterface spokePool
+    ) external view returns (uint256) {
+        if (nonce == 0) {
+            return spokePool.numberOfDeposits();
+        }
+        return
+            spokePool.getUnsafeDepositId(
+                address(this),
+                depositor.toBytes32(),
+                uint256(keccak256(abi.encodePacked(nonceIdentifier, nonce)))
+            );
+    }
+
+    /**
+     * @notice Returns the witness for a given deposit data.
+     * @param depositData The deposit data to use for the witness.
+     * @return The witness for the given deposit data.
+     */
+    function getERC3009DepositWitness(DepositData calldata depositData) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(BRIDGE_WITNESS_IDENTIFIER, abi.encode(depositData)));
+    }
+
+    /**
+     * @notice Returns the witness for a given swap and deposit data.
+     * @param swapAndDepositData The swap and deposit data to use for the witness.
+     * @return The witness for the given swap and deposit data.
+     */
+    function getERC3009SwapAndBridgeWitness(
+        SwapAndDepositData calldata swapAndDepositData
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(BRIDGE_AND_SWAP_WITNESS_IDENTIFIER, abi.encode(swapAndDepositData)));
+    }
+
+    /**
+     * @notice Returns the next nonce for a user.
+     * @param user The user whose nonce to return.
+     * @return The next nonce for the user.
+     */
+    function permitNonce(address user) external view returns (uint256) {
+        return permitNonces[user] + 1;
     }
 
     /**
@@ -561,10 +633,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @param providedNonce The provided nonce value.
      */
     function _validateAndIncrementNonce(address user, uint256 providedNonce) private {
-        if (permitNonces[user] != providedNonce) {
+        if (++permitNonces[user] != providedNonce) {
             revert InvalidNonce();
         }
-        permitNonces[user]++;
     }
 
     /**
@@ -599,7 +670,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 exclusivityParameter,
-        bytes memory message
+        bytes memory message,
+        bytes32 nonceIdentifier
     ) private {
         IERC20(inputToken).forceApprove(spokePool, inputAmount);
         if (depositNonce == 0) {
@@ -627,7 +699,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
                 outputAmount,
                 destinationChainId,
                 exclusiveRelayer,
-                depositNonce,
+                uint256(keccak256(abi.encodePacked(nonceIdentifier, depositNonce))),
                 quoteTimestamp,
                 fillDeadline,
                 exclusivityParameter,
@@ -640,7 +712,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @notice Swaps a token on the origin chain before depositing into the Across spoke pool atomically.
      * @param swapAndDepositData The parameters to use when calling both the swap on an exchange and bridging via an Across spoke pool.
      */
-    function _swapAndBridge(SwapAndDepositData memory swapAndDepositData) private {
+    function _swapAndBridge(SwapAndDepositData memory swapAndDepositData, bytes32 nonceIdentifier) private {
         // Load variables we use multiple times onto the stack.
         IERC20 _swapToken = IERC20(swapAndDepositData.swapToken);
         IERC20 _acrossInputToken = IERC20(swapAndDepositData.depositData.inputToken);
@@ -703,7 +775,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             swapAndDepositData.depositData.quoteTimestamp,
             swapAndDepositData.depositData.fillDeadline,
             swapAndDepositData.depositData.exclusivityParameter,
-            swapAndDepositData.depositData.message
+            swapAndDepositData.depositData.message,
+            nonceIdentifier
         );
     }
 

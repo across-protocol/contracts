@@ -291,11 +291,7 @@ interface V3SpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function fillRelay(
-        V3RelayData calldata relayData,
-        uint256 repaymentChainId,
-        bytes32 repaymentAddress
-    ) external;
+    function fillRelay(V3RelayData calldata relayData, uint256 repaymentChainId, bytes32 repaymentAddress) external;
 
     function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) external;
 
@@ -318,6 +314,14 @@ interface V3SpokePoolInterface {
     ) external;
 
     function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external;
+
+    function getUnsafeDepositId(
+        address msgSender,
+        bytes32 depositor,
+        uint256 depositNonce
+    ) external pure returns (uint256);
+
+    function numberOfDeposits() external view returns (uint32);
 
     /**************************************
      *              ERRORS                *
