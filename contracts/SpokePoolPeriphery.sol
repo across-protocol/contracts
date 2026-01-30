@@ -600,6 +600,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @notice Returns the next nonce for a user.
      * @param user The user whose nonce to return.
      * @return The next nonce for the user.
+     * @dev Nonce starts at 1 to avoid 0 (which triggers regular deposit) and ensure uniqueness.
      */
     function permitNonce(address user) external view returns (uint256) {
         return permitNonces[user] + 1;
@@ -630,6 +631,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @param providedNonce The provided nonce value.
      */
     function _validateAndIncrementNonce(address user, uint256 providedNonce) private {
+        // Pre-increment nonce so it can never be 0.
         if (++permitNonces[user] != providedNonce) {
             revert InvalidNonce();
         }
