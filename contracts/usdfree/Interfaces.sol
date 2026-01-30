@@ -26,12 +26,13 @@ struct Order {
 abstract contract OrderExecutionBase {
     // This function expects all starting token balances (user's and submitter's) to be on the Executor balance already
     function _execute(
-        OrderBase memory orderBase,
+        StaticRequirement[] memory requirements,
+        bytes memory userActions, // abi-encoded MulticallHandler.Instructions
         bytes memory deobfuscation, // bytes(0) if not obfuscated
         bytes memory submitterActions // weiroll commands
     ) internal virtual {
         // 1. deobfuscate orderBase.userActions if needed
-        // 2. call Executor.execute(submitterActions, orderBase.requirements, orderBase.userActions)
+        // 2. call Executor.execute(submitterActions, requirements, userActions)
     }
 }
 
@@ -48,7 +49,7 @@ contract OrderGateway is OrderExecutionBase {
         // 2. pull user's tokens (interpret gaslessData)
         // 3. pull submitter's tokens
         // 4. push all tokens to executor
-        // 5. _execute(order.base, bytes(0), submitterActions)
+        // 5. _execute(order.base.requirements, order.base.userActions, bytes(0), submitterActions)
     }
 }
 
@@ -60,9 +61,10 @@ contract OrderStore is OrderExecutionBase {
         bytes memory submitterRequirement // NOT checked, only stored for check on `fillStored` if required
     ) external payable {
         // 1. pull tokens from msg.sender
+        // TODO: push and then try does not bring the tokens back. Fix it. One way is to have Executor pull tokens.
         // 2. push tokens to executor
-        // 3. try _execute(orderBase, bytes(0), [])
-        // 4. if fails, store (orderBase, submitterRequirement) for later fill
+        // 3. try _execute(orderBase.requirements, orderBase.userActions, bytes(0), [])
+        // 4. if fails, store (orderBase.userActions, submitterRequirement) for later fill
     }
 
     // Atomic execution. Caller (example of happy-path caller is CCTPHandler) is responsible for checking
@@ -77,7 +79,7 @@ contract OrderStore is OrderExecutionBase {
         // 1. pull tokens from msg.sender
         // 2. pull submitter's tokens
         // 3. push all tokens to executor
-        // 4. _execute(order.base, bytes(0), submitterActions)
+        // 4. _execute(order.base.requirements, order.base.userActions, bytes(0), submitterActions)
     }
 
     // Fill a stored intent. Checks stored submitterRequirement.
