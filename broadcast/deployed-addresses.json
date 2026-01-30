@@ -939,7 +939,8 @@
         },
         "Blast_SpokePool": {
           "address": "0x9b769e2b1a4936b51870d03902a9e2aeea6ee933",
-          "transaction_hash": null
+          "block_number": 30478170,
+          "transaction_hash": "0x58492b0a29af2b7eb00a7f093d3cb935552b5770bb4a34f8f5a7be1b05e7b2f2"
         },
         "OP_SpokePool": {
           "address": "0x4f617cf2812006059bd9162624d3f9403331133e",
