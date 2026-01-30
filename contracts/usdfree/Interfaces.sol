@@ -1,40 +1,99 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.30;
 
-// NOTE: this creates an explicit separation of user checks and any actions: these cannot modify state and are simple
+// Static checks that cannot modify state
 struct StaticRequirement {
     address target;
     bytes cdata;
 }
 
-struct Order {
-    bytes32 salt; // for `orderId` generation
+struct OrderBase {
     address tokenIn;
     uint256 amountIn;
     StaticRequirement[] requirements;
     bytes userActions; // abi-encoded MulticallHandler.Instructions
 }
 
-struct TokenAmount {
-    address token;
-    uint256 amount;
+// The thing that the user signs (puts as witness into the gasless sig, or submits themselves)
+struct Order {
+    bytes32 salt;
+    bytes submitterRequirement;
+    OrderBase base;
 }
 
-// Gateway: src-side entry point. Has token approvals, forwards execution to Executor.
-contract OrderGateway {
-    function submit(
-        Order memory order,
-        bytes memory gaslessData, // empty=pre-approved, or permit/permit2/EIP-3009 sig
-        TokenAmount[] memory submitterFunding,
+// Base contract for Gateway and OrderStore: shared deobfuscation logic
+// NOTE: submitterRequirement is not checked here - caller is responsible.
+abstract contract OrderExecutionBase {
+    // This function expects all starting token balances (user's and submitter's) to be on the Executor balance already
+    function _execute(
+        OrderBase memory orderBase,
+        bytes memory deobfuscation, // bytes(0) if not obfuscated
         bytes memory submitterActions // weiroll commands
-    ) external payable {
-        // 1. pull user's tokens (interpret gaslessData for permit/permit2/3009/etc)
-        // 2. transfer submitterFunding to Executor
-        // 3. call Executor.execute(submitterActions, order.requirements, order.userActions)
+    ) internal virtual {
+        // 1. deobfuscate orderBase.userActions if needed
+        // 2. call Executor.execute(submitterActions, orderBase.requirements, orderBase.userActions)
     }
 }
 
-// Stateless executor. No approvals, runs arbitrary calls. MUST start with zero balances.
+// src-side entrypoint with token approvals
+contract OrderGateway is OrderExecutionBase {
+    function submit(
+        Order memory order,
+        bytes memory gaslessData, // empty=pre-approved, or permit/permit2/EIP-3009 sig
+        bytes memory submitterFunding, // array of (token, amount)
+        bytes memory submitterActions // weiroll commands
+    ) external payable {
+        // 1. check submitterRequirement
+        // 2. pull user's tokens (interpret gaslessData)
+        // 3. pull submitter's tokens
+        // 4. push all tokens to executor
+        // 5. _execute(order.base, bytes(0), submitterActions)
+    }
+}
+
+// dst-side contract with token approvals
+contract OrderStore is OrderExecutionBase {
+    // Tries atomic execution with empty submitter actions. If fails, stores order.
+    function handle(
+        OrderBase memory orderBase,
+        bytes memory submitterRequirement // NOT checked, only stored for check on `fillStored` if required
+    ) external payable {
+        // 1. pull tokens from msg.sender
+        // 2. push tokens to executor
+        // 3. try _execute(orderBase, bytes(0), [], bytes(0))
+        // 4. if fails, store (orderBase, submitterRequirement) for later fill
+    }
+
+    // Atomic execution. Caller (example of happy-path caller is CCTPHandler) is responsible for checking
+    // submitterRequirement BEFORE forwarding funds and calling this.
+    function handleAtomic(
+        OrderBase memory orderBase,
+        bytes memory deobfuscation, // bytes(0) if not obfuscated
+        bytes memory submitterFunding, // array of (token, amount)
+        bytes memory submitterActions // weiroll commands
+    ) external payable {
+        // 1. pull tokens from msg.sender
+        // 2. pull submitter's tokens
+        // 3. push all tokens to executor
+        // 4. _execute(order.base, bytes(0), submitterActions)
+    }
+
+    // Fill a stored intent. Checks stored submitterRequirement.
+    function fillStored(
+        uint256 intentIndex,
+        bytes memory deobfuscation,
+        bytes memory submitterFunding, // array of (token, amount)
+        bytes memory submitterActions // weiroll commands
+    ) external payable {
+        // 1. load stored (orderBase, submitterRequirement)
+        // 2. check submitterRequirement
+        // 3. pull submitter's tokens
+        // 4. push all tokens to executor
+        // 5. _execute(orderBase, deobfuscation, submitterFunding, submitterActions)
+    }
+}
+
+// Stateless executor. No approvals, runs arbitrary calls. Assumes all balances are "there for the taking" during atomic execution
 contract OrderExecutor {
     function execute(
         bytes memory submitterActions, // weiroll commands
@@ -45,32 +104,4 @@ contract OrderExecutor {
         // 2. check requirements (staticcall each, revert if any fails)
         // 3. run userActions (MulticallHandler patterns)
     }
-}
-
-// IntentStore: dst-side. Has token approvals, forwards execution to Executor.
-contract IntentStore {
-    // Tries atomic execution with empty submitter actions. If fails, stores intent.
-    // submitterRequirement is stored to be enforced on fillStored.
-    function handle(
-        StaticRequirement[] memory requirements,
-        bytes memory submitterRequirement, // stored, enforced on fill
-        bytes memory userActionsOrHash
-    ) external payable {}
-
-    // Atomic execution. Caller (CCTPHandler, etc.) checks submitterRequirement if needed.
-    function handleAtomic(
-        StaticRequirement[] memory requirements,
-        bytes memory userActionsOrHash,
-        bytes memory deobfuscation, // bytes(0) if not obfuscated
-        TokenAmount[] memory submitterFunding,
-        bytes memory submitterActions // weiroll commands
-    ) external payable {}
-
-    // Fill a stored intent. Enforces stored submitterRequirement.
-    function fillStored(
-        uint256 intentIndex,
-        bytes memory deobfuscation, // bytes(0) if not needed
-        TokenAmount[] memory submitterFunding,
-        bytes memory submitterActions // weiroll commands
-    ) external payable {}
 }
