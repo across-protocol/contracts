@@ -721,16 +721,16 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         );
         uint64 totalAdditionalToSend = 0;
         for (; finalized < quoteNonces.length; ++finalized) {
-            bool success;
-            uint64 additionalToSend;
-            (success, additionalToSend, availableBalance) = _finalizeSingleSwap(
+            (bool success, uint64 additionalToSend, uint64 newBalance) = _settleSingleSwap(
                 quoteNonces[finalized],
+                true, // settleInFinalToken
                 limitOrderOuts[finalized],
                 finalCoreTokenInfo,
                 finalTokenInfo.swapHandler,
                 finalToken,
                 availableBalance
             );
+            availableBalance = newBalance;
             if (!success) {
                 break;
             }
@@ -799,8 +799,10 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         uint64 availableBalance = HyperCoreLib.spotBalance(address(swapHandler), baseTokenCoreInfo.coreIndex);
 
         for (; cancelled < quoteNonces.length; ++cancelled) {
-            (bool success, uint64 newBalance) = _cancelSingleSwap(
+            (bool success, , uint64 newBalance) = _settleSingleSwap(
                 quoteNonces[cancelled],
+                false, // settleInFinalToken (cancel returns baseToken)
+                0, // limitOrderOut unused for cancel
                 baseTokenCoreInfo,
                 swapHandler,
                 finalToken,
@@ -815,11 +817,14 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         }
     }
 
-    /// @notice Finalizes a single swap flow, sending the tokens to user on core. Relies on caller to send the `additionalToSend`
-    function _finalizeSingleSwap(
+    /// @notice Settles a single swap flow (finalize with finalToken or cancel with baseToken)
+    /// @param settleInFinalToken If true, settle with finalToken. If false, cancel and return baseToken.
+    /// @param limitOrderOut Amount from limit order (only used when settleInFinalToken=true)
+    function _settleSingleSwap(
         bytes32 quoteNonce,
+        bool settleInFinalToken,
         uint64 limitOrderOut,
-        CoreTokenInfo memory finalCoreTokenInfo,
+        CoreTokenInfo memory settlementCoreTokenInfo,
         SwapHandler swapHandler,
         address finalToken,
         uint64 availableBalance
@@ -828,23 +833,30 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
         if (swap.finalized) revert SwapAlreadyFinalized();
         if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
+        if (!settleInFinalToken && swap.isSponsored) revert("sponsored swaps cannot be cancelled");
 
         uint64 accountActivationFee;
-        // User account can be absent if our AccountCreationMode is `FromUserFunds`. We need to adjust our transfer amount to user based on this
         if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
-            // This is enforced by `_initiateSwapFlow`. If the setting changed, this revert can trigger. Requires manual resolution (creating an account)
-            require(finalCoreTokenInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
-            accountActivationFee = finalCoreTokenInfo.accountActivationFeeCore;
+            require(settlementCoreTokenInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
+            accountActivationFee = settlementCoreTokenInfo.accountActivationFeeCore;
         }
 
         uint64 amountToTransfer;
         uint64 totalConsumed;
-        (amountToTransfer, additionalToSend, totalConsumed) = _calcSwapFlowSendAmounts(
-            limitOrderOut,
-            swap.maxAmountToSend,
-            swap.isSponsored,
-            accountActivationFee
-        );
+        if (settleInFinalToken) {
+            (amountToTransfer, additionalToSend, totalConsumed) = _calcSwapFlowSendAmounts(
+                limitOrderOut,
+                swap.maxAmountToSend,
+                swap.isSponsored,
+                accountActivationFee
+            );
+        } else {
+            // Cancel: return baseAmountBridged, no sponsorship top-up
+            totalConsumed = swap.baseAmountBridged;
+            require(totalConsumed > accountActivationFee, InsufficientFundsForActivation());
+            amountToTransfer = totalConsumed - accountActivationFee;
+            additionalToSend = 0;
+        }
 
         // `additionalToSend` will land on HCore before this core > core send will need to be executed
         balanceRemaining = availableBalance + additionalToSend;
@@ -856,70 +868,23 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
         success = true;
         balanceRemaining -= totalConsumed;
 
+        swapHandler.transferFundsToUserOnCore(
+            settlementCoreTokenInfo.coreIndex,
+            swap.finalRecipient,
+            amountToTransfer,
+            swap.destinationDex
+        );
+
+        address settlementToken = settleInFinalToken ? swap.finalToken : baseToken;
+        if (accountActivationFee > 0) {
+            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, settlementToken, accountActivationFee);
+        }
+
         (uint256 additionalToSendEVM, ) = HyperCoreLib.minimumCoreReceiveAmountToAmounts(
             additionalToSend,
-            finalCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
+            settlementCoreTokenInfo.tokenInfo.evmExtraWeiDecimals
         );
-
-        swapHandler.transferFundsToUserOnCore(
-            finalCoreTokenInfo.coreIndex,
-            swap.finalRecipient,
-            amountToTransfer,
-            swap.destinationDex
-        );
-
-        if (accountActivationFee > 0) {
-            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, swap.finalToken, accountActivationFee);
-        }
-
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, swap.finalToken, amountToTransfer, additionalToSendEVM);
-    }
-
-    /// @notice Cancels a single swap flow, returning baseToken to user on core
-    function _cancelSingleSwap(
-        bytes32 quoteNonce,
-        CoreTokenInfo memory baseTokenCoreInfo,
-        SwapHandler swapHandler,
-        address finalToken,
-        uint64 availableBalance
-    ) internal returns (bool success, uint64 balanceRemaining) {
-        SwapFlowState storage swap = _getMainStorage().swaps[quoteNonce];
-        if (swap.finalRecipient == address(0)) revert SwapDoesNotExist();
-        if (swap.finalized) revert SwapAlreadyFinalized();
-        if (swap.finalToken != finalToken) revert WrongSwapFinalizationToken(quoteNonce);
-        if (swap.isSponsored) revert("sponsored swaps cannot be cancelled");
-
-        uint64 amountToReturn = swap.baseAmountBridged;
-
-        uint64 accountActivationFee;
-        if (!HyperCoreLib.coreUserExists(swap.finalRecipient)) {
-            require(baseTokenCoreInfo.canBeUsedForAccountActivation, TokenNotEligibleForActivation());
-            accountActivationFee = baseTokenCoreInfo.accountActivationFeeCore;
-        }
-
-        require(amountToReturn > accountActivationFee, InsufficientFundsForActivation());
-        uint64 amountToTransfer = amountToReturn - accountActivationFee;
-
-        if (amountToReturn > availableBalance) {
-            return (false, availableBalance);
-        }
-
-        swap.finalized = true;
-        success = true;
-        balanceRemaining = availableBalance - amountToReturn;
-
-        swapHandler.transferFundsToUserOnCore(
-            baseTokenCoreInfo.coreIndex,
-            swap.finalRecipient,
-            amountToTransfer,
-            swap.destinationDex
-        );
-
-        if (accountActivationFee > 0) {
-            emit AccountActivatedFromUserFunds(quoteNonce, swap.finalRecipient, baseToken, accountActivationFee);
-        }
-
-        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, baseToken, amountToTransfer, 0);
+        emit SwapFlowFinalized(quoteNonce, swap.finalRecipient, settlementToken, amountToTransfer, additionalToSendEVM);
     }
 
     /// @notice Forwards `amount` plus potential sponsorship funds (for bridging fee) to user on HyperEVM
