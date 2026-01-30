@@ -360,10 +360,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 validBefore,
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
-        bytes32 witness = keccak256(
-            abi.encodePacked(BRIDGE_AND_SWAP_WITNESS_IDENTIFIER, abi.encode(swapAndDepositData))
-        );
-
+        bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
@@ -505,7 +502,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 validBefore,
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
-        bytes32 witness = keccak256(abi.encodePacked(BRIDGE_WITNESS_IDENTIFIER, abi.encode(depositData)));
+        bytes32 witness = getERC3009DepositWitness(depositData);
         // Load variables used multiple times onto the stack.
         uint256 _inputAmount = depositData.inputAmount;
         uint256 _submissionFeeAmount = depositData.submissionFees.amount;
