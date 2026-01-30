@@ -19,6 +19,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        // chainId should be the same thing as info.spokeChainId
         uint256 chainId = block.chainid;
 
         // Get deployment information
