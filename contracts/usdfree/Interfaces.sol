@@ -1,19 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.30;
 
-/*
-NOTE:
-I think it makes the most sense to obfuscate user-specified actions on the dst chain (since they actually change some
-state and may be exploited somehow)
-*/
-
-struct DstMessage {
-    bool obfuscated;
-    bytes data; // hash if obfuscated
-}
-
+// NOTE: this can, of course, be encoded using weiroll
 // for example: token, balanceOf(address(some-contract))
-struct StaticCallRequirement {
+struct StaticRequirement {
     address target;
     bytes cdata;
 }
@@ -22,13 +12,13 @@ struct Order {
     bytes32 salt; // for `orderId` generation
     address tokenIn;
     uint256 amountIn;
-    StaticCallRequirement[] requirements;
-    // todo: how to safely forward the full balance of some `token` to this call? Should Call have a token?
-    // todo: finalCall should also probably have different operation modes: push tokens vs pull tokens (approve reciever)
-
-    // todo: should these be "finalCalls"? And then Executor takes on a role of a MulticallHandler of sorts? Because
-    // todo: we could be required to do something like an [Approval, Deposit] to complete the flow
-    Call finalCall;
+    StaticRequirement[] requirements;
+    // NOTE: user calls do not use weiroll, they're supposed to be simpler for screw up protection
+    // However, user actions also want to use some weiroll things.
+    // TODO: a user could provide [deadlineCheck, balanceCheck + return balance, approve, call] and then user's actions
+    // are just appeneded to the weiroll stack. However, we have to combine user's weiroll actions + state with the submitter's
+    // Will submitter be able to easily support this?
+    Call[] finalCalls;
 }
 
 // todo: take from MulticallHandler
@@ -43,39 +33,66 @@ struct TokenAmount {
     uint256 amount;
 }
 
-// todo: ask Claude to try to embed weiroll calls into here instead of Call. Will we need a separate funding field anyway? I assume so
-struct SubmitterData {
-    bytes submitterReqResponse; // something like an auction sig, if necessary
-    Call[] calls; // arbitrary calls that are going to execute before checking user requirements on src chain
-    TokenAmount[] funding; // extra funding submitter wants to provide
-}
-
 contract OrderGateway {
     // todo: maybe submitterCalls can be weiroll objects? Instead of using Multicall-like structs.
-    function submit(Order memory order, SubmitterData memory submitterData) external payable {
-        // check submitter requirement
-        // pull all tokens
-        // forward to executor for
-    }
+    function submit(
+        // user data
+        Order memory order,
+        // submitter data
+        bytes memory deobfuscation, // bytes(0) if not needed
+        TokenAmount[] memory submitterFunding,
+        // TODO: weiroll might be useful here
+        Call[] memory submitterActions
+    ) external payable {}
 }
 
 // todo: this is a contract that has very loose permissions. It should support MulticallHandler-like functionality (like substituting some calldata with own balances)
 // todo: perhaps, it should heavily utilize weiroll
 // todo: always assumes that it has zero balances at the start of the sequence. Operates with balances
 contract OrderExecutor {
+    // TODO: this might all be submitted just using weiroll..
     function execute(
-        Call[] memory submitterCalls,
-        StaticCallRequirement[] memory reqs,
-        Call[] memory finalCalls
+        Call[] memory submitterActions,
+        StaticRequirement[] memory orderRequirements,
+        Call[] memory orderFinalCalls
     ) external payable {
-        // perform submitterCalls
-        // check reqs in linear order (all static calls)
-        // perform finalCalls in linear order
+        // perform submitter actions
+        // check order requirements
+        // perform order final calls (might insert balance into some of these)
     }
 }
 
-// todo: dst-side interfaces
-
 contract IntentStore {
-    function submit() external {}
+    // handle is used in the case when the TX submission chain does not allow for submitter actions
+    // handle tries to call .execute with empty submitter actions. If that fails, it stores the intent
+    function handle(
+        // data of user origin
+        StaticRequirement[] memory staticRequirements,
+        bytes memory submitterRequirement,
+        bytes memory finalActionsOrHash
+    ) external payable {}
+
+    // NOTE: submitterReq is never checked on `handleAtomic`. It is expected that the caller will check submitter req
+    // if important. If a caller is the EOA, they're free to be calling this as well, although they'll have to provide
+    // their own capital to the flow (using user's capital would force them to go through some smart contract first)
+    function handleAtomic(
+        // data of user origin
+        StaticRequirement[] memory reqs,
+        bytes memory finalActionsOrHash,
+        // data of submitter origin
+        bytes memory finalActions, // if `finalActionsOrHash` was obfuscated
+        TokenAmount[] memory submitterFunding,
+        // TODO: weiroll might be useful here
+        Call[] memory submitterActions
+    ) external payable {}
+
+    function fillStored(
+        // data of user origin is stored on the contract under `index`
+        uint256 intentIndex, // index of the stored intent being filled
+        // data of submitter origin
+        bytes memory deobfuscation, // bytes(0) if not needed
+        TokenAmount[] memory submitterFunding,
+        // TODO: weiroll might be useful here
+        Call[] memory submitterActions
+    ) external payable {}
 }
