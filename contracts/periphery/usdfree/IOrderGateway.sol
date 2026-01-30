@@ -13,6 +13,18 @@ interface IOrderGateway {
         bytes32 salt
     ) external payable;
 
+    // For auction orders, orderSignature signs over (order, requirements, salt) WITHOUT submitter
+    // auctionResult contains backend signature verifying the winning submitter
+    function submitOrder(
+        Order calldata order,
+        RequirementConfig[] calldata requirements,
+        SubmitterTokenInput calldata tokenInput,
+        SubmitterDataInput[] calldata dataInputs,
+        bytes32 salt,
+        bytes calldata orderSignature,
+        AuctionResult calldata auctionResult // Optional: empty for non-auction orders
+    ) external payable;
+
     // Submit with EIP-2612 permit (gasless)
     function submitOrderWithPermit(
         Order calldata order,
