@@ -139,10 +139,6 @@
           "address": "0xA8399e221a583A57F54Abb5bA22f31b5D6C09f32",
           "block_number": 20963234
         },
-        "Ink_Adapter": {
-          "address": "0x7e90a40c7519b041a7df6498fbf5662e8cfc61d2",
-          "block_number": 21438590
-        },
         "Cher_Adapter": {
           "address": "0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2",
           "block_number": 21597341
@@ -168,10 +164,10 @@
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 22789839
         },
-        "OP_Adapter": {
-          "address": "0xe1f04404b74f996a311f13ae291849fc153578ac",
-          "block_number": 24220587,
-          "transaction_hash": "0x211a6f322257b67f4e1283844af54d26bfccb76557474165de6490673b38b436"
+        "OP_Adapter_57073": {
+          "address": "0x545e43b6ec2f9a44caa531298699ff05958670b5",
+          "block_number": 24271862,
+          "transaction_hash": "0xbd8b6ea8265f30e94927d081739407540d2d0d0e3df35abb1e17fe28e3f3c69c"
         },
         "PermissionSplitterProxy": {
           "address": "0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7",
@@ -558,6 +554,11 @@
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 18113085
+        },
+        "Lisk_SpokePool": {
+          "address": "0xe58480ca74f1a819fafd777beded4e2d5629943d",
+          "block_number": 27152120,
+          "transaction_hash": "0x0129be4b65f57157e7cbd7a8b8688afed1293a3442620df4d1c85736d451b0fc"
         }
       }
     },
@@ -594,9 +595,9 @@
           "block_number": 8910059
         },
         "Cher_SpokePool": {
-          "address": "0x48e687205d3962c43891b8cde5a4fe75fa6c8d7a",
-          "block_number": 11504355,
-          "transaction_hash": "0x5e126b5845bf4425d053febf06089e7c02411ee3edf7df6ffa888bc530d85c7f"
+          "address": "0x1c8243198570658f818fc56538f2c837c2a32958",
+          "block_number": 17949038,
+          "transaction_hash": "0x7a3ca40368652c84c2ca47f5722df58e098efcb8af08427192d55ae0baf92e91"
         }
       }
     },
@@ -802,6 +803,11 @@
         "SpokePoolPeriphery": {
           "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
           "block_number": 17456376
+        },
+        "OP_SpokePool": {
+          "address": "0xf31a4165d0c967383c2cf34f097b4ebd421a1db2",
+          "block_number": 35364385,
+          "transaction_hash": "0x3bd87451b8a3749a12991b0f2759fd4a01d45950da1a644003b21e78dbafdbb5"
         },
         "Ink_SpokePool": {
           "address": "0x5be04e53b465c6fd89ecff3d36ddf666d198e31a",

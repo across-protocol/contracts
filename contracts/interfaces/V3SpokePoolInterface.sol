@@ -291,11 +291,7 @@ interface V3SpokePoolInterface {
         bytes calldata depositorSignature
     ) external;
 
-    function fillRelay(
-        V3RelayData calldata relayData,
-        uint256 repaymentChainId,
-        bytes32 repaymentAddress
-    ) external;
+    function fillRelay(V3RelayData calldata relayData, uint256 repaymentChainId, bytes32 repaymentAddress) external;
 
     function fillV3Relay(V3RelayDataLegacy calldata relayData, uint256 repaymentChainId) external;
 

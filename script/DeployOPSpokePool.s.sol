@@ -19,14 +19,19 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        // chainId should be the same thing as info.spokeChainId
+        uint256 chainId = block.chainid;
 
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
-        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
         address l2Usdc = getUSDCAddress(info.spokeChainId);
+
+        bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
+        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(info.spokeChainId) : CCTP_NO_DOMAIN;
+        address cctpTokenMessenger = hasCctpDomain ? getL2Address(chainId, "cctpV2TokenMessenger") : address(0);
 
         vm.startBroadcast(deployerPrivateKey);
 
@@ -63,6 +68,8 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
         console.log("WETH address:", weth);
+        console.log("CCTP Domain ID:", cctpDomain);
+        console.log("CCTP Token Messenger:", cctpTokenMessenger);
         console.log("OP_SpokePool proxy deployed to:", result.proxy);
         console.log("OP_SpokePool implementation deployed to:", result.implementation);
 
