@@ -40,6 +40,7 @@ contract OrderGateway is OrderExecutionBase {
     function submit(
         Order memory order,
         bytes memory gaslessData, // empty=pre-approved, or permit/permit2/EIP-3009 sig
+        bytes memory submitterRequirementResponse, // for example, auction authority signature
         bytes memory submitterFunding, // array of (token, amount)
         bytes memory submitterActions // weiroll commands
     ) external payable {
@@ -60,7 +61,7 @@ contract OrderStore is OrderExecutionBase {
     ) external payable {
         // 1. pull tokens from msg.sender
         // 2. push tokens to executor
-        // 3. try _execute(orderBase, bytes(0), [], bytes(0))
+        // 3. try _execute(orderBase, bytes(0), [])
         // 4. if fails, store (orderBase, submitterRequirement) for later fill
     }
 
@@ -69,6 +70,7 @@ contract OrderStore is OrderExecutionBase {
     function handleAtomic(
         OrderBase memory orderBase,
         bytes memory deobfuscation, // bytes(0) if not obfuscated
+        bytes memory submitterRequirementResponse, // for example, auction authority signature
         bytes memory submitterFunding, // array of (token, amount)
         bytes memory submitterActions // weiroll commands
     ) external payable {
@@ -82,6 +84,7 @@ contract OrderStore is OrderExecutionBase {
     function fillStored(
         uint256 intentIndex,
         bytes memory deobfuscation,
+        bytes memory submitterRequirementResponse, // for example, auction authority signature
         bytes memory submitterFunding, // array of (token, amount)
         bytes memory submitterActions // weiroll commands
     ) external payable {
@@ -89,7 +92,7 @@ contract OrderStore is OrderExecutionBase {
         // 2. check submitterRequirement
         // 3. pull submitter's tokens
         // 4. push all tokens to executor
-        // 5. _execute(orderBase, deobfuscation, submitterFunding, submitterActions)
+        // 5. _execute(orderBase, deobfuscation, submitterActions)
     }
 }
 
