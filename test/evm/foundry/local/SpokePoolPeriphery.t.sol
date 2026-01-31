@@ -583,6 +583,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate the expected depositId using the periphery's getDepositId function
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             depositor,
+            depositor, // authorizer
             spokePoolPeriphery.PERMIT_NONCE_IDENTIFIER(),
             depositData.nonce,
             V3SpokePoolInterface(address(ethereumSpokePool))
@@ -668,6 +669,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate the expected depositId using the periphery's getDepositId function
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             swapAndDepositData.depositData.depositor,
+            depositor, // authorizer
             spokePoolPeriphery.PERMIT_NONCE_IDENTIFIER(),
             swapAndDepositData.nonce,
             V3SpokePoolInterface(address(ethereumSpokePool))
@@ -821,6 +823,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate the expected depositId using the periphery's getDepositId function
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             depositor,
+            depositor, // authorizer
             spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
             uint256(witness),
             V3SpokePoolInterface(address(ethereumSpokePool))
@@ -910,6 +913,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate the expected depositId using the periphery's getDepositId function
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             depositor,
+            depositor, // authorizer
             spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
             uint256(witness),
             V3SpokePoolInterface(address(ethereumSpokePool))
@@ -1059,6 +1063,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate expected deposit ID
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             depositor,
+            depositor, // authorizer
             spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
             depositData.nonce,
             V3SpokePoolInterface(address(ethereumSpokePool))
@@ -1143,6 +1148,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate expected deposit ID
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             swapAndDepositData.depositData.depositor,
+            depositor, // authorizer
             spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
             swapAndDepositData.nonce,
             V3SpokePoolInterface(address(ethereumSpokePool))
@@ -1251,6 +1257,7 @@ contract SpokePoolPeripheryTest is Test {
         // Calculate expected deposit ID
         uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
             swapAndDepositData.depositData.depositor,
+            depositor, // authorizer
             spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
             swapAndDepositData.nonce,
             V3SpokePoolInterface(address(ethereumSpokePool))

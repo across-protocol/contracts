@@ -260,7 +260,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
 
         // DEPOSIT_NONCE_IDENTIFIER isn't technically needed (since it will be unused in the inner function),
         // but it's here for consistency.
-        _swapAndBridge(swapAndDepositData, DEPOSIT_NONCE_IDENTIFIER);
+        _swapAndBridge(swapAndDepositData, DEPOSIT_NONCE_IDENTIFIER, msg.sender);
     }
 
     /**
@@ -301,7 +301,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData),
             swapAndDepositDataSignature
         );
-        _swapAndBridge(swapAndDepositData, PERMIT_NONCE_IDENTIFIER);
+        _swapAndBridge(swapAndDepositData, PERMIT_NONCE_IDENTIFIER, signatureOwner);
     }
 
     /**
@@ -341,7 +341,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             swapAndDepositData.submissionFees.recipient,
             _submissionFeeAmount
         );
-        _swapAndBridge(swapAndDepositData, PERMIT2_NONCE_IDENTIFIER);
+        _swapAndBridge(swapAndDepositData, PERMIT2_NONCE_IDENTIFIER, signatureOwner);
     }
 
     /**
@@ -388,7 +388,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         // We use the witness (which serves as the ERC-3009 nonce) as the deposit nonce.
         SwapAndDepositData memory modifiedData = swapAndDepositData;
         modifiedData.nonce = uint256(witness);
-        _swapAndBridge(modifiedData, AUTHORIZATION_NONCE_IDENTIFIER);
+        _swapAndBridge(modifiedData, AUTHORIZATION_NONCE_IDENTIFIER, signatureOwner);
     }
 
     /**
@@ -436,7 +436,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
             depositData.baseDepositData.message,
-            PERMIT_NONCE_IDENTIFIER
+            PERMIT_NONCE_IDENTIFIER,
+            signatureOwner
         );
     }
 
@@ -488,7 +489,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
             depositData.baseDepositData.message,
-            PERMIT2_NONCE_IDENTIFIER
+            PERMIT2_NONCE_IDENTIFIER,
+            signatureOwner
         );
     }
 
@@ -544,13 +546,15 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.fillDeadline,
             depositData.baseDepositData.exclusivityParameter,
             depositData.baseDepositData.message,
-            AUTHORIZATION_NONCE_IDENTIFIER
+            AUTHORIZATION_NONCE_IDENTIFIER,
+            signatureOwner
         );
     }
 
     /**
      * @notice Returns the deposit ID for a given nonce and depositor.
      * @param depositor The depositor to use for the deposit.
+     * @param authorizer The authorizer for the movement of funds..
      * @param nonceIdentifier The nonce identifier to use for the deposit.
      * @param nonce The nonce to use for the deposit.
      * @param spokePool The spoke pool to use for the deposit.
@@ -561,6 +565,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      */
     function getDepositId(
         address depositor,
+        address authorizer,
         bytes32 nonceIdentifier,
         uint256 nonce,
         V3SpokePoolInterface spokePool
@@ -572,7 +577,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             spokePool.getUnsafeDepositId(
                 address(this),
                 depositor.toBytes32(),
-                uint256(keccak256(abi.encodePacked(nonceIdentifier, nonce)))
+                uint256(keccak256(abi.encodePacked(nonceIdentifier, authorizer, nonce)))
             );
     }
 
@@ -654,6 +659,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @param fillDeadline The timestamp at which the deposit must be filled before it will be refunded by Across.
      * @param exclusivityParameter The deadline or offset during which the exclusive relayer has rights to fill the deposit without contention.
      * @param message The message to execute on the destination chain.
+     * @param nonceIdentifier The identifier for the nonce type (permit, permit2, or authorization).
+     * @param signatureOwner The address that authorized the funds transfer.
      */
     function _deposit(
         address spokePool,
@@ -670,7 +677,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint32 fillDeadline,
         uint32 exclusivityParameter,
         bytes memory message,
-        bytes32 nonceIdentifier
+        bytes32 nonceIdentifier,
+        address signatureOwner
     ) private {
         IERC20(inputToken).forceApprove(spokePool, inputAmount);
         if (depositNonce == 0) {
@@ -698,7 +706,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
                 outputAmount,
                 destinationChainId,
                 exclusiveRelayer,
-                uint256(keccak256(abi.encodePacked(nonceIdentifier, depositNonce))),
+                uint256(keccak256(abi.encodePacked(nonceIdentifier, signatureOwner, depositNonce))),
                 quoteTimestamp,
                 fillDeadline,
                 exclusivityParameter,
@@ -710,8 +718,14 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     /**
      * @notice Swaps a token on the origin chain before depositing into the Across spoke pool atomically.
      * @param swapAndDepositData The parameters to use when calling both the swap on an exchange and bridging via an Across spoke pool.
+     * @param nonceIdentifier The identifier for the nonce type (permit, permit2, or authorization).
+     * @param signatureOwner The address that authorized the funds transfer.
      */
-    function _swapAndBridge(SwapAndDepositData memory swapAndDepositData, bytes32 nonceIdentifier) private {
+    function _swapAndBridge(
+        SwapAndDepositData memory swapAndDepositData,
+        bytes32 nonceIdentifier,
+        address signatureOwner
+    ) private {
         // Load variables we use multiple times onto the stack.
         IERC20 _swapToken = IERC20(swapAndDepositData.swapToken);
         IERC20 _acrossInputToken = IERC20(swapAndDepositData.depositData.inputToken);
@@ -775,7 +789,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             swapAndDepositData.depositData.fillDeadline,
             swapAndDepositData.depositData.exclusivityParameter,
             swapAndDepositData.depositData.message,
-            nonceIdentifier
+            nonceIdentifier,
+            signatureOwner
         );
     }
 
