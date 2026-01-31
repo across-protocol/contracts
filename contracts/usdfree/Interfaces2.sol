@@ -36,8 +36,25 @@ struct OrderBase {
     // NOTE: these are checked internally in Executor via some `_checkRequirements(bytes memory reqs)` call.
     // requirements can have a version where a v1 or reqs are: tokenReq, deadlineReq but can be extended in the future
     bytes staticRequirements;
-    // NOTE: could use weiroll instructions instead
-    bytes userActions; // abi-encoded MulticallHandler.Instructions
+    // TODO: contains staticRequirements + submitterRequirement for the next chain
+    // TODO: it'd be much easier to just propagate the submitter and check the submitter
+    // TODO: requirement on the executor too.
+    // TODO: then ONLY the deobfusctaion is on the OrderStore. Gateway does not need the deobfuscation functionality
+    bytes finishData;
+}
+
+interface IFinisherInterface {
+    // TODO: What shape should the additional requirements take so that they're seamlessly added?
+    // TODO: I guess the added can pick the shape
+    // TODO: this `finishData` can be obfuscated
+    function finish(bytes memory finishData, bytes[] memory additionalRequirements) external;
+}
+
+// TODO: what gets sent to the dst chain?
+// TODO: it is a job of the finisher to compose staticRequirements out of the finishData and additionalRequirements
+struct OrderCore {
+    bytes staticRequirements;
+    bytes finishData; // TODO: this is the finishData for the next chain
 }
 
 // The thing that the user signs (puts as witness into the gasless sig, or submits themselves)
