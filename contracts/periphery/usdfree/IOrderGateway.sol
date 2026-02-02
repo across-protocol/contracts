@@ -1,6 +1,80 @@
 //SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+// Structs
+
+enum BridgeProtocol {
+    SpokePool,
+    CCTP,
+    OFT
+}
+
+struct Intent {
+    address user;
+    bytes32 inputToken;
+    uint256 inputAmount;
+    BridgeProtocol bridgeProtocol;
+    bytes bridgeData; // Protocol-specific params
+}
+
+struct Intent2 {
+    address user;
+    bytes32 inputToken;
+    uint256 inputAmount;
+    bytes32 outputToken;
+    uint256 outputAmount;
+    uint256 destinationChainId;
+    bytes32 recipient;
+    uint32 fillDeadline;
+    bytes32 exclusiveRelayer;
+    uint32 exclusivityDeadline;
+}
+
+struct SponsoredCCTPQuote {
+    // The domain ID of the source chain.
+    uint32 sourceDomain;
+    // The domain ID of the destination chain.
+    uint32 destinationDomain;
+    // The recipient of the minted USDC on the destination chain.
+    bytes32 mintRecipient;
+    // The amount that the user pays on the source chain.
+    uint256 amount;
+    // The token that will be burned on the source chain.
+    bytes32 burnToken;
+    // The caller of the destination chain.
+    bytes32 destinationCaller;
+    // Maximum fee to pay on the destination domain, specified in units of burnToken
+    uint256 maxFee;
+    // Minimum finality threshold before allowed to attest
+    uint32 minFinalityThreshold;
+    // Nonce is used to prevent replay attacks.
+    bytes32 nonce;
+    // Timestamp of the quote after which it can no longer be used.
+    uint256 deadline;
+    // The maximum basis points of the amount that can be sponsored.
+    uint256 maxBpsToSponsor;
+    // Slippage tolerance for the fees on the destination. Used in swap flow, enforced on destination
+    uint256 maxUserSlippageBps;
+    // The final recipient of the sponsored deposit. This is needed as the mintRecipient will be the
+    // handler contract address instead of the final recipient.
+    bytes32 finalRecipient;
+    // The final token that final recipient will receive. This is needed as it can be different from the burnToken
+    // in which case we perform a swap on the destination chain.
+    bytes32 finalToken;
+    // Execution mode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
+    uint8 executionMode;
+    // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
+    bytes actionData;
+}
+
+// relayer hits Order store in all three cases
+// can OrderStore have flash loan style flow
+// relayer can't approve a contract that can do arbitraty actions
+// fill method with relayer
+
+// user sends funds
+//
+
 interface IOrderGateway {
     // Submit a cross-chain order (submitter is msg.sender, verified via user signature)
     // User signs over: (order, requirements, submitter, salt)
