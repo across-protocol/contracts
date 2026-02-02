@@ -144,7 +144,7 @@ contract ZkSyncSpokePoolTest is Test {
 
     function testOnlyCrossDomainOwnerCanSetZkBridge() public {
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setZkBridge(ZkBridgeLike(rando));
 
         vm.prank(crossDomainAlias);

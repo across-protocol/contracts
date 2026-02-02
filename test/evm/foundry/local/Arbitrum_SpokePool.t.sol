@@ -182,7 +182,7 @@ contract ArbitrumSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetL2GatewayRouter() public {
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setL2GatewayRouter(rando);
 
         vm.prank(crossDomainAlias);
@@ -191,7 +191,7 @@ contract ArbitrumSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanWhitelistToken() public {
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.whitelistToken(address(l2Dai), rando);
 
         vm.prank(crossDomainAlias);
@@ -200,7 +200,7 @@ contract ArbitrumSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetCrossDomainAdmin() public {
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setCrossDomainAdmin(rando);
 
         vm.prank(crossDomainAlias);
@@ -209,7 +209,7 @@ contract ArbitrumSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetWithdrawalRecipient() public {
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setWithdrawalRecipient(rando);
 
         vm.prank(crossDomainAlias);
@@ -218,7 +218,7 @@ contract ArbitrumSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanInitializeRelayerRefund() public {
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.relayRootBundle(mockTreeRoot, mockTreeRoot);
 
         vm.prank(crossDomainAlias);
@@ -235,7 +235,7 @@ contract ArbitrumSpokePoolTest is Test {
         spokePool.relayRootBundle(mockTreeRoot, mockTreeRoot);
 
         // Direct call fails
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.emergencyDeleteRootBundle(0);
 
         // Cross domain alias succeeds
@@ -310,7 +310,7 @@ contract ArbitrumSpokePoolTest is Test {
     function testCrossDomainOwnerCanSetAndRemoveOftMessenger() public {
         // Non-admin cannot set OFT messenger
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setOftMessenger(address(l2Usdt), address(l2OftMessenger));
 
         // Admin can set OFT messenger
@@ -320,7 +320,7 @@ contract ArbitrumSpokePoolTest is Test {
 
         // Non-admin cannot remove OFT messenger
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setOftMessenger(address(l2Usdt), address(0));
 
         // Admin can remove OFT messenger

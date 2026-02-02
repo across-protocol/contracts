@@ -166,7 +166,7 @@ contract LineaSpokePoolTest is Test {
 
     function testOnlyCrossDomainOwnerCanSetL2MessageService() public {
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setL2MessageService(IMessageService(rando));
 
         _callAsAdmin(abi.encodeCall(spokePool.setL2MessageService, (IMessageService(rando))));
@@ -175,7 +175,7 @@ contract LineaSpokePoolTest is Test {
 
     function testOnlyCrossDomainOwnerCanSetL2TokenBridge() public {
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setL2TokenBridge(ITokenBridge(rando));
 
         _callAsAdmin(abi.encodeCall(spokePool.setL2TokenBridge, (ITokenBridge(rando))));
@@ -184,7 +184,7 @@ contract LineaSpokePoolTest is Test {
 
     function testOnlyCrossDomainOwnerCanSetCrossDomainAdmin() public {
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.setCrossDomainAdmin(rando);
 
         _callAsAdmin(abi.encodeCall(spokePool.setCrossDomainAdmin, (rando)));

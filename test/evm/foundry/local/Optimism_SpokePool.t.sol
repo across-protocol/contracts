@@ -8,6 +8,8 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { MockOptimism_SpokePool } from "../../../../contracts/test/MockOptimism_SpokePool.sol";
 import { Optimism_SpokePool } from "../../../../contracts/Optimism_SpokePool.sol";
+import { Ovm_SpokePool } from "../../../../contracts/Ovm_SpokePool.sol";
+import { NotCrossChainCall } from "@openzeppelin/contracts-v4/crosschain/errors.sol";
 import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
@@ -105,12 +107,12 @@ contract OptimismSpokePoolTest is Test {
 
         // upgradeTo fails unless called via cross domain messenger
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.upgradeTo(address(newImplementation));
 
         // Fails if called via messenger but without correct sender
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert(Ovm_SpokePool.NotCrossDomainAdmin.selector);
         crossDomainMessenger.impersonateCall(
             address(spokePool),
             abi.encodeCall(spokePool.upgradeTo, (address(newImplementation)))
@@ -121,7 +123,7 @@ contract OptimismSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetL1GasLimit() public {
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.setL1GasLimit(1342);
 
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.setL1GasLimit, (1342)));
@@ -129,7 +131,7 @@ contract OptimismSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetTokenBridge() public {
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.setTokenBridge(address(l2Dai), rando);
 
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.setTokenBridge, (address(l2Dai), rando)));
@@ -137,7 +139,7 @@ contract OptimismSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetCrossDomainAdmin() public {
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.setCrossDomainAdmin(rando);
 
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.setCrossDomainAdmin, (rando)));
@@ -145,7 +147,7 @@ contract OptimismSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanSetWithdrawalRecipient() public {
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.setWithdrawalRecipient(rando);
 
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.setWithdrawalRecipient, (rando)));
@@ -153,7 +155,7 @@ contract OptimismSpokePoolTest is Test {
     }
 
     function testOnlyCrossDomainOwnerCanInitializeRelayerRefund() public {
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.relayRootBundle(mockTreeRoot, mockTreeRoot);
 
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.relayRootBundle, (mockTreeRoot, mockTreeRoot)));
@@ -168,7 +170,7 @@ contract OptimismSpokePoolTest is Test {
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.relayRootBundle, (mockTreeRoot, mockTreeRoot)));
 
         // Direct call fails
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.emergencyDeleteRootBundle(0);
 
         // Via cross domain messenger succeeds
@@ -182,7 +184,7 @@ contract OptimismSpokePoolTest is Test {
     function testOnlyCrossDomainOwnerCanSetRemoteL1Token() public {
         assertEq(spokePool.remoteL1Tokens(address(l2Dai)), address(0));
 
-        vm.expectRevert();
+        vm.expectRevert(NotCrossChainCall.selector);
         spokePool.setRemoteL1Token(address(l2Dai), rando);
 
         _callViaCrossDomainMessenger(abi.encodeCall(spokePool.setRemoteL1Token, (address(l2Dai), rando)));
