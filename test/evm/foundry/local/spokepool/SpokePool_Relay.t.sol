@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
+import { Test, Vm } from "forge-std/Test.sol";
 import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 import { MintableERC20 } from "../../../../../contracts/test/MockERC20.sol";
 import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
@@ -643,6 +643,180 @@ contract SpokePool_RelayTest is Test {
         vm.prank(relayer);
         vm.expectRevert(V3SpokePoolInterface.RelayFilled.selector);
         spokePool.fillRelay(relayData, SpokePoolUtils.REPAYMENT_CHAIN_ID, relayer.toBytes32());
+    }
+
+    // ============ Additional Missing Tests ============
+
+    /**
+     * @notice Test fast fill marks relay as Filled (FillType.FastFill = 0).
+     * @dev Fast fills should set FillStatus to Filled and emit FilledRelay event.
+     */
+    function testFillV3FastFillType() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        // Before fill, status should be Unfilled
+        assertEq(spokePool.fillStatuses(relayExecution.relayHash), uint256(V3SpokePoolInterface.FillStatus.Unfilled));
+
+        vm.prank(relayer);
+        vm.recordLogs();
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), false); // isSlowFill = false (FastFill)
+
+        // After fast fill, status should be Filled
+        assertEq(spokePool.fillStatuses(relayExecution.relayHash), uint256(V3SpokePoolInterface.FillStatus.Filled));
+
+        // Verify FilledRelay event was emitted
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bool foundFilledRelayEvent = false;
+        for (uint256 i = 0; i < entries.length; i++) {
+            // FilledRelay event should have been emitted (we just check presence)
+            if (entries[i].topics.length >= 4) {
+                // The event has indexed parameters in topics[1-3] (originChainId, depositId, relayer)
+                foundFilledRelayEvent = true;
+                break;
+            }
+        }
+        assertTrue(foundFilledRelayEvent, "FilledRelay event should be emitted for fast fill");
+    }
+
+    /**
+     * @notice Test slow fill marks relay as Filled (FillType.SlowFill = 2).
+     * @dev Slow fills should set FillStatus to Filled and emit FilledRelay event.
+     */
+    function testFillV3SlowFillType() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+
+        // Fund the spokePool for slow fill
+        destErc20.mint(address(spokePool), relayData.outputAmount);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        // Before fill, status should be Unfilled
+        assertEq(spokePool.fillStatuses(relayExecution.relayHash), uint256(V3SpokePoolInterface.FillStatus.Unfilled));
+
+        vm.prank(relayer);
+        vm.recordLogs();
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), true); // isSlowFill = true (SlowFill)
+
+        // After slow fill, status should be Filled
+        assertEq(spokePool.fillStatuses(relayExecution.relayHash), uint256(V3SpokePoolInterface.FillStatus.Filled));
+
+        // Verify FilledRelay event was emitted
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        bool foundFilledRelayEvent = false;
+        for (uint256 i = 0; i < entries.length; i++) {
+            // FilledRelay event should have been emitted (we just check presence)
+            if (entries[i].topics.length >= 4) {
+                // The event has indexed parameters in topics[1-3] (originChainId, depositId, relayer)
+                foundFilledRelayEvent = true;
+                break;
+            }
+        }
+        assertTrue(foundFilledRelayEvent, "FilledRelay event should be emitted for slow fill");
+    }
+
+    /**
+     * @notice Test that a regular fill cannot be sent after a slow fill is executed.
+     * @dev Once a slow fill completes, the relay is marked as Filled.
+     */
+    function testCannotSendOriginalFillAfterSlowFill() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+
+        // Fund the spokePool for slow fill
+        destErc20.mint(address(spokePool), relayData.outputAmount);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        // Execute a slow fill
+        vm.prank(relayer);
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), true);
+
+        // Now try to send a regular fill - should revert
+        vm.prank(relayer);
+        vm.expectRevert(V3SpokePoolInterface.RelayFilled.selector);
+        spokePool.fillRelay(relayData, SpokePoolUtils.REPAYMENT_CHAIN_ID, relayer.toBytes32());
+    }
+
+    /**
+     * @notice Test fillV3Relay with address overload (legacy function).
+     * @dev Uses V3RelayDataLegacy struct with address types instead of bytes32.
+     */
+    function testFillV3RelayAddressOverload() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+
+        // Create legacy relay data with address types
+        V3SpokePoolInterface.V3RelayDataLegacy memory legacyRelayData = V3SpokePoolInterface.V3RelayDataLegacy({
+            depositor: relayData.depositor.toAddress(),
+            recipient: relayData.recipient.toAddress(),
+            exclusiveRelayer: relayData.exclusiveRelayer.toAddress(),
+            inputToken: relayData.inputToken.toAddress(),
+            outputToken: relayData.outputToken.toAddress(),
+            inputAmount: relayData.inputAmount,
+            outputAmount: relayData.outputAmount,
+            originChainId: relayData.originChainId,
+            depositId: uint32(relayData.depositId),
+            fillDeadline: relayData.fillDeadline,
+            exclusivityDeadline: relayData.exclusivityDeadline,
+            message: relayData.message
+        });
+
+        uint256 recipientBalanceBefore = destErc20.balanceOf(recipient);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        vm.prank(relayer);
+        spokePool.fillV3Relay(legacyRelayData, SpokePoolUtils.REPAYMENT_CHAIN_ID);
+
+        assertEq(destErc20.balanceOf(recipient), recipientBalanceBefore + relayData.outputAmount);
+    }
+
+    /**
+     * @notice Test transfers funds correctly when msg.sender is the recipient.
+     */
+    function testFillV3WhenSenderIsRecipient() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        // Set recipient to be the relayer (who will fill)
+        relayData.recipient = relayer.toBytes32();
+
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+        relayExecution.updatedRecipient = relayer.toBytes32();
+
+        uint256 relayerBalanceBefore = destErc20.balanceOf(relayer);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        vm.prank(relayer);
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), false);
+
+        // Relayer paid and received, so balance should be same (no net change)
+        // They pay outputAmount and receive outputAmount back since they are recipient
+        assertEq(destErc20.balanceOf(relayer), relayerBalanceBefore);
+    }
+
+    /**
+     * @notice Test slow fill sends non-native token out of spoke pool balance.
+     */
+    function testFillV3SlowFillNonNativeToken() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+
+        // Fund the spokePool for slow fill
+        destErc20.mint(address(spokePool), relayData.outputAmount);
+
+        uint256 spokePoolBalanceBefore = destErc20.balanceOf(address(spokePool));
+        uint256 recipientBalanceBefore = destErc20.balanceOf(recipient);
+
+        vm.prank(relayer);
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), true); // isSlowFill = true
+
+        // SpokePool should have sent tokens
+        assertEq(destErc20.balanceOf(address(spokePool)), spokePoolBalanceBefore - relayData.outputAmount);
+        // Recipient should have received tokens
+        assertEq(destErc20.balanceOf(recipient), recipientBalanceBefore + relayData.outputAmount);
     }
 }
 

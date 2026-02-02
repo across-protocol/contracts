@@ -694,4 +694,111 @@ contract SpokePool_ExecuteRootBundleTest is Test {
         vm.expectRevert(V3SpokePoolInterface.InvalidChainId.selector);
         spokePool.executeRelayerRefundLeaf(0, leaves[0], proofs[0]);
     }
+
+    // ============ Additional Missing Tests ============
+
+    /**
+     * @notice Test that TokensBridged event is emitted when amountToReturn > 0.
+     */
+    function testTokensBridgedEmitted() public {
+        address[] memory emptyAddresses = new address[](0);
+        uint256[] memory emptyAmounts = new uint256[](0);
+
+        uint256 amountToReturn = 1 ether;
+
+        vm.prank(dataWorker);
+        vm.expectEmit(true, true, true, true);
+        emit TokensBridged(
+            amountToReturn,
+            destinationChainId,
+            0, // leafId
+            address(destErc20).toBytes32(),
+            dataWorker
+        );
+        spokePool.distributeRelayerRefunds(
+            destinationChainId,
+            amountToReturn,
+            emptyAmounts,
+            0,
+            address(destErc20),
+            emptyAddresses
+        );
+    }
+
+    /**
+     * @notice Test that TokensBridged event is NOT emitted when amountToReturn = 0.
+     */
+    function testTokensBridgedNotEmittedOnZeroAmount() public {
+        address[] memory emptyAddresses = new address[](0);
+        uint256[] memory emptyAmounts = new uint256[](0);
+
+        vm.prank(dataWorker);
+        vm.recordLogs();
+        spokePool.distributeRelayerRefunds(
+            destinationChainId,
+            0, // amountToReturn = 0
+            emptyAmounts,
+            0,
+            address(destErc20),
+            emptyAddresses
+        );
+
+        // Verify no TokensBridged event was emitted
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        for (uint256 i = 0; i < entries.length; i++) {
+            assertFalse(
+                entries[i].topics[0] == keccak256("TokensBridged(uint256,uint256,uint32,bytes32,address)"),
+                "TokensBridged should not be emitted"
+            );
+        }
+    }
+
+    /**
+     * @notice Test that one Transfer event is emitted per nonzero refundAmount.
+     * @dev This verifies that only addresses with nonzero amounts receive transfers.
+     */
+    function testTransferPerNonzeroRefund() public {
+        address[] memory refundAddresses = new address[](3);
+        refundAddresses[0] = relayer;
+        refundAddresses[1] = rando;
+        refundAddresses[2] = makeAddr("thirdParty");
+
+        uint256[] memory refundAmounts = new uint256[](3);
+        refundAmounts[0] = SpokePoolUtils.AMOUNT_TO_RELAY;
+        refundAmounts[1] = 0; // Zero amount, should NOT trigger transfer
+        refundAmounts[2] = SpokePoolUtils.AMOUNT_TO_RELAY;
+
+        uint256 relayerBalanceBefore = destErc20.balanceOf(relayer);
+        uint256 randoBalanceBefore = destErc20.balanceOf(rando);
+        uint256 thirdPartyBalanceBefore = destErc20.balanceOf(refundAddresses[2]);
+
+        vm.prank(dataWorker);
+        vm.recordLogs();
+        spokePool.distributeRelayerRefunds(
+            destinationChainId,
+            0, // amountToReturn
+            refundAmounts,
+            0, // leafId
+            address(destErc20),
+            refundAddresses
+        );
+
+        // Count Transfer events
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        uint256 transferCount = 0;
+        bytes32 transferTopic = keccak256("Transfer(address,address,uint256)");
+        for (uint256 i = 0; i < entries.length; i++) {
+            if (entries[i].topics[0] == transferTopic) {
+                transferCount++;
+            }
+        }
+
+        // Should only have 2 Transfer events (relayer and thirdParty, not rando)
+        assertEq(transferCount, 2, "Should have exactly 2 Transfer events");
+
+        // Verify balances
+        assertEq(destErc20.balanceOf(relayer), relayerBalanceBefore + SpokePoolUtils.AMOUNT_TO_RELAY);
+        assertEq(destErc20.balanceOf(rando), randoBalanceBefore); // No change
+        assertEq(destErc20.balanceOf(refundAddresses[2]), thirdPartyBalanceBefore + SpokePoolUtils.AMOUNT_TO_RELAY);
+    }
 }

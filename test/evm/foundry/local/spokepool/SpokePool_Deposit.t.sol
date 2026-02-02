@@ -1002,4 +1002,392 @@ contract SpokePool_DepositTest is Test {
 
         assertEq(spokePool.numberOfDeposits(), 1);
     }
+
+    // ============ Additional Missing Tests ============
+
+    /**
+     * @notice Test exclusivity deadline used as absolute timestamp when > MAX_EXCLUSIVITY_OFFSET_SECONDS.
+     * @dev When exclusivityDeadline > MAX_EXCLUSIVITY_OFFSET_SECONDS, it's treated as an absolute timestamp.
+     */
+    function testDepositV3ExclusivityTimestamp() public {
+        (
+            bytes32 depositorBytes,
+            bytes32 recipientBytes,
+            bytes32 inputTokenBytes,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            ,
+            ,
+            uint32 fillDeadline,
+            ,
+            bytes memory message
+        ) = _createDepositArgs(address(erc20), makeAddr("outputToken"));
+
+        uint32 currentTime = uint32(spokePool.getCurrentTime());
+        // Use a value greater than MAX_EXCLUSIVITY_OFFSET_SECONDS to trigger timestamp mode
+        uint32 exclusivityTimestamp = uint32(MAX_EXCLUSIVITY_OFFSET_SECONDS + 1);
+
+        vm.prank(depositor);
+        vm.expectEmit(true, true, true, true);
+        emit FundsDeposited(
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            0, // First deposit ID
+            currentTime,
+            fillDeadline,
+            exclusivityTimestamp, // Should be passed through unchanged (not offset)
+            depositorBytes,
+            recipientBytes,
+            exclusiveRelayer.toBytes32(),
+            message
+        );
+
+        spokePool.deposit(
+            depositorBytes,
+            recipientBytes,
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayer.toBytes32(),
+            currentTime,
+            fillDeadline,
+            exclusivityTimestamp, // Absolute timestamp
+            message
+        );
+    }
+
+    /**
+     * @notice Test WETH deposit with msg.value = 0 pulls WETH ERC20 from depositor.
+     * @dev When input token is WETH but msg.value is 0, it should pull WETH as an ERC20.
+     */
+    function testDepositV3WethPullsERC20WhenNoMsgValue() public {
+        (
+            bytes32 depositorBytes,
+            bytes32 recipientBytes,
+            ,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            bytes32 exclusiveRelayerBytes,
+            uint32 _quoteTimestamp,
+            uint32 fillDeadline,
+            uint32 exclusivityDeadline,
+            bytes memory message
+        ) = _createDepositArgs(address(weth), makeAddr("outputToken"));
+
+        uint256 wethBalanceBefore = weth.balanceOf(depositor);
+        uint256 ethBalanceBefore = depositor.balance;
+
+        // Deposit with msg.value = 0 should pull WETH as ERC20
+        vm.prank(depositor);
+        spokePool.deposit(
+            depositorBytes,
+            recipientBytes,
+            address(weth).toBytes32(),
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayerBytes,
+            _quoteTimestamp,
+            fillDeadline,
+            exclusivityDeadline,
+            message
+        );
+
+        // WETH ERC20 should be pulled from depositor
+        assertEq(weth.balanceOf(depositor), wethBalanceBefore - inputAmount);
+        // ETH balance should be unchanged
+        assertEq(depositor.balance, ethBalanceBefore);
+        // WETH should be in spokePool
+        assertEq(weth.balanceOf(address(spokePool)), inputAmount);
+    }
+
+    /**
+     * @notice Test tokens are always pulled from msg.sender, even if different from depositor param.
+     * @dev The depositor parameter is only used for event emission; tokens come from msg.sender.
+     */
+    function testDepositV3TokensPulledFromCaller() public {
+        address caller = makeAddr("caller");
+        address differentDepositor = makeAddr("differentDepositor");
+
+        // Mint tokens to caller (not to differentDepositor)
+        erc20.mint(caller, SpokePoolUtils.AMOUNT_TO_DEPOSIT);
+        vm.prank(caller);
+        erc20.approve(address(spokePool), type(uint256).max);
+
+        (
+            ,
+            bytes32 recipientBytes,
+            bytes32 inputTokenBytes,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            bytes32 exclusiveRelayerBytes,
+            uint32 _quoteTimestamp,
+            uint32 fillDeadline,
+            uint32 exclusivityDeadline,
+            bytes memory message
+        ) = _createDepositArgs(address(erc20), makeAddr("outputToken"));
+
+        uint256 callerBalanceBefore = erc20.balanceOf(caller);
+
+        // Caller makes deposit but specifies differentDepositor
+        vm.prank(caller);
+        spokePool.deposit(
+            differentDepositor.toBytes32(), // Different from msg.sender
+            recipientBytes,
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayerBytes,
+            _quoteTimestamp,
+            fillDeadline,
+            exclusivityDeadline,
+            message
+        );
+
+        // Tokens should be pulled from caller (msg.sender), not differentDepositor
+        assertEq(erc20.balanceOf(caller), callerBalanceBefore - inputAmount);
+    }
+
+    /**
+     * @notice Test depositor must be a valid EVM address (not an invalid bytes32).
+     * @dev Invalid bytes32 values that don't fit in 20 bytes should revert.
+     */
+    function testDepositV3InvalidDepositorAddress() public {
+        (
+            ,
+            bytes32 recipientBytes,
+            bytes32 inputTokenBytes,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            bytes32 exclusiveRelayerBytes,
+            uint32 _quoteTimestamp,
+            uint32 fillDeadline,
+            uint32 exclusivityDeadline,
+            bytes memory message
+        ) = _createDepositArgs(address(erc20), makeAddr("outputToken"));
+
+        // Create an invalid bytes32 that has non-zero upper bytes (invalid EVM address)
+        bytes32 invalidDepositor = bytes32(0x044852b2a670ade5407e78fb2863c51de9fcb96542a07186fe3aeda6bb8a116d);
+
+        bytes memory depositCalldata = abi.encodeCall(
+            spokePool.deposit,
+            (
+                invalidDepositor,
+                recipientBytes,
+                inputTokenBytes,
+                outputTokenBytes,
+                inputAmount,
+                outputAmount,
+                destinationChainId,
+                exclusiveRelayerBytes,
+                _quoteTimestamp,
+                fillDeadline,
+                exclusivityDeadline,
+                message
+            )
+        );
+
+        // Should revert when called via callback (reentrancy test helper)
+        vm.prank(depositor);
+        vm.expectRevert();
+        spokePool.callback(depositCalldata);
+    }
+
+    /**
+     * @notice Test verifyUpdateV3DepositMessage validates signatures correctly.
+     */
+    function testVerifyUpdateV3DepositMessage() public {
+        uint256 depositId = 0;
+        uint256 updatedOutputAmount = SpokePoolUtils.AMOUNT_TO_DEPOSIT - 50;
+        bytes32 updatedRecipient = recipient.toBytes32();
+        bytes memory updatedMessage = "";
+
+        // Set chain ID for signature verification
+        spokePool.setChainId(SpokePoolUtils.ORIGIN_CHAIN_ID);
+
+        bytes memory signature = SpokePoolUtils.signUpdateV3Deposit(
+            vm,
+            depositorKey,
+            depositId,
+            SpokePoolUtils.ORIGIN_CHAIN_ID,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage
+        );
+
+        // Should not revert with valid signature (use bytes32 version)
+        spokePool.verifyUpdateV3DepositMessageBytes32(
+            depositor.toBytes32(),
+            depositId,
+            SpokePoolUtils.ORIGIN_CHAIN_ID,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+        );
+
+        // Should revert with wrong depositor
+        vm.expectRevert(SpokePoolInterface.InvalidDepositorSignature.selector);
+        spokePool.verifyUpdateV3DepositMessageBytes32(
+            recipient.toBytes32(), // Wrong depositor
+            depositId,
+            SpokePoolUtils.ORIGIN_CHAIN_ID,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+        );
+    }
+
+    /**
+     * @notice Test deposit uses spoke pool's chainId() as origin chain ID in event.
+     */
+    function testDepositV3PassesChainIdAsOrigin() public {
+        (
+            bytes32 depositorBytes,
+            bytes32 recipientBytes,
+            bytes32 inputTokenBytes,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            bytes32 exclusiveRelayerBytes,
+            uint32 _quoteTimestamp,
+            uint32 fillDeadline,
+            uint32 exclusivityDeadline,
+            bytes memory message
+        ) = _createDepositArgs(address(erc20), makeAddr("outputToken"));
+
+        // Set a specific chain ID
+        uint256 customChainId = 12345;
+        spokePool.setChainId(customChainId);
+
+        vm.prank(depositor);
+        spokePool.deposit(
+            depositorBytes,
+            recipientBytes,
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayerBytes,
+            _quoteTimestamp,
+            fillDeadline,
+            exclusivityDeadline,
+            message
+        );
+
+        // Verify the spoke pool's chain ID is used
+        assertEq(spokePool.chainId(), customChainId);
+    }
+
+    /**
+     * @notice Test speedUpV3Deposit with address overload.
+     */
+    function testSpeedUpDepositAddressOverload() public {
+        // First make a deposit using address overload
+        vm.prank(depositor);
+        spokePool.depositV3(
+            depositor,
+            recipient,
+            address(erc20),
+            makeAddr("outputToken"),
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT,
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT - 19,
+            SpokePoolUtils.DESTINATION_CHAIN_ID,
+            address(0),
+            quoteTimestamp,
+            quoteTimestamp + 1000,
+            0,
+            ""
+        );
+
+        // Speed up the deposit using address overload
+        uint256 depositId = 0;
+        uint256 updatedOutputAmount = SpokePoolUtils.AMOUNT_TO_DEPOSIT - 30;
+        address updatedRecipient = recipient;
+        bytes memory updatedMessage = "";
+
+        bytes memory signature = SpokePoolUtils.signUpdateV3Deposit(
+            vm,
+            depositorKey,
+            depositId,
+            SpokePoolUtils.ORIGIN_CHAIN_ID,
+            updatedOutputAmount,
+            updatedRecipient.toBytes32(),
+            updatedMessage
+        );
+
+        // Set the spoke pool chain ID to origin chain for signature verification
+        spokePool.setChainId(SpokePoolUtils.ORIGIN_CHAIN_ID);
+
+        vm.expectEmit(true, true, true, true);
+        emit RequestedSpeedUpDeposit(
+            updatedOutputAmount,
+            depositId,
+            depositor.toBytes32(),
+            updatedRecipient.toBytes32(),
+            updatedMessage,
+            signature
+        );
+
+        // Use address overload
+        spokePool.speedUpV3Deposit(
+            depositor,
+            depositId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+        );
+    }
+
+    /**
+     * @notice Test depositV3 with address overload.
+     */
+    function testDepositV3AddressOverload() public {
+        address outputToken = makeAddr("outputToken");
+
+        uint256 balanceBefore = erc20.balanceOf(depositor);
+
+        vm.prank(depositor);
+        spokePool.depositV3(
+            depositor,
+            recipient,
+            address(erc20),
+            outputToken,
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT,
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT - 19,
+            SpokePoolUtils.DESTINATION_CHAIN_ID,
+            address(0), // No exclusive relayer
+            quoteTimestamp,
+            quoteTimestamp + 1000,
+            0,
+            ""
+        );
+
+        // Tokens should be pulled from depositor
+        assertEq(erc20.balanceOf(depositor), balanceBefore - SpokePoolUtils.AMOUNT_TO_DEPOSIT);
+        assertEq(erc20.balanceOf(address(spokePool)), SpokePoolUtils.AMOUNT_TO_DEPOSIT);
+
+        // Deposit count should increment
+        assertEq(spokePool.numberOfDeposits(), 1);
+    }
 }
