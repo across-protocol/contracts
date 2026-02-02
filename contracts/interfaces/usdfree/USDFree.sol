@@ -34,7 +34,7 @@ struct Order {
     SubmitterRequirement submitterRequirement;
     TokenReq srcTokenReq;
     TokenReq dstTokenReq;
-    // dstActions: 1st byte indicates if obfuscated
+    // dstPaylod: 1st byte indicates if obfuscated
     // if not obfuscated then decodes as (TokenReq dstTokenRequirement, Call[] dstActions)
     // if obfuscated then is a hash of (TokenReq dstTokenRequirement, Call[] dstActions)
     bytes dstPayload;
@@ -99,7 +99,8 @@ interface IIntentStore {
     /**
      * Called by OFT or CCTP receiver
      * 1) Pulls tokens for OFT/CCTP receiver
-     * 2) If dstPayload is unobfuscated, try/catch call to dstExecutor.executeOrder()
+     * 2) If dstPayload is unobfuscated, decode it to (TokenReq dstTokenReq, Call[] dstUserActions)
+     *    and try/catch call to dstExecutor.executeOrder()
      * 3) If try/catch fails, store intent data in mapping against a localKey
      */
     function receiveIntent(
