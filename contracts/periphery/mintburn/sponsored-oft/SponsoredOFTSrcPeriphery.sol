@@ -163,7 +163,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
             quote.signedParams.destinationHandler,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
-            quote.unsignedParams.maxUserSlippageBps,
+            quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalToken,
             signature
         );
@@ -178,7 +178,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
             quote.signedParams.nonce,
             uint256(amountSD),
             quote.signedParams.maxBpsToSponsor,
-            quote.unsignedParams.maxUserSlippageBps,
+            quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken,
             quote.signedParams.destinationDex,
