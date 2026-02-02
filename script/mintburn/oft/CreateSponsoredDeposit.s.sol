@@ -285,7 +285,6 @@ contract CreateSponsoredDeposit is Script, Config {
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
             amountSD,
-            quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,

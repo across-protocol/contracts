@@ -177,7 +177,6 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
             uint256(amountSD),
-            quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
             quote.unsignedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,

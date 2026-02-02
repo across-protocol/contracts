@@ -26,7 +26,7 @@ struct SignedQuoteParams {
     uint256 amountLD; // Amount to send in local decimals.
     // Signed params that go into `composeMsg`
     bytes32 nonce; // quote nonce
-    uint256 deadline; // quote deadline
+    uint256 deadline; // Quote deadline. Enforced on source chain only at deposit time, not sent to destination
     uint256 maxBpsToSponsor; // max bps (of sent amount) to sponsor for 1:1
     bytes32 finalRecipient; // user address on destination
     bytes32 finalToken; // final token user will receive (might be different from OFT token we're sending)

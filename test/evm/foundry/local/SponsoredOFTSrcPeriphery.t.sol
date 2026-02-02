@@ -155,7 +155,6 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         (
             bytes32 gotNonce,
             uint256 gotAmountSD,
-            uint256 gotDeadline,
             uint256 gotMaxBpsToSponsor,
             uint256 gotMaxUserSlippageBps,
             bytes32 gotFinalRecipient,
@@ -166,12 +165,11 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             bytes memory gotActionData
         ) = abi.decode(
                 spComposeMsg,
-                (bytes32, uint256, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
             );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
         assertEq(gotAmountSD, SEND_AMOUNT / 1e12, "amountSD mismatch");
-        assertEq(gotDeadline, deadline, "deadline mismatch");
         assertEq(gotMaxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
         assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
         assertEq(gotFinalRecipient, finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
