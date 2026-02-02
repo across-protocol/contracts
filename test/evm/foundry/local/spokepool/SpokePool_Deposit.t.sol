@@ -828,4 +828,178 @@ contract SpokePool_DepositTest is Test {
             badSignature
         );
     }
+
+    // ============ unsafeDeposit Tests ============
+
+    /**
+     * @notice Test unsafeDeposit creates deterministic deposit ID from keccak256(msg.sender, depositor, nonce).
+     * @dev The deposit ID is computed as uint256(keccak256(abi.encodePacked(msg.sender, depositor, depositNonce)))
+     */
+    function testUnsafeDeposit() public {
+        (
+            ,
+            bytes32 recipientBytes,
+            bytes32 inputTokenBytes,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            bytes32 exclusiveRelayerBytes,
+            uint32 quoteTs,
+            uint32 fillDeadline,
+            uint32 exclusivityDeadline,
+            bytes memory message
+        ) = _createDepositArgs(address(erc20), makeAddr("outputToken"));
+
+        // Use recipient as the depositor parameter to test that msg.sender != depositor works correctly
+        bytes32 newDepositorBytes = recipientBytes;
+        uint256 depositNonce = 99;
+
+        // Expected deposit ID = uint256(keccak256(abi.encodePacked(msg.sender, depositor, depositNonce)))
+        uint256 expectedDepositId = uint256(keccak256(abi.encodePacked(depositor, newDepositorBytes, depositNonce)));
+
+        // Verify getUnsafeDepositId returns expected value
+        assertEq(spokePool.getUnsafeDepositId(depositor, newDepositorBytes, depositNonce), expectedDepositId);
+
+        vm.prank(depositor);
+        vm.expectEmit(true, true, true, true);
+        emit FundsDeposited(
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            expectedDepositId, // Deterministic deposit ID
+            quoteTs,
+            fillDeadline,
+            exclusivityDeadline,
+            newDepositorBytes, // depositor param, not msg.sender
+            recipientBytes,
+            exclusiveRelayerBytes,
+            message
+        );
+
+        spokePool.unsafeDeposit(
+            newDepositorBytes, // depositor != msg.sender
+            recipientBytes,
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayerBytes,
+            depositNonce,
+            quoteTs,
+            fillDeadline,
+            exclusivityDeadline,
+            message
+        );
+
+        // numberOfDeposits should NOT increment for unsafe deposits (it uses the deterministic ID)
+        assertEq(spokePool.numberOfDeposits(), 0);
+    }
+
+    // ============ depositNow Tests ============
+
+    /**
+     * @notice Test depositNow uses current time as quoteTimestamp and adds offset to fillDeadline.
+     */
+    function testDepositNow() public {
+        (
+            bytes32 depositorBytes,
+            bytes32 recipientBytes,
+            bytes32 inputTokenBytes,
+            bytes32 outputTokenBytes,
+            uint256 inputAmount,
+            uint256 outputAmount,
+            uint256 destinationChainId,
+            bytes32 exclusiveRelayerBytes,
+            ,
+            ,
+            uint32 exclusivityDeadline,
+            bytes memory message
+        ) = _createDepositArgs(address(erc20), makeAddr("outputToken"));
+
+        uint32 currentTime = uint32(spokePool.getCurrentTime());
+        uint32 fillDeadlineOffset = 1000;
+
+        vm.prank(depositor);
+        vm.expectEmit(true, true, true, true);
+        emit FundsDeposited(
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            0, // First deposit ID
+            currentTime, // quoteTimestamp should be current time
+            currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+            exclusivityDeadline,
+            depositorBytes,
+            recipientBytes,
+            exclusiveRelayerBytes,
+            message
+        );
+
+        spokePool.depositNow(
+            depositorBytes,
+            recipientBytes,
+            inputTokenBytes,
+            outputTokenBytes,
+            inputAmount,
+            outputAmount,
+            destinationChainId,
+            exclusiveRelayerBytes,
+            fillDeadlineOffset,
+            exclusivityDeadline,
+            message
+        );
+
+        assertEq(spokePool.numberOfDeposits(), 1);
+    }
+
+    /**
+     * @notice Test depositV3Now (address overload) uses current time as quoteTimestamp.
+     */
+    function testDepositV3Now() public {
+        address outputToken = makeAddr("outputToken");
+
+        uint32 currentTime = uint32(spokePool.getCurrentTime());
+        uint32 fillDeadlineOffset = 1000;
+        uint32 exclusivityDeadline = 0;
+
+        vm.prank(depositor);
+        vm.expectEmit(true, true, true, true);
+        emit FundsDeposited(
+            address(erc20).toBytes32(),
+            outputToken.toBytes32(),
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT,
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT - 19,
+            SpokePoolUtils.DESTINATION_CHAIN_ID,
+            0, // First deposit ID
+            currentTime, // quoteTimestamp should be current time
+            currentTime + fillDeadlineOffset, // fillDeadline should be current time + offset
+            exclusivityDeadline,
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            bytes32(0), // No exclusive relayer
+            ""
+        );
+
+        spokePool.depositV3Now(
+            depositor,
+            recipient,
+            address(erc20),
+            outputToken,
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT,
+            SpokePoolUtils.AMOUNT_TO_DEPOSIT - 19,
+            SpokePoolUtils.DESTINATION_CHAIN_ID,
+            address(0), // No exclusive relayer
+            fillDeadlineOffset,
+            exclusivityDeadline,
+            ""
+        );
+
+        assertEq(spokePool.numberOfDeposits(), 1);
+    }
 }

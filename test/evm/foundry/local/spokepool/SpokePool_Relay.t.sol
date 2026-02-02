@@ -10,6 +10,8 @@ import { V3SpokePoolInterface } from "../../../../../contracts/interfaces/V3Spok
 import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { SpokePoolUtils } from "../../utils/SpokePoolUtils.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../../contracts/libraries/AddressConverters.sol";
+import { MockERC1271 } from "../../../../../contracts/test/MockERC1271.sol";
+import { AcrossMessageHandler } from "../../../../../contracts/interfaces/SpokePoolMessageHandler.sol";
 
 /**
  * @title SpokePool_RelayTest
@@ -437,5 +439,234 @@ contract SpokePool_RelayTest is Test {
         spokePool.fillRelay(relayData, SpokePoolUtils.REPAYMENT_CHAIN_ID, nonExclusiveRelayer.toBytes32());
 
         assertEq(destErc20.balanceOf(recipient), recipientBalanceBefore + relayData.outputAmount);
+    }
+
+    // ============ ERC-1271 Contract Signature Tests ============
+
+    /**
+     * @notice Test that ERC-1271 depositor contract signatures are validated correctly.
+     * @dev The MockERC1271 contract returns true for isValidSignature if the signature was signed
+     * by the contract's owner.
+     */
+    function testFillRelayWithUpdatedDepositERC1271() public {
+        // Deploy MockERC1271 contract with depositor as owner
+        MockERC1271 erc1271 = new MockERC1271(depositor);
+
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        // Set the depositor to the ERC1271 contract address
+        relayData.depositor = address(erc1271).toBytes32();
+
+        uint256 updatedOutputAmount = relayData.outputAmount - 10;
+        bytes32 updatedRecipient = relayData.recipient;
+        bytes memory updatedMessage = "";
+
+        // Sign with depositor's key (the owner of the ERC1271 contract)
+        bytes memory validSignature = SpokePoolUtils.signUpdateV3Deposit(
+            vm,
+            depositorKey,
+            relayData.depositId,
+            relayData.originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage
+        );
+
+        // Sign with wrong key (not the owner of the ERC1271 contract)
+        (, uint256 wrongKey) = makeAddrAndKey("wrongSigner");
+        bytes memory invalidSignature = SpokePoolUtils.signUpdateV3Deposit(
+            vm,
+            wrongKey,
+            relayData.depositId,
+            relayData.originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage
+        );
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        // Invalid signature should revert
+        vm.prank(relayer);
+        vm.expectRevert(SpokePoolInterface.InvalidDepositorSignature.selector);
+        spokePool.fillRelayWithUpdatedDeposit(
+            relayData,
+            SpokePoolUtils.REPAYMENT_CHAIN_ID,
+            relayer.toBytes32(),
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            invalidSignature
+        );
+
+        // Valid signature (from the ERC1271 owner) should succeed
+        uint256 recipientBalanceBefore = destErc20.balanceOf(recipient);
+
+        vm.prank(relayer);
+        spokePool.fillRelayWithUpdatedDeposit(
+            relayData,
+            SpokePoolUtils.REPAYMENT_CHAIN_ID,
+            relayer.toBytes32(),
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            validSignature
+        );
+
+        assertEq(destErc20.balanceOf(recipient), recipientBalanceBefore + updatedOutputAmount);
+    }
+
+    // ============ Message Handler Callback Tests ============
+
+    /**
+     * @notice Test that message handler callback is invoked when recipient is a contract with non-empty message.
+     */
+    function testFillV3MessageHandlerCallback() public {
+        // Deploy a mock message handler
+        MockMessageHandler messageHandler = new MockMessageHandler();
+
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        relayData.recipient = address(messageHandler).toBytes32();
+        relayData.message = hex"1234"; // Non-empty message
+
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        vm.prank(relayer);
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), false);
+
+        // Verify the message handler was called with correct params
+        assertEq(messageHandler.lastTokenSent(), relayData.outputToken.toAddress());
+        assertEq(messageHandler.lastAmount(), relayExecution.updatedOutputAmount);
+        assertEq(messageHandler.lastRelayer(), relayer);
+        assertEq(messageHandler.lastMessage(), relayData.message);
+    }
+
+    /**
+     * @notice Test that message handler is NOT called when message is empty.
+     */
+    function testFillV3NoMessageHandlerCallbackOnEmptyMessage() public {
+        MockMessageHandler messageHandler = new MockMessageHandler();
+
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+        relayData.recipient = address(messageHandler).toBytes32();
+        relayData.message = ""; // Empty message
+
+        V3SpokePoolInterface.V3RelayExecutionParams memory relayExecution = _createRelayExecutionParams(relayData);
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        vm.prank(relayer);
+        spokePool.fillRelayV3Internal(relayExecution, relayer.toBytes32(), false);
+
+        // Message handler should NOT have been called (callCount should be 0)
+        assertEq(messageHandler.callCount(), 0);
+    }
+
+    // ============ Fill Prevention Tests ============
+
+    /**
+     * @notice Test that an updated fill cannot be sent after an original fill.
+     */
+    function testCannotSendUpdatedFillAfterOriginalFill() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+
+        uint256 updatedOutputAmount = relayData.outputAmount - 10;
+        bytes32 updatedRecipient = relayData.recipient;
+        bytes memory updatedMessage = "";
+
+        bytes memory signature = SpokePoolUtils.signUpdateV3Deposit(
+            vm,
+            depositorKey,
+            relayData.depositId,
+            relayData.originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage
+        );
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        // First, complete a regular fill
+        vm.prank(relayer);
+        spokePool.fillRelay(relayData, SpokePoolUtils.REPAYMENT_CHAIN_ID, relayer.toBytes32());
+
+        // Now try to send an updated fill - should revert
+        vm.prank(relayer);
+        vm.expectRevert(V3SpokePoolInterface.RelayFilled.selector);
+        spokePool.fillRelayWithUpdatedDeposit(
+            relayData,
+            SpokePoolUtils.REPAYMENT_CHAIN_ID,
+            relayer.toBytes32(),
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+        );
+    }
+
+    /**
+     * @notice Test that an original fill cannot be sent after an updated fill.
+     */
+    function testCannotSendOriginalFillAfterUpdatedFill() public {
+        V3SpokePoolInterface.V3RelayData memory relayData = _createRelayData();
+
+        uint256 updatedOutputAmount = relayData.outputAmount - 10;
+        bytes32 updatedRecipient = relayData.recipient;
+        bytes memory updatedMessage = "";
+
+        bytes memory signature = SpokePoolUtils.signUpdateV3Deposit(
+            vm,
+            depositorKey,
+            relayData.depositId,
+            relayData.originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage
+        );
+
+        spokePool.setCurrentTime(relayData.exclusivityDeadline + 1);
+
+        // First, complete an updated fill
+        vm.prank(relayer);
+        spokePool.fillRelayWithUpdatedDeposit(
+            relayData,
+            SpokePoolUtils.REPAYMENT_CHAIN_ID,
+            relayer.toBytes32(),
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            signature
+        );
+
+        // Now try to send a regular fill - should revert
+        vm.prank(relayer);
+        vm.expectRevert(V3SpokePoolInterface.RelayFilled.selector);
+        spokePool.fillRelay(relayData, SpokePoolUtils.REPAYMENT_CHAIN_ID, relayer.toBytes32());
+    }
+}
+
+/**
+ * @title MockMessageHandler
+ * @notice A mock contract that implements AcrossMessageHandler for testing message callbacks.
+ */
+contract MockMessageHandler is AcrossMessageHandler {
+    address public lastTokenSent;
+    uint256 public lastAmount;
+    address public lastRelayer;
+    bytes public lastMessage;
+    uint256 public callCount;
+
+    function handleV3AcrossMessage(
+        address tokenSent,
+        uint256 amount,
+        address _relayer,
+        bytes memory message
+    ) external override {
+        lastTokenSent = tokenSent;
+        lastAmount = amount;
+        lastRelayer = _relayer;
+        lastMessage = message;
+        callCount++;
     }
 }

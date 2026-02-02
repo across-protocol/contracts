@@ -492,4 +492,206 @@ contract SpokePool_ExecuteRootBundleTest is Test {
             refundAddresses
         );
     }
+
+    // ============ Mixed Solana/EVM Leaves Tests ============
+
+    /**
+     * @notice Helper to build a merkle tree with multiple leaves.
+     * @dev Returns the root and proofs for each leaf.
+     */
+    function _buildMultiLeafTree(
+        SpokePoolInterface.RelayerRefundLeaf[] memory leaves
+    ) internal pure returns (bytes32 root, bytes32[][] memory proofs) {
+        uint256 n = leaves.length;
+        bytes32[] memory hashes = new bytes32[](n);
+
+        // Hash all leaves
+        for (uint256 i = 0; i < n; i++) {
+            hashes[i] = _hashLeaf(leaves[i]);
+        }
+
+        // Build the merkle tree (simplified for small trees)
+        // For a tree with n leaves, we build level by level
+        bytes32[] memory currentLevel = hashes;
+        bytes32[][] memory levels = new bytes32[][](10); // Max 10 levels
+        uint256 levelCount = 0;
+        levels[levelCount++] = currentLevel;
+
+        while (currentLevel.length > 1) {
+            uint256 nextLevelSize = (currentLevel.length + 1) / 2;
+            bytes32[] memory nextLevel = new bytes32[](nextLevelSize);
+
+            for (uint256 i = 0; i < nextLevelSize; i++) {
+                uint256 left = i * 2;
+                uint256 right = left + 1;
+
+                if (right >= currentLevel.length) {
+                    // Odd number of elements, promote the last one
+                    nextLevel[i] = currentLevel[left];
+                } else {
+                    // Sort and hash
+                    if (uint256(currentLevel[left]) < uint256(currentLevel[right])) {
+                        nextLevel[i] = keccak256(abi.encodePacked(currentLevel[left], currentLevel[right]));
+                    } else {
+                        nextLevel[i] = keccak256(abi.encodePacked(currentLevel[right], currentLevel[left]));
+                    }
+                }
+            }
+            currentLevel = nextLevel;
+            levels[levelCount++] = currentLevel;
+        }
+
+        root = currentLevel[0];
+
+        // Build proofs for each leaf
+        proofs = new bytes32[][](n);
+        for (uint256 leafIdx = 0; leafIdx < n; leafIdx++) {
+            bytes32[] memory proof = new bytes32[](levelCount - 1);
+            uint256 idx = leafIdx;
+
+            for (uint256 level = 0; level < levelCount - 1; level++) {
+                uint256 siblingIdx = (idx % 2 == 0) ? idx + 1 : idx - 1;
+
+                if (siblingIdx < levels[level].length) {
+                    proof[level] = levels[level][siblingIdx];
+                } else {
+                    // No sibling, use current node as sibling (will be filtered out)
+                    proof[level] = levels[level][idx];
+                }
+
+                idx = idx / 2;
+            }
+            proofs[leafIdx] = proof;
+        }
+    }
+
+    /**
+     * @notice Test executing relayer refund root with mixed Solana and EVM leaves.
+     * @dev This simulates a merkle tree containing both Solana leaves (different chain ID)
+     * and EVM leaves (matching chain ID). Only EVM leaves should be successfully executed.
+     */
+    function testExecuteRelayerRefundWithMixedLeaves() public {
+        // Create an array of leaves - alternating between EVM (matching chain) and "Solana" (different chain)
+        SpokePoolInterface.RelayerRefundLeaf[] memory leaves = new SpokePoolInterface.RelayerRefundLeaf[](4);
+
+        // Solana chain ID (different from destinationChainId)
+        uint256 solanaChainId = 999999;
+
+        address[] memory emptyAddresses = new address[](0);
+        uint256[] memory emptyAmounts = new uint256[](0);
+
+        // Leaf 0: Solana leaf (wrong chain ID)
+        leaves[0] = _createLeaf(solanaChainId, 0, address(destErc20), emptyAddresses, emptyAmounts, 0);
+
+        // Leaf 1: EVM leaf (correct chain ID) - refund to relayer
+        address[] memory relayerAddresses = new address[](1);
+        relayerAddresses[0] = relayer;
+        uint256[] memory relayerAmounts = new uint256[](1);
+        relayerAmounts[0] = SpokePoolUtils.AMOUNT_TO_RELAY;
+        leaves[1] = _createLeaf(destinationChainId, 0, address(destErc20), relayerAddresses, relayerAmounts, 1);
+
+        // Leaf 2: Solana leaf (wrong chain ID)
+        leaves[2] = _createLeaf(solanaChainId, 0, address(destErc20), emptyAddresses, emptyAmounts, 2);
+
+        // Leaf 3: EVM leaf (correct chain ID) - refund to rando
+        address[] memory randoAddresses = new address[](1);
+        randoAddresses[0] = rando;
+        uint256[] memory randoAmounts = new uint256[](1);
+        randoAmounts[0] = SpokePoolUtils.AMOUNT_TO_RELAY;
+        leaves[3] = _createLeaf(destinationChainId, 0, address(destErc20), randoAddresses, randoAmounts, 3);
+
+        // Build merkle tree
+        (bytes32 root, bytes32[][] memory proofs) = _buildMultiLeafTree(leaves);
+
+        // Relay the root bundle
+        vm.prank(dataWorker);
+        spokePool.relayRootBundle(root, mockSlowRelayRoot);
+
+        uint256 spokePoolBalanceBefore = destErc20.balanceOf(address(spokePool));
+
+        // Execute only EVM leaves (skip Solana leaves which have wrong chain ID)
+        // Leaf 1 (EVM)
+        vm.prank(dataWorker);
+        spokePool.executeRelayerRefundLeaf(0, leaves[1], proofs[1]);
+
+        // Leaf 3 (EVM)
+        vm.prank(dataWorker);
+        spokePool.executeRelayerRefundLeaf(0, leaves[3], proofs[3]);
+
+        // Verify correct amounts were distributed
+        // Only 2 leaves executed, each with AMOUNT_TO_RELAY
+        uint256 totalRefunded = SpokePoolUtils.AMOUNT_TO_RELAY * 2;
+        assertEq(destErc20.balanceOf(address(spokePool)), spokePoolBalanceBefore - totalRefunded);
+        assertEq(destErc20.balanceOf(relayer), SpokePoolUtils.AMOUNT_TO_RELAY);
+        assertEq(destErc20.balanceOf(rando), SpokePoolUtils.AMOUNT_TO_RELAY);
+
+        // Attempting to execute Solana leaves should revert with InvalidChainId
+        vm.prank(dataWorker);
+        vm.expectRevert(V3SpokePoolInterface.InvalidChainId.selector);
+        spokePool.executeRelayerRefundLeaf(0, leaves[0], proofs[0]);
+
+        vm.prank(dataWorker);
+        vm.expectRevert(V3SpokePoolInterface.InvalidChainId.selector);
+        spokePool.executeRelayerRefundLeaf(0, leaves[2], proofs[2]);
+    }
+
+    /**
+     * @notice Test executing relayer refund root with sorted Solana and EVM leaves.
+     * @dev Similar to mixed test, but leaves are sorted (all Solana first, then all EVM).
+     */
+    function testExecuteRelayerRefundWithSortedLeaves() public {
+        // Create an array of leaves - sorted (Solana first, then EVM)
+        SpokePoolInterface.RelayerRefundLeaf[] memory leaves = new SpokePoolInterface.RelayerRefundLeaf[](4);
+
+        // Solana chain ID (different from destinationChainId)
+        uint256 solanaChainId = 999999;
+
+        address[] memory emptyAddresses = new address[](0);
+        uint256[] memory emptyAmounts = new uint256[](0);
+
+        // Leaves 0-1: Solana leaves (wrong chain ID)
+        leaves[0] = _createLeaf(solanaChainId, 0, address(destErc20), emptyAddresses, emptyAmounts, 0);
+        leaves[1] = _createLeaf(solanaChainId, 0, address(destErc20), emptyAddresses, emptyAmounts, 1);
+
+        // Leaf 2: EVM leaf (correct chain ID) - refund to relayer
+        address[] memory relayerAddresses = new address[](1);
+        relayerAddresses[0] = relayer;
+        uint256[] memory relayerAmounts = new uint256[](1);
+        relayerAmounts[0] = SpokePoolUtils.AMOUNT_TO_RELAY;
+        leaves[2] = _createLeaf(destinationChainId, 0, address(destErc20), relayerAddresses, relayerAmounts, 2);
+
+        // Leaf 3: EVM leaf (correct chain ID) - refund to rando
+        address[] memory randoAddresses = new address[](1);
+        randoAddresses[0] = rando;
+        uint256[] memory randoAmounts = new uint256[](1);
+        randoAmounts[0] = SpokePoolUtils.AMOUNT_TO_RELAY;
+        leaves[3] = _createLeaf(destinationChainId, 0, address(destErc20), randoAddresses, randoAmounts, 3);
+
+        // Build merkle tree
+        (bytes32 root, bytes32[][] memory proofs) = _buildMultiLeafTree(leaves);
+
+        // Relay the root bundle
+        vm.prank(dataWorker);
+        spokePool.relayRootBundle(root, mockSlowRelayRoot);
+
+        uint256 spokePoolBalanceBefore = destErc20.balanceOf(address(spokePool));
+
+        // Execute only EVM leaves (indices 2 and 3)
+        vm.prank(dataWorker);
+        spokePool.executeRelayerRefundLeaf(0, leaves[2], proofs[2]);
+
+        vm.prank(dataWorker);
+        spokePool.executeRelayerRefundLeaf(0, leaves[3], proofs[3]);
+
+        // Verify correct amounts were distributed
+        uint256 totalRefunded = SpokePoolUtils.AMOUNT_TO_RELAY * 2;
+        assertEq(destErc20.balanceOf(address(spokePool)), spokePoolBalanceBefore - totalRefunded);
+        assertEq(destErc20.balanceOf(relayer), SpokePoolUtils.AMOUNT_TO_RELAY);
+        assertEq(destErc20.balanceOf(rando), SpokePoolUtils.AMOUNT_TO_RELAY);
+
+        // Verify Solana leaves cannot be executed (wrong chain ID)
+        vm.prank(dataWorker);
+        vm.expectRevert(V3SpokePoolInterface.InvalidChainId.selector);
+        spokePool.executeRelayerRefundLeaf(0, leaves[0], proofs[0]);
+    }
 }
