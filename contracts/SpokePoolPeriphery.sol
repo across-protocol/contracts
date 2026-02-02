@@ -577,7 +577,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             spokePool.getUnsafeDepositId(
                 address(this),
                 depositor.toBytes32(),
-                uint256(keccak256(abi.encodePacked(nonceIdentifier, authorizer, nonce)))
+                _computeDepositNonce(nonceIdentifier, authorizer, nonce)
             );
     }
 
@@ -706,13 +706,33 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
                 outputAmount,
                 destinationChainId,
                 exclusiveRelayer,
-                uint256(keccak256(abi.encodePacked(nonceIdentifier, signatureOwner, depositNonce))),
+                _computeDepositNonce(nonceIdentifier, signatureOwner, depositNonce),
                 quoteTimestamp,
                 fillDeadline,
                 exclusivityParameter,
                 message
             );
         }
+    }
+
+    /**
+     * @notice Computes a unique deposit nonce by hashing the nonce identifier, authorizer, and nonce.
+     * @param nonceIdentifier The identifier for the nonce type (permit, permit2, or authorization).
+     * @param authorizer The address that authorized the funds transfer.
+     * @param nonce The nonce value.
+     * @return The computed deposit nonce.
+     * @dev The SpokePool hashes the nonce with the depositor and msg.sender (this contract), but since different
+     * authorizers could, in theory, set the same depositor address, we need to include the authorizer in the
+     * derivation. Nonce uniqueness is enforced per method by the underlying fund pulling method per funder
+     * (authorizer). Once the authorizer is included in this derivation, we can guarantee that the Permit/Permit2/
+     * ERC-3009 nonce reuse protection mechanism protects from colliding depositIds.
+     */
+    function _computeDepositNonce(
+        bytes32 nonceIdentifier,
+        address authorizer,
+        uint256 nonce
+    ) private pure returns (uint256) {
+        return uint256(keccak256(abi.encodePacked(nonceIdentifier, authorizer, nonce)));
     }
 
     /**
