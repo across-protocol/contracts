@@ -8,6 +8,7 @@ import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { SpokePoolUtils } from "../../utils/SpokePoolUtils.sol";
 import { AddressToBytes32 } from "../../../../../contracts/libraries/AddressConverters.sol";
+import { V3SpokePoolInterface } from "../../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 
 /**
  * @title SpokePool_ClaimRelayerRefundTest
@@ -162,7 +163,7 @@ contract SpokePool_ClaimRelayerRefundTest is Test {
     function testClaimRelayerRefundNoLiability() public {
         // No liability exists for relayer, claim should revert
         vm.prank(relayer);
-        vm.expectRevert();
+        vm.expectRevert(V3SpokePoolInterface.NoRelayerRefundToClaim.selector);
         spokePool.claimRelayerRefund(address(destErc20).toBytes32(), relayer.toBytes32());
     }
 
@@ -192,7 +193,7 @@ contract SpokePool_ClaimRelayerRefundTest is Test {
 
         // Rando (non-original recipient) trying to claim should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert(V3SpokePoolInterface.NoRelayerRefundToClaim.selector);
         spokePool.claimRelayerRefund(address(destErc20).toBytes32(), rando.toBytes32());
 
         // Original relayer can claim to alternative address

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test, Vm } from "forge-std/Test.sol";
+import { Test, Vm, stdError } from "forge-std/Test.sol";
 import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 import { ExpandedERC20WithBlacklist } from "../../../../../contracts/test/ExpandedERC20WithBlacklist.sol";
 import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
@@ -275,14 +275,14 @@ contract SpokePool_ExecuteRootBundleTest is Test {
             0
         );
 
-        // Should revert with invalid proof
+        // Should revert with invalid chain ID (chain ID is checked before merkle proof)
         vm.prank(dataWorker);
-        vm.expectRevert();
+        vm.expectRevert(V3SpokePoolInterface.InvalidChainId.selector);
         spokePool.executeRelayerRefundLeaf(0, badLeaf, proof);
 
-        // Wrong root bundle ID should also revert
+        // Wrong root bundle ID should revert with out-of-bounds (root bundle 1 doesn't exist)
         vm.prank(dataWorker);
-        vm.expectRevert();
+        vm.expectRevert(stdError.indexOOBError);
         spokePool.executeRelayerRefundLeaf(1, leaf, proof);
     }
 
@@ -315,7 +315,7 @@ contract SpokePool_ExecuteRootBundleTest is Test {
 
         // Valid tree and proof, but chain ID doesn't match
         vm.prank(dataWorker);
-        vm.expectRevert();
+        vm.expectRevert(V3SpokePoolInterface.InvalidChainId.selector);
         spokePool.executeRelayerRefundLeaf(0, leaf, proof);
     }
 
@@ -351,7 +351,7 @@ contract SpokePool_ExecuteRootBundleTest is Test {
 
         // Second claim should fail
         vm.prank(dataWorker);
-        vm.expectRevert();
+        vm.expectRevert(V3SpokePoolInterface.ClaimedMerkleLeaf.selector);
         spokePool.executeRelayerRefundLeaf(0, leaf, proof);
     }
 

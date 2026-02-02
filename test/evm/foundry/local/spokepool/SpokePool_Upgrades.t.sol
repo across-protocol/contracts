@@ -70,7 +70,7 @@ contract SpokePool_UpgradesTest is Test {
         assertEq(spokePoolV2.withdrawalRecipient(), newHubPool);
 
         // Cannot reinitialize again
-        vm.expectRevert();
+        vm.expectRevert("Initializable: contract is already initialized");
         spokePoolV2.reinitialize(newHubPool);
 
         // Can call new V2 function
