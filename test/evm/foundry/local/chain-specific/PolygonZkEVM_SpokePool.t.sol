@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
-import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { PolygonZkEVM_SpokePool } from "../../../../contracts/PolygonZkEVM_SpokePool.sol";
-import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
-import { IPolygonZkEVMBridge } from "../../../../contracts/external/interfaces/IPolygonZkEVMBridge.sol";
+import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
+import { PolygonZkEVM_SpokePool } from "../../../../../contracts/PolygonZkEVM_SpokePool.sol";
+import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoolInterface.sol";
+import { IPolygonZkEVMBridge } from "../../../../../contracts/external/interfaces/IPolygonZkEVMBridge.sol";
 
 contract MintableERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}

@@ -5,14 +5,14 @@ import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { MockOptimism_SpokePool } from "../../../../contracts/test/MockOptimism_SpokePool.sol";
-import { Optimism_SpokePool } from "../../../../contracts/Optimism_SpokePool.sol";
-import { Ovm_SpokePool } from "../../../../contracts/Ovm_SpokePool.sol";
+import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
+import { MockOptimism_SpokePool } from "../../../../../contracts/test/MockOptimism_SpokePool.sol";
+import { Optimism_SpokePool } from "../../../../../contracts/Optimism_SpokePool.sol";
+import { Ovm_SpokePool } from "../../../../../contracts/Ovm_SpokePool.sol";
 import { NotCrossChainCall } from "@openzeppelin/contracts-v4/crosschain/errors.sol";
-import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
-import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
-import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
+import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoolInterface.sol";
+import { ITokenMessenger } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 contract MintableERC20 is ERC20 {

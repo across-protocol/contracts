@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
-import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { Succinct_SpokePool } from "../../../../contracts/Succinct_SpokePool.sol";
+import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
+import { Succinct_SpokePool } from "../../../../../contracts/Succinct_SpokePool.sol";
 
 contract SuccinctSpokePoolTest is Test {
     Succinct_SpokePool public spokePool;

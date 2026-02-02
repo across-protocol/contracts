@@ -5,11 +5,11 @@ import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { WETH9 } from "../../../../contracts/external/WETH9.sol";
-import { ZkSync_SpokePool, ZkBridgeLike, IL2ETH } from "../../../../contracts/ZkSync_SpokePool.sol";
-import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
-import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
-import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
+import { ZkSync_SpokePool, ZkBridgeLike, IL2ETH } from "../../../../../contracts/ZkSync_SpokePool.sol";
+import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoolInterface.sol";
+import { CrossDomainAddressUtils } from "../../../../../contracts/libraries/CrossDomainAddressUtils.sol";
+import { ITokenMessenger } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 contract MintableERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
