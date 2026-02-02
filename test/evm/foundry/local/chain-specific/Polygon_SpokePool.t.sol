@@ -5,11 +5,13 @@ import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import { WETH9 } from "../../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { Polygon_SpokePool } from "../../../../../contracts/Polygon_SpokePool.sol";
 import { PolygonTokenBridger, PolygonIERC20Upgradeable, PolygonRegistry } from "../../../../../contracts/PolygonTokenBridger.sol";
 import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoolInterface.sol";
+import { V3SpokePoolInterface } from "../../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { ITokenMessenger } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { IOFT, SendParam, MessagingFee, MessagingReceipt, OFTReceipt } from "../../../../../contracts/interfaces/IOFT.sol";
 import { SpokePool } from "../../../../../contracts/SpokePool.sol";
@@ -576,5 +578,198 @@ contract PolygonSpokePoolTest is Test {
         vm.prank(relayer, relayer);
         vm.expectRevert(SpokePool.OFTFeeUnderpaid.selector);
         spokePool.executeRelayerRefundLeaf(0, leaf, proof); // No value sent
+    }
+
+    // ============ PolygonTokenBridger Tests ============
+
+    function testPolygonTokenBridgerRetrievesAndUnwrapsTokensCorrectly() public {
+        // Deploy a PolygonTokenBridger configured for L1 (where current chain IS L1)
+        // This means l1ChainId == block.chainid so retrieve() can be called
+        uint256 currentChainId = block.chainid;
+        uint256 differentChainId = currentChainId + 1;
+
+        PolygonTokenBridger l1TokenBridger = new PolygonTokenBridger(
+            hubPool,
+            PolygonRegistry(address(polygonRegistry)),
+            WETH9Interface(address(weth)),
+            address(weth),
+            currentChainId, // L1 chain ID = current chain (so we're on L1)
+            differentChainId // L2 chain ID = different chain
+        );
+
+        // Send ETH to the bridger
+        vm.deal(address(l1TokenBridger), 1 ether);
+
+        uint256 hubPoolWethBefore = weth.balanceOf(hubPool);
+
+        // Retrieve automatically wraps ETH and sends WETH to destination (hubPool)
+        l1TokenBridger.retrieve(IERC20Upgradeable(address(weth)));
+
+        // Hub pool should have received WETH
+        assertEq(weth.balanceOf(hubPool), hubPoolWethBefore + 1 ether);
+    }
+
+    function testPolygonTokenBridgerDoesNotAllowL1ActionsOnL2() public {
+        // The polygonTokenBridger in setUp is configured with:
+        // - l1ChainId = 1 (different from current chain)
+        // - l2ChainId = 31337 (current chain)
+        // So we're simulating being on L2
+
+        // Send WETH to the bridger
+        vm.deal(owner, 1 ether);
+        vm.prank(owner);
+        weth.deposit{ value: 1 ether }();
+        vm.prank(owner);
+        weth.transfer(address(polygonTokenBridger), 1 ether);
+
+        // Cannot call retrieve on L2 (retrieve is an L1-only action)
+        vm.expectRevert("Cannot run method on this chain");
+        polygonTokenBridger.retrieve(IERC20Upgradeable(address(weth)));
+
+        // Cannot call callExit on L2 (callExit is an L1-only action)
+        vm.expectRevert("Cannot run method on this chain");
+        polygonTokenBridger.callExit(hex"1234");
+    }
+
+    function testPolygonTokenBridgerDoesNotAllowL2ActionsOnL1() public {
+        // Deploy a PolygonTokenBridger configured for L1 (where current chain IS L1)
+        uint256 currentChainId = block.chainid;
+        uint256 differentChainId = currentChainId + 1;
+
+        PolygonTokenBridger l1TokenBridger = new PolygonTokenBridger(
+            hubPool,
+            PolygonRegistry(address(polygonRegistry)),
+            WETH9Interface(address(weth)),
+            address(weth),
+            currentChainId, // L1 chain ID = current chain (so we're on L1)
+            differentChainId // L2 chain ID = different chain
+        );
+
+        // Approve WETH for the bridger
+        vm.deal(owner, 1 ether);
+        vm.prank(owner);
+        weth.deposit{ value: 1 ether }();
+        vm.prank(owner);
+        weth.approve(address(l1TokenBridger), 1 ether);
+
+        // Cannot call send on L1 (send is an L2-only action)
+        vm.prank(owner);
+        vm.expectRevert("Cannot run method on this chain");
+        l1TokenBridger.send(PolygonIERC20Upgradeable(address(weth)), 1 ether);
+    }
+
+    function testPolygonTokenBridgerCorrectlyForwardsExitCall() public {
+        // Deploy a PolygonTokenBridger configured for L1 (where current chain IS L1)
+        uint256 currentChainId = block.chainid;
+        uint256 differentChainId = currentChainId + 1;
+
+        PolygonTokenBridger l1TokenBridger = new PolygonTokenBridger(
+            hubPool,
+            PolygonRegistry(address(polygonRegistry)),
+            WETH9Interface(address(weth)),
+            address(weth),
+            currentChainId, // L1 chain ID = current chain (so we're on L1)
+            differentChainId // L2 chain ID = different chain
+        );
+
+        // Call exit with some bytes data
+        bytes memory exitBytes = hex"deadbeef1234567890";
+
+        // Expect the StartExitCalled event to be emitted with the exit bytes
+        vm.expectEmit(true, true, true, true);
+        emit MockPolygonERC20Predicate.StartExitCalled(exitBytes);
+
+        l1TokenBridger.callExit(exitBytes);
+    }
+
+    function testCannotCombineFillAndExecuteLeafInSameTx() public {
+        uint256 chainId = spokePool.chainId();
+
+        // Create two leaves with amountToReturn == 0 (so they can be executed by contracts)
+        SpokePoolInterface.RelayerRefundLeaf memory leaf1 = SpokePoolInterface.RelayerRefundLeaf({
+            amountToReturn: 0,
+            chainId: chainId,
+            refundAmounts: new uint256[](0),
+            leafId: 0,
+            l2TokenAddress: address(dai),
+            refundAddresses: new address[](0)
+        });
+
+        SpokePoolInterface.RelayerRefundLeaf memory leaf2 = SpokePoolInterface.RelayerRefundLeaf({
+            amountToReturn: 0,
+            chainId: chainId,
+            refundAmounts: new uint256[](0),
+            leafId: 1,
+            l2TokenAddress: address(dai),
+            refundAddresses: new address[](0)
+        });
+
+        // Build merkle tree with both leaves
+        bytes32 leaf1Hash = keccak256(abi.encode(leaf1));
+        bytes32 leaf2Hash = keccak256(abi.encode(leaf2));
+        bytes32 root = keccak256(abi.encodePacked(leaf1Hash, leaf2Hash));
+
+        // Create proofs
+        bytes32[] memory proof1 = new bytes32[](1);
+        proof1[0] = leaf2Hash;
+        bytes32[] memory proof2 = new bytes32[](1);
+        proof2[0] = leaf1Hash;
+
+        _callAsAdmin(abi.encodeCall(spokePool.relayRootBundle, (root, mockTreeRoot)));
+
+        // Prepare fill data
+        bytes memory fillData = _createFillData();
+
+        // Prepare execute leaf data
+        bytes memory executeLeafData1 = abi.encodeCall(spokePool.executeRelayerRefundLeaf, (0, leaf1, proof1));
+        bytes memory executeLeafData2 = abi.encodeCall(spokePool.executeRelayerRefundLeaf, (0, leaf2, proof2));
+
+        // Fills alone should succeed
+        bytes[] memory fillsOnly = new bytes[](1);
+        fillsOnly[0] = fillData;
+
+        // Execute leaves alone should succeed
+        bytes[] memory executeLeavesOnly = new bytes[](2);
+        executeLeavesOnly[0] = executeLeafData1;
+        executeLeavesOnly[1] = executeLeafData2;
+
+        // Combined fill and execute should revert
+        bytes[] memory combined = new bytes[](2);
+        combined[0] = fillData;
+        combined[1] = executeLeafData1;
+
+        // Fund relayer with DAI for fill
+        dai.mint(relayer, 10 ether);
+        vm.prank(relayer);
+        dai.approve(address(spokePool), 10 ether);
+
+        // When combining fills and executions, should revert with MulticallExecuteLeaf
+        vm.prank(relayer, relayer);
+        vm.expectRevert(Polygon_SpokePool.MulticallExecuteLeaf.selector);
+        spokePool.multicall(combined);
+    }
+
+    // Helper to create fill relay data for testing multicall restrictions
+    function _createFillData() internal view returns (bytes memory) {
+        V3SpokePoolInterface.V3RelayData memory relayData = V3SpokePoolInterface.V3RelayData({
+            depositor: _addressToBytes32(owner),
+            recipient: _addressToBytes32(relayer),
+            exclusiveRelayer: _addressToBytes32(address(0)),
+            inputToken: _addressToBytes32(address(dai)),
+            outputToken: _addressToBytes32(address(dai)),
+            inputAmount: 1 ether,
+            outputAmount: 1 ether,
+            originChainId: 1,
+            depositId: 0,
+            fillDeadline: uint32(block.timestamp + 7200),
+            exclusivityDeadline: 0,
+            message: hex""
+        });
+
+        return abi.encodeCall(spokePool.fillRelay, (relayData, 1, _addressToBytes32(relayer)));
+    }
+
+    function _addressToBytes32(address addr) internal pure returns (bytes32) {
+        return bytes32(uint256(uint160(addr)));
     }
 }
