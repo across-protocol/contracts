@@ -16,7 +16,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extension
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
-/// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge
+/// that allows custom Across-supported flows on destination chain. Uses LayerZero's OFT as an underlying bridge
 contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
