@@ -307,16 +307,65 @@ contract MegaETH_SpokePool is Universal_SpokePool, OPStandardBridgeMixin {
 
 ---
 
-### Option D: Delegatecall Plugin System
+### Option D: Delegatecall Plugin System with ERC-7201 Namespaced Storage
 
-**Concept**: Upgradeable plugin slots that execute bridging logic via delegatecall, keeping state in SpokePool.
+**Concept**: Upgradeable plugin slots that execute bridging logic via delegatecall. Plugins use [ERC-7201](https://eips.ethereum.org/EIPS/eip-7201) namespaced storage to safely store their configuration state within the SpokePool contract, avoiding storage collisions.
+
+#### Why ERC-7201?
+
+Traditional delegatecall patterns are dangerous because plugins might accidentally read/write to storage slots used by the main contract. ERC-7201 solves this by defining a standard formula for computing storage namespaces:
+
+```solidity
+keccak256(abi.encode(uint256(keccak256("across.bridge-adapter.op-standard")) - 1)) & ~bytes32(uint256(0xff))
+```
+
+Each plugin declares its own namespace, and all its storage variables are stored at offsets from that base slot. This means:
+
+- Plugins cannot accidentally collide with SpokePool storage
+- Plugins cannot accidentally collide with each other
+- Storage layout is deterministic and auditable
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         SpokePool                                │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Core Storage (slots 0-N)                                 │    │
+│  │ - numberOfDeposits, fillStatuses, etc.                   │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ Plugin Registry (slots N+1...)                           │    │
+│  │ - bridgePlugins mapping                                  │    │
+│  │ - tokenBridgeTypes mapping                               │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ ERC-7201 Namespace: "across.bridge-adapter.op-standard"  │    │
+│  │ - l2Bridge address                                       │    │
+│  │ - l1Gas setting                                          │    │
+│  │ - remoteL1Tokens mapping                                 │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ ERC-7201 Namespace: "across.bridge-adapter.cctp"         │    │
+│  │ - cctpTokenMessenger                                     │    │
+│  │ - recipientCircleDomainId                                │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │ ERC-7201 Namespace: "across.bridge-adapter.oft"          │    │
+│  │ - oftMessengers mapping                                  │    │
+│  │ - OFT_DST_EID                                            │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Implementation
+
+**SpokePool Core**:
 
 ```solidity
 contract Universal_SpokePool is SpokePool {
-  // Plugin registry
+  // Plugin registry (stored in SpokePool's normal storage)
   mapping(bytes4 bridgeTypeId => address implementation) public bridgePlugins;
-
-  // Per-token bridge type assignment
   mapping(address l2Token => bytes4 bridgeTypeId) public tokenBridgeTypes;
 
   function _bridgeTokensToHubPool(uint256 amount, address l2Token) internal override {
@@ -324,56 +373,169 @@ contract Universal_SpokePool is SpokePool {
     address plugin = bridgePlugins[bridgeType];
     require(plugin != address(0), "No plugin for bridge type");
 
-    // Delegatecall preserves SpokePool's storage context
+    // Delegatecall executes plugin code with SpokePool's storage context
+    // Plugin reads its config from its ERC-7201 namespace
     (bool success, ) = plugin.delegatecall(
       abi.encodeWithSignature("bridge(address,address,uint256)", l2Token, withdrawalRecipient, amount)
     );
     require(success, "Bridge plugin failed");
   }
 
-  function setBridgePlugin(bytes4 bridgeTypeId, address implementation) external onlyOwner {
+  // Admin functions to configure plugins (called via HubPool relay)
+  function setBridgePlugin(bytes4 bridgeTypeId, address implementation) external onlyAdmin {
     bridgePlugins[bridgeTypeId] = implementation;
+    emit BridgePluginSet(bridgeTypeId, implementation);
   }
 
-  function setTokenBridgeType(address l2Token, bytes4 bridgeTypeId) external onlyOwner {
+  function setTokenBridgeType(address l2Token, bytes4 bridgeTypeId) external onlyAdmin {
     tokenBridgeTypes[l2Token] = bridgeTypeId;
+    emit TokenBridgeTypeSet(l2Token, bridgeTypeId);
+  }
+
+  // Generic function to configure plugin storage via delegatecall
+  function configurePlugin(bytes4 bridgeTypeId, bytes calldata configData) external onlyAdmin {
+    address plugin = bridgePlugins[bridgeTypeId];
+    require(plugin != address(0), "Plugin not registered");
+
+    (bool success, ) = plugin.delegatecall(abi.encodeWithSignature("configure(bytes)", configData));
+    require(success, "Plugin configuration failed");
   }
 }
 ```
 
-**Plugin Implementation**:
+**Plugin Implementation with ERC-7201**:
 
 ```solidity
 contract OPStandardBridgePlugin {
-  // This contract is stateless - it operates on caller's storage via delegatecall
+  // ERC-7201 storage namespace
+  // keccak256(abi.encode(uint256(keccak256("across.bridge-adapter.op-standard")) - 1)) & ~bytes32(uint256(0xff))
+  bytes32 private constant STORAGE_SLOT = 0x1a2b3c4d...; // Computed constant
 
-  // Storage slots must match SpokePool layout or use explicit slots
-  bytes32 constant WITHDRAWAL_RECIPIENT_SLOT = keccak256("withdrawalRecipient");
+  /// @custom:storage-location erc7201:across.bridge-adapter.op-standard
+  struct OPBridgeStorage {
+    address l2Bridge;
+    uint32 l1Gas;
+    mapping(address l2Token => address l1Token) remoteL1Tokens;
+  }
+
+  function _getStorage() private pure returns (OPBridgeStorage storage $) {
+    assembly {
+      $.slot := STORAGE_SLOT
+    }
+  }
 
   function bridge(address l2Token, address to, uint256 amount) external {
-    // Access SpokePool storage
-    address l1Token = _getRemoteL1Token(l2Token);
+    OPBridgeStorage storage $ = _getStorage();
 
-    IERC20(l2Token).safeIncreaseAllowance(L2_STANDARD_BRIDGE, amount);
-    IL2ERC20Bridge(L2_STANDARD_BRIDGE).bridgeERC20To(l2Token, l1Token, to, amount, 200000, "");
+    address l1Token = $.remoteL1Tokens[l2Token];
+    address l2Bridge = $.l2Bridge;
+    uint32 l1Gas = $.l1Gas;
+
+    IERC20(l2Token).safeIncreaseAllowance(l2Bridge, amount);
+
+    if (l1Token != address(0)) {
+      IL2ERC20Bridge(l2Bridge).bridgeERC20To(l2Token, l1Token, to, amount, l1Gas, "");
+    } else {
+      IL2ERC20Bridge(l2Bridge).withdrawTo(l2Token, to, amount, l1Gas, "");
+    }
+  }
+
+  function configure(bytes calldata configData) external {
+    OPBridgeStorage storage $ = _getStorage();
+
+    // Decode and apply configuration
+    (address l2Bridge, uint32 l1Gas) = abi.decode(configData, (address, uint32));
+    $.l2Bridge = l2Bridge;
+    $.l1Gas = l1Gas;
+  }
+
+  function setRemoteL1Token(address l2Token, address l1Token) external {
+    OPBridgeStorage storage $ = _getStorage();
+    $.remoteL1Tokens[l2Token] = l1Token;
+  }
+}
+
+contract CCTPBridgePlugin {
+  bytes32 private constant STORAGE_SLOT = 0x...; // Different namespace
+
+  /// @custom:storage-location erc7201:across.bridge-adapter.cctp
+  struct CCTPStorage {
+    address cctpTokenMessenger;
+    address cctpMinter;
+    address usdcToken;
+    uint32 recipientCircleDomainId;
+  }
+
+  function _getStorage() private pure returns (CCTPStorage storage $) {
+    assembly {
+      $.slot := STORAGE_SLOT
+    }
+  }
+
+  function bridge(address l2Token, address to, uint256 amount) external {
+    CCTPStorage storage $ = _getStorage();
+    require(l2Token == $.usdcToken, "Not USDC");
+
+    // Existing CCTP logic using namespaced storage...
+    ITokenMessenger($.cctpTokenMessenger).depositForBurn(
+      amount,
+      $.recipientCircleDomainId,
+      bytes32(uint256(uint160(to))),
+      $.usdcToken
+    );
+  }
+
+  function configure(bytes calldata configData) external {
+    CCTPStorage storage $ = _getStorage();
+    (
+      address tokenMessenger,
+      address minter,
+      address usdc,
+      uint32 domainId
+    ) = abi.decode(configData, (address, address, address, uint32));
+
+    $.cctpTokenMessenger = tokenMessenger;
+    $.cctpMinter = minter;
+    $.usdcToken = usdc;
+    $.recipientCircleDomainId = domainId;
   }
 }
 ```
 
+#### Ownership & Admin Flow
+
+All plugin configuration flows through the SpokePool's admin functions, which are controlled by HubPool governance:
+
+```
+HubPool.executeRootBundle()
+  → relayMessage(spokePool, configurePlugin(bridgeTypeId, configData))
+    → SpokePool.configurePlugin()
+      → delegatecall to plugin.configure()
+        → Plugin writes to its ERC-7201 namespace in SpokePool storage
+```
+
+This means:
+
+- **Single admin**: HubPool owner controls all configuration
+- **State lives in SpokePool**: No external adapter contracts with separate ownership
+- **Auditable**: Plugin storage is isolated and deterministic
+
 #### Pros
 
-- Maximum flexibility without redeployment
-- Plugins share SpokePool's storage context
-- Can upgrade individual bridge implementations
-- Clean separation while maintaining single contract UX
+- Maximum flexibility without SpokePool redeployment
+- Plugins can have complex state (mappings, arrays) safely via ERC-7201
+- No storage collision risk between plugins or with SpokePool
+- Gas efficient: no token transfers to external contracts
+- Unified admin model: all config via HubPool governance
+- **Symmetric with Hub → Spoke direction** (see Bidirectional Considerations below)
 
 #### Cons
 
-- Delegatecall is dangerous (storage layout must match exactly)
-- Complex to audit and verify correctness
-- Plugin bugs can corrupt SpokePool storage
-- Harder to reason about state changes
-- Gas overhead from delegatecall
+- More complex than external adapters (requires understanding ERC-7201)
+- Plugins must be carefully audited (execute in SpokePool context)
+- Plugin bugs could still cause issues (though not storage corruption)
+- Requires tooling support for ERC-7201 storage verification
+- Slight gas overhead from delegatecall (~2600 gas)
 
 ---
 
@@ -539,7 +701,15 @@ contract WETHUnwrapAdapter is IBridgeAdapter {
 
 ## Recommendation
 
-**Option E (Hybrid Approach)** is recommended for the following reasons:
+### If prioritizing standalone Spoke → Hub flexibility: **Option E (Hybrid)**
+
+**Option E** is a good choice if:
+
+- You want to minimize changes to Universal_SpokePool
+- External adapter contracts are acceptable
+- Hub → Spoke architecture is not changing
+
+Reasons:
 
 1. **Backward Compatibility**: Maintains existing CCTP and OFT paths with no changes
 2. **Incremental Adoption**: New bridges can be added without modifying core contract
@@ -547,6 +717,24 @@ contract WETHUnwrapAdapter is IBridgeAdapter {
 4. **Security**: Adapters are isolated; bugs don't affect built-in bridges
 5. **Operational Flexibility**: Token-to-adapter mapping can be updated via HubPool governance
 6. **Reusability**: Standard adapters (OP, Arbitrum) deployed once, used by many SpokePools
+
+### If prioritizing architectural symmetry with Hub → Spoke: **Option D (ERC-7201 Plugins)**
+
+**Option D** is the better choice if:
+
+- Hub → Spoke adapters will also use ERC-7201 namespaced storage
+- You want all bridge state to live in pool contracts (no external adapter state)
+- Unified governance model is important
+- Gas efficiency is a priority (no token transfers to external contracts)
+
+Reasons:
+
+1. **Bidirectional Symmetry**: Same pattern for Hub → Spoke and Spoke → Hub
+2. **Unified State Management**: All config in HubPool/SpokePool via ERC-7201 namespaces
+3. **Single Governance Model**: HubPool owner controls everything via relay messages
+4. **Gas Efficient**: No intermediate token transfers; delegatecall is cheap
+5. **No External Contracts**: Fewer contracts to deploy, audit, and track ownership
+6. **Future-Proof**: ERC-7201 is the emerging standard for upgradeable storage
 
 ### Implementation Phases
 
@@ -581,12 +769,83 @@ contract WETHUnwrapAdapter is IBridgeAdapter {
 | Criteria              | Option A | Option B | Option C | Option D | Option E                        |
 | --------------------- | -------- | -------- | -------- | -------- | ------------------------------- |
 | Flexibility           | High     | Medium   | Low      | High     | High                            |
-| Gas Efficiency        | Medium   | Medium   | High     | Medium   | High (common) / Medium (custom) |
-| Audit Complexity      | Medium   | High     | Low      | High     | Medium                          |
+| Gas Efficiency        | Medium   | Medium   | High     | High     | High (common) / Medium (custom) |
+| Audit Complexity      | Medium   | High     | Low      | Medium   | Medium                          |
 | Upgrade Path          | Easy     | Hard     | Redeploy | Easy     | Easy                            |
-| Implementation Effort | Medium   | High     | Low      | High     | Medium                          |
-| Risk Profile          | Medium   | High     | Low      | High     | Low-Medium                      |
+| Implementation Effort | Medium   | High     | Low      | Medium   | Medium                          |
+| Risk Profile          | Medium   | High     | Low      | Low-Med  | Low-Medium                      |
 | Backward Compatible   | Yes      | No       | No       | Yes      | Yes                             |
+| State Management      | External | External | Compile  | ERC-7201 | Mixed                           |
+| Hub↔Spoke Symmetry    | No       | No       | No       | **Yes**  | No                              |
+
+---
+
+## Bidirectional Considerations
+
+The discussion so far has focused on **Spoke → Hub** (returning tokens to L1). However, **Hub → Spoke** (sending tokens to L2) also uses adapters, and the two directions should ideally share a consistent architecture.
+
+### Current Hub → Spoke Architecture
+
+HubPool uses L1 adapters (e.g., `Arbitrum_Adapter`, `OP_Adapter`) to send tokens and relay messages to SpokePools:
+
+```solidity
+// In HubPool
+function _relayMessage(address adapter, address target, bytes memory message) internal {
+  // Adapters are called via delegatecall - they execute in HubPool's context
+  (bool success, ) = adapter.delegatecall(
+    abi.encodeWithSelector(AdapterInterface.relayMessage.selector, target, message)
+  );
+}
+```
+
+**Key constraint**: Current L1 adapters are stateless. Any configuration (bridge addresses, gas limits) must be:
+
+- Hardcoded as immutables in the adapter
+- Passed in via function parameters
+- Stored in HubPool's main storage (not ideal)
+
+### The Symmetry Argument for Option D
+
+If we adopt **ERC-7201 namespaced storage for Hub → Spoke adapters**, then using the same pattern for Spoke → Hub (Option D) creates architectural symmetry:
+
+```
+Hub → Spoke:
+  HubPool.delegatecall(adapter)
+    → Adapter reads config from HubPool storage (ERC-7201 namespace)
+    → Adapter bridges tokens to SpokePool
+
+Spoke → Hub:
+  SpokePool.delegatecall(plugin)
+    → Plugin reads config from SpokePool storage (ERC-7201 namespace)
+    → Plugin bridges tokens to HubPool
+```
+
+**Benefits of symmetry**:
+
+1. **One mental model**: Developers learn one pattern for both directions
+2. **Shared tooling**: Same ERC-7201 storage inspection tools work for both
+3. **Consistent governance**: HubPool owner configures both sides via relay messages
+4. **No external contracts**: All state lives in HubPool/SpokePool (no separate adapter ownership)
+
+### State Ownership Summary
+
+| Direction       | Option A (External Adapters)      | Option D (ERC-7201 Plugins)              |
+| --------------- | --------------------------------- | ---------------------------------------- |
+| **Hub → Spoke** | Adapter owns state (or stateless) | HubPool owns state in namespaced slots   |
+| **Spoke → Hub** | Adapter owns state                | SpokePool owns state in namespaced slots |
+| **Admin**       | Each adapter has separate owner   | HubPool owner controls all via relay     |
+| **Upgrade**     | Replace adapter contract          | Replace plugin implementation address    |
+
+### Recommendation Update
+
+Given the bidirectional nature of the system, **Option D with ERC-7201** becomes more attractive because:
+
+1. It aligns with the proposed approach for Hub → Spoke adapters
+2. All bridge configuration state lives in the pool contracts
+3. Single governance model (HubPool owner) for both directions
+4. No proliferation of external adapter contracts with separate ownership
+
+If the team is already planning to use HubPool storage + ERC-7201 for Hub → Spoke adapters, **Option D should be strongly considered** for Spoke → Hub to maintain architectural consistency.
 
 ---
 
@@ -611,3 +870,7 @@ contract WETHUnwrapAdapter is IBridgeAdapter {
    - Integration test requirements?
 
 4. **Cross-chain Adapter Consistency**: Should the same adapter be used across all SpokePools for a given bridge type, or can they differ per deployment?
+
+5. **Hub → Spoke Alignment**: Should we commit to ERC-7201 for Hub → Spoke adapters first, then design Spoke → Hub to match? Or design both directions together?
+
+6. **Migration Path**: For existing chain-specific SpokePools (OP_SpokePool, Arbitrum_SpokePool), should they be migrated to the new Universal_SpokePool + plugin architecture, or maintained separately?
