@@ -11,6 +11,89 @@ import { SpokePoolInterface } from "../../../../../contracts/interfaces/SpokePoo
 import { V3SpokePoolInterface } from "../../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { AddressToBytes32 } from "../../../../../contracts/libraries/AddressConverters.sol";
 
+/**
+ * @notice Library to help build mixed SVM/EVM merkle trees for testing.
+ * @dev SVM leaves use Borsh serialization with a 64-byte zero prefix to ensure
+ * cross-chain safety (EVM leaves can never be valid on SVM and vice versa).
+ */
+library SvmLeafHasher {
+    /**
+     * @notice Represents an SVM relayer refund leaf structure.
+     * @dev Uses uint64 for amounts and bytes32 for public keys (Solana convention).
+     */
+    struct SvmRelayerRefundLeaf {
+        uint64 amountToReturn;
+        uint64 chainId;
+        uint64[] refundAmounts;
+        uint32 leafId;
+        bytes32 mintPublicKey;
+        bytes32[] refundAddresses;
+    }
+
+    /**
+     * @notice Hashes an SVM relayer refund leaf using Borsh-like serialization with 64-byte zero prefix.
+     * @dev The 64-byte zero prefix ensures EVM leaves can never collide with SVM leaves.
+     */
+    function hashSvmLeaf(SvmRelayerRefundLeaf memory leaf) internal pure returns (bytes32) {
+        // Build Borsh-serialized data (little-endian)
+        bytes memory serialized = abi.encodePacked(
+            // amountToReturn (u64 LE)
+            _toLittleEndian64(leaf.amountToReturn),
+            // chainId (u64 LE)
+            _toLittleEndian64(leaf.chainId),
+            // refundAmounts array: length (u32 LE) + elements (u64 LE each)
+            _toLittleEndian32(uint32(leaf.refundAmounts.length))
+        );
+
+        for (uint256 i = 0; i < leaf.refundAmounts.length; i++) {
+            serialized = abi.encodePacked(serialized, _toLittleEndian64(leaf.refundAmounts[i]));
+        }
+
+        serialized = abi.encodePacked(
+            serialized,
+            // leafId (u32 LE)
+            _toLittleEndian32(leaf.leafId),
+            // mintPublicKey (32 bytes)
+            leaf.mintPublicKey,
+            // refundAddresses array: length (u32 LE) + elements (32 bytes each)
+            _toLittleEndian32(uint32(leaf.refundAddresses.length))
+        );
+
+        for (uint256 i = 0; i < leaf.refundAddresses.length; i++) {
+            serialized = abi.encodePacked(serialized, leaf.refundAddresses[i]);
+        }
+
+        // Prepend 64 zero bytes (SVM leaf marker)
+        bytes memory contentToHash = abi.encodePacked(new bytes(64), serialized);
+
+        return keccak256(contentToHash);
+    }
+
+    function _toLittleEndian64(uint64 value) private pure returns (bytes8) {
+        return
+            bytes8(
+                ((value & 0xFF) << 56) |
+                    ((value & 0xFF00) << 40) |
+                    ((value & 0xFF0000) << 24) |
+                    ((value & 0xFF000000) << 8) |
+                    ((value & 0xFF00000000) >> 8) |
+                    ((value & 0xFF0000000000) >> 24) |
+                    ((value & 0xFF000000000000) >> 40) |
+                    ((value & 0xFF00000000000000) >> 56)
+            );
+    }
+
+    function _toLittleEndian32(uint32 value) private pure returns (bytes4) {
+        return
+            bytes4(
+                ((value & 0xFF) << 24) |
+                    ((value & 0xFF00) << 8) |
+                    ((value & 0xFF0000) >> 8) |
+                    ((value & 0xFF000000) >> 24)
+            );
+    }
+}
+
 contract SpokePoolExecuteRootBundleTest is Test {
     using AddressToBytes32 for address;
 
@@ -415,6 +498,228 @@ contract SpokePoolExecuteRootBundleTest is Test {
 
         // Blacklisted relayer's refund should be tracked
         assertEq(spokePool.getRelayerRefund(address(destErc20), relayer), AMOUNT_TO_RELAY);
+    }
+}
+
+/**
+ * @notice Tests for executing EVM leaves from mixed SVM/EVM merkle trees.
+ * @dev These tests verify that the EVM SpokePool can correctly process EVM leaves
+ * even when the merkle tree contains both SVM and EVM leaves interleaved or sorted.
+ */
+contract MixedSvmEvmLeavesTest is Test {
+    using AddressToBytes32 for address;
+
+    MockSpokePool public spokePool;
+    ExpandedERC20WithBlacklist public destErc20;
+    WETH9 public weth;
+    Merkle public merkle;
+
+    address public owner;
+    address public dataWorker;
+    address public relayer;
+    address public rando;
+
+    uint256 public constant AMOUNT_TO_RELAY = 25e18;
+    uint256 public constant AMOUNT_HELD_BY_POOL = AMOUNT_TO_RELAY * 4;
+    uint256 public constant DESTINATION_CHAIN_ID = 1342;
+
+    bytes32 public constant MOCK_SLOW_RELAY_ROOT = keccak256("mockSlowRelayRoot");
+
+    function setUp() public {
+        owner = makeAddr("owner");
+        dataWorker = makeAddr("dataWorker");
+        relayer = makeAddr("relayer");
+        rando = makeAddr("rando");
+
+        merkle = new Merkle();
+        weth = new WETH9();
+
+        destErc20 = new ExpandedERC20WithBlacklist("L2 USD Coin", "L2 USDC", 18);
+        destErc20.addMember(1, address(this));
+
+        vm.startPrank(owner);
+        MockSpokePool implementation = new MockSpokePool(address(weth));
+        address proxy = address(
+            new ERC1967Proxy(address(implementation), abi.encodeCall(MockSpokePool.initialize, (0, owner, owner)))
+        );
+        spokePool = MockSpokePool(payable(proxy));
+        spokePool.setChainId(DESTINATION_CHAIN_ID);
+        vm.stopPrank();
+
+        destErc20.mint(address(spokePool), AMOUNT_HELD_BY_POOL);
+    }
+
+    // Helper to create an EVM leaf
+    function _createEvmLeaf(
+        uint32 leafId,
+        uint256 refundPerRelayer
+    ) internal view returns (SpokePoolInterface.RelayerRefundLeaf memory) {
+        uint256[] memory refundAmounts = new uint256[](2);
+        refundAmounts[0] = refundPerRelayer;
+        refundAmounts[1] = refundPerRelayer;
+
+        address[] memory refundAddresses = new address[](2);
+        refundAddresses[0] = relayer;
+        refundAddresses[1] = rando;
+
+        return
+            SpokePoolInterface.RelayerRefundLeaf({
+                amountToReturn: 0,
+                chainId: DESTINATION_CHAIN_ID,
+                refundAmounts: refundAmounts,
+                leafId: leafId,
+                l2TokenAddress: address(destErc20),
+                refundAddresses: refundAddresses
+            });
+    }
+
+    // Helper to create an SVM leaf hash
+    function _createSvmLeafHash(uint32 leafId) internal pure returns (bytes32) {
+        uint64[] memory refundAmounts = new uint64[](2);
+        refundAmounts[0] = uint64(1000);
+        refundAmounts[1] = uint64(2000);
+
+        bytes32[] memory refundAddresses = new bytes32[](2);
+        refundAddresses[0] = keccak256("svmRelayer1");
+        refundAddresses[1] = keccak256("svmRelayer2");
+
+        SvmLeafHasher.SvmRelayerRefundLeaf memory svmLeaf = SvmLeafHasher.SvmRelayerRefundLeaf({
+            amountToReturn: 0,
+            chainId: uint64(DESTINATION_CHAIN_ID),
+            refundAmounts: refundAmounts,
+            leafId: leafId,
+            mintPublicKey: keccak256("svmMint"),
+            refundAddresses: refundAddresses
+        });
+
+        return SvmLeafHasher.hashSvmLeaf(svmLeaf);
+    }
+
+    // Helper to hash an EVM leaf
+    function _hashEvmLeaf(SpokePoolInterface.RelayerRefundLeaf memory leaf) internal pure returns (bytes32) {
+        return keccak256(abi.encode(leaf));
+    }
+
+    function testExecuteEvmLeavesFromMixedTree() public {
+        // Create mixed tree: SVM, EVM, SVM, EVM, SVM (alternating, starting with SVM)
+        uint256 totalLeaves = 10;
+        uint256 evmLeafCount = 5;
+        uint256 refundPerRelayer = AMOUNT_TO_RELAY / evmLeafCount;
+
+        bytes32[] memory leafHashes = new bytes32[](totalLeaves);
+        SpokePoolInterface.RelayerRefundLeaf[] memory evmLeaves = new SpokePoolInterface.RelayerRefundLeaf[](
+            evmLeafCount
+        );
+        uint256[] memory evmLeafIndices = new uint256[](evmLeafCount);
+
+        uint256 svmIndex = 0;
+        uint256 evmIndex = 0;
+
+        // Create alternating SVM and EVM leaves
+        for (uint256 i = 0; i < totalLeaves; i++) {
+            if (i % 2 == 0) {
+                // SVM leaf (even indices)
+                leafHashes[i] = _createSvmLeafHash(uint32(svmIndex));
+                svmIndex++;
+            } else {
+                // EVM leaf (odd indices)
+                evmLeaves[evmIndex] = _createEvmLeaf(uint32(evmIndex), refundPerRelayer);
+                leafHashes[i] = _hashEvmLeaf(evmLeaves[evmIndex]);
+                evmLeafIndices[evmIndex] = i;
+                evmIndex++;
+            }
+        }
+
+        bytes32 root = merkle.getRoot(leafHashes);
+
+        // Store the tree
+        vm.prank(owner);
+        spokePool.relayRootBundle(root, MOCK_SLOW_RELAY_ROOT);
+
+        // Execute only the EVM leaves
+        for (uint256 i = 0; i < evmLeafCount; i++) {
+            bytes32[] memory proof = merkle.getProof(leafHashes, evmLeafIndices[i]);
+            vm.prank(dataWorker);
+            spokePool.executeRelayerRefundLeaf(0, evmLeaves[i], proof);
+        }
+
+        // Verify refunds were distributed correctly
+        uint256 expectedTotalRefund = refundPerRelayer * evmLeafCount;
+        assertEq(destErc20.balanceOf(relayer), expectedTotalRefund);
+        assertEq(destErc20.balanceOf(rando), expectedTotalRefund);
+        assertEq(destErc20.balanceOf(address(spokePool)), AMOUNT_HELD_BY_POOL - expectedTotalRefund * 2);
+    }
+
+    function testExecuteEvmLeavesFromSortedTree() public {
+        // Create sorted tree: all SVM leaves first, then all EVM leaves
+        uint256 svmLeafCount = 5;
+        uint256 evmLeafCount = 5;
+        uint256 totalLeaves = svmLeafCount + evmLeafCount;
+        uint256 refundPerRelayer = AMOUNT_TO_RELAY / evmLeafCount;
+
+        bytes32[] memory leafHashes = new bytes32[](totalLeaves);
+        SpokePoolInterface.RelayerRefundLeaf[] memory evmLeaves = new SpokePoolInterface.RelayerRefundLeaf[](
+            evmLeafCount
+        );
+
+        // Create SVM leaves (indices 0-4)
+        for (uint256 i = 0; i < svmLeafCount; i++) {
+            leafHashes[i] = _createSvmLeafHash(uint32(i));
+        }
+
+        // Create EVM leaves (indices 5-9)
+        for (uint256 i = 0; i < evmLeafCount; i++) {
+            evmLeaves[i] = _createEvmLeaf(uint32(i), refundPerRelayer);
+            leafHashes[svmLeafCount + i] = _hashEvmLeaf(evmLeaves[i]);
+        }
+
+        bytes32 root = merkle.getRoot(leafHashes);
+
+        // Store the tree
+        vm.prank(owner);
+        spokePool.relayRootBundle(root, MOCK_SLOW_RELAY_ROOT);
+
+        // Execute only the EVM leaves
+        for (uint256 i = 0; i < evmLeafCount; i++) {
+            bytes32[] memory proof = merkle.getProof(leafHashes, svmLeafCount + i);
+            vm.prank(dataWorker);
+            spokePool.executeRelayerRefundLeaf(0, evmLeaves[i], proof);
+        }
+
+        // Verify refunds were distributed correctly
+        uint256 expectedTotalRefund = refundPerRelayer * evmLeafCount;
+        assertEq(destErc20.balanceOf(relayer), expectedTotalRefund);
+        assertEq(destErc20.balanceOf(rando), expectedTotalRefund);
+        assertEq(destErc20.balanceOf(address(spokePool)), AMOUNT_HELD_BY_POOL - expectedTotalRefund * 2);
+    }
+
+    function testCannotExecuteSvmLeafAsEvmLeaf() public {
+        // Create a tree with an SVM leaf and attempt to execute it as an EVM leaf
+        // This should fail because the hashes won't match
+
+        // Create one SVM leaf and one EVM leaf
+        bytes32 svmLeafHash = _createSvmLeafHash(0);
+        SpokePoolInterface.RelayerRefundLeaf memory evmLeaf = _createEvmLeaf(1, AMOUNT_TO_RELAY);
+        bytes32 evmLeafHash = _hashEvmLeaf(evmLeaf);
+
+        bytes32[] memory leafHashes = new bytes32[](2);
+        leafHashes[0] = svmLeafHash;
+        leafHashes[1] = evmLeafHash;
+
+        bytes32 root = merkle.getRoot(leafHashes);
+
+        vm.prank(owner);
+        spokePool.relayRootBundle(root, MOCK_SLOW_RELAY_ROOT);
+
+        // Try to execute an EVM leaf using the SVM leaf's proof - should fail
+        bytes32[] memory svmProof = merkle.getProof(leafHashes, 0);
+
+        // Create a fake EVM leaf with the same leafId as the SVM leaf
+        SpokePoolInterface.RelayerRefundLeaf memory fakeEvmLeaf = _createEvmLeaf(0, AMOUNT_TO_RELAY);
+
+        vm.prank(dataWorker);
+        vm.expectRevert(V3SpokePoolInterface.InvalidMerkleProof.selector);
+        spokePool.executeRelayerRefundLeaf(0, fakeEvmLeaf, svmProof);
     }
 }
 
