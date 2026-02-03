@@ -56,3 +56,6 @@ src/svm/clients/*
 # SP1Helios deploy artifacts
 script/universal/genesis-binary
 script/universal/genesis.json
+
+# claude
+CLAUDE.local.md
