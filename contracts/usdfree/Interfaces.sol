@@ -1,112 +1,127 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.30;
 
-// Static checks that cannot modify state
-struct StaticRequirement {
-    address target;
-    bytes cdata;
+struct ExecutionStep {
+    bytes tokenReq; // Mandatory: (token, amount). Token has to be correct. Amount can be 0 to mean "no enforcement"
+    // NOTE: if an order is sponsored, this is forced by the API to be one of the trusted relayers, to prevent self-
+    // submission and self-sandwiching on the sponsored orders
+    bytes submitterReq; // None OR address (can be bytes32 for non-EVM chains)
+    bytes deadlineReq; // None OR deadline
+    // A list of other requiremens that can be checked in a static way after the submitter has already executed
+    bytes[] otherStaticReqs;
+    // NOTE: if we want obfuscation to encompass both the requirements and the final action, we can record auction `Changes` 
+    // and apply them after the deobfuscation
+    bytes hashOrFinalAction;
+    // NOTE: If the current step hasn't been executed by `deadline`, this address can break the execution chain and withdraw
+    // the assets associated with the order
+    address refundRecipient;
 }
 
-struct OrderBase {
-    address tokenIn;
-    uint256 amountIn;
-    StaticRequirement[] requirements;
-    bytes userActions; // abi-encoded MulticallHandler.Instructions
-}
-
-// The thing that the user signs (puts as witness into the gasless sig, or submits themselves)
+// The struct that the user signs. Contains all of the user's preferences
 struct Order {
     bytes32 salt;
-    bytes submitterRequirement;
-    OrderBase base;
+    ExecutionStep[] steps;
 }
 
-// Base contract for Gateway and OrderStore: shared deobfuscation logic
-// NOTE: submitterRequirement is not checked here - caller is responsible.
-abstract contract OrderExecutionBase {
-    // This function expects all starting token balances (user's and submitter's) to be on the Executor balance already
-    function _execute(
-        StaticRequirement[] memory requirements,
-        bytes memory userActions, // abi-encoded MulticallHandler.Instructions
-        bytes memory deobfuscation, // bytes(0) if not obfuscated
-        bytes memory submitterActions // weiroll commands
-    ) internal virtual {
-        // 1. deobfuscate orderBase.userActions if needed
-        // 2. call Executor.execute(submitterActions, requirements, userActions)
-    }
+// Same as above, if a user is using an auction
+struct OrderWithAuction {
+    Order order;
+    // `auctionAuthority` has the power to change the execution steps (see `struct Change` below)
+    address auctionAuthority;
 }
 
-// src-side entrypoint with token approvals
-contract OrderGateway is OrderExecutionBase {
-    function submit(
-        Order memory order,
-        bytes memory gaslessData, // empty=pre-approved, or permit/permit2/EIP-3009 sig
-        bytes memory submitterRequirementResponse, // for example, auction authority signature
-        bytes memory submitterFunding, // array of (token, amount)
-        bytes memory submitterActions // weiroll commands
-    ) external payable {
-        // 1. check submitterRequirement
-        // 2. pull user's tokens (interpret gaslessData)
-        // 3. pull submitter's tokens
-        // 4. push all tokens to executor
-        // 5. _execute(order.base.requirements, order.base.userActions, bytes(0), submitterActions)
-    }
+// A struct that represents some change in user requirement as a result of the auction
+struct Change {
+    // enum for: token, deadline, submitter or custom
+    uint8 typ;
+    // NOTE: if a type is custom, data can inlcude an index of the otherStaticReqs that the auction wants to change. The
+    // funtion to apply the change has to be implemented on the OrderGateway for this to work
+    // data gets interpreted by the Gateway to apply the change depending on the type
+    bytes data;
 }
 
-// dst-side contract with token approvals
-contract OrderStore is OrderExecutionBase {
-    // Tries atomic execution with empty submitter actions. If fails, stores order.
-    function handle(
-        OrderBase memory orderBase,
-        bytes memory submitterRequirement // NOT checked, only stored for check on `fillStored` if required
-    ) external payable {
-        // 1. pull tokens from msg.sender
-        // TODO: push and then try does not bring the tokens back. Fix it. One way is to have Executor pull tokens.
-        // 2. push tokens to executor
-        // 3. try _execute(orderBase.requirements, orderBase.userActions, bytes(0), [])
-        // 4. if fails, store (orderBase.userActions, submitterRequirement) for later fill
-    }
-
-    // Atomic execution. Caller (example of happy-path caller is CCTPHandler) is responsible for checking
-    // submitterRequirement BEFORE forwarding funds and calling this.
-    function handleAtomic(
-        OrderBase memory orderBase,
-        bytes memory deobfuscation, // bytes(0) if not obfuscated
-        bytes memory submitterRequirementResponse, // for example, auction authority signature
-        bytes memory submitterFunding, // array of (token, amount)
-        bytes memory submitterActions // weiroll commands
-    ) external payable {
-        // 1. pull tokens from msg.sender
-        // 2. pull submitter's tokens
-        // 3. push all tokens to executor
-        // 4. _execute(order.base.requirements, order.base.userActions, bytes(0), submitterActions)
-    }
-
-    // Fill a stored intent. Checks stored submitterRequirement.
-    function fillStored(
-        uint256 intentIndex,
-        bytes memory deobfuscation,
-        bytes memory submitterRequirementResponse, // for example, auction authority signature
-        bytes memory submitterFunding, // array of (token, amount)
-        bytes memory submitterActions // weiroll commands
-    ) external payable {
-        // 1. load stored (orderBase, submitterRequirement)
-        // 2. check submitterRequirement
-        // 3. pull submitter's tokens
-        // 4. push all tokens to executor
-        // 5. _execute(orderBase, deobfuscation, submitterActions)
-    }
+// Auction changes can do things like change the submitter, improve the token requirement or shorten the deadline etc.
+struct AuctionChanges {
+    // changes[idx] are relevant to the requirements of order.steps[idx]
+    Change[][] changes;
+    // sig is over (orderId, changes) by the auction authority specified in OrderWithAuction
+    bytes sig;
 }
 
-// Stateless executor. No approvals, runs arbitrary calls. Assumes all balances are "there for the taking" during atomic execution
-contract OrderExecutor {
+struct TokenAmount {
+    address token;
+    uint256 amount;
+}
+
+// Provided to support the execution of a single step
+struct SubmitterData {
+    TokenAmount[] extraFunding;
+    bytes actions; // weiroll
+    bytes deobfuscation; // if user's finalAction is obfuscated
+}
+
+// Entrypoint for all order submissions
+contract OrderGateway {
+    function submit(Order calldata order, SubmitterData calldata submitterData) external payable;
+    function submitGasless(Order calldata order, SubmitterData calldata submitterData, bytes calldata gaslessSig) external payable;
+    function submitWithAuction(
+        OrderWithAuction memory order,
+        SubmitterData calldata submitterData,
+        bytes calldata gaslessSig,
+        AuctionChanges calldata auctionChanges
+    ) external payable;
+}
+
+// Contract responsible for executing submitter actions, checking user requirements and executing the final user action
+interface Executor {
     function execute(
-        bytes memory submitterActions, // weiroll commands
-        StaticRequirement[] memory requirements,
-        bytes memory userActions // abi-encoded MulticallHandler.Instructions
-    ) external payable {
-        // 1. run submitterActions (weiroll)
-        // 2. check requirements (staticcall each, revert if any fails)
-        // 3. run userActions (MulticallHandler patterns)
-    }
+        // `submitter` is propagated by the caller: either Gateway or `IntentStore`
+        address submitter,
+        // Provided by the submitter to try to meet user's requirements
+        bytes calldata submitterActions, // weiroll
+        // Current and the remaining execution steps, initially defined by the user in `Order.steps`
+        ExecutionStep calldata currentStep,
+        ExecutionStep[] calldata nextSteps
+    ) external payable;
+}
+
+// NOTE: it is a task of `FinalUserActionExecutor` to propagate `nextSteps` to the future execution layer
+interface FinalUserActionExecutor {
+    function executeFinal(
+        // this is taken from `ExecutionStep.tokenReq.token`
+        address token,
+        // this is taken from `balanceOf(executorContract, ExecutionStep.tokenReq.token)`
+        uint256 amount,
+        // these are hardcoded in the `ExecutionStep.hashOrFinalAction`
+        bytes calldata finalActionParams,
+        // these are the remaining execution steps, initially defined by the user in `Order.steps`
+        ExecutionStep[] calldata nextSteps
+    ) external payable;
+}
+
+interface OrderStore {
+    // Called by a Mint-burn contract after it's done all of the relevant checks and ready to hand over tokens
+    function handle(
+        address token,
+        uint256 amount,
+        // NOTE: remainingSteps[0] is the "current step". An array cannot be empty, otherwise we revert and require some
+        // `handleAtomic` call by the refund recipient
+        ExecutionStep[] calldata remainingSteps
+    ) external payable;
+
+    // Perform a handle + fill atomically. Available for e.g. CCTP finalizers to also be submitters
+    function handleAtomic(
+        address token,
+        uint256 amount,
+        ExecutionStep[] calldata remainingSteps,
+        // NOTE: propagated by the msg.sender. We can trust this, since msg.sender is providing the funds
+        address submitter,
+        SubmitterData calldata submitterData
+    ) external payable;
+
+    // Fill an order stored in the store
+    function fill(
+        uint256 localOrderIndex,
+        SubmitterData calldata submitterData
+    ) external payable;
 }
