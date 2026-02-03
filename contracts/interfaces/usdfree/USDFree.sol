@@ -78,7 +78,7 @@ interface ISrcExecutor {
      * 5) Encodes the following into bridgeData and calls deposit() on the bridge adapter
      *    - order.bridgeParams.bridgeData
      *    - order.deadline
-     *    - order.submitterRequirement
+     *    - submitterAddress
      *    - order.dstPayload
      */
     function executeOrder(Order calldata order, Call[] calldata srcActions) external;
@@ -108,12 +108,12 @@ interface IIntentStore {
         uint256 amount,
         uint256 deadline,
         bytes calldata dstPayload,
-        SubmitterRequirement calldata submitterRequirement
+        address submitter
     ) external;
 
     /**
      * For a non-obfuscated dstPayload
-     * 1) Checks submitterRequirement
+     * 1) Checks submitter address
      * 2) Checks deadline
      * 3) Approve DstExecutor to spend tokens
      * 4) Calls dstExecutor.executeOrder()
@@ -122,7 +122,7 @@ interface IIntentStore {
 
     /**
      * For an obfuscated dstPayload
-     * 1) Checks submitterRequirement
+     * 1) Checks submitter address
      * 2) Checks deadline
      * 3) Check that keccak256(dstTokenReq, dstUserActions) == dstPayload
      * 4) Approve DstExecutor to spend tokens
