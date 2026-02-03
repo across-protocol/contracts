@@ -2,8 +2,9 @@
 pragma solidity ^0.8.30;
 
 struct ExecutionStep {
-    bytes tokenReq; // MANDATORY: (token, amount). Token has to be correct. Amount can be 0 to mean "no enforcement"
-    // NOTE: these are not mandatory. They can go into the otherStaticReqs, or can be included here for simplicity
+    bytes tokenReq; // Mandatory: (token, amount). Token has to be correct. Amount can be 0 to mean "no enforcement"
+    // NOTE: if an order is sponsored, this is forced by the API to be one of the trusted relayers, to prevent self-
+    // submission and self-sandwiching on the sponsored orders
     bytes submitterReq; // None OR address (can be bytes32 for non-EVM chains)
     bytes deadlineReq; // None OR deadline
     // A list of other requiremens that can be checked in a static way after the submitter has already executed
@@ -11,8 +12,9 @@ struct ExecutionStep {
     // NOTE: if we want obfuscation to encompass both the requirements and the final action, we can record auction `Changes` 
     // and apply them after the deobfuscation
     bytes hashOrFinalAction;
-    // Recipient that can withdraw funds after the deadline if the order hasn't been submitted yet
-    bytes32 refundRecipient;
+    // NOTE: If the current step hasn't been executed by `deadline`, this address can break the execution chain and withdraw
+    // the assets associated with the order
+    address refundRecipient;
 }
 
 // The struct that the user signs. Contains all of the user's preferences
@@ -54,12 +56,14 @@ struct TokenAmount {
 // Provided to support the execution of a single step
 struct SubmitterData {
     TokenAmount[] extraFunding;
-    bytes executions; // weiroll
-    bytes deobfuscation; // if user actions are obfuscated
+    bytes actions; // weiroll
+    bytes deobfuscation; // if user's finalAction is obfuscated
 }
 
+// Entrypoint for all order submissions
 contract OrderGateway {
-    function submit(Order calldata order, SubmitterData calldata submitterData, bytes calldata gaslessSig) external payable;
+    function submit(Order calldata order, SubmitterData calldata submitterData) external payable;
+    function submitGasless(Order calldata order, SubmitterData calldata submitterData, bytes calldata gaslessSig) external payable;
     function submitWithAuction(
         OrderWithAuction memory order,
         SubmitterData calldata submitterData,
@@ -68,22 +72,17 @@ contract OrderGateway {
     ) external payable;
 }
 
-contract Executor {
+// Contract responsible for executing submitter actions, checking user requirements and executing the final user action
+interface Executor {
     function execute(
         // `submitter` is propagated by the caller: either Gateway or `IntentStore`
-        address submitter;
+        address submitter,
         // Provided by the submitter to try to meet user's requirements
-        bytes submitterExecutions; // weiroll
-        // Taken from the current `ExecutionStep`
-        bytes tokenReq,
-        bytes submitterReq,
-        bytes deadlineReq,
-        // A list of other requiremens that can be checked in a static way after the submitter has already executed
-        bytes[] otherStaticReqs;
-        bytes memory finalActionParams,
-        // The remaining execution steps, initially defined by the user in `Order.steps`
-        ExecutionStep[] nextSteps
-    ) external;
+        bytes calldata submitterActions, // weiroll
+        // Current and the remaining execution steps, initially defined by the user in `Order.steps`
+        ExecutionStep calldata currentStep,
+        ExecutionStep[] calldata nextSteps
+    ) external payable;
 }
 
 // NOTE: it is a task of `FinalUserActionExecutor` to propagate `nextSteps` to the future execution layer
@@ -94,8 +93,35 @@ interface FinalUserActionExecutor {
         // this is taken from `balanceOf(executorContract, ExecutionStep.tokenReq.token)`
         uint256 amount,
         // these are hardcoded in the `ExecutionStep.hashOrFinalAction`
-        bytes memory finalActionParams,
+        bytes calldata finalActionParams,
         // these are the remaining execution steps, initially defined by the user in `Order.steps`
-        ExecutionStep[] nextSteps
+        ExecutionStep[] calldata nextSteps
+    ) external payable;
+}
+
+interface OrderStore {
+    // Called by a Mint-burn contract after it's done all of the relevant checks and ready to hand over tokens
+    function handle(
+        address token,
+        uint256 amount,
+        // NOTE: remainingSteps[0] is the "current step". An array cannot be empty, otherwise we revert and require some
+        // `handleAtomic` call by the refund recipient
+        ExecutionStep[] calldata remainingSteps
+    ) external payable;
+
+    // Perform a handle + fill atomically. Available for e.g. CCTP finalizers to also be submitters
+    function handleAtomic(
+        address token,
+        uint256 amount,
+        ExecutionStep[] calldata remainingSteps,
+        // NOTE: propagated by the msg.sender. We can trust this, since msg.sender is providing the funds
+        address submitter,
+        SubmitterData calldata submitterData
+    ) external payable;
+
+    // Fill an order stored in the store
+    function fill(
+        uint256 localOrderIndex,
+        SubmitterData calldata submitterData
     ) external payable;
 }
