@@ -114,7 +114,7 @@ contract Succinct_SpokePool is SpokePool, ITelepathyHandler {
     }
 
     function _bridgeTokensToHubPool(uint256, address) internal override {
-        // This method is a no-op. If the chain intends to include bridging functionality, this must be overriden.
+        // This method is a no-op. If the chain intends to include bridging functionality, this must be overridden.
         // If not, leaving this unimplemented means this method may be triggered, but the result will be that no
         // balance is transferred.
     }

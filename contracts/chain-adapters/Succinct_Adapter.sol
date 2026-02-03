@@ -46,6 +46,6 @@ contract Succinct_Adapter is AdapterInterface {
         address
     ) external payable override {
         // This method is intentionally left as a no-op.
-        // If the adapter is intended to be able to relay tokens, this method should be overriden.
+        // If the adapter is intended to be able to relay tokens, this method should be overridden.
     }
 }
