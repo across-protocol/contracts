@@ -420,7 +420,7 @@ library HyperCoreLib {
 
     /**
      * @notice Converts a maximum EVM amount to send into an EVM amount to send to avoid loss to dust,
-     * @notice and the corresponding amount that will be recieved on Core.
+     * @notice and the corresponding amount that will be received on Core.
      * @param maximumEVMSendAmount The maximum amount to send on HyperEVM
      * @param decimalDiff The decimal difference of evmDecimals - coreDecimals
      * @return amountEVMToSend The amount to send on HyperEVM
