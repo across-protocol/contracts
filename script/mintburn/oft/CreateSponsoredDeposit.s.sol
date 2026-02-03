@@ -29,6 +29,7 @@ library DebugQuoteSignLib {
                 p.nonce,
                 p.deadline,
                 p.maxBpsToSponsor,
+                p.maxUserSlippageBps,
                 p.finalRecipient
             )
         );
@@ -205,6 +206,7 @@ contract CreateSponsoredDeposit is Script, Config {
             nonce: nonce,
             deadline: deadline,
             maxBpsToSponsor: maxBpsToSponsor,
+            maxUserSlippageBps: maxUserSlippageBps,
             finalRecipient: finalRecipient.toBytes32(),
             finalToken: finalToken.toBytes32(),
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
@@ -217,8 +219,7 @@ contract CreateSponsoredDeposit is Script, Config {
         });
 
         UnsignedQuoteParams memory unsignedParams = UnsignedQuoteParams({
-            refundRecipient: refundRecipient,
-            maxUserSlippageBps: maxUserSlippageBps
+            refundRecipient: refundRecipient
         });
 
         Quote memory quote = Quote({ signedParams: signedParams, unsignedParams: unsignedParams });
@@ -286,7 +287,7 @@ contract CreateSponsoredDeposit is Script, Config {
             quote.signedParams.nonce,
             amountSD,
             quote.signedParams.maxBpsToSponsor,
-            quote.unsignedParams.maxUserSlippageBps,
+            quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken,
             quote.signedParams.destinationDex,

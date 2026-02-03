@@ -28,6 +28,7 @@ struct SignedQuoteParams {
     bytes32 nonce; // quote nonce
     uint256 deadline; // Quote deadline. Enforced on source chain only at deposit time, not sent to destination
     uint256 maxBpsToSponsor; // max bps (of sent amount) to sponsor for 1:1
+    uint256 maxUserSlippageBps; // slippage tolerance for the swap on the destination
     bytes32 finalRecipient; // user address on destination
     bytes32 finalToken; // final token user will receive (might be different from OFT token we're sending)
     uint32 destinationDex; // destination DEX on HyperCore
@@ -44,5 +45,4 @@ struct SignedQuoteParams {
 /// @notice Unsigned params of the sponsored bridging flow quote: user is free to choose these
 struct UnsignedQuoteParams {
     address refundRecipient; // recipient of extra msg.value passed into the OFT send on src chain
-    uint256 maxUserSlippageBps; // slippage tolerance for the swap on the destination
 }

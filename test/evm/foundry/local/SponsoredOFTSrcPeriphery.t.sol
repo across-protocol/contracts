@@ -75,6 +75,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             nonce: nonce,
             deadline: deadline,
             maxBpsToSponsor: 500, // 5%
+            maxUserSlippageBps: 300, // 3%
             finalRecipient: finalRecipientAddr.toBytes32(),
             finalToken: finalTokenAddr.toBytes32(),
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
@@ -87,8 +88,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         });
 
         UnsignedQuoteParams memory up = UnsignedQuoteParams({
-            refundRecipient: refundRecipient,
-            maxUserSlippageBps: 300 // 3%
+            refundRecipient: refundRecipient
         });
 
         q = Quote({ signedParams: sp, unsignedParams: up });

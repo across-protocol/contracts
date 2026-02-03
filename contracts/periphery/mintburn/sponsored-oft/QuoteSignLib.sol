@@ -21,6 +21,7 @@ library QuoteSignLib {
                 p.nonce,
                 p.deadline,
                 p.maxBpsToSponsor,
+                p.maxUserSlippageBps,
                 p.finalRecipient
             )
         );
