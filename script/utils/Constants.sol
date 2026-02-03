@@ -11,6 +11,8 @@ import { Script } from "forge-std/Script.sol";
 contract Constants is Script {
     string public file;
 
+    uint32 constant CCTP_NO_DOMAIN = 2 ** 32 - 1;
+
     constructor() {
         file = vm.readFile("generated/constants.json");
     }
@@ -51,8 +53,6 @@ contract Constants is Script {
         address scrollGasPriceOracle;
         address blastYieldManager;
         address blastDaiRetriever;
-        address l1AlephZeroInbox;
-        address l1AlephZeroERC20GatewayRouter;
         address adapterStore;
         address donationBox;
         address hubPoolStore;
@@ -65,7 +65,6 @@ contract Constants is Script {
     struct OpStackAddresses {
         address L1CrossDomainMessenger;
         address L1StandardBridge;
-        address L1BlastBridge;
         address L1OpUSDCBridgeAdapter;
     }
 
@@ -144,14 +143,6 @@ contract Constants is Script {
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".blastDaiRetriever")
                     ),
-                    l1AlephZeroInbox: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroInbox")
-                    ),
-                    l1AlephZeroERC20GatewayRouter: vm.parseJsonAddress(
-                        file,
-                        string.concat(".L1_ADDRESS_MAP.", chainIdString, ".l1AlephZeroERC20GatewayRouter")
-                    ),
                     adapterStore: vm.parseJsonAddress(
                         file,
                         string.concat(".L1_ADDRESS_MAP.", chainIdString, ".adapterStore")
@@ -196,18 +187,19 @@ contract Constants is Script {
             OpStackAddresses({
                 L1CrossDomainMessenger: vm.parseJsonAddress(file, string.concat(path, ".L1CrossDomainMessenger")),
                 L1StandardBridge: vm.parseJsonAddress(file, string.concat(path, ".L1StandardBridge")),
-                L1BlastBridge: vm.parseJsonAddress(file, string.concat(path, ".L1BlastBridge")),
                 L1OpUSDCBridgeAdapter: vm.parseJsonAddress(file, string.concat(path, ".L1OpUSDCBridgeAdapter"))
             });
     }
 
     // Circle domain IDs mapping
     function getCircleDomainId(uint256 chainId) public view returns (uint32) {
-        int32 cctpDomain = _getCctpDomain(chainId);
+        int256 cctpDomain = _getCctpDomain(chainId);
         if (cctpDomain == -1) {
-            revert("Circle domain ID not found");
+            revert("Circle CCTP domain ID not found");
+        } else if (cctpDomain < 0 || cctpDomain > 2 ** 32 - 1) {
+            revert("Invalid Circle CCTP domain ID");
         }
-        return uint32(cctpDomain);
+        return uint32(uint256(cctpDomain));
     }
 
     function hasCctpDomain(uint256 chainId) public view returns (bool) {
@@ -237,6 +229,11 @@ contract Constants is Script {
 
     function getWrappedNativeToken(uint256 chainId) public view returns (address) {
         return vm.parseJsonAddress(file, string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId)));
+    }
+
+    // Get the permit2 address for the input chain.
+    function getPermit2(uint256 chainId) public view returns (address) {
+        return vm.parseJsonAddress(file, string.concat(".L2_ADDRESS_MAP.", vm.toString(chainId), ".permit2"));
     }
 
     /**

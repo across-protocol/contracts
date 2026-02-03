@@ -7,11 +7,10 @@
 // - NODE_URL_11155111: Ethereum RPC URL for Sepolia (ignored if TESTNET=false).
 
 // eslint-disable-next-line camelcase
-import { getNodeUrl } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../../utils/constants";
+import { CHAIN_IDs, getNodeUrl, TOKEN_SYMBOLS_MAP } from "../../utils";
 // eslint-disable-next-line camelcase
 import { getSolanaChainId } from "../../src/svm/web3-v1";
 import { BondToken__factory, HubPool__factory } from "../../typechain";
@@ -19,7 +18,7 @@ import { requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 
 // Set up Ethereum provider.
-const nodeURL = process.env.TESTNET === "true" ? getNodeUrl("sepolia", true) : getNodeUrl("mainnet", true);
+const nodeURL = getNodeUrl(process.env.TESTNET === "true" ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET);
 const ethersProvider = new ethers.providers.JsonRpcProvider(nodeURL);
 const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(ethersProvider);
 

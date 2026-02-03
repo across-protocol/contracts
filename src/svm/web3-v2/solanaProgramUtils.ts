@@ -70,12 +70,14 @@ export async function readEvents(
   commitment: Commitment = "confirmed"
 ) {
   const txResult = await client.rpc
-    .getTransaction(txSignature, { commitment, maxSupportedTransactionVersion: 0 })
+    .getTransaction(txSignature, { encoding: "json", commitment, maxSupportedTransactionVersion: 0 })
     .send();
 
   if (txResult === null) return [];
 
-  return processEventFromTx(txResult, programId, programIdl);
+  // Ensure `version` field is always present in the response. @todo Drop this with next Anchor upgrade.
+  const txWithVersion = { ...txResult, version: txResult.version ?? 0 };
+  return processEventFromTx(txWithVersion, programId, programIdl);
 }
 
 /**

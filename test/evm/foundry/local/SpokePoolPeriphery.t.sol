@@ -180,7 +180,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -253,7 +253,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             actualReturnAmount,
             expectedAdjustedOutput, // This should be proportionally increased
             destinationChainId,
@@ -313,7 +313,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             actualReturnAmount,
             depositAmount, // This should be the original amount, not adjusted
             destinationChainId,
@@ -337,7 +337,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -373,7 +373,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -416,7 +416,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -455,7 +455,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            bytes32(0),
+            address(mockWETH).toBytes32(),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -473,7 +473,7 @@ contract SpokePoolPeripheryTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount,
-            bytes32(0), // outputToken
+            address(mockWETH).toBytes32(), // outputToken
             mintAmount,
             destinationChainId,
             bytes32(0), // exclusiveRelayer
@@ -495,7 +495,7 @@ contract SpokePoolPeripheryTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             mintAmount, // This doesn't match msg.value of 1
-            bytes32(0), // outputToken
+            address(mockWETH).toBytes32(), // outputToken
             mintAmount,
             destinationChainId,
             bytes32(0), // exclusiveRelayer
@@ -524,7 +524,7 @@ contract SpokePoolPeripheryTest is Test {
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             1 wei, // inputAmount
-            bytes32(0), // outputToken
+            address(mockWETH).toBytes32(), // outputToken
             1 wei, // outputAmount
             destinationChainId,
             bytes32(0), // exclusiveRelayer
@@ -578,7 +578,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -654,7 +654,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            bytes32(0),
+            address(mockWETH).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -792,7 +792,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -868,7 +868,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            bytes32(0),
+            address(mockWETH).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -1015,7 +1015,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockWETH).toBytes32(),
-            bytes32(0),
+            address(mockWETH).toBytes32(),
             mintAmount,
             mintAmount,
             destinationChainId,
@@ -1090,7 +1090,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             depositAmount,
             depositAmount,
             destinationChainId,
@@ -1189,7 +1189,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             actualReturnAmount,
             expectedAdjustedOutput, // This should be proportionally increased
             destinationChainId,
@@ -1477,7 +1477,7 @@ contract SpokePoolPeripheryTest is Test {
                 submissionFees: SpokePoolPeripheryInterface.Fees({ amount: _feeAmount, recipient: _feeRecipient }),
                 baseDepositData: SpokePoolPeripheryInterface.BaseDepositData({
                     inputToken: _token,
-                    outputToken: bytes32(0),
+                    outputToken: _token.toBytes32(),
                     outputAmount: _amount,
                     depositor: _depositor,
                     recipient: _depositor.toBytes32(),
@@ -1785,7 +1785,7 @@ contract SpokePoolPeripheryTest is Test {
                 submissionFees: SpokePoolPeripheryInterface.Fees({ amount: _feeAmount, recipient: _feeRecipient }),
                 depositData: SpokePoolPeripheryInterface.BaseDepositData({
                     inputToken: _inputToken,
-                    outputToken: bytes32(0),
+                    outputToken: _inputToken.toBytes32(),
                     outputAmount: _amount,
                     depositor: _depositor,
                     recipient: _depositor.toBytes32(),

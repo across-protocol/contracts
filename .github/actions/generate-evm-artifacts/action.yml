@@ -16,9 +16,17 @@ runs:
     - name: Install packages
       shell: bash
       run: yarn install --frozen-lockfile
-    - name: Build EVM
+    - name: Build Hardhat
       shell: bash
-      run: yarn build-evm
+      run: yarn build-hardhat
+    - name: Install Foundry
+      uses: foundry-rs/foundry-toolchain@v1
+    - name: Install forge dependencies
+      shell: bash
+      run: forge install
+    - name: Build Foundry
+      shell: bash
+      run: yarn build-evm-foundry
     - name: Archive EVM artifacts (for caching)
       shell: bash
       env:

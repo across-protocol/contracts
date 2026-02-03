@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CONTRACTS=("Universal_SpokePool" "Arbitrum_SpokePool" "Optimism_SpokePool" "Polygon_SpokePool" "Linea_SpokePool" "ZkSync_SpokePool" "Ethereum_SpokePool" "Blast_SpokePool" "AlephZero_SpokePool" "Scroll_SpokePool" "WorldChain_SpokePool" "PolygonZkEVM_SpokePool" "OP_SpokePool")
+CONTRACTS=("Universal_SpokePool" "Arbitrum_SpokePool" "Optimism_SpokePool" "Polygon_SpokePool" "Linea_SpokePool" "ZkSync_SpokePool" "Ethereum_SpokePool" "Blast_SpokePool" "Scroll_SpokePool" "WorldChain_SpokePool" "PolygonZkEVM_SpokePool" "OP_SpokePool")
 if [[ "$1" == "--overwrite" ]]; then
     for CONTRACT in "${CONTRACTS[@]}"; do
         echo "Overwrite flag detected. Creating new storage layout snapshot of the $CONTRACT contract"
