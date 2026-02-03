@@ -1,45 +1,95 @@
-# Universal SpokePool Bridge Adapter Architecture
+# SpokePool Plugin Architecture Options
 
 ## Problem Statement
 
-The existing Universal SpokePool provides flexibility for USDC (via CCTP) and OFT routing, but lacks support for other bridge types such as:
+The current Across architecture requires chain-specific SpokePool implementations (`OP_SpokePool`, `Arbitrum_SpokePool`, `Universal_SpokePool`, etc.) because of two fundamental differences across chains:
 
-- OP native ERC20 bridge (Optimism Standard Bridge)
-- Arbitrum ERC20 gateway
-- Custom chain-specific bridges
+### 1. Message Receiving (Hub → Spoke)
 
-This limitation was identified during MegaETH deployment, where support for the OP native (Ether) bridge was required, forcing an OP_SpokePool deployment instead of a Universal SpokePool deployment.
+Different chains have different ways to verify that a message came from HubPool:
 
-As new chains (especially alt L1s) launch with increasingly bespoke token configurations, a more flexible bridging architecture is needed.
+- **OP Stack chains**: CrossDomainMessenger with `xDomainMessageSender()`
+- **Arbitrum**: Inbox aliasing where HubPool's address is deterministically modified
+- **Alt L1s/Future chains**: Helios light client proofs, Hyperlane, or other verification methods
+
+### 2. Token Bridging (Spoke → Hub)
+
+Different chains have different canonical bridges for returning tokens to L1:
+
+- **OP Stack**: L2StandardBridge / OptimismPortal
+- **Arbitrum**: L2GatewayRouter / ArbSys
+- **Universal**: CCTP (USDC), OFT (LayerZero tokens)
+- **Custom**: Chain-specific bridges (e.g., MegaETH requiring OP native bridge)
+
+### Current Pain Points
+
+1. **Deployment fragmentation**: MegaETH needed OP_SpokePool instead of Universal_SpokePool because it required the OP native bridge
+2. **Code duplication**: Each chain-specific SpokePool duplicates 95%+ of the core logic
+3. **Maintenance burden**: Bug fixes and features must be propagated to all implementations
+4. **New chain friction**: Supporting a new L2 requires creating a new SpokePool variant
+
+### Goal
+
+Create a **single SpokePool implementation** that works on all chains by making both message receiving and token bridging pluggable via ERC-7201 namespaced storage plugins.
 
 ## Current Architecture
 
-### Bridge Flow in Universal_SpokePool
+### Message Receiving (Hub → Spoke)
+
+Each chain-specific SpokePool overrides `_requireAdminSender()` differently:
 
 ```solidity
-function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal override {
-  address oftMessenger = _getOftMessenger(l2TokenAddress);
+// OP_SpokePool
+function _requireAdminSender() internal view override {
+  require(msg.sender == address(messenger) && messenger.xDomainMessageSender() == crossDomainAdmin);
+}
 
-  if (_isCCTPEnabled() && l2TokenAddress == address(usdcToken)) {
-    _transferUsdc(withdrawalRecipient, amountToReturn);
-  } else if (oftMessenger != address(0)) {
-    _fundedTransferViaOft(IERC20(l2TokenAddress), IOFT(oftMessenger), withdrawalRecipient, amountToReturn);
-  } else {
-    revert NotImplemented();
-  }
+// Arbitrum_SpokePool
+function _requireAdminSender() internal view override {
+  require(msg.sender == AddressAliasHelper.applyL1ToL2Alias(crossDomainAdmin));
+}
+
+// Universal_SpokePool (no cross-chain messages - admin only)
+function _requireAdminSender() internal view override {
+  require(msg.sender == owner());
 }
 ```
 
-### Limitations
+### Token Bridging (Spoke → Hub)
 
-1. **Hard-coded bridge types**: Only CCTP and OFT are supported
-2. **No extensibility**: Adding new bridge types requires contract modification
-3. **Deployment fragmentation**: Different chains need different SpokePool implementations
-4. **Maintenance burden**: Each chain-specific SpokePool duplicates core logic
+Each chain-specific SpokePool overrides `_bridgeTokensToHubPool()` differently:
+
+```solidity
+// OP_SpokePool
+function _bridgeTokensToHubPool(uint256 amount, address token) internal override {
+  IL2ERC20Bridge(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(...);
+}
+
+// Arbitrum_SpokePool
+function _bridgeTokensToHubPool(uint256 amount, address token) internal override {
+  ArbitrumL2ERC20GatewayLike(l2GatewayRouter).outboundTransfer(...);
+}
+
+// Universal_SpokePool
+function _bridgeTokensToHubPool(uint256 amount, address token) internal override {
+  if (_isCCTPEnabled() && token == usdcToken) { _transferUsdc(...); }
+  else if (_getOftMessenger(token) != address(0)) { _fundedTransferViaOft(...); }
+  else { revert NotImplemented(); }
+}
+```
+
+### Why This Is Problematic
+
+1. **Hard-coded paths**: Each SpokePool can only use the bridges compiled into it
+2. **No runtime flexibility**: MegaETH needed OP_SpokePool, not Universal_SpokePool
+3. **N×M problem**: N chains × M bridge types = explosion of implementations
+4. **Scattered upgrades**: Fixing a bug requires upgrading every SpokePool variant
 
 ---
 
 ## Design Options
+
+> **Note**: The options below focus primarily on Spoke → Hub token bridging. However, the same architectural patterns apply to Hub → Spoke message receiving. The recommended approach (Option D) handles both directions with a unified plugin model. See [universal-spokepool-erc7201-plugins.md](./universal-spokepool-erc7201-plugins.md) for the complete design including message receiver plugins.
 
 ### Option A: Bridge Adapter Registry
 
@@ -701,40 +751,44 @@ contract WETHUnwrapAdapter is IBridgeAdapter {
 
 ## Recommendation
 
-### If prioritizing standalone Spoke → Hub flexibility: **Option E (Hybrid)**
+### Primary Recommendation: **Option D (ERC-7201 Plugins)**
 
-**Option E** is a good choice if:
+**Option D with ERC-7201 namespaced storage** is the recommended approach because it enables the expanded goal: **a single SpokePool implementation that works on all chains**.
 
-- You want to minimize changes to Universal_SpokePool
+With Option D, we can make both directions pluggable:
+
+1. **Message Receiving (Hub → Spoke)**: `IMessageReceiverPlugin` implementations
+
+   - `HeliosMessageReceiver` - Light client proofs for alt L1s
+   - `OPCrossDomainReceiver` - OP Stack CrossDomainMessenger
+   - `ArbitrumInboxReceiver` - Arbitrum address aliasing
+   - `AdminOnlyReceiver` - Direct admin control (fallback/bootstrap)
+
+2. **Token Bridging (Spoke → Hub)**: `IBridgePlugin` implementations
+   - `CCTPBridgePlugin` - Circle CCTP for USDC
+   - `OFTBridgePlugin` - LayerZero OFT
+   - `OPStandardBridgePlugin` - OP L2StandardBridge
+   - `ArbitrumGatewayPlugin` - Arbitrum L2GatewayRouter
+
+**Why Option D enables a single SpokePool**:
+
+1. **Eliminates chain-specific overrides**: `_requireAdminSender()` and `_bridgeTokensToHubPool()` become plugin dispatchers
+2. **Runtime configuration**: HubPool governance can configure plugins without SpokePool upgrade
+3. **Unified state management**: All plugin config lives in SpokePool via ERC-7201 namespaces
+4. **No code duplication**: One SpokePool.sol, many plugin implementations
+5. **Future-proof**: New chains only need new plugins, not new SpokePool variants
+
+See [universal-spokepool-erc7201-plugins.md](./universal-spokepool-erc7201-plugins.md) for the complete implementation design.
+
+### Alternative: **Option E (Hybrid)** for incremental adoption
+
+**Option E** is a reasonable fallback if:
+
+- You want to minimize changes to existing SpokePools
 - External adapter contracts are acceptable
-- Hub → Spoke architecture is not changing
+- You're not ready to commit to the full plugin architecture
 
-Reasons:
-
-1. **Backward Compatibility**: Maintains existing CCTP and OFT paths with no changes
-2. **Incremental Adoption**: New bridges can be added without modifying core contract
-3. **Gas Efficiency**: Common paths (USDC, OFT tokens) remain optimized
-4. **Security**: Adapters are isolated; bugs don't affect built-in bridges
-5. **Operational Flexibility**: Token-to-adapter mapping can be updated via HubPool governance
-6. **Reusability**: Standard adapters (OP, Arbitrum) deployed once, used by many SpokePools
-
-### If prioritizing architectural symmetry with Hub → Spoke: **Option D (ERC-7201 Plugins)**
-
-**Option D** is the better choice if:
-
-- Hub → Spoke adapters will also use ERC-7201 namespaced storage
-- You want all bridge state to live in pool contracts (no external adapter state)
-- Unified governance model is important
-- Gas efficiency is a priority (no token transfers to external contracts)
-
-Reasons:
-
-1. **Bidirectional Symmetry**: Same pattern for Hub → Spoke and Spoke → Hub
-2. **Unified State Management**: All config in HubPool/SpokePool via ERC-7201 namespaces
-3. **Single Governance Model**: HubPool owner controls everything via relay messages
-4. **Gas Efficient**: No intermediate token transfers; delegatecall is cheap
-5. **No External Contracts**: Fewer contracts to deploy, audit, and track ownership
-6. **Future-Proof**: ERC-7201 is the emerging standard for upgradeable storage
+However, Option E only addresses Spoke → Hub bridging. It doesn't solve the message receiving problem, so chain-specific SpokePools would still be needed.
 
 ### Implementation Phases
 
@@ -780,97 +834,137 @@ Reasons:
 
 ---
 
-## Bidirectional Considerations
+## Bidirectional Architecture
 
-The discussion so far has focused on **Spoke → Hub** (returning tokens to L1). However, **Hub → Spoke** (sending tokens to L2) also uses adapters, and the two directions should ideally share a consistent architecture.
+With the expanded scope, we're not just addressing Spoke → Hub bridging—we're making the entire SpokePool pluggable in both directions to eliminate all chain-specific implementations.
 
-### Current Hub → Spoke Architecture
+### The Two Plugin Types
 
-HubPool uses L1 adapters (e.g., `Arbitrum_Adapter`, `OP_Adapter`) to send tokens and relay messages to SpokePools:
+**1. Message Receiver Plugins (Hub → Spoke)**
+
+These plugins implement `_requireAdminSender()` to verify cross-chain messages:
 
 ```solidity
-// In HubPool
-function _relayMessage(address adapter, address target, bytes memory message) internal {
-  // Adapters are called via delegatecall - they execute in HubPool's context
-  (bool success, ) = adapter.delegatecall(
-    abi.encodeWithSelector(AdapterInterface.relayMessage.selector, target, message)
-  );
+interface IMessageReceiverPlugin {
+  /// @notice Check if the current call is from an authorized admin source
+  /// @return True if the sender is authorized
+  function isAuthorizedSender() external view returns (bool);
 }
 ```
 
-**Key constraint**: Current L1 adapters are stateless. Any configuration (bridge addresses, gas limits) must be:
+Implementations:
 
-- Hardcoded as immutables in the adapter
-- Passed in via function parameters
-- Stored in HubPool's main storage (not ideal)
+- `HeliosMessageReceiver` - Verifies Helios light client proofs
+- `OPCrossDomainReceiver` - Checks CrossDomainMessenger.xDomainMessageSender()
+- `ArbitrumInboxReceiver` - Verifies address aliasing from Arbitrum Inbox
+- `AdminOnlyReceiver` - Direct admin control (for bootstrap/fallback)
 
-### The Symmetry Argument for Option D
+**2. Bridge Plugins (Spoke → Hub)**
 
-If we adopt **ERC-7201 namespaced storage for Hub → Spoke adapters**, then using the same pattern for Spoke → Hub (Option D) creates architectural symmetry:
+These plugins implement `_bridgeTokensToHubPool()` to return tokens to L1:
 
-```
-Hub → Spoke:
-  HubPool.delegatecall(adapter)
-    → Adapter reads config from HubPool storage (ERC-7201 namespace)
-    → Adapter bridges tokens to SpokePool
-
-Spoke → Hub:
-  SpokePool.delegatecall(plugin)
-    → Plugin reads config from SpokePool storage (ERC-7201 namespace)
-    → Plugin bridges tokens to HubPool
+```solidity
+interface IBridgePlugin {
+  function bridge(address l2Token, address to, uint256 amount) external;
+  function quoteFee(address l2Token, uint256 amount) external view returns (uint256);
+}
 ```
 
-**Benefits of symmetry**:
+Implementations:
 
-1. **One mental model**: Developers learn one pattern for both directions
-2. **Shared tooling**: Same ERC-7201 storage inspection tools work for both
-3. **Consistent governance**: HubPool owner configures both sides via relay messages
-4. **No external contracts**: All state lives in HubPool/SpokePool (no separate adapter ownership)
+- `CCTPBridgePlugin` - Circle CCTP for USDC
+- `OFTBridgePlugin` - LayerZero OFT tokens
+- `OPStandardBridgePlugin` - OP L2StandardBridge
+- `ArbitrumGatewayPlugin` - Arbitrum L2GatewayRouter
+
+### Architectural Symmetry
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                             HubPool                                   │
+│  ERC-7201: "across.adapter.op"     - L1 bridge config                │
+│  ERC-7201: "across.adapter.arb"    - L1 bridge config                │
+│                                                                       │
+│  delegatecall → L1 Adapter → sends tokens/messages to SpokePool      │
+└─────────────────────────────────────────────────────────────────────┘
+                                   ↓
+                        Cross-chain message/tokens
+                                   ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                            SpokePool                                  │
+│  Plugin Registry:                                                     │
+│    - messageReceiverPlugin (IMessageReceiverPlugin)                  │
+│    - bridgePlugins mapping (token → IBridgePlugin)                   │
+│                                                                       │
+│  ERC-7201: "across.receiver.op-messenger"  - CDM config              │
+│  ERC-7201: "across.receiver.arb-inbox"     - Alias config            │
+│  ERC-7201: "across.bridge.cctp"            - CCTP config             │
+│  ERC-7201: "across.bridge.oft"             - OFT config              │
+│  ERC-7201: "across.bridge.op-standard"     - L2Bridge config         │
+│                                                                       │
+│  _requireAdminSender() → delegatecall messageReceiverPlugin          │
+│  _bridgeTokensToHubPool() → delegatecall bridgePlugin                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Benefits of the Expanded Architecture
+
+1. **Single SpokePool implementation**: Eliminates OP_SpokePool, Arbitrum_SpokePool, Universal_SpokePool, etc.
+2. **Runtime configuration**: New chains only need plugin deployment + configuration
+3. **Unified governance**: HubPool owner configures everything via relay messages
+4. **Future-proof**: Helios, Hyperlane, or any new verification method = just a new plugin
+5. **Reduced audit surface**: One SpokePool to audit, plus isolated plugins
 
 ### State Ownership Summary
 
-| Direction       | Option A (External Adapters)      | Option D (ERC-7201 Plugins)              |
-| --------------- | --------------------------------- | ---------------------------------------- |
-| **Hub → Spoke** | Adapter owns state (or stateless) | HubPool owns state in namespaced slots   |
-| **Spoke → Hub** | Adapter owns state                | SpokePool owns state in namespaced slots |
-| **Admin**       | Each adapter has separate owner   | HubPool owner controls all via relay     |
-| **Upgrade**     | Replace adapter contract          | Replace plugin implementation address    |
-
-### Recommendation Update
-
-Given the bidirectional nature of the system, **Option D with ERC-7201** becomes more attractive because:
-
-1. It aligns with the proposed approach for Hub → Spoke adapters
-2. All bridge configuration state lives in the pool contracts
-3. Single governance model (HubPool owner) for both directions
-4. No proliferation of external adapter contracts with separate ownership
-
-If the team is already planning to use HubPool storage + ERC-7201 for Hub → Spoke adapters, **Option D should be strongly considered** for Spoke → Hub to maintain architectural consistency.
+| Component               | What It Stores                              | Who Configures It        |
+| ----------------------- | ------------------------------------------- | ------------------------ |
+| **SpokePool Core**      | Plugin registry, deposits, fills            | HubPool via relay        |
+| **Message Receiver**    | Chain-specific verification config          | HubPool via relay        |
+| **Bridge Plugin**       | Bridge addresses, gas limits, token mapping | HubPool via relay        |
+| **ERC-7201 Namespaces** | Plugin-specific storage (isolated)          | Plugin.configure() calls |
 
 ---
 
 ## Open Questions
 
-1. **Fee Handling**: How should native bridge fees be funded? Options:
+1. **Fee Handling**: How should native bridge fees be funded?
 
-   - SpokePool holds ETH buffer
+   - SpokePool holds ETH buffer (current approach for OFT)
    - Fee pulled from relayer refund
-   - Separate fee funding mechanism
+   - Bridge plugin quotes fee, SpokePool provides it
 
-2. **Adapter Governance**: Should adapter changes require:
+2. **Bootstrap Problem**: How does the first message receiver get configured?
+
+   - Deploy SpokePool with admin-controlled receiver initially
+   - Admin configures the real receiver (e.g., OP CrossDomainMessenger)
+   - Future config changes flow through HubPool governance
+
+3. **Plugin Governance**: Should plugin changes require:
 
    - HubPool governance vote?
    - Timelock delay?
    - Multi-sig approval?
 
-3. **Adapter Verification**: How to ensure adapter correctness?
+4. **Plugin Verification**: How to ensure plugin correctness?
 
-   - Whitelist of approved adapters?
-   - On-chain verification of adapter behavior?
-   - Integration test requirements?
+   - Whitelist of approved plugin implementations?
+   - Integration test requirements before deployment?
+   - Formal verification of ERC-7201 storage isolation?
 
-4. **Cross-chain Adapter Consistency**: Should the same adapter be used across all SpokePools for a given bridge type, or can they differ per deployment?
+5. **Migration Path**: For existing chain-specific SpokePools:
 
-5. **Hub → Spoke Alignment**: Should we commit to ERC-7201 for Hub → Spoke adapters first, then design Spoke → Hub to match? Or design both directions together?
+   - Option A: Migrate to new pluggable SpokePool (requires upgrade)
+   - Option B: Maintain legacy SpokePools, use pluggable SpokePool for new chains only
+   - Option C: Gradual migration as SpokePools need upgrades anyway
 
-6. **Migration Path**: For existing chain-specific SpokePools (OP_SpokePool, Arbitrum_SpokePool), should they be migrated to the new Universal_SpokePool + plugin architecture, or maintained separately?
+6. **HubPool Adapter Alignment**: Should HubPool L1 adapters also move to ERC-7201?
+
+   - Currently they're stateless with immutables
+   - Would provide full bidirectional symmetry
+   - Adds complexity to HubPool upgrades
+
+7. **Fallback Behavior**: What happens if no message receiver is configured?
+   - Revert all admin calls?
+   - Fall back to direct admin (owner()) control?
+   - Both (configurable)?
