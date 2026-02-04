@@ -589,7 +589,7 @@ This means:
 
 ---
 
-### Option E: Hybrid Approach (Recommended)
+### Option E: Hybrid Approach
 
 **Concept**: Built-in support for common patterns (CCTP, OFT) with a configurable adapter fallback for custom bridges.
 
