@@ -220,6 +220,9 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
+          } else if (contractName.endsWith("_SpokePool")) {
+            // skip
+            continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;
             let oftDstEid: string | undefined = undefined;
