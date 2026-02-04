@@ -840,9 +840,9 @@ With the expanded scope, we're not just addressing Spoke → Hub bridging—we'r
 
 ### The Two Plugin Types
 
-**1. Message Receiver Plugins (Hub → Spoke)**
+**1. Message Receiver Plugin (Hub → Spoke) — ONE per SpokePool**
 
-These plugins implement `_requireAdminSender()` to verify cross-chain messages:
+Each SpokePool has exactly **one** message receiver plugin. This makes sense because a chain has one canonical way to receive cross-chain messages from L1.
 
 ```solidity
 interface IMessageReceiverPlugin {
@@ -850,27 +850,34 @@ interface IMessageReceiverPlugin {
   /// @return True if the sender is authorized
   function isAuthorizedSender() external view returns (bool);
 }
+
+// Storage: single plugin address
+address public messageReceiverPlugin;
 ```
 
-Implementations:
+Implementations (pick ONE for the chain):
 
 - `HeliosMessageReceiver` - Verifies Helios light client proofs
 - `OPCrossDomainReceiver` - Checks CrossDomainMessenger.xDomainMessageSender()
 - `ArbitrumInboxReceiver` - Verifies address aliasing from Arbitrum Inbox
 - `AdminOnlyReceiver` - Direct admin control (for bootstrap/fallback)
 
-**2. Bridge Plugins (Spoke → Hub)**
+**2. Bridge Plugins (Spoke → Hub) — MANY per SpokePool (token → plugin)**
 
-These plugins implement `_bridgeTokensToHubPool()` to return tokens to L1:
+Each SpokePool can have **multiple** bridge plugins, with each token mapped to exactly one plugin. Different tokens on the same chain use different bridges.
 
 ```solidity
 interface IBridgePlugin {
   function bridge(address l2Token, address to, uint256 amount) external;
   function quoteFee(address l2Token, uint256 amount) external view returns (uint256);
 }
+
+// Storage: multiple plugins, token routing
+mapping(bytes4 pluginId => address implementation) public bridgePlugins;
+mapping(address l2Token => bytes4 pluginId) public tokenBridgeTypes;
 ```
 
-Implementations:
+Implementations (can use multiple, one per token):
 
 - `CCTPBridgePlugin` - Circle CCTP for USDC
 - `OFTBridgePlugin` - LayerZero OFT tokens
@@ -892,20 +899,29 @@ Implementations:
                                    ↓
 ┌─────────────────────────────────────────────────────────────────────┐
 │                            SpokePool                                  │
+│                                                                       │
 │  Plugin Registry:                                                     │
-│    - messageReceiverPlugin (IMessageReceiverPlugin)                  │
-│    - bridgePlugins mapping (token → IBridgePlugin)                   │
+│    - messageReceiverPlugin: address     ←── ONE (1:1)                │
+│    - bridgePlugins: pluginId → impl     ←── MANY registered          │
+│    - tokenBridgeTypes: token → pluginId ←── token routing (1:N)      │
 │                                                                       │
-│  ERC-7201: "across.receiver.op-messenger"  - CDM config              │
-│  ERC-7201: "across.receiver.arb-inbox"     - Alias config            │
-│  ERC-7201: "across.bridge.cctp"            - CCTP config             │
-│  ERC-7201: "across.bridge.oft"             - OFT config              │
-│  ERC-7201: "across.bridge.op-standard"     - L2Bridge config         │
+│  ERC-7201 Namespaces (only active plugins use their storage):        │
+│    "across.receiver.op-messenger"  - CDM config (if OP receiver)     │
+│    "across.bridge.cctp"            - CCTP config (if CCTP plugin)    │
+│    "across.bridge.oft"             - OFT config (if OFT plugin)      │
+│    "across.bridge.op-standard"     - L2Bridge config (if OP plugin)  │
 │                                                                       │
-│  _requireAdminSender() → delegatecall messageReceiverPlugin          │
-│  _bridgeTokensToHubPool() → delegatecall bridgePlugin                │
+│  _requireAdminSender() → delegatecall messageReceiverPlugin (1)      │
+│  _bridgeTokensToHubPool(token) → lookup plugin → delegatecall (N)    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+### Cardinality Summary
+
+| Plugin Type      | Cardinality | Rationale                                    |
+| ---------------- | ----------- | -------------------------------------------- |
+| Message Receiver | 1:1         | One canonical L1→L2 messaging path per chain |
+| Bridge Plugins   | 1:N         | Different tokens use different L2→L1 bridges |
 
 ### Benefits of the Expanded Architecture
 

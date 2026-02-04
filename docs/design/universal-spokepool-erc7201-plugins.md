@@ -16,6 +16,59 @@ This eliminates the need for chain-specific SpokePool implementations (`Universa
 4. **ERC-7201 namespaced storage** for all plugin state to prevent collisions
 5. **Unified governance** through HubPool for all configuration
 
+## Plugin Cardinality
+
+The two plugin types have different cardinalities:
+
+### Message Receiver: One per SpokePool (1:1)
+
+A SpokePool has exactly **one** message receiver plugin configured at a time. This makes sense because:
+
+- Each chain has one canonical way to receive cross-chain messages from L1
+- OP Stack chains use CrossDomainMessenger
+- Arbitrum uses Inbox with address aliasing
+- Alt L1s use Helios light client proofs
+- There's no scenario where multiple verification methods need to be active simultaneously
+
+```solidity
+// Single plugin address
+address public messageReceiverPlugin;
+```
+
+### Bridge Plugins: Many per SpokePool (1:N)
+
+A SpokePool can have **multiple** bridge plugins, with a mapping from token to plugin. This makes sense because:
+
+- Different tokens on the same chain use different bridges
+- USDC → CCTP (Circle's native bridge)
+- LayerZero tokens → OFT
+- Native bridgeable tokens → OP Standard Bridge or Arbitrum Gateway
+- Each token is routed to exactly one bridge plugin
+
+```solidity
+// Plugin implementations by ID
+mapping(bytes4 pluginId => address implementation) public bridgePlugins;
+
+// Each token maps to exactly one plugin
+mapping(address l2Token => bytes4 pluginId) public tokenBridgeTypes;
+```
+
+### Visual Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                            SpokePool                                 │
+│                                                                     │
+│  Message Receiver (1:1)          Bridge Plugins (1:N)               │
+│  ┌─────────────────────┐         ┌─────────────────────────────┐   │
+│  │ OPCrossDomainReceiver│         │ USDC  ──► CCTPBridgePlugin  │   │
+│  │     (single)        │         │ WETH  ──► OPStandardBridge   │   │
+│  └─────────────────────┘         │ DAI   ──► OPStandardBridge   │   │
+│                                  │ ACX   ──► OFTBridgePlugin    │   │
+│                                  └─────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
 ## Architecture
 
 ### Current State (Chain-Specific Implementations)
@@ -59,10 +112,11 @@ SpokePool (base) ───┼──► Universal_SpokePool   (Helios + CCTP/OFT)
 │  └─────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────┐   │
-│  │                     Message Receiver Plugin                              │   │
+│  │                 Message Receiver Plugin (ONE per SpokePool)              │   │
 │  │  Handles: Hub → Spoke communication                                      │   │
+│  │  Cardinality: 1:1 (one receiver per SpokePool)                          │   │
 │  │                                                                          │   │
-│  │  Options:                                                                │   │
+│  │  Options (pick ONE for the chain):                                       │   │
 │  │  - HeliosMessageReceiver (storage proofs via light client)              │   │
 │  │  - OPCrossDomainReceiver (Optimism/Base CrossDomainMessenger)           │   │
 │  │  - ArbitrumInboxReceiver (Arbitrum L1→L2 messaging)                     │   │
@@ -71,10 +125,11 @@ SpokePool (base) ───┼──► Universal_SpokePool   (Helios + CCTP/OFT)
 │  └─────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                 │
 │  ┌─────────────────────────────────────────────────────────────────────────┐   │
-│  │                      Bridge Plugins (per-token)                          │   │
+│  │                 Bridge Plugins (MANY per SpokePool, per-token)           │   │
 │  │  Handles: Spoke → Hub token transfers                                    │   │
+│  │  Cardinality: 1:N (multiple plugins, each token maps to one plugin)     │   │
 │  │                                                                          │   │
-│  │  Options:                                                                │   │
+│  │  Options (can use multiple, one per token):                             │   │
 │  │  - CCTPBridgePlugin (Circle USDC)                                       │   │
 │  │  - OFTBridgePlugin (LayerZero OFT)                                      │   │
 │  │  - OPStandardBridgePlugin (Optimism/Base native bridge)                 │   │
@@ -98,41 +153,45 @@ SpokePool (base) ───┼──► Universal_SpokePool   (Helios + CCTP/OFT)
 
 ### Example Configurations
 
+Each chain gets ONE message receiver and MULTIPLE bridge plugins (one per token):
+
 **Optimism/Base:**
 
 ```
-Message Receiver: OPCrossDomainReceiver
-Bridge Plugins:
+Message Receiver (1): OPCrossDomainReceiver
+Bridge Plugins (N):
   - WETH → OPStandardBridgePlugin (unwrap + native ETH bridge)
   - USDC → CCTPBridgePlugin
-  - Other tokens → OPStandardBridgePlugin
+  - DAI  → OPStandardBridgePlugin
+  - WBTC → OPStandardBridgePlugin
 ```
 
 **Arbitrum:**
 
 ```
-Message Receiver: ArbitrumInboxReceiver
-Bridge Plugins:
+Message Receiver (1): ArbitrumInboxReceiver
+Bridge Plugins (N):
   - USDC → CCTPBridgePlugin
-  - Other tokens → ArbitrumGatewayPlugin
+  - WETH → ArbitrumGatewayPlugin
+  - ARB  → ArbitrumGatewayPlugin
 ```
 
-**MegaETH (OP Stack + Helios):**
+**MegaETH (OP Stack bridges + Helios verification):**
 
 ```
-Message Receiver: HeliosMessageReceiver
-Bridge Plugins:
+Message Receiver (1): HeliosMessageReceiver
+Bridge Plugins (N):
   - WETH → OPStandardBridgePlugin
   - USDC → CCTPBridgePlugin
-  - Other tokens → OFTBridgePlugin
+  - ACX  → OFTBridgePlugin
 ```
 
-**New Alt-L1:**
+**New Alt-L1 (no canonical bridges):**
 
 ```
-Message Receiver: HeliosMessageReceiver (or custom)
-Bridge Plugins:
-  - All tokens → OFTBridgePlugin
+Message Receiver (1): HeliosMessageReceiver (or custom)
+Bridge Plugins (N):
+  - All tokens → OFTBridgePlugin (LayerZero is the only option)
 ```
 
 ## Technical Specification
