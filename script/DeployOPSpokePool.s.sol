@@ -19,6 +19,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        // chainId should be the same thing as info.spokeChainId
         uint256 chainId = block.chainid;
 
         // Get deployment information
@@ -31,7 +32,6 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
         require(chainId == info.spokeChainId);
         bool hasCctpDomain = hasCctpDomain(chainId);
         uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(chainId) : CCTP_NO_DOMAIN;
-
         address cctpTokenMessenger = hasCctpDomain ? getL2Address(chainId, "cctpV2TokenMessenger") : address(0);
 
         vm.startBroadcast(deployerPrivateKey);

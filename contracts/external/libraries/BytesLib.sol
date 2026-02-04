@@ -18,6 +18,26 @@ library BytesLib {
     // Code was copied, and slightly modified to use revert instead of require
 
     /**
+     * @notice Reads a uint8 from a bytes array at a given start index (for tightly packed data)
+     * @param _bytes The bytes array to convert
+     * @param _start The start index of the uint8
+     * @return result The uint8 result
+     */
+    function toUint8(bytes memory _bytes, uint256 _start) internal pure returns (uint8) {
+        if (_bytes.length < _start + 1) {
+            revert OutOfBounds();
+        }
+        uint8 tempUint;
+
+        assembly {
+            tempUint := mload(add(add(_bytes, 0x1), _start))
+        }
+
+        return tempUint;
+    }
+
+    /**
+     * @notice Reads a uint16 from a bytes array at a given start index (for tightly packed data)
      * @notice Reads a uint16 from a bytes array at a given start index
      * @param _bytes The bytes array to convert
      * @param _start The start index of the uint16
@@ -35,6 +55,7 @@ library BytesLib {
     }
 
     /**
+     * @notice Reads a uint32 from a bytes array at a given start index (for tightly packed data)
      * @notice Reads a uint32 from a bytes array at a given start index
      * @param _bytes The bytes array to convert
      * @param _start The start index of the uint32

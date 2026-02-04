@@ -8,14 +8,16 @@ import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
+import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
 
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge
-contract SponsoredOFTSrcPeriphery is Ownable {
+contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
@@ -83,8 +85,17 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     error NonceAlreadyUsed();
     /// @notice Thrown when provided msg.value is not sufficient to cover OFT bridging fee
     error InsufficientNativeFee();
+    /// @notice Thrown when array lengths do not match
+    error ArrayLengthMismatch();
+    /// @notice Thrown when maxOftFeeBps is greater than 10000
+    error InvalidMaxOftFeeBps();
 
-    constructor(address _token, address _oftMessenger, uint32 _srcEid, address _signer) {
+    constructor(
+        address _token,
+        address _oftMessenger,
+        uint32 _srcEid,
+        address _signer
+    ) OFTCoreMath(IERC20Metadata(_token).decimals(), IOFT(_oftMessenger).sharedDecimals()) {
         TOKEN = _token;
         OFT_MESSENGER = _oftMessenger;
         SRC_EID = _srcEid;
@@ -152,7 +163,7 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             quote.signedParams.destinationHandler,
             quote.signedParams.deadline,
             quote.signedParams.maxBpsToSponsor,
-            quote.unsignedParams.maxUserSlippageBps,
+            quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalToken,
             signature
         );
@@ -161,13 +172,17 @@ contract SponsoredOFTSrcPeriphery is Ownable {
     function _buildOftTransfer(
         Quote calldata quote
     ) internal view returns (SendParam memory, MessagingFee memory, address) {
+        uint64 amountSD = _toSD(quote.signedParams.amountLD);
+
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
-            quote.signedParams.deadline,
+            uint256(amountSD),
             quote.signedParams.maxBpsToSponsor,
-            quote.unsignedParams.maxUserSlippageBps,
+            quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
             quote.signedParams.finalToken,
+            quote.signedParams.destinationDex,
+            quote.signedParams.accountCreationMode,
             quote.signedParams.executionMode,
             quote.signedParams.actionData
         );
@@ -177,12 +192,18 @@ contract SponsoredOFTSrcPeriphery is Ownable {
             .addExecutorLzReceiveOption(uint128(quote.signedParams.lzReceiveGasLimit), uint128(0))
             .addExecutorLzComposeOption(uint16(0), uint128(quote.signedParams.lzComposeGasLimit), uint128(0));
 
+        // Apply maxOftFeeBps in src-local decimals.
+        // If maxOftFeeBps == 0, this preserves strict behavior: OFT will revert if dust removal reduces amount below min.
+        if (quote.signedParams.maxOftFeeBps > 10_000) {
+            revert InvalidMaxOftFeeBps();
+        }
+        uint256 minAmountLD = (quote.signedParams.amountLD * (10_000 - quote.signedParams.maxOftFeeBps)) / 10_000;
+
         SendParam memory sendParam = SendParam(
             quote.signedParams.dstEid,
             quote.signedParams.destinationHandler,
-            // Only support OFT sends that don't take fees in sent token. Set `minAmountLD = amountLD` to enforce this
             quote.signedParams.amountLD,
-            quote.signedParams.amountLD,
+            minAmountLD,
             extraOptions,
             composeMsg,
             // Only support empty OFT commands
