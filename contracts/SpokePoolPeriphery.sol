@@ -554,7 +554,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     /**
      * @notice Returns the deposit ID for a given nonce and depositor.
      * @param depositor The depositor to use for the deposit.
-     * @param authorizer The authorizer for the movement of funds..
+     * @param authorizer The authorizer for the movement of funds.
      * @param nonceIdentifier The nonce identifier to use for the deposit.
      * @param nonce The nonce to use for the deposit.
      * @param spokePool The spoke pool to use for the deposit.
