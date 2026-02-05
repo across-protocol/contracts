@@ -165,8 +165,8 @@
           "block_number": 24220587
         },
         "SpokePoolPeriphery": {
-          "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
-          "block_number": 22789839
+          "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f",
+          "block_number": 24388489
         },
         "OP_Adapter": {
           "address": "0xe1f04404b74f996a311f13ae291849fc153578ac",
@@ -233,8 +233,8 @@
           "block_number": 138622548
         },
         "SpokePoolPeriphery": {
-          "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
-          "block_number": 137675818
+          "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f",
+          "block_number": 147334661
         },
         "Optimism_SpokePool": {
           "address": "0x21352b3495a6ee1bd2921bdb0a876fadc3a9245e",
@@ -349,8 +349,8 @@
           "block_number": 74229464
         },
         "SpokePoolPeriphery": {
-          "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
-          "block_number": 73247089
+          "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f",
+          "block_number": 82573933
         },
         "Polygon_SpokePool": {
           "address": "0x8f7b21ff11006f0520b06074d36e39b6cd83cf29",
@@ -664,6 +664,10 @@
           "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E",
           "block_number": 33154505
         },
+        "SpokePoolPeriphery": {
+          "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f",
+          "block_number": 41739379
+        },
         "Base_SpokePool": {
           "address": "0x2eb5def5cf9635f9d926788a26d424287a045b92",
           "block_number": 36361964,
@@ -764,8 +768,8 @@
           "block_number": 360020909
         },
         "SpokePoolPeriphery": {
-          "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C",
-          "block_number": 351421618
+          "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f",
+          "block_number": 428777334
         },
         "Arbitrum_SpokePool": {
           "address": "0x33d52d76d617126648067401c106923e4a34dbe1",

@@ -39,7 +39,7 @@
     "DoctorWho_Adapter": { "address": "0xFADcC43096756e1527306FD92982FEbBe3c629Fa", "blockNumber": 21773451 },
     "Solana_Adapter": { "address": "0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3", "blockNumber": 22595936 },
     "Megaeth_Adapter": { "address": "0xE1f04404b74F996A311F13aE291849fC153578Ac", "blockNumber": 24220587 },
-    "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 22789839 }
+    "SpokePoolPeriphery": { "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f", "blockNumber": 24388489 }
   },
   "10": {
     "SpokePool": { "address": "0x6f26Bf09B1C792e3228e5467807a900A503c0281", "blockNumber": 93903076 },
@@ -48,7 +48,7 @@
     "AcrossMerkleDistributor": { "address": "0xc8b31410340d57417bE62672f6B53dfB9de30aC2", "blockNumber": 114652330 },
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 135440379 },
     "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 138622548 },
-    "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 137675818 }
+    "SpokePoolPeriphery": { "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f", "blockNumber": 147334661 }
   },
   "11155420": {
     "SpokePool": { "address": "0x4e8E101924eDE233C13e2D8622DC8aED2872d505", "blockNumber": 7762656 },
@@ -84,7 +84,7 @@
     },
     "UniswapV3_SwapAndBridge": { "address": "0x9220fa27ae680e4e8d9733932128fa73362e0393", "blockNumber": 56675837 },
     "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 74229464 },
-    "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 73247089 }
+    "SpokePoolPeriphery": { "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f", "blockNumber": 82573933 }
   },
   "143": {
     "SP1Helios": { "address": "0x09aea4b2242abc8bb4bb78d537a67a245a7bec64", "blockNumber": 36241473 },
@@ -130,7 +130,8 @@
     "SpokePoolVerifier": { "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A", "blockNumber": 29844942 },
     "1inch_SwapAndBridge": { "address": "0x7CFaBF2eA327009B39f40078011B0Fb714b65926", "blockNumber": 14450808 },
     "UniswapV3_SwapAndBridge": { "address": "0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4", "blockNumber": 14450714 },
-    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 33154505 }
+    "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 33154505 },
+    "SpokePoolPeriphery": { "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f", "blockNumber": 41739379 }
   },
   "34443": {
     "SpokePool": { "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96", "blockNumber": 8043187 },
@@ -144,7 +145,7 @@
     "1inch_SwapAndBridge": { "address": "0xC456398D5eE3B93828252e48beDEDbc39e03368E", "blockNumber": 211175795 },
     "UniswapV3_SwapAndBridge": { "address": "0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D", "blockNumber": 211175481 },
     "MulticallHandler": { "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E", "blockNumber": 360020909 },
-    "SpokePoolPeriphery": { "address": "0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C", "blockNumber": 351421618 }
+    "SpokePoolPeriphery": { "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f", "blockNumber": 428777334 }
   },
   "59144": {
     "SpokePool": { "address": "0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75", "blockNumber": 2721169 },
