@@ -431,29 +431,26 @@ library HyperCoreLib {
         uint256 maximumEVMSendAmount,
         int8 decimalDiff
     ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
-        // If the maximum EVM send amount is greater than the maximum uint64 value, revert
-        if (maximumEVMSendAmount > type(uint64).max) revert MaximumEVMSendAmountTooLarge();
+        uint256 amountCoreToReceive256;
 
         /// @dev HyperLiquid decimal conversion: Scale EVM (u256,evmDecimals) -> Core (u64,coreDecimals)
-        /// @dev Core amount is guaranteed to be within u64 range.
         if (decimalDiff == 0) {
             amountEVMToSend = maximumEVMSendAmount;
-            amountCoreToReceive = uint64(amountEVMToSend);
+            amountCoreToReceive256 = amountEVMToSend;
         } else if (decimalDiff > 0) {
             // EVM token has more decimals than Core
             uint256 scale = 10 ** uint8(decimalDiff);
             amountEVMToSend = maximumEVMSendAmount - (maximumEVMSendAmount % scale); // Safe: dustAmount = maximumEVMSendAmount % scale, so dust <= maximumEVMSendAmount
-
-            /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
-            amountCoreToReceive = uint64(amountEVMToSend / scale);
+            amountCoreToReceive256 = amountEVMToSend / scale;
         } else {
             // Core token has more decimals than EVM
             uint256 scale = 10 ** uint8(-1 * decimalDiff);
             amountEVMToSend = maximumEVMSendAmount;
-
-            /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
-            amountCoreToReceive = uint64(amountEVMToSend * scale);
+            amountCoreToReceive256 = amountEVMToSend * scale;
         }
+
+        if (amountCoreToReceive256 > type(uint64).max) revert MaximumEVMSendAmountTooLarge();
+        amountCoreToReceive = uint64(amountCoreToReceive256);
     }
 
     function convertCoreDecimalsSimple(
