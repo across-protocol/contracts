@@ -110,6 +110,8 @@ contract CreateLighterDeposit is Script, Config {
             maxUserSlippageBps: 0,
             finalRecipient: lighterRecipient.toBytes32(),
             finalToken: env.dstUsdc.toBytes32(),
+            destinationDex: 0, // Not used for ArbitraryActionsToEVM
+            accountCreationMode: 0, // Not used for ArbitraryActionsToEVM
             executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToEVM),
             actionData: actionData
         });
@@ -206,6 +208,8 @@ contract CreateLighterDeposit is Script, Config {
                 quote.maxUserSlippageBps,
                 quote.finalRecipient,
                 quote.finalToken,
+                quote.destinationDex,
+                quote.accountCreationMode,
                 quote.executionMode,
                 keccak256(quote.actionData)
             )

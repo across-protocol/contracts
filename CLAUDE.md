@@ -165,6 +165,15 @@ See `foundry.toml` for Foundry configuration. Key settings:
 - UUPS proxy pattern for upgradeable contracts
 - Cross-chain ownership: HubPool owns all SpokePool contracts
 
+## Code Style
+
+**Prioritize succinctness.** Express features in the least lines possible. This often leads to the most elegant solution:
+
+- Consolidate duplicate code paths (e.g., one function call with different parameters instead of multiple branches with similar calls)
+- Compute values before branching, then use them in a single code path
+- Avoid redundant intermediate variables when the expression is clear (although consider gas cost implications, especially for mainnet contracts)
+- Prefer early returns to reduce nesting
+
 ## Linting
 
 ```bash

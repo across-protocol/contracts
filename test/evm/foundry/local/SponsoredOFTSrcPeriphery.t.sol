@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import { Test } from "forge-std/Test.sol";
-
+import { console } from "forge-std/console.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
@@ -10,7 +10,7 @@ import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConvert
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
 import { MockEndpoint } from "../../../../contracts/test/MockEndpoint.sol";
-
+import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { DebugQuoteSignLib } from "../../../../script/mintburn/oft/CreateSponsoredDeposit.s.sol";
 
@@ -75,18 +75,19 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             nonce: nonce,
             deadline: deadline,
             maxBpsToSponsor: 500, // 5%
+            maxUserSlippageBps: 300, // 3%
             finalRecipient: finalRecipientAddr.toBytes32(),
             finalToken: finalTokenAddr.toBytes32(),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: 500_000,
             lzComposeGasLimit: 500_000,
+            maxOftFeeBps: 0,
+            accountCreationMode: uint8(0), // Standard
             executionMode: uint8(0), // DirectToCore
             actionData: ""
         });
 
-        UnsignedQuoteParams memory up = UnsignedQuoteParams({
-            refundRecipient: refundRecipient,
-            maxUserSlippageBps: 300 // 3%
-        });
+        UnsignedQuoteParams memory up = UnsignedQuoteParams({ refundRecipient: refundRecipient });
 
         q = Quote({ signedParams: sp, unsignedParams: up });
     }
@@ -145,27 +146,34 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(spDstEid, quote.signedParams.dstEid, "dstEid mismatch");
         assertEq(spTo, quote.signedParams.destinationHandler, "destination handler mismatch");
         assertEq(spAmountLD, SEND_AMOUNT, "amountLD mismatch");
-        assertEq(spMinAmountLD, SEND_AMOUNT, "minAmountLD should equal amountLD (no fee-in-token)");
+        assertEq(spMinAmountLD, SEND_AMOUNT, "minAmountLD should be SEND_AMOUNT (no dust loss)");
         assertEq(spOftCmd.length, 0, "oftCmd must be empty");
 
         // Validate composeMsg encoding (layout from ComposeMsgCodec._encode)
         (
             bytes32 gotNonce,
-            uint256 gotDeadline,
+            uint256 gotAmountSD,
             uint256 gotMaxBpsToSponsor,
             uint256 gotMaxUserSlippageBps,
             bytes32 gotFinalRecipient,
             bytes32 gotFinalToken,
+            uint32 gotDestinationDex,
+            uint8 gotAccountCreationMode,
             uint8 gotExecutionMode,
             bytes memory gotActionData
-        ) = abi.decode(spComposeMsg, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes));
+        ) = abi.decode(
+                spComposeMsg,
+                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+            );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
-        assertEq(gotDeadline, deadline, "deadline mismatch");
+        assertEq(gotAmountSD, SEND_AMOUNT / 1e12, "amountSD mismatch");
         assertEq(gotMaxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
         assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
         assertEq(gotFinalRecipient, finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
         assertEq(gotFinalToken, finalTokenAddr.toBytes32(), "finalToken mismatch");
+        assertEq(gotDestinationDex, HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
+        assertEq(gotAccountCreationMode, 0, "accountCreationMode mismatch");
         assertEq(gotExecutionMode, 0, "executionMode mismatch");
         assertEq(keccak256(gotActionData), keccak256(""), "actionData mismatch");
 
