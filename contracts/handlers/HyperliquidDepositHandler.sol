@@ -40,7 +40,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     mapping(address => bool) public accountsActivated;
 
     // EIP-712 type hash for activation signatures
-    bytes32 private constant ACTIVATION_TYPEHASH = keccak256("Activation(address handler,address user)");
+    bytes32 private constant ACTIVATION_TYPEHASH = keccak256("Activation(address user)");
 
     error InsufficientEvmAmountForActivation();
     error TokenNotSupported();
@@ -313,7 +313,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     function _verifySignature(address expectedUser, bytes memory signature) internal view {
         /// @dev There is no nonce in this signature because an account on Hypercore can only be activated once
         /// by this contract, so reusing a signature cannot be used to grief the DonationBox.
-        bytes32 structHash = keccak256(abi.encode(ACTIVATION_TYPEHASH, address(this), expectedUser));
+        bytes32 structHash = keccak256(abi.encode(ACTIVATION_TYPEHASH, expectedUser));
         bytes32 digest = _hashTypedDataV4(structHash);
         if (ECDSA.recover(digest, signature) != signer) revert InvalidSignature();
     }
