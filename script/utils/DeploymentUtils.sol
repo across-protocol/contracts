@@ -5,7 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Config } from "forge-std/Config.sol";
-import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/src/LegacyUpgrades.sol";
+import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/src/Upgrades.sol";
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { Constants } from "./Constants.sol";
@@ -110,20 +110,20 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
             );
 
             // For upgrades, we'll use the prepareUpgrade method from LegacyUpgrades
-            address implementation = Core.deploy(contractName, constructorArgs, opts);
+            address implementation = Upgrades.deployImplementation(contractName, opts);
 
             result = DeploymentResult({ proxy: existingProxy, implementation: implementation, isNewProxy: false });
 
             console.log("New", contractName, "implementation deployed @", implementation);
         } else {
-            address implementation = Core.deploy(contractName, constructorArgs, opts);
+            address proxy = Upgrades.deployUUPSProxy(contractName, initArgs, opts);
 
-            ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initArgs);
+            address implementation = Upgrades.getImplementationAddress(proxy);
 
             // For now, return a placeholder result
-            result = DeploymentResult({ proxy: address(proxy), implementation: implementation, isNewProxy: true });
+            result = DeploymentResult({ proxy: proxy, implementation: implementation, isNewProxy: true });
 
-            console.log("New", contractName, "proxy deployed @", address(proxy));
+            console.log("New", contractName, "proxy deployed @", proxy);
             console.log("New", contractName, "implementation deployed @", implementation);
         }
 
