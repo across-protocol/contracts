@@ -151,7 +151,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     SwapProxy public immutable swapProxy;
 
     // Mapping from user address to their current nonce
-    mapping(address => uint256) private permitNonces;
+    mapping(address => uint256) private _permitNonces;
 
     // Witness identifiers for the bridge and swap functions. Used to ensure collisions can't happen.
     bytes32 public constant BRIDGE_AND_SWAP_WITNESS_IDENTIFIER = keccak256("BridgeAndSwapWitness");
@@ -602,8 +602,8 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      * @return The next nonce for the user.
      * @dev Nonce starts at 1 to avoid 0 (which triggers regular deposit) and ensure uniqueness.
      */
-    function permitNonce(address user) external view returns (uint256) {
-        return permitNonces[user] + 1;
+    function permitNonces(address user) external view returns (uint256) {
+        return _permitNonces[user] + 1;
     }
 
     /**
@@ -632,7 +632,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      */
     function _validateAndIncrementNonce(address user, uint256 providedNonce) private {
         // Pre-increment nonce so it can never be 0.
-        if (++permitNonces[user] != providedNonce) {
+        if (++_permitNonces[user] != providedNonce) {
             revert InvalidNonce();
         }
     }
