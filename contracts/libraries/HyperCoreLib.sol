@@ -74,6 +74,7 @@ library HyperCoreLib {
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
+    error MaximumEVMSendAmountTooLarge();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -430,6 +431,9 @@ library HyperCoreLib {
         uint256 maximumEVMSendAmount,
         int8 decimalDiff
     ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
+        // If the maximum EVM send amount is greater than the maximum uint64 value, revert
+        if (maximumEVMSendAmount > type(uint64).max) revert MaximumEVMSendAmountTooLarge();
+
         /// @dev HyperLiquid decimal conversion: Scale EVM (u256,evmDecimals) -> Core (u64,coreDecimals)
         /// @dev Core amount is guaranteed to be within u64 range.
         if (decimalDiff == 0) {
