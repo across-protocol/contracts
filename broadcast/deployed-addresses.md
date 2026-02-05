@@ -177,6 +177,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                      |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| Lisk_SpokePool     | [0xE58480CA74f1A819faFd777BEDED4E2D5629943d](https://blockscout.lisk.com/address/0xE58480CA74f1A819faFd777BEDED4E2D5629943d) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool          | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://blockscout.lisk.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
@@ -187,6 +188,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Contract Name      | Address                                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | Cher_SpokePool     | [0x48e687205D3962c43891b8Cde5A4Fe75FA6C8D7a](https://soneium.blockscout.com/address/0x48e687205D3962c43891b8Cde5A4Fe75FA6C8D7a) |
+| Cher_SpokePool     | [0x1c8243198570658f818FC56538f2c837C2a32958](https://soneium.blockscout.com/address/0x1c8243198570658f818FC56538f2c837C2a32958) |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://soneium.blockscout.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool          | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://soneium.blockscout.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://soneium.blockscout.com/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
