@@ -634,7 +634,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositor,
             true,
-            spokePoolPeriphery.permitNonce(depositor)
+            spokePoolPeriphery.permitNonces(depositor)
         );
 
         bytes32 nonce = 0;
@@ -710,7 +710,7 @@ contract SpokePoolPeripheryTest is Test {
         mockWETH.deposit{ value: depositAmount }();
         mockWETH.transfer(address(dex), depositAmount);
 
-        uint256 validNonce = spokePoolPeriphery.permitNonce(depositor);
+        uint256 validNonce = spokePoolPeriphery.permitNonces(depositor);
 
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
@@ -1422,7 +1422,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositor,
             true,
-            spokePoolPeriphery.permitNonce(depositor)
+            spokePoolPeriphery.permitNonces(depositor)
         );
 
         bytes32 nonce = 0;
@@ -1573,12 +1573,12 @@ contract SpokePoolPeripheryTest is Test {
                 }),
                 inputAmount: _amount,
                 spokePool: address(ethereumSpokePool),
-                nonce: spokePoolPeriphery.permitNonce(_depositor)
+                nonce: spokePoolPeriphery.permitNonces(_depositor)
             });
     }
 
     function testNonceInitiallyZero() public {
-        assertEq(spokePoolPeriphery.permitNonce(depositor), 1);
+        assertEq(spokePoolPeriphery.permitNonces(depositor), 1);
     }
 
     function testNonceIncrementsAfterDepositWithPermit() public {
@@ -1591,7 +1591,7 @@ contract SpokePoolPeripheryTest is Test {
         );
 
         // Check initial nonce
-        uint256 initialNonce = spokePoolPeriphery.permitNonce(depositor);
+        uint256 initialNonce = spokePoolPeriphery.permitNonces(depositor);
 
         bytes32 nonce = 0;
 
@@ -1620,7 +1620,7 @@ contract SpokePoolPeripheryTest is Test {
         spokePoolPeriphery.depositWithPermit(depositor, depositData, block.timestamp, signature, depositDataSignature);
 
         // Check that nonce was incremented
-        assertEq(spokePoolPeriphery.permitNonce(depositor), initialNonce + 1);
+        assertEq(spokePoolPeriphery.permitNonces(depositor), initialNonce + 1);
     }
 
     function testDepositWithPermitInvalidNonce() public {
@@ -1794,7 +1794,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositor,
             true,
-            spokePoolPeriphery.permitNonce(depositor) // Use proper nonce (will be 1 initially)
+            spokePoolPeriphery.permitNonces(depositor) // Use proper nonce (will be 1 initially)
         );
 
         bytes32 nonce = 0;
