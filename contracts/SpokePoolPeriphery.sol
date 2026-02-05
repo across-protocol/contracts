@@ -420,7 +420,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         _validateAndIncrementNonce(signatureOwner, depositData.nonce);
         // Verify that the signatureOwner signed the input depositData.
         _validateSignature(signatureOwner, PeripherySigningLib.hashDepositData(depositData), depositDataSignature);
-        // Use nonce + 1 to avoid 0 (which triggers regular deposit) and ensure uniqueness
         _deposit(
             depositData.spokePool,
             depositData.baseDepositData.depositor,
