@@ -27,10 +27,13 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
 
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
-        address l2Usdc = getUSDCAddress(info.spokeChainId);
 
-        bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
-        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(info.spokeChainId) : CCTP_NO_DOMAIN;
+        require(chainId == info.spokeChainId);
+        bool hasCctpDomain = hasCctpDomain(chainId);
+        uint32 cctpDomain = hasCctpDomain ? getCircleDomainId(chainId) : CCTP_NO_DOMAIN;
+
+        address l2Usdc = hasCctpDomain ? getUSDCAddress(info.spokeChainId) : address(0);
+
         address cctpTokenMessenger = hasCctpDomain ? getL2Address(chainId, "cctpV2TokenMessenger") : address(0);
 
         vm.startBroadcast(deployerPrivateKey);
@@ -60,7 +63,7 @@ contract DeployOPSpokePool is Script, Test, DeploymentUtils {
             "OP_SpokePool",
             constructorArgs,
             initArgs,
-            false // implementationOnly
+            true // implementationOnly
         );
 
         // Log the deployed addresses

@@ -26,14 +26,18 @@ struct SignedQuoteParams {
     uint256 amountLD; // Amount to send in local decimals.
     // Signed params that go into `composeMsg`
     bytes32 nonce; // quote nonce
-    uint256 deadline; // quote deadline
+    uint256 deadline; // Quote deadline. Enforced on source chain only at deposit time, not sent to destination
     uint256 maxBpsToSponsor; // max bps (of sent amount) to sponsor for 1:1
+    uint256 maxUserSlippageBps; // slippage tolerance for the swap on the destination
     bytes32 finalRecipient; // user address on destination
     bytes32 finalToken; // final token user will receive (might be different from OFT token we're sending)
+    uint32 destinationDex; // destination DEX on HyperCore
     // Signed gas limits for destination-side LZ execution
     uint256 lzReceiveGasLimit; // gas limit for `lzReceive` call on destination side
     uint256 lzComposeGasLimit; // gas limit for `lzCompose` call on destination side
     // Execution mode and action data
+    uint256 maxOftFeeBps; // max fee deducted by the OFT bridge
+    uint8 accountCreationMode; // AccountCreationMode: Standard or FromUserFunds
     uint8 executionMode; // ExecutionMode: DirectToCore, ArbitraryActionsToCore, or ArbitraryActionsToEVM
     bytes actionData; // Encoded action data for arbitrary execution. Empty for DirectToCore mode.
 }
@@ -41,5 +45,4 @@ struct SignedQuoteParams {
 /// @notice Unsigned params of the sponsored bridging flow quote: user is free to choose these
 struct UnsignedQuoteParams {
     address refundRecipient; // recipient of extra msg.value passed into the OFT send on src chain
-    uint256 maxUserSlippageBps; // slippage tolerance for the swap on the destination
 }

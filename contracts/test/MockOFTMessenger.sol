@@ -40,6 +40,10 @@ contract MockOFTMessenger is IOFT, IOAppCore {
         return endpoint_;
     }
 
+    function sharedDecimals() external pure returns (uint8) {
+        return 6;
+    }
+
     // IOFT
     function quoteSend(
         SendParam calldata /*_sendParam*/,
