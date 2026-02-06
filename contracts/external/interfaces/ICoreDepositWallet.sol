@@ -30,11 +30,7 @@ interface IForwardDepositReceiver {
      * @param destinationId Forwarding-address-specific id used in conjunction with
      * recipient to route the deposit to a specific location.
      */
-    function depositFor(
-        address recipient,
-        uint256 amount,
-        uint32 destinationId
-    ) external;
+    function depositFor(address recipient, uint256 amount, uint32 destinationId) external;
 }
 
 /**
