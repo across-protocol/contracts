@@ -76,7 +76,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * should be one controlled by the Across API to prevent griefing attacks that attempt to drain the Donation Box.
      * @param _spokePool Address of the SpokePool contract that can call handleV3AcrossMessage.
      */
-    constructor(address _signer, address _spokePool) EIP712("HyperliquidDepositHandler", "1") {
+    constructor(address _signer, address _spokePool) EIP712("HyperliquidDepositHandler", "1.0.0") {
         donationBox = new DonationBox();
         signer = _signer;
         spokePool = _spokePool;
