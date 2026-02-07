@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
 import { HyperCoreLib, CoreTokenInfo } from "../libraries/HyperCoreLib.sol";
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { DonationBox } from "../chain-adapters/DonationBox.sol";
@@ -18,7 +19,7 @@ import { DonationBox } from "../chain-adapters/DonationBox.sol";
  * Hypercore and bypass the other complex arbitrary calldata logic.
  * @dev This contract can also be called directly to deposit tokens into Hypercore on behalf of an end user.
  */
-contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Ownable {
+contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Ownable, EIP712 {
     using SafeERC20 for IERC20;
 
     // Stores hardcoded Hypercore configurations for tokens that this handler supports.
@@ -37,6 +38,9 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     // Track which accounts we have already sponsored for activation. Used to prevent griefing attacks when the same account is activated multiple times
     // due to Hyperliquid's policy of removing dust from small accounts which technically could be taken advantage of by a griefer.
     mapping(address => bool) public accountsActivated;
+
+    // EIP-712 type hash for activation signatures
+    bytes32 private constant ACTIVATION_TYPEHASH = keccak256("Activation(address user)");
 
     error InsufficientEvmAmountForActivation();
     error TokenNotSupported();
@@ -72,7 +76,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * should be one controlled by the Across API to prevent griefing attacks that attempt to drain the Donation Box.
      * @param _spokePool Address of the SpokePool contract that can call handleV3AcrossMessage.
      */
-    constructor(address _signer, address _spokePool) {
+    constructor(address _signer, address _spokePool) EIP712("HyperliquidDepositHandler", "1.0.0") {
         donationBox = new DonationBox();
         signer = _signer;
         spokePool = _spokePool;
@@ -309,8 +313,9 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
     function _verifySignature(address expectedUser, bytes memory signature) internal view {
         /// @dev There is no nonce in this signature because an account on Hypercore can only be activated once
         /// by this contract, so reusing a signature cannot be used to grief the DonationBox.
-        bytes32 expectedHash = keccak256(abi.encode(expectedUser));
-        if (ECDSA.recover(expectedHash, signature) != signer) revert InvalidSignature();
+        bytes32 structHash = keccak256(abi.encode(ACTIVATION_TYPEHASH, expectedUser));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        if (ECDSA.recover(digest, signature) != signer) revert InvalidSignature();
     }
 
     function _getTokenInfo(address evmAddress) internal view returns (CoreTokenInfo memory) {
