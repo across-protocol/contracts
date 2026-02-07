@@ -137,10 +137,7 @@ contract UpdateVkey is Script, Constants, DeployedAddresses {
 
             // Build nested calldata
             // 1. Helios.updateHeliosProgramVkey(newVkey)
-            bytes memory heliosCalldata = abi.encodeWithSelector(
-                ISP1Helios.updateHeliosProgramVkey.selector,
-                newVkey
-            );
+            bytes memory heliosCalldata = abi.encodeWithSelector(ISP1Helios.updateHeliosProgramVkey.selector, newVkey);
 
             // 2. SpokePool.executeExternalCall(message) where message = abi.encode(helios, heliosCalldata)
             bytes memory message = abi.encode(heliosAddress, heliosCalldata);
@@ -188,9 +185,10 @@ contract UpdateVkey is Script, Constants, DeployedAddresses {
         console.log("");
         console.log("Per-chain summary:");
         for (uint256 i = 0; i < validCallCount; i++) {
-            console.log("  - chainId=%d, spokePool=%s, helios=%s", 
-                calls[i].chainId, 
-                calls[i].spokePool, 
+            console.log(
+                "  - chainId=%d, spokePool=%s, helios=%s",
+                calls[i].chainId,
+                calls[i].spokePool,
                 calls[i].helios
             );
         }
@@ -262,7 +260,6 @@ contract UpdateVkey is Script, Constants, DeployedAddresses {
         }
         return result;
     }
-
 }
 
 // ============ Minimal Interfaces ============

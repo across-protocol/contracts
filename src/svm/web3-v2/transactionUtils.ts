@@ -3,12 +3,14 @@ import {
   AddressesByLookupTableAddress,
   appendTransactionMessageInstruction,
   appendTransactionMessageInstructions,
+  assertIsTransactionWithBlockhashLifetime,
+  assertIsTransactionWithinSizeLimit,
+  BaseTransactionMessage,
   Commitment,
-  CompilableTransactionMessage,
   compressTransactionMessageUsingAddressLookupTables as compressTxWithAlt,
   createTransactionMessage,
   getSignatureFromTransaction,
-  IInstruction,
+  Instruction,
   KeyPairSigner,
   pipe,
   sendAndConfirmTransactionFactory,
@@ -16,6 +18,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
   TransactionMessageWithBlockhashLifetime,
+  TransactionMessageWithFeePayer,
   TransactionSigner,
 } from "@solana/kit";
 
@@ -32,10 +35,12 @@ import { RpcClient } from "./types";
  */
 export const signAndSendTransaction = async (
   rpcClient: RpcClient,
-  transactionMessage: CompilableTransactionMessage & TransactionMessageWithBlockhashLifetime,
+  transactionMessage: BaseTransactionMessage & TransactionMessageWithFeePayer & TransactionMessageWithBlockhashLifetime,
   commitment: Commitment = "confirmed"
 ) => {
   const signedTransaction = await signTransactionMessageWithSigners(transactionMessage);
+  assertIsTransactionWithBlockhashLifetime(signedTransaction);
+  assertIsTransactionWithinSizeLimit(signedTransaction);
   const signature = getSignatureFromTransaction(signedTransaction);
   await sendAndConfirmTransactionFactory(rpcClient)(signedTransaction, {
     commitment,
@@ -58,7 +63,7 @@ export const createDefaultTransaction = async (rpcClient: RpcClient, signer: Tra
 export async function sendTransactionWithLookupTable(
   client: RpcClient,
   payer: KeyPairSigner,
-  instructions: IInstruction[],
+  instructions: Instruction[],
   addressesByLookupTableAddress: AddressesByLookupTableAddress
 ) {
   return pipe(
@@ -68,6 +73,8 @@ export async function sendTransactionWithLookupTable(
     (tx) => signTransactionMessageWithSigners(tx),
     async (tx) => {
       const signedTx = await tx;
+      assertIsTransactionWithBlockhashLifetime(signedTx);
+      assertIsTransactionWithinSizeLimit(signedTx);
       await sendAndConfirmTransactionFactory(client)(signedTx, {
         commitment: "confirmed",
         skipPreflight: false,

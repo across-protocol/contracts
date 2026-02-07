@@ -11,7 +11,7 @@ import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { DonationBox } from "../../../../contracts/chain-adapters/DonationBox.sol";
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IHyperCoreFlowExecutor.sol";
-import { CommonFlowParams } from "../../../../contracts/periphery/mintburn/Structs.sol";
+import { CommonFlowParams, AccountCreationMode } from "../../../../contracts/periphery/mintburn/Structs.sol";
 import { HyperCoreFlowExecutor } from "../../../../contracts/periphery/mintburn/HyperCoreFlowExecutor.sol";
 import { BaseModuleHandler } from "../../../../contracts/periphery/mintburn/BaseModuleHandler.sol";
 
@@ -92,8 +92,10 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
                 quoteNonce: QUOTE_NONCE,
                 finalRecipient: finalRecipient,
                 finalToken: address(token),
+                destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
                 maxBpsToSponsor: maxBpsToSponsor,
-                extraFeesIncurred: extraFeesIncurred
+                extraFeesIncurred: extraFeesIncurred,
+                accountCreationMode: AccountCreationMode.Standard
             });
     }
 
@@ -143,8 +145,10 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
             quoteNonce: keccak256("quote-2"),
             finalRecipient: unactivated,
             finalToken: address(token),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             maxBpsToSponsor: maxBps,
-            extraFeesIncurred: extraFees
+            extraFeesIncurred: extraFees,
+            accountCreationMode: AccountCreationMode.Standard
         });
 
         uint256 balBefore = IERC20(address(token)).balanceOf(unactivated);
