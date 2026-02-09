@@ -103,14 +103,14 @@ describe("svm_spoke.fill", () => {
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("fills"), relayHashUint8Array],
-      program.programId
+      program.programId,
     );
 
     const { pda: delegatePda } = getFillRelayDelegatePda(
       relayHashUint8Array,
       new BN(1),
       relayer.publicKey,
-      program.programId
+      program.programId,
     );
 
     accounts = {
@@ -132,14 +132,14 @@ describe("svm_spoke.fill", () => {
   const approvedFillRelay = async (
     fillDataValues: FillDataValues,
     calledFillAccounts: FillAccounts = accounts,
-    callingRelayer: Keypair = relayer
+    callingRelayer: Keypair = relayer,
   ): Promise<string> => {
     const relayHash = Uint8Array.from(fillDataValues[0]);
     const { seedHash, pda: delegatePda } = getFillRelayDelegatePda(
       relayHash,
       fillDataValues[2],
       fillDataValues[3],
-      program.programId
+      program.programId,
     );
 
     const approveIx = await createApproveCheckedInstruction(
@@ -150,7 +150,7 @@ describe("svm_spoke.fill", () => {
       BigInt(fillDataValues[1].outputAmount.toString()),
       tokenDecimals,
       undefined,
-      tokenProgram
+      tokenProgram,
     );
 
     const fillIx = await program.methods
@@ -219,7 +219,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       relayerAccount.amount,
       seedBalance - relayAmount,
-      "Relayer's balance should be reduced by the relay amount"
+      "Relayer's balance should be reduced by the relay amount",
     );
 
     // Verify recipient's balance after the fill
@@ -249,7 +249,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       event.relayExecutionInfo.updatedMessageHash,
       hashNonEmptyMessage(relayData.message),
-      "UpdatedMessageHash should match"
+      "UpdatedMessageHash should match",
     );
     assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
     assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"fastFill":{}}`, "FillType should be FastFill");
@@ -300,7 +300,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       relayerAccountAfter.amount,
       BigInt(relayerAccountBefore.amount) - BigInt(relayAmount),
-      "Relayer's balance should be reduced by the relay amount"
+      "Relayer's balance should be reduced by the relay amount",
     );
 
     // Verify recipient's balance after the fill
@@ -308,7 +308,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       recipientAccountAfter.amount,
       BigInt(recipientAccountBefore.amount) + BigInt(relayAmount),
-      "Recipient's balance should be increased by the relay amount"
+      "Recipient's balance should be increased by the relay amount",
     );
   });
 
@@ -352,7 +352,7 @@ describe("svm_spoke.fill", () => {
       assert.include(
         err.toString(),
         "CanOnlyCloseFillStatusPdaIfFillDeadlinePassed",
-        "Expected CanOnlyCloseFillStatusPdaIfFillDeadlinePassed error"
+        "Expected CanOnlyCloseFillStatusPdaIfFillDeadlinePassed error",
       );
     }
 
@@ -467,7 +467,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       fRecipientBal,
       iRecipientBal + BigInt(relayAmount),
-      "Recipient's balance should be increased by the relay amount"
+      "Recipient's balance should be increased by the relay amount",
     );
   });
   it("Fills a deposit for a recipient without an existing ATA", async () => {
@@ -507,7 +507,7 @@ describe("svm_spoke.fill", () => {
       relayHashUint8Array,
       new BN(1),
       relayer.publicKey,
-      program.programId
+      program.programId,
     );
 
     // Fill the deposit in the same transaction
@@ -519,7 +519,7 @@ describe("svm_spoke.fill", () => {
       BigInt(newRelayData.outputAmount.toString()),
       tokenDecimals,
       undefined,
-      tokenProgram
+      tokenProgram,
     );
     const fillInstruction = await program.methods
       .fillRelay(relayHash, newRelayData, new BN(1), relayer.publicKey)
@@ -545,7 +545,7 @@ describe("svm_spoke.fill", () => {
     // Build instruction for all recipient ATA creation
     const recipientAuthorities = Array.from({ length: numberOfFills }, () => Keypair.generate().publicKey);
     const recipientAssociatedTokens = recipientAuthorities.map((authority) =>
-      getAssociatedTokenAddressSync(mint, authority)
+      getAssociatedTokenAddressSync(mint, authority),
     );
     const createTAremainingAccounts = recipientAuthorities.flatMap((authority, index) => [
       { pubkey: authority, isWritable: false, isSigner: false },
@@ -576,7 +576,7 @@ describe("svm_spoke.fill", () => {
         relayHashUint8Array,
         new BN(1),
         relayer.publicKey,
-        program.programId
+        program.programId,
       );
 
       const approveInstruction = await createApproveCheckedInstruction(
@@ -587,7 +587,7 @@ describe("svm_spoke.fill", () => {
         BigInt(totalFillAmount.toString()),
         tokenDecimals,
         undefined,
-        tokenProgram
+        tokenProgram,
       );
       approveAndfillInstructions.push(approveInstruction);
 
@@ -603,7 +603,7 @@ describe("svm_spoke.fill", () => {
     await sendTransactionWithLookupTableV1(
       connection,
       [createTokenAccountsInstruction, ...approveAndfillInstructions],
-      relayer
+      relayer,
     );
 
     // Verify balances after the fill
@@ -612,7 +612,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       fRelayerBal,
       iRelayerBal - BigInt(relayAmount * numberOfFills),
-      "Relayer's balance should be reduced by total relay amount"
+      "Relayer's balance should be reduced by total relay amount",
     );
     recipientAssociatedTokens.forEach(async (recipientAssociatedToken) => {
       const recipientBal = (await getAccount(connection, recipientAssociatedToken)).amount;
@@ -635,7 +635,7 @@ describe("svm_spoke.fill", () => {
         undefined,
         undefined,
         undefined,
-        tokenProgram
+        tokenProgram,
       )
     ).address;
     relayerTA = (
@@ -647,7 +647,7 @@ describe("svm_spoke.fill", () => {
         undefined,
         undefined,
         undefined,
-        tokenProgram
+        tokenProgram,
       )
     ).address;
     await mintTo(connection, payer, mint, relayerTA, owner, seedBalance, undefined, undefined, tokenProgram);
@@ -659,7 +659,7 @@ describe("svm_spoke.fill", () => {
     // Enable CPI-guard for the relayer (requires TA reallocation).
     const enableCpiGuardTx = new Transaction().add(
       createReallocateInstruction(relayerTA, relayer.publicKey, [ExtensionType.CpiGuard], relayer.publicKey),
-      createEnableCpiGuardInstruction(relayerTA, relayer.publicKey)
+      createEnableCpiGuardInstruction(relayerTA, relayer.publicKey),
     );
     await sendAndConfirmTransaction(connection, enableCpiGuardTx, [relayer]);
 
@@ -679,7 +679,7 @@ describe("svm_spoke.fill", () => {
     assertSE(
       relayerAccount.amount,
       seedBalance - relayAmount,
-      "Relayer's balance should be reduced by the relay amount"
+      "Relayer's balance should be reduced by the relay amount",
     );
 
     // Verify recipient's balance after the fill
@@ -721,7 +721,7 @@ describe("svm_spoke.fill", () => {
       const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
       const relayHash = Array.from(relayHashUint8Array);
       const delegate = address(
-        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString()
+        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString(),
       );
 
       const formattedAccounts = {
@@ -778,7 +778,7 @@ describe("svm_spoke.fill", () => {
       const fillRelayIx = {
         ...fillRelayIxData,
         accounts: fillRelayIxData.accounts.map((account) =>
-          account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
+          account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account,
         ),
       };
       const remainingAccounts = fillRemainingAccounts.map((account) => ({
@@ -791,7 +791,7 @@ describe("svm_spoke.fill", () => {
         await createDefaultTransaction(rpcClient, signer),
         (tx) => appendTransactionMessageInstruction(approveIx, tx),
         (tx) => appendTransactionMessageInstruction(fillRelayIx, tx),
-        (tx) => signAndSendTransaction(rpcClient, tx)
+        (tx) => signAndSendTransaction(rpcClient, tx),
       );
 
       const events = await readEventsUntilFound(connection, tx, [program]);
@@ -802,7 +802,7 @@ describe("svm_spoke.fill", () => {
       assertSE(
         relayerAccount.amount,
         seedBalance - relayAmount,
-        "Relayer's balance should be reduced by the relay amount"
+        "Relayer's balance should be reduced by the relay amount",
       );
 
       recipientAccount = await getAccount(connection, recipientTA);
@@ -826,7 +826,7 @@ describe("svm_spoke.fill", () => {
       const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
       const relayHash = Array.from(relayHashUint8Array);
       const delegate = address(
-        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString()
+        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString(),
       );
 
       const formattedAccounts = {
@@ -883,7 +883,7 @@ describe("svm_spoke.fill", () => {
       const fillRelayIx = {
         ...fillRelayIxData,
         accounts: fillRelayIxData.accounts.map((account) =>
-          account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account
+          account.address === program.programId.toString() ? { ...account, role: AccountRole.READONLY } : account,
         ),
       };
       const remainingAccounts = fillRemainingAccounts.map((account) => ({
@@ -918,7 +918,7 @@ describe("svm_spoke.fill", () => {
         rpcClient,
         signer,
         [approveIx, fillRelayIx],
-        lookupTableAddresses
+        lookupTableAddresses,
       );
 
       const events = await readEventsUntilFound(connection, tx, [program]);
@@ -929,7 +929,7 @@ describe("svm_spoke.fill", () => {
       assertSE(
         relayerAccount.amount,
         seedBalance - relayAmount,
-        "Relayer's balance should be reduced by the relay amount"
+        "Relayer's balance should be reduced by the relay amount",
       );
 
       recipientAccount = await getAccount(connection, recipientTA);

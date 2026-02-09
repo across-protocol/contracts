@@ -19,7 +19,7 @@ export async function run(): Promise<void> {
           const blockNumber = findDeploymentBlockNumber(castExport[chainId][0].name, contractName);
           const existingBlockNumber = (existingDeployments as Deployments)[chainId][contractName].blockNumber;
           console.log(
-            `Not updating ${contractName} as it has a later block number set in deployments.json than the one in deployments/${contractName}.json`
+            `Not updating ${contractName} as it has a later block number set in deployments.json than the one in deployments/${contractName}.json`,
           );
           const hasLaterBlockNumber = existingBlockNumber > blockNumber;
           if (hasLaterBlockNumber) return; // If we have already found a later block number for this contract, then ignore this one.

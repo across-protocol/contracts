@@ -30,10 +30,10 @@ const createLeaf = (recipient: Recipient) => {
     ethers.utils
       .solidityKeccak256(
         ["address", "uint256", "uint256"],
-        [recipient.account, recipient.amount, recipient.accountIndex]
+        [recipient.account, recipient.amount, recipient.accountIndex],
       )
       .slice(2),
-    "hex"
+    "hex",
   );
 };
 
@@ -76,7 +76,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       ).to.be.revertedWith("invalid claimer");
 
       const balanceBefore = await rewardToken.balanceOf(otherAddress.address);
@@ -89,7 +89,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       )
         .to.emit(merkleDistributor, "Claimed")
         .withArgs(otherAddress.address, 0, otherAddress.address, 0, totalRewardAmount, rewardToken.address);
@@ -105,7 +105,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       ).to.be.revertedWith("Account has already claimed for this window");
     });
     it("claimMulti", async () => {
@@ -144,7 +144,7 @@ describe("AcrossMerkleDistributor", () => {
       };
       // Only claim recipient can claim
       await expect(merkleDistributor.connect(contractCreator).claimMulti([claim1, claim2])).to.be.revertedWith(
-        "invalid claimer"
+        "invalid claimer",
       );
 
       const balanceBefore = await rewardToken.balanceOf(otherAddress.address);
@@ -153,17 +153,17 @@ describe("AcrossMerkleDistributor", () => {
       await expect(() => merkleDistributor.connect(otherAddress).claimMulti([claim1, claim2])).to.changeTokenBalances(
         rewardToken,
         [otherAddress],
-        [toBN(totalRewardAmount).mul(2)]
+        [toBN(totalRewardAmount).mul(2)],
       );
 
       // Balance should be sent to claim recipient.
       expect((await rewardToken.balanceOf(otherAddress.address)).sub(balanceBefore)).to.equal(
-        toBN(totalRewardAmount).mul(2)
+        toBN(totalRewardAmount).mul(2),
       );
 
       // Cannot claim again
       await expect(merkleDistributor.connect(otherAddress).claimMulti([claim1, claim2])).to.be.revertedWith(
-        "Account has already claimed for this window"
+        "Account has already claimed for this window",
       );
     });
     it("claimFor: events", async () => {
@@ -190,7 +190,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       ).to.be.revertedWith("unwhitelisted claimer");
 
       // Whitelisted claimer can claim:
@@ -204,7 +204,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       )
         .to.emit(merkleDistributor, "Claimed")
         .withArgs(contractCreator.address, 0, otherAddress.address, 0, totalRewardAmount, rewardToken.address);
@@ -221,7 +221,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       ).to.be.revertedWith("Account has already claimed for this window");
 
       // Can unwhitelist claimer
@@ -233,7 +233,7 @@ describe("AcrossMerkleDistributor", () => {
           accountIndex: 0,
           amount: totalRewardAmount,
           merkleProof: merkleTree.getProof(leaf),
-        })
+        }),
       ).to.be.revertedWith("unwhitelisted claimer");
 
       // Emits ClaimFor event

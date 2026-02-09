@@ -75,7 +75,7 @@ describe("svm_spoke.fill.across_plus", () => {
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("fills"), relayHashUint8Array],
-      program.programId
+      program.programId,
     );
 
     accounts = {
@@ -104,7 +104,7 @@ describe("svm_spoke.fill.across_plus", () => {
       getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       accounts.signer,
       BigInt(relayAmount),
-      mintDecimals
+      mintDecimals,
     );
 
     const remainingAccounts: AccountMeta[] = [
@@ -118,7 +118,7 @@ describe("svm_spoke.fill.across_plus", () => {
       await loadFillRelayParams(program, relayer, fillRelayValues[1], fillRelayValues[2], fillRelayValues[3]);
       [accounts.instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
-        program.programId
+        program.programId,
       );
     }
     const fillRelayParams: FillDataParams = bufferParams ? [fillRelayValues[0], null, null, null] : fillRelayValues;
@@ -177,7 +177,7 @@ describe("svm_spoke.fill.across_plus", () => {
       finalRecipientATA,
       handlerSigner,
       relayData.outputAmount,
-      mintDecimals
+      mintDecimals,
     );
 
     const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
@@ -211,7 +211,7 @@ describe("svm_spoke.fill.across_plus", () => {
     assertSE(
       finalRecipientAccount.amount,
       relayAmount,
-      "Final recipient's balance should be increased by the relay amount"
+      "Final recipient's balance should be increased by the relay amount",
     );
   });
 
@@ -235,7 +235,7 @@ describe("svm_spoke.fill.across_plus", () => {
           recipientATA,
           handlerSigner,
           distributionAmount,
-          mintDecimals
+          mintDecimals,
         );
         transferInstructions.push(transferInstruction);
       }
@@ -275,12 +275,12 @@ describe("svm_spoke.fill.across_plus", () => {
       assertSE(
         fRelayerBal,
         iRelayerBal - BigInt(distributionAmount * numberOfDistributions),
-        "Relayer's balance should be reduced by the relay amount"
+        "Relayer's balance should be reduced by the relay amount",
       );
 
       // Verify all recipient account balances after the fill.
       const recipientBalances = await Promise.all(
-        recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount)
+        recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount),
       );
       recipientBalances.forEach((balance, i) => {
         assertSE(balance, distributionAmount, `Recipient account ${i} balance should match distribution amount`);
@@ -335,7 +335,7 @@ describe("svm_spoke.fill.across_plus", () => {
     assertSE(
       valueRecipientAccount.lamports,
       valueAmount.toNumber(),
-      "Value recipient's balance should be increased by the value amount"
+      "Value recipient's balance should be increased by the value amount",
     );
   });
 
@@ -351,7 +351,7 @@ describe("svm_spoke.fill.across_plus", () => {
       handlerSigner,
       anotherRecipientATA,
       anotherRecipient,
-      mint
+      mint,
     );
 
     // Construct ix to transfer all tokens from handler to the recipient ATA.
@@ -361,13 +361,13 @@ describe("svm_spoke.fill.across_plus", () => {
       anotherRecipientATA,
       handlerSigner,
       relayData.outputAmount,
-      mintDecimals
+      mintDecimals,
     );
 
     // Encode both instructions with handler PDA as the payer for ATA initialization.
     const multicallHandlerCoder = new MulticallHandlerCoder(
       [createTokenAccountInstruction, transferInstruction],
-      handlerSigner
+      handlerSigner,
     );
     const handlerMessage = multicallHandlerCoder.encode();
     const message = new AcrossPlusMessageCoder({
@@ -395,7 +395,7 @@ describe("svm_spoke.fill.across_plus", () => {
     assertSE(
       anotherRecipientAccount.amount,
       relayAmount,
-      "Recipient's balance should be increased by the relay amount"
+      "Recipient's balance should be increased by the relay amount",
     );
   });
 
@@ -410,7 +410,7 @@ describe("svm_spoke.fill.across_plus", () => {
         finalRecipientATA,
         handlerSigner,
         relayData.outputAmount,
-        mintDecimals
+        mintDecimals,
       );
 
       const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
@@ -442,7 +442,7 @@ describe("svm_spoke.fill.across_plus", () => {
       const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
       const relayHash = Array.from(relayHashUint8Array);
       const delegate = address(
-        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString()
+        getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda.toString(),
       );
       const formattedAccounts = {
         state: address(accounts.state.toString()),
@@ -502,7 +502,7 @@ describe("svm_spoke.fill.across_plus", () => {
           account.address === TOKEN_PROGRAM_ID.toString() ||
           account.address === ASSOCIATED_TOKEN_PROGRAM_ID.toString()
             ? { ...account, role: AccountRole.READONLY }
-            : account
+            : account,
         ),
       };
 
@@ -520,7 +520,7 @@ describe("svm_spoke.fill.across_plus", () => {
         await createDefaultTransaction(rpcClient, signer),
         (tx) => appendTransactionMessageInstruction(approveIx, tx),
         (tx) => appendTransactionMessageInstruction(fillRelayIx, tx),
-        (tx) => signAndSendTransaction(rpcClient, tx)
+        (tx) => signAndSendTransaction(rpcClient, tx),
       );
 
       // Verify relayer's balance after the fill
@@ -528,7 +528,7 @@ describe("svm_spoke.fill.across_plus", () => {
       assertSE(
         fRelayerBal,
         iRelayerBal - BigInt(relayAmount),
-        "Relayer's balance should be reduced by the relay amount"
+        "Relayer's balance should be reduced by the relay amount",
       );
 
       // Verify final recipient's balance after the fill
@@ -536,7 +536,7 @@ describe("svm_spoke.fill.across_plus", () => {
       assertSE(
         finalRecipientAccount.amount,
         relayAmount,
-        "Final recipient's balance should be increased by the relay amount"
+        "Final recipient's balance should be increased by the relay amount",
       );
     });
   });

@@ -66,7 +66,7 @@ async function nativeDeposit(): Promise<void> {
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId
+    programId,
   );
 
   // Define the signer (replace with your actual signer)
@@ -78,7 +78,7 @@ async function nativeDeposit(): Promise<void> {
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   );
 
   const userTokenAccount = getAssociatedTokenAddressSync(inputToken, signer.publicKey);
@@ -124,7 +124,7 @@ async function nativeDeposit(): Promise<void> {
         signer.publicKey,
         userTokenAccount,
         signer.publicKey,
-        inputToken
+        inputToken,
       );
 
   // Close the user token account if it did not exist before.
@@ -157,7 +157,7 @@ async function nativeDeposit(): Promise<void> {
     BigInt(inputAmount.toString()),
     tokenDecimals,
     undefined,
-    TOKEN_PROGRAM_ID
+    TOKEN_PROGRAM_ID,
   );
 
   const depositAccounts = {
@@ -186,7 +186,7 @@ async function nativeDeposit(): Promise<void> {
       quoteTimestamp,
       fillDeadline,
       exclusivityDeadline,
-      message
+      message,
     )
     .accounts(depositAccounts)
     .instruction();

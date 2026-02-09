@@ -81,7 +81,7 @@ describe("ZkSync Spoke Pool", function () {
     zkSyncSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("ZkSync_SpokePool", owner),
       [0, zkErc20Bridge.address, owner.address, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs },
     );
 
     await seedContract(zkSyncSpokePool, relayer, [dai, usdc], weth, amountHeldByPool);
@@ -91,7 +91,7 @@ describe("ZkSync Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("ZkSync_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs },
     );
 
     // upgradeTo fails unless called by cross domain admin
@@ -163,7 +163,7 @@ describe("ZkSync Spoke Pool", function () {
   it("Only cross domain owner can relay admin root bundles", async function () {
     const { tree } = await constructSingleRelayerRefundTree(l2Dai, await zkSyncSpokePool.callStatic.chainId());
     await expect(zkSyncSpokePool.relayRootBundle(tree.getHexRoot(), mockTreeRoot)).to.be.revertedWith(
-      "ONLY_COUNTERPART_GATEWAY"
+      "ONLY_COUNTERPART_GATEWAY",
     );
   });
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for standard ERC20s", async function () {
@@ -181,13 +181,13 @@ describe("ZkSync Spoke Pool", function () {
     const constructorArgs = [weth.address, usdcAddress, zkUSDCBridge.address, cctpTokenMessenger, 60 * 60, 9 * 60 * 60];
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("ZkSync_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs },
     );
     await zkSyncSpokePool.connect(crossDomainAlias).upgradeTo(implementation);
 
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       usdc.address,
-      await zkSyncSpokePool.callStatic.chainId()
+      await zkSyncSpokePool.callStatic.chainId(),
     );
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]));
@@ -199,7 +199,7 @@ describe("ZkSync Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the custom USDC L2 Bridge for Circle Bridged USDC", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       usdc.address,
-      await zkSyncSpokePool.callStatic.chainId()
+      await zkSyncSpokePool.callStatic.chainId(),
     );
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     let allowance = await usdc.allowance(zkSyncSpokePool.address, zkUSDCBridge.address);
@@ -218,14 +218,14 @@ describe("ZkSync Spoke Pool", function () {
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       weth.address,
-      await zkSyncSpokePool.callStatic.chainId()
+      await zkSyncSpokePool.callStatic.chainId(),
     );
     await zkSyncSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
     // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
     // to the ERC20 bridge. This results in a net decrease in WETH balance.
     await expect(() =>
-      zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      zkSyncSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
     ).to.changeTokenBalance(weth, zkSyncSpokePool, amountToReturn.mul(-1));
     expect(l2Eth.withdraw).to.have.been.calledWithValue(amountToReturn);
     expect(l2Eth.withdraw).to.have.been.calledWith(hubPool.address);

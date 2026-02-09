@@ -50,7 +50,7 @@ async function initialize(): Promise<void> {
   console.log("seed.toArrayLike(Buffer", new BN(seed).toArrayLike(Buffer, "le", 8));
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), new BN(seed).toArrayLike(Buffer, "le", 8)],
-    programId
+    programId,
   );
 
   // Define the signer (replace with your actual signer)
@@ -79,7 +79,7 @@ async function initialize(): Promise<void> {
       remoteDomain,
       crossDomainAdmin,
       depositQuoteTimeBuffer,
-      fillDeadlineBuffer
+      fillDeadlineBuffer,
     ) as any
   )
     .accounts({

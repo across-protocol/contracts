@@ -91,7 +91,7 @@ async function main() {
     const txn = await erc20.approve(spokePool.address, config.amountToDepositIntoSpokePool);
     console.log(
       `Approving SpokePool to spend ${config.amountToDepositIntoSpokePool} of ${config.l2Erc20AddressToTest}`,
-      await txn.wait()
+      await txn.wait(),
     );
   }
   const balance = await erc20.balanceOf(signer.address);
@@ -153,5 +153,5 @@ main().then(
   (error) => {
     console.log(error);
     process.exit(1);
-  }
+  },
 );

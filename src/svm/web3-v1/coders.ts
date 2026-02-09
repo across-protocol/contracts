@@ -119,7 +119,7 @@ class UnsignedMessage extends Message {
         programIdIndex: ix.programIdIndex,
         accounts: ix.accountKeyIndexes,
         data: bs58.encode(ix.data),
-      })
+      }),
     );
     return new Message({
       header,

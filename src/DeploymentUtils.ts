@@ -17,7 +17,7 @@ export const DEPLOYMENTS: Readonly<Deployments> = deployments_.chains as Deploym
 export function getDeployedAddress(
   contractName: string,
   networkId: number | string,
-  throwOnError = true
+  throwOnError = true,
 ): string | undefined {
   const address = DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.address;
   if (!address && throwOnError) {
@@ -32,7 +32,7 @@ export function getDeployedAddress(
  * Each result contains chainId, address, and blockNumber.
  */
 export function getAllDeployedAddresses(
-  contractName: string
+  contractName: string,
 ): Array<{ chainId: number; address: string; blockNumber: number }> {
   const results: Array<{ chainId: number; address: string; blockNumber: number }> = [];
   Object.keys(DEPLOYMENTS).forEach((_chainId) => {
@@ -65,7 +65,7 @@ export function getContractInfoFromAddress(contractAddress: string): { chainId: 
     Object.keys(DEPLOYMENTS[_chainId]?.contracts).forEach((_contractName) => {
       if (DEPLOYMENTS[_chainId]?.contracts[_contractName]?.address === contractAddress)
         returnValue.push({ chainId: Number(_chainId), contractName: _contractName });
-    })
+    }),
   );
   if (returnValue.length === 0) throw new Error(`Contract ${contractAddress} not found in deployments.json`);
   if (returnValue.length > 1) throw new Error(`Multiple deployments found for ${contractAddress}`);

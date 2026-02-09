@@ -89,7 +89,7 @@ describe("svm_spoke.create_token_accounts", () => {
       assertSE(
         error.error.errorCode.code,
         "ConstraintMintTokenProgram",
-        "Expected error code ConstraintMintTokenProgram"
+        "Expected error code ConstraintMintTokenProgram",
       );
     }
   });
@@ -118,7 +118,7 @@ describe("svm_spoke.create_token_accounts", () => {
       assertSE(
         error.error.errorCode.code,
         "InvalidATACreationAccounts",
-        "Expected error code InvalidATACreationAccounts"
+        "Expected error code InvalidATACreationAccounts",
       );
     }
   });

@@ -139,7 +139,7 @@ describe("svm_spoke.refund_claims", () => {
     tokenAccount = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, relayer.publicKey)).address;
     [claimAccount] = PublicKey.findProgramAddressSync(
       [Buffer.from("claim_account"), mint.toBuffer(), relayer.publicKey.toBuffer()],
-      program.programId
+      program.programId,
     );
 
     vault = (await getOrCreateAssociatedTokenAccount(connection, payer, mint, state, true)).address;
@@ -165,7 +165,7 @@ describe("svm_spoke.refund_claims", () => {
 
     [transferLiability] = PublicKey.findProgramAddressSync(
       [Buffer.from("transfer_liability"), mint.toBuffer()],
-      program.programId
+      program.programId,
     );
   });
 
@@ -211,7 +211,7 @@ describe("svm_spoke.refund_claims", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "AccountNotInitialized",
-        "Expected error code AccountNotInitialized"
+        "Expected error code AccountNotInitialized",
       );
     }
 
@@ -268,7 +268,7 @@ describe("svm_spoke.refund_claims", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "InvalidClaimInitializer",
-        "Expected error code InvalidClaimInitializer"
+        "Expected error code InvalidClaimInitializer",
       );
     }
 
@@ -299,7 +299,7 @@ describe("svm_spoke.refund_claims", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "InvalidClaimInitializer",
-        "Expected error code InvalidClaimInitializer"
+        "Expected error code InvalidClaimInitializer",
       );
     }
 
@@ -356,7 +356,7 @@ describe("svm_spoke.refund_claims", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "InvalidRefundTokenAccount",
-        "Expected error code InvalidRefundTokenAccount"
+        "Expected error code InvalidRefundTokenAccount",
       );
     }
   });
@@ -381,7 +381,7 @@ describe("svm_spoke.refund_claims", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "InvalidRefundTokenAccount",
-        "Expected error code InvalidRefundTokenAccount"
+        "Expected error code InvalidRefundTokenAccount",
       );
     }
   });

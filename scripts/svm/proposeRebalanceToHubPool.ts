@@ -120,7 +120,7 @@ async function proposeRebalanceToHubPool(): Promise<void> {
     1, // poolRebalanceLeafCount, only one leaf in this script.
     poolRebalanceTree.getHexRoot(), // poolRebalanceRoot.
     merkleTree.getHexRoot(), // relayerRefundRoot.
-    ethers.constants.HashZero // slowRelayRoot.
+    ethers.constants.HashZero, // slowRelayRoot.
   );
 
   await tx.wait();

@@ -41,7 +41,7 @@ describe("svm_spoke.ownership", () => {
       assertSE(
         stateData[adjustedKey as keyof typeof stateData],
         initialState[key as keyof typeof initialState],
-        `${key} should match`
+        `${key} should match`,
       );
     });
   });
@@ -133,7 +133,7 @@ describe("svm_spoke.ownership", () => {
     assert.equal(
       transferredOwnershipEvents[0].data.newOwner.toString(),
       newOwner.publicKey.toString(),
-      "TransferredOwnership event should indicate the new owner"
+      "TransferredOwnership event should indicate the new owner",
     );
 
     // Verify the new owner
@@ -167,7 +167,7 @@ describe("svm_spoke.ownership", () => {
     assert.equal(
       stateAccountData.crossDomainAdmin.toString(),
       newCrossDomainAdmin.publicKey.toString(),
-      "Cross-domain admin should be set"
+      "Cross-domain admin should be set",
     );
 
     // Verify the SetXDomainAdmin event
@@ -176,7 +176,7 @@ describe("svm_spoke.ownership", () => {
     assert.equal(
       setXDomainAdminEvents[0].data.newAdmin.toString(),
       newCrossDomainAdmin.publicKey.toString(),
-      "SetXDomainAdmin event should indicate the new admin"
+      "SetXDomainAdmin event should indicate the new admin",
     );
 
     // Try to set cross-domain admin as non-owner

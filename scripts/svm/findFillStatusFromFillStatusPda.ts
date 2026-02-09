@@ -26,14 +26,14 @@ async function findFillStatusFromFillStatusPda(): Promise<void> {
   const { rpcEndpoint } = provider.connection;
   const rpc = createSolanaRpc(rpcEndpoint);
   const rpcSubscriptions = createSolanaRpcSubscriptions(
-    rpcEndpoint.replace(/^http(s?):\/\//i, (_m, s) => `ws${s ?? ""}://`)
+    rpcEndpoint.replace(/^http(s?):\/\//i, (_m, s) => `ws${s ?? ""}://`),
   );
 
   const { event, slot } = await readFillEventFromFillStatusPda(
     { rpc, rpcSubscriptions },
     fillStatusPda,
     address(resolvedArgv.programId),
-    SvmSpokeIdl
+    SvmSpokeIdl,
   );
   if (!event) {
     console.log("No fill events found");
@@ -47,7 +47,7 @@ async function findFillStatusFromFillStatusPda(): Promise<void> {
         return { Property: key, Value: `relayer: ${info.relayer}, executionTimestamp: ${info.executionTimestamp}` };
       }
       return { Property: key, Value: (value as any).toString() };
-    })
+    }),
   );
 
   const program = anchor.workspace.SvmSpoke as Program<SvmSpoke>;

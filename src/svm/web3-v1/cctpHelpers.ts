@@ -70,7 +70,7 @@ export const decodeMessageHeader = (data: Buffer): MessageHeader => {
   const sender = new anchor.web3.PublicKey(data.slice(HEADER_SENDER_INDEX, HEADER_SENDER_INDEX + 32));
   const recipient = new anchor.web3.PublicKey(data.slice(HEADER_RECIPIENT_INDEX, HEADER_RECIPIENT_INDEX + 32));
   const destinationCaller = new anchor.web3.PublicKey(
-    data.slice(DESTINATION_CALLER_INDEX, DESTINATION_CALLER_INDEX + 32)
+    data.slice(DESTINATION_CALLER_INDEX, DESTINATION_CALLER_INDEX + 32),
   );
   const messageBody = data.slice(MESSAGE_BODY_INDEX);
   return {
@@ -137,7 +137,7 @@ const AttestationResponseStruct: Struct<AttestationResponse, any> = object({
       attestation: string(),
       message: string(),
       eventNonce: string(),
-    })
+    }),
   ),
 });
 
@@ -147,7 +147,7 @@ const AttestationResponseStruct: Struct<AttestationResponse, any> = object({
 export const getMessages = async (
   txHash: string,
   srcDomain: number,
-  irisApiUrl: string
+  irisApiUrl: string,
 ): Promise<AttestationResponse> => {
   console.log("Fetching attestations and messages for tx...", txHash);
   let attestationResponse: any = {};

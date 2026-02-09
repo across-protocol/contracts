@@ -99,7 +99,7 @@ describe("Linea Spoke Pool", function () {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
         constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
-      }
+      },
     );
 
     await seedContract(lineaSpokePool, relayer, [dai, usdc], weth, amountHeldByPool);
@@ -117,7 +117,7 @@ describe("Linea Spoke Pool", function () {
     lineaMessageService.sender.returns(owner.address);
     // msg.sender must be lineaMessageService
     await expect(lineaSpokePool.connect(owner).upgradeTo(implementation)).to.be.revertedWith(
-      "ONLY_COUNTERPART_GATEWAY"
+      "ONLY_COUNTERPART_GATEWAY",
     );
     await lineaSpokePool.connect(lineaMessageService.wallet).upgradeTo(implementation);
   });
@@ -136,26 +136,26 @@ describe("Linea Spoke Pool", function () {
   it("Only cross domain owner can relay admin root bundles", async function () {
     const { tree } = await constructSingleRelayerRefundTree(dai.address, await lineaSpokePool.callStatic.chainId());
     await expect(lineaSpokePool.relayRootBundle(tree.getHexRoot(), mockTreeRoot)).to.be.revertedWith(
-      "ONLY_COUNTERPART_GATEWAY"
+      "ONLY_COUNTERPART_GATEWAY",
     );
   });
   it("Anti-DDoS message fee needs to be set", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
-      await lineaSpokePool.callStatic.chainId()
+      await lineaSpokePool.callStatic.chainId(),
     );
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     lineaMessageService.sender.reset();
     lineaMessageService.minimumFeeInWei.returns(1);
     await expect(
-      lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      lineaSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
     ).to.be.revertedWith("MESSAGE_FEE_MISMATCH");
   });
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
-      await lineaSpokePool.callStatic.chainId()
+      await lineaSpokePool.callStatic.chainId(),
     );
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
@@ -175,7 +175,7 @@ describe("Linea Spoke Pool", function () {
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       weth.address,
-      await lineaSpokePool.callStatic.chainId()
+      await lineaSpokePool.callStatic.chainId(),
     );
     lineaMessageService.sender.returns(owner.address);
     await lineaSpokePool.connect(lineaMessageService.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
@@ -188,7 +188,7 @@ describe("Linea Spoke Pool", function () {
     await expect(() =>
       lineaSpokePool
         .connect(relayer)
-        .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee })
+        .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: fee }),
     ).to.changeTokenBalance(weth, lineaSpokePool, amountToReturn.mul(-1));
     expect(lineaMessageService.sendMessage).to.have.been.calledWith(hubPool.address, fee, "0x");
     expect(lineaMessageService.sendMessage).to.have.been.calledWithValue(amountToReturn.add(fee));

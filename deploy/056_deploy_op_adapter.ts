@@ -18,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   assert(SPOKE_CHAIN_ID !== undefined, "SPOKE_CHAIN_ID not defined in environment");
   assert(
     parseInt(SPOKE_CHAIN_ID).toString() === SPOKE_CHAIN_ID,
-    "SPOKE_CHAIN_ID (${SPOKE_CHAIN_ID}) must be an integer"
+    "SPOKE_CHAIN_ID (${SPOKE_CHAIN_ID}) must be an integer",
   );
 
   const { deployer } = await hre.getNamedAccounts();

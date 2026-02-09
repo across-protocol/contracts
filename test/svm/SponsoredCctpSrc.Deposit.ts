@@ -76,7 +76,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const getDenyList = (user: PublicKey): PublicKey => {
     const [denyList] = PublicKey.findProgramAddressSync(
       [Buffer.from("denylist_account"), user.toBuffer()],
-      tokenMessengerMinterV2Program.programId
+      tokenMessengerMinterV2Program.programId,
     );
     return denyList;
   };
@@ -93,7 +93,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.destinationCaller,
         quoteData.maxFee,
         quoteData.minFinalityThreshold,
-      ]
+      ],
     );
     const encodedPart2 = ethers.utils.defaultAbiCoder.encode(
       ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint8", "bytes32"],
@@ -106,7 +106,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.finalToken,
         quoteData.executionMode,
         ethers.utils.keccak256(quoteData.actionData),
-      ]
+      ],
     );
     const hash1 = ethers.utils.keccak256(encodedPart1);
     const hash2 = ethers.utils.keccak256(encodedPart2);
@@ -141,7 +141,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
   const getEncodedQuoteWithSignature = (
     signer: ethers.Wallet,
-    quoteData: SponsoredCCTPQuote
+    quoteData: SponsoredCCTPQuote,
   ): { quote: SponsoredCCTPQuoteSVM; signature: number[] } => {
     const encodedQuote = encodeQuoteForSVM(quoteData);
 
@@ -162,7 +162,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.finalToken,
         quoteData.executionMode,
         quoteData.actionData,
-      ]
+      ],
     );
 
     return Buffer.from(ethers.utils.arrayify(encodedHexString));
@@ -217,7 +217,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         undefined,
         undefined,
         undefined,
-        tokenProgram
+        tokenProgram,
       )
     ).address;
     await mintTo(
@@ -229,22 +229,22 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       seedBalance,
       undefined,
       undefined,
-      tokenProgram
+      tokenProgram,
     );
 
     [minimumDeposit] = PublicKey.findProgramAddressSync(
       [Buffer.from("minimum_deposit"), burnToken.toBuffer()],
-      program.programId
+      program.programId,
     );
 
     // Add local CCTP token (test wallet is overridden as token controller in Anchor.toml).
     [localToken] = PublicKey.findProgramAddressSync(
       [Buffer.from("local_token"), burnToken.toBuffer()],
-      tokenMessengerMinterV2Program.programId
+      tokenMessengerMinterV2Program.programId,
     );
     const [custodyTokenAccount] = PublicKey.findProgramAddressSync(
       [Buffer.from("custody"), burnToken.toBuffer()],
-      tokenMessengerMinterV2Program.programId
+      tokenMessengerMinterV2Program.programId,
     );
     const addLocalTokenAccounts = {
       tokenController: owner,
@@ -276,7 +276,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     denylistAccount = getDenyList(depositor.publicKey);
     tokenMessengerMinterSenderAuthority = findProgramAddress(
       "sender_authority",
-      tokenMessengerMinterV2Program.programId
+      tokenMessengerMinterV2Program.programId,
     ).publicKey;
     messageTransmitter = findProgramAddress("message_transmitter", messageTransmitterV2Program.programId).publicKey;
     tokenMessenger = findProgramAddress("token_messenger", tokenMessengerMinterV2Program.programId).publicKey;
@@ -446,7 +446,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       [depositIx],
       lookupTableAccount,
       depositor,
-      [messageSentEventData]
+      [messageSentEventData],
     );
 
     const depositorTokenAmount = (await getAccount(connection, depositorTokenAccount)).amount;
@@ -454,7 +454,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(
       depositorTokenAmount.toString(),
       expectedDepositorTokenAmount.toString(),
-      "Depositor token amount mismatch"
+      "Depositor token amount mismatch",
     );
 
     const events = await readEventsUntilFound(connection, txSignature, [program]);
@@ -466,14 +466,14 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(
       depositEvent.finalRecipient.toString(),
       new PublicKey(finalRecipient).toString(),
-      "Invalid finalRecipient"
+      "Invalid finalRecipient",
     );
     assert.strictEqual(depositEvent.quoteDeadline.toString(), deadline.toString(), "Invalid quoteDeadline");
     assert.strictEqual(depositEvent.maxBpsToSponsor.toString(), maxBpsToSponsor.toString(), "Invalid maxBpsToSponsor");
     assert.strictEqual(
       depositEvent.maxUserSlippageBps.toString(),
       maxUserSlippageBps.toString(),
-      "Invalid maxUserSlippageBps"
+      "Invalid maxUserSlippageBps",
     );
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
@@ -483,30 +483,30 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(
       createdEventAccountEvent.messageSentEventData.toString(),
       messageSentEventData.publicKey.toString(),
-      "Invalid messageSentEventData"
+      "Invalid messageSentEventData",
     );
 
     const message = decodeMessageSentDataV2(
-      (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message
+      (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message,
     );
     assert.strictEqual(message.destinationDomain, remoteDomain.toNumber(), "Invalid destination domain");
     assert.strictEqual(
       message.destinationCaller.toString(),
       new PublicKey(destinationCaller).toString(),
-      "Invalid destinationCaller"
+      "Invalid destinationCaller",
     );
     assert.strictEqual(message.minFinalityThreshold, minFinalityThreshold, "Invalid minFinalityThreshold");
     assert.strictEqual(message.messageBody.burnToken.toString(), burnToken.toString(), "Invalid burnToken");
     assert.strictEqual(
       message.messageBody.mintRecipient.toString(),
       new PublicKey(mintRecipient).toString(),
-      "Invalid mintRecipient"
+      "Invalid mintRecipient",
     );
     assert.strictEqual(message.messageBody.amount.toString(), burnAmount.toString(), "Invalid amount");
     assert.strictEqual(
       message.messageBody.messageSender.toString(),
       depositor.publicKey.toString(),
-      "Invalid messageSender"
+      "Invalid messageSender",
     );
     assert.strictEqual(message.messageBody.maxFee.toString(), maxFee.toString(), "Invalid maxFee");
     const expectedHookData = getHookDataFromQuote(quoteData);
@@ -584,7 +584,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       const logs = await (err as SendTransactionError).getLogs(connection);
       assert.isTrue(
         logs.some((log) => log.includes("QuoteDeadlineNotPassed")),
-        "Expected QuoteDeadlineNotPassed error log"
+        "Expected QuoteDeadlineNotPassed error log",
       );
     }
 
@@ -607,7 +607,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(
       rentFundLamportsAfter,
       rentFundLamportsBefore + usedNonceLamports,
-      "Rent fund should receive all lamports from reclaimed used nonce account"
+      "Rent fund should receive all lamports from reclaimed used nonce account",
     );
   });
 
@@ -669,7 +669,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     ]);
 
     const message = decodeMessageSentDataV2(
-      (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message
+      (await messageTransmitterV2Program.account.messageSent.fetch(messageSentEventData.publicKey)).message,
     );
     const expectedHookData = getHookDataFromQuote(quoteData);
     assert.isTrue(message.messageBody.hookData.equals(expectedHookData), "Invalid hookData");
@@ -741,7 +741,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       const logs = await (err as SendTransactionError).getLogs(connection);
       assert.isTrue(
         logs.some((log) => log.includes("DepositAmountBelowMinimum")),
-        "Expected DepositAmountBelowMinimum error log"
+        "Expected DepositAmountBelowMinimum error log",
       );
     }
   });
@@ -749,7 +749,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   it("Accrue and repay rent_fund debt", async () => {
     [rentClaim] = PublicKey.findProgramAddressSync(
       [Buffer.from("rent_claim"), depositor.publicKey.toBuffer()],
-      program.programId
+      program.programId,
     );
     let nonce = crypto.randomBytes(32);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
@@ -830,7 +830,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     rentFundBalance = await connection.getBalance(rentFund);
     assert.isTrue(
       rentClaimAccount.amount.eq(new BN(usedNonceBalance + messageSentEventDataBalance + rentFundBalance)),
-      "Rent claim should have accrued debt for account creation"
+      "Rent claim should have accrued debt for account creation",
     );
 
     // Test repayment after rent_fund has balance.
@@ -845,7 +845,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(
       userBalanceAfter - userBalanceBefore,
       rentClaimAccount.amount.toNumber() + rentClaimBalance,
-      "User should have been refunded the claim and proceeds from closing rent_claim"
+      "User should have been refunded the claim and proceeds from closing rent_claim",
     );
     assert.isNull(await program.account.rentClaim.fetchNullable(rentClaim), "Rent claim account should be closed");
   });
@@ -863,7 +863,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
     [rentClaim] = PublicKey.findProgramAddressSync(
       [Buffer.from("rent_claim"), depositor.publicKey.toBuffer()],
-      program.programId
+      program.programId,
     );
     let nonce = crypto.randomBytes(32);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
@@ -922,7 +922,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const fullClaimAmount = new BN(usedNonceBalance + messageSentEventDataBalance + rentFundBalance);
     assert.isTrue(
       rentClaimAccount.amount.eq(fullClaimAmount),
-      "Rent claim should have accrued debt for account creation"
+      "Rent claim should have accrued debt for account creation",
     );
 
     // Without funding rent claim account should keep the debt.
@@ -945,12 +945,12 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     assert.strictEqual(
       userBalanceAfter - userBalanceBefore,
       partialRepayment,
-      "User should have been refunded only part of the claim"
+      "User should have been refunded only part of the claim",
     );
     rentClaimAccount = await program.account.rentClaim.fetch(rentClaim);
     assert.isTrue(
       rentClaimAccount.amount.eq(fullClaimAmount.sub(new BN(partialRepayment))),
-      "Rent claim should have been partially repaid"
+      "Rent claim should have been partially repaid",
     );
   });
 });

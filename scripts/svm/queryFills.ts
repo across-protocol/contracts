@@ -27,7 +27,7 @@ async function queryFills(): Promise<void> {
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId
+    programId,
   );
 
   console.table([

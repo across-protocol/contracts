@@ -35,7 +35,7 @@ describe("SpokePool with Blacklisted destErc20", function () {
 
     // Attempt to transfer tokens to the blacklisted relayer
     await expect(destErc20.connect(deployerWallet).transfer(relayer.address, consts.amountToRelay)).to.be.revertedWith(
-      "Recipient is blacklisted"
+      "Recipient is blacklisted",
     );
   });
 
@@ -57,7 +57,7 @@ describe("SpokePool with Blacklisted destErc20", function () {
         [consts.amountToRelay, consts.amountToRelay],
         0,
         destErc20.address,
-        [relayer.address, rando.address]
+        [relayer.address, rando.address],
       );
 
     // Ensure relayerRepaymentLiability is incremented
@@ -76,11 +76,11 @@ describe("SpokePool with Blacklisted destErc20", function () {
         [consts.amountToRelay],
         0,
         destErc20.address,
-        [relayer.address]
+        [relayer.address],
       );
 
     await expect(
-      spokePool.connect(relayer).claimRelayerRefund(addressToBytes(destErc20.address), addressToBytes(relayer.address))
+      spokePool.connect(relayer).claimRelayerRefund(addressToBytes(destErc20.address), addressToBytes(relayer.address)),
     ).to.be.revertedWith("Recipient is blacklisted");
 
     expect(await destErc20.balanceOf(rando.address)).to.equal(toBN(0));

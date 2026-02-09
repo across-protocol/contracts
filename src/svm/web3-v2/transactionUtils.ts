@@ -36,7 +36,7 @@ import { RpcClient } from "./types";
 export const signAndSendTransaction = async (
   rpcClient: RpcClient,
   transactionMessage: BaseTransactionMessage & TransactionMessageWithFeePayer & TransactionMessageWithBlockhashLifetime,
-  commitment: Commitment = "confirmed"
+  commitment: Commitment = "confirmed",
 ) => {
   const signedTransaction = await signTransactionMessageWithSigners(transactionMessage);
   assertIsTransactionWithBlockhashLifetime(signedTransaction);
@@ -53,7 +53,7 @@ export const createDefaultTransaction = async (rpcClient: RpcClient, signer: Tra
   return pipe(
     createTransactionMessage({ version: 0 }),
     (tx) => setTransactionMessageFeePayerSigner(signer, tx),
-    (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx)
+    (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
   );
 };
 
@@ -64,7 +64,7 @@ export async function sendTransactionWithLookupTable(
   client: RpcClient,
   payer: KeyPairSigner,
   instructions: Instruction[],
-  addressesByLookupTableAddress: AddressesByLookupTableAddress
+  addressesByLookupTableAddress: AddressesByLookupTableAddress,
 ) {
   return pipe(
     await createDefaultTransaction(client, payer),
@@ -80,7 +80,7 @@ export async function sendTransactionWithLookupTable(
         skipPreflight: false,
       });
       return getSignatureFromTransaction(signedTx);
-    }
+    },
   );
 }
 
@@ -103,7 +103,7 @@ export async function createLookupTable(client: RpcClient, authority: KeyPairSig
   await pipe(
     await createDefaultTransaction(client, authority),
     (tx) => appendTransactionMessageInstruction(createAltIx, tx),
-    (tx) => signAndSendTransaction(client, tx)
+    (tx) => signAndSendTransaction(client, tx),
   );
 
   return alt;
@@ -116,7 +116,7 @@ export async function extendLookupTable(
   client: RpcClient,
   authority: KeyPairSigner,
   alt: Address,
-  addresses: Address[]
+  addresses: Address[],
 ) {
   const extendAltIx = getExtendLookupTableInstruction({
     address: alt,
@@ -128,7 +128,7 @@ export async function extendLookupTable(
   await pipe(
     await createDefaultTransaction(client, authority),
     (tx) => appendTransactionMessageInstruction(extendAltIx, tx),
-    (tx) => signAndSendTransaction(client, tx)
+    (tx) => signAndSendTransaction(client, tx),
   );
 
   const altAccount = await fetchAddressLookupTable(client.rpc, alt);

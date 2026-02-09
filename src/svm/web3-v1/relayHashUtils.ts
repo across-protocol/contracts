@@ -147,7 +147,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
           refundAddresses: (input as RelayerRefundLeaf).refundAddresses, // Type assertion
           refundAmounts: (input as RelayerRefundLeaf).refundAmounts, // Type assertion
         },
-      ]
+      ],
     );
     return ethers.utils.keccak256(encodedData);
   } else {

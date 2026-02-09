@@ -41,7 +41,7 @@ async function setMinimumDeposit(): Promise<void> {
 
   const [programData] = PublicKey.findProgramAddressSync(
     [program.programId.toBuffer()],
-    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
   );
   const upgradeAuthority = await (async () => {
     const { value } = await provider.connection.getParsedAccountInfo(programData);
@@ -79,7 +79,7 @@ async function setMinimumDeposit(): Promise<void> {
     console.log("Minimum deposit amount set successfully, transaction signature:", txSignature);
   } else {
     console.log(
-      "Signer is not the upgrade authority, can only simulate the transaction or import it into the multi-sig transaction builder."
+      "Signer is not the upgrade authority, can only simulate the transaction or import it into the multi-sig transaction builder.",
     );
     const tx = new Transaction({
       feePayer: txSigner,

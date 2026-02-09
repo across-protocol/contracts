@@ -44,7 +44,7 @@ describe("svm_spoke.instruction_params", () => {
 
     [instructionParams] = PublicKey.findProgramAddressSync(
       [Buffer.from("instruction_params"), caller.publicKey.toBuffer()],
-      program.programId
+      program.programId,
     );
   });
 

@@ -20,7 +20,7 @@ export function createQuoteSigner(): { quoteSigner: ethers.Wallet; quoteSignerPu
 export function getProgramData(): PublicKey {
   const [programData] = PublicKey.findProgramAddressSync(
     [program.programId.toBuffer()],
-    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+    new PublicKey("BPFLoaderUpgradeab1e11111111111111111111111"),
   );
   return programData;
 }

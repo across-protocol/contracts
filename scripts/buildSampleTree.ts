@@ -34,7 +34,7 @@ const SPOKE_POOL_CHAIN_ID = 5;
 
 function tuplelifyLeaf(leaf: Object) {
   return JSON.stringify(
-    Object.values(leaf).map((x: any) => (Array.isArray(x) ? x.map((y: any) => y.toString()) : x.toString()))
+    Object.values(leaf).map((x: any) => (Array.isArray(x) ? x.map((y: any) => y.toString()) : x.toString())),
   );
 }
 
@@ -43,7 +43,7 @@ async function main() {
     console.group(
       `\nGenerating pool rebalance merkle tree with ${POOL_REBALANCE_LEAF_COUNT} identical lea${
         POOL_REBALANCE_LEAF_COUNT > 1 ? "ves" : "f"
-      }`
+      }`,
     );
     const leaves: PoolRebalanceLeaf[] = [];
     for (let i = 0; i < POOL_REBALANCE_LEAF_COUNT; i++) {
@@ -65,7 +65,7 @@ async function main() {
     console.log(
       `- To execute this root, the HubPool needs to have at least ${
         POOL_REBALANCE_NET_SEND_AMOUNT * POOL_REBALANCE_LEAF_COUNT
-      } amount of ${L1_TOKEN} to bridge to the SpokePool`
+      } amount of ${L1_TOKEN} to bridge to the SpokePool`,
     );
 
     const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
@@ -85,7 +85,7 @@ async function main() {
     console.group(
       `\nGenerating relayer refund merkle tree with ${RELAYER_REFUND_LEAF_COUNT} identical lea${
         RELAYER_REFUND_LEAF_COUNT > 1 ? "ves" : "f"
-      }`
+      }`,
     );
     const leaves: RelayerRefundLeaf[] = [];
     for (let i = 0; i < RELAYER_REFUND_LEAF_COUNT; i++) {
@@ -106,7 +106,7 @@ async function main() {
     console.log(
       `- To execute this root, the SpokePool needs to have at least ${
         (RELAYER_REFUND_AMOUNT_TO_RETURN + RELAYER_REFUND_AMOUNT_TO_REFUND) * RELAYER_REFUND_LEAF_COUNT
-      } amount of ${L2_TOKEN} to bridge to the HubPool and send ${RELAYER_REFUND_LEAF_COUNT} refunds`
+      } amount of ${L2_TOKEN} to bridge to the HubPool and send ${RELAYER_REFUND_LEAF_COUNT} refunds`,
     );
 
     const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
@@ -126,7 +126,7 @@ async function main() {
     console.group(
       `\nGenerating slow relay fulfillment merkle tree with ${SLOW_RELAY_LEAF_COUNT} identical lea${
         SLOW_RELAY_LEAF_COUNT > 1 ? "ves" : "f"
-      }`
+      }`,
     );
     const leaves: V3SlowFill[] = [];
     for (let i = 0; i < SLOW_RELAY_LEAF_COUNT; i++) {
@@ -152,7 +152,7 @@ async function main() {
       console.log(`- slowRelayLeaf ID#${i}: `, leaves[i]);
       console.log(
         "- Tuple representation of leaf that you can input into etherscan.io: \n",
-        tuplelifyLeaf(leaves[i].relayData)
+        tuplelifyLeaf(leaves[i].relayData),
       );
       console.groupEnd();
     }
@@ -160,7 +160,7 @@ async function main() {
     console.log(
       `- To execute this root, the SpokePool needs to have at least ${
         SLOW_RELAY_AMOUNT * SLOW_RELAY_LEAF_COUNT
-      } amount of ${L2_TOKEN} to fulfill ${SLOW_RELAY_LEAF_COUNT} relays`
+      } amount of ${L2_TOKEN} to fulfill ${SLOW_RELAY_LEAF_COUNT} relays`,
     );
 
     const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
@@ -182,5 +182,5 @@ main().then(
   (error) => {
     console.log(error);
     process.exit(1);
-  }
+  },
 );

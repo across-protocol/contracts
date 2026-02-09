@@ -37,7 +37,7 @@ export function constructEmptyPoolRebalanceTree(chainId: BigNumber, groupIndex: 
 export const constructSimpleRebalanceTreeToHubPool = (
   netSendAmount: BigNumber,
   solanaChainId: BigNumber,
-  svmUsdc: PublicKey
+  svmUsdc: PublicKey,
 ) => {
   const relayerRefundLeaves: RelayerRefundLeafSolana[] = [];
   relayerRefundLeaves.push({

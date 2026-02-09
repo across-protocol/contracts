@@ -50,7 +50,7 @@ describe("Optimism Spoke Pool", function () {
     optimismSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("MockOptimism_SpokePool", owner),
       [l2Eth, 0, owner.address, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] },
     );
 
     await seedContract(optimismSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -64,13 +64,13 @@ describe("Optimism Spoke Pool", function () {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
         constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address],
-      }
+      },
     );
 
     // upgradeTo fails unless called by cross domain admin via messenger contract
     await expect(optimismSpokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith("NotCrossChainCall");
     await expect(optimismSpokePool.connect(crossDomainMessenger.wallet).upgradeTo(implementation)).to.be.revertedWith(
-      "NotCrossDomainAdmin"
+      "NotCrossDomainAdmin",
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).upgradeTo(implementation);
@@ -135,7 +135,7 @@ describe("Optimism Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the Standard L2 Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Dai,
-      await optimismSpokePool.callStatic.chainId()
+      await optimismSpokePool.callStatic.chainId(),
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
@@ -148,7 +148,7 @@ describe("Optimism Spoke Pool", function () {
   it("If remote L1 token is set for native L2 token, then bridge calls bridgeERC20To instead of withdrawTo", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
-      await optimismSpokePool.callStatic.chainId()
+      await optimismSpokePool.callStatic.chainId(),
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
 
@@ -165,13 +165,13 @@ describe("Optimism Spoke Pool", function () {
       hubPool.address,
       amountToReturn,
       5000000,
-      "0x"
+      "0x",
     );
   });
   it("Bridge tokens to hub pool correctly calls an alternative L2 Gateway router", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Dai,
-      await optimismSpokePool.callStatic.chainId()
+      await optimismSpokePool.callStatic.chainId(),
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
     await optimismSpokePool.connect(crossDomainMessenger.wallet).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
@@ -186,7 +186,7 @@ describe("Optimism Spoke Pool", function () {
   it("Bridge ETH to hub pool correctly calls the Standard L2 Bridge for WETH, including unwrap", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       weth.address,
-      await optimismSpokePool.callStatic.chainId()
+      await optimismSpokePool.callStatic.chainId(),
     );
     crossDomainMessenger.xDomainMessageSender.returns(owner.address);
 
@@ -199,7 +199,7 @@ describe("Optimism Spoke Pool", function () {
     // Executing the refund leaf should cause spoke pool to unwrap WETH to ETH to prepare to send it as msg.value
     // to the L2StandardBridge. This results in a net decrease in WETH balance.
     await expect(() =>
-      optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      optimismSpokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
     ).to.changeTokenBalance(weth, optimismSpokePool, amountToReturn.mul(-1));
     expect(l2StandardBridge.withdrawTo).to.have.been.calledWithValue(amountToReturn);
 

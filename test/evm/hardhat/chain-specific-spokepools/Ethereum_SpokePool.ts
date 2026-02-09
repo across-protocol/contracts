@@ -24,7 +24,7 @@ describe("Ethereum Spoke Pool", function () {
     spokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Ethereum_SpokePool", owner),
       [0, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] },
     );
 
     // Seed spoke pool with tokens that it should transfer to the hub pool
@@ -36,12 +36,12 @@ describe("Ethereum Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Ethereum_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] },
     );
 
     // upgradeTo fails unless called by cross domain admin
     await expect(spokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith(
-      "Ownable: caller is not the owner"
+      "Ownable: caller is not the owner",
     );
     await spokePool.connect(owner).upgradeTo(implementation);
   });
@@ -77,7 +77,7 @@ describe("Ethereum Spoke Pool", function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(dai.address, await spokePool.callStatic.chainId());
     await spokePool.connect(owner).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
     await expect(() =>
-      spokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      spokePool.connect(relayer).executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
     ).to.changeTokenBalances(dai, [spokePool, hubPool], [amountToReturn.mul(-1), amountToReturn]);
   });
 });

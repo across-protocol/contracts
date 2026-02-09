@@ -98,7 +98,7 @@ describe("Polygon Spoke Pool", function () {
           oftHubEid,
           toWei("1"),
         ],
-      }
+      },
     );
 
     await seedContract(polygonSpokePool, relayer, [dai, l2UsdtContract], weth, amountHeldByPool);
@@ -122,7 +122,7 @@ describe("Polygon Spoke Pool", function () {
           oftHubEid,
           toWei("1"),
         ],
-      }
+      },
     );
 
     // upgradeTo fails unless called by cross domain admin
@@ -130,12 +130,12 @@ describe("Polygon Spoke Pool", function () {
 
     // Wrong rootMessageSender address.
     await expect(
-      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, upgradeData)
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, upgradeData),
     ).to.be.revertedWith("NotHubPool");
 
     // Wrong calling address.
     await expect(
-      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, upgradeData)
+      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, upgradeData),
     ).to.be.revertedWith("NotFxChild");
 
     await polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, upgradeData);
@@ -154,7 +154,7 @@ describe("Polygon Spoke Pool", function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2UsdtContract.address,
       await polygonSpokePool.callStatic.chainId(),
-      l2UsdtSendAmount
+      l2UsdtSendAmount,
     );
 
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
@@ -207,7 +207,7 @@ describe("Polygon Spoke Pool", function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2UsdtContract.address,
       await polygonSpokePool.callStatic.chainId(),
-      l2UsdtSendAmount
+      l2UsdtSendAmount,
     );
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
       tree.getHexRoot(),
@@ -220,7 +220,7 @@ describe("Polygon Spoke Pool", function () {
     l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
     await expect(
-      polygonSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
+      polygonSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
     ).to.be.revertedWith("OFTFeeUnderpaid");
   });
 
@@ -313,21 +313,21 @@ describe("Polygon Spoke Pool", function () {
 
     const emergencyDeleteRelayRootBundleData = polygonSpokePool.interface.encodeFunctionData(
       "emergencyDeleteRootBundle",
-      [0]
+      [0],
     );
 
     // Wrong rootMessageSender address.
     await expect(
-      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, emergencyDeleteRelayRootBundleData)
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, rando.address, emergencyDeleteRelayRootBundleData),
     ).to.be.reverted;
 
     // Wrong calling address.
     await expect(
-      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData)
+      polygonSpokePool.connect(rando).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData),
     ).to.be.reverted;
 
     await expect(
-      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData)
+      polygonSpokePool.connect(fxChild).processMessageFromRoot(0, owner.address, emergencyDeleteRelayRootBundleData),
     ).to.not.be.reverted;
     expect((await polygonSpokePool.rootBundles(0)).slowRelayRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
     expect((await polygonSpokePool.rootBundles(0)).relayerRefundRoot).to.equal(ethers.utils.hexZeroPad("0x0", 32));
@@ -335,7 +335,7 @@ describe("Polygon Spoke Pool", function () {
 
   it("Can wrap native token", async function () {
     await expect(() =>
-      rando.sendTransaction({ to: polygonSpokePool.address, value: toWei("0.1") })
+      rando.sendTransaction({ to: polygonSpokePool.address, value: toWei("0.1") }),
     ).to.changeEtherBalance(polygonSpokePool, toWei("0.1"));
     await expect(() => polygonSpokePool.wrap()).to.changeTokenBalance(weth, polygonSpokePool, toWei("0.1"));
   });
@@ -343,7 +343,7 @@ describe("Polygon Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly sends tokens through the PolygonTokenBridger", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
-      await polygonSpokePool.callStatic.chainId()
+      await polygonSpokePool.callStatic.chainId(),
     );
     const relayRootBundleData = polygonSpokePool.interface.encodeFunctionData("relayRootBundle", [
       tree.getHexRoot(),
@@ -366,7 +366,7 @@ describe("Polygon Spoke Pool", function () {
       [amountToReturn, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
-      [[], []] // refundAmounts.
+      [[], []], // refundAmounts.
     );
     const tree = await buildRelayerRefundTree(leaves);
 
@@ -379,7 +379,7 @@ describe("Polygon Spoke Pool", function () {
 
     // Deploying mock caller tries to execute leaf from within constructor:
     await expect(
-      deployMockSpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0]))
+      deployMockSpokePoolCaller(polygonSpokePool, 0, leaves[0], tree.getHexProof(leaves[0])),
     ).to.be.revertedWith("NotEOA");
 
     // Executing leaf with amountToReturn == 0 is fine through contract caller.
@@ -394,7 +394,7 @@ describe("Polygon Spoke Pool", function () {
       [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
-      [[], []] // refundAmounts.
+      [[], []], // refundAmounts.
     );
     const tree = await buildRelayerRefundTree(leaves);
 
@@ -473,10 +473,10 @@ describe("Polygon Spoke Pool", function () {
     await expect(polygonSpokePool.connect(relayer).multicall([...otherData, ...executeLeafData])).to.be.reverted;
     await expect(polygonSpokePool.connect(relayer).multicall([...executeLeafData, ...fillData])).to.be.reverted;
     await expect(
-      polygonSpokePool.connect(relayer).multicall([fillData[0], executeLeafData[0], fillData[1], executeLeafData[1]])
+      polygonSpokePool.connect(relayer).multicall([fillData[0], executeLeafData[0], fillData[1], executeLeafData[1]]),
     ).to.be.reverted;
     await expect(
-      polygonSpokePool.connect(relayer).multicall([executeLeafData[0], fillData[0], executeLeafData[1], fillData[1]])
+      polygonSpokePool.connect(relayer).multicall([executeLeafData[0], fillData[0], executeLeafData[1], fillData[1]]),
     ).to.be.reverted;
   });
   it("Cannot use nested multicalls", async function () {
@@ -488,7 +488,7 @@ describe("Polygon Spoke Pool", function () {
       [ethers.constants.Zero, ethers.constants.Zero], // amountToReturn.
       [dai.address, dai.address], // l2Token.
       [[], []], // refundAddresses.
-      [[], []] // refundAmounts.
+      [[], []], // refundAmounts.
     );
     const tree = await buildRelayerRefundTree(leaves);
 
@@ -562,14 +562,14 @@ describe("Polygon Spoke Pool", function () {
     ).deploy(hubPool.address, polygonRegistry.address, weth.address, weth.address, l1ChainId, l2ChainId);
 
     await expect(() =>
-      owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") })
+      owner.sendTransaction({ to: polygonTokenBridger.address, value: toWei("1") }),
     ).to.changeEtherBalance(polygonTokenBridger, toWei("1"));
 
     // Retrieve automatically unwraps
     await expect(() => polygonTokenBridger.connect(owner).retrieve(weth.address)).to.changeTokenBalance(
       weth,
       hubPool,
-      toWei("1")
+      toWei("1"),
     );
   });
 
@@ -585,11 +585,11 @@ describe("Polygon Spoke Pool", function () {
     // Cannot call retrieve on the contract on L2.
     await weth.connect(owner).transfer(polygonTokenBridger.address, toWei("1"));
     await expect(polygonTokenBridger.connect(owner).retrieve(weth.address)).to.be.revertedWith(
-      "Cannot run method on this chain"
+      "Cannot run method on this chain",
     );
 
     await expect(polygonTokenBridger.connect(owner).callExit("0x")).to.be.revertedWith(
-      "Cannot run method on this chain"
+      "Cannot run method on this chain",
     );
   });
 
@@ -607,7 +607,7 @@ describe("Polygon Spoke Pool", function () {
 
     // Cannot call send on the contract on L1.
     await expect(polygonTokenBridger.connect(owner).send(weth.address, toWei("1"))).to.be.revertedWith(
-      "Cannot run method on this chain"
+      "Cannot run method on this chain",
     );
   });
 

@@ -79,7 +79,7 @@ async function parseAndValidateRecipients() {
         }
       }
       return Promise.resolve(r);
-    })
+    }),
   );
 
   const invalidRecipients = resolvedRecipients.filter((r) => !ethers.utils.isAddress(r));
@@ -106,5 +106,5 @@ main().then(
   (error) => {
     console.log(error);
     process.exitCode = 1;
-  }
+  },
 );

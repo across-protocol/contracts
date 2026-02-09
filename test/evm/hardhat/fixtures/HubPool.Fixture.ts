@@ -54,7 +54,7 @@ export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool"
   const mockSpoke = await hre.upgrades.deployProxy(
     await getContractFactory(spokePoolName, signer),
     [0, crossChainAdmin.address, hubPool.address],
-    { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
+    { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] },
   );
   await hubPool.setCrossChainContracts(repaymentChainId, mockAdapter.address, mockSpoke.address);
   await hubPool.setCrossChainContracts(originChainId, mockAdapter.address, mockSpoke.address);
@@ -65,7 +65,7 @@ export async function deployHubPool(ethers: any, spokePoolName = "MockSpokePool"
   const mockSpokeMainnet = await hre.upgrades.deployProxy(
     await getContractFactory(spokePoolName, signer),
     [0, crossChainAdmin.address, hubPool.address],
-    { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
+    { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] },
   );
   await hubPool.setCrossChainContracts(mainnetChainId, mockAdapterMainnet.address, mockSpokeMainnet.address);
 
@@ -106,7 +106,7 @@ export async function enableTokensForLP(owner: Signer, hubPool: Contract, weth: 
     lpTokens.push(
       await (
         await getContractFactory("ExpandedERC20", owner)
-      ).attach((await hubPool.callStatic.pooledTokens(token.address)).lpToken)
+      ).attach((await hubPool.callStatic.pooledTokens(token.address)).lpToken),
     );
   }
   return lpTokens;

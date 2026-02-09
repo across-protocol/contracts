@@ -32,14 +32,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const solanaUsdc = solanaCluster === "mainnet" ? SOLANA_USDC_MAINNET : SOLANA_USDC_DEVNET;
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), SOLANA_SPOKE_STATE_SEED.toArrayLike(Buffer, "le", 8)],
-    new PublicKey(svmSpokePool)
+    new PublicKey(svmSpokePool),
   );
   const solanaUsdcVault = getAssociatedTokenAddressSync(
     new PublicKey(solanaUsdc),
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   ).toBase58();
 
   const { deployer } = await hre.getNamedAccounts();

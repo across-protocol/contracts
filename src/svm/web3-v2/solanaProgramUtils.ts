@@ -16,7 +16,7 @@ export async function readProgramEvents(
   program: Address,
   anchorIdl: Idl,
   finality: Commitment = "confirmed",
-  options: GetSignaturesForAddressConfig = { limit: 1000 }
+  options: GetSignaturesForAddressConfig = { limit: 1000 },
 ) {
   const allSignatures: GetSignaturesForAddressTransaction[] = await searchSignaturesUntilLimit(rpc, program, options);
 
@@ -33,7 +33,7 @@ export async function readProgramEvents(
         slot: signatureTransaction.slot,
         name: event.name || "Unknown",
       }));
-    })
+    }),
   );
   return eventsWithSlots.flat();
 }
@@ -41,7 +41,7 @@ export async function readProgramEvents(
 async function searchSignaturesUntilLimit(
   client: RpcClient,
   program: Address,
-  options: GetSignaturesForAddressConfig = { limit: 1000 }
+  options: GetSignaturesForAddressConfig = { limit: 1000 },
 ): Promise<GetSignaturesForAddressTransaction[]> {
   const allSignatures: GetSignaturesForAddressTransaction[] = [];
   // Fetch all signatures in sequential batches
@@ -67,7 +67,7 @@ export async function readEvents(
   txSignature: Signature,
   programId: Address,
   programIdl: Idl,
-  commitment: Commitment = "confirmed"
+  commitment: Commitment = "confirmed",
 ) {
   const txResult = await client.rpc
     .getTransaction(txSignature, { encoding: "json", commitment, maxSupportedTransactionVersion: 0 })
@@ -86,7 +86,7 @@ export async function readEvents(
 async function processEventFromTx(
   txResult: GetTransactionReturnType,
   programId: Address,
-  programIdl: Idl
+  programIdl: Idl,
 ): Promise<{ program: Address; data: any; name: string | undefined }[]> {
   if (!txResult) return [];
   const eventAuthorities: Map<string, Address> = new Map();
@@ -133,7 +133,7 @@ export async function readFillEventFromFillStatusPda(
   client: RpcClient,
   fillStatusPda: Address,
   programId: Address,
-  programIdl: Idl
+  programIdl: Idl,
 ): Promise<{ event: any; slot: number }> {
   const signatures = await searchSignaturesUntilLimit(client, fillStatusPda);
   if (signatures.length === 0) return { event: null, slot: 0 };

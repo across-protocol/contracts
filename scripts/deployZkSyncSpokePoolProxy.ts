@@ -23,7 +23,7 @@ async function main() {
     deployer.zkWallet,
     contract,
     [1_000_000, "0x0e2817C49698cc0874204AeDf7c72Be2Bb7fCD5d", L1_ADDRESS_MAP[chainId].weth],
-    { initializer: "initialize" }
+    { initializer: "initialize" },
   );
 
   await proxy.deployed();

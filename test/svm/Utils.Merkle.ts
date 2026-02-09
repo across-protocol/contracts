@@ -71,7 +71,7 @@ describe("utils.merkle", () => {
             refundAddresses: input.refundAddresses,
             refundAmounts: input.refundAmounts,
           },
-        ]
+        ],
       );
       return ethers.utils.keccak256(encodedData);
     };
@@ -86,7 +86,7 @@ describe("utils.merkle", () => {
       .verify(
         Array.from(root),
         Array.from(leaf),
-        proof.map((p) => Array.from(p))
+        proof.map((p) => Array.from(p)),
       )
       .rpc();
 
@@ -98,7 +98,7 @@ describe("utils.merkle", () => {
         .verify(
           Array.from(root),
           Array.from(invalidLeaf),
-          proof.map((p) => Array.from(p))
+          proof.map((p) => Array.from(p)),
         )
         .rpc();
       assert.fail("Should not be able to verify invalid leaf");
@@ -131,7 +131,7 @@ describe("utils.merkle", () => {
       .verify(
         Array.from(rootBuffer),
         Array.from(leafBuffer),
-        proofBuffers.map((b) => Array.from(b))
+        proofBuffers.map((b) => Array.from(b)),
       )
       .rpc();
   });
