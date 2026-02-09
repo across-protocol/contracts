@@ -99,3 +99,22 @@ cast send <SP1_HELIOS_ADDRESS> \
 ```
 
 > **Note**: `0x00...00` (32 zero bytes) is the `DEFAULT_ADMIN_ROLE` constant defined in OpenZeppelin's AccessControl.
+
+---
+
+## Alternative: Combined Deployment (Recommended)
+
+Instead of the 4-step manual process above, you can use `DeployUniversalSpokePoolFull` which deploys SP1Helios, the Universal_SpokePool proxy, and transfers the admin role in a single command:
+
+```bash
+forge script script/universal/DeployUniversalSpokePoolFull.s.sol:DeployUniversalSpokePoolFull \
+  --sig "run(uint256)" <OFT_FEE_CAP> \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --broadcast \
+  --verify \
+  --etherscan-api-key <API_KEY> \
+  --ffi \
+  -vvvv
+```
+
+This eliminates the intermediate `yarn extract-addresses` step and the manual `cast send` calls for admin role transfer. It requires the same environment variables as both individual scripts combined.
