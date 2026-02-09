@@ -23,24 +23,6 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
-        DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
-        address helios = getDeployedAddress("SP1Helios", info.spokeChainId, true);
-
-        vm.startBroadcast(deployerPrivateKey);
-
-        deploy(oftFeeCap, helios);
-
-        vm.stopBroadcast();
-
-        console.log("");
-        console.log("NOTE: Run 'yarn extract-addresses' after this script completes to update deployed-addresses.json");
-    }
-
-    /// @notice Core deployment logic for Universal_SpokePool. Must be called inside a broadcast.
-    /// @param oftFeeCap Maximum fee for OFT (LayerZero) transfers.
-    /// @param helios Address of the deployed SP1Helios contract.
-    /// @return proxy Address of the deployed Universal_SpokePool proxy.
-    function deploy(uint256 oftFeeCap, address helios) public returns (address proxy) {
         // Get deployment information
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
@@ -50,11 +32,14 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         // Get USDC address for this chain
         address usdcAddress = getUSDCAddress(info.spokeChainId);
 
+        vm.startBroadcast(deployerPrivateKey);
+
         uint256 heliosAdminBufferUpdateSeconds = 1 days;
+        address helios = getDeployedAddress("SP1Helios", info.spokeChainId, true);
         address l1HubPoolStore = getL1Addresses(info.hubChainId).hubPoolStore;
 
-        bool _hasCctpDomain = hasCctpDomain(info.spokeChainId);
-        address cctpTokenMessenger = _hasCctpDomain
+        bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
+        address cctpTokenMessenger = hasCctpDomain
             ? getL2Address(info.spokeChainId, "cctpV2TokenMessenger")
             : address(0);
         uint32 oftDstEid = uint32(getOftEid(info.hubChainId));
@@ -103,9 +88,13 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         console.log("OFT Fee Cap:", oftFeeCap);
         console.log("Universal_SpokePool proxy deployed to:", result.proxy);
         console.log("Universal_SpokePool implementation deployed to:", result.implementation);
+
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());
 
-        return result.proxy;
+        vm.stopBroadcast();
+
+        console.log("");
+        console.log("NOTE: Run 'yarn extract-addresses' after this script completes to update deployed-addresses.json");
     }
 }

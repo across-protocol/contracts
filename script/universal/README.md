@@ -104,17 +104,15 @@ cast send <SP1_HELIOS_ADDRESS> \
 
 ## Alternative: Combined Deployment (Recommended)
 
-Instead of the 4-step manual process above, you can use `DeployUniversalSpokePoolFull` which deploys SP1Helios, the Universal_SpokePool proxy, and transfers the admin role in a single command:
+Instead of the 4-step manual process above, you can run all steps with a single command:
 
 ```bash
-forge script script/universal/DeployUniversalSpokePoolFull.s.sol:DeployUniversalSpokePoolFull \
-  --sig "run(uint256)" <OFT_FEE_CAP> \
+source .env
+./script/universal/deploy_universal_spoke_pool_full.sh \
   --rpc-url <NEW_CHAIN_RPC_URL> \
-  --broadcast \
-  --verify \
+  --oft-fee-cap <OFT_FEE_CAP> \
   --etherscan-api-key <API_KEY> \
-  --ffi \
-  -vvvv
+  --broadcast
 ```
 
-This eliminates the intermediate `yarn extract-addresses` step and the manual `cast send` calls for admin role transfer. It requires the same environment variables as both individual scripts combined.
+This runs steps 1–4 sequentially: deploys SP1Helios, extracts addresses, deploys the Universal_SpokePool, and transfers the admin role. Omit `--broadcast` for a dry run. It requires the same environment variables as both individual scripts combined.
