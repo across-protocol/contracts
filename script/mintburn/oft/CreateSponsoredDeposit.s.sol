@@ -5,7 +5,11 @@ import { Script } from "forge-std/Script.sol";
 import { Config } from "forge-std/Config.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
-import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
+import {
+    Quote,
+    SignedQuoteParams,
+    UnsignedQuoteParams
+} from "../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { ComposeMsgCodec } from "../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalLZOptions.sol";

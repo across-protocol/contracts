@@ -196,8 +196,7 @@ contract MerkleDistributor is MerkleDistributorInterface, Ownable {
         uint256 claimedWordIndex = accountIndex / 256;
         uint256 claimedBitIndex = accountIndex % 256;
         claimedBitMap[windowIndex][claimedWordIndex] =
-            claimedBitMap[windowIndex][claimedWordIndex] |
-            (1 << claimedBitIndex);
+            claimedBitMap[windowIndex][claimedWordIndex] | (1 << claimedBitIndex);
     }
 
     // Store new Merkle root at `windowindex`. Pull `rewardsDeposited` from caller to seed distribution for this root.
