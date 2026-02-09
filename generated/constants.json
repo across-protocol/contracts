@@ -200,6 +200,16 @@
       "oftEid": -1,
       "hypDomainId": -1
     },
+    "4217": {
+      "name": "Tempo",
+      "family": "NONE",
+      "nativeToken": "pathUSD",
+      "publicRPC": "",
+      "blockExplorer": "",
+      "cctpDomain": -1,
+      "oftEid": 30410,
+      "hypDomainId": -1
+    },
     "4326": {
       "name": "MegaETH",
       "family": "OP_STACK",
@@ -486,6 +496,7 @@
     "SCROLL": 534352,
     "SONEIUM": 1868,
     "SUPERSEED": 5330,
+    "TEMPO": 4217,
     "UNICHAIN": 130,
     "WORLD_CHAIN": 480,
     "ZK_SYNC": 324,
@@ -666,6 +677,10 @@
     },
     "1868": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
+    "4217": {
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "helios": "0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968"
     },
     "4326": {
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
