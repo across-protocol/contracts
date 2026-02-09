@@ -191,10 +191,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Tempo (4217)
 
-| Contract Name | Address                                    |
-| ------------- | ------------------------------------------ |
-| SP1Helios     | 0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968 |
-| SpokePool     | 0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E |
+| Contract Name      | Address                                    |
+| ------------------ | ------------------------------------------ |
+| MulticallHandler   | 0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90 |
+| SP1Helios          | 0x38fAc33bD20D4c4Cce085C0f347153C06CbA2968 |
+| SpokePool          | 0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E |
+| SpokePool          | 0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E |
+| SpokePoolPeriphery | 0x1cFC76f039e01970355Cf73a37B785A81847796C |
 
 ## MegaETH (4326)
 
