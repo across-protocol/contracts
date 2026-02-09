@@ -16,6 +16,7 @@ import { IPermit2 } from "./external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
 import { SpokePoolPeripheryInterface } from "./interfaces/SpokePoolPeripheryInterface.sol";
 import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
+import { AcrossEventEmitter } from "./AcrossEventEmitter.sol";
 
 /**
  * @title SwapProxy
@@ -150,6 +151,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     // Swap proxy used for isolating all swap operations
     SwapProxy public immutable swapProxy;
 
+    // AcrossEventEmitter used to emit metadata for same-chain swaps.
+    AcrossEventEmitter public immutable acrossEventEmitter;
+
     // Mapping from user address to their current nonce
     mapping(address => uint256) private _permitNonces;
 
@@ -182,14 +186,21 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     error InvalidMinExpectedInputAmount();
     error InvalidNonce();
 
+    // Errors
+    error MinimumExpectedOutputAmount();
+
     /**
      * @notice Construct a new Periphery contract.
      * @param _permit2 Address of the canonical permit2 contract.
+     * @param _acrossEventEmitter Address of the AcrossEventEmitter contract.
      */
-    constructor(IPermit2 _permit2) EIP712("ACROSS-PERIPHERY", "1.0.0") {
+    constructor(IPermit2 _permit2, AcrossEventEmitter _acrossEventEmitter) EIP712("ACROSS-PERIPHERY", "1.0.0") {
         require(address(_permit2) != address(0), "Permit2 cannot be zero address");
         require(_isContract(address(_permit2)), "Permit2 must be a contract");
+        require(address(_acrossEventEmitter) != address(0), "EventEmitter cannot be zero address");
+        require(_isContract(address(_acrossEventEmitter)), "EventEmitter must be a contract");
         permit2 = _permit2;
+        acrossEventEmitter = _acrossEventEmitter;
 
         // Deploy the swap proxy with reference to the permit2 address
         swapProxy = new SwapProxy(address(_permit2));
@@ -227,6 +238,55 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             exclusivityParameter,
             message
         );
+    }
+
+    /**
+     * @inheritdoc SpokePoolPeripheryInterface
+     */
+    function swap(SwapData calldata data) external payable override nonReentrant {
+        // Handle native token wrapping (same pattern as swapAndBridge).
+        if (msg.value != 0) {
+            if (msg.value != data.swapTokenAmount) revert InvalidMsgValue();
+            WETH9Interface(data.swapToken).deposit{ value: msg.value }();
+        } else {
+            IERC20(data.swapToken).safeTransferFrom(msg.sender, address(this), data.swapTokenAmount);
+        }
+
+        // Transfer tokens to the swap proxy for executing the swap.
+        IERC20(data.swapToken).safeTransfer(address(swapProxy), data.swapTokenAmount);
+
+        // Execute the swap via the swap proxy.
+        uint256 outputAmount = swapProxy.performSwap(
+            data.swapToken,
+            data.outputToken,
+            data.swapTokenAmount,
+            data.exchange,
+            data.transferType,
+            data.routerCalldata
+        );
+
+        // Enforce minimum output amount.
+        if (outputAmount < data.minExpectedOutputAmount) revert MinimumExpectedOutputAmount();
+
+        // Transfer output tokens to the recipient.
+        IERC20(data.outputToken).safeTransfer(data.recipient, outputAmount);
+
+        // Emit swap event.
+        emit SwapExecuted(
+            msg.sender,
+            data.recipient,
+            data.swapToken,
+            data.outputToken,
+            data.swapTokenAmount,
+            outputAmount,
+            data.exchange,
+            data.routerCalldata
+        );
+
+        // Emit metadata if provided.
+        if (data.metadata.length > 0) {
+            acrossEventEmitter.emitData(data.metadata);
+        }
     }
 
     /**

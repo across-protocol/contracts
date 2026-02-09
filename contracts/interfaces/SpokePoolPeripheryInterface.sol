@@ -62,6 +62,28 @@ interface SpokePoolPeripheryInterface {
         bytes message;
     }
 
+    // Parameters needed to perform a same-chain token swap via the periphery without bridging.
+    struct SwapData {
+        // Token to swap from.
+        address swapToken;
+        // Token to receive after swap.
+        address outputToken;
+        // Address of the exchange to use in the swap.
+        address exchange;
+        // Method of transferring tokens to the exchange.
+        TransferType transferType;
+        // Amount of the swap token to send to the exchange.
+        uint256 swapTokenAmount;
+        // Minimum output amount expected from the swap. Reverts if not met.
+        uint256 minExpectedOutputAmount;
+        // The calldata to use when calling the exchange.
+        bytes routerCalldata;
+        // Recipient of the output tokens.
+        address recipient;
+        // Optional metadata to emit via AcrossEventEmitter. Empty bytes = no emission.
+        bytes metadata;
+    }
+
     // Minimum amount of parameters needed to perform a swap on an exchange specified. We include information beyond just the router calldata
     // and exchange address so that we may ensure that the swap was performed properly.
     struct SwapAndDepositData {
@@ -104,6 +126,24 @@ interface SpokePoolPeripheryInterface {
         // User nonce to prevent replay attacks.
         uint256 nonce;
     }
+
+    event SwapExecuted(
+        address indexed depositor,
+        address indexed recipient,
+        address indexed inputToken,
+        address outputToken,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        address exchange,
+        bytes exchangeCalldata
+    );
+
+    /**
+     * @notice Performs a same-chain token swap via the periphery without bridging.
+     * @dev If msg.value is sent, the swapToken in data must implement the WETH9 interface for wrapping native tokens.
+     * @param data Specifies the data needed to perform a swap on a generic exchange.
+     */
+    function swap(SwapData calldata data) external payable;
 
     /**
      * @notice Passthrough function to `depositV3()` on the SpokePool contract for native token deposits.

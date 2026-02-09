@@ -5,6 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { SpokePoolPeriphery, SwapProxy } from "../contracts/SpokePoolPeriphery.sol";
+import { AcrossEventEmitter } from "../contracts/AcrossEventEmitter.sol";
 import { Constants } from "./utils/Constants.sol";
 import { IPermit2 } from "../contracts/external/interfaces/IPermit2.sol";
 
@@ -22,15 +23,17 @@ contract DeploySpokePoolPeriphery is Script, Test, Constants {
         // Get the current chain ID
         uint256 chainId = block.chainid;
         IPermit2 permit2 = IPermit2(getPermit2(chainId));
+        AcrossEventEmitter eventEmitter = AcrossEventEmitter(vm.envAddress("ACROSS_EVENT_EMITTER"));
 
         vm.startBroadcast(deployerPrivateKey);
 
-        bytes32 salt = bytes32(uint256(0x1236));
-        SpokePoolPeriphery spokePoolPeriphery = new SpokePoolPeriphery{ salt: salt }(permit2);
+        bytes32 salt = bytes32(uint256(0x1237));
+        SpokePoolPeriphery spokePoolPeriphery = new SpokePoolPeriphery{ salt: salt }(permit2, eventEmitter);
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
         console.log("Permit2:", address(permit2));
+        console.log("AcrossEventEmitter:", address(eventEmitter));
         console.log("Spoke pool periphery deployed to:", address(spokePoolPeriphery));
 
         vm.stopBroadcast();
