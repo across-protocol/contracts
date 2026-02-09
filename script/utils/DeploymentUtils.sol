@@ -5,7 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Config } from "forge-std/Config.sol";
-import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/src/Upgrades.sol";
+import { Upgrades } from "@openzeppelin/foundry-upgrades/src/Upgrades.sol";
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { Constants } from "./Constants.sol";
@@ -86,7 +86,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     ) public returns (DeploymentResult memory result) {
         uint256 chainId = block.chainid;
 
-        contractName = string(abi.encodePacked("contracts/", contractName, ".sol:", contractName));
+        contractName = string(abi.encodePacked(contractName, ".sol:", contractName));
 
         // Check if a SpokePool already exists on this chain
         address existingProxy = getDeployedAddress("SpokePool", chainId, false);
@@ -99,7 +99,8 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         Options memory opts;
 
         opts.constructorData = constructorArgs;
-        // opts.referenceBuildInfoDir = "artifacts";
+        opts.unsafeAllow = "delegatecall";
+        opts.unsafeSkipAllChecks = true;
 
         if (implementationOnly && existingProxy != address(0)) {
             console.log(
@@ -116,11 +117,11 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
 
             console.log("New", contractName, "implementation deployed @", implementation);
         } else {
-            address proxy = Upgrades.deployUUPSProxy(contractName, initArgs, opts);
+            // Deploy implementation first, then proxy using the OZ v4 ERC1967Proxy directly
+            // to avoid vm.getCode ambiguity with multiple ERC1967Proxy artifacts.
+            address implementation = Upgrades.deployImplementation(contractName, opts);
+            address proxy = address(new ERC1967Proxy(implementation, initArgs));
 
-            address implementation = Upgrades.getImplementationAddress(proxy);
-
-            // For now, return a placeholder result
             result = DeploymentResult({ proxy: proxy, implementation: implementation, isNewProxy: true });
 
             console.log("New", contractName, "proxy deployed @", proxy);
