@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Combined deployment script for SP1Helios + Universal_SpokePool.
-# Replaces the manual 4-step process with a single command, while preserving
+# Assumes a fresh deployment — no existing SpokePool on the target chain.
+# Replaces the manual 3-step process with a single command, while preserving
 # the correct broadcast folder structure for each sub-script.
 #
 # Usage:
@@ -10,11 +11,21 @@
 #     --etherscan-api-key <API_KEY> \
 #     [--broadcast]
 #
-# Required env vars (via `source .env`):
+# Required env vars (loaded from .env):
 #   MNEMONIC, SP1_RELEASE, SP1_PROVER_MODE, SP1_VERIFIER_ADDRESS,
 #   SP1_STATE_UPDATERS, SP1_VKEY_UPDATER, SP1_CONSENSUS_RPCS_LIST
 
 set -euo pipefail
+
+# Load and export .env variables
+if [[ -f .env ]]; then
+  set -a
+  source .env
+  set +a
+else
+  echo "Error: .env file not found"
+  exit 1
+fi
 
 # Parse arguments
 BROADCAST=""
@@ -50,6 +61,18 @@ CHAIN_ID=$(cast chain-id --rpc-url "$RPC_URL")
 echo "Deployer address: $DEPLOYER_ADDRESS"
 echo "Chain ID: $CHAIN_ID"
 
+# Check that no SpokePool is already deployed on this chain
+DEPLOYED_ADDRESSES="broadcast/deployed-addresses.json"
+if [[ -f "$DEPLOYED_ADDRESSES" ]]; then
+  EXISTING_SPOKE_POOL=$(jq -r ".chains[\"$CHAIN_ID\"].contracts[\"SpokePool\"].address // empty" "$DEPLOYED_ADDRESSES")
+  if [[ -n "$EXISTING_SPOKE_POOL" ]]; then
+    echo "Error: SpokePool already deployed on chain $CHAIN_ID at $EXISTING_SPOKE_POOL"
+    echo "This script is intended for fresh deployments only."
+    echo "Remove the chain $CHAIN_ID entry from $DEPLOYED_ADDRESSES if you want to redeploy."
+    exit 1
+  fi
+fi
+
 # Ensure run-latest.json symlink exists for a broadcast directory.
 # Some Forge nightly builds don't create it automatically.
 ensure_run_latest() {
@@ -69,35 +92,43 @@ echo ""
 echo "=== Step 1: Deploying SP1Helios ==="
 forge script script/universal/DeploySP1Helios.s.sol \
   --rpc-url "$RPC_URL" \
-  $BROADCAST --ffi -vvvv $EXTRA_ARGS
+  $BROADCAST --slow --ffi -vvvv $EXTRA_ARGS
 ensure_run_latest "broadcast/DeploySP1Helios.s.sol/$CHAIN_ID"
 
-# Step 2: Extract addresses so DeployUniversalSpokePool can find SP1Helios
-# Stage the broadcast files first — extract-addresses only reads git-tracked files.
-echo ""
-echo "=== Step 2: Extracting addresses ==="
-git add broadcast/DeploySP1Helios.s.sol/
-yarn extract-addresses
+# Wait for in-flight transactions to clear before next deployment
+if [[ -n "$BROADCAST" ]]; then
+  echo "Waiting for transactions to confirm..."
+  sleep 10
+fi
 
-# Step 3: Deploy Universal_SpokePool
+# Step 2: Extract SP1Helios address from broadcast and deploy Universal_SpokePool
+SP1_HELIOS=$(jq -r '.transactions[] | select(.contractName == "SP1Helios") | .contractAddress' \
+  "broadcast/DeploySP1Helios.s.sol/$CHAIN_ID/run-latest.json")
+if [[ -z "$SP1_HELIOS" || "$SP1_HELIOS" == "null" ]]; then
+  echo "Error: Could not find SP1Helios address in broadcast output"
+  exit 1
+fi
 echo ""
-echo "=== Step 3: Deploying Universal_SpokePool ==="
+echo "SP1Helios deployed at: $SP1_HELIOS"
+
+echo ""
+echo "=== Step 2: Deploying Universal_SpokePool ==="
 forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
-  --sig "run(uint256)" "$OFT_FEE_CAP" \
+  --sig "run(address,uint256)" "$SP1_HELIOS" "$OFT_FEE_CAP" \
   --rpc-url "$RPC_URL" \
-  $BROADCAST -vvvv $EXTRA_ARGS
+  $BROADCAST --slow -vvvv $EXTRA_ARGS
 ensure_run_latest "broadcast/DeployUniversalSpokePool.s.sol/$CHAIN_ID"
 
-# Re-extract addresses to pick up the SpokePool deployment
-git add broadcast/DeployUniversalSpokePool.s.sol/
-yarn extract-addresses
-
-# Step 4: Transfer SP1Helios admin role to SpokePool
-SP1_HELIOS=$(jq -r ".chains[\"$CHAIN_ID\"].contracts[\"SP1Helios\"].address" broadcast/deployed-addresses.json)
-SPOKE_POOL=$(jq -r ".chains[\"$CHAIN_ID\"].contracts[\"SpokePool\"].address" broadcast/deployed-addresses.json)
+# Extract SpokePool proxy address from broadcast
+SPOKE_POOL=$(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy") | .contractAddress' \
+  "broadcast/DeployUniversalSpokePool.s.sol/$CHAIN_ID/run-latest.json")
+if [[ -z "$SPOKE_POOL" || "$SPOKE_POOL" == "null" ]]; then
+  echo "Error: Could not find SpokePool address in broadcast output"
+  exit 1
+fi
 
 echo ""
-echo "=== Step 4: Transferring SP1Helios admin role ==="
+echo "=== Step 3: Transferring SP1Helios admin role ==="
 echo "SP1Helios: $SP1_HELIOS"
 echo "SpokePool: $SPOKE_POOL"
 
@@ -122,17 +153,17 @@ else
   echo "(Skipping admin role transfer in simulation mode — add --broadcast to execute)"
 fi
 
-# Step 5: Verify contracts (non-blocking — verification failures don't stop the script)
+# Step 4: Verify contracts (non-blocking — verification failures don't stop the script)
 if [[ -n "$VERIFY_ARGS" && -n "$BROADCAST" ]]; then
   echo ""
-  echo "=== Step 5: Verifying contracts ==="
+  echo "=== Step 4: Verifying contracts ==="
   forge script script/universal/DeploySP1Helios.s.sol \
     --rpc-url "$RPC_URL" --verify $VERIFY_ARGS --ffi -vvvv --resume \
     --private-key "$DEPLOYER_PRIVATE_KEY" $EXTRA_ARGS || \
     echo "Warning: SP1Helios verification failed (may already be verified)"
 
   forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
-    --sig "run(uint256)" "$OFT_FEE_CAP" \
+    --sig "run(address,uint256)" "$SP1_HELIOS" "$OFT_FEE_CAP" \
     --rpc-url "$RPC_URL" --verify $VERIFY_ARGS -vvvv --resume \
     --private-key "$DEPLOYER_PRIVATE_KEY" $EXTRA_ARGS || \
     echo "Warning: Universal_SpokePool verification failed (may already be verified)"
@@ -142,4 +173,6 @@ echo ""
 echo "=== Deployment Complete ==="
 echo "SP1Helios: $SP1_HELIOS"
 echo "SpokePool: $SPOKE_POOL"
-echo "Run 'yarn extract-addresses' to finalize deployed-addresses.json"
+echo ""
+echo "Run the following to update deployed-addresses.json:"
+echo "  git add broadcast/DeploySP1Helios.s.sol/ broadcast/DeployUniversalSpokePool.s.sol/ && yarn extract-addresses"

@@ -14,12 +14,14 @@ import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfa
 ///
 /// Example:
 ///   forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
-///     --sig "run(uint256)" 78000 --rpc-url <RPC_URL> --broadcast -vvvv
+///     --sig "run(address,uint256)" <SP1_HELIOS> 78000 --rpc-url <RPC_URL> --broadcast -vvvv
 contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
     function run() external pure {
-        revert("Usage: forge script ... --sig 'run(uint256)' <OFT_FEE_CAP>");
+        revert("Usage: forge script ... --sig 'run(address,uint256)' <SP1_HELIOS> <OFT_FEE_CAP>");
     }
-    function run(uint256 oftFeeCap) external {
+    function run(address helios, uint256 oftFeeCap) external {
+        require(helios != address(0), "SP1Helios address cannot be zero");
+
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
@@ -35,7 +37,6 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
         vm.startBroadcast(deployerPrivateKey);
 
         uint256 heliosAdminBufferUpdateSeconds = 1 days;
-        address helios = getDeployedAddress("SP1Helios", info.spokeChainId, true);
         address l1HubPoolStore = getL1Addresses(info.hubChainId).hubPoolStore;
 
         bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
