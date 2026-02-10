@@ -49,9 +49,11 @@ contract CounterfactualDepositTest is Test {
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         spokePool = MockSpokePool(payable(address(proxy)));
 
-        // Deploy executor and factory
-        executor = new CounterfactualDepositExecutor();
-        factory = new CounterfactualDepositFactory(address(spokePool), address(executor), admin, quoteSigner);
+        // Deploy factory and executor (3-step process to break circular dependency)
+        factory = new CounterfactualDepositFactory(address(spokePool), admin, quoteSigner);
+        executor = new CounterfactualDepositExecutor(address(factory), address(spokePool));
+        vm.prank(admin);
+        factory.setExecutor(address(executor));
 
         // Mint tokens to user
         inputToken.mint(user, 1000e18);
@@ -67,11 +69,23 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "", // message
+            type(uint256).max, // maxGasFee
+            10000, // maxCapitalFee (100%)
             salt
         );
 
         // Verify prediction matches actual deployment
-        address deployed = factory.deploy(inputTokenBytes, outputTokenBytes, DESTINATION_CHAIN_ID, recipient, salt);
+        address deployed = factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            10000,
+            salt
+        );
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
@@ -83,7 +97,16 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDepositFactory.DepositAddressCreated(
-            factory.predictDepositAddress(inputTokenBytes, outputTokenBytes, DESTINATION_CHAIN_ID, recipient, salt),
+            factory.predictDepositAddress(
+                inputTokenBytes,
+                outputTokenBytes,
+                DESTINATION_CHAIN_ID,
+                recipient,
+                "",
+                type(uint256).max,
+                10000,
+                salt
+            ),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -91,7 +114,16 @@ contract CounterfactualDepositTest is Test {
             salt
         );
 
-        factory.deploy(inputTokenBytes, outputTokenBytes, DESTINATION_CHAIN_ID, recipient, salt);
+        factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            10000,
+            salt
+        );
     }
 
     function testCannotDeployTwice() public {
@@ -100,11 +132,29 @@ contract CounterfactualDepositTest is Test {
         bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
         // First deployment succeeds
-        factory.deploy(inputTokenBytes, outputTokenBytes, DESTINATION_CHAIN_ID, recipient, salt);
+        factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            10000,
+            salt
+        );
 
         // Second deployment reverts
         vm.expectRevert();
-        factory.deploy(inputTokenBytes, outputTokenBytes, DESTINATION_CHAIN_ID, recipient, salt);
+        factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            10000,
+            salt
+        );
     }
 
     function testDeployedContractHasCorrectImmutables() public {
@@ -112,7 +162,16 @@ contract CounterfactualDepositTest is Test {
         bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
         bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
-        address deployed = factory.deploy(inputTokenBytes, outputTokenBytes, DESTINATION_CHAIN_ID, recipient, salt);
+        address deployed = factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            10000,
+            salt
+        );
 
         CounterfactualDeposit depositContract = CounterfactualDeposit(payable(deployed));
 
@@ -134,6 +193,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -145,8 +207,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
@@ -164,6 +225,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -175,8 +239,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         // Sign with wrong key
@@ -196,6 +259,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -212,8 +278,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
@@ -230,6 +295,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "", // message
+            type(uint256).max, // maxGasFee
+            10000, // maxCapitalFee (100%)
             salt,
             quote,
             signature
@@ -251,6 +319,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -267,8 +338,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature1 = _signQuote(quote1, quoteSignerPk);
@@ -289,8 +359,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature2 = _signQuote(quote2, quoteSignerPk);
@@ -314,6 +383,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -330,8 +402,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
@@ -351,6 +422,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -366,8 +440,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
@@ -389,6 +462,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt1
         );
 
@@ -397,6 +473,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt2
         );
 
@@ -412,8 +491,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
@@ -433,6 +511,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -458,6 +539,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -516,6 +600,9 @@ contract CounterfactualDepositTest is Test {
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
+            "",
+            type(uint256).max,
+            10000,
             salt
         );
 
@@ -528,8 +615,7 @@ contract CounterfactualDepositTest is Test {
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
             exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0),
-            message: ""
+            exclusiveRelayer: bytes32(0)
         });
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
@@ -552,7 +638,85 @@ contract CounterfactualDepositTest is Test {
         assertEq(inputToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
     }
 
-    // Helper function to sign a quote
+    function testGasFeeTooHigh() public {
+        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
+        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
+        bytes32 salt = keccak256("test-salt");
+
+        // Deploy with very low maxGasFee (1e18)
+        address depositAddress = factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            1e18, // maxGasFee - very low
+            10000, // maxCapitalFee (100%)
+            salt
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, 100e18);
+
+        // Create quote with fee of 2e18 (exceeds maxGasFee)
+        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
+            depositAddress: depositAddress,
+            deadline: block.timestamp + 1 hours,
+            inputAmount: 100e18,
+            outputAmount: 98e18, // Fee = 2e18, exceeds maxGasFee
+            quoteTimestamp: uint32(block.timestamp),
+            fillDeadline: uint32(block.timestamp + 4 hours),
+            exclusivityParameter: 0,
+            exclusiveRelayer: bytes32(0)
+        });
+
+        bytes memory signature = _signQuote(quote, quoteSignerPk);
+
+        vm.expectRevert(ICounterfactualDepositFactory.GasFeeTooHigh.selector);
+        vm.prank(relayer);
+        factory.executeOnExisting(depositAddress, quote, signature);
+    }
+
+    function testCapitalFeeTooHigh() public {
+        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
+        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
+        bytes32 salt = keccak256("test-salt");
+
+        // Deploy with 1% max capital fee (100 basis points)
+        address depositAddress = factory.deploy(
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max, // maxGasFee - unlimited
+            100, // maxCapitalFee - 1%
+            salt
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, 100e18);
+
+        // Create quote with 2% fee (exceeds maxCapitalFee of 1%)
+        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
+            depositAddress: depositAddress,
+            deadline: block.timestamp + 1 hours,
+            inputAmount: 100e18,
+            outputAmount: 98e18, // Fee = 2e18 = 2%, exceeds maxCapitalFee of 1%
+            quoteTimestamp: uint32(block.timestamp),
+            fillDeadline: uint32(block.timestamp + 4 hours),
+            exclusivityParameter: 0,
+            exclusiveRelayer: bytes32(0)
+        });
+
+        bytes memory signature = _signQuote(quote, quoteSignerPk);
+
+        vm.expectRevert(ICounterfactualDepositFactory.CapitalFeeTooHigh.selector);
+        vm.prank(relayer);
+        factory.executeOnExisting(depositAddress, quote, signature);
+    }
+
+    // Helper function to sign a quote (message not included - it's part of route)
     function _signQuote(
         ICounterfactualDepositFactory.DepositQuote memory quote,
         uint256 privateKey
@@ -566,8 +730,7 @@ contract CounterfactualDepositTest is Test {
                 quote.quoteTimestamp,
                 quote.fillDeadline,
                 quote.exclusivityParameter,
-                quote.exclusiveRelayer,
-                keccak256(quote.message)
+                quote.exclusiveRelayer
             )
         );
 
