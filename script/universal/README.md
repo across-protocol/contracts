@@ -26,7 +26,25 @@ Create a `.env` file with the following variables:
 
 ---
 
-## Step 1: Deploy SP1Helios
+## Combined Deployment (Recommended)
+
+This script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Omit `--broadcast` for a dry run.
+
+```bash
+./script/universal/DeploySP1HeliosAndUniversalSpokePool.sh \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --oft-fee-cap <OFT_FEE_CAP> \
+  --etherscan-api-key <API_KEY> \
+  --broadcast
+```
+
+---
+
+## Manual Deployment (Step-by-Step)
+
+If you need more control over individual steps, you can run each deployment separately.
+
+### Step 1: Deploy SP1Helios
 
 Deploy the SP1Helios light client contract:
 
@@ -46,7 +64,7 @@ Note the deployed **SP1Helios address** from the output.
 
 ---
 
-## Step 2: Deploy Universal SpokePool
+### Step 2: Deploy Universal SpokePool
 
 Pass the SP1Helios address from Step 1 as the first argument:
 
@@ -66,7 +84,7 @@ Note the deployed **Universal_SpokePool proxy address** from the output.
 
 ---
 
-## Step 3: Transfer SP1Helios Admin Role to SpokePool
+### Step 3: Transfer SP1Helios Admin Role to SpokePool
 
 The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds the `DEFAULT_ADMIN_ROLE`. This role must be transferred to the Universal_SpokePool so that admin functions can be called through the cross-chain admin flow.
 
@@ -89,20 +107,3 @@ cast send <SP1_HELIOS_ADDRESS> \
 ```
 
 > **Note**: `0x00...00` (32 zero bytes) is the `DEFAULT_ADMIN_ROLE` constant defined in OpenZeppelin's AccessControl.
-
----
-
-## Alternative: Combined Deployment (Recommended)
-
-Instead of the 3-step manual process above, you can run all steps with a single command. This script assumes a fresh deployment with no existing SpokePool on the target chain.
-
-```bash
-source .env
-./script/universal/deploy_universal_spoke_pool_full.sh \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
-  --oft-fee-cap <OFT_FEE_CAP> \
-  --etherscan-api-key <API_KEY> \
-  --broadcast
-```
-
-This deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), transfers the admin role, and runs `extract-addresses`. Omit `--broadcast` for a dry run. It requires the same environment variables as both individual scripts combined.
