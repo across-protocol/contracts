@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
 import { ICoreDepositWallet } from "../external/interfaces/ICoreDepositWallet.sol";
 
 interface ICoreWriter {
@@ -74,6 +75,7 @@ library HyperCoreLib {
     error TokenInfoPrecompileCallFailed();
     error SpotPxPrecompileCallFailed();
     error InsufficientAmountForAccountActivation();
+    error MaximumEVMSendAmountTooLarge();
 
     /**
      * @notice Transfer `amountEVM` from HyperEVM to `to` on HyperCore.
@@ -430,26 +432,25 @@ library HyperCoreLib {
         uint256 maximumEVMSendAmount,
         int8 decimalDiff
     ) internal pure returns (uint256 amountEVMToSend, uint64 amountCoreToReceive) {
+        uint256 amountCoreToReceive256;
+
         /// @dev HyperLiquid decimal conversion: Scale EVM (u256,evmDecimals) -> Core (u64,coreDecimals)
-        /// @dev Core amount is guaranteed to be within u64 range.
         if (decimalDiff == 0) {
             amountEVMToSend = maximumEVMSendAmount;
-            amountCoreToReceive = uint64(amountEVMToSend);
+            amountCoreToReceive256 = amountEVMToSend;
         } else if (decimalDiff > 0) {
             // EVM token has more decimals than Core
             uint256 scale = 10 ** uint8(decimalDiff);
             amountEVMToSend = maximumEVMSendAmount - (maximumEVMSendAmount % scale); // Safe: dustAmount = maximumEVMSendAmount % scale, so dust <= maximumEVMSendAmount
-
-            /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
-            amountCoreToReceive = uint64(amountEVMToSend / scale);
+            amountCoreToReceive256 = amountEVMToSend / scale;
         } else {
             // Core token has more decimals than EVM
             uint256 scale = 10 ** uint8(-1 * decimalDiff);
             amountEVMToSend = maximumEVMSendAmount;
-
-            /// @dev Safe: Guaranteed to be in the range of [0, u64.max] because it is upperbounded by uint64 maxAmt
-            amountCoreToReceive = uint64(amountEVMToSend * scale);
+            amountCoreToReceive256 = amountEVMToSend * scale;
         }
+
+        amountCoreToReceive = SafeCast.toUint64(amountCoreToReceive256);
     }
 
     function convertCoreDecimalsSimple(
