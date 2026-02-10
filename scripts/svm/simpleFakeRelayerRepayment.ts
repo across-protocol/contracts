@@ -59,7 +59,7 @@ async function testBundleLogic(): Promise<void> {
 
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   const vault = getAssociatedTokenAddressSync(
@@ -67,7 +67,7 @@ async function testBundleLogic(): Promise<void> {
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   console.table([
@@ -112,7 +112,7 @@ async function testBundleLogic(): Promise<void> {
     BigInt(inputAmount.toString()),
     tokenDecimals,
     undefined,
-    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID
   );
   const depositIx = await (
     program.methods.deposit(
@@ -127,7 +127,7 @@ async function testBundleLogic(): Promise<void> {
       depositData.quoteTimestamp.toNumber(),
       depositData.fillDeadline.toNumber(),
       depositData.exclusivityParameter.toNumber(),
-      Buffer.from([]),
+      Buffer.from([])
     ) as any
   )
     .accounts({
@@ -155,14 +155,14 @@ async function testBundleLogic(): Promise<void> {
       provider.connection,
       (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer,
       inputToken,
-      recipient.publicKey,
+      recipient.publicKey
     );
     refundAddresses.push(recipient.publicKey);
     refundAccounts.push(refundAccount);
     console.log(
       `Created refund account for recipient ${
         i + 1
-      }: ${refundAccount.toBase58()}. owner ${recipient.publicKey.toBase58()}`,
+      }: ${refundAccount.toBase58()}. owner ${recipient.publicKey.toBase58()}`
     );
   }
 
@@ -215,7 +215,7 @@ async function testBundleLogic(): Promise<void> {
   // Derive the transferLiability PDA
   const [transferLiability] = PublicKey.findProgramAddressSync(
     [Buffer.from("transfer_liability"), inputToken.toBuffer()],
-    program.programId,
+    program.programId
   );
 
   // Load the instruction parameters
@@ -224,7 +224,7 @@ async function testBundleLogic(): Promise<void> {
 
   const [instructionParams] = PublicKey.findProgramAddressSync(
     [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
-    program.programId,
+    program.programId
   );
 
   const staticAccounts = {
@@ -256,7 +256,7 @@ async function testBundleLogic(): Promise<void> {
     provider.connection,
     new anchor.web3.Transaction().add(lookupTableInstruction),
     [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
-    { skipPreflight: true },
+    { skipPreflight: true }
   );
 
   const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
@@ -277,7 +277,7 @@ async function testBundleLogic(): Promise<void> {
       provider.connection,
       new anchor.web3.Transaction().add(extendInstruction),
       [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
-      { skipPreflight: true },
+      { skipPreflight: true }
     );
   }
   // Fetch the AddressLookupTableAccount
@@ -303,7 +303,7 @@ async function testBundleLogic(): Promise<void> {
       payerKey: signer.publicKey,
       recentBlockhash: (await provider.connection.getLatestBlockhash()).blockhash,
       instructions: [computeBudgetInstruction, executeInstruction],
-    }).compileToV0Message([lookupTableAccount]),
+    }).compileToV0Message([lookupTableAccount])
   );
 
   // Sign and submit the versioned transaction

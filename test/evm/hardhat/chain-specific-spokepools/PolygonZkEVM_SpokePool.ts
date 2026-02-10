@@ -65,7 +65,7 @@ describe("Polygon zkEVM Spoke Pool", function () {
     polygonZkEvmSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("PolygonZkEVM_SpokePool", owner),
       [polygonZkEvmBridge.address, 0, owner.address, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] },
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     await seedContract(polygonZkEvmSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -78,28 +78,28 @@ describe("Polygon zkEVM Spoke Pool", function () {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
         constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60],
-      },
+      }
     );
 
     const upgradeData = polygonZkEvmSpokePool.interface.encodeFunctionData("upgradeTo", [implementation]);
 
     // Reverts if called directly
     await expect(polygonZkEvmSpokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith(
-      "AdminCallNotValidated()",
+      "AdminCallNotValidated()"
     );
     // Reverts if called not from bridge
     await expect(
-      polygonZkEvmSpokePool.connect(rando).onMessageReceived(owner.address, polygonZkEvmL1NetworkId, upgradeData),
+      polygonZkEvmSpokePool.connect(rando).onMessageReceived(owner.address, polygonZkEvmL1NetworkId, upgradeData)
     ).to.be.revertedWith("CallerNotBridge()");
     // Reverts if called by non-admin
     await expect(
       polygonZkEvmSpokePool
         .connect(polygonZkEvmBridgeSigner)
-        .onMessageReceived(rando.address, polygonZkEvmL1NetworkId, upgradeData),
+        .onMessageReceived(rando.address, polygonZkEvmL1NetworkId, upgradeData)
     ).to.be.revertedWith("OriginSenderNotCrossDomain()");
     // Reverts if source network is not L1
     await expect(
-      polygonZkEvmSpokePool.connect(polygonZkEvmBridgeSigner).onMessageReceived(owner.address, 1, upgradeData),
+      polygonZkEvmSpokePool.connect(polygonZkEvmBridgeSigner).onMessageReceived(owner.address, 1, upgradeData)
     ).to.be.revertedWith("SourceChainNotHubChain()");
 
     await polygonZkEvmSpokePool
@@ -114,21 +114,21 @@ describe("Polygon zkEVM Spoke Pool", function () {
 
     // Reverts if called directly
     await expect(polygonZkEvmSpokePool.connect(rando).setL2PolygonZkEVMBridge(rando.address)).to.be.revertedWith(
-      "AdminCallNotValidated()",
+      "AdminCallNotValidated()"
     );
     // Reverts if called not from bridge
     await expect(
-      polygonZkEvmSpokePool.connect(rando).onMessageReceived(owner.address, polygonZkEvmL1NetworkId, setL2BridgeData),
+      polygonZkEvmSpokePool.connect(rando).onMessageReceived(owner.address, polygonZkEvmL1NetworkId, setL2BridgeData)
     ).to.be.revertedWith("CallerNotBridge()");
     // Reverts if called by non-admin
     await expect(
       polygonZkEvmSpokePool
         .connect(polygonZkEvmBridgeSigner)
-        .onMessageReceived(rando.address, polygonZkEvmL1NetworkId, setL2BridgeData),
+        .onMessageReceived(rando.address, polygonZkEvmL1NetworkId, setL2BridgeData)
     ).to.be.revertedWith("OriginSenderNotCrossDomain()");
     // Reverts if source network is not L1
     await expect(
-      polygonZkEvmSpokePool.connect(polygonZkEvmBridgeSigner).onMessageReceived(owner.address, 1, setL2BridgeData),
+      polygonZkEvmSpokePool.connect(polygonZkEvmBridgeSigner).onMessageReceived(owner.address, 1, setL2BridgeData)
     ).to.be.revertedWith("SourceChainNotHubChain()");
 
     await polygonZkEvmSpokePool
@@ -140,7 +140,7 @@ describe("Polygon zkEVM Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ETH", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       weth.address,
-      await polygonZkEvmSpokePool.callStatic.chainId(),
+      await polygonZkEvmSpokePool.callStatic.chainId()
     );
     const fnData = polygonZkEvmSpokePool.interface.encodeFunctionData("relayRootBundle", [
       tree.getHexRoot(),
@@ -158,14 +158,14 @@ describe("Polygon zkEVM Spoke Pool", function () {
       amountToReturn,
       zeroAddress,
       true,
-      "0x",
+      "0x"
     );
   });
 
   it("Bridge tokens to hub pool correctly calls the L2 Token Bridge for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
-      await polygonZkEvmSpokePool.callStatic.chainId(),
+      await polygonZkEvmSpokePool.callStatic.chainId()
     );
     const fnData = polygonZkEvmSpokePool.interface.encodeFunctionData("relayRootBundle", [
       tree.getHexRoot(),
@@ -183,7 +183,7 @@ describe("Polygon zkEVM Spoke Pool", function () {
       amountToReturn,
       dai.address,
       true,
-      "0x",
+      "0x"
     );
   });
 });

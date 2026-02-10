@@ -32,7 +32,7 @@ const convertChainFamiliesEnumString = () => {
         ...value,
         family: ChainFamily[value.family],
       },
-    ]),
+    ])
   );
 
   return publicNetworksWithEnum;
@@ -77,7 +77,7 @@ function generateWrappedNativeTokens(): { [key: string]: string } {
       result[key] = wrappedNativeToken;
     } else {
       console.warn(
-        `Warning: Wrapped token symbol "${wrappedNativeSymbol}" not found in TOKEN_SYMBOLS_MAP for chain ${key}`,
+        `Warning: Wrapped token symbol "${wrappedNativeSymbol}" not found in TOKEN_SYMBOLS_MAP for chain ${key}`
       );
     }
   }

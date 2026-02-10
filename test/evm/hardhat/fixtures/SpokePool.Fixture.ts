@@ -23,7 +23,7 @@ hre.upgrades.silenceWarnings();
 // to have standard fixture features. It is also exported as a function to enable non-snapshoted deployments.
 export async function deploySpokePool(
   ethers: any,
-  spokePoolName = "MockSpokePool",
+  spokePoolName = "MockSpokePool"
 ): Promise<{
   weth: Contract;
   erc20: Contract;
@@ -51,7 +51,7 @@ export async function deploySpokePool(
   const spokePool = await hre.upgrades.deployProxy(
     await getContractFactory(spokePoolName, deployerWallet),
     [0, crossChainAdmin.address, hubPool.address],
-    { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] },
+    { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address] }
   );
   await spokePool.setChainId(consts.destinationChainId);
 
@@ -138,7 +138,7 @@ export function getRelayHash(
   _amount?: BigNumber,
   _realizedLpFeePct?: BigNumber,
   _relayerFeePct?: BigNumber,
-  _message?: string,
+  _message?: string
 ): { relayHash: string; relayData: RelayData } {
   const relayData = {
     depositor: _depositor,
@@ -158,8 +158,8 @@ export function getRelayHash(
       [
         "tuple(address depositor, address recipient, address destinationToken, uint256 amount, uint256 originChainId, uint256 destinationChainId, int64 realizedLpFeePct, int64 relayerFeePct, uint32 depositId, bytes message)",
       ],
-      [relayData],
-    ),
+      [relayData]
+    )
   );
   return { relayHash, relayData };
 }
@@ -171,8 +171,8 @@ export function getV3RelayHash(relayData: V3RelayData, destinationChainId: numbe
         "tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
         "uint256 destinationChainId",
       ],
-      [relayData, destinationChainId],
-    ),
+      [relayData, destinationChainId]
+    )
   );
 }
 
@@ -185,8 +185,8 @@ export function getLegacyV3RelayHash(relayData: V3RelayData, destinationChainId:
         "tuple(address depositor, address recipient, address exclusiveRelayer, address inputToken, address outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint32 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message)",
         "uint256 destinationChainId",
       ],
-      [relayData, destinationChainId],
-    ),
+      [relayData, destinationChainId]
+    )
   );
 }
 
@@ -216,7 +216,7 @@ export function getFillRelayParams(
   _relayData: RelayData,
   _maxTokensToSend: BigNumber,
   _repaymentChain?: number,
-  _maxCount?: BigNumber,
+  _maxCount?: BigNumber
 ): string[] {
   return [
     _relayData.depositor,
@@ -242,7 +242,7 @@ export function getFillRelayUpdatedFeeParams(
   _repaymentChain?: number,
   _updatedRecipient?: string,
   _updatedMessage?: string,
-  _maxCount?: BigNumber,
+  _maxCount?: BigNumber
 ): string[] {
   return [
     _relayData.depositor,
@@ -276,7 +276,7 @@ export function getExecuteSlowRelayParams(
   _relayerRefundId: number,
   _message: string,
   _payoutAdjustment: BigNumber,
-  _proof: string[],
+  _proof: string[]
 ): (string | string[])[] {
   return [
     _depositor,
@@ -305,7 +305,7 @@ export async function modifyRelayHelper(
   originChainId: string,
   depositor: SignerWithAddress,
   updatedRecipient: string,
-  updatedMessage: string,
+  updatedMessage: string
 ): Promise<{ signature: string }> {
   const typedData = {
     types: {
@@ -342,7 +342,7 @@ export async function getUpdatedV3DepositSignature(
   originChainId: number,
   updatedOutputAmount: BigNumber,
   updatedRecipient: string,
-  updatedMessage: string,
+  updatedMessage: string
 ): Promise<string> {
   const typedData = {
     types: {
@@ -374,7 +374,7 @@ export async function deployMockSpokePoolCaller(
   spokePool: Contract,
   rootBundleId: number,
   leaf: RelayerRefundLeaf,
-  proof: string[],
+  proof: string[]
 ): Promise<Contract> {
   return await (
     await getContractFactory("MockCaller", (await ethers.getSigners())[0])

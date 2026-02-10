@@ -107,7 +107,7 @@ async function main() {
   const messagesAlreadyClaimed = srcMessages.filter((message) => Boolean(message.claim_tx_hash));
   const relevantMessages = srcMessages.filter((message) => Boolean(message.ready_for_claim) && !message.claim_tx_hash);
   console.log(
-    `${srcMessages.length} total: ${relevantMessages.length} claimable, ${messagesNotYetReady.length} not yet ready, ${messagesAlreadyClaimed.length} already claimed`,
+    `${srcMessages.length} total: ${relevantMessages.length} claimable, ${messagesNotYetReady.length} not yet ready, ${messagesAlreadyClaimed.length} already claimed`
   );
 
   if (relevantMessages.length === 0) {
@@ -121,7 +121,7 @@ async function main() {
       ? L1_ADDRESS_MAP[l1ChainId].polygonZkEvmBridge
       : L2_ADDRESS_MAP[l2ChainId].polygonZkEvmBridge,
     polygonZkEvmBridgeAbi,
-    claimMessagesOn === "l1" ? l1Signer : l2Signer,
+    claimMessagesOn === "l1" ? l1Signer : l2Signer
   );
 
   console.log(`\nClaiming messages on ${claimMessagesOn.toUpperCase()}`, {
@@ -181,7 +181,7 @@ async function getMessages(
   apiBaseUrl: string,
   messageTargetAddress: string,
   limit = 100,
-  offset = 0,
+  offset = 0
 ): Promise<Message[]> {
   const response = await fetch(`${apiBaseUrl}/bridges/${messageTargetAddress}?limit=${limit}&offset=${offset}`);
   const data = await response.json();

@@ -24,7 +24,7 @@ async function constructSimpleTree(l2Token: Contract, destinationChainId: number
     [consts.amountToReturn, toBN(0)], // amountToReturn.
     [l2Token.address, l2Token.address], // l2Token.
     [[relayer.address, rando.address], []], // refundAddresses.
-    [[consts.amountToRelay, consts.amountToRelay], []], // refundAmounts.
+    [[consts.amountToRelay, consts.amountToRelay], []] // refundAmounts.
   );
   const leavesRefundAmount = leaves
     .map((leaf) => leaf.refundAmounts.reduce((bn1, bn2) => bn1.add(bn2), toBN(0)))
@@ -50,7 +50,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // Distribute the first leaf.
@@ -68,7 +68,7 @@ describe("SpokePool Root Bundle Execution", function () {
     expect(relayTokensEvents[0].args?.chainId).to.equal(destinationChainId);
     expect(relayTokensEvents[0].args?.amountToReturn).to.equal(consts.amountToReturn);
     expect((relayTokensEvents[0].args?.refundAmounts as BigNumber[]).map((v) => v.toString())).to.deep.equal(
-      [consts.amountToRelay, consts.amountToRelay].map((v) => v.toString()),
+      [consts.amountToRelay, consts.amountToRelay].map((v) => v.toString())
     );
     expect(relayTokensEvents[0].args?.refundAddresses).to.deep.equal([relayer.address, rando.address]);
 
@@ -107,7 +107,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // Distribute all non-Solana leaves.
@@ -143,7 +143,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // Distribute all non-Solana leaves.
@@ -162,7 +162,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // Take the valid root but change some element within it. This will change the hash of the leaf
@@ -180,7 +180,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leaves, tree } = await constructSimpleTree(destErc20, 13371);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // Root is valid and leaf is contained in tree, but chain ID doesn't match pool's chain ID.
@@ -191,7 +191,7 @@ describe("SpokePool Root Bundle Execution", function () {
     const { leaves, tree } = await constructSimpleTree(destErc20, destinationChainId);
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // distribution root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // First claim should be fine. Second claim should be reverted as you cant double claim a leaf.
@@ -205,7 +205,7 @@ describe("SpokePool Root Bundle Execution", function () {
     // Store new tree.
     await spokePool.connect(dataWorker).relayRootBundle(
       tree.getHexRoot(), // relayer refund root. Generated from the merkle tree constructed before.
-      consts.mockSlowRelayRoot,
+      consts.mockSlowRelayRoot
     );
 
     // Blacklist the relayer EOA to prevent it from receiving refunds. The execution should still succeed, though.
@@ -233,8 +233,8 @@ describe("SpokePool Root Bundle Execution", function () {
             [consts.amountToRelay, consts.amountToRelay, toBN(0)],
             0,
             destErc20.address,
-            [relayer.address, rando.address],
-          ),
+            [relayer.address, rando.address]
+          )
       ).to.be.revertedWith("InvalidMerkleLeaf");
     });
     describe("amountToReturn > 0", function () {
@@ -242,7 +242,7 @@ describe("SpokePool Root Bundle Execution", function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, []),
+            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
         )
           .to.emit(spokePool, "BridgedToHubPool")
           .withArgs(toBN(1), destErc20.address);
@@ -251,7 +251,7 @@ describe("SpokePool Root Bundle Execution", function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, []),
+            .distributeRelayerRefunds(destinationChainId, toBN(1), [], 0, destErc20.address, [])
         )
           .to.emit(spokePool, "TokensBridged")
           .withArgs(toBN(1), destinationChainId, 0, addressToBytes(destErc20.address), dataWorker.address);
@@ -262,14 +262,14 @@ describe("SpokePool Root Bundle Execution", function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, []),
+            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, [])
         ).to.not.emit(spokePool, "BridgedToHubPool");
       });
       it("does not emit TokensBridged", async function () {
         await expect(
           spokePool
             .connect(dataWorker)
-            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, []),
+            .distributeRelayerRefunds(destinationChainId, toBN(0), [], 0, destErc20.address, [])
         ).to.not.emit(spokePool, "TokensBridged");
       });
     });
@@ -284,12 +284,12 @@ describe("SpokePool Root Bundle Execution", function () {
               [consts.amountToRelay, consts.amountToRelay, toBN(0)],
               0,
               destErc20.address,
-              [relayer.address, rando.address, rando.address],
-            ),
+              [relayer.address, rando.address, rando.address]
+            )
         ).to.changeTokenBalances(
           destErc20,
           [spokePool, relayer, rando],
-          [consts.amountToRelay.mul(-2), consts.amountToRelay, consts.amountToRelay],
+          [consts.amountToRelay.mul(-2), consts.amountToRelay, consts.amountToRelay]
         );
         const transferLogCount = (await destErc20.queryFilter(destErc20.filters.Transfer(spokePool.address))).length;
         expect(transferLogCount).to.equal(2);
@@ -304,8 +304,8 @@ describe("SpokePool Root Bundle Execution", function () {
               [consts.amountToRelay, consts.amountToRelay, toBN(0)],
               0,
               destErc20.address,
-              [relayer.address, rando.address, rando.address],
-            ),
+              [relayer.address, rando.address, rando.address]
+            )
         )
           .to.emit(spokePool, "BridgedToHubPool")
           .withArgs(toBN(1), destErc20.address);
@@ -320,8 +320,8 @@ describe("SpokePool Root Bundle Execution", function () {
             [consts.amountHeldByPool, consts.amountToRelay], // spoke has only amountHeldByPool.
             0,
             destErc20.address,
-            [relayer.address, rando.address],
-          ),
+            [relayer.address, rando.address]
+          )
         ).to.be.revertedWith("InsufficientSpokePoolBalanceToExecuteLeaf");
 
         expect((await destErc20.queryFilter(destErc20.filters.Transfer(spokePool.address))).length).to.equal(0);

@@ -63,7 +63,7 @@ async function deposit(): Promise<void> {
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   // Define the signer (replace with your actual signer)
@@ -75,7 +75,7 @@ async function deposit(): Promise<void> {
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   console.log("Depositing...");
@@ -127,7 +127,7 @@ async function deposit(): Promise<void> {
     BigInt(inputAmount.toString()),
     tokenDecimals,
     undefined,
-    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID
   );
 
   const depositAccounts = {
@@ -156,7 +156,7 @@ async function deposit(): Promise<void> {
       quoteTimestamp,
       fillDeadline,
       exclusivityDeadline,
-      message,
+      message
     )
     .accounts(depositAccounts)
     .instruction();

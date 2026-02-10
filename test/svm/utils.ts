@@ -34,7 +34,7 @@ export async function printLogs(connection: any, program: any, tx: any) {
       lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
       signature: tx,
     },
-    "confirmed",
+    "confirmed"
   );
 
   const txDetails = await program.provider.connection.getTransaction(tx, {
@@ -173,7 +173,7 @@ export const requestAndConfirmAirdrop = async (
   connection: Connection,
   to: PublicKey,
   lamports: number,
-  commitment: Commitment = "confirmed",
+  commitment: Commitment = "confirmed"
 ) => {
   const airdropTx = await connection.requestAirdrop(to, lamports);
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
@@ -183,6 +183,6 @@ export const requestAndConfirmAirdrop = async (
       lastValidBlockHeight,
       signature: airdropTx,
     },
-    commitment,
+    commitment
   );
 };

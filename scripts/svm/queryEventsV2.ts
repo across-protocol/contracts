@@ -46,7 +46,7 @@ async function queryEvents(): Promise<void> {
 
   const rpc = createSolanaRpc(rpcEndpoint);
   const rpcSubscriptions = createSolanaRpcSubscriptions(
-    rpcEndpoint.replace(/^http(s?):\/\//i, (_m, s) => `ws${s ?? ""}://`),
+    rpcEndpoint.replace(/^http(s?):\/\//i, (_m, s) => `ws${s ?? ""}://`)
   );
 
   const events = await readProgramEvents({ rpc, rpcSubscriptions }, address(programId), SvmSpokeIdl, "confirmed");

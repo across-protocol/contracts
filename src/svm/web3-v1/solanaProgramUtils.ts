@@ -40,7 +40,7 @@ export async function readEvents<IDL extends Idl = Idl>(
   connection: Connection,
   txSignature: string,
   programs: Program<IDL>[],
-  commitment: Finality = "confirmed",
+  commitment: Finality = "confirmed"
 ) {
   const txResult = await connection.getTransaction(txSignature, { commitment, maxSupportedTransactionVersion: 0 });
 
@@ -57,7 +57,7 @@ export function processEventFromTx(txResult: web3.VersionedTransactionResponse, 
   for (const program of programs) {
     eventAuthorities.set(
       program.programId.toString(),
-      findProgramAddress("__event_authority", program.programId).publicKey,
+      findProgramAddress("__event_authority", program.programId).publicKey
     );
   }
 
@@ -100,7 +100,7 @@ export function processEventFromTx(txResult: web3.VersionedTransactionResponse, 
 export async function readEventsUntilFound<IDL extends Idl = Idl>(
   connection: Connection,
   txSignature: string,
-  programs: Program<IDL>[],
+  programs: Program<IDL>[]
 ) {
   const startTime = Date.now();
   let txResult = null;
@@ -138,7 +138,7 @@ export async function readProgramEvents(
   connection: Connection,
   program: Program<any>,
   finality: Finality = "confirmed",
-  options: SignaturesForAddressOptions = { limit: 1000 },
+  options: SignaturesForAddressOptions = { limit: 1000 }
 ): Promise<EventType[]> {
   const allSignatures: ConfirmedSignatureInfo[] = [];
 
@@ -167,7 +167,7 @@ export async function readProgramEvents(
         slot: signature.slot,
         name: event.name || "Unknown",
       }));
-    }),
+    })
   );
 
   return eventsWithSlots.flat(); // Flatten the array of events & return.
@@ -179,14 +179,14 @@ export async function readProgramEvents(
 export async function subscribeToCpiEventsForProgram(
   connection: Connection,
   program: Program<any>,
-  callback: (events: any[]) => void,
+  callback: (events: any[]) => void
 ) {
   const subscriptionId = connection.onLogs(
     new PublicKey(findProgramAddress("__event_authority", program.programId).publicKey.toString()),
     async (logs: Logs) => {
       callback(await readEvents(connection, logs.signature, [program], "confirmed"));
     },
-    "confirmed",
+    "confirmed"
   );
 
   return subscriptionId;
@@ -207,7 +207,7 @@ class DepositId {
  * Borsh schema for deserializing DepositId.
  */
 const depositIdSchema = new Map(
-  [[DepositId, { kind: "struct", fields: [["value", [32]]] }]], // Fixed array [u8; 32]
+  [[DepositId, { kind: "struct", fields: [["value", [32]]] }]] // Fixed array [u8; 32]
 );
 
 /**
@@ -266,7 +266,7 @@ export function stringifyCpiEvent(obj: any, eventName: string): any {
           }
         }
         return [key, stringifyCpiEvent(value, eventName)];
-      }),
+      })
     );
   }
   return obj;

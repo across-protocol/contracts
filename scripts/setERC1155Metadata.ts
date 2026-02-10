@@ -67,5 +67,5 @@ main().then(
   (error) => {
     console.log(error);
     process.exitCode = 1;
-  },
+  }
 );

@@ -86,7 +86,7 @@ async function reclaimEventAccounts(): Promise<void> {
       console.log(
         `Skipping MessageSent event event account ${messageSentEventData.toString()} from tx ${
           event.signature
-        } which can be closed only after ${new Date(canCloseAfter * 1000).toUTCString()}`,
+        } which can be closed only after ${new Date(canCloseAfter * 1000).toUTCString()}`
       );
       continue;
     }

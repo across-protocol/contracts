@@ -103,7 +103,7 @@ async function receiveMessage(): Promise<void> {
     const sponsoredCCTPDstPeripheryAddress = publicKeyToEvmAddress(sourceMessage.destinationCaller);
     if (sourceMessage.destinationDomain !== evmCctpDomain) {
       console.log(
-        `Skipping deposit with destination domain ${sourceMessage.destinationDomain} not matching EVM CCTP domain ${evmCctpDomain}`,
+        `Skipping deposit with destination domain ${sourceMessage.destinationDomain} not matching EVM CCTP domain ${evmCctpDomain}`
       );
       continue;
     }
@@ -117,7 +117,7 @@ async function receiveMessage(): Promise<void> {
     const sponsoredCCTPDstPeriphery = new ethers.Contract(
       sponsoredCCTPDstPeripheryAddress,
       sponsoredCCTPDstPeripheryIface,
-      ethersSigner,
+      ethersSigner
     );
 
     console.log("Trying to finalize sponsored deposit with the following parameters:");
@@ -131,7 +131,7 @@ async function receiveMessage(): Promise<void> {
       const tx = await sponsoredCCTPDstPeriphery.receiveMessage(
         attestationResponse.destinationMessage,
         attestationResponse.attestation,
-        deposit.quoteSignature,
+        deposit.quoteSignature
       );
       console.log(`\nTransaction sent successfully, transaction hash: ${tx.hash}, waiting for confirmation...`);
       const receipt = await tx.wait();

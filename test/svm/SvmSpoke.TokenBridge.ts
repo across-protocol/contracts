@@ -67,7 +67,7 @@ describe("svm_spoke.token_bridge", () => {
     // PDA, used to check that CCTP sendMessage was called by TokenMessenger
     tokenMessengerMinterSenderAuthority = findProgramAddress(
       "sender_authority",
-      tokenMessengerMinterProgram.programId,
+      tokenMessengerMinterProgram.programId
     ).publicKey;
   });
 
@@ -208,7 +208,7 @@ describe("svm_spoke.token_bridge", () => {
     assert.isTrue(finalPendingToHubPool.isZero(), "Invalid pending to HubPool amount");
 
     const message = decodeMessageSentData(
-      (await messageTransmitterProgram.account.messageSent.fetch(messageSentEventData.publicKey)).message,
+      (await messageTransmitterProgram.account.messageSent.fetch(messageSentEventData.publicKey)).message
     );
     assert.strictEqual(message.destinationDomain, remoteDomain.toNumber(), "Invalid destination domain");
     assert.isTrue(message.messageBody.burnToken.equals(mint), "Invalid burn token");
@@ -234,7 +234,7 @@ describe("svm_spoke.token_bridge", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "ExceededPendingBridgeAmount",
-        "Expected error code ExceededPendingBridgeAmount",
+        "Expected error code ExceededPendingBridgeAmount"
       );
     }
   });
@@ -298,7 +298,7 @@ describe("svm_spoke.token_bridge", () => {
       assert.strictEqual(
         error.error.errorCode.code,
         "ExceededPendingBridgeAmount",
-        "Expected error code ExceededPendingBridgeAmount",
+        "Expected error code ExceededPendingBridgeAmount"
       );
     }
   });

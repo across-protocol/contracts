@@ -106,11 +106,11 @@ async function main() {
   const uniqueTxHashes = new Set(srcEvents.map((event) => event.transactionHash));
   const messageHashesAndBytes = await parseMessageHashesAndBytes(
     Array.from(uniqueTxHashes),
-    receiveMessagesOn === "l1" ? l2Provider : l1Provider,
+    receiveMessagesOn === "l1" ? l2Provider : l1Provider
   );
   const relevantMessageHashesAndBytes = messageHashesAndBytes.filter(
     (messageHashAndBytes) =>
-      messageHashAndBytes.destinationDomain === CIRCLE_DOMAIN_IDs[receiveMessagesOn === "l1" ? l1ChainId : l2ChainId],
+      messageHashAndBytes.destinationDomain === CIRCLE_DOMAIN_IDs[receiveMessagesOn === "l1" ? l1ChainId : l2ChainId]
   );
   console.log(`\nParsed ${relevantMessageHashesAndBytes.length} relevant 'MessageSent' events`);
 
@@ -133,7 +133,7 @@ async function main() {
       ? L1_ADDRESS_MAP[l1ChainId].cctpMessageTransmitter
       : L2_ADDRESS_MAP[l2ChainId].cctpMessageTransmitter,
     messageTransmitterAbi,
-    receiveMessagesOn === "l1" ? l1Signer : l2Signer,
+    receiveMessagesOn === "l1" ? l1Signer : l2Signer
   );
 
   console.log(`\nReceiving messages on ${receiveMessagesOn.toUpperCase()}`, {
@@ -207,7 +207,7 @@ async function getL1SrcEvents(
   l1Provider: providers.JsonRpcProvider,
   l1Signer: Wallet,
   blockLookback: number,
-  maxBlockLookback = MAX_L1_BLOCK_LOOKBACK,
+  maxBlockLookback = MAX_L1_BLOCK_LOOKBACK
 ) {
   const l1LatestBlock = await l1Provider.getBlockNumber();
 
@@ -228,12 +228,12 @@ async function getL1SrcEvents(
       console.log(`Querying blocks ${fromBlock} - ${toBlock}...`);
       const tokensRelayedEvents = await adapter.queryFilter("TokensRelayed", fromBlock, toBlock);
       const usdcRelayedEvents = tokensRelayedEvents.filter(
-        (event) => event.args?.l1Token === L1_ADDRESS_MAP[l1ChainId].usdc,
+        (event) => event.args?.l1Token === L1_ADDRESS_MAP[l1ChainId].usdc
       );
       console.log(`${usdcRelayedEvents.length} 'TokensRelayed'`);
       return usdcRelayedEvents;
     },
-    maxBlockLookback,
+    maxBlockLookback
   );
 }
 
@@ -242,7 +242,7 @@ async function getL2SrcEvents(
   l2Provider: providers.JsonRpcProvider,
   l2Signer: SignerWithAddress,
   blockLookback: number,
-  maxBlockLookback = MAX_L2_BLOCK_LOOKBACK,
+  maxBlockLookback = MAX_L2_BLOCK_LOOKBACK
 ) {
   const l2LatestBlock = await l2Provider.getBlockNumber();
 
@@ -253,7 +253,7 @@ async function getL2SrcEvents(
   }TokensBridged`;
   const spokePoolDeployment = await hre.deployments.get(spokePoolArtifactName);
   const spokePool = (await getContractFactory(spokePoolArtifactName, { signer: l2Signer })).attach(
-    spokePoolDeployment.address,
+    spokePoolDeployment.address
   );
 
   console.log("\nQuerying L2 src events...", {
@@ -270,7 +270,7 @@ async function getL2SrcEvents(
       console.log(`${tokensBridgedEvents.length} '${spokePoolEventName}'`);
       return tokensBridgedEvents;
     },
-    maxBlockLookback,
+    maxBlockLookback
   );
 }
 
@@ -278,7 +278,7 @@ async function getSrcEvents(
   latestBlock: number,
   blockLookback: number,
   queryFn: (fromBlock: number, toBlock: number) => Promise<Event[]>,
-  maxBlockLookback: number,
+  maxBlockLookback: number
 ) {
   const initialFromBlock = latestBlock - blockLookback;
   let fromBlock = initialFromBlock;

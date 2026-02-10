@@ -64,12 +64,12 @@ describe("svm_spoke.bundle", () => {
     assert.strictEqual(
       BigInt(initialVaultBalance),
       BigInt(initialMintAmount),
-      "Initial vault balance should be equal to the minted amount",
+      "Initial vault balance should be equal to the minted amount"
     );
 
     [transferLiability] = PublicKey.findProgramAddressSync(
       [Buffer.from("transfer_liability"), mint.toBuffer()],
-      program.programId,
+      program.programId
     );
   });
 
@@ -120,7 +120,7 @@ describe("svm_spoke.bundle", () => {
     const slowRelayRootHex = Buffer.from(rootBundleAccountData.slowRelayRoot).toString("hex");
     assert.isTrue(
       relayerRefundRootHex === relayerRefundRootBuffer.toString("hex"),
-      "Relayer refund root should be set",
+      "Relayer refund root should be set"
     );
     assert.isTrue(slowRelayRootHex === slowRelayRootBuffer.toString("hex"), "Slow relay root should be set");
 
@@ -182,7 +182,7 @@ describe("svm_spoke.bundle", () => {
     assert.isTrue(event.rootBundleId.toString() === rootBundleId.toString(), "Root bundle ID should match");
     assert.isTrue(
       event.relayerRefundRoot.toString() === relayerRefundRootArray.toString(),
-      "Relayer refund root should match",
+      "Relayer refund root should match"
     );
     assert.isTrue(event.slowRelayRoot.toString() === slowRelayRootArray.toString(), "Slow relay root should match");
   });
@@ -246,7 +246,7 @@ describe("svm_spoke.bundle", () => {
       owner,
       stateAccountData.rootBundleId,
       leaf,
-      proofAsNumbers,
+      proofAsNumbers
     );
     const tx = await program.methods
       .executeRelayerRefundLeaf()
@@ -426,12 +426,12 @@ describe("svm_spoke.bundle", () => {
     assert.strictEqual(
       BigInt(fRelayerABal) - BigInt(iRelayerABal),
       BigInt(leaf.refundAmounts[0].toString()),
-      "Relayer A bal",
+      "Relayer A bal"
     );
     assert.strictEqual(
       BigInt(fRelayerBBal) - BigInt(iRelayerBBal),
       BigInt(leaf.refundAmounts[1].toString()),
-      "Relayer B bal",
+      "Relayer B bal"
     );
 
     // Verify invalid leaf
@@ -452,7 +452,7 @@ describe("svm_spoke.bundle", () => {
         owner,
         stateAccountData.rootBundleId,
         invalidRelayerRefundLeaf as RelayerRefundLeafSolana,
-        proofAsNumbers,
+        proofAsNumbers
       );
       await program.methods
         .executeRelayerRefundLeaf()
@@ -544,9 +544,9 @@ describe("svm_spoke.bundle", () => {
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
           .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0] as BN), new BN(0))
-          .toString(),
+          .toString()
       ),
-      "Relayer A bal",
+      "Relayer A bal"
     );
     assert.strictEqual(
       BigInt(fRelayerBBal) - BigInt(iRelayerBBal),
@@ -554,9 +554,9 @@ describe("svm_spoke.bundle", () => {
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
           .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1] as BN), new BN(0))
-          .toString(),
+          .toString()
       ),
-      "Relayer B bal",
+      "Relayer B bal"
     );
   });
 
@@ -639,9 +639,9 @@ describe("svm_spoke.bundle", () => {
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
           .reduce((acc, leaf) => acc.add(leaf.refundAmounts[0] as BN), new BN(0))
-          .toString(),
+          .toString()
       ),
-      "Relayer A bal",
+      "Relayer A bal"
     );
     assert.strictEqual(
       BigInt(fRelayerBBal) - BigInt(iRelayerBBal),
@@ -649,9 +649,9 @@ describe("svm_spoke.bundle", () => {
         relayerRefundLeaves
           .filter((leaf) => leaf.isSolana)
           .reduce((acc, leaf) => acc.add(leaf.refundAmounts[1] as BN), new BN(0))
-          .toString(),
+          .toString()
       ),
-      "Relayer B bal",
+      "Relayer B bal"
     );
   });
 
@@ -836,7 +836,7 @@ describe("svm_spoke.bundle", () => {
         owner,
         stateAccountData.rootBundleId,
         relayerRefundLeaves[i] as RelayerRefundLeafSolana,
-        proof[i],
+        proof[i]
       );
       await program.methods
         .executeRelayerRefundLeaf()
@@ -872,7 +872,7 @@ describe("svm_spoke.bundle", () => {
           owner,
           stateAccountData.rootBundleId,
           relayerRefundLeaves[i] as RelayerRefundLeafSolana,
-          proof[i],
+          proof[i]
         );
         await program.methods
           .executeRelayerRefundLeaf()
@@ -961,7 +961,7 @@ describe("svm_spoke.bundle", () => {
     const [newRootBundle] = PublicKey.findProgramAddressSync(newSeeds, program.programId);
     assert.isTrue(
       stateAccountData.rootBundleId === initialRootBundleId + 1,
-      `Root bundle index should be ${initialRootBundleId + 1}`,
+      `Root bundle index should be ${initialRootBundleId + 1}`
     );
 
     const newRelayRootBundleAccounts = {
@@ -983,11 +983,11 @@ describe("svm_spoke.bundle", () => {
     stateAccountData = await program.account.state.fetch(state);
     assert.isTrue(
       stateAccountData.rootBundleId === initialRootBundleId + 2,
-      `Root bundle index should be ${initialRootBundleId + 2}`,
+      `Root bundle index should be ${initialRootBundleId + 2}`
     );
     assert.isTrue(
       newRelayerRefundRootHex === newRelayerRefundRootBuffer.toString("hex"),
-      "New relayer refund root should be set",
+      "New relayer refund root should be set"
     );
     assert.isTrue(newSlowRelayRootHex === newSlowRelayRootBuffer.toString("hex"), "New slow relay root should be set");
   });
@@ -1000,7 +1000,7 @@ describe("svm_spoke.bundle", () => {
     }) => {
       assert.isTrue(
         !(testConfig.deferredRefunds && testConfig.atomicAccountCreation),
-        "Incompatible test configuration",
+        "Incompatible test configuration"
       );
       // Add leaves for other EVM chains to have non-empty proofs array to ensure we don't run out of memory when processing.
       const evmDistributions = 100; // This would fit in 7 proof array elements.
@@ -1017,7 +1017,7 @@ describe("svm_spoke.bundle", () => {
 
         const [claimAccount] = PublicKey.findProgramAddressSync(
           [Buffer.from("claim_account"), mint.toBuffer(), tokenOwner.toBuffer()],
-          program.programId,
+          program.programId
         );
 
         if (!testConfig.deferredRefunds && !testConfig.atomicAccountCreation) {
@@ -1064,7 +1064,7 @@ describe("svm_spoke.bundle", () => {
 
       const [instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), owner.toBuffer()],
-        program.programId,
+        program.programId
       );
 
       // We will be using Address Lookup Table (ALT), so to test maximum refunds we better add, not only refund accounts,
@@ -1123,7 +1123,7 @@ describe("svm_spoke.bundle", () => {
             .createTokenAccounts()
             .accounts({ mint, tokenProgram: TOKEN_PROGRAM_ID })
             .remainingAccounts(createTokenAccountsRemainingAccounts)
-            .instruction(),
+            .instruction()
         );
 
       // Add relay refund leaf execution instruction.
@@ -1133,7 +1133,7 @@ describe("svm_spoke.bundle", () => {
       await sendTransactionWithLookupTable(
         connection,
         instructions,
-        (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer,
+        (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
       );
 
       // Verify all refund account balances (either token or claim accounts).
@@ -1145,7 +1145,7 @@ describe("svm_spoke.bundle", () => {
           } else {
             return (await program.account.claimAccount.fetch(account)).amount.toString();
           }
-        }),
+        })
       );
       refundBalances.forEach((balance, i) => {
         assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);
@@ -1230,7 +1230,7 @@ describe("svm_spoke.bundle", () => {
     pendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
     assert.isTrue(
       pendingToHubPool.eq(initialPendingToHubPool.add(firstAmountToReturn)),
-      "Pending amount should be incremented by first amount",
+      "Pending amount should be incremented by first amount"
     );
 
     const secondAmountToReturn = new BN(2_000_000);
@@ -1239,7 +1239,7 @@ describe("svm_spoke.bundle", () => {
     pendingToHubPool = (await program.account.transferLiability.fetch(transferLiability)).pendingToHubPool;
     assert.isTrue(
       pendingToHubPool.eq(initialPendingToHubPool.add(firstAmountToReturn.add(secondAmountToReturn))),
-      "Pending amount should be incremented by second amount",
+      "Pending amount should be incremented by second amount"
     );
   });
 
@@ -1301,7 +1301,7 @@ describe("svm_spoke.bundle", () => {
         owner,
         stateAccountData.rootBundleId,
         relayerRefundLeaves[i] as RelayerRefundLeafSolana,
-        proof[i],
+        proof[i]
       );
       await program.methods
         .executeRelayerRefundLeaf()
@@ -1402,11 +1402,11 @@ describe("svm_spoke.bundle", () => {
       } else {
         [refundA] = PublicKey.findProgramAddressSync(
           [Buffer.from("claim_account"), mint.toBuffer(), relayerA.publicKey.toBuffer()],
-          program.programId,
+          program.programId
         );
         [refundB] = PublicKey.findProgramAddressSync(
           [Buffer.from("claim_account"), mint.toBuffer(), relayerB.publicKey.toBuffer()],
-          program.programId,
+          program.programId
         );
         await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: relayerA.publicKey }).rpc();
         await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: relayerB.publicKey }).rpc();
@@ -1558,7 +1558,7 @@ describe("svm_spoke.bundle", () => {
       assert.strictEqual(
         err.error.errorCode.code,
         "InsufficientSpokePoolBalanceToExecuteLeaf",
-        "Expected error code InsufficientSpokePoolBalanceToExecuteLeaf",
+        "Expected error code InsufficientSpokePoolBalanceToExecuteLeaf"
       );
     }
   });
@@ -1585,7 +1585,7 @@ describe("svm_spoke.bundle", () => {
           const buf = Buffer.alloc(8);
           amount.toArrayLike(Buffer, "le", 8).copy(buf);
           return buf;
-        }),
+        })
       );
 
       const refundAddressesBuffer = Buffer.concat(input.refundAddresses.map((address) => address.toBuffer()));
@@ -1675,7 +1675,7 @@ describe("svm_spoke.bundle", () => {
           const buf = Buffer.alloc(8);
           amount.toArrayLike(Buffer, "le", 8).copy(buf);
           return buf;
-        }),
+        })
       );
 
       const refundAddressesBuffer = Buffer.concat(input.refundAddresses.map((address) => address.toBuffer()));
@@ -1769,12 +1769,12 @@ describe("svm_spoke.bundle", () => {
 
         const [claimAccount] = PublicKey.findProgramAddressSync(
           [Buffer.from("claim_account"), mint.toBuffer(), tokenOwner.toBuffer()],
-          program.programId,
+          program.programId
         );
 
         // Create instruction to initialize claim account.
         initializeInstructions.push(
-          await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: tokenOwner }).instruction(),
+          await program.methods.initializeClaimAccount().accounts({ mint, refundAddress: tokenOwner }).instruction()
         );
         claimAccounts.push(claimAccount);
 
@@ -1794,7 +1794,7 @@ describe("svm_spoke.bundle", () => {
           program: program.programId,
         };
         claimInstructions.push(
-          await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).instruction(),
+          await program.methods.claimRelayerRefund().accounts(claimRelayerRefundAccounts).instruction()
         );
       }
 
@@ -1829,7 +1829,7 @@ describe("svm_spoke.bundle", () => {
 
       const [instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), owner.toBuffer()],
-        program.programId,
+        program.programId
       );
 
       const executeAccounts = {
@@ -1867,7 +1867,7 @@ describe("svm_spoke.bundle", () => {
           await sendTransactionWithLookupTable(
             connection,
             instructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
           );
         else
           await web3.sendAndConfirmTransaction(
@@ -1876,7 +1876,7 @@ describe("svm_spoke.bundle", () => {
             [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
-            },
+            }
           );
       } else {
         // Send claim account initialization, execution and claim in separate transactions.
@@ -1884,17 +1884,17 @@ describe("svm_spoke.bundle", () => {
           await sendTransactionWithLookupTable(
             connection,
             initializeInstructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
           );
           await sendTransactionWithLookupTable(
             connection,
             [executeInstruction],
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
           );
           await sendTransactionWithLookupTable(
             connection,
             claimInstructions,
-            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer,
+            (anchor.AnchorProvider.env().wallet as anchor.Wallet).payer
           );
         } else {
           await web3.sendAndConfirmTransaction(
@@ -1903,7 +1903,7 @@ describe("svm_spoke.bundle", () => {
             [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
-            },
+            }
           );
           await web3.sendAndConfirmTransaction(
             connection,
@@ -1911,7 +1911,7 @@ describe("svm_spoke.bundle", () => {
             [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
-            },
+            }
           );
           await web3.sendAndConfirmTransaction(
             connection,
@@ -1919,7 +1919,7 @@ describe("svm_spoke.bundle", () => {
             [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
             {
               commitment: "confirmed",
-            },
+            }
           );
         }
       }
@@ -1928,7 +1928,7 @@ describe("svm_spoke.bundle", () => {
       const refundBalances = await Promise.all(
         tokenAccounts.map(async (account) => {
           return (await connection.getTokenAccountBalance(account)).value.amount;
-        }),
+        })
       );
       refundBalances.forEach((balance, i) => {
         assertSE(balance, refundAmounts[i].toString(), `Refund account ${i} balance should match refund amount`);

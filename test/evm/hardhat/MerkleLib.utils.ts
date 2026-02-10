@@ -47,7 +47,7 @@ export function buildRelayerRefundLeaves(
   amountsToReturn: BigNumber[],
   l2Tokens: string[],
   refundAddresses: string[][],
-  refundAmounts: BigNumber[][],
+  refundAmounts: BigNumber[][]
 ): RelayerRefundLeaf[] {
   return Array(destinationChainIds.length)
     .fill(0)
@@ -89,7 +89,7 @@ export function buildPoolRebalanceLeaves(
   bundleLpFees: BigNumber[][],
   netSendAmounts: BigNumber[][],
   runningBalances: BigNumber[][],
-  groupIndex: number[],
+  groupIndex: number[]
 ): PoolRebalanceLeaf[] {
   return Array(destinationChainIds.length)
     .fill(0)
@@ -109,7 +109,7 @@ export function buildPoolRebalanceLeaves(
 export async function constructSingleRelayerRefundTree(
   l2Token: Contract | String,
   destinationChainId: number,
-  amount?: BigNumber,
+  amount?: BigNumber
 ) {
   const amountToUse = amount !== undefined ? amount : amountToReturn;
 
@@ -118,7 +118,7 @@ export async function constructSingleRelayerRefundTree(
     [amountToUse], // Use the explicitly determined amount
     [l2Token as string], // l2Token.
     [[]], // refundAddresses.
-    [[]], // refundAmounts.
+    [[]] // refundAmounts.
   );
 
   const tree = await buildRelayerRefundTree(leaves);
@@ -130,7 +130,7 @@ export async function constructSingleChainTree(
   token: string,
   scalingSize = 1,
   repaymentChain = repaymentChainId,
-  decimals = 18,
+  decimals = 18
 ) {
   const tokensSendToL2 = toBNWeiWithDecimals(100 * scalingSize, decimals);
   const realizedLpFees = toBNWeiWithDecimals(10 * scalingSize, decimals);
@@ -140,7 +140,7 @@ export async function constructSingleChainTree(
     [[realizedLpFees]], // bundleLpFees.
     [[tokensSendToL2]], // netSendAmounts.
     [[tokensSendToL2]], // runningBalances.
-    [0], // groupIndex
+    [0] // groupIndex
   );
   const tree = await buildPoolRebalanceLeafTree(leaves);
 

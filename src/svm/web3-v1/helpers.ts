@@ -11,7 +11,7 @@ import { keccak256 } from "ethers/lib/utils";
  */
 export const getSolanaChainId = (cluster: "devnet" | "mainnet"): BigNumber => {
   return BigNumber.from(
-    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFF"),
+    BigInt(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`solana-${cluster}`))) & BigInt("0xFFFFFFFFFFFF")
   );
 };
 
@@ -229,7 +229,7 @@ export function getDepositNowSeedHash(depositData: {
  */
 export function getDepositNowPda(
   depositData: Parameters<typeof getDepositNowSeedHash>[0],
-  programId: PublicKey,
+  programId: PublicKey
 ): PublicKey {
   const seedHash = getDepositNowSeedHash(depositData);
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);
@@ -274,7 +274,7 @@ const fillDelegateSeedSchema = new Map<any, any>([
 export function getFillRelayDelegateSeedHash(
   relayHash: Uint8Array,
   repaymentChainId: BN,
-  repaymentAddress: PublicKey,
+  repaymentAddress: PublicKey
 ): Uint8Array {
   const ds = new FillDelegateSeedData({
     relayHash,
@@ -292,7 +292,7 @@ export function getFillRelayDelegatePda(
   relayHash: Uint8Array,
   repaymentChainId: BN,
   repaymentAddress: PublicKey,
-  programId: PublicKey,
+  programId: PublicKey
 ): { seedHash: Uint8Array; pda: PublicKey } {
   const seedHash = getFillRelayDelegateSeedHash(relayHash, repaymentChainId, repaymentAddress);
   const [pda] = PublicKey.findProgramAddressSync([Buffer.from("delegate"), seedHash], programId);

@@ -40,7 +40,7 @@ let depositor: SignerWithAddress, recipient: SignerWithAddress, relayer: SignerW
 // as a convenience.
 async function getRelayExecutionParams(
   _relayData: V3RelayData,
-  destinationChainId: number,
+  destinationChainId: number
 ): Promise<V3RelayExecutionParams> {
   return {
     relay: _relayData,
@@ -105,13 +105,13 @@ describe("SpokePool Relayer Logic", async function () {
         };
         expect(
           newBytes32Keys.every(
-            (key) => ethers.utils.hexDataLength(legacyRelayData[key as keyof typeof legacyRelayData] as string) === 20,
-          ),
+            (key) => ethers.utils.hexDataLength(legacyRelayData[key as keyof typeof legacyRelayData] as string) === 20
+          )
         ).to.be.true;
         expect(
           newBytes32Keys.every(
-            (key) => ethers.utils.hexDataLength(relayDataCopy[key as keyof typeof relayDataCopy] as string) === 32,
-          ),
+            (key) => ethers.utils.hexDataLength(relayDataCopy[key as keyof typeof relayDataCopy] as string) === 32
+          )
         ).to.be.true;
         const newRelayHash = getV3RelayHash(relayDataCopy, destinationChainId);
         const oldRelayHash = getLegacyV3RelayHash(legacyRelayData, destinationChainId);
@@ -127,8 +127,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         ).to.be.revertedWith("ExpiredFillDeadline");
       });
       it("relay hash already marked filled", async function () {
@@ -138,8 +138,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         ).to.be.revertedWith("RelayFilled");
       });
       it("fast fill replacing speed up request emits correct FillType", async function () {
@@ -149,8 +149,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         )
           .to.emit(spokePool, "FilledRelay")
           .withArgs(
@@ -174,7 +174,7 @@ describe("SpokePool Relayer Logic", async function () {
               relayExecution.updatedOutputAmount,
               // Testing that this FillType is not "FastFill"
               FillType.ReplacedSlowFill,
-            ],
+            ]
           );
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
@@ -185,8 +185,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            true, // isSlowFill
-          ),
+            true // isSlowFill
+          )
         )
           .to.emit(spokePool, "FilledRelay")
           .withArgs(
@@ -210,7 +210,7 @@ describe("SpokePool Relayer Logic", async function () {
               relayExecution.updatedOutputAmount,
               // Testing that this FillType is "SlowFill"
               FillType.SlowFill,
-            ],
+            ]
           );
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
@@ -220,8 +220,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         )
           .to.emit(spokePool, "FilledRelay")
           .withArgs(
@@ -244,7 +244,7 @@ describe("SpokePool Relayer Logic", async function () {
               hashNonEmptyMessage(relayExecution.updatedMessage),
               relayExecution.updatedOutputAmount,
               FillType.FastFill,
-            ],
+            ]
           );
         expect(await spokePool.fillStatuses(relayExecution.relayHash)).to.equal(FillStatus.Filled);
       });
@@ -259,8 +259,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         ).to.emit(destErc20, "Transfer");
       });
       it("sends updatedOutputAmount to updatedRecipient", async function () {
@@ -279,8 +279,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             _relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         ).to.changeTokenBalance(destErc20, depositor, amountToDeposit.mul(2));
       });
       it("unwraps native token if sending to EOA", async function () {
@@ -293,8 +293,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            false, // isSlowFill
-          ),
+            false // isSlowFill
+          )
         ).to.changeEtherBalance(recipient, relayExecution.updatedOutputAmount);
       });
       it("slow fills send native token out of spoke pool balance", async function () {
@@ -309,8 +309,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            true, // isSlowFill
-          ),
+            true // isSlowFill
+          )
         ).to.changeEtherBalance(recipient, relayExecution.updatedOutputAmount);
         const spokeBalance = await weth.balanceOf(spokePool.address);
         expect(spokeBalance).to.equal(initialSpokeBalance.sub(relayExecution.updatedOutputAmount));
@@ -322,8 +322,8 @@ describe("SpokePool Relayer Logic", async function () {
           spokePool.connect(relayer).fillRelayV3Internal(
             relayExecution,
             addressToBytes(relayer.address),
-            true, // isSlowFill
-          ),
+            true // isSlowFill
+          )
         ).to.changeTokenBalance(destErc20, spokePool, relayExecution.updatedOutputAmount.mul(-1));
       });
       it("if recipient is contract that implements message handler, calls message handler", async function () {
@@ -340,14 +340,14 @@ describe("SpokePool Relayer Logic", async function () {
         await spokePool.connect(relayer).fillRelayV3Internal(
           relayExecution,
           addressToBytes(relayer.address),
-          false, // isSlowFill
+          false // isSlowFill
         );
 
         expect(acrossMessageHandler.handleV3AcrossMessage).to.have.been.calledOnceWith(
           bytes32ToAddress(_relayData.outputToken),
           relayExecution.updatedOutputAmount,
           relayer.address, // Custom relayer
-          _relayData.message,
+          _relayData.message
         );
       });
     });
@@ -355,7 +355,7 @@ describe("SpokePool Relayer Logic", async function () {
       it("fills are not paused", async function () {
         await spokePool.pauseFills(true);
         await expect(
-          spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address)),
+          spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address))
         ).to.be.revertedWith("FillsArePaused");
       });
       it("reentrancy protected", async function () {
@@ -365,7 +365,7 @@ describe("SpokePool Relayer Logic", async function () {
           addressToBytes(relayer.address),
         ]);
         await expect(spokePool.connect(relayer).callback(functionCalldata)).to.be.revertedWith(
-          "ReentrancyGuard: reentrant call",
+          "ReentrancyGuard: reentrant call"
         );
       });
       it("must be exclusive relayer before exclusivity deadline", async function () {
@@ -376,14 +376,14 @@ describe("SpokePool Relayer Logic", async function () {
           exclusivityDeadline: relayData.fillDeadline,
         };
         await expect(
-          spokePool.connect(relayer).fillRelay(_relayData, repaymentChainId, addressToBytes(relayer.address)),
+          spokePool.connect(relayer).fillRelay(_relayData, repaymentChainId, addressToBytes(relayer.address))
         ).to.be.revertedWith("NotExclusiveRelayer");
 
         // Can send it after exclusivity deadline
         await expect(
           spokePool
             .connect(relayer)
-            .fillRelay({ ..._relayData, exclusivityDeadline: 0 }, repaymentChainId, addressToBytes(relayer.address)),
+            .fillRelay({ ..._relayData, exclusivityDeadline: 0 }, repaymentChainId, addressToBytes(relayer.address))
         ).to.not.be.reverted;
       });
       it("calls _fillRelayV3 with expected params", async function () {
@@ -410,7 +410,7 @@ describe("SpokePool Relayer Logic", async function () {
               relayData.outputAmount, // updatedOutputAmount should be equal to outputAmount
               // Should be FastFill
               FillType.FastFill,
-            ],
+            ]
           );
       });
       it("calls legacy (address) fillRelayV3 with expected params", async function () {
@@ -445,7 +445,7 @@ describe("SpokePool Relayer Logic", async function () {
               relayData.outputAmount, // updatedOutputAmount should be equal to outputAmount
               // Should be FastFill
               FillType.FastFill,
-            ],
+            ]
           );
       });
     });
@@ -465,7 +465,7 @@ describe("SpokePool Relayer Logic", async function () {
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
-          updatedMessage,
+          updatedMessage
         );
       });
       it("Verifies same signature as speedUpDeposit", async function () {
@@ -481,7 +481,7 @@ describe("SpokePool Relayer Logic", async function () {
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
-            signature,
+            signature
           );
         await spokePool
           .connect(depositor)
@@ -491,7 +491,7 @@ describe("SpokePool Relayer Logic", async function () {
             updatedOutputAmount,
             updatedRecipient,
             updatedMessage,
-            signature,
+            signature
           );
         await spokePool
           .connect(depositor)
@@ -501,7 +501,7 @@ describe("SpokePool Relayer Logic", async function () {
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
-            signature,
+            signature
           );
       });
       it("in absence of exclusivity", async function () {
@@ -517,8 +517,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.emit(spokePool, "FilledRelay");
       });
       it("must be exclusive relayer before exclusivity deadline", async function () {
@@ -538,8 +538,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("NotExclusiveRelayer");
 
         // Even if not exclusive relayer, can send it after exclusivity deadline
@@ -554,8 +554,8 @@ describe("SpokePool Relayer Logic", async function () {
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
-            signature,
-          ),
+            signature
+          )
         ).to.not.be.reverted;
 
         // @dev: However note that if the relayer modifies the relay data in production such that it doesn't match a
@@ -574,8 +574,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         )
           .to.emit(spokePool, "FilledRelay")
           .withArgs(
@@ -600,7 +600,7 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               // Should be FastFill
               FillType.FastFill,
-            ],
+            ]
           );
 
         // Check fill status mapping is updated
@@ -619,8 +619,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect signature for new deposit ID
@@ -630,7 +630,7 @@ describe("SpokePool Relayer Logic", async function () {
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
-          updatedMessage,
+          updatedMessage
         );
         await expect(
           spokePool
@@ -642,8 +642,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              otherSignature,
-            ),
+              otherSignature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect origin chain ID
@@ -657,8 +657,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect deposit ID
@@ -672,8 +672,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect updated output amount
@@ -687,8 +687,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount.sub(1),
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect updated recipient
@@ -702,8 +702,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(randomAddress()),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
 
         // Incorrect updated message
@@ -717,8 +717,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              createRandomBytes32(),
-            ),
+              createRandomBytes32()
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
       });
       it("validates ERC-1271 depositor contract signature", async function () {
@@ -730,7 +730,7 @@ describe("SpokePool Relayer Logic", async function () {
           relayData.originChainId,
           updatedOutputAmount,
           addressToBytes(updatedRecipient),
-          updatedMessage,
+          updatedMessage
         );
         await expect(
           spokePool
@@ -742,8 +742,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              incorrectSignature,
-            ),
+              incorrectSignature
+            )
         ).to.be.revertedWith("InvalidDepositorSignature");
         await expect(
           spokePool
@@ -755,8 +755,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.not.be.reverted;
       });
       it("cannot send updated fill after original fill", async function () {
@@ -771,8 +771,8 @@ describe("SpokePool Relayer Logic", async function () {
               updatedOutputAmount,
               addressToBytes(updatedRecipient),
               updatedMessage,
-              signature,
-            ),
+              signature
+            )
         ).to.be.revertedWith("RelayFilled");
       });
       it("cannot send updated fill after slow fill", async function () {
@@ -785,10 +785,10 @@ describe("SpokePool Relayer Logic", async function () {
             updatedOutputAmount,
             addressToBytes(updatedRecipient),
             updatedMessage,
-            signature,
+            signature
           );
         await expect(
-          spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address)),
+          spokePool.connect(relayer).fillRelay(relayData, repaymentChainId, addressToBytes(relayer.address))
         ).to.be.revertedWith("RelayFilled");
       });
     });

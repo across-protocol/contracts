@@ -40,5 +40,5 @@ main().then(
   (error) => {
     console.log(error);
     process.exit(1);
-  },
+  }
 );

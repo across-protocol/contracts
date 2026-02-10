@@ -17,7 +17,7 @@ export async function sendTransactionWithLookupTable(
   connection: Connection,
   instructions: TransactionInstruction[],
   sender: Keypair,
-  additionalSigners: Keypair[] = [],
+  additionalSigners: Keypair[] = []
 ): Promise<{ txSignature: string; lookupTableAddress: PublicKey }> {
   // Maximum number of accounts that can be added to Address Lookup Table (ALT) in a single transaction.
   const maxExtendedAccounts = 30;
@@ -28,8 +28,8 @@ export async function sendTransactionWithLookupTable(
       instructions.flatMap((instruction) => [
         instruction.programId,
         ...instruction.keys.map((accountMeta) => accountMeta.pubkey),
-      ]),
-    ),
+      ])
+    )
   );
 
   // Create instructions for creating and extending the ALT.
@@ -76,7 +76,7 @@ export async function sendTransactionWithLookupTable(
       payerKey: sender.publicKey,
       recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
       instructions,
-    }).compileToV0Message([lookupTableAccount]),
+    }).compileToV0Message([lookupTableAccount])
   );
 
   // Sign and submit the versioned transaction.
@@ -87,7 +87,7 @@ export async function sendTransactionWithLookupTable(
   let block = await connection.getLatestBlockhash();
   await connection.confirmTransaction(
     { signature: txSignature, blockhash: block.blockhash, lastValidBlockHeight: block.lastValidBlockHeight },
-    "confirmed",
+    "confirmed"
   );
 
   return { txSignature, lookupTableAddress };
@@ -101,7 +101,7 @@ export async function sendTransactionWithExistingLookupTable(
   instructions: TransactionInstruction[],
   lookupTableAccount: AddressLookupTableAccount,
   sender: Keypair,
-  additionalSigners: Keypair[] = [],
+  additionalSigners: Keypair[] = []
 ): Promise<string> {
   // Create the versioned transaction
   const versionedTx = new VersionedTransaction(
@@ -109,7 +109,7 @@ export async function sendTransactionWithExistingLookupTable(
       payerKey: sender.publicKey,
       recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
       instructions,
-    }).compileToV0Message([lookupTableAccount]),
+    }).compileToV0Message([lookupTableAccount])
   );
 
   // Sign and submit the versioned transaction.
@@ -120,7 +120,7 @@ export async function sendTransactionWithExistingLookupTable(
   let block = await connection.getLatestBlockhash();
   await connection.confirmTransaction(
     { signature: txSignature, blockhash: block.blockhash, lastValidBlockHeight: block.lastValidBlockHeight },
-    "confirmed",
+    "confirmed"
   );
 
   return txSignature;

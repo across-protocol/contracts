@@ -82,7 +82,7 @@ async function main() {
         type: "function",
       },
     ],
-    signer,
+    signer
   );
   const usdh = new Contract(
     "0x111111a1a0667d36bD57c0A9f569b98057111111",
@@ -122,7 +122,7 @@ async function main() {
         type: "function",
       },
     ],
-    signer,
+    signer
   );
 
   // Approve (1000 x amountToDeposit) USDH to be spent by the deposit handler.
@@ -172,5 +172,5 @@ main().then(
   (error) => {
     console.log(error);
     process.exit(1);
-  },
+  }
 );

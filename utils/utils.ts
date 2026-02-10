@@ -20,7 +20,7 @@ function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): sign
 
 export async function getContractFactory(
   name: string,
-  signerOrFactoryOptions: Signer | FactoryOptions,
+  signerOrFactoryOptions: Signer | FactoryOptions
 ): Promise<ContractFactory> {
   try {
     // First, try get the artifact from this repo.
@@ -120,7 +120,7 @@ export async function seedWallet(
   walletToFund: Signer,
   tokens: Contract[],
   weth: Contract | undefined,
-  amountToSeedWith: number | BigNumber,
+  amountToSeedWith: number | BigNumber
 ) {
   for (const token of tokens) await token.mint(await walletToFund.getAddress(), amountToSeedWith);
 
@@ -132,7 +132,7 @@ export async function seedContract(
   walletToFund: Signer,
   tokens: Contract[],
   weth: Contract | undefined,
-  amountToSeedWith: number | BigNumber,
+  amountToSeedWith: number | BigNumber
 ) {
   await seedWallet(walletToFund, tokens, weth, amountToSeedWith);
   for (const token of tokens) await token.connect(walletToFund).transfer(contract.address, amountToSeedWith);

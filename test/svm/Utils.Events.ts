@@ -21,7 +21,7 @@ describe("utils.events", () => {
         lastValidBlockHeight: latestBlockHash.lastValidBlockHeight,
         signature: tx,
       },
-      "confirmed",
+      "confirmed"
     );
 
     const txDetails = await program.provider.connection.getTransaction(tx, {
@@ -74,7 +74,7 @@ describe("utils.events", () => {
       {
         limit: 1000,
       },
-      "confirmed",
+      "confirmed"
     );
 
     let recoveredFunctionName;

@@ -23,7 +23,7 @@ describe("SpokePool Upgrade Functions", async function () {
 
     // Only owner can upgrade.
     await expect(spokePool.connect(rando).upgradeToAndCall(spokePoolV2, reinitializeData.data)).to.be.revertedWith(
-      "Ownable: caller is not the owner",
+      "Ownable: caller is not the owner"
     );
     await spokePool.connect(owner).upgradeToAndCall(spokePoolV2, reinitializeData.data);
 
@@ -33,7 +33,7 @@ describe("SpokePool Upgrade Functions", async function () {
 
     // Can't reinitialize again.
     expect(spokePoolContract.reinitialize(newHubPool)).to.be.revertedWith(
-      "Contract instance has already been initialized",
+      "Contract instance has already been initialized"
     );
 
     // Can call new function.

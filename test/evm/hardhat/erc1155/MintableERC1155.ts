@@ -21,7 +21,7 @@ describe("MintableERC1155", () => {
 
     it("revert if not called by owner", async () => {
       await expect(mintableErc1155.connect(otherAccount1).airdrop(tokenId, recipients, 1)).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+        "Ownable: caller is not the owner"
       );
     });
 
@@ -38,7 +38,7 @@ describe("MintableERC1155", () => {
   describe("#setTokenURI() + #uri()", () => {
     it("revert if not called by owner", async () => {
       await expect(mintableErc1155.connect(otherAccount1).setTokenURI(0, "uri")).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+        "Ownable: caller is not the owner"
       );
     });
 
@@ -46,7 +46,7 @@ describe("MintableERC1155", () => {
       await mintableErc1155.connect(contractCreator).setTokenURI(0, "test");
 
       await expect(mintableErc1155.connect(contractCreator).setTokenURI(0, "new uri")).to.be.revertedWith(
-        "uri already set",
+        "uri already set"
       );
     });
 

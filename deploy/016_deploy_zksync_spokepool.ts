@@ -37,7 +37,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const zkUSDCBridgeDefined = zkUSDCBridge !== ZERO_ADDRESS;
     assert(
       cctpTokenMessengerDefined !== zkUSDCBridgeDefined,
-      "Only one of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address",
+      "Only one of zkUSDCBridge and cctpTokenMessenger should be set to a non-zero address"
     );
   }
   const constructorArgs = [

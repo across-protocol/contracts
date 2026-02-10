@@ -152,15 +152,15 @@ async function depositForBurn(): Promise<void> {
   const rentFund = findProgramAddress("rent_fund", programId).publicKey;
   const [minimumDeposit] = PublicKey.findProgramAddressSync(
     [Buffer.from("minimum_deposit"), burnToken.toBuffer()],
-    programId,
+    programId
   );
   const [denylistAccount] = PublicKey.findProgramAddressSync(
     [Buffer.from("denylist_account"), depositor.publicKey.toBuffer()],
-    tokenMessengerMinterV2Program.programId,
+    tokenMessengerMinterV2Program.programId
   );
   const tokenMessengerMinterSenderAuthority = findProgramAddress(
     "sender_authority",
-    tokenMessengerMinterV2Program.programId,
+    tokenMessengerMinterV2Program.programId
   ).publicKey;
   const messageTransmitter = findProgramAddress("message_transmitter", messageTransmitterV2Program.programId).publicKey;
   const tokenMessenger = findProgramAddress("token_messenger", tokenMessengerMinterV2Program.programId).publicKey;
@@ -171,7 +171,7 @@ async function depositForBurn(): Promise<void> {
   const cctpEventAuthority = findProgramAddress("__event_authority", tokenMessengerMinterV2Program.programId).publicKey;
   const [localToken] = PublicKey.findProgramAddressSync(
     [Buffer.from("local_token"), burnToken.toBuffer()],
-    tokenMessengerMinterV2Program.programId,
+    tokenMessengerMinterV2Program.programId
   );
 
   const messageSentEventData = Keypair.generate();
@@ -214,8 +214,8 @@ async function depositForBurn(): Promise<void> {
         quoteDataEvm.destinationCaller,
         quoteDataEvm.maxFee,
         quoteDataEvm.minFinalityThreshold,
-      ],
-    ),
+      ]
+    )
   );
   const hash2 = ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
@@ -229,14 +229,14 @@ async function depositForBurn(): Promise<void> {
         quoteDataEvm.finalToken,
         quoteDataEvm.executionMode,
         ethers.utils.keccak256(quoteDataEvm.actionData),
-      ],
-    ),
+      ]
+    )
   );
   const typedDataHash = ethers.utils.keccak256(
-    ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32"], [hash1, hash2]),
+    ethers.utils.defaultAbiCoder.encode(["bytes32", "bytes32"], [hash1, hash2])
   );
   const signature = Array.from(
-    Buffer.from(ethers.utils.arrayify(ethers.utils.joinSignature(quoteSigner._signingKey().signDigest(typedDataHash)))),
+    Buffer.from(ethers.utils.arrayify(ethers.utils.joinSignature(quoteSigner._signingKey().signDigest(typedDataHash))))
   );
 
   // Encode quote for Solana
@@ -329,7 +329,7 @@ async function depositForBurn(): Promise<void> {
     if (/Transaction too large/i.test(msg)) {
       if (!lookupTable) {
         throw new Error(
-          "Transaction too large, please provide an address lookup table using the --lookupTable option.",
+          "Transaction too large, please provide an address lookup table using the --lookupTable option."
         );
       }
 
@@ -343,7 +343,7 @@ async function depositForBurn(): Promise<void> {
         [ix],
         lookupTableAccount,
         depositor,
-        [messageSentEventData],
+        [messageSentEventData]
       );
       console.log("Deposited to the sponsored CCTP bridge successfully, transaction signature:", txSignature);
     } else {

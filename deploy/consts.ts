@@ -348,7 +348,7 @@ export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
  * @link https://developers.circle.com/stablecoins/docs/supported-domains
  */
 export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
-  Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain]),
+  Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
 );
 
 const createChainMap = <T>(selector: (network: any) => T) =>

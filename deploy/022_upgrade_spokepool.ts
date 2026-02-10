@@ -14,7 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const newImplementation = await hre.upgrades.prepareUpgrade(
     spokePool.address,
     await getContractFactory("Ethereum_SpokePool", deployer),
-    { constructorArgs: [WETH[chainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER] },
+    { constructorArgs: [WETH[chainId], QUOTE_TIME_BUFFER, FILL_DEADLINE_BUFFER] }
   );
   console.log(`Can upgrade to new implementation @ ${newImplementation}`);
 

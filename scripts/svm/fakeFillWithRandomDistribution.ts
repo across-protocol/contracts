@@ -99,7 +99,7 @@ async function fillRelayToRandom(): Promise<void> {
       recipientATA,
       handlerSigner,
       BigInt(distributionAmount.toString()),
-      tokenDecimals,
+      tokenDecimals
     );
     transferInstructions.push(transferInstruction);
   }
@@ -136,7 +136,7 @@ async function fillRelayToRandom(): Promise<void> {
   // Define the state account PDA
   const [statePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   // Fetch the state from the on-chain program to get chainId
@@ -169,7 +169,7 @@ async function fillRelayToRandom(): Promise<void> {
     Object.entries(relayData).map(([key, value]) => ({
       key,
       value: key === "message" ? (value as Buffer).toString("hex") : value.toString(),
-    })),
+    }))
   );
 
   // Delegate to pull relayer tokens.
@@ -177,7 +177,7 @@ async function fillRelayToRandom(): Promise<void> {
     relayHashUint8Array,
     repaymentChain,
     repaymentAddress,
-    program.programId,
+    program.programId
   ).pda;
   const approveInstruction = await createApproveCheckedInstruction(
     relayerTokenAccount,
@@ -187,7 +187,7 @@ async function fillRelayToRandom(): Promise<void> {
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
     undefined,
-    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID
   );
 
   // Prepare fill instruction as we will need to use Address Lookup Table (ALT).
@@ -199,7 +199,7 @@ async function fillRelayToRandom(): Promise<void> {
   const [instructionParams] = bufferParams
     ? PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
-        program.programId,
+        program.programId
       )
     : [program.programId];
 
@@ -231,7 +231,7 @@ async function fillRelayToRandom(): Promise<void> {
   const { txSignature } = await sendTransactionWithLookupTable(
     provider.connection,
     [approveInstruction, fillInstruction],
-    signer,
+    signer
   );
 
   console.log("Transaction signature:", txSignature);

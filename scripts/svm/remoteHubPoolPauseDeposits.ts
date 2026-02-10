@@ -56,22 +56,22 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
   const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
   const [authorityPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter_authority"), svmSpokeProgram.programId.toBuffer()],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
   const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
   const [eventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("__event_authority")],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;

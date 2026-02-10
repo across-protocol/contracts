@@ -12,14 +12,14 @@ export async function loadExecuteRelayerRefundLeafParams(
   caller: PublicKey,
   rootBundleId: number,
   relayerRefundLeaf: RelayerRefundLeafSolana,
-  proof: number[][],
+  proof: number[][]
 ) {
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
   // Close the instruction params account if the caller has used it before.
   const [instructionParams] = PublicKey.findProgramAddressSync(
     [Buffer.from("instruction_params"), caller.toBuffer()],
-    program.programId,
+    program.programId
   );
   const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
   if (accountInfo !== null) await program.methods.closeInstructionParams().rpc();
@@ -46,7 +46,7 @@ export async function loadExecuteRelayerRefundLeafParams(
 export async function closeInstructionParams(program: Program<SvmSpoke>, signer: Keypair) {
   const [instructionParams] = PublicKey.findProgramAddressSync(
     [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
-    program.programId,
+    program.programId
   );
   const accountInfo = await program.provider.connection.getAccountInfo(instructionParams);
   if (accountInfo !== null) {
@@ -63,7 +63,7 @@ export async function createFillRelayParamsInstructions(
   signer: PublicKey,
   relayData: RelayData,
   repaymentChainId: BN,
-  repaymentAddress: PublicKey,
+  repaymentAddress: PublicKey
 ) {
   const maxInstructionParamsFragment = 900; // Should not exceed message size limit when writing to the data account.
 
@@ -76,13 +76,13 @@ export async function createFillRelayParamsInstructions(
 
   const loadInstructions: TransactionInstruction[] = [];
   loadInstructions.push(
-    await program.methods.initializeInstructionParams(instructionParamsBytes.length).accounts({ signer }).instruction(),
+    await program.methods.initializeInstructionParams(instructionParamsBytes.length).accounts({ signer }).instruction()
   );
 
   for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
     const fragment = instructionParamsBytes.slice(i, i + maxInstructionParamsFragment);
     loadInstructions.push(
-      await program.methods.writeInstructionParamsFragment(i, fragment).accounts({ signer }).instruction(),
+      await program.methods.writeInstructionParamsFragment(i, fragment).accounts({ signer }).instruction()
     );
   }
 
@@ -99,7 +99,7 @@ export async function loadFillRelayParams(
   signer: Keypair,
   relayData: RelayData,
   repaymentChainId: BN,
-  repaymentAddress: PublicKey,
+  repaymentAddress: PublicKey
 ) {
   // Close the instruction params account if the caller has used it before.
   await closeInstructionParams(program, signer);
@@ -110,7 +110,7 @@ export async function loadFillRelayParams(
     signer.publicKey,
     relayData,
     repaymentChainId,
-    repaymentAddress,
+    repaymentAddress
   );
   for (let i = 0; i < loadInstructions.length; i += 1) {
     await sendAndConfirmTransaction(program.provider.connection, new Transaction().add(loadInstructions[i]), [signer]);
@@ -135,7 +135,7 @@ export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, sign
     await program.methods
       .initializeInstructionParams(instructionParamsBytes.length)
       .accounts({ signer: signer.publicKey })
-      .instruction(),
+      .instruction()
   );
 
   for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
@@ -144,7 +144,7 @@ export async function loadRequestSlowFillParams(program: Program<SvmSpoke>, sign
       await program.methods
         .writeInstructionParamsFragment(i, fragment)
         .accounts({ signer: signer.publicKey })
-        .instruction(),
+        .instruction()
     );
   }
 
@@ -159,7 +159,7 @@ export async function loadExecuteSlowRelayLeafParams(
   signer: Keypair,
   slowFillLeaf: SlowFillLeaf,
   rootBundleId: number,
-  proof: number[][],
+  proof: number[][]
 ) {
   // Close the instruction params account if the caller has used it before.
   await closeInstructionParams(program, signer);
@@ -179,7 +179,7 @@ export async function loadExecuteSlowRelayLeafParams(
     await program.methods
       .initializeInstructionParams(instructionParamsBytes.length)
       .accounts({ signer: signer.publicKey })
-      .instruction(),
+      .instruction()
   );
 
   for (let i = 0; i < instructionParamsBytes.length; i += maxInstructionParamsFragment) {
@@ -188,7 +188,7 @@ export async function loadExecuteSlowRelayLeafParams(
       await program.methods
         .writeInstructionParamsFragment(i, fragment)
         .accounts({ signer: signer.publicKey })
-        .instruction(),
+        .instruction()
     );
   }
 

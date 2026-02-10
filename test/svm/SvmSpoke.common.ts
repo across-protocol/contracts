@@ -40,7 +40,7 @@ const initializeState = async (
     crossDomainAdmin: PublicKey;
     depositQuoteTimeBuffer: BN;
     fillDeadlineBuffer: BN;
-  },
+  }
 ) => {
   const actualSeed = seed || new BN(randomBytes(8).toString("hex"), 16); // Generate a random u64
   const seeds = [Buffer.from("state"), actualSeed.toArrayLike(Buffer, "le", 8)];
@@ -64,7 +64,7 @@ const initializeState = async (
       initialState.remoteDomain.toNumber(),
       initialState.crossDomainAdmin,
       initialState.depositQuoteTimeBuffer.toNumber(),
-      initialState.fillDeadlineBuffer.toNumber(),
+      initialState.fillDeadlineBuffer.toNumber()
     )
     .accounts(initializeAccounts)
     .rpc();
@@ -84,7 +84,7 @@ const getOrCreateVaultAta = async (payer: Signer, tokenMint: PublicKey, state: P
       undefined,
       undefined,
       tokenMintAccount.owner,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     )
   ).address;
 };

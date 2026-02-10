@@ -31,7 +31,7 @@ async function createVault(): Promise<void> {
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   // Define the signer (replace with your actual signer)
@@ -58,7 +58,7 @@ async function createVault(): Promise<void> {
       commitment: "confirmed",
     },
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   console.log("Created vault:", vault.address.toString());

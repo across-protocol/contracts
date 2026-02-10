@@ -44,7 +44,7 @@ describe("multicall_handler", () => {
       recipientATA,
       handlerSigner,
       tokenAmount,
-      mintDecimals,
+      mintDecimals
     );
 
     const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);

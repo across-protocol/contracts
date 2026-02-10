@@ -48,11 +48,11 @@ describe("svm_spoke.handle_receive_message", () => {
     // Get other required accounts.
     [authorityPda] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("message_transmitter_authority"), program.programId.toBuffer()],
-      messageTransmitterProgram.programId,
+      messageTransmitterProgram.programId
     );
     [messageTransmitterState] = web3.PublicKey.findProgramAddressSync(
       [Buffer.from("message_transmitter")],
-      messageTransmitterProgram.programId,
+      messageTransmitterProgram.programId
     );
     usedNonces = await messageTransmitterProgram.methods
       .getNoncePda({
@@ -298,7 +298,7 @@ describe("svm_spoke.handle_receive_message", () => {
     assert.strictEqual(
       stateData.crossDomainAdmin.toString(),
       newCrossDomainAdminPubkey.toString(),
-      "Cross-domain admin should be set",
+      "Cross-domain admin should be set"
     );
   });
 
@@ -461,7 +461,7 @@ describe("svm_spoke.handle_receive_message", () => {
       assert.include(
         err.toString(),
         "Account does not exist or has no data",
-        "Expected error when fetching deleted root bundle",
+        "Expected error when fetching deleted root bundle"
       );
     }
   });

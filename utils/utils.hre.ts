@@ -24,7 +24,7 @@ type unsafeAllowTypes = (
  * @returns HubPool instance, HubPool chain ID and SpokePool chain ID.
  */
 export async function getSpokePoolDeploymentInfo(
-  hre: HardhatRuntimeEnvironment,
+  hre: HardhatRuntimeEnvironment
 ): Promise<{ hubPool: Deployment; hubChainId: number; spokeChainId: number }> {
   const { companionNetworks, getChainId } = hre;
   const spokeChainId = Number(await getChainId());
@@ -42,7 +42,7 @@ export async function deployNewProxy(
   name: string,
   constructorArgs: FnArgs[],
   initArgs: FnArgs[],
-  implementationOnly?: boolean,
+  implementationOnly?: boolean
 ): Promise<{ proxyAddress?: string; implementationAddress: string }> {
   const { deployments, run, upgrades, getChainId } = hre;
   let chainId = Number(await getChainId());

@@ -71,7 +71,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     const relayHashUint8Array = calculateRelayHashUint8Array(relayData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("fills"), relayHashUint8Array],
-      program.programId,
+      program.programId
     );
 
     // Accounts for requestingSlowFill.
@@ -142,7 +142,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       loadRequestParamsInstructions = await loadRequestSlowFillParams(program, relayer, requestSlowFillValues[1]);
       [requestAccounts.instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
-        program.programId,
+        program.programId
       );
     }
     const requestSlowFillParams: RequestSlowFillDataParams = bufferParams
@@ -182,11 +182,11 @@ describe("svm_spoke.slow_fill.across_plus", () => {
         relayer,
         executeSlowRelayLeafValues[1],
         executeSlowRelayLeafValues[2],
-        executeSlowRelayLeafValues[3],
+        executeSlowRelayLeafValues[3]
       );
       [requestAccounts.instructionParams] = PublicKey.findProgramAddressSync(
         [Buffer.from("instruction_params"), relayer.publicKey.toBuffer()],
-        program.programId,
+        program.programId
       );
     }
     const executeSlowRelayLeafParams: ExecuteSlowRelayLeafDataParams = bufferParams
@@ -248,7 +248,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       finalRecipientATA,
       handlerSigner,
       relayData.outputAmount.toNumber(),
-      tokenDecimals,
+      tokenDecimals
     );
 
     const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
@@ -283,7 +283,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     assertSE(
       finalRecipientAccount.amount,
       relayAmount,
-      "Final recipient's balance should be increased by the relay amount",
+      "Final recipient's balance should be increased by the relay amount"
     );
   });
 
@@ -307,7 +307,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
           recipientATA,
           handlerSigner,
           distributionAmount,
-          tokenDecimals,
+          tokenDecimals
         );
         transferInstructions.push(transferInstruction);
       }
@@ -346,7 +346,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
           await sendAndConfirmTransaction(
             program.provider.connection,
             new Transaction().add(loadRequestParamsInstructions[i]),
-            [relayer],
+            [relayer]
           );
         }
       }
@@ -357,7 +357,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
           await sendAndConfirmTransaction(
             program.provider.connection,
             new Transaction().add(loadExecuteParamsInstructions[i]),
-            [relayer],
+            [relayer]
           );
         }
       }
@@ -369,12 +369,12 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       assertSE(
         fVaultBal,
         iVaultBal - BigInt(distributionAmount * numberOfDistributions),
-        "Vault's balance should be reduced by the relay amount",
+        "Vault's balance should be reduced by the relay amount"
       );
 
       // Verify all recipient account balances after the fill.
       const recipientBalances = await Promise.all(
-        recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount),
+        recipientAccounts.map(async (account) => (await connection.getTokenAccountBalance(account)).value.amount)
       );
       recipientBalances.forEach((balance, i) => {
         assertSE(balance, distributionAmount, `Recipient account ${i} balance should match distribution amount`);
@@ -405,7 +405,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       finalRecipientATA,
       handlerSigner,
       relayData.outputAmount.toNumber(),
-      tokenDecimals,
+      tokenDecimals
     );
 
     const multicallHandlerCoder = new MulticallHandlerCoder([transferIx]);
@@ -436,7 +436,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       await sendAndConfirmTransaction(
         program.provider.connection,
         new Transaction().add(loadRequestParamsInstructions[i]),
-        [relayer],
+        [relayer]
       );
     }
     await sendTransactionWithLookupTable(connection, [requestIx], relayer);
@@ -445,7 +445,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
       await sendAndConfirmTransaction(
         program.provider.connection,
         new Transaction().add(loadExecuteParamsInstructions[i]),
-        [relayer],
+        [relayer]
       );
     }
     const { txSignature } = await sendTransactionWithLookupTable(connection, [executeIx], relayer);
@@ -465,7 +465,7 @@ describe("svm_spoke.slow_fill.across_plus", () => {
     const relayHashUint8Array = calculateRelayEventHashUint8Array(eventData, chainId);
     const [fillStatusPDA] = PublicKey.findProgramAddressSync(
       [Buffer.from("fills"), relayHashUint8Array],
-      program.programId,
+      program.programId
     );
     const fillStatusAccount = await program.account.fillStatusAccount.fetch(fillStatusPDA);
     assert.isTrue("filled" in fillStatusAccount.status, "Fill status account should be marked as filled");

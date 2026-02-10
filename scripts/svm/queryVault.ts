@@ -33,7 +33,7 @@ async function queryVault(): Promise<void> {
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   // Compute the vault address
@@ -42,7 +42,7 @@ async function queryVault(): Promise<void> {
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   console.log("Querying vault...");

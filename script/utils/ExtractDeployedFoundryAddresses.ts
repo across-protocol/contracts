@@ -87,7 +87,7 @@ function getTrackedFiles(directory: string): Set<string> {
       .trim()
       .split("\n")
       .filter(Boolean)
-      .map((f) => path.resolve(gitRoot, f)),
+      .map((f) => path.resolve(gitRoot, f))
   );
 }
 
@@ -252,7 +252,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
               contractName += `_${chainId}`;
             } else {
               console.log(
-                `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`,
+                `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
               );
             }
           }

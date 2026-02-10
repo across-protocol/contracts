@@ -104,7 +104,7 @@ describe("svm_spoke.deposit", () => {
         undefined,
         undefined,
         undefined,
-        tokenProgram,
+        tokenProgram
       )
     ).address;
     await mintTo(connection, payer, inputToken, depositorTA, owner, seedBalance, undefined, undefined, tokenProgram);
@@ -131,7 +131,7 @@ describe("svm_spoke.deposit", () => {
 
   const approvedDeposit = async (
     depositData: DepositData,
-    calledDepositAccounts: DepositAccounts = depositAccounts,
+    calledDepositAccounts: DepositAccounts = depositAccounts
   ) => {
     const delegatePda = getDepositPda(depositData as DepositDataSeed, program.programId);
     calledDepositAccounts.delegate = delegatePda;
@@ -145,7 +145,7 @@ describe("svm_spoke.deposit", () => {
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
       undefined,
-      tokenProgram,
+      tokenProgram
     );
     const depositIx = await program.methods
       .deposit(
@@ -160,7 +160,7 @@ describe("svm_spoke.deposit", () => {
         depositData.quoteTimestamp.toNumber(),
         depositData.fillDeadline.toNumber(),
         depositData.exclusivityParameter.toNumber(),
-        depositData.message,
+        depositData.message
       )
       .accounts(calledDepositAccounts)
       .instruction();
@@ -194,7 +194,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       depositorAccount.amount,
       seedBalance - depositData.inputAmount.toNumber(),
-      "Depositor's balance should be reduced by the deposited amount",
+      "Depositor's balance should be reduced by the deposited amount"
     );
 
     // Verify tokens are credited into the vault
@@ -212,7 +212,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       depositorAccount.amount,
       seedBalance - depositData.inputAmount.toNumber() - secondInputAmount.toNumber(),
-      "Depositor's balance should be reduced by the total deposited amount",
+      "Depositor's balance should be reduced by the total deposited amount"
     );
 
     // Verify tokens are credited into the vault again
@@ -220,7 +220,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       vaultAccount.amount,
       depositData.inputAmount.add(secondInputAmount),
-      "Vault balance should be increased by the total deposited amount",
+      "Vault balance should be increased by the total deposited amount"
     );
   });
 
@@ -376,7 +376,7 @@ describe("svm_spoke.deposit", () => {
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
       undefined,
-      tokenProgram,
+      tokenProgram
     );
 
     // Execute the deposit_now call. Remove the quoteTimestamp from the depositData as not needed for this method.
@@ -392,7 +392,7 @@ describe("svm_spoke.deposit", () => {
         depositNowData.exclusiveRelayer!,
         fillDeadlineOffset,
         0,
-        depositNowData.message,
+        depositNowData.message
       )
       .accounts({ ...depositAccounts, delegate: delegatePda })
       .instruction();
@@ -467,7 +467,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       event.exclusivityDeadline,
       currentTime.add(maxExclusivityOffsetSeconds),
-      "exclusivityDeadline should be current time + offset",
+      "exclusivityDeadline should be current time + offset"
     );
   });
 
@@ -522,7 +522,7 @@ describe("svm_spoke.deposit", () => {
     assert.strictEqual(
       expectedDepositIdArray.toString(),
       unsafeDepositIdTx.toString(),
-      "Deposit ID should match the expected hash",
+      "Deposit ID should match the expected hash"
     );
 
     // Delegate state PDA to pull depositor tokens.
@@ -534,7 +534,7 @@ describe("svm_spoke.deposit", () => {
       BigInt(depositData.inputAmount.toString()),
       tokenDecimals,
       undefined,
-      tokenProgram,
+      tokenProgram
     );
 
     // Create the transaction for unsafeDeposit
@@ -552,7 +552,7 @@ describe("svm_spoke.deposit", () => {
         depositData.quoteTimestamp.toNumber(),
         depositData.fillDeadline.toNumber(),
         depositData.exclusivityParameter.toNumber(),
-        depositData.message!,
+        depositData.message!
       )
       .accounts(depositAccounts) // Assuming depositAccounts is already set up correctly
       .instruction();
@@ -583,7 +583,7 @@ describe("svm_spoke.deposit", () => {
     // Enable CPI-guard for the depositor (requires TA reallocation).
     const enableCpiGuardTx = new Transaction().add(
       createReallocateInstruction(depositorTA, payer.publicKey, [ExtensionType.CpiGuard], depositor.publicKey),
-      createEnableCpiGuardInstruction(depositorTA, depositor.publicKey),
+      createEnableCpiGuardInstruction(depositorTA, depositor.publicKey)
     );
     await sendAndConfirmTransaction(connection, enableCpiGuardTx, [payer, depositor]);
 
@@ -599,7 +599,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       depositorAccount.amount,
       seedBalance - depositData.inputAmount.toNumber(),
-      "Depositor's balance should be reduced by the deposited amount",
+      "Depositor's balance should be reduced by the deposited amount"
     );
 
     // Verify tokens are credited into the vault
@@ -646,7 +646,7 @@ describe("svm_spoke.deposit", () => {
       depositor.publicKey,
       depositorTA,
       depositor.publicKey,
-      inputToken,
+      inputToken
     );
 
     const nativeDepositData = {
@@ -664,7 +664,7 @@ describe("svm_spoke.deposit", () => {
       BigInt(nativeAmount),
       nativeDecimals,
       undefined,
-      tokenProgram,
+      tokenProgram
     );
 
     const depositIx = await program.methods
@@ -683,7 +683,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       fVaultAmount,
       iVaultAmount + BigInt(nativeAmount),
-      "Vault balance should be increased by the deposited amount",
+      "Vault balance should be increased by the deposited amount"
     );
   });
 
@@ -723,7 +723,7 @@ describe("svm_spoke.deposit", () => {
       BigInt(nativeAmount),
       nativeDecimals,
       undefined,
-      tokenProgram,
+      tokenProgram
     );
 
     const depositIx = await program.methods
@@ -740,7 +740,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       fVaultAmount,
       iVaultAmount + BigInt(nativeAmount),
-      "Vault balance should be increased by the deposited amount",
+      "Vault balance should be increased by the deposited amount"
     );
   });
 
@@ -754,7 +754,7 @@ describe("svm_spoke.deposit", () => {
       state,
       true,
       inputTokenAccount.owner,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     );
 
     // Update global variables using the new input token.
@@ -774,7 +774,7 @@ describe("svm_spoke.deposit", () => {
     assertSE(
       depositorAccount.amount,
       seedBalance - depositData.inputAmount.toNumber(),
-      "Depositor's balance should be reduced by the deposited amount",
+      "Depositor's balance should be reduced by the deposited amount"
     );
 
     // Verify tokens are credited into the new vault
@@ -862,7 +862,7 @@ describe("svm_spoke.deposit", () => {
         await createDefaultTransaction(rpcClient, signer),
         (tx) => appendTransactionMessageInstruction(approveIx, tx),
         (tx) => appendTransactionMessageInstruction(depositIx, tx),
-        (tx) => signAndSendTransaction(rpcClient, tx),
+        (tx) => signAndSendTransaction(rpcClient, tx)
       );
 
       const events = await readEventsUntilFound(connection, tx, [program]);

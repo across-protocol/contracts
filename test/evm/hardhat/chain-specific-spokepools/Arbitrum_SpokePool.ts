@@ -66,7 +66,7 @@ describe("Arbitrum Spoke Pool", function () {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
         constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, oftHubEid, toWei("1")],
-      },
+      }
     );
 
     await seedContract(arbitrumSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -81,7 +81,7 @@ describe("Arbitrum Spoke Pool", function () {
         kind: "uups",
         unsafeAllow: ["delegatecall"],
         constructorArgs: [l2Weth, 60 * 60, 9 * 60 * 60, l2Usdc, l2CctpTokenMessenger.address, oftHubEid, toWei("1")],
-      },
+      }
     );
 
     // upgradeTo fails unless called by cross domain admin
@@ -131,14 +131,14 @@ describe("Arbitrum Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the Standard L2 Gateway router", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2Dai,
-      await arbitrumSpokePool.callStatic.chainId(),
+      await arbitrumSpokePool.callStatic.chainId()
     );
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
     // Reverts if route from arbitrum to mainnet for l2Dai isn't whitelisted.
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, zeroAddress);
     await expect(
-      arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
+      arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
     ).to.be.revertedWith("Uninitialized mainnet token");
     await arbitrumSpokePool.connect(crossDomainAlias).whitelistToken(l2Dai, dai.address);
 
@@ -162,7 +162,7 @@ describe("Arbitrum Spoke Pool", function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       l2UsdtContract.address,
       await arbitrumSpokePool.callStatic.chainId(),
-      l2UsdtSendAmount,
+      l2UsdtSendAmount
     );
     await arbitrumSpokePool.connect(crossDomainAlias).relayRootBundle(tree.getHexRoot(), mockTreeRoot);
 
@@ -191,7 +191,7 @@ describe("Arbitrum Spoke Pool", function () {
       .executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: oftNativeFee });
     // Adapter should have approved gateway to spend its ERC20.
     expect(await l2UsdtContract.allowance(arbitrumSpokePool.address, l2OftMessenger.address)).to.equal(
-      l2UsdtSendAmount,
+      l2UsdtSendAmount
     );
 
     const sendParam: SendParamStruct = {
@@ -220,7 +220,7 @@ describe("Arbitrum Spoke Pool", function () {
       const treeResult = await constructSingleRelayerRefundTree(
         l2UsdtContract.address,
         await arbitrumSpokePool.callStatic.chainId(),
-        l2UsdtSendAmount,
+        l2UsdtSendAmount
       );
       leaves = treeResult.leaves;
       tree = treeResult.tree;
@@ -236,7 +236,7 @@ describe("Arbitrum Spoke Pool", function () {
       l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: nativeFee }),
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: nativeFee })
       ).to.be.revertedWith("OftLzFeeNotZero");
     });
 
@@ -249,7 +249,7 @@ describe("Arbitrum Spoke Pool", function () {
       l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: highNativeFee }),
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]), { value: highNativeFee })
       ).to.be.revertedWith("OftFeeCapExceeded");
     });
 
@@ -262,7 +262,7 @@ describe("Arbitrum Spoke Pool", function () {
       l2OftMessenger.quoteSend.returns(msgFeeStruct);
 
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
       ).to.be.revertedWith("OFTFeeUnderpaid");
     });
 
@@ -282,7 +282,7 @@ describe("Arbitrum Spoke Pool", function () {
       l2OftMessenger.send.returns([msgReceipt, oftReceipt]);
 
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
       ).to.be.revertedWith("OftIncorrectAmountReceivedLD");
     });
 
@@ -302,7 +302,7 @@ describe("Arbitrum Spoke Pool", function () {
       l2OftMessenger.send.returns([msgReceipt, oftReceipt]);
 
       await expect(
-        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0])),
+        arbitrumSpokePool.executeRelayerRefundLeaf(0, leaves[0], tree.getHexProof(leaves[0]))
       ).to.be.revertedWith("OftIncorrectAmountSentLD");
     });
   });

@@ -70,7 +70,7 @@ async function reclaimUsedNonceAccounts(): Promise<void> {
       console.log(
         `- skipping used nonce account ${usedNonce.toString()} from tx ${
           event.signature
-        } which can be closed only after ${new Date(quoteDeadline * 1000).toUTCString()}`,
+        } which can be closed only after ${new Date(quoteDeadline * 1000).toUTCString()}`
       );
       continue;
     }

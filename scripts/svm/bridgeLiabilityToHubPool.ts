@@ -124,7 +124,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
@@ -151,7 +151,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 
   const [transferLiability] = PublicKey.findProgramAddressSync(
     [Buffer.from("transfer_liability"), new PublicKey(svmUsdc).toBuffer()],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const liability = await svmSpokeProgram.account.transferLiability.fetch(transferLiability);
@@ -167,7 +167,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
     liability.pendingToHubPool,
     provider.wallet as anchor.Wallet,
     statePda,
-    new PublicKey(svmUsdc),
+    new PublicKey(svmUsdc)
   );
 
   const attestationResponse = await getMessages(txHash, solanaDomain, irisApiUrl);
@@ -190,8 +190,8 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
   const usdcBalanceAfter = await usdc.balanceOf(hubPoolAddress);
   console.log(
     `Hub Pool USDC balance after: ${formatUsdc(usdcBalanceAfter)}. Received ${formatUsdc(
-      usdcBalanceAfter.sub(usdcBalanceBefore),
-    )} USDC.`,
+      usdcBalanceAfter.sub(usdcBalanceBefore)
+    )} USDC.`
   );
   console.log("✅ Bridge liability to hub pool completed successfully.");
 }
@@ -204,49 +204,49 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   // Derive the transferLiability PDA
   const [transferLiability] = PublicKey.findProgramAddressSync(
     [Buffer.from("transfer_liability"), inputToken.toBuffer()],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
   const tokenMessengerMinterProgram = getTokenMessengerMinterProgram(provider);
 
   const [tokenMessengerMinterSenderAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("sender_authority")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   const [messageTransmitter] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
 
   const [tokenMessenger] = PublicKey.findProgramAddressSync(
     [Buffer.from("token_messenger")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   const [remoteTokenMessenger] = PublicKey.findProgramAddressSync(
     [Buffer.from("remote_token_messenger"), Buffer.from(anchor.utils.bytes.utf8.encode(ethereumDomain.toString()))],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   const [tokenMinter] = PublicKey.findProgramAddressSync(
     [Buffer.from("token_minter")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   const [localToken] = PublicKey.findProgramAddressSync(
     [Buffer.from("local_token"), inputToken.toBuffer()],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   const [cctpEventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("__event_authority")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   const messageSentEventData = anchor.web3.Keypair.generate(); // This will hold the message sent event data.
@@ -284,7 +284,7 @@ async function bridgeTokensToHubPool(amount: BN, signer: anchor.Wallet, statePda
   console.log(`SVM Spoke Pool Initial Vault balance: ${formatUsdc(BigNumber.from(initialVaultBalance))} USDC.`);
   console.log(`SVM Spoke Pool Final Vault balance: ${formatUsdc(BigNumber.from(finalVaultBalance))} USDC.`);
   console.log(
-    `Sent ${formatUsdc(BigNumber.from(initialVaultBalance).sub(BigNumber.from(finalVaultBalance)))} USDC through CCTP.`,
+    `Sent ${formatUsdc(BigNumber.from(initialVaultBalance).sub(BigNumber.from(finalVaultBalance)))} USDC through CCTP.`
   );
 
   return tx;

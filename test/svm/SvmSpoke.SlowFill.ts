@@ -96,7 +96,7 @@ describe("svm_spoke.slow_fill", () => {
   const relaySlowFillRootBundle = async (
     slowRelayLeafRecipient = recipient,
     slowRelayLeafChainId = chainId,
-    message = encodedMessage,
+    message = encodedMessage
   ) => {
     //TODO: verify that the leaf structure created here is equivalent to the one created by the EVM logic. I think
     // I've gotten the concatenation, endianness, etc correct but want to be sure.
@@ -175,7 +175,7 @@ describe("svm_spoke.slow_fill", () => {
     assert.strictEqual(
       BigInt(initialVaultBalance),
       BigInt(initialMintAmount),
-      "Initial vault balance should be equal to the minted amount",
+      "Initial vault balance should be equal to the minted amount"
     );
 
     const initialRelayData = {
@@ -242,7 +242,7 @@ describe("svm_spoke.slow_fill", () => {
       getFillRelayDelegatePda(relayHashUint8Array, new BN(1), relayer.publicKey, program.programId).pda,
       fillAccounts.signer,
       BigInt(relayData.outputAmount.toString()),
-      tokenDecimals,
+      tokenDecimals
     );
     const fillIx = await program.methods
       .fillRelay(relayHash, relayData, new BN(1), relayer.publicKey)
@@ -295,7 +295,7 @@ describe("svm_spoke.slow_fill", () => {
     assert.equal(
       JSON.stringify(fillStatusAccount.status),
       `{\"requestedSlowFill\":{}}`,
-      "FillStatus should be RequestedSlowFill",
+      "FillStatus should be RequestedSlowFill"
     );
     assert.equal(fillStatusAccount.relayer.toString(), relayer.publicKey.toString(), "Caller should be set as relayer");
   });
@@ -383,12 +383,12 @@ describe("svm_spoke.slow_fill", () => {
     assert.strictEqual(
       BigInt(iVaultBal) - BigInt(fVaultBal),
       BigInt(leaf.updatedOutputAmount.toNumber()),
-      "Vault balance should be reduced by relay amount",
+      "Vault balance should be reduced by relay amount"
     );
     assert.strictEqual(
       BigInt(fRecipientBal) - BigInt(iRecipientBal),
       BigInt(leaf.updatedOutputAmount.toNumber()),
-      "Recipient balance should be increased by relay amount",
+      "Recipient balance should be increased by relay amount"
     );
 
     // Fetch and verify the FilledRelay event
@@ -409,7 +409,7 @@ describe("svm_spoke.slow_fill", () => {
     assertSE(
       event.relayExecutionInfo.updatedMessageHash,
       hashNonEmptyMessage(relayData.message),
-      "UpdatedMessageHash should match",
+      "UpdatedMessageHash should match"
     );
     assertSE(event.relayExecutionInfo.updatedOutputAmount, relayData.outputAmount, "UpdatedOutputAmount should match");
     assert.equal(JSON.stringify(event.relayExecutionInfo.fillType), `{"slowFill":{}}`, "FillType should be SlowFill");
@@ -534,7 +534,7 @@ describe("svm_spoke.slow_fill", () => {
     assert.strictEqual(
       BigInt(fFirstRecipientBal) - BigInt(iFirstRecipientBal),
       BigInt(firstLeaf.updatedOutputAmount.toString()),
-      "First recipient balance should be increased by its relay amount",
+      "First recipient balance should be increased by its relay amount"
     );
 
     // Try to replay execute slow relay leaf for the first recipient using the fill status account that is derived
@@ -610,7 +610,7 @@ describe("svm_spoke.slow_fill", () => {
     const anotherChainId = new BN(Math.floor(Math.random() * 1000000));
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
       undefined,
-      anotherChainId,
+      anotherChainId
     );
     await program.methods
       .requestSlowFill(Array.from(relayHash), leaf.relayData)
@@ -650,7 +650,7 @@ describe("svm_spoke.slow_fill", () => {
     const { relayHash, leaf, rootBundleId, proofAsNumbers, rootBundle } = await relaySlowFillRootBundle(
       undefined,
       undefined,
-      Buffer.alloc(0),
+      Buffer.alloc(0)
     );
 
     // Request slow fill
@@ -692,7 +692,7 @@ describe("svm_spoke.slow_fill", () => {
     assertSE(
       fillEvent.relayExecutionInfo.updatedMessageHash,
       new Uint8Array(32),
-      `UpdatedMessageHash should be zeroed`,
+      `UpdatedMessageHash should be zeroed`
     );
   });
 });

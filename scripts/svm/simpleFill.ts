@@ -82,7 +82,7 @@ async function fillRelay(): Promise<void> {
   // Define the state account PDA
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   // Fetch the state from the on-chain program to get chainId
@@ -100,7 +100,7 @@ async function fillRelay(): Promise<void> {
     signer.publicKey,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   const recipientTokenAccount = (
@@ -113,7 +113,7 @@ async function fillRelay(): Promise<void> {
       undefined,
       undefined,
       TOKEN_PROGRAM_ID,
-      ASSOCIATED_TOKEN_PROGRAM_ID,
+      ASSOCIATED_TOKEN_PROGRAM_ID
     )
   ).address;
 
@@ -134,7 +134,7 @@ async function fillRelay(): Promise<void> {
     Object.entries(relayData).map(([key, value]) => ({
       key,
       value: value.toString(),
-    })),
+    }))
   );
 
   const tokenDecimals = (await getMint(provider.connection, outputToken, undefined, TOKEN_PROGRAM_ID)).decimals;
@@ -160,7 +160,7 @@ async function fillRelay(): Promise<void> {
     BigInt(relayData.outputAmount.toString()),
     tokenDecimals,
     undefined,
-    TOKEN_PROGRAM_ID,
+    TOKEN_PROGRAM_ID
   );
 
   const fillDataValues: FillDataValues = [Array.from(relayHashUint8Array), relayData, chainId, signer.publicKey];

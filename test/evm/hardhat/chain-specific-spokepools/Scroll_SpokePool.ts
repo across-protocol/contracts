@@ -121,7 +121,7 @@ describe("Scroll Spoke Pool", function () {
     scrollSpokePool = await hre.upgrades.deployProxy(
       await getContractFactory("Scroll_SpokePool", owner),
       [l2GatewayRouter.address, l2Messenger.address, 0, owner.address, hubPool.address],
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 3600, 7200] },
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 3600, 7200] }
     );
 
     await seedContract(scrollSpokePool, relayer, [dai], weth, amountHeldByPool);
@@ -131,7 +131,7 @@ describe("Scroll Spoke Pool", function () {
     // TODO: Could also use upgrades.prepareUpgrade but I'm unclear of differences
     const implementation = await hre.upgrades.deployImplementation(
       await getContractFactory("Scroll_SpokePool", owner),
-      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] },
+      { kind: "uups", unsafeAllow: ["delegatecall"], constructorArgs: [weth.address, 60 * 60, 9 * 60 * 60] }
     );
 
     await expect(scrollSpokePool.connect(rando).upgradeTo(implementation)).to.be.revertedWith(NO_ADMIN_REVERT);
@@ -167,7 +167,7 @@ describe("Scroll Spoke Pool", function () {
   it("Bridge tokens to hub pool correctly calls the L2GatewayRouter for ERC20", async function () {
     const { leaves, tree } = await constructSingleRelayerRefundTree(
       dai.address,
-      await scrollSpokePool.callStatic.chainId(),
+      await scrollSpokePool.callStatic.chainId()
     );
     const amountToReturn = leaves[0].amountToReturn;
     l2Messenger.xDomainMessageSender.returns(owner.address);
@@ -180,7 +180,7 @@ describe("Scroll Spoke Pool", function () {
       dai.address,
       hubPool.address,
       toBN(amountToReturn.toString()),
-      toBN(0),
+      toBN(0)
     );
   });
 });

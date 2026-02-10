@@ -87,7 +87,7 @@ export const decodeMessageHeaderV2 = (data: Buffer): MessageHeaderV2 => {
   const sender = new anchor.web3.PublicKey(data.slice(HEADER_SENDER_INDEX, HEADER_SENDER_INDEX + 32));
   const recipient = new anchor.web3.PublicKey(data.slice(HEADER_RECIPIENT_INDEX, HEADER_RECIPIENT_INDEX + 32));
   const destinationCaller = new anchor.web3.PublicKey(
-    data.slice(DESTINATION_CALLER_INDEX, DESTINATION_CALLER_INDEX + 32),
+    data.slice(DESTINATION_CALLER_INDEX, DESTINATION_CALLER_INDEX + 32)
   );
   const minFinalityThreshold = data.readUInt32BE(MIN_FINALITY_THRESHOLD_INDEX);
   const finalityThresholdExecuted = data.readUInt32BE(FINALITY_THRESHOLD_EXECUTED_INDEX);
@@ -152,8 +152,8 @@ export const DecodedMessage = object({
   messageBody: string(),
   decodedMessageBody: optional(
     coerce(nullable(DecodedMessageBody), union([nullable(DecodedMessageBody), object({})]), (v) =>
-      isEmptyObject(v) ? null : v,
-    ),
+      isEmptyObject(v) ? null : v
+    )
   ),
 });
 
@@ -164,8 +164,8 @@ export const AttestationMessage = object({
   attestation: string(), // "PENDING" when not available
   decodedMessage: optional(
     coerce(nullable(DecodedMessage), union([nullable(DecodedMessage), object({})]), (v) =>
-      isEmptyObject(v) ? null : v,
-    ),
+      isEmptyObject(v) ? null : v
+    )
   ),
   cctpVersion: enums([1, 2]),
   status: enums(["complete", "pending_confirmations"]),
@@ -192,7 +192,7 @@ const isEmptyObject = (v: unknown) =>
 export async function getV2BurnAttestation(
   txSignature: string,
   sourceMessageData: Buffer,
-  irisApiUrl: string,
+  irisApiUrl: string
 ): Promise<{ destinationMessage: Buffer; attestation: Buffer } | null> {
   const sourceMessage = decodeMessageSentDataV2(sourceMessageData);
 
@@ -221,7 +221,7 @@ export async function getV2BurnAttestation(
 
 function isMatchingV2BurnMessage(
   sourceMessage: ReturnType<typeof decodeMessageSentDataV2>,
-  destinationMessage: TDecodedMessage,
+  destinationMessage: TDecodedMessage
 ): boolean {
   if (!destinationMessage.decodedMessageBody) return false;
 
@@ -247,7 +247,7 @@ function isMatchingV2BurnMessage(
     // feeExecuted is only set on destination
     // expirationBlock is only set on destination
     sourceMessage.messageBody.hookData.equals(
-      Buffer.from(ethers.utils.arrayify(destinationMessage.decodedMessageBody.hookData || "0x")),
+      Buffer.from(ethers.utils.arrayify(destinationMessage.decodedMessageBody.hookData || "0x"))
     )
   );
 }

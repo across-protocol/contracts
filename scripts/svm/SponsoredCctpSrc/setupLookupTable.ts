@@ -52,18 +52,18 @@ async function setupLookupTable(): Promise<void> {
   const rentFund = findProgramAddress("rent_fund", program.programId).publicKey;
   const [minimumDeposit] = PublicKey.findProgramAddressSync(
     [Buffer.from("minimum_deposit"), burnToken.toBuffer()],
-    program.programId,
+    program.programId
   );
   const tokenMessengerMinterSenderAuthority = findProgramAddress(
     "sender_authority",
-    tokenMessengerMinterV2Program.programId,
+    tokenMessengerMinterV2Program.programId
   ).publicKey;
   const messageTransmitter = findProgramAddress("message_transmitter", messageTransmitterV2Program.programId).publicKey;
   const tokenMessenger = findProgramAddress("token_messenger", tokenMessengerMinterV2Program.programId).publicKey;
   const tokenMinter = findProgramAddress("token_minter", tokenMessengerMinterV2Program.programId).publicKey;
   const [localToken] = PublicKey.findProgramAddressSync(
     [Buffer.from("local_token"), burnToken.toBuffer()],
-    tokenMessengerMinterV2Program.programId,
+    tokenMessengerMinterV2Program.programId
   );
   const cctpEventAuthority = findProgramAddress("__event_authority", tokenMessengerMinterV2Program.programId).publicKey;
   const tokenProgram = (await provider.connection.getAccountInfo(burnToken))?.owner;
@@ -121,7 +121,7 @@ async function setupLookupTable(): Promise<void> {
     {
       commitment: "confirmed",
       skipPreflight: true,
-    },
+    }
   );
   console.log("Lookup table created successfully, transaction signature:", createTx);
 
@@ -139,7 +139,7 @@ async function setupLookupTable(): Promise<void> {
     {
       commitment: "confirmed",
       skipPreflight: true,
-    },
+    }
   );
   console.log("Lookup table extended successfully, transaction signature:", extendTx);
 

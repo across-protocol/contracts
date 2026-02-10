@@ -104,44 +104,44 @@ async function executeRebalanceToSpokePool(): Promise<void> {
   // Get Solana accounts required to receive tokens over CCTP.
   const [statePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
   const vault = getAssociatedTokenAddressSync(solanaTokenKey, statePda, true);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
   const [authorityPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter_authority"), tokenMessengerMinterProgram.programId.toBuffer()],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
   const [tokenMessengerAccount] = PublicKey.findProgramAddressSync(
     [Buffer.from("token_messenger")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
   const [remoteTokenMessengerKey] = PublicKey.findProgramAddressSync(
     [Buffer.from("remote_token_messenger"), Buffer.from(remoteDomain.toString())],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
   const [tokenMinterAccount] = PublicKey.findProgramAddressSync(
     [Buffer.from("token_minter")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
   const [localToken] = PublicKey.findProgramAddressSync(
     [Buffer.from("local_token"), solanaTokenKey.toBuffer()],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
   const [tokenPair] = PublicKey.findProgramAddressSync(
     [Buffer.from("token_pair"), Buffer.from(remoteDomain.toString()), evmAddressToPublicKey(l1TokenAddress).toBuffer()],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
   const [custodyTokenAccount] = PublicKey.findProgramAddressSync(
     [Buffer.from("custody"), solanaTokenKey.toBuffer()],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
   const [tokenMessengerEventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("__event_authority")],
-    tokenMessengerMinterProgram.programId,
+    tokenMessengerMinterProgram.programId
   );
 
   // Fetch attestation from CCTP attestation service.
@@ -242,7 +242,7 @@ async function executeRebalanceOnHubPool(l1TokenAddress: string, netSendAmount: 
   const { poolRebalanceTree, poolRebalanceLeaf } = constructSimpleRebalanceTree(
     l1TokenAddress,
     netSendAmount,
-    solanaChainId,
+    solanaChainId
   );
 
   // Make sure the proposal liveness has passed, it has not been executed and rebalance root matches.
@@ -265,7 +265,7 @@ async function executeRebalanceOnHubPool(l1TokenAddress: string, netSendAmount: 
       poolRebalanceLeaf.runningBalances,
       poolRebalanceLeaf.leafId,
       poolRebalanceLeaf.l1Tokens,
-      poolRebalanceTree.getHexProof(poolRebalanceLeaf),
+      poolRebalanceTree.getHexProof(poolRebalanceLeaf)
     );
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();

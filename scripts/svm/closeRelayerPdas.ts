@@ -32,7 +32,7 @@ async function closeExpiredRelays(): Promise<void> {
   try {
     const events = await readProgramEvents(provider.connection, program);
     const fillEvents = events.filter(
-      (event) => event.name === "filledRelay" && new PublicKey(event.data.relayer).equals(relayer),
+      (event) => event.name === "filledRelay" && new PublicKey(event.data.relayer).equals(relayer)
     );
 
     console.log(`Number of fill events found: ${fillEvents.length}`);
@@ -48,7 +48,7 @@ async function closeExpiredRelays(): Promise<void> {
         await closeFillPda(event.data, seed);
       } else {
         console.log(
-          `Found relay with depositId: ${event.data.depositId} from source chain id: ${event.data.originChainId}, but it is not expired yet.`,
+          `Found relay with depositId: ${event.data.depositId} from source chain id: ${event.data.originChainId}, but it is not expired yet.`
         );
       }
     }
@@ -76,7 +76,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
 
   const [statePda] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    programId,
+    programId
   );
 
   // Fetch the state to get the chainId
@@ -92,7 +92,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
     const accountInfo = await provider.connection.getAccountInfo(fillStatusPda);
     if (!accountInfo) {
       console.log(
-        `Fill Status PDA for depositId: ${eventData.depositId} from source chain id: ${eventData.originChainId} is already closed or does not exist.`,
+        `Fill Status PDA for depositId: ${eventData.depositId} from source chain id: ${eventData.originChainId} is already closed or does not exist.`
       );
       return;
     }
@@ -102,7 +102,7 @@ async function closeFillPda(eventData: any, seed: BN): Promise<void> {
       Object.entries(relayEventData).map(([key, value]) => ({
         key,
         value: value.toString(),
-      })),
+      }))
     );
     console.table([
       { Property: "State PDA", Value: statePda.toString() },

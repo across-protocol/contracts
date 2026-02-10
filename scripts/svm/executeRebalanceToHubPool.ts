@@ -82,16 +82,16 @@ const messageTransmitterProgram = getMessageTransmitterProgram(provider);
 
 const [messageTransmitterState] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter")],
-  messageTransmitterProgram.programId,
+  messageTransmitterProgram.programId
 );
 const [authorityPda] = PublicKey.findProgramAddressSync(
   [Buffer.from("message_transmitter_authority"), svmSpokeProgram.programId.toBuffer()],
-  messageTransmitterProgram.programId,
+  messageTransmitterProgram.programId
 );
 const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
 const [eventAuthority] = PublicKey.findProgramAddressSync(
   [Buffer.from("__event_authority")],
-  svmSpokeProgram.programId,
+  svmSpokeProgram.programId
 );
 
 // Set up Ethereum provider and signer.
@@ -133,7 +133,7 @@ async function executeRebalanceToHubPool(): Promise<void> {
 
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const state = await svmSpokeProgram.account.state.fetch(statePda);
@@ -269,7 +269,7 @@ async function executeRebalanceToHubPool(): Promise<void> {
   const { merkleTree, leaves } = constructSimpleRebalanceTreeToHubPool(
     netSendAmount,
     solanaChainId,
-    new PublicKey(svmUsdc),
+    new PublicKey(svmUsdc)
   );
   const [rootBundlePdaNew] = getRootBundlePda(lastRootBundleId, seed);
 
@@ -283,14 +283,14 @@ async function executeRebalanceToHubPool(): Promise<void> {
     leaves[0],
     merkleTree,
     new PublicKey(svmUsdc),
-    lastRootBundleId,
+    lastRootBundleId
   );
 
   console.log("✅ executed relayer refund leaf");
 
   const [transferLiability] = PublicKey.findProgramAddressSync(
     [Buffer.from("transfer_liability"), new PublicKey(svmUsdc).toBuffer()],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const liability = await svmSpokeProgram.account.transferLiability.fetch(transferLiability);
@@ -303,7 +303,7 @@ function getRootBundlePda(rootBundleId: number, seed: BN) {
   rootBundleIdBuffer.writeUInt32LE(rootBundleId);
   return PublicKey.findProgramAddressSync(
     [Buffer.from("root_bundle"), seed.toArrayLike(Buffer, "le", 8), rootBundleIdBuffer],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 }
 
@@ -329,7 +329,7 @@ async function executeRootBalanceOnHubPool(solanaChainId: BigNumber) {
     poolRebalanceLeaf.runningBalances,
     poolRebalanceLeaf.leafId,
     poolRebalanceLeaf.l1Tokens,
-    poolRebalanceTree.getHexProof(poolRebalanceLeaf),
+    poolRebalanceTree.getHexProof(poolRebalanceLeaf)
   );
   console.log(`✅ submitted tx hash: ${tx.hash}`);
   await tx.wait();
@@ -346,7 +346,7 @@ async function executeRelayerRefundLeaf(
   relayerRefundLeaf: RelayerRefundLeafSolana,
   merkleTree: MerkleTree<RelayerRefundLeafType>,
   inputToken: PublicKey,
-  rootBundleId: number,
+  rootBundleId: number
 ) {
   // Execute the single leaf
   const proof = merkleTree.getProof(relayerRefundLeaf).map((p) => Array.from(p));
@@ -357,13 +357,13 @@ async function executeRelayerRefundLeaf(
     statePda,
     true,
     TOKEN_PROGRAM_ID,
-    ASSOCIATED_TOKEN_PROGRAM_ID,
+    ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
   // Derive the transferLiability PDA
   const [transferLiability] = PublicKey.findProgramAddressSync(
     [Buffer.from("transfer_liability"), inputToken.toBuffer()],
-    program.programId,
+    program.programId
   );
 
   // Load the instruction parameters
@@ -372,7 +372,7 @@ async function executeRelayerRefundLeaf(
 
   const [instructionParams] = PublicKey.findProgramAddressSync(
     [Buffer.from("instruction_params"), signer.publicKey.toBuffer()],
-    program.programId,
+    program.programId
   );
 
   const staticAccounts = {
@@ -404,7 +404,7 @@ async function executeRelayerRefundLeaf(
     provider.connection,
     new anchor.web3.Transaction().add(lookupTableInstruction),
     [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
-    { skipPreflight: true },
+    { skipPreflight: true }
   );
 
   const lookupAddresses = [...Object.values(staticAccounts), ...refundAccounts];
@@ -425,7 +425,7 @@ async function executeRelayerRefundLeaf(
       provider.connection,
       new anchor.web3.Transaction().add(extendInstruction),
       [(anchor.AnchorProvider.env().wallet as anchor.Wallet).payer],
-      { skipPreflight: true },
+      { skipPreflight: true }
     );
   }
   // Fetch the AddressLookupTableAccount
@@ -451,7 +451,7 @@ async function executeRelayerRefundLeaf(
       payerKey: signer.publicKey,
       recentBlockhash: (await provider.connection.getLatestBlockhash()).blockhash,
       instructions: [computeBudgetInstruction, executeInstruction],
-    }).compileToV0Message([lookupTableAccount]),
+    }).compileToV0Message([lookupTableAccount])
   );
 
   // Sign and submit the versioned transaction

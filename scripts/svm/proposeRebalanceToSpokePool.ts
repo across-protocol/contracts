@@ -91,14 +91,14 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
     1, // poolRebalanceLeafCount.
     poolRebalanceTree.getHexRoot(), // poolRebalanceRoot. Generated from the merkle tree constructed before.
     ethers.constants.HashZero, // relayerRefundRoot, not relevant for this script.
-    ethers.constants.HashZero, // slowRelayRoot, not relevant for this test.
+    ethers.constants.HashZero // slowRelayRoot, not relevant for this test.
   );
   console.log(`✔️ submitted tx hash: ${tx.hash}`);
   await tx.wait();
   console.log(`✔️ tx confirmed`);
 
   console.log(
-    "Rebalance proposal submitted successfully, to execute, run executeRebalanceToSpokePool script with the same netSendAmount after liveness period.",
+    "Rebalance proposal submitted successfully, to execute, run executeRebalanceToSpokePool script with the same netSendAmount after liveness period."
   );
 }
 

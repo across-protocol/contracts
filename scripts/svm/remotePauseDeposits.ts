@@ -62,21 +62,21 @@ async function remotePauseDeposits(): Promise<void> {
   const svmSpokeProgram = getSpokePoolProgram(provider);
   const [statePda, _] = PublicKey.findProgramAddressSync(
     [Buffer.from("state"), seed.toArrayLike(Buffer, "le", 8)],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
   const messageTransmitterProgram = getMessageTransmitterProgram(provider);
   const [messageTransmitterState] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter")],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
   const [authorityPda] = PublicKey.findProgramAddressSync(
     [Buffer.from("message_transmitter_authority"), svmSpokeProgram.programId.toBuffer()],
-    messageTransmitterProgram.programId,
+    messageTransmitterProgram.programId
   );
   const [selfAuthority] = PublicKey.findProgramAddressSync([Buffer.from("self_authority")], svmSpokeProgram.programId);
   const [eventAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from("__event_authority")],
-    svmSpokeProgram.programId,
+    svmSpokeProgram.programId
   );
 
   const solanaCluster = isDevnet ? "devnet" : "mainnet";
@@ -100,7 +100,7 @@ async function remotePauseDeposits(): Promise<void> {
   const messageTransmitterRemote = new ethers.Contract(
     messageTransmitterRemoteAddress,
     messageTransmitterRemoteIface,
-    ethersSigner,
+    ethersSigner
   );
 
   const spokePoolIface = new ethers.utils.Interface(["function pauseDeposits(bool pause)"]);
@@ -130,7 +130,7 @@ async function remotePauseDeposits(): Promise<void> {
     const sendTx = await messageTransmitterRemote.sendMessage.send(
       localDomain,
       svmSpokeProgram.programId.toBytes(),
-      calldata,
+      calldata
     );
     await sendTx.wait();
     remoteTxHash = sendTx.hash;
