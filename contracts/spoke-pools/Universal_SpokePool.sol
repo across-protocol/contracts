@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable-v4/access/OwnableUpgradeable.sol";
 
-import { IHelios } from "./interfaces/IHelios.sol";
-import "./libraries/CircleCCTPAdapter.sol";
+import { IHelios } from "../interfaces/IHelios.sol";
+import "../libraries/CircleCCTPAdapter.sol";
 
 import "./SpokePool.sol";
 

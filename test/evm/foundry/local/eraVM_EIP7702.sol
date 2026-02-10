@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { ZkSync_SpokePool, ZkBridgeLike, IERC20, ITokenMessenger } from "../../../../contracts/ZkSync_SpokePool.sol";
+import { ZkSync_SpokePool, ZkBridgeLike, IERC20, ITokenMessenger } from "../../../../contracts/spoke-pools/ZkSync_SpokePool.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";

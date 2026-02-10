@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Ink_SpokePool } from "../contracts/Ink_SpokePool.sol";
+import { Ink_SpokePool } from "../contracts/spoke-pools/Ink_SpokePool.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:

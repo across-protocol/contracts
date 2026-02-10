@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { BondToken, ExtendedHubPoolInterface } from "../../../../contracts/BondToken.sol";
+import { BondToken, ExtendedHubPoolInterface } from "../../../../contracts/hub-pool/BondToken.sol";
 
 /**
  * @title BondToken_ERC20Test

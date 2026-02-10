@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { AcrossEventEmitter } from "../contracts/AcrossEventEmitter.sol";
+import { AcrossEventEmitter } from "../contracts/periphery/AcrossEventEmitter.sol";
 import { Constants } from "./utils/Constants.sol";
 
 // How to run:

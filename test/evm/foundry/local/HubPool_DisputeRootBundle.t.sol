@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { HubPoolTestBase, MockStore } from "../utils/HubPoolTestBase.sol";
 
-import { HubPool } from "../../../../contracts/HubPool.sol";
+import { HubPool } from "../../../../contracts/hub-pool/HubPool.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SkinnyOptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
 

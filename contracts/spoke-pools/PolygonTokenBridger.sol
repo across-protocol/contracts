@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./Lockable.sol";
-import "./external/interfaces/WETH9Interface.sol";
+import "../libraries/Lockable.sol";
+import "../external/interfaces/WETH9Interface.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";

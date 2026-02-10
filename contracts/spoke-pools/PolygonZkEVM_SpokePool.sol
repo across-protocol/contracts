@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./external/interfaces/IPolygonZkEVMBridge.sol";
+import "../external/interfaces/IPolygonZkEVMBridge.sol";
 
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";

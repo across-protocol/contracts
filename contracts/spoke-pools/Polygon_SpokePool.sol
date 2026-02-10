@@ -3,10 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
 import "./PolygonTokenBridger.sol";
-import "./external/interfaces/WETH9Interface.sol";
-import { IOFT } from "./interfaces/IOFT.sol";
-import "./interfaces/SpokePoolInterface.sol";
-import "./libraries/CircleCCTPAdapter.sol";
+import "../external/interfaces/WETH9Interface.sol";
+import { IOFT } from "../interfaces/IOFT.sol";
+import "../interfaces/SpokePoolInterface.sol";
+import "../libraries/CircleCCTPAdapter.sol";
 
 /**
  * @notice IFxMessageProcessor represents interface to process messages.

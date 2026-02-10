@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
 import "./Ovm_SpokePool.sol";
-import "./external/interfaces/CCTPInterfaces.sol";
+import "../external/interfaces/CCTPInterfaces.sol";
 
 // USDB and WETH on Blast accrue yield that can be claimed by any account holding the token. So for the length of
 // time that the SpokePool holds on to these assets, it can claim interest.

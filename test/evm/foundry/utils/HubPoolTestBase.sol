@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
-import { HubPool } from "../../../../contracts/HubPool.sol";
+import { HubPool } from "../../../../contracts/hub-pool/HubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";

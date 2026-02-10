@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-v4/utils/Address.sol";
-import "./interfaces/V3SpokePoolInterface.sol";
-import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
+import "../interfaces/V3SpokePoolInterface.sol";
+import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice SpokePoolVerifier is a contract that verifies that the SpokePool exists on this chain before sending ETH to it.

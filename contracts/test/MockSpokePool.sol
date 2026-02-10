@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable-v4/access/OwnableUpgradeable.sol";
-import "../SpokePool.sol";
+import "../spoke-pools/SpokePool.sol";
 import "./interfaces/MockV2SpokePoolInterface.sol";
 import "./V2MerkleLib.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";

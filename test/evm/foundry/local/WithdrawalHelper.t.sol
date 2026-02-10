@@ -12,8 +12,8 @@ import { Ovm_WithdrawalHelper, IOvm_SpokePool } from "../../../../contracts/chai
 import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import { L2GatewayRouter } from "../../../../contracts/test/ArbitrumMocks.sol";
 import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
-import { OP_SpokePool } from "../../../../contracts/OP_SpokePool.sol";
-import { Ovm_SpokePool } from "../../../../contracts/Ovm_SpokePool.sol";
+import { OP_SpokePool } from "../../../../contracts/spoke-pools/OP_SpokePool.sol";
+import { Ovm_SpokePool } from "../../../../contracts/spoke-pools/Ovm_SpokePool.sol";
 import { WithdrawalHelperBase } from "../../../../contracts/chain-adapters/l2/WithdrawalHelperBase.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";

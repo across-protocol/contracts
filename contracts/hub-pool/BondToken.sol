@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-v4/access/Ownable.sol";
 import "@openzeppelin/contracts-v4/utils/Address.sol";
 
-import "./interfaces/HubPoolInterface.sol";
-import "./external/WETH9.sol";
+import "../interfaces/HubPoolInterface.sol";
+import "../external/WETH9.sol";
 
 interface ExtendedHubPoolInterface is HubPoolInterface {
     // Specify the automatically-implemented rootBundleProposal() getter.

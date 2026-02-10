@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "./interfaces/LpTokenFactoryInterface.sol";
+import "../interfaces/LpTokenFactoryInterface.sol";
 
 import "contracts/external/uma/core/contracts/common/implementation/ExpandedERC20.sol";
 

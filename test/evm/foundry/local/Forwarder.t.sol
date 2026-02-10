@@ -17,7 +17,7 @@ import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitru
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
 import { ForwarderInterface } from "../../../../contracts/chain-adapters/interfaces/ForwarderInterface.sol";
-import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
+import { AdapterStore } from "../../../../contracts/hub-pool/AdapterStore.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../Ovm_SpokePool.sol";
+import "../spoke-pools/Ovm_SpokePool.sol";
 
 // Provides payable withdrawTo interface introduced on Bedrock
 contract MockBedrockL2StandardBridge is IL2ERC20Bridge {

@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { HubPoolTestBase, MockStore } from "../utils/HubPoolTestBase.sol";
 
-import { BondToken, ExtendedHubPoolInterface } from "../../../../contracts/BondToken.sol";
-import { HubPool } from "../../../../contracts/HubPool.sol";
+import { BondToken, ExtendedHubPoolInterface } from "../../../../contracts/hub-pool/BondToken.sol";
+import { HubPool } from "../../../../contracts/hub-pool/HubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { Mock_Adapter, Mock_Bridge } from "../../../../contracts/chain-adapters/Mock_Adapter.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";

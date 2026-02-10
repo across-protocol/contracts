@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./SpokePool.sol";
-import "./external/interfaces/WETH9Interface.sol";
-import "./libraries/CircleCCTPAdapter.sol";
+import "../external/interfaces/WETH9Interface.sol";
+import "../libraries/CircleCCTPAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/crosschain/optimism/LibOptimismUpgradeable.sol";
 import "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";

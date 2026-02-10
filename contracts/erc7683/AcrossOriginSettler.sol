@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { ERC7683OrderDepositor } from "./ERC7683OrderDepositor.sol";
-import "../SpokePool.sol";
+import "../spoke-pools/SpokePool.sol";
 import "../external/interfaces/IPermit2.sol";
 import "../external/uma/core/contracts/common/implementation/MultiCaller.sol";
 
