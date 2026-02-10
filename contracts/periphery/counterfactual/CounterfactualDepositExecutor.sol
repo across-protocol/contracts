@@ -74,17 +74,12 @@ contract CounterfactualDepositExecutor {
         }
 
         // Validate fees to protect user from bad quotes
+        // Total allowed fee is the sum of absolute gas fee + percentage-based capital fee
         uint256 actualFee = quote.inputAmount - quote.outputAmount;
+        uint256 maxAllowedFee = params.maxGasFee + ((quote.inputAmount * params.maxCapitalFee) / 10000);
 
-        // Check absolute fee limit
-        if (actualFee > params.maxGasFee) {
-            revert ICounterfactualDepositFactory.GasFeeTooHigh();
-        }
-
-        // Check percentage fee limit (in basis points, 10000 = 100%)
-        uint256 capitalFeePercentage = (actualFee * 10000) / quote.inputAmount;
-        if (capitalFeePercentage > params.maxCapitalFee) {
-            revert ICounterfactualDepositFactory.CapitalFeeTooHigh();
+        if (actualFee > maxAllowedFee) {
+            revert ICounterfactualDepositFactory.FeeTooHigh();
         }
 
         // Get actual token balance
