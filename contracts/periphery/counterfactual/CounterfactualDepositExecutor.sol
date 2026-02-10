@@ -22,6 +22,33 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
 contract CounterfactualDepositExecutor {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// @notice Route parameters passed from proxy via calldata
+    struct RouteParams {
+        bytes32 inputToken;
+        bytes32 outputToken;
+        uint256 destinationChainId;
+        bytes32 recipient;
+        bytes message;
+        uint256 maxGasFee;
+        uint256 maxCapitalFee;
+    }
+
+    /// @notice Factory contract (immutable, same for all deposits on this chain)
+    address public immutable factory;
+
+    /// @notice SpokePool contract (immutable, same for all deposits on this chain)
+    address public immutable spokePool;
+
+    /**
+     * @notice Constructs the executor with chain-specific constants
+     * @param _factory Factory contract address
+     * @param _spokePool SpokePool contract address
+     */
+    constructor(address _factory, address _spokePool) {
+        factory = _factory;
+        spokePool = _spokePool;
+    }
+
     /**
      * @notice Executes a deposit with a signed quote
      * @dev This function is called via delegatecall, so it operates in the proxy's context
@@ -32,13 +59,8 @@ contract CounterfactualDepositExecutor {
         ICounterfactualDepositFactory.DepositQuote calldata quote,
         bytes calldata signature
     ) external {
-        // Get immutable parameters from proxy context
-        address factory = _getFactory();
-        address spokePool = _getSpokePool();
-        bytes32 inputToken = _getInputToken();
-        bytes32 outputToken = _getOutputToken();
-        uint256 destinationChainId = _getDestinationChainId();
-        bytes32 recipient = _getRecipient();
+        // Get route parameters from appended calldata (proxy passes these)
+        RouteParams memory params = _getRouteParams();
 
         // Verify quote is for this specific deposit address
         if (quote.depositAddress != address(this)) revert ICounterfactualDepositFactory.WrongDepositAddress();
@@ -46,13 +68,27 @@ contract CounterfactualDepositExecutor {
         // Verify quote hasn't expired
         if (block.timestamp > quote.deadline) revert ICounterfactualDepositFactory.QuoteExpired();
 
-        // Verify signature via factory
+        // Verify signature via factory (immutable)
         if (!ICounterfactualDepositFactory(factory).verifyQuote(quote, signature)) {
             revert ICounterfactualDepositFactory.InvalidSignature();
         }
 
+        // Validate fees to protect user from bad quotes
+        uint256 actualFee = quote.inputAmount - quote.outputAmount;
+
+        // Check absolute fee limit
+        if (actualFee > params.maxGasFee) {
+            revert ICounterfactualDepositFactory.GasFeeTooHigh();
+        }
+
+        // Check percentage fee limit (in basis points, 10000 = 100%)
+        uint256 capitalFeePercentage = (actualFee * 10000) / quote.inputAmount;
+        if (capitalFeePercentage > params.maxCapitalFee) {
+            revert ICounterfactualDepositFactory.CapitalFeeTooHigh();
+        }
+
         // Get actual token balance
-        address inputTokenAddr = address(uint160(uint256(inputToken)));
+        address inputTokenAddr = address(uint160(uint256(params.inputToken)));
         uint256 balance = IERC20Upgradeable(inputTokenAddr).balanceOf(address(this));
 
         // Verify sufficient balance
@@ -68,17 +104,17 @@ contract CounterfactualDepositExecutor {
         // Use address(this) as depositor so refunds come back to this contract, not the caller
         V3SpokePoolInterface(spokePool).deposit(
             bytes32(uint256(uint160(address(this)))), // depositor (this contract - refunds come here)
-            recipient, // recipient on destination chain
-            inputToken, // inputToken
-            outputToken, // outputToken
+            params.recipient, // recipient on destination chain
+            params.inputToken, // inputToken
+            params.outputToken, // outputToken
             quote.inputAmount, // inputAmount
             quote.outputAmount, // outputAmount
-            destinationChainId, // destinationChainId
+            params.destinationChainId, // destinationChainId
             quote.exclusiveRelayer, // exclusiveRelayer
             quote.quoteTimestamp, // quoteTimestamp
             quote.fillDeadline, // fillDeadline
             quote.exclusivityParameter, // exclusivityDeadline
-            quote.message // message
+            params.message // message (from route params, not quote)
         );
 
         // Emit event for indexing
@@ -98,10 +134,7 @@ contract CounterfactualDepositExecutor {
      * @param amount Amount to withdraw
      */
     function adminWithdraw(address token, address to, uint256 amount) external {
-        // Get factory from proxy context
-        address factory = _getFactory();
-
-        // Verify caller is admin
+        // Verify caller is admin (factory is immutable)
         if (msg.sender != ICounterfactualDepositFactory(factory).admin()) {
             revert ICounterfactualDepositFactory.Unauthorized();
         }
@@ -111,44 +144,65 @@ contract CounterfactualDepositExecutor {
     }
 
     /**
-     * @notice Gets factory address from appended calldata
-     * @dev The proxy appends 192 bytes of immutable parameters to the end of calldata
-     * Format: factory(32) + spokePool(32) + inputToken(32) + outputToken(32) + destinationChainId(32) + recipient(32)
-     * When called via delegatecall, we read these from the extended calldata
+     * @notice Gets route parameters from appended calldata
+     * @dev The proxy appends: [ABI-encoded RouteParams][uint256 original calldata size]
+     * ABI encoding format: inputToken(32) + outputToken(32) + destinationChainId(32) + recipient(32) +
+     *                      messageOffset(32) + maxGasFee(32) + maxCapitalFee(32) +
+     *                      messageLength(32) + messageData(variable)
+     * @return params RouteParams struct containing all route-specific parameters
      */
-    function _getFactory() internal pure returns (address factory) {
+    function _getRouteParams() internal pure returns (RouteParams memory params) {
         assembly {
-            factory := calldataload(sub(calldatasize(), 192))
-        }
-    }
+            // Read original calldata size from the last 32 bytes
+            let originalSize := calldataload(sub(calldatasize(), 32))
 
-    function _getSpokePool() internal pure returns (address spokePool) {
-        assembly {
-            spokePool := calldataload(sub(calldatasize(), 160))
-        }
-    }
+            // Route params start at originalSize
+            let offset := originalSize
 
-    function _getInputToken() internal pure returns (bytes32 inputToken) {
-        assembly {
-            inputToken := calldataload(sub(calldatasize(), 128))
-        }
-    }
+            // Read fixed-size parameters
+            let _inputToken := calldataload(offset) // offset 0
+            let _outputToken := calldataload(add(offset, 32)) // offset 32
+            let _destinationChainId := calldataload(add(offset, 64)) // offset 64
+            let _recipient := calldataload(add(offset, 96)) // offset 96
 
-    function _getOutputToken() internal pure returns (bytes32 outputToken) {
-        assembly {
-            outputToken := calldataload(sub(calldatasize(), 96))
-        }
-    }
+            // Message is at offset 128 (the offset value) + its position
+            // The value at offset 128 tells us where the message data starts (relative to start of encoded data)
+            let messageDataOffset := calldataload(add(offset, 128)) // This is typically 224 (0xe0) with fees
+            let messageStart := add(offset, messageDataOffset)
+            let messageLength := calldataload(messageStart)
+            let messageDataStart := add(messageStart, 32)
 
-    function _getDestinationChainId() internal pure returns (uint256 destinationChainId) {
-        assembly {
-            destinationChainId := calldataload(sub(calldatasize(), 64))
-        }
-    }
+            // Read fee parameters (after first 5 params)
+            let _maxGasFee := calldataload(add(offset, 160)) // offset 160
+            let _maxCapitalFee := calldataload(add(offset, 192)) // offset 192
 
-    function _getRecipient() internal pure returns (bytes32 recipient) {
-        assembly {
-            recipient := calldataload(sub(calldatasize(), 32))
+            // Allocate memory for the struct
+            params := mload(0x40)
+
+            // Store fixed-size fields
+            mstore(params, _inputToken) // offset 0
+            mstore(add(params, 0x20), _outputToken) // offset 32
+            mstore(add(params, 0x40), _destinationChainId) // offset 64
+            mstore(add(params, 0x60), _recipient) // offset 96
+
+            // Allocate memory for the message bytes (after the struct fields + fee fields)
+            let messagePtr := add(params, 0xe0) // After all fixed fields (7*32 = 224)
+
+            // Store pointer to message in the struct (offset 128 in struct)
+            mstore(add(params, 0x80), messagePtr)
+
+            // Store fee parameters
+            mstore(add(params, 0xa0), _maxGasFee) // offset 160
+            mstore(add(params, 0xc0), _maxCapitalFee) // offset 192
+
+            // Store message length at the message pointer location
+            mstore(messagePtr, messageLength)
+
+            // Copy message data
+            calldatacopy(add(messagePtr, 0x20), messageDataStart, messageLength)
+
+            // Update free memory pointer to after the message data
+            mstore(0x40, add(add(messagePtr, 0x20), messageLength))
         }
     }
 }

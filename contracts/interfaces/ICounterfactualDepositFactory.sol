@@ -17,7 +17,7 @@ interface ICounterfactualDepositFactory {
      * @param fillDeadline Latest timestamp at which the deposit can be filled
      * @param exclusivityParameter Parameter for exclusivity deadline calculation
      * @param exclusiveRelayer Address of exclusive relayer (if any)
-     * @param message Message to forward to recipient on destination chain
+     * @dev message is part of the route (immutable in proxy), not part of the quote
      */
     struct DepositQuote {
         address depositAddress;
@@ -28,7 +28,6 @@ interface ICounterfactualDepositFactory {
         uint32 fillDeadline;
         uint32 exclusivityParameter;
         bytes32 exclusiveRelayer;
-        bytes message;
     }
 
     /// @notice Emitted when a new deposit address is created
@@ -65,12 +64,21 @@ interface ICounterfactualDepositFactory {
     /// @notice Insufficient token balance for deposit
     error InsufficientBalance();
 
+    /// @notice Absolute fee exceeds maximum allowed
+    error GasFeeTooHigh();
+
+    /// @notice Percentage fee exceeds maximum allowed
+    error CapitalFeeTooHigh();
+
     /**
      * @notice Predicts the address of a counterfactual deposit contract
      * @param inputToken Input token address (bytes32 for cross-chain compatibility)
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
      * @param recipient Recipient address on destination chain
+     * @param message Message to forward to recipient
+     * @param maxGasFee Maximum absolute fee in wei
+     * @param maxCapitalFee Maximum fee as percentage in basis points
      * @param salt Unique salt for address generation
      * @return Predicted address
      */
@@ -79,6 +87,9 @@ interface ICounterfactualDepositFactory {
         bytes32 outputToken,
         uint256 destinationChainId,
         bytes32 recipient,
+        bytes memory message,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
         bytes32 salt
     ) external view returns (address);
 
@@ -88,6 +99,9 @@ interface ICounterfactualDepositFactory {
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
      * @param recipient Recipient address on destination chain
+     * @param message Message to forward to recipient
+     * @param maxGasFee Maximum absolute fee in wei
+     * @param maxCapitalFee Maximum fee as percentage in basis points
      * @param salt Unique salt for address generation
      * @return Address of deployed contract
      */
@@ -96,6 +110,9 @@ interface ICounterfactualDepositFactory {
         bytes32 outputToken,
         uint256 destinationChainId,
         bytes32 recipient,
+        bytes memory message,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
         bytes32 salt
     ) external returns (address);
 
@@ -105,6 +122,9 @@ interface ICounterfactualDepositFactory {
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
      * @param recipient Recipient address on destination chain
+     * @param message Message to forward to recipient
+     * @param maxGasFee Maximum absolute fee in wei
+     * @param maxCapitalFee Maximum fee as percentage in basis points
      * @param salt Unique salt for address generation
      * @param quote Signed deposit quote
      * @param signature Signature from authorized quoteSigner
@@ -115,6 +135,9 @@ interface ICounterfactualDepositFactory {
         bytes32 outputToken,
         uint256 destinationChainId,
         bytes32 recipient,
+        bytes memory message,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
         bytes32 salt,
         DepositQuote calldata quote,
         bytes calldata signature

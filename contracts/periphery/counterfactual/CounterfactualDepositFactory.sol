@@ -15,8 +15,8 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /// @notice SpokePool contract address (immutable per deployment)
     address public immutable spokePool;
 
-    /// @notice Executor implementation contract (immutable singleton)
-    address public immutable executor;
+    /// @notice Executor implementation contract (set once after deployment)
+    address public executor;
 
     /// @notice Current admin address (can update quoteSigner and admin)
     address public admin;
@@ -25,17 +25,27 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     address public quoteSigner;
 
     /**
-     * @notice Constructs the factory with immutable addresses
+     * @notice Constructs the factory
      * @param _spokePool SpokePool contract address
-     * @param _executor Executor implementation address
      * @param _admin Initial admin address
      * @param _quoteSigner Initial quote signer address
+     * @dev Executor is set after deployment via setExecutor() to break circular dependency
      */
-    constructor(address _spokePool, address _executor, address _admin, address _quoteSigner) {
+    constructor(address _spokePool, address _admin, address _quoteSigner) {
         spokePool = _spokePool;
-        executor = _executor;
         admin = _admin;
         quoteSigner = _quoteSigner;
+    }
+
+    /**
+     * @notice Sets the executor address (can only be called once)
+     * @param _executor Executor implementation address
+     * @dev Called after executor is deployed to complete the setup
+     */
+    function setExecutor(address _executor) external {
+        if (msg.sender != admin) revert Unauthorized();
+        if (executor != address(0)) revert("Executor already set");
+        executor = _executor;
     }
 
     /**
@@ -44,6 +54,9 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
      * @param recipient Recipient address on destination chain
+     * @param message Message to forward to recipient
+     * @param maxGasFee Maximum absolute fee in wei
+     * @param maxCapitalFee Maximum fee as percentage in basis points
      * @param salt Unique salt for address generation
      * @return Predicted address
      */
@@ -52,13 +65,26 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes32 outputToken,
         uint256 destinationChainId,
         bytes32 recipient,
+        bytes memory message,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
         bytes32 salt
     ) public view returns (address) {
         // Compute creation code hash for CREATE2
         bytes32 creationCodeHash = keccak256(
             abi.encodePacked(
                 type(CounterfactualDeposit).creationCode,
-                abi.encode(address(this), spokePool, inputToken, outputToken, destinationChainId, recipient)
+                abi.encode(
+                    address(this),
+                    spokePool,
+                    inputToken,
+                    outputToken,
+                    destinationChainId,
+                    recipient,
+                    message,
+                    maxGasFee,
+                    maxCapitalFee
+                )
             )
         );
 
@@ -73,6 +99,9 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
      * @param recipient Recipient address on destination chain
+     * @param message Message to forward to recipient
+     * @param maxGasFee Maximum absolute fee in wei
+     * @param maxCapitalFee Maximum fee as percentage in basis points
      * @param salt Unique salt for address generation
      * @return depositAddress Address of deployed contract
      */
@@ -81,6 +110,9 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes32 outputToken,
         uint256 destinationChainId,
         bytes32 recipient,
+        bytes memory message,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
         bytes32 salt
     ) public returns (address depositAddress) {
         // Deploy via CREATE2
@@ -91,7 +123,10 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
                 inputToken,
                 outputToken,
                 destinationChainId,
-                recipient
+                recipient,
+                message,
+                maxGasFee,
+                maxCapitalFee
             )
         );
 
@@ -104,6 +139,9 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
      * @param recipient Recipient address on destination chain
+     * @param message Message to forward to recipient
+     * @param maxGasFee Maximum absolute fee in wei
+     * @param maxCapitalFee Maximum fee as percentage in basis points
      * @param salt Unique salt for address generation
      * @param quote Signed deposit quote
      * @param signature Signature from authorized quoteSigner
@@ -114,16 +152,30 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes32 outputToken,
         uint256 destinationChainId,
         bytes32 recipient,
+        bytes memory message,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
         bytes32 salt,
         DepositQuote calldata quote,
         bytes calldata signature
     ) external returns (address depositAddress) {
         // Try to deploy (will revert if already deployed, which we catch)
-        try this.deploy(inputToken, outputToken, destinationChainId, recipient, salt) returns (address addr) {
+        try
+            this.deploy(inputToken, outputToken, destinationChainId, recipient, message, maxGasFee, maxCapitalFee, salt)
+        returns (address addr) {
             depositAddress = addr;
         } catch {
             // Already deployed, predict the address
-            depositAddress = predictDepositAddress(inputToken, outputToken, destinationChainId, recipient, salt);
+            depositAddress = predictDepositAddress(
+                inputToken,
+                outputToken,
+                destinationChainId,
+                recipient,
+                message,
+                maxGasFee,
+                maxCapitalFee,
+                salt
+            );
         }
 
         // Execute deposit on the deployed contract
@@ -145,9 +197,10 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param quote Deposit quote to verify
      * @param signature Signature to verify
      * @return True if signature is valid
+     * @dev message is not part of quote (it's immutable in proxy), so not included in signature
      */
     function verifyQuote(DepositQuote calldata quote, bytes calldata signature) public view returns (bool) {
-        // Compute message hash
+        // Compute message hash (message not included - it's part of route, not quote)
         bytes32 messageHash = keccak256(
             abi.encode(
                 quote.depositAddress,
@@ -157,8 +210,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
                 quote.quoteTimestamp,
                 quote.fillDeadline,
                 quote.exclusivityParameter,
-                quote.exclusiveRelayer,
-                keccak256(quote.message)
+                quote.exclusiveRelayer
             )
         );
 
