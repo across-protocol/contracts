@@ -80,7 +80,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.openDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
-            _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod),
+            // Pass the raw parameter to SpokePool so exclusivity normalization is applied exactly once there.
+            // Note: resolvedOrder/orderId below uses the normalized deadline in relayData.
+            acrossOrderData.exclusivityPeriod,
             acrossOrderData.message
         );
 
@@ -111,7 +113,9 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             // Note: simplifying assumption to avoid the order type having to bake in the quote timestamp.
             SafeCast.toUint32(block.timestamp),
             order.fillDeadline,
-            _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod),
+            // Pass the raw parameter to SpokePool so exclusivity normalization is applied exactly once there.
+            // Note: resolvedOrder/orderId below uses the normalized deadline in relayData.
+            acrossOrderData.exclusivityPeriod,
             acrossOrderData.message
         );
 
@@ -229,6 +233,8 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
+        // orderId must be based on the final relayData, so normalize the exclusivity parameter into an absolute
+        // exclusivity deadline before hashing relayData. See `SpokePool.fill`
         uint32 exclusivityDeadline = _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod);
         V3SpokePoolInterface.V3RelayData memory relayData;
         relayData.depositor = order.user.toBytes32();
@@ -243,10 +249,11 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.fillDeadline = order.fillDeadline;
         relayData.exclusivityDeadline = exclusivityDeadline;
         relayData.message = acrossOrderData.message;
+        bytes memory originData = abi.encode(relayData);
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
             destinationSettler: _destinationSettler(acrossOrderData.destinationChainId).toBytes32(),
-            originData: abi.encode(relayData)
+            originData: originData
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
@@ -292,6 +299,8 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
+        // orderId must be based on the final relayData, so normalize the exclusivity parameter into an absolute
+        // exclusivity deadline before hashing relayData.
         uint32 exclusivityDeadline = _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod);
         V3SpokePoolInterface.V3RelayData memory relayData;
         relayData.depositor = msg.sender.toBytes32();
@@ -306,10 +315,11 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.fillDeadline = order.fillDeadline;
         relayData.exclusivityDeadline = exclusivityDeadline;
         relayData.message = acrossOrderData.message;
+        bytes memory originData = abi.encode(relayData);
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
             destinationSettler: _destinationSettler(acrossOrderData.destinationChainId).toBytes32(),
-            originData: abi.encode(relayData)
+            originData: originData
         });
 
         resolvedOrder = ResolvedCrossChainOrder({
@@ -370,7 +380,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityParameter,
         bytes memory message
     ) internal virtual;
 

@@ -162,10 +162,6 @@ abstract contract SpokePool is
     // this event in their lookback window when querying for expired deposits.
     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
 
-    // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
-    // exclusivityDeadline in a deposit event will be set to the current time plus this value.
-    uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = RelayDataHashLib.MAX_EXCLUSIVITY_PERIOD_SECONDS;
-
     // EIP-7702 prefix for delegated wallets.
     bytes3 internal constant EIP7702_PREFIX = 0xef0100;
 
@@ -490,7 +486,7 @@ abstract contract SpokePool is
      * can fill this deposit. There are three ways to use this parameter:
      *     1. NO EXCLUSIVITY: If this value is set to 0, then a timestamp of 0 will be emitted,
      *        meaning that there is no exclusivity period.
-     *     2. OFFSET: If this value is less than MAX_EXCLUSIVITY_PERIOD_SECONDS, then add this value to
+     *     2. OFFSET: If this value is less than or equal to RelayDataHashLib.MAX_EXCLUSIVITY_PERIOD_SECONDS, then add this value to
      *        the block.timestamp to derive the exclusive relayer deadline. Note that using the parameter in this way
      *        will expose the filler of the deposit to the risk that the block.timestamp of this event gets changed
      *        due to a chain-reorg, which would also change the exclusivity timestamp.
@@ -568,7 +564,7 @@ abstract contract SpokePool is
      * can fill this deposit. There are three ways to use this parameter:
      *     1. NO EXCLUSIVITY: If this value is set to 0, then a timestamp of 0 will be emitted,
      *        meaning that there is no exclusivity period.
-     *     2. OFFSET: If this value is less than MAX_EXCLUSIVITY_PERIOD_SECONDS, then add this value to
+     *     2. OFFSET: If this value is less than or equal to RelayDataHashLib.MAX_EXCLUSIVITY_PERIOD_SECONDS, then add this value to
      *        the block.timestamp to derive the exclusive relayer deadline. Note that using the parameter in this way
      *        will expose the filler of the deposit to the risk that the block.timestamp of this event gets changed
      *        due to a chain-reorg, which would also change the exclusivity timestamp.
@@ -1115,7 +1111,9 @@ abstract contract SpokePool is
     function fill(bytes32 orderId, bytes calldata originData, bytes calldata fillerData) external {
         // Ensure that the call is not malformed. If the call is malformed, abi.decode will fail.
         V3SpokePoolInterface.V3RelayData memory relayData = abi.decode(originData, (V3SpokePoolInterface.V3RelayData));
-        if (RelayDataHashLib.getRelayDataHash(relayData, chainId()) != orderId) revert WrongERC7683OrderId();
+        if (RelayDataHashLib.getRelayDataHash(relayData, chainId()) != orderId) {
+            revert WrongERC7683OrderId();
+        }
         AcrossDestinationFillerData memory destinationFillerData = abi.decode(
             fillerData,
             (AcrossDestinationFillerData)
@@ -1323,7 +1321,8 @@ abstract contract SpokePool is
         // 1. If this parameter is 0, then there is no exclusivity period and emit 0 for the deadline. This
         //    means that fillers of this deposit do not have to worry about the block.timestamp of this event changing
         //    due to re-orgs when filling this deposit.
-        // 2. If the exclusivity parameter is less than or equal to MAX_EXCLUSIVITY_PERIOD_SECONDS, then the exclusivity
+        // 2. If the exclusivity parameter is less than or equal to RelayDataHashLib.MAX_EXCLUSIVITY_PERIOD_SECONDS,
+        //    then the exclusivity
         //    deadline is set to the block.timestamp of this event plus the exclusivity parameter. This means that the
         //    filler of this deposit assumes re-org risk when filling this deposit because the block.timestamp of this
         //    event affects the exclusivity deadline.

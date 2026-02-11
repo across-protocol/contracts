@@ -54,7 +54,7 @@ contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
         uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityParameter,
         bytes memory message
     ) internal override {
         IERC20(inputToken).forceApprove(address(SPOKE_POOL), inputAmount);
@@ -71,7 +71,7 @@ contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
                 exclusiveRelayer,
                 quoteTimestamp,
                 fillDeadline,
-                exclusivityDeadline,
+                exclusivityParameter,
                 message
             );
         } else {
@@ -87,7 +87,7 @@ contract AcrossOriginSettler is ERC7683OrderDepositor, Ownable, MultiCaller {
                 depositNonce,
                 quoteTimestamp,
                 fillDeadline,
-                exclusivityDeadline,
+                exclusivityParameter,
                 message
             );
         }

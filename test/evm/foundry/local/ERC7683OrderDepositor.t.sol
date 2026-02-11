@@ -50,7 +50,7 @@ contract ERC7683OrderDepositorTest is Test {
         emit IOriginSettler.Open(resolved.orderId, resolved);
         depositor.open(order);
 
-        assertEq(depositor.lastExclusivityDeadline(), expectedDeadline);
+        assertEq(depositor.lastExclusivityParameter(), exclusivityOffset);
     }
 
     function testOpenKeepsAbsoluteExclusivityTimestamp() public {
@@ -65,7 +65,7 @@ contract ERC7683OrderDepositorTest is Test {
         assertEq(relayData.exclusivityDeadline, absoluteDeadline);
 
         depositor.open(order);
-        assertEq(depositor.lastExclusivityDeadline(), absoluteDeadline);
+        assertEq(depositor.lastExclusivityParameter(), absoluteDeadline);
     }
 
     function _buildOrder(uint32 exclusivityPeriod) internal view returns (OnchainCrossChainOrder memory order) {
@@ -90,7 +90,7 @@ contract ERC7683OrderDepositorTest is Test {
 
 contract ERC7683OrderDepositorHarness is ERC7683OrderDepositor {
     uint32 public currentTime;
-    uint32 public lastExclusivityDeadline;
+    uint32 public lastExclusivityParameter;
 
     constructor(
         MockPermit2 _permit2,
@@ -121,10 +121,10 @@ contract ERC7683OrderDepositorHarness is ERC7683OrderDepositor {
         uint256,
         uint32,
         uint32,
-        uint32 exclusivityDeadline,
+        uint32 exclusivityParameter,
         bytes memory
     ) internal override {
-        lastExclusivityDeadline = exclusivityDeadline;
+        lastExclusivityParameter = exclusivityParameter;
     }
 
     function _destinationSettler(uint256) internal view override returns (address) {
