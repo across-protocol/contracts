@@ -190,4 +190,9 @@ interface ICounterfactualDepositFactory {
      * @notice Returns the executor implementation address
      */
     function executor() external view returns (address);
+
+    /**
+     * @notice Returns the EIP-712 typehash for DepositQuote
+     */
+    function DEPOSIT_QUOTE_TYPEHASH() external view returns (bytes32);
 }

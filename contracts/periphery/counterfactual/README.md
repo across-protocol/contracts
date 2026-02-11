@@ -95,6 +95,53 @@ Why: If a deposit needs to be refunded by the HubPool, the refund will be sent t
 
 This ensures users don't lose funds in edge cases.
 
+### 8. EIP-712 Structured Signatures
+
+**Quotes are signed using EIP-712 typed structured data via OpenZeppelin's battle-tested EIP712 library.**
+
+Why: EIP-712 provides superior UX and security:
+
+**User Experience**: When signing in wallets like MetaMask, users see:
+
+```
+Sign Deposit Quote:
+  Deposit Address: 0x1234...
+  Input Amount: 100 USDC
+  Output Amount: 99 USDC
+  Deadline: Jan 15, 2025 12:00 PM
+```
+
+Instead of an opaque hash:
+
+```
+Sign message:
+  0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7
+```
+
+**Security Benefits**:
+
+- Domain separation prevents signature replay across different contracts or chains
+- Typed data makes phishing attacks harder (users can verify what they're signing)
+- Industry standard adopted by major protocols (Uniswap, OpenSea, etc.)
+
+**Implementation**:
+
+```solidity
+// Factory inherits from OpenZeppelin's EIP712
+contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
+    constructor(...) EIP712("Across Counterfactual Deposit", "1") {
+        // ...
+    }
+
+    function verifyQuote(...) public view returns (bool) {
+        bytes32 structHash = keccak256(abi.encode(DEPOSIT_QUOTE_TYPEHASH, ...));
+        bytes32 digest = _hashTypedDataV4(structHash); // OZ helper
+        address recoveredSigner = ECDSA.recover(digest, signature);
+        return recoveredSigner == quoteSigner;
+    }
+}
+```
+
 ## Usage Pattern
 
 **Initial setup:**
@@ -128,6 +175,10 @@ factory.executeOnExisting(depositAddress, signedQuote, signature);
 - **User Protection**: Fee limits prevent quote signer from taking excessive fees.
 - **Quote Binding**: `depositAddress` in quote prevents cross-address replay.
 - **Expiration**: `quote.deadline` prevents stale quote execution.
+- **EIP-712 Signatures**: Quotes are signed using EIP-712 structured data, providing:
+  - Clear visibility of what's being signed in wallets
+  - Domain separation (binds signatures to this contract and chain)
+  - Protection against cross-contract replay attacks
 
 ## Gas Costs
 

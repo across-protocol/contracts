@@ -715,13 +715,15 @@ contract CounterfactualDepositTest is Test {
         factory.executeOnExisting(depositAddress, quote, signature);
     }
 
-    // Helper function to sign a quote (message not included - it's part of route)
+    // Helper function to sign a quote using EIP-712
     function _signQuote(
         ICounterfactualDepositFactory.DepositQuote memory quote,
         uint256 privateKey
-    ) internal pure returns (bytes memory) {
-        bytes32 messageHash = keccak256(
+    ) internal view returns (bytes memory) {
+        // Hash the struct data
+        bytes32 structHash = keccak256(
             abi.encode(
+                factory.DEPOSIT_QUOTE_TYPEHASH(),
                 quote.depositAddress,
                 quote.deadline,
                 quote.inputAmount,
@@ -733,9 +735,26 @@ contract CounterfactualDepositTest is Test {
             )
         );
 
-        bytes32 ethSignedMessageHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
+        // Compute EIP-712 digest using the same formula as OpenZeppelin's _hashTypedDataV4
+        bytes32 domainSeparator = _computeDomainSeparator();
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, ethSignedMessageHash);
+        // Sign the digest
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
         return abi.encodePacked(r, s, v);
+    }
+
+    // Helper to compute domain separator (matches OpenZeppelin EIP712)
+    function _computeDomainSeparator() internal view returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                    keccak256(bytes("Across Counterfactual Deposit")),
+                    keccak256(bytes("1")),
+                    block.chainid,
+                    address(factory)
+                )
+            );
     }
 }

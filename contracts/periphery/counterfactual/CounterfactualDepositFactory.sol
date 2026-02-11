@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
 import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
 import { CounterfactualDeposit } from "./CounterfactualDeposit.sol";
 import { CounterfactualDepositExecutor } from "./CounterfactualDepositExecutor.sol";
@@ -9,9 +10,15 @@ import { CounterfactualDepositExecutor } from "./CounterfactualDepositExecutor.s
 /**
  * @title CounterfactualDepositFactory
  * @notice Factory for deploying and managing counterfactual deposit addresses
- * @dev Uses CREATE2 for deterministic address generation and ECDSA for quote verification
+ * @dev Uses CREATE2 for deterministic address generation and EIP-712 for quote verification
  */
-contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
+contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
+    /// @notice EIP-712 typehash for DepositQuote struct
+    bytes32 public constant DEPOSIT_QUOTE_TYPEHASH =
+        keccak256(
+            "DepositQuote(address depositAddress,uint256 deadline,uint256 inputAmount,uint256 outputAmount,uint32 quoteTimestamp,uint32 fillDeadline,uint32 exclusivityParameter,bytes32 exclusiveRelayer)"
+        );
+
     /// @notice SpokePool contract address (immutable per deployment)
     address public immutable spokePool;
 
@@ -31,7 +38,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param _quoteSigner Initial quote signer address
      * @dev Executor is set after deployment via setExecutor() to break circular dependency
      */
-    constructor(address _spokePool, address _admin, address _quoteSigner) {
+    constructor(address _spokePool, address _admin, address _quoteSigner) EIP712("Across Counterfactual Deposit", "1") {
         spokePool = _spokePool;
         admin = _admin;
         quoteSigner = _quoteSigner;
@@ -191,16 +198,17 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     }
 
     /**
-     * @notice Verifies a deposit quote signature
+     * @notice Verifies a deposit quote signature using EIP-712
      * @param quote Deposit quote to verify
      * @param signature Signature to verify
      * @return True if signature is valid
      * @dev message is not part of quote (it's immutable in proxy), so not included in signature
      */
     function verifyQuote(DepositQuote calldata quote, bytes calldata signature) public view returns (bool) {
-        // Compute message hash (message not included - it's part of route, not quote)
-        bytes32 messageHash = keccak256(
+        // Hash the struct data
+        bytes32 structHash = keccak256(
             abi.encode(
+                DEPOSIT_QUOTE_TYPEHASH,
                 quote.depositAddress,
                 quote.deadline,
                 quote.inputAmount,
@@ -212,11 +220,11 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
             )
         );
 
-        // Add Ethereum signed message prefix
-        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(messageHash);
+        // Compute EIP-712 digest using OpenZeppelin's helper
+        bytes32 digest = _hashTypedDataV4(structHash);
 
         // Recover signer and compare
-        address recoveredSigner = ECDSA.recover(ethSignedMessageHash, signature);
+        address recoveredSigner = ECDSA.recover(digest, signature);
         return recoveredSigner == quoteSigner;
     }
 
