@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
-import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
+import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
 
 /**
  * @notice Extended interface to access SpokePool state
@@ -12,7 +13,6 @@ import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol"
 interface ISpokePoolExtended is V3SpokePoolInterface {
     function numberOfDeposits() external view returns (uint32);
 }
-import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
 
 /**
  * @title CounterfactualDepositExecutor
@@ -21,9 +21,9 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
  * Route parameters are appended to the clone bytecode and read via Clones.fetchCloneArgs.
  */
 contract CounterfactualDepositExecutor {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
-    /// @notice Route parameters passed from proxy via calldata
+    /// @notice Route parameters stored as immutable args in clone bytecode
     struct RouteParams {
         bytes32 inputToken;
         bytes32 outputToken;
@@ -60,7 +60,7 @@ contract CounterfactualDepositExecutor {
         ICounterfactualDepositFactory.DepositQuote calldata quote,
         bytes calldata signature
     ) external {
-        // Get route parameters from appended calldata (proxy passes these)
+        // Get route parameters from clone immutable args
         RouteParams memory params = _getRouteParams();
 
         // Verify quote is for this specific deposit address
@@ -85,13 +85,13 @@ contract CounterfactualDepositExecutor {
 
         // Get actual token balance
         address inputTokenAddr = address(uint160(uint256(params.inputToken)));
-        uint256 balance = IERC20Upgradeable(inputTokenAddr).balanceOf(address(this));
+        uint256 balance = IERC20(inputTokenAddr).balanceOf(address(this));
 
         // Verify sufficient balance
         if (balance < quote.inputAmount) revert ICounterfactualDepositFactory.InsufficientBalance();
 
         // Approve SpokePool for inputAmount
-        IERC20Upgradeable(inputTokenAddr).safeIncreaseAllowance(spokePool, quote.inputAmount);
+        IERC20(inputTokenAddr).safeIncreaseAllowance(spokePool, quote.inputAmount);
 
         // Get depositId before executing (will be incremented by deposit)
         uint256 depositId = ISpokePoolExtended(spokePool).numberOfDeposits();
@@ -136,7 +136,7 @@ contract CounterfactualDepositExecutor {
         }
 
         // Transfer tokens
-        IERC20Upgradeable(token).safeTransfer(to, amount);
+        IERC20(token).safeTransfer(to, amount);
     }
 
     /**

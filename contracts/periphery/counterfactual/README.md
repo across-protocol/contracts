@@ -1,15 +1,45 @@
 # Counterfactual Deposit Addresses
 
-Gas-optimized system for creating persistent, reusable deposit addresses via CREATE2.
+Gas-optimized system for creating persistent, reusable deposit addresses via deterministic CREATE2 deployment.
 
 ## Architecture
 
 **Two-contract system using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
-- `CounterfactualDepositExecutor` - Implementation contract; the factory deploys EIP-1167 clones of this with route params appended to bytecode
-- `CounterfactualDepositFactory` - CREATE2 factory (via `Clones.cloneDeterministicWithImmutableArgs`) and EIP-712 signature verification
+- `CounterfactualDepositExecutor` — Implementation contract. Each deposit address is an EIP-1167 minimal proxy (clone) of this contract, with route parameters appended to the clone's bytecode as immutable args.
+- `CounterfactualDepositFactory` — Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and verifies EIP-712 quote signatures.
 
-Each deposit address is a minimal EIP-1167 proxy pointing to the executor, with ABI-encoded route parameters appended to the clone bytecode. The executor reads them via `Clones.fetchCloneArgs(address(this))`.
+```
+                          ┌─────────────────────────────────────────┐
+                          │       CounterfactualDepositFactory      │
+                          │  - cloneDeterministicWithImmutableArgs  │
+                          │  - predictDeterministicAddress          │
+                          │  - EIP-712 signature verification       │
+                          └──────────┬──────────────────────────────┘
+                                     │ deploys
+                    ┌────────────────┼────────────────┐
+                    ▼                ▼                 ▼
+            ┌──────────────┐ ┌──────────────┐  ┌──────────────┐
+            │  Clone 0x1…  │ │  Clone 0x2…  │  │  Clone 0x3…  │
+            │  (45 bytes   │ │  (45 bytes   │  │  (45 bytes   │
+            │   + args)    │ │   + args)    │  │   + args)    │
+            └──────┬───────┘ └──────┬───────┘  └──────┬───────┘
+                   │ delegatecall   │                  │
+                   └────────────────┼──────────────────┘
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │ CounterfactualDepositExecutor  │
+                    │  - executeDeposit()            │
+                    │  - adminWithdraw()             │
+                    │  - immutable: factory, spoke   │
+                    └───────────────────────────────┘
+```
+
+When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the executor. Inside that context:
+
+- `address(this)` = the clone's address (holds token balances, receives refunds)
+- Code executing = the executor's bytecode (has `factory` and `spokePool` immutables)
+- Route params = read from the clone's bytecode via `Clones.fetchCloneArgs(address(this))`
 
 ## Key Design Decisions
 
@@ -23,19 +53,29 @@ The clone only stores route-specific parameters (inputToken, outputToken, etc.) 
 
 ### 2. No Nonce Tracking (Quote Reusability)
 
-**Quotes can be reused multiple times—there's no nonce mapping.**
+**Quotes can be reused multiple times — there's no nonce mapping.**
 
 Why: The signature protects the _user_ from unauthorized deposits, not the relayer from quote reuse. If a valid quote exists for an address with sufficient balance, executing it multiple times is acceptable behavior.
 
-Protection comes from `quote.depositAddress` binding—a quote signed for address A cannot be used on address B.
+Protection comes from `quote.depositAddress` binding — a quote signed for address A cannot be used on address B.
 
 **Trade-off:** Same quote can execute repeatedly vs. preventing any replay.
 
 ### 3. OZ Clones with Immutable Args
 
-**Route parameters are appended to clone bytecode via `Clones.cloneDeterministicWithImmutableArgs`.**
+**Route parameters are baked into each clone's bytecode rather than written to storage.**
 
-The executor reads them with `Clones.fetchCloneArgs(address(this))` (uses EXTCODECOPY). This replaces a custom proxy + assembly approach with a battle-tested OZ library.
+[EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode. These bytes become part of the deployed contract's code and can be read back with `Clones.fetchCloneArgs(address(this))`, which uses `EXTCODECOPY` to copy the appended region.
+
+**How it's used here:** The factory ABI-encodes the route parameters (inputToken, outputToken, destinationChainId, recipient, maxGasFee, maxCapitalFee, message) and passes them as the immutable args when deploying a clone. When `executeDeposit()` is called on a clone, the executor reads the args back via `fetchCloneArgs` and decodes them.
+
+**Why not normal storage?** Storage-based alternatives are significantly more expensive:
+
+- **SSTORE (cold)** costs 22,100 gas per slot on first write. Route params span 7+ slots, so deploying a storage-based proxy would cost ~155k+ gas just for the writes — compared to the clone's total deployment cost of ~40k gas.
+- **SLOAD (cold)** costs 2,100 gas per slot on first read within a transaction. Reading 7 slots costs ~14,700 gas. `EXTCODECOPY` reads the entire args blob in a single operation for ~2,600 gas (base) + minimal per-word cost.
+- Clone deployment uses `CREATE2` with a tiny initcode (45 bytes + args), so there's no constructor execution overhead.
+
+The pattern also eliminates the need for any custom proxy or assembly — the OZ library handles proxy deployment, deterministic addressing, and arg retrieval.
 
 ### 4. Fee Protection Mechanism
 
@@ -59,23 +99,23 @@ require(actualFee <= maxAllowedFee);
 
 ### 5. Address Reusability
 
-**The same counterfactual address can receive and execute multiple deposits over time.**
+**The same clone proxy can receive and execute multiple deposits over time.**
 
-Why: Enables persistent "deposit addresses" that users can save, share, and reuse—like a traditional address.
+Why: Enables persistent "deposit addresses" that users can save, share, and reuse — like a traditional address.
 
-The factory's `deployAndExecute()` uses try/catch to handle already-deployed addresses gracefully, while `executeOnExisting()` skips deployment entirely for subsequent deposits.
+The factory's `deployAndExecute()` uses try/catch to handle already-deployed clones gracefully, while `executeOnExisting()` skips deployment entirely for subsequent deposits.
 
-### 6. Depositor is the Contract
+### 6. Depositor is the Clone Proxy
 
-**The deposit is made with `depositor = address(this)` (the counterfactual contract), not `msg.sender`.**
+**The deposit is made with `depositor = address(this)` (the clone proxy), not `msg.sender`.**
 
-Why: If a deposit needs to be refunded by the HubPool, the refund will be sent to the counterfactual address (where admin can recover it), not to the caller (who may be a relayer).
+Why: If a deposit needs to be refunded by the HubPool, the refund will be sent to the clone proxy address (where admin can recover it via `adminWithdraw`), not to the caller (who may be a relayer).
 
 This ensures users don't lose funds in edge cases.
 
 ### 7. EIP-712 Structured Signatures
 
-**Quotes are signed using EIP-712 typed structured data via OpenZeppelin's battle-tested EIP712 library.**
+**Quotes are signed using EIP-712 typed structured data via OpenZeppelin's EIP712 library.**
 
 Why: EIP-712 provides superior UX and security:
 
@@ -92,10 +132,10 @@ address predictedAddress = factory.predictDepositAddress(
     executor, inputToken, outputToken, destinationChainId,
     recipient, message, maxGasFee, maxCapitalFee, salt
 );
-// Share predictedAddress with user
+// Share predictedAddress with user — tokens sent here before deployment are safe
 ```
 
-**First deposit (deploys + executes):**
+**First deposit (deploys clone + executes):**
 
 ```solidity
 factory.deployAndExecute(
@@ -103,7 +143,7 @@ factory.deployAndExecute(
 );
 ```
 
-**Subsequent deposits (already deployed):**
+**Subsequent deposits (clone already deployed):**
 
 ```solidity
 factory.executeOnExisting(depositAddress, signedQuote, signature);
@@ -112,11 +152,8 @@ factory.executeOnExisting(depositAddress, signedQuote, signature);
 ## Security Model
 
 - **Quote Signer**: Trusted address that signs quotes. Compromise allows bad quotes but fees are bounded by user-set limits.
-- **Admin**: Can withdraw any tokens (for refunds/recovery). Should be a multisig.
-- **User Protection**: Fee limits prevent quote signer from taking excessive fees.
+- **Admin**: Can withdraw any tokens from any clone via `adminWithdraw` (for refunds/recovery). Should be a multisig.
+- **User Protection**: Fee limits (maxGasFee + maxCapitalFee) prevent quote signer from taking excessive fees.
 - **Quote Binding**: `depositAddress` in quote prevents cross-address replay.
 - **Expiration**: `quote.deadline` prevents stale quote execution.
-- **EIP-712 Signatures**: Quotes are signed using EIP-712 structured data, providing:
-  - Clear visibility of what's being signed in wallets
-  - Domain separation (binds signatures to this contract and chain)
-  - Protection against cross-contract replay attacks
+- **EIP-712 Signatures**: Domain separation binds signatures to this factory contract and chain, preventing cross-contract replay.

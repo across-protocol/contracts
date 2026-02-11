@@ -17,7 +17,7 @@ interface ICounterfactualDepositFactory {
      * @param fillDeadline Latest timestamp at which the deposit can be filled
      * @param exclusivityParameter Parameter for exclusivity deadline calculation
      * @param exclusiveRelayer Address of exclusive relayer (if any)
-     * @dev message is part of the route (immutable in proxy), not part of the quote
+     * @dev message is part of the route (stored in clone bytecode), not part of the quote
      */
     struct DepositQuote {
         address depositAddress;
@@ -64,11 +64,8 @@ interface ICounterfactualDepositFactory {
     /// @notice Insufficient token balance for deposit
     error InsufficientBalance();
 
-    /// @notice Absolute fee exceeds maximum allowed
+    /// @notice Fee exceeds maximum allowed
     error GasFeeTooHigh();
-
-    /// @notice Percentage fee exceeds maximum allowed
-    error CapitalFeeTooHigh();
 
     /**
      * @notice Predicts the address of a counterfactual deposit contract

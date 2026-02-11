@@ -750,6 +750,144 @@ contract CounterfactualDepositTest is Test {
         factory.executeOnExisting(depositAddress, quote, signature);
     }
 
+    function testDeployAndExecuteWithMessage() public {
+        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
+        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
+        bytes32 salt = keccak256("test-salt-msg");
+        bytes memory message = abi.encode(uint256(42), address(0xBEEF));
+
+        address depositAddress = factory.predictDepositAddress(
+            address(executor),
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            message,
+            type(uint256).max,
+            0,
+            salt
+        );
+
+        // Verify clone args include the message
+        factory.deploy(
+            address(executor),
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            message,
+            type(uint256).max,
+            0,
+            salt
+        );
+
+        bytes memory args = Clones.fetchCloneArgs(depositAddress);
+        (, , , , , , bytes memory storedMessage) = abi.decode(
+            args,
+            (bytes32, bytes32, uint256, bytes32, uint256, uint256, bytes)
+        );
+        assertEq(storedMessage, message, "Message should be stored in clone args");
+
+        // Fund and execute deposit
+        vm.prank(user);
+        inputToken.transfer(depositAddress, 100e18);
+
+        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
+            depositAddress: depositAddress,
+            deadline: block.timestamp + 1 hours,
+            inputAmount: 100e18,
+            outputAmount: 99e18,
+            quoteTimestamp: uint32(block.timestamp),
+            fillDeadline: uint32(block.timestamp + 4 hours),
+            exclusivityParameter: 0,
+            exclusiveRelayer: bytes32(0)
+        });
+
+        bytes memory signature = _signQuote(quote, quoteSignerPk);
+
+        vm.prank(relayer);
+        factory.executeOnExisting(depositAddress, quote, signature);
+
+        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
+        assertEq(spokePool.numberOfDeposits(), 1, "Deposit should be executed");
+    }
+
+    function testDeployAndExecuteWhenAlreadyDeployed() public {
+        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
+        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
+        bytes32 salt = keccak256("test-salt");
+
+        // Deploy first
+        address depositAddress = factory.deploy(
+            address(executor),
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            0,
+            salt
+        );
+
+        // Fund the deposit address
+        vm.prank(user);
+        inputToken.transfer(depositAddress, 100e18);
+
+        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
+            depositAddress: depositAddress,
+            deadline: block.timestamp + 1 hours,
+            inputAmount: 100e18,
+            outputAmount: 99e18,
+            quoteTimestamp: uint32(block.timestamp),
+            fillDeadline: uint32(block.timestamp + 4 hours),
+            exclusivityParameter: 0,
+            exclusiveRelayer: bytes32(0)
+        });
+
+        bytes memory signature = _signQuote(quote, quoteSignerPk);
+
+        // Call deployAndExecute on already-deployed clone (exercises catch branch)
+        vm.prank(relayer);
+        address returned = factory.deployAndExecute(
+            address(executor),
+            inputTokenBytes,
+            outputTokenBytes,
+            DESTINATION_CHAIN_ID,
+            recipient,
+            "",
+            type(uint256).max,
+            0,
+            salt,
+            quote,
+            signature
+        );
+
+        assertEq(returned, depositAddress, "Should return correct address from catch branch");
+        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit should have executed");
+        assertEq(spokePool.numberOfDeposits(), 1, "Deposit ID should increment");
+    }
+
+    function testExecuteOnImplementationReverts() public {
+        // Calling executeDeposit directly on the executor implementation (not a clone)
+        // should revert because fetchCloneArgs will fail on non-clone bytecode
+        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
+            depositAddress: address(executor),
+            deadline: block.timestamp + 1 hours,
+            inputAmount: 100e18,
+            outputAmount: 99e18,
+            quoteTimestamp: uint32(block.timestamp),
+            fillDeadline: uint32(block.timestamp + 4 hours),
+            exclusivityParameter: 0,
+            exclusiveRelayer: bytes32(0)
+        });
+
+        bytes memory signature = _signQuote(quote, quoteSignerPk);
+
+        vm.expectRevert();
+        executor.executeDeposit(quote, signature);
+    }
+
     // Helper function to sign a quote using EIP-712
     function _signQuote(
         ICounterfactualDepositFactory.DepositQuote memory quote,
