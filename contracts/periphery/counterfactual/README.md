@@ -4,32 +4,22 @@ Gas-optimized system for creating persistent, reusable deposit addresses via CRE
 
 ## Architecture
 
-**Three-contract system:**
+**Two-contract system using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
-- `CounterfactualDeposit` - Minimal proxy with route parameters as immutables
-- `CounterfactualDepositExecutor` - Singleton implementation called via delegatecall
-- `CounterfactualDepositFactory` - CREATE2 factory and signature verification
+- `CounterfactualDepositExecutor` - Implementation contract; the factory deploys EIP-1167 clones of this with route params appended to bytecode
+- `CounterfactualDepositFactory` - CREATE2 factory (via `Clones.cloneDeterministicWithImmutableArgs`) and EIP-712 signature verification
+
+Each deposit address is a minimal EIP-1167 proxy pointing to the executor, with ABI-encoded route parameters appended to the clone bytecode. The executor reads them via `Clones.fetchCloneArgs(address(this))`.
 
 ## Key Design Decisions
 
 ### 1. Immutable Distribution (Gas Optimization)
 
-**Factory and SpokePool are immutable in the Executor, not the proxy.**
+**Factory and SpokePool are immutable in the Executor, not the clone.**
 
-Why: These values are identical across all deposit addresses on a chain. Storing them in each proxy wastes ~64 bytes per deployment (~12,800 gas).
+Why: These values are identical across all deposit addresses on a chain. Storing them in each clone wastes gas.
 
-The proxy only stores an immutable reference to the executor contract itself, then delegates all calls directly. This avoids:
-
-- Storing factory address in proxy (not needed—executor has it)
-- Storing spokePool address in proxy (not needed—executor has it)
-- Querying factory.executor() on every call (~2,600 gas saved per execution)
-
-When delegatecall executes:
-
-- Storage context = proxy (token balances, message)
-- Immutables = executor's bytecode (factory, spokePool) + proxy's bytecode (executor reference, route params)
-
-**Savings:** ~9k gas per address deployment + ~2,600 gas per execution.
+The clone only stores route-specific parameters (inputToken, outputToken, etc.) as immutable args in bytecode. Chain-wide constants (factory, spokePool) live in the executor's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
 
 ### 2. No Nonce Tracking (Quote Reusability)
 
@@ -41,25 +31,13 @@ Protection comes from `quote.depositAddress` binding—a quote signed for addres
 
 **Trade-off:** Same quote can execute repeatedly vs. preventing any replay.
 
-### 3. Custom Calldata Passing
+### 3. OZ Clones with Immutable Args
 
-**The proxy appends ABI-encoded route parameters to the original calldata before delegatecall.**
+**Route parameters are appended to clone bytecode via `Clones.cloneDeterministicWithImmutableArgs`.**
 
-Why: Immutables aren't accessible in delegatecall context through normal means. The executor needs route parameters (inputToken, outputToken, etc.) that are immutable in the proxy.
+The executor reads them with `Clones.fetchCloneArgs(address(this))` (uses EXTCODECOPY). This replaces a custom proxy + assembly approach with a battle-tested OZ library.
 
-Format: `[original calldata] [ABI-encoded RouteParams] [uint256 original size]`
-
-The executor reads the size marker from the end, then extracts route params using assembly.
-
-### 4. Message Storage vs. Immutables
-
-**Message is stored in storage, not as an immutable, with a `hasMessage` bool optimization.**
-
-Why: `bytes` cannot be immutable (Solidity limitation). Storing in storage allows variable-length messages.
-
-Optimization: `hasMessage` bool immutable avoids storage read in the common case (empty message). The fallback only reads `message` from storage if `hasMessage == true`.
-
-### 5. Fee Protection Mechanism
+### 4. Fee Protection Mechanism
 
 **Users set two fee limits: `maxGasFee` (absolute wei) and `maxCapitalFee` (relative bps). Total fee must not exceed their sum.**
 
@@ -79,7 +57,7 @@ require(actualFee <= maxAllowedFee);
 - A quote with `outputAmount = 991 USDC` (9 USDC fee) would pass
 - A quote with `outputAmount = 989 USDC` (11 USDC fee) would be rejected
 
-### 6. Address Reusability
+### 5. Address Reusability
 
 **The same counterfactual address can receive and execute multiple deposits over time.**
 
@@ -87,7 +65,7 @@ Why: Enables persistent "deposit addresses" that users can save, share, and reus
 
 The factory's `deployAndExecute()` uses try/catch to handle already-deployed addresses gracefully, while `executeOnExisting()` skips deployment entirely for subsequent deposits.
 
-### 7. Depositor is the Contract
+### 6. Depositor is the Contract
 
 **The deposit is made with `depositor = address(this)` (the counterfactual contract), not `msg.sender`.**
 
@@ -95,52 +73,15 @@ Why: If a deposit needs to be refunded by the HubPool, the refund will be sent t
 
 This ensures users don't lose funds in edge cases.
 
-### 8. EIP-712 Structured Signatures
+### 7. EIP-712 Structured Signatures
 
 **Quotes are signed using EIP-712 typed structured data via OpenZeppelin's battle-tested EIP712 library.**
 
 Why: EIP-712 provides superior UX and security:
 
-**User Experience**: When signing in wallets like MetaMask, users see:
-
-```
-Sign Deposit Quote:
-  Deposit Address: 0x1234...
-  Input Amount: 100 USDC
-  Output Amount: 99 USDC
-  Deadline: Jan 15, 2025 12:00 PM
-```
-
-Instead of an opaque hash:
-
-```
-Sign message:
-  0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb7
-```
-
-**Security Benefits**:
-
 - Domain separation prevents signature replay across different contracts or chains
 - Typed data makes phishing attacks harder (users can verify what they're signing)
 - Industry standard adopted by major protocols (Uniswap, OpenSea, etc.)
-
-**Implementation**:
-
-```solidity
-// Factory inherits from OpenZeppelin's EIP712
-contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
-    constructor(...) EIP712("Across Counterfactual Deposit", "1") {
-        // ...
-    }
-
-    function verifyQuote(...) public view returns (bool) {
-        bytes32 structHash = keccak256(abi.encode(DEPOSIT_QUOTE_TYPEHASH, ...));
-        bytes32 digest = _hashTypedDataV4(structHash); // OZ helper
-        address recoveredSigner = ECDSA.recover(digest, signature);
-        return recoveredSigner == quoteSigner;
-    }
-}
-```
 
 ## Usage Pattern
 
@@ -148,7 +89,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
 
 ```solidity
 address predictedAddress = factory.predictDepositAddress(
-    inputToken, outputToken, destinationChainId,
+    executor, inputToken, outputToken, destinationChainId,
     recipient, message, maxGasFee, maxCapitalFee, salt
 );
 // Share predictedAddress with user
@@ -158,7 +99,7 @@ address predictedAddress = factory.predictDepositAddress(
 
 ```solidity
 factory.deployAndExecute(
-    routeParams..., salt, signedQuote, signature
+    executor, routeParams..., salt, signedQuote, signature
 );
 ```
 
@@ -179,14 +120,3 @@ factory.executeOnExisting(depositAddress, signedQuote, signature);
   - Clear visibility of what's being signed in wallets
   - Domain separation (binds signatures to this contract and chain)
   - Protection against cross-contract replay attacks
-
-## Gas Costs
-
-- **Deployment**: ~33-35k gas (minimal proxy with executor reference + route params)
-- **First deposit**: ~180-230k gas (deploy + execute + SpokePool deposit)
-- **Subsequent deposits**: ~107-157k gas (execute + SpokePool deposit, no deployment)
-
-The optimization of storing only the executor reference (instead of factory + spokePool) saves:
-
-- ~9k gas per deployment
-- ~2.6k gas per execution (no external call to factory.executor())

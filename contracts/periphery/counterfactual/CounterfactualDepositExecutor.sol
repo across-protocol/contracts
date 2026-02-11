@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 
 /**
@@ -15,9 +16,9 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
 
 /**
  * @title CounterfactualDepositExecutor
- * @notice Singleton implementation contract containing execution logic for counterfactual deposits
- * @dev This contract is called via delegatecall from CounterfactualDeposit proxies
- * It contains the logic for executing deposits and admin withdrawals
+ * @notice Implementation contract for counterfactual deposits, deployed as EIP-1167 clones with immutable args
+ * @dev The factory deploys minimal proxies (clones) of this contract using OZ Clones.cloneDeterministicWithImmutableArgs.
+ * Route parameters are appended to the clone bytecode and read via Clones.fetchCloneArgs.
  */
 contract CounterfactualDepositExecutor {
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -51,7 +52,7 @@ contract CounterfactualDepositExecutor {
 
     /**
      * @notice Executes a deposit with a signed quote
-     * @dev This function is called via delegatecall, so it operates in the proxy's context
+     * @dev Called on EIP-1167 clone instances; reads route params from clone immutable args
      * @param quote Signed deposit quote containing all deposit parameters
      * @param signature Signature from authorized quoteSigner
      */
@@ -139,65 +140,21 @@ contract CounterfactualDepositExecutor {
     }
 
     /**
-     * @notice Gets route parameters from appended calldata
-     * @dev The proxy appends: [ABI-encoded RouteParams][uint256 original calldata size]
-     * ABI encoding format: inputToken(32) + outputToken(32) + destinationChainId(32) + recipient(32) +
-     *                      messageOffset(32) + maxGasFee(32) + maxCapitalFee(32) +
-     *                      messageLength(32) + messageData(variable)
+     * @notice Gets route parameters from clone immutable args appended to bytecode
+     * @dev Uses OZ Clones.fetchCloneArgs to read args set during cloneDeterministicWithImmutableArgs
      * @return params RouteParams struct containing all route-specific parameters
      */
-    function _getRouteParams() internal pure returns (RouteParams memory params) {
-        assembly {
-            // Read original calldata size from the last 32 bytes
-            let originalSize := calldataload(sub(calldatasize(), 32))
-
-            // Route params start at originalSize
-            let offset := originalSize
-
-            // Read fixed-size parameters
-            let _inputToken := calldataload(offset) // offset 0
-            let _outputToken := calldataload(add(offset, 32)) // offset 32
-            let _destinationChainId := calldataload(add(offset, 64)) // offset 64
-            let _recipient := calldataload(add(offset, 96)) // offset 96
-
-            // Message is at offset 128 (the offset value) + its position
-            // The value at offset 128 tells us where the message data starts (relative to start of encoded data)
-            let messageDataOffset := calldataload(add(offset, 128)) // This is typically 224 (0xe0) with fees
-            let messageStart := add(offset, messageDataOffset)
-            let messageLength := calldataload(messageStart)
-            let messageDataStart := add(messageStart, 32)
-
-            // Read fee parameters (after first 5 params)
-            let _maxGasFee := calldataload(add(offset, 160)) // offset 160
-            let _maxCapitalFee := calldataload(add(offset, 192)) // offset 192
-
-            // Allocate memory for the struct
-            params := mload(0x40)
-
-            // Store fixed-size fields
-            mstore(params, _inputToken) // offset 0
-            mstore(add(params, 0x20), _outputToken) // offset 32
-            mstore(add(params, 0x40), _destinationChainId) // offset 64
-            mstore(add(params, 0x60), _recipient) // offset 96
-
-            // Allocate memory for the message bytes (after the struct fields + fee fields)
-            let messagePtr := add(params, 0xe0) // After all fixed fields (7*32 = 224)
-
-            // Store pointer to message in the struct (offset 128 in struct)
-            mstore(add(params, 0x80), messagePtr)
-
-            // Store fee parameters
-            mstore(add(params, 0xa0), _maxGasFee) // offset 160
-            mstore(add(params, 0xc0), _maxCapitalFee) // offset 192
-
-            // Store message length at the message pointer location
-            mstore(messagePtr, messageLength)
-
-            // Copy message data
-            calldatacopy(add(messagePtr, 0x20), messageDataStart, messageLength)
-
-            // Update free memory pointer to after the message data
-            mstore(0x40, add(add(messagePtr, 0x20), messageLength))
-        }
+    function _getRouteParams() internal view returns (RouteParams memory params) {
+        bytes memory args = Clones.fetchCloneArgs(address(this));
+        (
+            bytes32 inputToken,
+            bytes32 outputToken,
+            uint256 destinationChainId,
+            bytes32 recipient,
+            uint256 maxGasFee,
+            uint256 maxCapitalFee,
+            bytes memory message
+        ) = abi.decode(args, (bytes32, bytes32, uint256, bytes32, uint256, uint256, bytes));
+        return RouteParams(inputToken, outputToken, destinationChainId, recipient, message, maxGasFee, maxCapitalFee);
     }
 }

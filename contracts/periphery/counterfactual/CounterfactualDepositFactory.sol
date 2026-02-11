@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
-import { CounterfactualDeposit } from "./CounterfactualDeposit.sol";
 import { CounterfactualDepositExecutor } from "./CounterfactualDepositExecutor.sol";
 
 /**
@@ -64,26 +64,16 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
         uint256 maxCapitalFee,
         bytes32 salt
     ) public view returns (address) {
-        // Compute creation code hash for CREATE2
-        bytes32 creationCodeHash = keccak256(
-            abi.encodePacked(
-                type(CounterfactualDeposit).creationCode,
-                abi.encode(
-                    executor,
-                    inputToken,
-                    outputToken,
-                    destinationChainId,
-                    recipient,
-                    message,
-                    maxGasFee,
-                    maxCapitalFee
-                )
-            )
+        bytes memory args = _encodeArgs(
+            inputToken,
+            outputToken,
+            destinationChainId,
+            recipient,
+            maxGasFee,
+            maxCapitalFee,
+            message
         );
-
-        // Compute CREATE2 address
-        return
-            address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(this), salt, creationCodeHash)))));
+        return Clones.predictDeterministicAddressWithImmutableArgs(executor, args, salt);
     }
 
     /**
@@ -110,19 +100,16 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
         uint256 maxCapitalFee,
         bytes32 salt
     ) public returns (address depositAddress) {
-        // Deploy via CREATE2
-        depositAddress = address(
-            new CounterfactualDeposit{ salt: salt }(
-                executor,
-                inputToken,
-                outputToken,
-                destinationChainId,
-                recipient,
-                message,
-                maxGasFee,
-                maxCapitalFee
-            )
+        bytes memory args = _encodeArgs(
+            inputToken,
+            outputToken,
+            destinationChainId,
+            recipient,
+            maxGasFee,
+            maxCapitalFee,
+            message
         );
+        depositAddress = Clones.cloneDeterministicWithImmutableArgs(executor, args, salt);
 
         emit DepositAddressCreated(depositAddress, inputToken, outputToken, destinationChainId, recipient, salt);
     }
@@ -250,5 +237,17 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
         address oldAdmin = admin;
         admin = newAdmin;
         emit AdminUpdated(oldAdmin, newAdmin);
+    }
+
+    function _encodeArgs(
+        bytes32 inputToken,
+        bytes32 outputToken,
+        uint256 destinationChainId,
+        bytes32 recipient,
+        uint256 maxGasFee,
+        uint256 maxCapitalFee,
+        bytes memory message
+    ) private pure returns (bytes memory) {
+        return abi.encode(inputToken, outputToken, destinationChainId, recipient, maxGasFee, maxCapitalFee, message);
     }
 }

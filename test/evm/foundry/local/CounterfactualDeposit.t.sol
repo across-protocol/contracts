@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDepositExecutor } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositExecutor.sol";
-import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { ICounterfactualDepositFactory } from "../../../../contracts/interfaces/ICounterfactualDepositFactory.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -178,13 +178,25 @@ contract CounterfactualDepositTest is Test {
             salt
         );
 
-        CounterfactualDeposit depositContract = CounterfactualDeposit(payable(deployed));
+        // Verify clone args via Clones.fetchCloneArgs
+        bytes memory args = Clones.fetchCloneArgs(deployed);
+        (
+            bytes32 storedInputToken,
+            bytes32 storedOutputToken,
+            uint256 storedDestChainId,
+            bytes32 storedRecipient,
+            uint256 storedMaxGasFee,
+            uint256 storedMaxCapitalFee,
+            bytes memory storedMessage
+        ) = abi.decode(args, (bytes32, bytes32, uint256, bytes32, uint256, uint256, bytes));
 
-        assertEq(depositContract.executor(), address(executor), "Executor address mismatch");
-        assertEq(depositContract.inputToken(), inputTokenBytes, "Input token mismatch");
-        assertEq(depositContract.outputToken(), outputTokenBytes, "Output token mismatch");
-        assertEq(depositContract.destinationChainId(), DESTINATION_CHAIN_ID, "Destination chain ID mismatch");
-        assertEq(depositContract.recipient(), recipient, "Recipient mismatch");
+        assertEq(storedInputToken, inputTokenBytes, "Input token mismatch");
+        assertEq(storedOutputToken, outputTokenBytes, "Output token mismatch");
+        assertEq(storedDestChainId, DESTINATION_CHAIN_ID, "Destination chain ID mismatch");
+        assertEq(storedRecipient, recipient, "Recipient mismatch");
+        assertEq(storedMaxGasFee, type(uint256).max, "MaxGasFee mismatch");
+        assertEq(storedMaxCapitalFee, 0, "MaxCapitalFee mismatch");
+        assertEq(storedMessage.length, 0, "Message should be empty");
     }
 
     function testVerifyValidSignature() public {
