@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { Output, GaslessCrossChainOrder, OnchainCrossChainOrder, ResolvedCrossChainOrder, IOriginSettler, FillInstruction } from "./ERC7683.sol";
 import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Permit2Lib.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";
+import { RelayDataHashLib } from "../libraries/RelayDataHashLib.sol";
 
 /**
  * @notice ERC7683OrderDepositor processes an external order type and translates it into an AcrossV3 deposit.
@@ -79,11 +80,11 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             // Note: simplifying assumption to avoid quote timestamps that cause orders to expire before the deadline.
             SafeCast.toUint32(order.openDeadline - QUOTE_BEFORE_DEADLINE),
             order.fillDeadline,
-            acrossOrderData.exclusivityPeriod,
+            _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod),
             acrossOrderData.message
         );
 
-        emit Open(keccak256(resolvedOrder.fillInstructions[0].originData), resolvedOrder);
+        emit Open(resolvedOrder.orderId, resolvedOrder);
     }
 
     /**
@@ -110,11 +111,11 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             // Note: simplifying assumption to avoid the order type having to bake in the quote timestamp.
             SafeCast.toUint32(block.timestamp),
             order.fillDeadline,
-            acrossOrderData.exclusivityPeriod,
+            _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod),
             acrossOrderData.message
         );
 
-        emit Open(keccak256(resolvedOrder.fillInstructions[0].originData), resolvedOrder);
+        emit Open(resolvedOrder.orderId, resolvedOrder);
     }
 
     /**
@@ -228,6 +229,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
+        uint32 exclusivityDeadline = _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod);
         V3SpokePoolInterface.V3RelayData memory relayData;
         relayData.depositor = order.user.toBytes32();
         relayData.recipient = acrossOrderData.recipient;
@@ -239,7 +241,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.originChainId = block.chainid;
         relayData.depositId = computeDepositId(acrossOrderData.depositNonce, order.user);
         relayData.fillDeadline = order.fillDeadline;
-        relayData.exclusivityDeadline = acrossOrderData.exclusivityPeriod;
+        relayData.exclusivityDeadline = exclusivityDeadline;
         relayData.message = acrossOrderData.message;
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
@@ -255,7 +257,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
+            orderId: RelayDataHashLib.getRelayDataHash(relayData, acrossOrderData.destinationChainId)
         });
     }
 
@@ -290,6 +292,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         });
 
         FillInstruction[] memory fillInstructions = new FillInstruction[](1);
+        uint32 exclusivityDeadline = _resolveExclusivityDeadline(acrossOrderData.exclusivityPeriod);
         V3SpokePoolInterface.V3RelayData memory relayData;
         relayData.depositor = msg.sender.toBytes32();
         relayData.recipient = acrossOrderData.recipient;
@@ -301,7 +304,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         relayData.originChainId = block.chainid;
         relayData.depositId = computeDepositId(acrossOrderData.depositNonce, msg.sender);
         relayData.fillDeadline = order.fillDeadline;
-        relayData.exclusivityDeadline = acrossOrderData.exclusivityPeriod;
+        relayData.exclusivityDeadline = exclusivityDeadline;
         relayData.message = acrossOrderData.message;
         fillInstructions[0] = FillInstruction({
             destinationChainId: SafeCast.toUint64(acrossOrderData.destinationChainId),
@@ -317,8 +320,12 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
             minReceived: minReceived,
             maxSpent: maxSpent,
             fillInstructions: fillInstructions,
-            orderId: keccak256(abi.encode(relayData, acrossOrderData.destinationChainId))
+            orderId: RelayDataHashLib.getRelayDataHash(relayData, acrossOrderData.destinationChainId)
         });
+    }
+
+    function _resolveExclusivityDeadline(uint32 exclusivityParameter) internal view returns (uint32) {
+        return RelayDataHashLib.resolveExclusivityDeadline(exclusivityParameter, getCurrentTime());
     }
 
     function _processPermit2Order(
@@ -363,7 +370,7 @@ abstract contract ERC7683OrderDepositor is IOriginSettler {
         uint256 depositNonce,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 exclusivityPeriod,
+        uint32 exclusivityDeadline,
         bytes memory message
     ) internal virtual;
 

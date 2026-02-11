@@ -12,6 +12,7 @@ import "./upgradeable/MultiCallerUpgradeable.sol";
 import "./upgradeable/EIP712CrossChainUpgradeable.sol";
 import "./upgradeable/AddressLibUpgradeable.sol";
 import "./libraries/AddressConverters.sol";
+import "./libraries/RelayDataHashLib.sol";
 import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
 
@@ -163,7 +164,7 @@ abstract contract SpokePool is
 
     // One year in seconds. If `exclusivityParameter` is set to a value less than this, then the emitted
     // exclusivityDeadline in a deposit event will be set to the current time plus this value.
-    uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = 31_536_000;
+    uint32 public constant MAX_EXCLUSIVITY_PERIOD_SECONDS = RelayDataHashLib.MAX_EXCLUSIVITY_PERIOD_SECONDS;
 
     // EIP-7702 prefix for delegated wallets.
     bytes3 internal constant EIP7702_PREFIX = 0xef0100;
@@ -1112,12 +1113,9 @@ abstract contract SpokePool is
      * @param fillerData Data provided by the filler to inform the fill or express their preferences
      */
     function fill(bytes32 orderId, bytes calldata originData, bytes calldata fillerData) external {
-        if (keccak256(abi.encode(originData, chainId())) != orderId) {
-            revert WrongERC7683OrderId();
-        }
-
         // Ensure that the call is not malformed. If the call is malformed, abi.decode will fail.
         V3SpokePoolInterface.V3RelayData memory relayData = abi.decode(originData, (V3SpokePoolInterface.V3RelayData));
+        if (RelayDataHashLib.getRelayDataHash(relayData, chainId()) != orderId) revert WrongERC7683OrderId();
         AcrossDestinationFillerData memory destinationFillerData = abi.decode(
             fillerData,
             (AcrossDestinationFillerData)
@@ -1290,7 +1288,7 @@ abstract contract SpokePool is
     }
 
     function getV3RelayHash(V3RelayData memory relayData) public view returns (bytes32) {
-        return keccak256(abi.encode(relayData, chainId()));
+        return RelayDataHashLib.getRelayDataHash(relayData, chainId());
     }
 
     /**************************************
@@ -1332,12 +1330,11 @@ abstract contract SpokePool is
         // 3. Otherwise, interpret this parameter as a timestamp and emit it as the exclusivity deadline. This means
         //    that the filler of this deposit will not assume re-org risk related to the block.timestamp of this
         //    event changing.
-        uint32 exclusivityDeadline = params.exclusivityParameter;
+        uint32 exclusivityDeadline = RelayDataHashLib.resolveExclusivityDeadline(
+            params.exclusivityParameter,
+            uint32(currentTime)
+        );
         if (exclusivityDeadline > 0) {
-            if (exclusivityDeadline <= MAX_EXCLUSIVITY_PERIOD_SECONDS) {
-                exclusivityDeadline += uint32(currentTime);
-            }
-
             // As a safety measure, prevent caller from inadvertently locking funds during exclusivity period
             //  by forcing them to specify an exclusive relayer.
             if (params.exclusiveRelayer == bytes32(0)) revert InvalidExclusiveRelayer();
