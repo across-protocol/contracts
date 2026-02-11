@@ -70,8 +70,8 @@ contract CounterfactualDepositTest is Test {
             DESTINATION_CHAIN_ID,
             recipient,
             "", // message
-            type(uint256).max, // maxGasFee
-            10000, // maxCapitalFee (100%)
+            type(uint256).max, // maxGasFee (effectively no fee limit)
+            0, // maxCapitalFee (not needed when maxGasFee is unlimited)
             salt
         );
 
@@ -83,7 +83,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -104,7 +104,7 @@ contract CounterfactualDepositTest is Test {
                 recipient,
                 "",
                 type(uint256).max,
-                10000,
+                0,
                 salt
             ),
             inputTokenBytes,
@@ -121,7 +121,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
     }
@@ -139,7 +139,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -152,7 +152,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
     }
@@ -169,7 +169,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -194,7 +194,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -226,7 +226,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -260,7 +260,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -295,8 +295,8 @@ contract CounterfactualDepositTest is Test {
             DESTINATION_CHAIN_ID,
             recipient,
             "", // message
-            type(uint256).max, // maxGasFee
-            10000, // maxCapitalFee (100%)
+            type(uint256).max, // maxGasFee (effectively no fee limit)
+            0, // maxCapitalFee (not needed when maxGasFee is unlimited)
             salt,
             quote,
             signature
@@ -320,7 +320,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -384,7 +384,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -423,7 +423,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -463,7 +463,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt1
         );
 
@@ -474,7 +474,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt2
         );
 
@@ -512,7 +512,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -540,7 +540,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -601,7 +601,7 @@ contract CounterfactualDepositTest is Test {
             recipient,
             "",
             type(uint256).max,
-            10000,
+            0,
             salt
         );
 
@@ -642,27 +642,29 @@ contract CounterfactualDepositTest is Test {
         bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
 
-        // Deploy with very low maxGasFee (1e18)
+        // Deploy with low limits: maxGasFee=1e18, maxCapitalFee=1% (100 bps)
         address depositAddress = factory.deploy(
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
             "",
-            1e18, // maxGasFee - very low
-            10000, // maxCapitalFee (100%)
+            1e18, // maxGasFee = 1
+            100, // maxCapitalFee = 1% (100 bps)
             salt
         );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, 100e18);
 
-        // Create quote with fee of 2e18 (exceeds maxGasFee)
+        // Create quote with fee of 3e18
+        // Max allowed = 1e18 + (100e18 * 1%) = 1e18 + 1e18 = 2e18
+        // Fee of 3e18 exceeds max allowed of 2e18
         ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
             depositAddress: depositAddress,
             deadline: block.timestamp + 1 hours,
             inputAmount: 100e18,
-            outputAmount: 98e18, // Fee = 2e18, exceeds maxGasFee
+            outputAmount: 97e18, // Fee = 3e18 > 2e18 max allowed
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours),
             exclusivityParameter: 0,
@@ -681,27 +683,29 @@ contract CounterfactualDepositTest is Test {
         bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
 
-        // Deploy with 1% max capital fee (100 basis points)
+        // Deploy with low limits: maxGasFee=0.5e18, maxCapitalFee=1% (100 bps)
         address depositAddress = factory.deploy(
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
             recipient,
             "",
-            type(uint256).max, // maxGasFee - unlimited
-            100, // maxCapitalFee - 1%
+            0.5e18, // maxGasFee = 0.5
+            100, // maxCapitalFee = 1% (100 bps)
             salt
         );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, 100e18);
 
-        // Create quote with 2% fee (exceeds maxCapitalFee of 1%)
+        // Create quote with fee of 2e18
+        // Max allowed = 0.5e18 + (100e18 * 1%) = 0.5e18 + 1e18 = 1.5e18
+        // Fee of 2e18 exceeds max allowed of 1.5e18
         ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
             depositAddress: depositAddress,
             deadline: block.timestamp + 1 hours,
             inputAmount: 100e18,
-            outputAmount: 98e18, // Fee = 2e18 = 2%, exceeds maxCapitalFee of 1%
+            outputAmount: 98e18, // Fee = 2e18 > 1.5e18 max allowed
             quoteTimestamp: uint32(block.timestamp),
             fillDeadline: uint32(block.timestamp + 4 hours),
             exclusivityParameter: 0,
