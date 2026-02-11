@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "4.1.23",
+  "version": "4.1.24",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -54,7 +54,7 @@
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
   },
   "dependencies": {
-    "@across-protocol/constants": "^3.1.97",
+    "@across-protocol/constants": "^3.1.98",
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",
