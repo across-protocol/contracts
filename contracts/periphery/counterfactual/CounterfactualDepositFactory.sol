@@ -75,8 +75,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
             abi.encodePacked(
                 type(CounterfactualDeposit).creationCode,
                 abi.encode(
-                    address(this),
-                    spokePool,
+                    executor,
                     inputToken,
                     outputToken,
                     destinationChainId,
@@ -118,8 +117,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         // Deploy via CREATE2
         depositAddress = address(
             new CounterfactualDeposit{ salt: salt }(
-                address(this),
-                spokePool,
+                executor,
                 inputToken,
                 outputToken,
                 destinationChainId,

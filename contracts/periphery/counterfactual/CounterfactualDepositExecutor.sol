@@ -79,7 +79,7 @@ contract CounterfactualDepositExecutor {
         uint256 maxAllowedFee = params.maxGasFee + ((quote.inputAmount * params.maxCapitalFee) / 10000);
 
         if (actualFee > maxAllowedFee) {
-            revert ICounterfactualDepositFactory.FeeTooHigh();
+            revert ICounterfactualDepositFactory.GasFeeTooHigh();
         }
 
         // Get actual token balance

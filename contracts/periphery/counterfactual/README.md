@@ -18,12 +18,18 @@ Gas-optimized system for creating persistent, reusable deposit addresses via CRE
 
 Why: These values are identical across all deposit addresses on a chain. Storing them in each proxy wastes ~64 bytes per deployment (~12,800 gas).
 
+The proxy only stores an immutable reference to the executor contract itself, then delegates all calls directly. This avoids:
+
+- Storing factory address in proxy (not needed—executor has it)
+- Storing spokePool address in proxy (not needed—executor has it)
+- Querying factory.executor() on every call (~2,600 gas saved per execution)
+
 When delegatecall executes:
 
 - Storage context = proxy (token balances, message)
-- Immutables = executor's bytecode (factory, spokePool) + proxy's bytecode (route params)
+- Immutables = executor's bytecode (factory, spokePool) + proxy's bytecode (executor reference, route params)
 
-**Savings:** ~10k gas per address deployment.
+**Savings:** ~9k gas per address deployment + ~2,600 gas per execution.
 
 ### 2. No Nonce Tracking (Quote Reusability)
 
@@ -125,6 +131,11 @@ factory.executeOnExisting(depositAddress, signedQuote, signature);
 
 ## Gas Costs
 
-- **Deployment**: ~42-44k gas (minimal proxy with immutables)
-- **First deposit**: ~190-240k gas (deploy + execute + SpokePool deposit)
-- **Subsequent deposits**: ~110-160k gas (execute + SpokePool deposit, no deployment)
+- **Deployment**: ~33-35k gas (minimal proxy with executor reference + route params)
+- **First deposit**: ~180-230k gas (deploy + execute + SpokePool deposit)
+- **Subsequent deposits**: ~107-157k gas (execute + SpokePool deposit, no deployment)
+
+The optimization of storing only the executor reference (instead of factory + spokePool) saves:
+
+- ~9k gas per deployment
+- ~2.6k gas per execution (no external call to factory.executor())

@@ -8,11 +8,8 @@ pragma solidity ^0.8.0;
  * Immutables are cheaper than storage (no SLOAD) and are embedded in the bytecode
  */
 contract CounterfactualDeposit {
-    /// @notice Factory contract that deployed this instance
-    address public immutable factory;
-
-    /// @notice SpokePool contract to execute deposits on
-    address public immutable spokePool;
+    /// @notice Executor contract that contains the execution logic
+    address public immutable executor;
 
     /// @notice Input token address (bytes32 for cross-chain compatibility)
     bytes32 public immutable inputToken;
@@ -40,8 +37,7 @@ contract CounterfactualDeposit {
 
     /**
      * @notice Constructs the deposit contract with immutable parameters
-     * @param _factory Factory contract address
-     * @param _spokePool SpokePool contract address
+     * @param _executor Executor contract address
      * @param _inputToken Input token address
      * @param _outputToken Output token address
      * @param _destinationChainId Destination chain ID
@@ -51,8 +47,7 @@ contract CounterfactualDeposit {
      * @param _maxCapitalFee Maximum fee as percentage in basis points (10000 = 100%)
      */
     constructor(
-        address _factory,
-        address _spokePool,
+        address _executor,
         bytes32 _inputToken,
         bytes32 _outputToken,
         uint256 _destinationChainId,
@@ -61,8 +56,7 @@ contract CounterfactualDeposit {
         uint256 _maxGasFee,
         uint256 _maxCapitalFee
     ) {
-        factory = _factory;
-        spokePool = _spokePool;
+        executor = _executor;
         inputToken = _inputToken;
         outputToken = _outputToken;
         destinationChainId = _destinationChainId;
@@ -82,7 +76,7 @@ contract CounterfactualDeposit {
      * Optimization: Only reads message from storage if hasMessage is true
      */
     fallback() external {
-        address executor = ICounterfactualDepositFactory(factory).executor();
+        address _executor = executor;
 
         // ABI-encode route parameters (only read message from storage if needed)
         bytes memory routeParams;
@@ -139,7 +133,7 @@ contract CounterfactualDeposit {
             let totalSize := add(add(originalSize, routeParamsLen), 32)
 
             // Delegatecall to executor with extended calldata
-            let result := delegatecall(gas(), executor, ptr, totalSize, 0, 0)
+            let result := delegatecall(gas(), _executor, ptr, totalSize, 0, 0)
 
             // Copy return data
             returndatacopy(0, 0, returndatasize())
@@ -154,11 +148,4 @@ contract CounterfactualDeposit {
             }
         }
     }
-}
-
-/**
- * @notice Minimal interface to get executor address from factory
- */
-interface ICounterfactualDepositFactory {
-    function executor() external view returns (address);
 }

@@ -175,8 +175,7 @@ contract CounterfactualDepositTest is Test {
 
         CounterfactualDeposit depositContract = CounterfactualDeposit(payable(deployed));
 
-        assertEq(depositContract.factory(), address(factory), "Factory address mismatch");
-        assertEq(depositContract.spokePool(), address(spokePool), "SpokePool address mismatch");
+        assertEq(depositContract.executor(), address(executor), "Executor address mismatch");
         assertEq(depositContract.inputToken(), inputTokenBytes, "Input token mismatch");
         assertEq(depositContract.outputToken(), outputTokenBytes, "Output token mismatch");
         assertEq(depositContract.destinationChainId(), DESTINATION_CHAIN_ID, "Destination chain ID mismatch");
@@ -711,7 +710,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory signature = _signQuote(quote, quoteSignerPk);
 
-        vm.expectRevert(ICounterfactualDepositFactory.CapitalFeeTooHigh.selector);
+        vm.expectRevert(ICounterfactualDepositFactory.GasFeeTooHigh.selector);
         vm.prank(relayer);
         factory.executeOnExisting(depositAddress, quote, signature);
     }
