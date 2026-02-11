@@ -22,9 +22,6 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
     /// @notice SpokePool contract address (immutable per deployment)
     address public immutable spokePool;
 
-    /// @notice Executor implementation contract (set once after deployment)
-    address public executor;
-
     /// @notice Current admin address (can update quoteSigner and admin)
     address public admin;
 
@@ -36,7 +33,6 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
      * @param _spokePool SpokePool contract address
      * @param _admin Initial admin address
      * @param _quoteSigner Initial quote signer address
-     * @dev Executor is set after deployment via setExecutor() to break circular dependency
      */
     constructor(address _spokePool, address _admin, address _quoteSigner) EIP712("Across Counterfactual Deposit", "1") {
         spokePool = _spokePool;
@@ -45,18 +41,8 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
     }
 
     /**
-     * @notice Sets the executor address (can only be called once)
-     * @param _executor Executor implementation address
-     * @dev Called after executor is deployed to complete the setup
-     */
-    function setExecutor(address _executor) external {
-        if (msg.sender != admin) revert Unauthorized();
-        if (executor != address(0)) revert("Executor already set");
-        executor = _executor;
-    }
-
-    /**
      * @notice Predicts the address of a counterfactual deposit contract
+     * @param executor Executor implementation address
      * @param inputToken Input token address
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
@@ -68,6 +54,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
      * @return Predicted address
      */
     function predictDepositAddress(
+        address executor,
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 destinationChainId,
@@ -101,6 +88,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
 
     /**
      * @notice Deploys a counterfactual deposit contract
+     * @param executor Executor implementation address
      * @param inputToken Input token address
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
@@ -112,6 +100,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
      * @return depositAddress Address of deployed contract
      */
     function deploy(
+        address executor,
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 destinationChainId,
@@ -140,6 +129,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
 
     /**
      * @notice Deploys and executes a deposit in one transaction
+     * @param executor Executor implementation address
      * @param inputToken Input token address
      * @param outputToken Output token address
      * @param destinationChainId Destination chain ID
@@ -153,6 +143,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
      * @return depositAddress Address of deposit contract
      */
     function deployAndExecute(
+        address executor,
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 destinationChainId,
@@ -166,12 +157,23 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory, EIP712 {
     ) external returns (address depositAddress) {
         // Try to deploy (will revert if already deployed, which we catch)
         try
-            this.deploy(inputToken, outputToken, destinationChainId, recipient, message, maxGasFee, maxCapitalFee, salt)
+            this.deploy(
+                executor,
+                inputToken,
+                outputToken,
+                destinationChainId,
+                recipient,
+                message,
+                maxGasFee,
+                maxCapitalFee,
+                salt
+            )
         returns (address addr) {
             depositAddress = addr;
         } catch {
             // Already deployed, predict the address
             depositAddress = predictDepositAddress(
+                executor,
                 inputToken,
                 outputToken,
                 destinationChainId,

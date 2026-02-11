@@ -39,17 +39,13 @@ contract DeployCounterfactualDepositSystem is Script, Test, Constants {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Step 1: Deploy factory (without executor)
+        // Step 1: Deploy factory
         CounterfactualDepositFactory factory = new CounterfactualDepositFactory(spokePool, admin, quoteSigner);
         console.log("Factory deployed to:", address(factory));
 
         // Step 2: Deploy executor with factory and spokePool as immutables
         CounterfactualDepositExecutor executor = new CounterfactualDepositExecutor(address(factory), spokePool);
         console.log("Executor deployed to:", address(executor));
-
-        // Step 3: Set executor in factory
-        factory.setExecutor(address(executor));
-        console.log("Executor set in factory");
 
         vm.stopBroadcast();
 

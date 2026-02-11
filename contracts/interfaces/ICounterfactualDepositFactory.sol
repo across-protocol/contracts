@@ -83,6 +83,7 @@ interface ICounterfactualDepositFactory {
      * @return Predicted address
      */
     function predictDepositAddress(
+        address executor,
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 destinationChainId,
@@ -106,6 +107,7 @@ interface ICounterfactualDepositFactory {
      * @return Address of deployed contract
      */
     function deploy(
+        address executor,
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 destinationChainId,
@@ -131,6 +133,7 @@ interface ICounterfactualDepositFactory {
      * @return depositAddress Address of deposit contract
      */
     function deployAndExecute(
+        address executor,
         bytes32 inputToken,
         bytes32 outputToken,
         uint256 destinationChainId,
@@ -185,11 +188,6 @@ interface ICounterfactualDepositFactory {
      * @notice Returns the SpokePool address
      */
     function spokePool() external view returns (address);
-
-    /**
-     * @notice Returns the executor implementation address
-     */
-    function executor() external view returns (address);
 
     /**
      * @notice Returns the EIP-712 typehash for DepositQuote

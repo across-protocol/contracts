@@ -49,11 +49,9 @@ contract CounterfactualDepositTest is Test {
         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
         spokePool = MockSpokePool(payable(address(proxy)));
 
-        // Deploy factory and executor (3-step process to break circular dependency)
+        // Deploy factory and executor
         factory = new CounterfactualDepositFactory(address(spokePool), admin, quoteSigner);
         executor = new CounterfactualDepositExecutor(address(factory), address(spokePool));
-        vm.prank(admin);
-        factory.setExecutor(address(executor));
 
         // Mint tokens to user
         inputToken.mint(user, 1000e18);
@@ -65,6 +63,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
         address predicted = factory.predictDepositAddress(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -77,6 +76,7 @@ contract CounterfactualDepositTest is Test {
 
         // Verify prediction matches actual deployment
         address deployed = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -98,6 +98,7 @@ contract CounterfactualDepositTest is Test {
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDepositFactory.DepositAddressCreated(
             factory.predictDepositAddress(
+                address(executor),
                 inputTokenBytes,
                 outputTokenBytes,
                 DESTINATION_CHAIN_ID,
@@ -115,6 +116,7 @@ contract CounterfactualDepositTest is Test {
         );
 
         factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -133,6 +135,7 @@ contract CounterfactualDepositTest is Test {
 
         // First deployment succeeds
         factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -146,6 +149,7 @@ contract CounterfactualDepositTest is Test {
         // Second deployment reverts
         vm.expectRevert();
         factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -163,6 +167,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
         address deployed = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -188,6 +193,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.predictDepositAddress(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -220,6 +226,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.predictDepositAddress(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -254,6 +261,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.predictDepositAddress(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -290,6 +298,7 @@ contract CounterfactualDepositTest is Test {
 
         vm.prank(relayer);
         address deployed = factory.deployAndExecute(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -314,6 +323,7 @@ contract CounterfactualDepositTest is Test {
 
         // First deploy
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -378,6 +388,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -417,6 +428,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -457,6 +469,7 @@ contract CounterfactualDepositTest is Test {
 
         // Deploy two different deposit addresses
         address depositAddress1 = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -468,6 +481,7 @@ contract CounterfactualDepositTest is Test {
         );
 
         address depositAddress2 = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -506,6 +520,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -534,6 +549,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -595,6 +611,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -644,6 +661,7 @@ contract CounterfactualDepositTest is Test {
 
         // Deploy with low limits: maxGasFee=1e18, maxCapitalFee=1% (100 bps)
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
@@ -685,6 +703,7 @@ contract CounterfactualDepositTest is Test {
 
         // Deploy with low limits: maxGasFee=0.5e18, maxCapitalFee=1% (100 bps)
         address depositAddress = factory.deploy(
+            address(executor),
             inputTokenBytes,
             outputTokenBytes,
             DESTINATION_CHAIN_ID,
