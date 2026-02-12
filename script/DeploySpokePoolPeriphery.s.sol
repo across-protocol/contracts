@@ -27,7 +27,7 @@ contract DeploySpokePoolPeriphery is Script, Test, Constants {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        bytes32 salt = bytes32(uint256(0x1237));
+        bytes32 salt = bytes32(uint256(0x1238));
         SpokePoolPeriphery spokePoolPeriphery = new SpokePoolPeriphery{ salt: salt }(permit2, eventEmitter);
 
         // Log the deployed addresses

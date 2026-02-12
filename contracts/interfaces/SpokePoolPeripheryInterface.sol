@@ -82,6 +82,8 @@ interface SpokePoolPeripheryInterface {
         address recipient;
         // Optional metadata to emit via AcrossEventEmitter. Empty bytes = no emission.
         bytes metadata;
+        // If true, unwrap outputToken (assumed WETH9) to native ETH before sending to recipient.
+        bool unwrapOutputToNative;
     }
 
     // Minimum amount of parameters needed to perform a swap on an exchange specified. We include information beyond just the router calldata

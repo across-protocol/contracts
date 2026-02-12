@@ -1971,7 +1971,8 @@ contract SpokePoolPeripheryTest is Test {
                     false
                 ),
                 recipient: recipient,
-                metadata: new bytes(0)
+                metadata: new bytes(0),
+                unwrapOutputToNative: false
             })
         );
         vm.stopPrank();
@@ -1997,6 +1998,43 @@ contract SpokePoolPeripheryTest is Test {
 
         assertEq(mockERC20.balanceOf(recipient), depositAmount);
         vm.stopPrank();
+    }
+
+    function testSwapUnwrapOutputToNative() public {
+        // Swap mockERC20 -> WETH with unwrapOutputToNative=true → recipient gets native ETH
+        deal(address(mockWETH), address(dex), depositAmount);
+
+        uint256 recipientEthBefore = recipient.balance;
+
+        vm.startPrank(depositor);
+        spokePoolPeriphery.swap(
+            SpokePoolPeripheryInterface.SwapData({
+                swapToken: address(mockERC20),
+                outputToken: address(mockWETH),
+                exchange: address(dex),
+                transferType: SpokePoolPeripheryInterface.TransferType.Approval,
+                swapTokenAmount: mintAmount,
+                minExpectedOutputAmount: depositAmount,
+                routerCalldata: abi.encodeWithSelector(
+                    dex.swap.selector,
+                    IERC20(address(mockERC20)),
+                    IERC20(address(mockWETH)),
+                    mintAmount,
+                    depositAmount,
+                    false
+                ),
+                recipient: recipient,
+                metadata: new bytes(0),
+                unwrapOutputToNative: true
+            })
+        );
+        vm.stopPrank();
+
+        // Recipient should have received native ETH, not WETH
+        assertEq(recipient.balance - recipientEthBefore, depositAmount);
+        assertEq(IERC20(address(mockWETH)).balanceOf(recipient), 0);
+        // No tokens stuck in periphery
+        assertEq(IERC20(address(mockWETH)).balanceOf(address(spokePoolPeriphery)), 0);
     }
 
     function testSwapOutputDeliveredToRecipient() public {
@@ -2061,7 +2099,8 @@ contract SpokePoolPeripheryTest is Test {
                 minExpectedOutputAmount: depositAmount,
                 routerCalldata: routerCalldata,
                 recipient: recipient,
-                metadata: new bytes(0)
+                metadata: new bytes(0),
+                unwrapOutputToNative: false
             })
         );
         vm.stopPrank();
@@ -2175,7 +2214,8 @@ contract SpokePoolPeripheryTest is Test {
                     usePermit2
                 ),
                 recipient: _recipient,
-                metadata: _metadata
+                metadata: _metadata,
+                unwrapOutputToNative: false
             });
     }
 

@@ -206,6 +206,9 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         swapProxy = new SwapProxy(address(_permit2));
     }
 
+    // Accept native ETH (e.g. from WETH withdraw during swap with unwrapOutputToNative).
+    receive() external payable {}
+
     /**
      * @inheritdoc SpokePoolPeripheryInterface
      */
@@ -268,8 +271,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         // Enforce minimum output amount.
         if (outputAmount < data.minExpectedOutputAmount) revert MinimumExpectedOutputAmount();
 
-        // Transfer output tokens to the recipient.
-        IERC20(data.outputToken).safeTransfer(data.recipient, outputAmount);
+        // Transfer output tokens to the recipient, unwrapping to native ETH if requested.
+        if (data.unwrapOutputToNative) {
+            WETH9Interface(data.outputToken).withdraw(outputAmount);
+            Address.sendValue(payable(data.recipient), outputAmount);
+        } else {
+            IERC20(data.outputToken).safeTransfer(data.recipient, outputAmount);
+        }
 
         // Emit swap event.
         emit SwapExecuted(
