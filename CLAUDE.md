@@ -2,10 +2,9 @@
 
 This repository contains production smart contracts for the Across Protocol cross-chain bridge.
 
-## Development Frameworks
+## Development Framework
 
-- **Foundry** (primary) - Used for new tests and deployment scripts
-- **Hardhat** (legacy) - Some tests still use Hardhat; we're migrating to Foundry
+- **Foundry** - Used for all tests and deployment scripts
 
 ## Project Structure
 
@@ -18,7 +17,6 @@ test/evm/
   foundry/           # Foundry tests (.t.sol)
     local/           # Local unit tests
     fork/            # Fork tests
-  hardhat/           # Legacy Hardhat tests (.ts)
 script/              # Foundry deployment scripts (.s.sol)
   utils/             # Script utilities (Constants.sol, DeploymentUtils.sol)
 lib/                 # External dependencies (git submodules)
@@ -28,13 +26,11 @@ lib/                 # External dependencies (git submodules)
 
 ```bash
 # Build contracts
-forge build                           # Foundry
-yarn build-evm                        # Hardhat
+forge build
 
 # Run tests
 yarn test-evm-foundry                 # Foundry local tests (recommended)
 FOUNDRY_PROFILE=local-test forge test      # Same as above
-yarn test-evm-hardhat                 # Hardhat tests (legacy)
 
 # Run specific Foundry tests
 forge test --match-test testDeposit

@@ -191,12 +191,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Tempo (4217)
 
-| Contract Name      | Address                                    |
-| ------------------ | ------------------------------------------ |
-| MulticallHandler   | 0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90 |
-| SP1Helios          | 0x3CA11702f7c0F28e0b4e03C31F7492969862C569 |
-| SpokePool          | 0x2d4710F04Da90184255782d3715224A6C776955D |
-| SpokePoolPeriphery | 0x1cFC76f039e01970355Cf73a37B785A81847796C |
+| Contract Name      | Address                                                                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90](https://explore.mainnet.tempo.xyz/address/0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90) |
+| SP1Helios          | [0x3CA11702f7c0F28e0b4e03C31F7492969862C569](https://explore.mainnet.tempo.xyz/address/0x3CA11702f7c0F28e0b4e03C31F7492969862C569) |
+| SpokePool          | [0x2d4710F04Da90184255782d3715224A6C776955D](https://explore.mainnet.tempo.xyz/address/0x2d4710F04Da90184255782d3715224A6C776955D) |
+| SpokePool          | [0x2d4710F04Da90184255782d3715224A6C776955D](https://explore.mainnet.tempo.xyz/address/0x2d4710F04Da90184255782d3715224A6C776955D) |
+| SpokePoolPeriphery | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://explore.mainnet.tempo.xyz/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
 
 ## MegaETH (4326)
 

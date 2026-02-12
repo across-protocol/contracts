@@ -1,96 +1,64 @@
 import fetch from "node-fetch";
-import { Event, Wallet, providers } from "ethers";
-import { hre } from "../utils/utils.hre";
-import { getContractFactory, ethers, SignerWithAddress } from "../utils/utils";
+import { Event, Wallet, providers, Contract, ContractFactory } from "ethers";
+import { ethers } from "../utils/utils";
 import { getNodeUrl } from "../utils";
-import { L1_ADDRESS_MAP, L2_ADDRESS_MAP, CIRCLE_DOMAIN_IDs } from "../deploy/consts";
+import { L1_ADDRESS_MAP, L2_ADDRESS_MAP, CIRCLE_DOMAIN_IDs } from "../src/consts";
+import { getProvider, getSigner, getChainId } from "./utils";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 
 const MAX_L1_BLOCK_LOOKBACK = 1000;
 const MAX_L2_BLOCK_LOOKBACK = 1000;
 
-const chainToArtifactPrefix: Record<number, string> = {
-  1: "Ethereum",
-  5: "Ethereum",
-  10: "Optimism",
-  420: "Optimism",
-  42161: "Arbitrum",
-  421613: "Arbitrum",
-  8453: "Base",
-  84531: "Base",
-  137: "Polygon",
-  80001: "Polygon",
-};
-
 const messageTransmitterAbi = [
   {
     inputs: [
-      {
-        internalType: "bytes",
-        name: "message",
-        type: "bytes",
-      },
-      {
-        internalType: "bytes",
-        name: "attestation",
-        type: "bytes",
-      },
+      { internalType: "bytes", name: "message", type: "bytes" },
+      { internalType: "bytes", name: "attestation", type: "bytes" },
     ],
     name: "receiveMessage",
-    outputs: [
-      {
-        internalType: "bool",
-        name: "success",
-        type: "bool",
-      },
-    ],
+    outputs: [{ internalType: "bool", name: "success", type: "bool" }],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "bytes32",
-        name: "",
-        type: "bytes32",
-      },
-    ],
+    inputs: [{ internalType: "bytes32", name: "", type: "bytes32" }],
     name: "usedNonces",
-    outputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
 ];
 
+// Minimal ABI for querying token relay events
+const tokenRelayEventAbi = [
+  "event TokensRelayed(address indexed l1Token, address indexed l2Token, uint256 amount, address indexed to)",
+];
+const tokenBridgedEventAbi = [
+  "event OptimismTokensBridged(address indexed l2Token, uint256 numberOfTokensBridged, uint256 l2GasLimit)",
+];
+
 /**
- * Script to claim L1->L2 or L2->L1 messages. Run via
+ * Script to claim L1->L2 or L2->L1 CCTP messages. Run via:
  * ```
- * RECEIVE_MESSAGES_ON=l1 \
- * yarn hardhat run ./scripts/claimLineaMessages.ts \
- * --network linea-goerli \
+ * RECEIVE_MESSAGES_ON=l2 \
+ * NODE_URL=<l2_rpc> \
+ * NODE_URL_1=<l1_rpc> \
+ * MNEMONIC="..." \
+ * L1_CHAIN_ID=1 \
+ * npx ts-node ./scripts/finalizeCCTPMessages.ts
  * ```
- * Environment variables:
- * - `RECEIVE_MESSAGES_ON`: Which messages to claim. Either `l1` or `l2`.
- * Flags:
- * - `--network`: The L2 network, i.e. `arbitrum-goerli` or `arbitrum`.
- *
  */
 async function main() {
   const receiveMessagesOn = process.env.RECEIVE_MESSAGES_ON || "l2";
   const l1BlockLookback = parseInt(process.env.BLOCK_LOOKBACK || "8640");
   const l2BlockLookback = parseInt(process.env.BLOCK_LOOKBACK || "17380");
 
-  const l1ChainId = parseInt(await hre.companionNetworks.l1.getChainId());
-  const l2ChainId = parseInt(await hre.getChainId());
-  const l1Provider = new ethers.providers.JsonRpcProvider(getNodeUrl(l1ChainId));
-  const l2Provider = ethers.provider;
-  const l1Signer = ethers.Wallet.fromMnemonic((hre.network.config.accounts as any).mnemonic).connect(l1Provider);
-  const [l2Signer] = await ethers.getSigners();
+  const l2Provider = getProvider();
+  const l2ChainId = await getChainId(l2Provider);
+  const l1ChainId = parseInt(process.env.L1_CHAIN_ID || "1");
+  const l1Provider = new ethers.providers.JsonRpcProvider(process.env.NODE_URL_1 || getNodeUrl(l1ChainId));
+  const l1Signer = getSigner(l1Provider);
+  const l2Signer = getSigner(l2Provider);
 
   console.log("\nL1 chain ID:", l1ChainId);
   console.log("L2 chain ID:", l2ChainId);
@@ -211,13 +179,11 @@ async function getL1SrcEvents(
 ) {
   const l1LatestBlock = await l1Provider.getBlockNumber();
 
-  const hubPoolDeployment = await hre.companionNetworks.l1.deployments.get("HubPool");
-  const adapter = (
-    await getContractFactory(`${chainToArtifactPrefix[l1ChainId]}_Adapter`, { signer: l1Signer })
-  ).attach(hubPoolDeployment.address);
+  const hubPoolAddress = getDeployedAddress("HubPool", l1ChainId);
+  const adapter = new Contract(hubPoolAddress!, tokenRelayEventAbi, l1Signer);
 
   console.log("\nQuerying L1 src events...", {
-    hubPool: hubPoolDeployment.address,
+    hubPool: hubPoolAddress,
     l1ChainId,
   });
 
@@ -240,24 +206,17 @@ async function getL1SrcEvents(
 async function getL2SrcEvents(
   l2ChainId: number,
   l2Provider: providers.JsonRpcProvider,
-  l2Signer: SignerWithAddress,
+  l2Signer: Wallet,
   blockLookback: number,
   maxBlockLookback = MAX_L2_BLOCK_LOOKBACK
 ) {
   const l2LatestBlock = await l2Provider.getBlockNumber();
 
-  const spokePoolArtifactPrefix = chainToArtifactPrefix[l2ChainId];
-  const spokePoolArtifactName = `${spokePoolArtifactPrefix}_SpokePool`;
-  const spokePoolEventName = `${
-    spokePoolArtifactPrefix === "Base" ? "Optimism" : spokePoolArtifactPrefix
-  }TokensBridged`;
-  const spokePoolDeployment = await hre.deployments.get(spokePoolArtifactName);
-  const spokePool = (await getContractFactory(spokePoolArtifactName, { signer: l2Signer })).attach(
-    spokePoolDeployment.address
-  );
+  const spokePoolAddress = getDeployedAddress("SpokePool", l2ChainId);
+  const spokePool = new Contract(spokePoolAddress!, tokenBridgedEventAbi, l2Signer);
 
   console.log("\nQuerying L2 src events...", {
-    spokePool: spokePool.address,
+    spokePool: spokePoolAddress,
     l2ChainId,
   });
 
@@ -266,8 +225,8 @@ async function getL2SrcEvents(
     blockLookback,
     async (fromBlock: number, toBlock: number) => {
       console.log(`Querying blocks ${fromBlock} - ${toBlock}...`);
-      const tokensBridgedEvents = await spokePool.queryFilter(spokePoolEventName, fromBlock, toBlock);
-      console.log(`${tokensBridgedEvents.length} '${spokePoolEventName}'`);
+      const tokensBridgedEvents = await spokePool.queryFilter("OptimismTokensBridged", fromBlock, toBlock);
+      console.log(`${tokensBridgedEvents.length} 'OptimismTokensBridged'`);
       return tokensBridgedEvents;
     },
     maxBlockLookback

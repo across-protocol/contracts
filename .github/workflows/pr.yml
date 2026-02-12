@@ -44,9 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ARTIFACTS_PATHS: |
-        artifacts
-        cache
-        typechain
         out
         cache-foundry
     steps:
@@ -116,6 +113,10 @@ jobs:
           cache: yarn
       - name: Install packages
         run: yarn install --frozen-lockfile --ignore-optional
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+      - name: Install forge dependencies
+        run: forge install
       - name: Download SVM artifacts
         uses: actions/download-artifact@v4
         with:
@@ -124,9 +125,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
-      - name: Test evm-hardhat
+      - name: Test evm-foundry
         shell: bash
-        run: yarn test-evm-hardhat
+        run: yarn test-evm-foundry
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts

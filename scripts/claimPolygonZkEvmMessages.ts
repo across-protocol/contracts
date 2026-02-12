@@ -1,8 +1,9 @@
 /* eslint-disable camelcase */
 import { ethers } from "../utils/utils";
-import { hre } from "../utils/utils.hre";
-import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "../deploy/consts";
+import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "../src/consts";
 import { getNodeUrl } from "../utils/network";
+import { getProvider, getSigner, getChainId } from "./utils";
+import { getDeployedAddress } from "../src/DeploymentUtils";
 import fetch from "node-fetch";
 
 type Message = {
@@ -67,26 +68,25 @@ const polygonZkEvmBridgeAbi = [
 ];
 
 /**
- * Script to claim L1->L2 or L2->L1 assets and messages. Run via
+ * Script to claim L1->L2 or L2->L1 assets and messages. Run via:
  * ```
  * CLAIM_MESSAGES_ON=l1 \
- * yarn hardhat run ./scripts/claimPolygonZkEvmMessages.ts \
- * --network polygon-zk-evm-testnet \
+ * NODE_URL=<l2_rpc> \
+ * NODE_URL_1=<l1_rpc> \
+ * L1_CHAIN_ID=1 \
+ * MNEMONIC="..." \
+ * npx ts-node ./scripts/claimPolygonZkEvmMessages.ts
  * ```
- * Environment variables:
- * - `CLAIM_MESSAGES_ON`: Which messages to claim. Either `l1` or `l2`.
- * Flags:
- * - `--network`: The L2 network, i.e. `polygon-zk-evm-testnet` or `polygon-zk-evm`.
- *
  */
 async function main() {
   const claimMessagesOn = process.env.CLAIM_MESSAGES_ON || "l1";
 
-  const l1ChainId = parseInt(await hre.companionNetworks.l1.getChainId());
-  const l2ChainId = parseInt(await hre.getChainId());
-  const l1Provider = new ethers.providers.JsonRpcProvider(getNodeUrl(l1ChainId));
-  const l1Signer = ethers.Wallet.fromMnemonic((hre.network.config.accounts as any).mnemonic).connect(l1Provider);
-  const [l2Signer] = await ethers.getSigners();
+  const l2Provider = getProvider();
+  const l2ChainId = await getChainId(l2Provider);
+  const l1ChainId = parseInt(process.env.L1_CHAIN_ID || "1");
+  const l1Provider = new ethers.providers.JsonRpcProvider(process.env.NODE_URL_1 || getNodeUrl(l1ChainId));
+  const l1Signer = getSigner(l1Provider);
+  const l2Signer = getSigner(l2Provider);
 
   const bridgeApiBaseUrl =
     l1ChainId === 1 ? "https://bridge-api.zkevm-rpc.com" : "https://bridge-api.public.zkevm-test.net";
@@ -99,8 +99,8 @@ async function main() {
   // Get relevant src messages
   const srcMessages =
     claimMessagesOn === "l1"
-      ? await getMessagesToClaimOnL1(bridgeApiBaseUrl)
-      : await getMessagesToClaimOnL2(bridgeApiBaseUrl);
+      ? await getMessagesToClaimOnL1(bridgeApiBaseUrl, l1ChainId)
+      : await getMessagesToClaimOnL2(bridgeApiBaseUrl, l2ChainId);
 
   // Filter out claimed or not yet ready messages
   const messagesNotYetReady = srcMessages.filter((message) => !message.ready_for_claim);
@@ -164,17 +164,16 @@ async function main() {
   }
 }
 
-async function getMessagesToClaimOnL1(apiBaseUrl: string) {
-  const hubPoolDeployment = await hre.companionNetworks.l1.deployments.get("HubPool");
-  console.log("\nFetch messages targeting HubPool address:", hubPoolDeployment.address);
-  return getMessages(apiBaseUrl, hubPoolDeployment.address);
+async function getMessagesToClaimOnL1(apiBaseUrl: string, l1ChainId: number) {
+  const hubPoolAddress = getDeployedAddress("HubPool", l1ChainId);
+  console.log("\nFetch messages targeting HubPool address:", hubPoolAddress);
+  return getMessages(apiBaseUrl, hubPoolAddress!);
 }
 
-async function getMessagesToClaimOnL2(apiBaseUrl: string) {
-  const spokePoolArtifactName = "PolygonZkEVM_SpokePool";
-  const spokePoolDeployment = await hre.deployments.get(spokePoolArtifactName);
-  console.log("\nFetch messages targeting PolygonZkEVM_SpokePool address:", spokePoolDeployment.address);
-  return getMessages(apiBaseUrl, spokePoolDeployment.address);
+async function getMessagesToClaimOnL2(apiBaseUrl: string, l2ChainId: number) {
+  const spokePoolAddress = getDeployedAddress("SpokePool", l2ChainId);
+  console.log("\nFetch messages targeting SpokePool address:", spokePoolAddress);
+  return getMessages(apiBaseUrl, spokePoolAddress!);
 }
 
 async function getMessages(
