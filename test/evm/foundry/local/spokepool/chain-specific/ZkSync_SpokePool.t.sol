@@ -6,7 +6,7 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 // Contracts under test
-import { ZkSync_SpokePool, ZkBridgeLike, IL2ETH } from "../../../../../../contracts/ZkSync_SpokePool.sol";
+import { ZkSync_SpokePool, ZkBridgeLike, IL2ETH, IL2AssetRouter } from "../../../../../../contracts/ZkSync_SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Libraries
@@ -25,18 +25,21 @@ import { MerkleTreeUtils } from "../../../utils/MerkleTreeUtils.sol";
 /**
  * @title ZkSync_SpokePoolTest
  * @notice Foundry tests for ZkSync_SpokePool, ported from Hardhat tests.
- * @dev Tests admin functions, token bridging via ZkBridge, USDC handling, and ETH bridging.
+ * @dev Tests admin functions, token bridging via L2AssetRouter/custom USDC bridge, and ETH bridging.
  */
 contract ZkSync_SpokePoolTest is Test {
     // ============ Test Constants ============
 
     uint256 constant AMOUNT_TO_RETURN = 1 ether;
     uint256 constant AMOUNT_HELD_BY_POOL = 100 ether;
+    uint256 constant L1_CHAIN_ID = 1;
     uint32 constant TEST_DEPOSIT_QUOTE_TIME_BUFFER = 1 hours;
     uint32 constant TEST_FILL_DEADLINE_BUFFER = 9 hours;
 
     // ZkSync L2 ETH address
     address constant L2_ETH_ADDRESS = 0x000000000000000000000000000000000000800A;
+    address constant L2_ASSET_ROUTER_ADDRESS = 0x0000000000000000000000000000000000010003;
+    address constant L2_NATIVE_TOKEN_VAULT_ADDRESS = 0x0000000000000000000000000000000000010004;
 
     // ============ Contracts ============
 
@@ -48,7 +51,6 @@ contract ZkSync_SpokePoolTest is Test {
     WETH9 public weth;
     MintableERC20 public dai;
     MintableERC20 public usdc;
-    MockZkBridge public zkErc20Bridge;
     MockZkBridge public zkUSDCBridge;
     MockL2Eth public l2Eth;
     MockCCTPMessenger public cctpMessenger;
@@ -58,7 +60,6 @@ contract ZkSync_SpokePoolTest is Test {
 
     address public owner;
     address public relayer;
-    address public rando;
     address public crossDomainAlias;
     address public hubPool;
 
@@ -75,7 +76,6 @@ contract ZkSync_SpokePoolTest is Test {
         // Setup accounts
         owner = makeAddr("owner");
         relayer = makeAddr("relayer");
-        rando = makeAddr("rando");
         hubPool = makeAddr("hubPool");
 
         // Calculate cross domain alias (L1 to L2 address transformation - same as Arbitrum)
@@ -90,12 +90,12 @@ contract ZkSync_SpokePoolTest is Test {
         l2Dai = address(dai);
 
         // Deploy mocks
-        zkErc20Bridge = new MockZkBridge();
         zkUSDCBridge = new MockZkBridge();
 
         // Deploy mock L2 ETH at the correct address
         l2Eth = new MockL2Eth();
         vm.etch(L2_ETH_ADDRESS, address(l2Eth).code);
+        vm.etch(L2_ASSET_ROUTER_ADDRESS, hex"00");
 
         // Deploy mock CCTP (for CCTP configuration tests)
         cctpMinter = new MockCCTPMinter();
@@ -106,16 +106,14 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(usdc)),
             ZkBridgeLike(address(zkUSDCBridge)),
+            L1_CHAIN_ID,
             ITokenMessenger(address(0)), // No CCTP
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
         );
 
         // Deploy proxy
-        bytes memory initData = abi.encodeCall(
-            ZkSync_SpokePool.initialize,
-            (0, ZkBridgeLike(address(zkErc20Bridge)), owner, hubPool)
-        );
+        bytes memory initData = abi.encodeCall(ZkSync_SpokePool.initialize, (0, owner, hubPool));
         ERC1967Proxy proxy = new ERC1967Proxy(address(spokePoolImplementation), initData);
         spokePool = ZkSync_SpokePool(payable(address(proxy)));
 
@@ -141,6 +139,7 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(usdc)),
             ZkBridgeLike(address(zkUSDCBridge)),
+            L1_CHAIN_ID,
             ITokenMessenger(address(0)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
@@ -156,18 +155,6 @@ contract ZkSync_SpokePoolTest is Test {
     }
 
     // ============ Admin Function Tests ============
-
-    function test_onlyCrossDomainOwnerCanSetZkBridge() public {
-        // Attempt from non-admin should fail
-        vm.expectRevert();
-        spokePool.setZkBridge(ZkBridgeLike(rando));
-
-        // Should succeed from cross domain alias
-        vm.prank(crossDomainAlias);
-        spokePool.setZkBridge(ZkBridgeLike(rando));
-
-        assertEq(address(spokePool.zkErc20Bridge()), rando);
-    }
 
     function test_onlyCrossDomainOwnerCanRelayRootBundle() public {
         // Build relayer refund leaf to get a valid root
@@ -191,6 +178,7 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(usdc)), // USDC is set
             ZkBridgeLike(address(0)), // No zkUSDCBridge
+            L1_CHAIN_ID,
             ITokenMessenger(address(0)), // No CCTP
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
@@ -204,6 +192,7 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(usdc)), // USDC is set
             ZkBridgeLike(address(zkUSDCBridge)), // zkUSDCBridge set
+            L1_CHAIN_ID,
             ITokenMessenger(address(cctpMessenger)), // CCTP also set
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
@@ -216,6 +205,7 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(usdc)),
             ZkBridgeLike(address(zkUSDCBridge)),
+            L1_CHAIN_ID,
             ITokenMessenger(address(0)), // No CCTP
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
@@ -229,6 +219,7 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(usdc)),
             ZkBridgeLike(address(0)), // No zkUSDCBridge
+            L1_CHAIN_ID,
             ITokenMessenger(address(cctpMessenger)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
@@ -242,6 +233,7 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(0)), // No USDC
             ZkBridgeLike(address(0)),
+            L1_CHAIN_ID,
             ITokenMessenger(address(0)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
@@ -252,6 +244,23 @@ contract ZkSync_SpokePoolTest is Test {
     // ============ Bridge Tokens via Standard L2 Bridge Tests ============
 
     function test_bridgeTokensViaStandardL2Bridge() public {
+        bytes32 expectedAssetId = keccak256(abi.encode(L1_CHAIN_ID, L2_NATIVE_TOKEN_VAULT_ADDRESS, address(dai)));
+        bytes memory expectedData = abi.encode(AMOUNT_TO_RETURN, hubPool, l2Dai);
+        vm.mockCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.l1TokenAddress.selector, l2Dai),
+            abi.encode(address(dai))
+        );
+        vm.mockCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.withdraw.selector, expectedAssetId, expectedData),
+            abi.encode(bytes32(uint256(1)))
+        );
+        vm.expectCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.withdraw.selector, expectedAssetId, expectedData)
+        );
+
         // Build relayer refund leaf
         (SpokePoolInterface.RelayerRefundLeaf memory leaf, bytes32 root) = MerkleTreeUtils
             .buildRelayerRefundLeafAndRoot(spokePool.chainId(), l2Dai, AMOUNT_TO_RETURN);
@@ -263,13 +272,26 @@ contract ZkSync_SpokePoolTest is Test {
         // Execute leaf
         vm.prank(relayer);
         spokePool.executeRelayerRefundLeaf(0, leaf, MerkleTreeUtils.emptyProof());
+    }
 
-        // Verify zkErc20Bridge.withdraw was called correctly
-        assertEq(zkErc20Bridge.withdrawCallCount(), 1);
-        (address l1Receiver, address l2Token, uint256 amount) = zkErc20Bridge.getWithdrawCall(0);
-        assertEq(l1Receiver, hubPool);
-        assertEq(l2Token, l2Dai);
-        assertEq(amount, AMOUNT_TO_RETURN);
+    function test_bridgeTokensViaStandardL2Bridge_revertsIfTokenMissingL1Mapping() public {
+        vm.mockCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.l1TokenAddress.selector, l2Dai),
+            abi.encode(address(0))
+        );
+
+        // Build relayer refund leaf
+        (SpokePoolInterface.RelayerRefundLeaf memory leaf, bytes32 root) = MerkleTreeUtils
+            .buildRelayerRefundLeafAndRoot(spokePool.chainId(), l2Dai, AMOUNT_TO_RETURN);
+
+        // Relay root bundle
+        vm.prank(crossDomainAlias);
+        spokePool.relayRootBundle(root, mockTreeRoot);
+
+        vm.expectRevert(ZkSync_SpokePool.InvalidTokenAddress.selector);
+        vm.prank(relayer);
+        spokePool.executeRelayerRefundLeaf(0, leaf, MerkleTreeUtils.emptyProof());
     }
 
     function test_bridgeTokensViaStandardL2Bridge_zkSyncBridgedUsdcE() public {
@@ -278,12 +300,30 @@ contract ZkSync_SpokePoolTest is Test {
             address(weth),
             IERC20(address(0)), // No special USDC handling
             ZkBridgeLike(address(zkUSDCBridge)),
+            L1_CHAIN_ID,
             ITokenMessenger(address(0)),
             TEST_DEPOSIT_QUOTE_TIME_BUFFER,
             TEST_FILL_DEADLINE_BUFFER
         );
         vm.prank(crossDomainAlias);
         spokePool.upgradeTo(address(newImplementation));
+
+        bytes32 expectedAssetId = keccak256(abi.encode(L1_CHAIN_ID, L2_NATIVE_TOKEN_VAULT_ADDRESS, address(usdc)));
+        bytes memory expectedData = abi.encode(AMOUNT_TO_RETURN, hubPool, address(usdc));
+        vm.mockCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.l1TokenAddress.selector, address(usdc)),
+            abi.encode(address(usdc))
+        );
+        vm.mockCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.withdraw.selector, expectedAssetId, expectedData),
+            abi.encode(bytes32(uint256(1)))
+        );
+        vm.expectCall(
+            L2_ASSET_ROUTER_ADDRESS,
+            abi.encodeWithSelector(IL2AssetRouter.withdraw.selector, expectedAssetId, expectedData)
+        );
 
         // Build relayer refund leaf for USDC
         (SpokePoolInterface.RelayerRefundLeaf memory leaf, bytes32 root) = MerkleTreeUtils
@@ -296,13 +336,6 @@ contract ZkSync_SpokePoolTest is Test {
         // Execute leaf
         vm.prank(relayer);
         spokePool.executeRelayerRefundLeaf(0, leaf, MerkleTreeUtils.emptyProof());
-
-        // When USDC is not configured, it should use the standard ERC20 bridge
-        assertEq(zkErc20Bridge.withdrawCallCount(), 1);
-        (address l1Receiver, address l2Token, uint256 amount) = zkErc20Bridge.getWithdrawCall(0);
-        assertEq(l1Receiver, hubPool);
-        assertEq(l2Token, address(usdc));
-        assertEq(amount, AMOUNT_TO_RETURN);
     }
 
     // ============ Bridge Tokens via Custom USDC Bridge Tests ============
