@@ -2,548 +2,243 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDepositExecutor } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositExecutor.sol";
 import { ICounterfactualDepositFactory } from "../../../../contracts/interfaces/ICounterfactualDepositFactory.sol";
-import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
+import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
+
+/**
+ * @notice Mock SponsoredCCTPSrcPeriphery that simulates the token transfer without CCTP
+ */
+contract MockSponsoredCCTPSrcPeriphery {
+    using SafeERC20 for IERC20;
+
+    uint256 public lastAmount;
+    bytes32 public lastNonce;
+    uint256 public lastMaxFee;
+    uint256 public callCount;
+
+    function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory) external {
+        address burnToken = address(uint160(uint256(quote.burnToken)));
+        IERC20(burnToken).safeTransferFrom(msg.sender, address(this), quote.amount);
+        lastAmount = quote.amount;
+        lastNonce = quote.nonce;
+        lastMaxFee = quote.maxFee;
+        callCount++;
+    }
+}
 
 contract CounterfactualDepositTest is Test {
     CounterfactualDepositFactory public factory;
     CounterfactualDepositExecutor public executor;
-    MockSpokePool public spokePool;
-    MintableERC20 public inputToken;
-    MintableERC20 public outputToken;
+    MockSponsoredCCTPSrcPeriphery public srcPeriphery;
+    MintableERC20 public burnToken;
 
     address public admin;
-    address public quoteSigner;
-    uint256 public quoteSignerPk;
     address public user;
     address public relayer;
 
-    uint256 public constant DESTINATION_CHAIN_ID = 10; // Optimism
-    bytes32 public recipient;
+    uint32 public constant SOURCE_DOMAIN = 0; // Ethereum
+    uint32 public constant DESTINATION_DOMAIN = 3; // Hyperliquid
+    bytes32 public finalRecipient;
+    bytes32 public refundAddr;
+
+    // Default route params used across tests
+    ICounterfactualDepositFactory.CCTPRouteParams internal defaultParams;
 
     function setUp() public {
-        // Setup accounts
         admin = makeAddr("admin");
-        (quoteSigner, quoteSignerPk) = makeAddrAndKey("quoteSigner");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
-        recipient = bytes32(uint256(uint160(makeAddr("recipient"))));
+        finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
+        refundAddr = bytes32(uint256(uint160(user)));
 
-        // Deploy tokens
-        inputToken = new MintableERC20("Input Token", "IN", 18);
-        outputToken = new MintableERC20("Output Token", "OUT", 18);
+        burnToken = new MintableERC20("USDC", "USDC", 6);
 
-        // Deploy MockSpokePool with UUPS proxy
-        address weth = address(new MintableERC20("WETH", "WETH", 18));
-        MockSpokePool implementation = new MockSpokePool(weth);
-        bytes memory initData = abi.encodeCall(
-            MockSpokePool.initialize,
-            (0, address(this), address(this)) // initialDepositId, crossDomainAdmin, hubPool
-        );
-        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initData);
-        spokePool = MockSpokePool(payable(address(proxy)));
+        srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
+        factory = new CounterfactualDepositFactory(admin);
+        executor = new CounterfactualDepositExecutor(address(factory), address(srcPeriphery), SOURCE_DOMAIN);
 
-        // Deploy factory and executor
-        factory = new CounterfactualDepositFactory(address(spokePool), admin, quoteSigner);
-        executor = new CounterfactualDepositExecutor(address(factory), address(spokePool));
+        burnToken.mint(user, 1000e6);
 
-        // Mint tokens to user
-        inputToken.mint(user, 1000e18);
+        defaultParams = ICounterfactualDepositFactory.CCTPRouteParams({
+            destinationDomain: DESTINATION_DOMAIN,
+            mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
+            burnToken: bytes32(uint256(uint160(address(burnToken)))),
+            destinationCaller: bytes32(uint256(uint160(makeAddr("bot")))),
+            maxFeeBps: 100, // 1%
+            minFinalityThreshold: 1000,
+            maxBpsToSponsor: 500,
+            maxUserSlippageBps: 50,
+            finalRecipient: finalRecipient,
+            finalToken: bytes32(uint256(uint160(address(burnToken)))),
+            destinationDex: 0,
+            accountCreationMode: 0,
+            executionMode: 0,
+            refundAddress: refundAddr,
+            actionData: ""
+        });
     }
 
     function testPredictDepositAddress() public {
         bytes32 salt = keccak256("test-salt");
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
-        address predicted = factory.predictDepositAddress(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "", // message
-            type(uint256).max, // maxGasFee (effectively no fee limit)
-            0, // maxCapitalFee (not needed when maxGasFee is unlimited)
-            salt
-        );
-
-        // Verify prediction matches actual deployment
-        address deployed = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address predicted = factory.predictDepositAddress(address(executor), defaultParams, salt);
+        address deployed = factory.deploy(address(executor), defaultParams, salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
 
     function testDeployEmitsEvent() public {
         bytes32 salt = keccak256("test-salt");
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDepositFactory.DepositAddressCreated(
-            factory.predictDepositAddress(
-                address(executor),
-                inputTokenBytes,
-                outputTokenBytes,
-                DESTINATION_CHAIN_ID,
-                recipient,
-                "",
-                type(uint256).max,
-                0,
-                salt
-            ),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
+            factory.predictDepositAddress(address(executor), defaultParams, salt),
+            defaultParams.burnToken,
+            defaultParams.destinationDomain,
+            defaultParams.finalRecipient,
             salt
         );
 
-        factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        factory.deploy(address(executor), defaultParams, salt);
     }
 
     function testCannotDeployTwice() public {
         bytes32 salt = keccak256("test-salt");
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
-        // First deployment succeeds
-        factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        factory.deploy(address(executor), defaultParams, salt);
 
-        // Second deployment reverts
         vm.expectRevert();
-        factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        factory.deploy(address(executor), defaultParams, salt);
     }
 
     function testDeployedContractHasCorrectImmutables() public {
         bytes32 salt = keccak256("test-salt");
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
 
-        address deployed = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address deployed = factory.deploy(address(executor), defaultParams, salt);
 
-        // Verify clone args via Clones.fetchCloneArgs
         bytes memory args = Clones.fetchCloneArgs(deployed);
-        (
-            bytes32 storedInputToken,
-            bytes32 storedOutputToken,
-            uint256 storedDestChainId,
-            bytes32 storedRecipient,
-            uint256 storedMaxGasFee,
-            uint256 storedMaxCapitalFee,
-            bytes memory storedMessage
-        ) = abi.decode(args, (bytes32, bytes32, uint256, bytes32, uint256, uint256, bytes));
-
-        assertEq(storedInputToken, inputTokenBytes, "Input token mismatch");
-        assertEq(storedOutputToken, outputTokenBytes, "Output token mismatch");
-        assertEq(storedDestChainId, DESTINATION_CHAIN_ID, "Destination chain ID mismatch");
-        assertEq(storedRecipient, recipient, "Recipient mismatch");
-        assertEq(storedMaxGasFee, type(uint256).max, "MaxGasFee mismatch");
-        assertEq(storedMaxCapitalFee, 0, "MaxCapitalFee mismatch");
-        assertEq(storedMessage.length, 0, "Message should be empty");
-    }
-
-    function testVerifyValidSignature() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt");
-
-        address depositAddress = factory.predictDepositAddress(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
+        ICounterfactualDepositFactory.CCTPRouteParams memory stored = abi.decode(
+            args,
+            (ICounterfactualDepositFactory.CCTPRouteParams)
         );
 
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        assertTrue(factory.verifyQuote(quote, signature), "Valid signature should verify");
-    }
-
-    function testVerifyInvalidSignature() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt");
-
-        address depositAddress = factory.predictDepositAddress(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
-
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        // Sign with wrong key
-        (, uint256 wrongPk) = makeAddrAndKey("wrongSigner");
-        bytes memory wrongSignature = _signQuote(quote, wrongPk);
-
-        assertFalse(factory.verifyQuote(quote, wrongSignature), "Invalid signature should not verify");
+        assertEq(stored.destinationDomain, DESTINATION_DOMAIN, "destinationDomain mismatch");
+        assertEq(stored.mintRecipient, defaultParams.mintRecipient, "mintRecipient mismatch");
+        assertEq(stored.burnToken, defaultParams.burnToken, "burnToken mismatch");
+        assertEq(stored.destinationCaller, defaultParams.destinationCaller, "destinationCaller mismatch");
+        assertEq(stored.maxFeeBps, 100, "maxFeeBps mismatch");
+        assertEq(stored.minFinalityThreshold, 1000, "minFinalityThreshold mismatch");
+        assertEq(stored.maxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
+        assertEq(stored.maxUserSlippageBps, 50, "maxUserSlippageBps mismatch");
+        assertEq(stored.finalRecipient, finalRecipient, "finalRecipient mismatch");
+        assertEq(stored.finalToken, defaultParams.finalToken, "finalToken mismatch");
+        assertEq(stored.destinationDex, 0, "destinationDex mismatch");
+        assertEq(stored.accountCreationMode, 0, "accountCreationMode mismatch");
+        assertEq(stored.executionMode, 0, "executionMode mismatch");
+        assertEq(stored.refundAddress, refundAddr, "refundAddress mismatch");
+        assertEq(stored.actionData.length, 0, "actionData should be empty");
     }
 
     function testDeployAndExecute() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
+        bytes32 nonce = keccak256("nonce-1");
+        uint256 amount = 100e6;
 
-        address depositAddress = factory.predictDepositAddress(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address depositAddress = factory.predictDepositAddress(address(executor), defaultParams, salt);
 
         // User sends tokens to deposit address
         vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
+        burnToken.transfer(depositAddress, amount);
 
-        // Create signed quote
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        // Relayer executes deployAndExecute
-        uint256 initialDepositId = spokePool.numberOfDeposits();
-
+        // Execute
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDepositFactory.DepositExecuted(depositAddress, 100e18, 99e18, initialDepositId);
+        emit ICounterfactualDepositFactory.DepositExecuted(depositAddress, amount, nonce);
 
         vm.prank(relayer);
         address deployed = factory.deployAndExecute(
             address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "", // message
-            type(uint256).max, // maxGasFee (effectively no fee limit)
-            0, // maxCapitalFee (not needed when maxGasFee is unlimited)
+            defaultParams,
             salt,
-            quote,
-            signature
+            amount,
+            nonce,
+            block.timestamp + 1 hours,
+            "sig"
         );
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
-        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(spokePool.numberOfDeposits(), initialDepositId + 1, "Deposit ID should increment");
+        assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
+        assertEq(srcPeriphery.lastAmount(), amount, "SrcPeriphery should have received correct amount");
+        assertEq(srcPeriphery.lastNonce(), nonce, "SrcPeriphery should have received correct nonce");
+    }
+
+    function testMaxFeeBpsCalculation() public {
+        bytes32 salt = keccak256("test-salt");
+        bytes32 nonce = keccak256("nonce-1");
+        uint256 amount = 100e6;
+
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
+
+        vm.prank(user);
+        burnToken.transfer(depositAddress, amount);
+
+        vm.prank(relayer);
+        factory.executeOnExisting(depositAddress, amount, nonce, block.timestamp + 1 hours, "sig");
+
+        // maxFeeBps = 100 (1%), amount = 100e6
+        // Expected maxFee = 100e6 * 100 / 10000 = 1e6
+        assertEq(srcPeriphery.lastMaxFee(), 1e6, "maxFee should be 1% of amount");
     }
 
     function testExecuteOnExisting() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
 
-        // First deploy
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
-        // User sends tokens
+        // First deposit
         vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
-
-        // Create and execute first deposit
-        ICounterfactualDepositFactory.DepositQuote memory quote1 = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature1 = _signQuote(quote1, quoteSignerPk);
+        burnToken.transfer(depositAddress, 100e6);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote1, signature1);
+        factory.executeOnExisting(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours, "sig");
 
-        // Send more tokens for second deposit
+        // Second deposit (reuse same clone)
         vm.prank(user);
-        inputToken.transfer(depositAddress, 50e18);
-
-        // Create and execute second deposit
-        ICounterfactualDepositFactory.DepositQuote memory quote2 = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 50e18,
-            outputAmount: 49e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature2 = _signQuote(quote2, quoteSignerPk);
-
-        uint256 depositIdBefore = spokePool.numberOfDeposits();
+        burnToken.transfer(depositAddress, 50e6);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote2, signature2);
+        factory.executeOnExisting(depositAddress, 50e6, keccak256("nonce-2"), block.timestamp + 1 hours, "sig");
 
-        assertEq(spokePool.numberOfDeposits(), depositIdBefore + 1, "Second deposit should increment ID");
-        assertEq(inputToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
+        assertEq(srcPeriphery.callCount(), 2, "Should have two deposits");
+        assertEq(burnToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
     }
 
     function testExecuteWithInsufficientBalance() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
         // Send insufficient tokens
         vm.prank(user);
-        inputToken.transfer(depositAddress, 50e18);
+        burnToken.transfer(depositAddress, 50e6);
 
         // Try to deposit more than balance
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
         vm.expectRevert(ICounterfactualDepositFactory.InsufficientBalance.selector);
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-    }
-
-    function testExecuteWithExpiredQuote() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt");
-
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
-
-        // Create quote with past deadline
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp - 1,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        vm.expectRevert(ICounterfactualDepositFactory.QuoteExpired.selector);
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-    }
-
-    function testExecuteWithWrongDepositAddress() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt1 = keccak256("test-salt-1");
-        bytes32 salt2 = keccak256("test-salt-2");
-
-        // Deploy two different deposit addresses
-        address depositAddress1 = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt1
-        );
-
-        address depositAddress2 = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt2
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress1, 100e18);
-
-        // Create quote for depositAddress1 but try to execute on depositAddress2
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress1,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        vm.expectRevert(ICounterfactualDepositFactory.WrongDepositAddress.selector);
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress2, quote, signature);
+        factory.executeOnExisting(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours, "sig");
     }
 
     function testAdminWithdraw() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
-        // User sends wrong token
+        // Send wrong token
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
 
@@ -556,45 +251,40 @@ contract CounterfactualDepositTest is Test {
     }
 
     function testAdminWithdrawUnauthorized() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
         vm.expectRevert(ICounterfactualDepositFactory.Unauthorized.selector);
         vm.prank(user);
-        CounterfactualDepositExecutor(depositAddress).adminWithdraw(address(inputToken), user, 100e18);
+        CounterfactualDepositExecutor(depositAddress).adminWithdraw(address(burnToken), user, 100e6);
     }
 
-    function testSetQuoteSigner() public {
-        address newSigner = makeAddr("newSigner");
+    function testUserWithdraw() public {
+        bytes32 salt = keccak256("test-salt");
 
-        vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDepositFactory.QuoteSignerUpdated(quoteSigner, newSigner);
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
-        vm.prank(admin);
-        factory.setQuoteSigner(newSigner);
+        // Send tokens to deposit address
+        vm.prank(user);
+        burnToken.transfer(depositAddress, 100e6);
 
-        assertEq(factory.quoteSigner(), newSigner, "Quote signer should be updated");
+        // refundAddress (user) withdraws tokens
+        vm.prank(user);
+        CounterfactualDepositExecutor(depositAddress).userWithdraw(address(burnToken), user, 100e6);
+
+        assertEq(burnToken.balanceOf(user), 1000e6, "User should have all tokens back");
+        assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit address should have no balance");
     }
 
-    function testSetQuoteSignerUnauthorized() public {
-        address newSigner = makeAddr("newSigner");
+    function testUserWithdrawUnauthorized() public {
+        bytes32 salt = keccak256("test-salt");
+
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
         vm.expectRevert(ICounterfactualDepositFactory.Unauthorized.selector);
-        vm.prank(user);
-        factory.setQuoteSigner(newSigner);
+        vm.prank(relayer);
+        CounterfactualDepositExecutor(depositAddress).userWithdraw(address(burnToken), relayer, 100e6);
     }
 
     function testSetAdmin() public {
@@ -617,317 +307,66 @@ contract CounterfactualDepositTest is Test {
         factory.setAdmin(newAdmin);
     }
 
-    function testSameQuoteMultipleExecutions() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt");
-
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
-
-        // Create one quote
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 50e18,
-            outputAmount: 49e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours), // Within 9 hour buffer
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        // First execution
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 50e18);
-
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-
-        // Second execution with same quote (user adds more tokens)
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 50e18);
-
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-
-        assertEq(spokePool.numberOfDeposits(), 2, "Should have two deposits");
-        assertEq(inputToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
-    }
-
-    function testGasFeeTooHigh() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt");
-
-        // Deploy with low limits: maxGasFee=1e18, maxCapitalFee=1% (100 bps)
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            1e18, // maxGasFee = 1
-            100, // maxCapitalFee = 1% (100 bps)
-            salt
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
-
-        // Create quote with fee of 3e18
-        // Max allowed = 1e18 + (100e18 * 1%) = 1e18 + 1e18 = 2e18
-        // Fee of 3e18 exceeds max allowed of 2e18
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 97e18, // Fee = 3e18 > 2e18 max allowed
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        vm.expectRevert(ICounterfactualDepositFactory.GasFeeTooHigh.selector);
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-    }
-
-    function testCapitalFeeTooHigh() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt");
-
-        // Deploy with low limits: maxGasFee=0.5e18, maxCapitalFee=1% (100 bps)
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            0.5e18, // maxGasFee = 0.5
-            100, // maxCapitalFee = 1% (100 bps)
-            salt
-        );
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
-
-        // Create quote with fee of 2e18
-        // Max allowed = 0.5e18 + (100e18 * 1%) = 0.5e18 + 1e18 = 1.5e18
-        // Fee of 2e18 exceeds max allowed of 1.5e18
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 98e18, // Fee = 2e18 > 1.5e18 max allowed
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        vm.expectRevert(ICounterfactualDepositFactory.GasFeeTooHigh.selector);
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-    }
-
-    function testDeployAndExecuteWithMessage() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
-        bytes32 salt = keccak256("test-salt-msg");
-        bytes memory message = abi.encode(uint256(42), address(0xBEEF));
-
-        address depositAddress = factory.predictDepositAddress(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            message,
-            type(uint256).max,
-            0,
-            salt
-        );
-
-        // Verify clone args include the message
-        factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            message,
-            type(uint256).max,
-            0,
-            salt
-        );
-
-        bytes memory args = Clones.fetchCloneArgs(depositAddress);
-        (, , , , , , bytes memory storedMessage) = abi.decode(
-            args,
-            (bytes32, bytes32, uint256, bytes32, uint256, uint256, bytes)
-        );
-        assertEq(storedMessage, message, "Message should be stored in clone args");
-
-        // Fund and execute deposit
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
-
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
-        vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, quote, signature);
-
-        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(spokePool.numberOfDeposits(), 1, "Deposit should be executed");
-    }
-
     function testDeployAndExecuteWhenAlreadyDeployed() public {
-        bytes32 inputTokenBytes = bytes32(uint256(uint160(address(inputToken))));
-        bytes32 outputTokenBytes = bytes32(uint256(uint160(address(outputToken))));
         bytes32 salt = keccak256("test-salt");
+        uint256 amount = 100e6;
 
         // Deploy first
-        address depositAddress = factory.deploy(
-            address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
-            salt
-        );
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
         // Fund the deposit address
         vm.prank(user);
-        inputToken.transfer(depositAddress, 100e18);
-
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: depositAddress,
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
+        burnToken.transfer(depositAddress, amount);
 
         // Call deployAndExecute on already-deployed clone (exercises catch branch)
         vm.prank(relayer);
         address returned = factory.deployAndExecute(
             address(executor),
-            inputTokenBytes,
-            outputTokenBytes,
-            DESTINATION_CHAIN_ID,
-            recipient,
-            "",
-            type(uint256).max,
-            0,
+            defaultParams,
             salt,
-            quote,
-            signature
+            amount,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
         );
 
         assertEq(returned, depositAddress, "Should return correct address from catch branch");
-        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit should have executed");
-        assertEq(spokePool.numberOfDeposits(), 1, "Deposit ID should increment");
+        assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit should have executed");
+        assertEq(srcPeriphery.callCount(), 1, "SrcPeriphery should have been called once");
     }
 
     function testExecuteOnImplementationReverts() public {
         // Calling executeDeposit directly on the executor implementation (not a clone)
         // should revert because fetchCloneArgs will fail on non-clone bytecode
-        ICounterfactualDepositFactory.DepositQuote memory quote = ICounterfactualDepositFactory.DepositQuote({
-            depositAddress: address(executor),
-            deadline: block.timestamp + 1 hours,
-            inputAmount: 100e18,
-            outputAmount: 99e18,
-            quoteTimestamp: uint32(block.timestamp),
-            fillDeadline: uint32(block.timestamp + 4 hours),
-            exclusivityParameter: 0,
-            exclusiveRelayer: bytes32(0)
-        });
-
-        bytes memory signature = _signQuote(quote, quoteSignerPk);
-
         vm.expectRevert();
-        executor.executeDeposit(quote, signature);
+        executor.executeDeposit(100e6, keccak256("nonce"), block.timestamp + 1 hours, "sig");
     }
 
-    // Helper function to sign a quote using EIP-712
-    function _signQuote(
-        ICounterfactualDepositFactory.DepositQuote memory quote,
-        uint256 privateKey
-    ) internal view returns (bytes memory) {
-        // Hash the struct data
-        bytes32 structHash = keccak256(
-            abi.encode(
-                factory.DEPOSIT_QUOTE_TYPEHASH(),
-                quote.depositAddress,
-                quote.deadline,
-                quote.inputAmount,
-                quote.outputAmount,
-                quote.quoteTimestamp,
-                quote.fillDeadline,
-                quote.exclusivityParameter,
-                quote.exclusiveRelayer
-            )
+    function testDeployWithActionData() public {
+        bytes32 salt = keccak256("test-salt-action");
+        bytes memory actionData = abi.encode(uint256(42), address(0xBEEF));
+
+        ICounterfactualDepositFactory.CCTPRouteParams memory params = defaultParams;
+        params.actionData = actionData;
+
+        address depositAddress = factory.deploy(address(executor), params, salt);
+
+        // Verify clone args include the actionData
+        bytes memory args = Clones.fetchCloneArgs(depositAddress);
+        ICounterfactualDepositFactory.CCTPRouteParams memory stored = abi.decode(
+            args,
+            (ICounterfactualDepositFactory.CCTPRouteParams)
         );
+        assertEq(stored.actionData, actionData, "actionData should be stored in clone args");
 
-        // Compute EIP-712 digest using the same formula as OpenZeppelin's _hashTypedDataV4
-        bytes32 domainSeparator = _computeDomainSeparator();
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
+        // Fund and execute deposit
+        vm.prank(user);
+        burnToken.transfer(depositAddress, 100e6);
 
-        // Sign the digest
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
-        return abi.encodePacked(r, s, v);
-    }
+        vm.prank(relayer);
+        factory.executeOnExisting(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours, "sig");
 
-    // Helper to compute domain separator (matches OpenZeppelin EIP712)
-    function _computeDomainSeparator() internal view returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                    keccak256(bytes("Across Counterfactual Deposit")),
-                    keccak256(bytes("1")),
-                    block.chainid,
-                    address(factory)
-                )
-            );
+        assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
+        assertEq(srcPeriphery.callCount(), 1, "Deposit should be executed");
     }
 }
