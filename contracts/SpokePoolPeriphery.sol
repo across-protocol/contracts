@@ -181,13 +181,11 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      *                ERRORS                *
      ****************************************/
     error MinimumExpectedInputAmount();
+    error MinimumExpectedOutputAmount();
     error InvalidMsgValue();
     error InvalidSignature();
     error InvalidMinExpectedInputAmount();
     error InvalidNonce();
-
-    // Errors
-    error MinimumExpectedOutputAmount();
 
     /**
      * @notice Construct a new Periphery contract.
