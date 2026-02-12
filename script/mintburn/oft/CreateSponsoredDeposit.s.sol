@@ -218,9 +218,7 @@ contract CreateSponsoredDeposit is Script, Config {
             actionData: ""
         });
 
-        UnsignedQuoteParams memory unsignedParams = UnsignedQuoteParams({
-            refundRecipient: refundRecipient
-        });
+        UnsignedQuoteParams memory unsignedParams = UnsignedQuoteParams({ refundRecipient: refundRecipient });
 
         Quote memory quote = Quote({ signedParams: signedParams, unsignedParams: unsignedParams });
 

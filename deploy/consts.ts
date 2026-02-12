@@ -319,6 +319,10 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   [CHAIN_IDs.SONEIUM]: {
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
+  [CHAIN_IDs.TEMPO]: {
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    helios: "0x3CA11702f7c0F28e0b4e03C31F7492969862C569",
+  },
   [CHAIN_IDs.LISK]: {
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },

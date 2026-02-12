@@ -204,7 +204,8 @@ contract SpokePoolPeripheryTest is Test {
                 address(mockERC20),
                 depositAmount,
                 depositor,
-                true // Enable proportional adjustment by default
+                true,
+                0
             )
         );
         vm.stopPrank();
@@ -242,7 +243,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockERC20),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment
+            true,
+            0 // Enable proportional adjustment
         );
 
         // Update the router calldata to use our custom swap function
@@ -302,7 +304,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockERC20),
             depositAmount,
             depositor,
-            false // Disable proportional adjustment
+            false,
+            0 // Disable proportional adjustment
         );
 
         // Update the router calldata to use our custom swap function
@@ -361,7 +364,8 @@ contract SpokePoolPeripheryTest is Test {
                 address(mockERC20),
                 depositAmount,
                 depositor,
-                true // Enable proportional adjustment by default
+                true,
+                0
             )
         );
         vm.stopPrank();
@@ -397,7 +401,8 @@ contract SpokePoolPeripheryTest is Test {
                 address(mockERC20),
                 depositAmount,
                 depositor,
-                true // Enable proportional adjustment by default
+                true,
+                0
             )
         );
         vm.stopPrank();
@@ -440,7 +445,8 @@ contract SpokePoolPeripheryTest is Test {
                 address(mockERC20),
                 depositAmount,
                 depositor,
-                true // Enable proportional adjustment by default
+                true,
+                0
             )
         );
         vm.stopPrank();
@@ -590,6 +596,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        // Calculate the expected depositId using the periphery's getDepositId function
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.PERMIT_NONCE_IDENTIFIER(),
+            depositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -598,7 +613,7 @@ contract SpokePoolPeripheryTest is Test {
             mintAmount,
             mintAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -634,7 +649,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            spokePoolPeriphery.permitNonces(depositor)
         );
 
         bytes32 nonce = 0;
@@ -666,6 +682,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
         bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        // Calculate the expected depositId using the periphery's getDepositId function
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            swapAndDepositData.depositData.depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.PERMIT_NONCE_IDENTIFIER(),
+            swapAndDepositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -674,7 +699,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -701,6 +726,8 @@ contract SpokePoolPeripheryTest is Test {
         mockWETH.deposit{ value: depositAmount }();
         mockWETH.transfer(address(dex), depositAmount);
 
+        uint256 validNonce = spokePoolPeriphery.permitNonces(depositor);
+
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockERC20),
             mintAmount,
@@ -711,7 +738,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            validNonce
         );
 
         bytes32 nonce = 0;
@@ -754,7 +782,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             rando,
-            true // Enable proportional adjustment by default
+            true,
+            validNonce
         );
 
         // Should emit expected deposit event
@@ -780,7 +809,10 @@ contract SpokePoolPeripheryTest is Test {
             depositor
         );
 
-        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -789,7 +821,7 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                bytes32(depositData.nonce)
+                witness
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
@@ -804,6 +836,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, depositMsgHash);
         bytes memory depositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        // Calculate the expected depositId using the periphery's getDepositId function
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -812,7 +853,7 @@ contract SpokePoolPeripheryTest is Test {
             mintAmount,
             mintAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -826,8 +867,7 @@ contract SpokePoolPeripheryTest is Test {
             depositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            signature, // receiveWithAuthSignature
-            depositDataSignature
+            signature // receiveWithAuthSignature
         );
 
         // Check that fee recipient receives expected amount
@@ -849,10 +889,16 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            0
         );
 
-        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+
+        // Get the transfer with auth signature using the witness to bind the intent.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -861,7 +907,7 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                bytes32(swapAndDepositData.nonce)
+                witness
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
@@ -880,6 +926,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
         bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
+        // Calculate the expected depositId using the periphery's getDepositId function
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -888,7 +943,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -902,8 +957,7 @@ contract SpokePoolPeripheryTest is Test {
             swapAndDepositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            signature, // receiveWithAuthSignature
-            swapAndDepositDataSignature
+            signature // receiveWithAuthSignature
         );
 
         // Check that fee recipient receives expected amount
@@ -926,10 +980,16 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            0
         );
 
-        // Get the transfer with auth signature using the struct nonce to bind both signatures together.
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+
+        // Get the transfer with auth signature using the witness to bind the intent.
         bytes32 structHash = keccak256(
             abi.encode(
                 mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
@@ -938,24 +998,13 @@ contract SpokePoolPeripheryTest is Test {
                 mintAmountWithSubmissionFee,
                 block.timestamp,
                 block.timestamp,
-                bytes32(swapAndDepositData.nonce)
+                witness
             )
         );
         bytes32 msgHash = mockERC20.hashTypedData(structHash);
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
-
-        // Get the swap and deposit data signature.
-        bytes32 swapAndDepositMsgHash = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                spokePoolPeriphery.domainSeparator(),
-                hashUtils.hashSwapAndDepositData(swapAndDepositData)
-            )
-        );
-        (uint8 _v, bytes32 _r, bytes32 _s) = vm.sign(privateKey, swapAndDepositMsgHash);
-        bytes memory swapAndDepositDataSignature = bytes.concat(_r, _s, bytes1(_v));
 
         // Make a swapAndDepositStruct which is different from the one the depositor signed off on. For example, make one where we set somebody else as the recipient/depositor.
         SpokePoolPeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
@@ -968,18 +1017,18 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             rando,
-            true // Enable proportional adjustment by default
+            true,
+            0
         );
 
         // Should emit expected deposit event
-        vm.expectRevert(SpokePoolPeriphery.InvalidSignature.selector);
+        vm.expectRevert();
         spokePoolPeriphery.swapAndBridgeWithAuthorization(
             depositor, // signatureOwner
             invalidSwapAndDepositData,
             block.timestamp, // validAfter
             block.timestamp, // validBefore
-            signature, // receiveWithAuthSignature
-            swapAndDepositDataSignature
+            signature // receiveWithAuthSignature
         );
     }
 
@@ -1027,6 +1076,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
+        // Calculate expected deposit ID
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
+            depositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -1035,7 +1093,7 @@ contract SpokePoolPeripheryTest is Test {
             mintAmount,
             mintAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -1056,6 +1114,13 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testPermit2SwapAndBridgeValidWitness() public {
+        // Signature transfer details
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
+            nonce: 1,
+            deadline: block.timestamp + 100
+        });
+
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockWETH),
             mintAmount,
@@ -1066,15 +1131,9 @@ contract SpokePoolPeripheryTest is Test {
             address(mockERC20),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            permit.nonce
         );
-
-        // Signature transfer details
-        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
-            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
-            nonce: 1,
-            deadline: block.timestamp + 100
-        });
 
         bytes32 typehash = keccak256(
             abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING)
@@ -1102,6 +1161,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
+        // Calculate expected deposit ID
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            swapAndDepositData.depositData.depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
+            swapAndDepositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -1110,7 +1178,7 @@ contract SpokePoolPeripheryTest is Test {
             depositAmount,
             depositAmount,
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -1151,6 +1219,13 @@ contract SpokePoolPeripheryTest is Test {
             true // Use permit2
         );
 
+        // Signature transfer details
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
+            nonce: 2, // Use a different nonce from previous test
+            deadline: block.timestamp + 100
+        });
+
         // Prepare the swap and deposit data with submission fee
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockWETH),
@@ -1162,18 +1237,12 @@ contract SpokePoolPeripheryTest is Test {
             address(mockERC20),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment
+            true,
+            permit.nonce // Enable proportional adjustment
         );
 
         // Update the router calldata to use our custom swap function
         swapAndDepositData.routerCalldata = customCalldata;
-
-        // Signature transfer details
-        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
-            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
-            nonce: 2, // Use a different nonce from previous test
-            deadline: block.timestamp + 100
-        });
 
         bytes32 typehash = keccak256(
             abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING)
@@ -1201,6 +1270,15 @@ contract SpokePoolPeripheryTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
         bytes memory signature = bytes.concat(r, s, bytes1(v));
 
+        // Calculate expected deposit ID
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            swapAndDepositData.depositData.depositor,
+            depositor, // authorizer
+            spokePoolPeriphery.PERMIT2_NONCE_IDENTIFIER(),
+            swapAndDepositData.nonce,
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
         // Should emit expected deposit event with proportionally adjusted output amount
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
@@ -1209,7 +1287,7 @@ contract SpokePoolPeripheryTest is Test {
             actualReturnAmount,
             expectedAdjustedOutput, // This should be proportionally increased
             destinationChainId,
-            0, // depositId
+            expectedDepositId,
             uint32(block.timestamp),
             uint32(block.timestamp) + fillDeadlineBuffer,
             0, // exclusivityDeadline
@@ -1234,6 +1312,14 @@ contract SpokePoolPeripheryTest is Test {
 
     function testPermit2SwapAndBridgeInvalidWitness(address rando) public {
         vm.assume(rando != depositor);
+
+        // Signature transfer details
+        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
+            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
+            nonce: 1,
+            deadline: block.timestamp + 100
+        });
+
         SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
             address(mockWETH),
             mintAmount,
@@ -1244,15 +1330,9 @@ contract SpokePoolPeripheryTest is Test {
             address(mockERC20),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            permit.nonce
         );
-
-        // Signature transfer details
-        IPermit2.PermitTransferFrom memory permit = IPermit2.PermitTransferFrom({
-            permitted: IPermit2.TokenPermissions({ token: address(mockWETH), amount: mintAmountWithSubmissionFee }),
-            nonce: 1,
-            deadline: block.timestamp + 100
-        });
 
         bytes32 typehash = keccak256(
             abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_SWAP_AND_DEPOSIT_TYPE_STRING)
@@ -1291,7 +1371,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             rando,
-            true // Enable proportional adjustment by default
+            true,
+            permit.nonce
         );
 
         // Should emit expected deposit event
@@ -1323,7 +1404,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockERC20),
             depositAmount,
             depositor,
-            true
+            true,
+            0 // Regular swapAndBridge requires nonce 0
         );
 
         // Attempt to use permit2 as the exchange - this should fail with InvalidExchange
@@ -1355,7 +1437,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true
+            true,
+            spokePoolPeriphery.permitNonces(depositor)
         );
 
         bytes32 nonce = 0;
@@ -1511,7 +1594,7 @@ contract SpokePoolPeripheryTest is Test {
     }
 
     function testNonceInitiallyZero() public {
-        assertEq(spokePoolPeriphery.permitNonces(depositor), 0);
+        assertEq(spokePoolPeriphery.permitNonces(depositor), 1);
     }
 
     function testNonceIncrementsAfterDepositWithPermit() public {
@@ -1612,7 +1695,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            0
         );
 
         // Manually set an invalid nonce (current nonce is 0, we'll use 10)
@@ -1725,7 +1809,8 @@ contract SpokePoolPeripheryTest is Test {
             address(mockWETH),
             depositAmount,
             depositor,
-            true // Enable proportional adjustment by default
+            true,
+            spokePoolPeriphery.permitNonces(depositor) // Use proper nonce (will be 1 initially)
         );
 
         bytes32 nonce = 0;
@@ -1772,11 +1857,11 @@ contract SpokePoolPeripheryTest is Test {
         mockWETH.deposit{ value: depositAmount }();
         mockWETH.transfer(address(dex), depositAmount);
 
-        // Try to use the same swapAndDepositData (with same nonce=0) again - should fail
+        // Try to use the same swapAndDepositData (with same nonce=1) again - should fail
         vm.expectRevert(SpokePoolPeriphery.InvalidNonce.selector);
         spokePoolPeriphery.swapAndBridgeWithPermit(
             depositor,
-            swapAndDepositData, // Same data with nonce=0, but user nonce is now 1
+            swapAndDepositData, // Same data with nonce=1, but user nonce is now 2
             block.timestamp,
             signature,
             swapAndDepositDataSignature
@@ -1793,7 +1878,8 @@ contract SpokePoolPeripheryTest is Test {
         address _inputToken,
         uint256 _amount,
         address _depositor,
-        bool _enableProportionalAdjustment
+        bool _enableProportionalAdjustment,
+        uint256 _nonce
     ) internal view returns (SpokePoolPeriphery.SwapAndDepositData memory) {
         bool usePermit2 = _transferType == SpokePoolPeripheryInterface.TransferType.Permit2Approval;
         return
@@ -1827,7 +1913,7 @@ contract SpokePoolPeripheryTest is Test {
                 ),
                 enableProportionalAdjustment: _enableProportionalAdjustment,
                 spokePool: address(ethereumSpokePool),
-                nonce: spokePoolPeriphery.permitNonces(_depositor)
+                nonce: _nonce
             });
     }
 }

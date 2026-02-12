@@ -87,9 +87,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             actionData: ""
         });
 
-        UnsignedQuoteParams memory up = UnsignedQuoteParams({
-            refundRecipient: refundRecipient
-        });
+        UnsignedQuoteParams memory up = UnsignedQuoteParams({ refundRecipient: refundRecipient });
 
         q = Quote({ signedParams: sp, unsignedParams: up });
     }
