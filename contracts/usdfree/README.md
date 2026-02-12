@@ -1,140 +1,108 @@
 # USDFree
 
-A mechanism-agnostic cross-chain order system that unifies CCTP, OFT, and Across bridge flows into a single architecture.
+USDFree is a mechanism-agnostic cross-chain order execution model intended to unify CCTP, OFT, and Across-style flows behind one intent format.
 
-## Goals
+This folder currently defines interface and data-model contracts only (`Interfaces.sol`).
 
-- Bridge tokens cross-chain regardless of underlying mechanism
-- Single upgradeable entry point (no re-approvals needed)
-- Support gasless flows and sponsorship
-- Enable chained cross-chain operations (src → A → B → dst)
-- Execute arbitrary user actions after token delivery
+## Current Interface Surface
 
-## Architecture
+### Order submission
 
-```
-Source Chain:
-User → OrderGateway → Executor → IUserActionExecutor
-                                        ↓
-                            [Bridge Message with nextSteps]
-                                        ↓
-                                Destination Chain:
-BridgeHandler → OrderStore → Executor → IUserActionExecutor
-```
+`OrderGateway` exposes:
 
-### Components
+- `submit(Order, SubmitterProvided)` for single-path orders.
+- `submitMerkle(MerkleOrder, SelectedPath, SubmitterProvided)` for multi-path orders with submitter-selected Merkle proof.
 
-**OrderGateway** - Entry point for order submissions
+### Step execution
 
-- `submit()` - Submit order with funding
-- `submitWithAuction()` - Submit with auction-based price improvement
+`Executor.execute(...)` executes exactly one `ExecutionStep` using:
 
-**Executor** - Executes a single step
+- `SubmitterData.actions` for submitter-provided actions.
+- `AuctionRuntime` for per-route authorization payloads.
+- `TokenHandoff` to control how tokens are handed to `IUserActionExecutor` (`Push`, `ApprovePull`, `Permit2Pull`).
 
-- Runs submitter actions (swaps, etc.)
-- Checks requirements after submitter actions complete
-- Calls IUserActionExecutor with token, amount, params, and remaining steps
+`IUserActionExecutor.execute(...)` receives token + amount + current action payload and may propagate `nextSteps`.
 
-**IUserActionExecutor** - Final action interface
+### Destination handling
 
-- Receives tokens and executes user-specified action
-- Propagates `nextSteps` to continue cross-chain execution
+`OrderStore` exposes:
 
-**OrderStore** - Destination-side order management
+- `handle(...)` to store a bridged order.
+- `handleAtomic(...)` for immediate fill after bridge handling.
+- `fill(...)` for permissionless or submitter-driven fills of stored orders.
 
-- `handle()` - Receive tokens from bridge, store for filling
-- `handleAtomic()` - Receive and fill in one transaction
-- `fill()` - Fill a stored order
+## Core Data Model
 
-## Key Data Structures
+### Order and paths
 
-### ExecutionStep
+- `Order`: `{ salt, steps, auctionSettings }`
+- `MerkleOrder`: `{ salt, pathRoot, pathCount }`
+- `SelectedPath`: `{ steps, auctionSettings, proof }`
 
-Defines requirements and action for one step in the order:
+### Step requirements
 
-```solidity
-struct ExecutionStep {
-  bytes tokenReq; // (token, amount) - amount=0 means no enforcement
-  bytes submitterReq; // Required submitter address (empty = anyone)
-  bytes deadlineReq; // Deadline timestamp (empty = none)
-  bytes[] otherStaticReqs; // Additional requirements (Executor-specific)
-  bytes hashOrUserAction; // User action or hash for obfuscation
-  address refundRecipient; // Where to send tokens if deadline passes
-}
-```
+Each `ExecutionStep` includes:
 
-### Order
+- `tokenReq` (required token/amount shape, encoded bytes)
+- `submitterReq` (optional submitter constraint)
+- `deadlineReq` (optional deadline)
+- `otherStaticReqs` (executor-specific extra checks)
+- `hashOrUserAction` (obfuscated hash or clear action)
+- `refundRecipient`
+- `tokenHandoff`
 
-What the user signs:
+### Auctions
 
-```solidity
-struct Order {
-  bytes32 salt;
-  ExecutionStep[] steps;
-}
-```
+- User policy is encoded in `UserAuctionSettings` and per-route `AuctionRoute`.
+- Runtime payload is `AuctionRuntime.routeAuthorizations[]`.
+- `IAuctionModule.resolve(...)` verifies route authorization and returns `ProposedChangeSet`.
 
-### SubmitterData
+## Known Issues / Open Design Decisions
 
-What the submitter provides to execute a step:
+These should be resolved before production implementation.
 
-```solidity
-struct SubmitterData {
-  TokenAmount[] extraFunding; // Additional tokens from submitter
-  bytes actions; // Encoded actions (MulticallHandler or weiroll)
-  bytes deobfuscation; // If user action was obfuscated
-}
-```
+1. Untyped `bytes` requirements are underspecified.
 
-## Execution Flow
+   - `ExecutionStep.tokenReq`, `submitterReq`, `deadlineReq`, and `hashOrUserAction` do not define canonical encoding/versioning.
+   - Risk: incompatible decoders across modules/chains and malformed payload ambiguity.
 
-1. **OrderGateway** computes orderId from Order + domain separation
-2. **OrderGateway** applies auction changes if present (signed by auctionAuthority)
-3. **Executor** runs submitter actions
-4. **Executor** checks all requirements are met (token balance, submitter, deadline, etc.)
-5. **Executor** calls **IUserActionExecutor** with current step's action
-6. **IUserActionExecutor** executes action and propagates `nextSteps` cross-chain
+2. Auction authorization is not fully route-bound in the signed payload.
 
-For destination chains:
+   - `RouteAuthorization.routeIndex` is outside `AuctionAuthorization`.
+   - If modules/routes share validation domains, payload reuse/substitution risk exists unless executors add strict binding checks.
 
-- Tokens arrive via bridge → **OrderStore**
-- Submitter calls `fill()` to execute the step
-- Same Executor → IUserActionExecutor flow
+3. `stepBitmap` format is unspecified.
 
-## Design Decisions
+   - `AuctionRoute.stepBitmap` does not define bit ordering, max step index behavior, or required bitmap length relative to `steps.length`.
+   - Risk: inconsistent route invocation and bypass via decoder mismatch.
 
-**Order ID Scope**: Computed once at OrderGateway with domain separation (srcChainId). Not propagated cross-chain.
+4. `IAuctionModule.resolve` is `view` only.
 
-**Cross-Chain Tracking**: Uses bridge-native identifiers (OFT guid, CCTP nonce, etc.). API/indexer correlates the full chain.
+   - This forbids stateful on-chain auction settlement inside module resolution.
+   - If stateful auctions are required, interface mutability likely needs to change.
 
-**Multi-Chain Orders**: `nextSteps` are ABI-encoded in bridge messages, enabling true multi-hop orders.
+5. Funding payload shape is duplicated and unclear.
 
-**Token Custody**: Tokens sit in OrderStore until fill. During step execution, temporarily in Executor. Executor should never have approvals.
+   - `SubmitterProvided.funding` (`bytes`) overlaps with `SubmitterData.extraFunding` (`TokenAmount[]`).
+   - Risk: conflicting source-of-truth and implementation drift.
 
-**Requirement Checking**: Happens after submitter actions complete (swaps produce tokens before checking).
+6. Token handoff safety rules are not part of the interface contract.
 
-**Failure Handling**: Entire transaction reverts. Atomic, all-or-nothing.
+   - `TokenHandoff.data` is free-form and approval lifecycle (exact spender, amount caps, revocation) is not standardized.
+   - Risk: stale allowances or inconsistent Permit2 integration.
 
-**Refunds**: Permissionless after deadline - anyone can trigger, tokens go to `refundRecipient`.
+7. Replay and domain separation requirements are implied, not explicit.
 
-**Obfuscation**: Trust-based. If user needs to hide their action, they specify a trusted submitter via `submitterReq`.
+   - `AuctionAuthorization` includes `orderId`, `stepIndex`, `targetChainId`, and `targetContract`, but required source domain and nonce semantics are not specified.
+   - Risk: cross-domain replay if implementations differ on hashing/domain separator.
 
-**Action Format**: Type prefix byte indicates format (0 = MulticallHandler, 1 = weiroll, etc.).
+8. Documentation drift existed and must be kept aligned.
+   - Previous docs referenced methods and flow that do not exist in `Interfaces.sol` (for example `submitWithAuction()` and legacy auction-authority flow).
 
-**Optional Fields**: Empty bytes (length 0) means no requirement.
+## Recommended Next Steps
 
-## Integration Paths
-
-**CCTP/OFT flows**: BridgeHandler → OrderStore.handle() → fill()
-
-**Across (SpokePool)**: Uses `handleV3AcrossMessage` wrapper that routes to IUserActionExecutor directly (skips OrderStore since SpokePool already checks requirements).
-
-## Sponsorship
-
-Two models supported:
-
-1. **Phase0-compatible**: Uses an Order with a single user action, which conatins all of the Phase0 parameters (including
-   the API signature). Essentially hands over execution to the Phase0 system after src chain's submitterActions-reqChecks-
-   -userAction sequence is done.
-2. **Off-chain**: API reimburses relayers post-execution based on orderId and execution chain tracking by the Indexer. API
-   only sponsors orders it can track completion of.
+1. Replace ambiguous `bytes` fields with typed structs where possible.
+2. Define canonical EIP-712 types for order + route authorization, including `routeIndex` and explicit domain fields.
+3. Specify `stepBitmap` semantics in code comments and enforce bitmap validation in executor.
+4. Decide whether auction modules must be stateless (`view`) or allow state updates.
+5. Add invariant tests for route invocation, authorization replay resistance, and token handoff approval hygiene.
