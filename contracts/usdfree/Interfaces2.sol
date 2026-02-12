@@ -22,12 +22,16 @@ struct AuctionAction {
     bytes auctionData; // relevant data, e.g. params for on-chain Dutch auction or auctionAuthority for offchain auction
 }
 
-// TODO: add different token handover methods to user action execution
 struct UserRequirementsAndAction {
-    bytes tokenReq; // (token, amount)
-    bytes submitterReq; // None OR address (or bytes32 for non-EVM chains)
-    bytes deadlineReq; // None OR uint256 deadline
+    // Strict or MinAmount; token, amount
+    bytes tokenReq;
+    // Submitter, deadline and other requirements
     bytes[] otherStaticReqs;
+    // User action executor target for this step
+    address target;
+    // How tokens are delivered to target
+    bytes4 transferType; // Approval, Transfer, Permit2Approval
+    // Params for execution on `target`. `orderId` and `nextActionsOrHash` passed separately
     bytes userAction;
     address refundRecipient;
 }
@@ -78,6 +82,11 @@ abstract contract Executor {
     function execute(
         address submitter,
         bytes32 orderId,
+        // TODO: tokens are always just pushed to Executor for gas efficiency. Is it OK? See logic below
+        // Note: these values are trusted by the executor and used to enforce price-based auction changes. In canonical
+        // order flows, `execute` is called by trusted contracts, so fine to trust these values
+        address userTokenIn,
+        uint256 userAmountIn,
         bytes[] calldata submitterParts,
         StepAndNext calldata stepAndNext
     ) external payable virtual;
