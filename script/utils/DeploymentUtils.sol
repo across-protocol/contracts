@@ -100,7 +100,12 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
 
         opts.constructorData = constructorArgs;
         opts.unsafeAllow = "delegatecall";
-        opts.unsafeSkipAllChecks = true;
+        // Runs OZ upgrade safety checks via FFI before deployment.
+        // NOTE: If the script reverts with no error message, the revert is likely from OZ validation
+        // (revert strings are stripped in production builds). To debug:
+        //   1. Run `forge clean && forge build` to ensure a fresh build, then re-run the script.
+        //   2. Re-run with `--revert-strings default` to see the full error message.
+        opts.unsafeSkipAllChecks = false;
 
         if (implementationOnly && existingProxy != address(0)) {
             console.log(
