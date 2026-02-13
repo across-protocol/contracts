@@ -27,7 +27,8 @@ interface ICounterfactualDepositFactory {
         uint32 destinationDex;
         uint8 accountCreationMode;
         uint8 executionMode;
-        bytes32 refundAddress;
+        bytes32 userWithdrawAddress;
+        bytes32 adminWithdrawAddress;
         bytes actionData;
     }
 
@@ -43,8 +44,11 @@ interface ICounterfactualDepositFactory {
     /// @notice Emitted when a deposit is executed via CCTP
     event DepositExecuted(address indexed depositAddress, uint256 amount, bytes32 nonce);
 
-    /// @notice Emitted when admin is updated
-    event AdminUpdated(address indexed oldAdmin, address indexed newAdmin);
+    /// @notice Emitted when admin withdraws tokens from a deposit contract
+    event AdminWithdraw(address indexed depositAddress, address indexed token, address indexed to, uint256 amount);
+
+    /// @notice Emitted when user withdraws tokens from a deposit contract
+    event UserWithdraw(address indexed depositAddress, address indexed token, address indexed to, uint256 amount);
 
     /// @notice Caller is not authorized
     error Unauthorized();
@@ -81,8 +85,4 @@ interface ICounterfactualDepositFactory {
         uint256 deadline,
         bytes calldata signature
     ) external;
-
-    function setAdmin(address newAdmin) external;
-
-    function admin() external view returns (address);
 }

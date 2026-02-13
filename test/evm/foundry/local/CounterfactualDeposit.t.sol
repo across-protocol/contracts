@@ -45,7 +45,7 @@ contract CounterfactualDepositTest is Test {
     uint32 public constant SOURCE_DOMAIN = 0; // Ethereum
     uint32 public constant DESTINATION_DOMAIN = 3; // Hyperliquid
     bytes32 public finalRecipient;
-    bytes32 public refundAddr;
+    bytes32 public userWithdrawAddr;
 
     // Default route params used across tests
     ICounterfactualDepositFactory.CounterfactualImmutables internal defaultParams;
@@ -55,13 +55,13 @@ contract CounterfactualDepositTest is Test {
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
-        refundAddr = bytes32(uint256(uint160(user)));
+        userWithdrawAddr = bytes32(uint256(uint160(user)));
 
         burnToken = new MintableERC20("USDC", "USDC", 6);
 
         srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
-        factory = new CounterfactualDepositFactory(admin);
-        executor = new CounterfactualDepositExecutor(address(factory), address(srcPeriphery), SOURCE_DOMAIN);
+        factory = new CounterfactualDepositFactory();
+        executor = new CounterfactualDepositExecutor(address(srcPeriphery), SOURCE_DOMAIN);
 
         burnToken.mint(user, 1000e6);
 
@@ -79,7 +79,8 @@ contract CounterfactualDepositTest is Test {
             destinationDex: 0,
             accountCreationMode: 0,
             executionMode: 0,
-            refundAddress: refundAddr,
+            userWithdrawAddress: userWithdrawAddr,
+            adminWithdrawAddress: bytes32(uint256(uint160(admin))),
             actionData: ""
         });
     }
@@ -247,9 +248,12 @@ contract CounterfactualDepositTest is Test {
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
 
-        // Admin withdraws
+        // Admin withdraws — must pass params for hash verification
+        vm.expectEmit(true, true, true, true);
+        emit ICounterfactualDepositFactory.AdminWithdraw(depositAddress, address(wrongToken), admin, 100e18);
+
         vm.prank(admin);
-        CounterfactualDepositExecutor(depositAddress).adminWithdraw(address(wrongToken), admin, 100e18);
+        CounterfactualDepositExecutor(depositAddress).adminWithdraw(defaultParams, address(wrongToken), admin, 100e18);
 
         assertEq(wrongToken.balanceOf(admin), 100e18, "Admin should receive withdrawn tokens");
         assertEq(wrongToken.balanceOf(depositAddress), 0, "Deposit address should have no balance");
@@ -262,7 +266,7 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDepositFactory.Unauthorized.selector);
         vm.prank(user);
-        CounterfactualDepositExecutor(depositAddress).adminWithdraw(address(burnToken), user, 100e6);
+        CounterfactualDepositExecutor(depositAddress).adminWithdraw(defaultParams, address(burnToken), user, 100e6);
     }
 
     function testUserWithdraw() public {
@@ -274,7 +278,10 @@ contract CounterfactualDepositTest is Test {
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
-        // refundAddress (user) withdraws tokens — must pass params for hash verification
+        // userWithdrawAddress (user) withdraws tokens — must pass params for hash verification
+        vm.expectEmit(true, true, true, true);
+        emit ICounterfactualDepositFactory.UserWithdraw(depositAddress, address(burnToken), user, 100e6);
+
         vm.prank(user);
         CounterfactualDepositExecutor(depositAddress).userWithdraw(defaultParams, address(burnToken), user, 100e6);
 
@@ -290,26 +297,6 @@ contract CounterfactualDepositTest is Test {
         vm.expectRevert(ICounterfactualDepositFactory.Unauthorized.selector);
         vm.prank(relayer);
         CounterfactualDepositExecutor(depositAddress).userWithdraw(defaultParams, address(burnToken), relayer, 100e6);
-    }
-
-    function testSetAdmin() public {
-        address newAdmin = makeAddr("newAdmin");
-
-        vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDepositFactory.AdminUpdated(admin, newAdmin);
-
-        vm.prank(admin);
-        factory.setAdmin(newAdmin);
-
-        assertEq(factory.admin(), newAdmin, "Admin should be updated");
-    }
-
-    function testSetAdminUnauthorized() public {
-        address newAdmin = makeAddr("newAdmin");
-
-        vm.expectRevert(ICounterfactualDepositFactory.Unauthorized.selector);
-        vm.prank(user);
-        factory.setAdmin(newAdmin);
     }
 
     function testDeployAndExecuteWhenAlreadyDeployed() public {

@@ -79,20 +79,21 @@ Each field in the `SponsoredCCTPQuote` is either a route param (committed via ha
 
 Additionally, `maxFeeBps` and `refundAddress` are route params that are not part of the SponsoredCCTPQuote:
 
-| Field           | Source          | Explanation                                                                   |
-| --------------- | --------------- | ----------------------------------------------------------------------------- |
-| `maxFeeBps`     | **Route param** | User's fee limit in basis points — used to compute `maxFee` at execution time |
-| `refundAddress` | **Route param** | Address authorized to call `userWithdraw()` — user's escape hatch             |
+| Field                  | Source          | Explanation                                                                   |
+| ---------------------- | --------------- | ----------------------------------------------------------------------------- |
+| `maxFeeBps`            | **Route param** | User's fee limit in basis points — used to compute `maxFee` at execution time |
+| `userWithdrawAddress`  | **Route param** | Address authorized to call `userWithdraw()` — user's escape hatch             |
+| `adminWithdrawAddress` | **Route param** | Address authorized to call `adminWithdraw()` — per-clone admin for recovery   |
 
 ## Key Design Decisions
 
 ### 1. Immutable Distribution (Gas Optimization)
 
-**Factory, SrcPeriphery, and sourceDomain are immutable in the Executor, not the clone.**
+**SrcPeriphery and sourceDomain are immutable in the Executor, not the clone.**
 
 Why: These values are identical across all deposit addresses on a chain. Storing them in each clone wastes gas.
 
-The clone only stores route-specific parameters (destinationDomain, burnToken, finalRecipient, etc.) as immutable args in bytecode. Chain-wide constants live in the executor's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
+The clone only stores route-specific parameters (destinationDomain, burnToken, finalRecipient, admin, etc.) via a hash of the immutable args. Chain-wide constants live in the executor's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
 
 ### 2. Single Signature Model (No Second Signature Layer)
 
@@ -138,11 +139,11 @@ Why: Enables persistent "deposit addresses" that users can save, share, and reus
 
 The factory's `deployAndExecute()` uses try/catch to handle already-deployed clones gracefully, while `executeOnExisting()` skips deployment entirely for subsequent deposits.
 
-### 6. refundAddress and userWithdraw
+### 6. userWithdrawAddress and userWithdraw
 
-**Each clone's route params include a `refundAddress`, and `userWithdraw()` lets only that address pull tokens out.**
+**Each clone's route params include a `userWithdrawAddress`, and `userWithdraw()` lets only that address pull tokens out.**
 
-Why: Provides an escape hatch for users who change their mind before execution. If a user sends tokens to their deposit address but doesn't want to proceed, they can call `userWithdraw()` with their route params to recover their funds without admin intervention. The route params are verified against the stored hash before checking the caller against `refundAddress`.
+Why: Provides an escape hatch for users who change their mind before execution. If a user sends tokens to their deposit address but doesn't want to proceed, they can call `userWithdraw()` with their route params to recover their funds without admin intervention. The route params are verified against the stored hash before checking the caller against `userWithdrawAddress`.
 
 ## Usage Pattern
 
@@ -168,8 +169,19 @@ factory.executeOnExisting(depositAddress, routeParams, amount, nonce, deadline, 
 ## Security Model
 
 - **SponsoredCCTP Signer**: Trusted address that signs CCTP quotes. Compromise allows bad quotes but fees are bounded by user-set `maxFeeBps`.
-- **Admin**: Can withdraw any tokens from any clone via `adminWithdraw` (for recovery of wrongly sent tokens). Should be a multisig.
-- **refundAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
+- **Admin**: Per-clone admin (set in route params at address-generation time). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController for additional trust minimization.
+- **userWithdrawAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
 - **Fee Protection**: `maxFeeBps` (clone immutable) bounds the `maxFee` passed to SponsoredCCTPSrcPeriphery proportionally.
 - **Nonce Replay Protection**: Handled by SponsoredCCTPSrcPeriphery — each nonce can only be used once.
 - **Deadline Enforcement**: Handled by SponsoredCCTPSrcPeriphery — expired quotes are rejected.
+
+### Trust-Minimized Admin via TimelockController
+
+The `admin` field can be set to any address — an EOA, a multisig, or an OpenZeppelin `TimelockController`. Using a `TimelockController` as the admin adds a time delay to all `adminWithdraw` calls, giving users a window to react:
+
+1. A proposer schedules the `adminWithdraw` call on the TimelockController
+2. The configured delay elapses (e.g., 24-48 hours)
+3. During this window, the user can see the pending operation on-chain and call `userWithdraw` to pull their funds first
+4. After the delay, an executor can execute the scheduled withdrawal
+
+This requires no contract changes — the TimelockController address is simply set as the `admin` in the clone's `CounterfactualImmutables` at address-generation time. Since admin is committed in the params hash, users can verify the admin is a TimelockController with an adequate delay before depositing.

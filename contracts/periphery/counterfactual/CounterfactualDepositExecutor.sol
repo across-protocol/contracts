@@ -25,9 +25,6 @@ interface ISponsoredCCTPSrcPeriphery {
 contract CounterfactualDepositExecutor {
     using SafeERC20 for IERC20;
 
-    /// @notice Factory contract (immutable, same for all deposits on this chain)
-    address public immutable factory;
-
     /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
     address public immutable srcPeriphery;
 
@@ -36,12 +33,10 @@ contract CounterfactualDepositExecutor {
 
     /**
      * @notice Constructs the executor with chain-specific constants
-     * @param _factory Factory contract address
      * @param _srcPeriphery SponsoredCCTPSrcPeriphery contract address
      * @param _sourceDomain CCTP source domain ID for this chain
      */
-    constructor(address _factory, address _srcPeriphery, uint32 _sourceDomain) {
-        factory = _factory;
+    constructor(address _srcPeriphery, uint32 _sourceDomain) {
         srcPeriphery = _srcPeriphery;
         sourceDomain = _sourceDomain;
     }
@@ -106,22 +101,30 @@ contract CounterfactualDepositExecutor {
 
     /**
      * @notice Allows admin to withdraw tokens from the deposit contract
-     * @dev Used for recovering wrongly sent tokens
+     * @dev Used for recovering wrongly sent tokens. Admin is stored in the clone's route params hash.
+     * @param params Route parameters (verified against stored hash)
      * @param token Token address to withdraw
      * @param to Recipient address
      * @param amount Amount to withdraw
      */
-    function adminWithdraw(address token, address to, uint256 amount) external {
-        if (msg.sender != ICounterfactualDepositFactory(factory).admin()) {
+    function adminWithdraw(
+        ICounterfactualDepositFactory.CounterfactualImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external {
+        _verifyParams(params);
+        if (msg.sender != address(uint160(uint256(params.adminWithdrawAddress)))) {
             revert ICounterfactualDepositFactory.Unauthorized();
         }
         IERC20(token).safeTransfer(to, amount);
+        emit ICounterfactualDepositFactory.AdminWithdraw(address(this), token, to, amount);
     }
 
     /**
-     * @notice Allows the refundAddress to withdraw tokens from the deposit contract
+     * @notice Allows the userWithdrawAddress to withdraw tokens from the deposit contract
      * @dev Escape hatch for users who change their mind before execution.
-     *      Caller must pass the full route params so refundAddress can be extracted after hash verification.
+     *      Caller must pass the full route params so userWithdrawAddress can be extracted after hash verification.
      * @param params Route parameters (verified against stored hash)
      * @param token Token address to withdraw
      * @param to Recipient address
@@ -134,10 +137,11 @@ contract CounterfactualDepositExecutor {
         uint256 amount
     ) external {
         _verifyParams(params);
-        if (msg.sender != address(uint160(uint256(params.refundAddress)))) {
+        if (msg.sender != address(uint160(uint256(params.userWithdrawAddress)))) {
             revert ICounterfactualDepositFactory.Unauthorized();
         }
         IERC20(token).safeTransfer(to, amount);
+        emit ICounterfactualDepositFactory.UserWithdraw(address(this), token, to, amount);
     }
 
     /**

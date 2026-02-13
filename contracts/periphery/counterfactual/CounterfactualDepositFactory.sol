@@ -13,13 +13,6 @@ import { CounterfactualDepositExecutor } from "./CounterfactualDepositExecutor.s
  *      are passed at execution time and verified against the stored hash.
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
-    /// @notice Current admin address (can withdraw from clones and update admin)
-    address public admin;
-
-    constructor(address _admin) {
-        admin = _admin;
-    }
-
     /**
      * @notice Predicts the address of a counterfactual deposit contract
      * @param executor Executor implementation address
@@ -112,16 +105,5 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes calldata signature
     ) external {
         CounterfactualDepositExecutor(depositAddress).executeDeposit(params, amount, nonce, deadline, signature);
-    }
-
-    /**
-     * @notice Updates the admin address
-     * @param newAdmin New admin address
-     */
-    function setAdmin(address newAdmin) external {
-        if (msg.sender != admin) revert Unauthorized();
-        address oldAdmin = admin;
-        admin = newAdmin;
-        emit AdminUpdated(oldAdmin, newAdmin);
     }
 }
