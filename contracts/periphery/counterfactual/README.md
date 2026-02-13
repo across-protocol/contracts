@@ -119,7 +119,7 @@ Why: At address-generation time, the deposit amount isn't known. The user commit
 
 [EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode. These bytes become part of the deployed contract's code and can be read back with `Clones.fetchCloneArgs(address(this))`, which uses `EXTCODECOPY` to copy the appended region.
 
-**How it's used here:** The factory ABI-encodes the `CCTPRouteParams` struct and passes it as the immutable args when deploying a clone. When `executeDeposit()` is called on a clone, the executor reads the args back via `fetchCloneArgs` and decodes them.
+**How it's used here:** The factory ABI-encodes the `CounterfactualImmutables` struct and passes it as the immutable args when deploying a clone. When `executeDeposit()` is called on a clone, the executor reads the args back via `fetchCloneArgs` and decodes them.
 
 **Why not normal storage?** Storage-based alternatives are significantly more expensive:
 

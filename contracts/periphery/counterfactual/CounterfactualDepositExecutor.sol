@@ -57,7 +57,7 @@ contract CounterfactualDepositExecutor {
      * @param signature Signature from SponsoredCCTP quote signer (verified by SrcPeriphery)
      */
     function executeDeposit(uint256 amount, bytes32 nonce, uint256 deadline, bytes calldata signature) external {
-        ICounterfactualDepositFactory.CCTPRouteParams memory params = _getRouteParams();
+        ICounterfactualDepositFactory.CounterfactualImmutables memory params = _getRouteParams();
 
         address burnTokenAddr = address(uint160(uint256(params.burnToken)));
         uint256 balance = IERC20(burnTokenAddr).balanceOf(address(this));
@@ -119,7 +119,7 @@ contract CounterfactualDepositExecutor {
      * @param amount Amount to withdraw
      */
     function userWithdraw(address token, address to, uint256 amount) external {
-        ICounterfactualDepositFactory.CCTPRouteParams memory params = _getRouteParams();
+        ICounterfactualDepositFactory.CounterfactualImmutables memory params = _getRouteParams();
         if (msg.sender != address(uint160(uint256(params.refundAddress)))) {
             revert ICounterfactualDepositFactory.Unauthorized();
         }
@@ -130,8 +130,8 @@ contract CounterfactualDepositExecutor {
      * @notice Gets route parameters from clone immutable args appended to bytecode
      * @dev Uses OZ Clones.fetchCloneArgs to read args set during cloneDeterministicWithImmutableArgs
      */
-    function _getRouteParams() internal view returns (ICounterfactualDepositFactory.CCTPRouteParams memory) {
+    function _getRouteParams() internal view returns (ICounterfactualDepositFactory.CounterfactualImmutables memory) {
         bytes memory args = Clones.fetchCloneArgs(address(this));
-        return abi.decode(args, (ICounterfactualDepositFactory.CCTPRouteParams));
+        return abi.decode(args, (ICounterfactualDepositFactory.CounterfactualImmutables));
     }
 }

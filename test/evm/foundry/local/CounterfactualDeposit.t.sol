@@ -48,7 +48,7 @@ contract CounterfactualDepositTest is Test {
     bytes32 public refundAddr;
 
     // Default route params used across tests
-    ICounterfactualDepositFactory.CCTPRouteParams internal defaultParams;
+    ICounterfactualDepositFactory.CounterfactualImmutables internal defaultParams;
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -65,7 +65,7 @@ contract CounterfactualDepositTest is Test {
 
         burnToken.mint(user, 1000e6);
 
-        defaultParams = ICounterfactualDepositFactory.CCTPRouteParams({
+        defaultParams = ICounterfactualDepositFactory.CounterfactualImmutables({
             destinationDomain: DESTINATION_DOMAIN,
             mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
             burnToken: bytes32(uint256(uint160(address(burnToken)))),
@@ -123,9 +123,9 @@ contract CounterfactualDepositTest is Test {
         address deployed = factory.deploy(address(executor), defaultParams, salt);
 
         bytes memory args = Clones.fetchCloneArgs(deployed);
-        ICounterfactualDepositFactory.CCTPRouteParams memory stored = abi.decode(
+        ICounterfactualDepositFactory.CounterfactualImmutables memory stored = abi.decode(
             args,
-            (ICounterfactualDepositFactory.CCTPRouteParams)
+            (ICounterfactualDepositFactory.CounterfactualImmutables)
         );
 
         assertEq(stored.destinationDomain, DESTINATION_DOMAIN, "destinationDomain mismatch");
@@ -346,16 +346,16 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt-action");
         bytes memory actionData = abi.encode(uint256(42), address(0xBEEF));
 
-        ICounterfactualDepositFactory.CCTPRouteParams memory params = defaultParams;
+        ICounterfactualDepositFactory.CounterfactualImmutables memory params = defaultParams;
         params.actionData = actionData;
 
         address depositAddress = factory.deploy(address(executor), params, salt);
 
         // Verify clone args include the actionData
         bytes memory args = Clones.fetchCloneArgs(depositAddress);
-        ICounterfactualDepositFactory.CCTPRouteParams memory stored = abi.decode(
+        ICounterfactualDepositFactory.CounterfactualImmutables memory stored = abi.decode(
             args,
-            (ICounterfactualDepositFactory.CCTPRouteParams)
+            (ICounterfactualDepositFactory.CounterfactualImmutables)
         );
         assertEq(stored.actionData, actionData, "actionData should be stored in clone args");
 

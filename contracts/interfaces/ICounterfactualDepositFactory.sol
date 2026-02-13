@@ -12,7 +12,7 @@ interface ICounterfactualDepositFactory {
      * @dev These define the deposit route and are fixed at address-generation time.
      *      Execution-time parameters (amount, nonce, deadline) are passed separately.
      */
-    struct CCTPRouteParams {
+    struct CounterfactualImmutables {
         uint32 destinationDomain;
         bytes32 mintRecipient;
         bytes32 burnToken;
@@ -53,15 +53,15 @@ interface ICounterfactualDepositFactory {
 
     function predictDepositAddress(
         address executor,
-        CCTPRouteParams memory params,
+        CounterfactualImmutables memory params,
         bytes32 salt
     ) external view returns (address);
 
-    function deploy(address executor, CCTPRouteParams memory params, bytes32 salt) external returns (address);
+    function deploy(address executor, CounterfactualImmutables memory params, bytes32 salt) external returns (address);
 
     function deployAndExecute(
         address executor,
-        CCTPRouteParams memory params,
+        CounterfactualImmutables memory params,
         bytes32 salt,
         uint256 amount,
         bytes32 nonce,

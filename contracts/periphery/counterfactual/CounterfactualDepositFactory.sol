@@ -28,7 +28,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      */
     function predictDepositAddress(
         address executor,
-        CCTPRouteParams memory params,
+        CounterfactualImmutables memory params,
         bytes32 salt
     ) public view returns (address) {
         return Clones.predictDeterministicAddressWithImmutableArgs(executor, abi.encode(params), salt);
@@ -43,7 +43,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      */
     function deploy(
         address executor,
-        CCTPRouteParams memory params,
+        CounterfactualImmutables memory params,
         bytes32 salt
     ) public returns (address depositAddress) {
         depositAddress = Clones.cloneDeterministicWithImmutableArgs(executor, abi.encode(params), salt);
@@ -69,7 +69,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      */
     function deployAndExecute(
         address executor,
-        CCTPRouteParams memory params,
+        CounterfactualImmutables memory params,
         bytes32 salt,
         uint256 amount,
         bytes32 nonce,
