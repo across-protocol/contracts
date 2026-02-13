@@ -16,12 +16,12 @@ TOKENS_ENCODED=$(cast abi-encode "f(string[])" "$TOKENS_JSON")
 
 # signer defaults to deployer
 forge script script/DeployHyperliquidDepositHandler.s.sol:DeployHyperliquidDepositHandler \
-  --sig "run(string)" "$TOKENS_ENCODED" --rpc-url hyperevm -vvvv --broadcast
+  --sig "run(string)" "$TOKENS_ENCODED" --rpc-url hyperevm -vvvv --broadcast --verify
 
 # explicit signer override (pass zero address to use deployer)
 SIGNER=0x1111111111111111111111111111111111111111
 forge script script/DeployHyperliquidDepositHandler.s.sol:DeployHyperliquidDepositHandler \
-  --sig "run(string,address)" "$TOKENS_ENCODED" $SIGNER --rpc-url hyperevm -vvvv --broadcast
+  --sig "run(string,address)" "$TOKENS_ENCODED" $SIGNER --rpc-url hyperevm -vvvv --broadcast --verify
 */
 
 contract DeployHyperliquidDepositHandler is Script, DeployedAddresses {
