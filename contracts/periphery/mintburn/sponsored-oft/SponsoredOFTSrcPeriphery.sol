@@ -71,7 +71,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
      * @notice Returns the signer address that is used to validate the signatures of the quotes.
      * @return The signer address.
      */
-    function signer() external view override returns (address) {
+    function signer() external view returns (address) {
         return _getMainStorage().signer;
     }
 
@@ -80,7 +80,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
      * @param nonce The nonce to check.
      * @return True if the nonce has been used, false otherwise.
      */
-    function usedNonces(bytes32 nonce) external view override returns (bool) {
+    function usedNonces(bytes32 nonce) external view returns (bool) {
         return _getMainStorage().quoteNonces[nonce];
     }
 
@@ -89,7 +89,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
      * @param quote The quote struct containing all transfer parameters
      * @param signature The signature authorizing the quote
      */
-    function deposit(Quote calldata quote, bytes calldata signature) external payable override {
+    function deposit(Quote calldata quote, bytes calldata signature) external payable {
         // Step 1: validate quote and mark quote nonce used
         _validateQuote(quote, signature);
         _getMainStorage().quoteNonces[quote.signedParams.nonce] = true;
@@ -190,7 +190,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
         }
     }
 
-    function setSigner(address _newSigner) external override onlyOwner {
+    function setSigner(address _newSigner) external onlyOwner {
         _getMainStorage().signer = _newSigner;
     }
 }
