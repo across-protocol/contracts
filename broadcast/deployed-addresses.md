@@ -23,6 +23,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Cher_Adapter                 | [0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2](https://etherscan.io/address/0x0c9d064523177dBB55CFE52b9D0c485FBFc35FD2) |
 | DoctorWho_Adapter            | [0xFADcC43096756e1527306FD92982FEbBe3c629Fa](https://etherscan.io/address/0xFADcC43096756e1527306FD92982FEbBe3c629Fa) |
 | DoctorWho_Adapter            | [0x8956eFa31572E1d7ed5c8e36772F214A57DFA0D1](https://etherscan.io/address/0x8956eFa31572E1d7ed5c8e36772F214A57DFA0D1) |
+| DonationBox                  | [0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168](https://etherscan.io/address/0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168) |
 | DonationBox                  | [0x3e73eAE5c264c89B1Ff429fae58f9639E96E6068](https://etherscan.io/address/0x3e73eAE5c264c89B1Ff429fae58f9639E96E6068) |
 | Ethereum_Adapter             | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
 | HubPool                      | [0xc186fA914353c44b2E33eBE05f21846F1048bEda](https://etherscan.io/address/0xc186fA914353c44b2E33eBE05f21846F1048bEda) |
