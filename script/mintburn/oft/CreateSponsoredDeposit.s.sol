@@ -5,7 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { Config } from "forge-std/Config.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
-import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
+import { SponsoredOFTInterface } from "../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { ComposeMsgCodec } from "../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalLZOptions.sol";
@@ -19,7 +19,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 /// just for the hashing function that works with a memory funciton argument
 library DebugQuoteSignLib {
     /// @notice Compute the keccak of all `SignedQuoteParams` fields. Accept memory arg
-    function hashMemory(SignedQuoteParams memory p) internal pure returns (bytes32) {
+    function hashMemory(SponsoredOFTInterface.SignedQuoteParams memory p) internal pure returns (bytes32) {
         bytes32 hash1 = keccak256(
             abi.encode(
                 p.srcEid,
@@ -51,7 +51,11 @@ library DebugQuoteSignLib {
     }
 
     /// @notice Sign the quote using Foundry's Vm cheatcode and return concatenated bytes signature (r,s,v).
-    function signMemory(Vm vm, uint256 pk, SignedQuoteParams memory p) internal pure returns (bytes memory) {
+    function signMemory(
+        Vm vm,
+        uint256 pk,
+        SponsoredOFTInterface.SignedQuoteParams memory p
+    ) internal pure returns (bytes memory) {
         bytes32 digest = hashMemory(p);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
         return abi.encodePacked(r, s, v);
@@ -198,7 +202,7 @@ contract CreateSponsoredDeposit is Script, Config {
         uint256 lzComposeGasLimit = 300_000;
         address refundRecipient = deployer;
 
-        SignedQuoteParams memory signedParams = SignedQuoteParams({
+        SponsoredOFTInterface.SignedQuoteParams memory signedParams = SponsoredOFTInterface.SignedQuoteParams({
             srcEid: env.srcEid,
             dstEid: env.dstEid,
             destinationHandler: env.destinationHandler.toBytes32(),
@@ -218,9 +222,14 @@ contract CreateSponsoredDeposit is Script, Config {
             actionData: ""
         });
 
-        UnsignedQuoteParams memory unsignedParams = UnsignedQuoteParams({ refundRecipient: refundRecipient });
+        SponsoredOFTInterface.UnsignedQuoteParams memory unsignedParams = SponsoredOFTInterface.UnsignedQuoteParams({
+            refundRecipient: refundRecipient
+        });
 
-        Quote memory quote = Quote({ signedParams: signedParams, unsignedParams: unsignedParams });
+        SponsoredOFTInterface.Quote memory quote = SponsoredOFTInterface.Quote({
+            signedParams: signedParams,
+            unsignedParams: unsignedParams
+        });
 
         bytes memory signature = DebugQuoteSignLib.signMemory(vm, deployerPrivateKey, signedParams);
 
@@ -267,7 +276,7 @@ contract CreateSponsoredDeposit is Script, Config {
 
     function _quoteMessagingFee(
         SponsoredOFTSrcPeriphery srcPeripheryContract,
-        Quote memory quote
+        SponsoredOFTInterface.Quote memory quote
     ) internal view returns (MessagingFee memory) {
         address oftMessenger = srcPeripheryContract.OFT_MESSENGER();
         address token = srcPeripheryContract.TOKEN();

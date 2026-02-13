@@ -5,7 +5,7 @@ import { BaseModuleHandler } from "../BaseModuleHandler.sol";
 import { ILayerZeroComposer } from "../../../external/interfaces/ILayerZeroComposer.sol";
 import { OFTComposeMsgCodec } from "../../../external/libraries/OFTComposeMsgCodec.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
-import { ExecutionMode } from "./Structs.sol";
+import { SponsoredOFTInterface } from "../../../interfaces/SponsoredOFTInterface.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { IOFT, IOAppCore } from "../../../interfaces/IOFT.sol";
 import { HyperCoreFlowExecutor } from "../HyperCoreFlowExecutor.sol";
@@ -198,8 +198,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
 
         // Route to appropriate execution based on executionMode
         if (
-            executionMode == uint8(ExecutionMode.ArbitraryActionsToCore) ||
-            executionMode == uint8(ExecutionMode.ArbitraryActionsToEVM)
+            executionMode == uint8(SponsoredOFTInterface.ExecutionMode.ArbitraryActionsToCore) ||
+            executionMode == uint8(SponsoredOFTInterface.ExecutionMode.ArbitraryActionsToEVM)
         ) {
             // Execute flow with arbitrary evm actions
             _executeWithEVMFlow(
@@ -207,7 +207,7 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
                     commonParams: commonParams,
                     initialToken: baseToken,
                     actionData: actionData,
-                    transferToCore: executionMode == uint8(ExecutionMode.ArbitraryActionsToCore)
+                    transferToCore: executionMode == uint8(SponsoredOFTInterface.ExecutionMode.ArbitraryActionsToCore)
                 })
             );
         } else {
