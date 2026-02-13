@@ -1,22 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
+import { SponsoredExecutionModeInterface } from "./SponsoredExecutionModeInterface.sol";
+
 /**
  * @title SponsoredOFTInterface
  * @notice Interface for Sponsored OFT quote types and source periphery API.
  * @custom:security-contact bugs@across.to
  */
-interface SponsoredOFTInterface {
-    /// @notice Execution modes for the sponsored OFT flow
-    enum ExecutionMode {
-        // Send to core and perform swap (if needed) there.
-        DirectToCore,
-        // Execute arbitrary actions (like a swap) on HyperEVM, then transfer to HyperCore
-        ArbitraryActionsToCore,
-        // Execute arbitrary actions on HyperEVM only (no HyperCore transfer)
-        ArbitraryActionsToEVM
-    }
-
+interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
     /// @notice A structure with all the relevant information about a particular sponsored bridging flow order.
     struct Quote {
         SignedQuoteParams signedParams;

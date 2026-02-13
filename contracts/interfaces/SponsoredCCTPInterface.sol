@@ -1,12 +1,14 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
+import { SponsoredExecutionModeInterface } from "./SponsoredExecutionModeInterface.sol";
+
 /**
  * @title SponsoredCCTPInterface
  * @notice Interface for the SponsoredCCTP contract
  * @custom:security-contact bugs@across.to
  */
-interface SponsoredCCTPInterface {
+interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
     // Error thrown when the signature is invalid.
     error InvalidSignature();
 
@@ -37,16 +39,6 @@ interface SponsoredCCTPInterface {
 
     // Event when emergency receive is called
     event EmergencyReceiveMessage(bytes32 nonce, address finalRecipent, address finalToken, uint256 amount);
-
-    // Execution modes for the sponsored CCTP flow
-    enum ExecutionMode {
-        // Send to core and perform swap (if needed) there.
-        DirectToCore,
-        // Execute arbitrary actions (like a swap) on HyperEVM, then transfer to HyperCore
-        ArbitraryActionsToCore,
-        // Execute arbitrary actions on HyperEVM only (no HyperCore transfer)
-        ArbitraryActionsToEVM
-    }
 
     // Params that will be used to create a sponsored CCTP quote and deposit for burn.
     struct SponsoredCCTPQuote {

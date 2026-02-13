@@ -7,6 +7,7 @@ import { DeploymentUtils } from "../../utils/DeploymentUtils.sol";
 import { SponsoredCCTPSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPSrcPeriphery.sol";
 import { ArbitraryEVMFlowExecutor } from "../../../contracts/periphery/mintburn/ArbitraryEVMFlowExecutor.sol";
 import { SponsoredCCTPInterface } from "../../../contracts/interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredExecutionModeInterface } from "../../../contracts/interfaces/SponsoredExecutionModeInterface.sol";
 import { AccountCreationMode } from "../../../contracts/periphery/mintburn/Structs.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
@@ -101,7 +102,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
             finalToken: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f).toBytes32(), // USDC on HyperEVM
             destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID, // Spot DEX on HyperCore
             accountCreationMode: uint8(AccountCreationMode.Standard), // Standard mode
-            executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore), // DirectToCore mode
+            executionMode: uint8(SponsoredExecutionModeInterface.ExecutionMode.DirectToCore), // DirectToCore mode
             actionData: emptyActionData // Empty for DirectToCore mode
         });
 
