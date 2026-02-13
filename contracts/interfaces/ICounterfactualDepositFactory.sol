@@ -4,13 +4,14 @@ pragma solidity ^0.8.0;
 /**
  * @title ICounterfactualDepositFactory
  * @notice Interface for the counterfactual deposit factory system
- * @dev This factory creates reusable deposit addresses via CREATE2 that deposit via SponsoredCCTP
+ * @dev This factory creates reusable deposit addresses via CREATE2 that deposit via SponsoredCCTP.
+ *      Clones store only a hash of the route params; full params are passed at execution time.
  */
 interface ICounterfactualDepositFactory {
     /**
-     * @notice Route parameters stored as immutable args in each clone's bytecode
-     * @dev These define the deposit route and are fixed at address-generation time.
-     *      Execution-time parameters (amount, nonce, deadline) are passed separately.
+     * @notice Route parameters that define a deposit address.
+     * @dev A keccak256 hash of the ABI-encoded struct is stored as the clone's sole immutable arg.
+     *      Full params are passed by the caller at execution time and verified against the stored hash.
      */
     struct CounterfactualImmutables {
         uint32 destinationDomain;
@@ -51,6 +52,9 @@ interface ICounterfactualDepositFactory {
     /// @notice Insufficient token balance for deposit
     error InsufficientBalance();
 
+    /// @notice Provided params do not match the stored hash
+    error InvalidParamsHash();
+
     function predictDepositAddress(
         address executor,
         CounterfactualImmutables memory params,
@@ -71,6 +75,7 @@ interface ICounterfactualDepositFactory {
 
     function executeOnExisting(
         address depositAddress,
+        CounterfactualImmutables memory params,
         uint256 amount,
         bytes32 nonce,
         uint256 deadline,

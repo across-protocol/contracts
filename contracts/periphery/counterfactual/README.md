@@ -6,7 +6,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 
 **Two-contract system using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
-- `CounterfactualDepositExecutor` — Implementation contract. Each deposit address is an EIP-1167 minimal proxy (clone) of this contract, with route parameters appended to the clone's bytecode as immutable args. On execution, builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
+- `CounterfactualDepositExecutor` — Implementation contract. Each deposit address is an EIP-1167 minimal proxy (clone) of this contract, with a keccak256 hash of the route parameters appended as the sole immutable arg (32 bytes). On execution, full params are passed by the caller, verified against the stored hash, and used to build a `SponsoredCCTPQuote` for `SponsoredCCTPSrcPeriphery.depositForBurn()`.
 - `CounterfactualDepositFactory` — Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and routes execution calls.
 
 ```
@@ -50,39 +50,39 @@ When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the execu
 
 - `address(this)` = the clone's address (holds token balances)
 - Code executing = the executor's bytecode (has `factory`, `srcPeriphery`, `sourceDomain` immutables)
-- Route params = read from the clone's bytecode via `Clones.fetchCloneArgs(address(this))`
+- Route params hash = read from the clone's bytecode via `Clones.fetchCloneArgs(address(this))`, verified against caller-supplied params
 
 ## SponsoredCCTPQuote Field Table
 
-Each field in the `SponsoredCCTPQuote` is either a clone immutable arg (fixed at address-generation time), an executor immutable (same for all clones on a chain), computed at execution time, or passed by the caller at execution time:
+Each field in the `SponsoredCCTPQuote` is either a route param (committed via hash at address-generation time, passed at execution time), an executor immutable (same for all clones on a chain), computed at execution time, or passed by the caller at execution time:
 
 | Field                  | Source                    | Explanation                                                                                   |
 | ---------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
 | `sourceDomain`         | **Executor immutable**    | Same for all deposits on this chain (e.g. 0 for Ethereum)                                     |
-| `destinationDomain`    | **Clone immutable arg**   | Route: which destination chain (e.g. 3 for Hyperliquid)                                       |
-| `mintRecipient`        | **Clone immutable arg**   | Route: DstPeriphery handler contract on destination chain                                     |
+| `destinationDomain`    | **Route param**           | Route: which destination chain (e.g. 3 for Hyperliquid)                                       |
+| `mintRecipient`        | **Route param**           | Route: DstPeriphery handler contract on destination chain                                     |
 | `amount`               | **Passed on execution**   | Varies per deposit — clone may hold different balances each time                              |
-| `burnToken`            | **Clone immutable arg**   | Route: which token to burn (e.g. USDC address as bytes32)                                     |
-| `destinationCaller`    | **Clone immutable arg**   | Route: permissioned bot that calls `receiveMessage` on destination                            |
-| `maxFee`               | **Computed on execution** | `amount * maxFeeBps / 10000` — computed from the clone's `maxFeeBps` and the deposit `amount` |
-| `minFinalityThreshold` | **Clone immutable arg**   | Route: minimum finality before CCTP attestation is allowed                                    |
+| `burnToken`            | **Route param**           | Route: which token to burn (e.g. USDC address as bytes32)                                     |
+| `destinationCaller`    | **Route param**           | Route: permissioned bot that calls `receiveMessage` on destination                            |
+| `maxFee`               | **Computed on execution** | `amount * maxFeeBps / 10000` — computed from the route's `maxFeeBps` and the deposit `amount` |
+| `minFinalityThreshold` | **Route param**           | Route: minimum finality before CCTP attestation is allowed                                    |
 | `nonce`                | **Passed on execution**   | Unique per execution — SrcPeriphery enforces uniqueness                                       |
 | `deadline`             | **Passed on execution**   | Expiration per execution attempt — SrcPeriphery enforces                                      |
-| `maxBpsToSponsor`      | **Clone immutable arg**   | Route: max basis points of amount the relayer can sponsor                                     |
-| `maxUserSlippageBps`   | **Clone immutable arg**   | Route: slippage tolerance for fees on destination                                             |
-| `finalRecipient`       | **Clone immutable arg**   | Route: ultimate receiver of tokens on destination chain                                       |
-| `finalToken`           | **Clone immutable arg**   | Route: token recipient gets on destination (may differ from burnToken if swapping)            |
-| `destinationDex`       | **Clone immutable arg**   | Route: which DEX on HyperCore for swaps                                                       |
-| `accountCreationMode`  | **Clone immutable arg**   | Route: Standard (0) or FromUserFunds (1)                                                      |
-| `executionMode`        | **Clone immutable arg**   | Route: DirectToCore (0), ArbitraryActionsToCore (1), or ArbitraryActionsToEVM (2)             |
-| `actionData`           | **Clone immutable arg**   | Route: encoded action data for arbitrary execution modes (empty for DirectToCore)             |
+| `maxBpsToSponsor`      | **Route param**           | Route: max basis points of amount the relayer can sponsor                                     |
+| `maxUserSlippageBps`   | **Route param**           | Route: slippage tolerance for fees on destination                                             |
+| `finalRecipient`       | **Route param**           | Route: ultimate receiver of tokens on destination chain                                       |
+| `finalToken`           | **Route param**           | Route: token recipient gets on destination (may differ from burnToken if swapping)            |
+| `destinationDex`       | **Route param**           | Route: which DEX on HyperCore for swaps                                                       |
+| `accountCreationMode`  | **Route param**           | Route: Standard (0) or FromUserFunds (1)                                                      |
+| `executionMode`        | **Route param**           | Route: DirectToCore (0), ArbitraryActionsToCore (1), or ArbitraryActionsToEVM (2)             |
+| `actionData`           | **Route param**           | Route: encoded action data for arbitrary execution modes (empty for DirectToCore)             |
 
-Additionally, `maxFeeBps` and `refundAddress` are clone immutable args that are not part of the SponsoredCCTPQuote:
+Additionally, `maxFeeBps` and `refundAddress` are route params that are not part of the SponsoredCCTPQuote:
 
-| Field           | Source                  | Explanation                                                                   |
-| --------------- | ----------------------- | ----------------------------------------------------------------------------- |
-| `maxFeeBps`     | **Clone immutable arg** | User's fee limit in basis points — used to compute `maxFee` at execution time |
-| `refundAddress` | **Clone immutable arg** | Address authorized to call `userWithdraw()` — user's escape hatch             |
+| Field           | Source          | Explanation                                                                   |
+| --------------- | --------------- | ----------------------------------------------------------------------------- |
+| `maxFeeBps`     | **Route param** | User's fee limit in basis points — used to compute `maxFee` at execution time |
+| `refundAddress` | **Route param** | Address authorized to call `userWithdraw()` — user's escape hatch             |
 
 ## Key Design Decisions
 
@@ -113,13 +113,17 @@ Adding a second signature layer in the executor would be redundant and increase 
 
 Why: At address-generation time, the deposit amount isn't known. The user commits to a fee percentage (e.g., 100 bps = 1%), and the executor computes `maxFee = amount * maxFeeBps / 10000` at execution time. This gives proportional fee protection regardless of deposit size.
 
-### 4. OZ Clones with Immutable Args
+### 4. OZ Clones with Hash-Only Immutable Args
 
-**Route parameters are baked into each clone's bytecode rather than written to storage.**
+**Each clone stores only a keccak256 hash (32 bytes) of the route parameters, not the full params (~595 bytes).**
 
-[EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode. These bytes become part of the deployed contract's code and can be read back with `Clones.fetchCloneArgs(address(this))`, which uses `EXTCODECOPY` to copy the appended region.
+[EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode.
 
-**How it's used here:** The factory ABI-encodes the `CounterfactualImmutables` struct and passes it as the immutable args when deploying a clone. When `executeDeposit()` is called on a clone, the executor reads the args back via `fetchCloneArgs` and decodes them.
+**How it's used here:** The factory computes `keccak256(abi.encode(params))` and stores that 32-byte hash as the clone's sole immutable arg. At execution time, the caller passes the full `CounterfactualImmutables` struct; the executor hashes it and verifies against the stored hash before proceeding.
+
+**Why a hash instead of the full params?**
+
+Storing full params as immutable args costs ~595 bytes of deployed code. With a hash, the clone stores only 77 bytes total (45-byte EIP-1167 proxy + 32-byte hash). This saves ~103k gas on deployment (~200 gas per byte of `CODECOPY`). The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash), but since each deposit address is deployed once and potentially used many times, the net savings are significant — especially at scale with thousands of deposit addresses.
 
 **Why not normal storage?** Storage-based alternatives are significantly more expensive:
 
@@ -136,9 +140,9 @@ The factory's `deployAndExecute()` uses try/catch to handle already-deployed clo
 
 ### 6. refundAddress and userWithdraw
 
-**Each clone has a `refundAddress` immutable arg, and `userWithdraw()` lets only that address pull tokens out.**
+**Each clone's route params include a `refundAddress`, and `userWithdraw()` lets only that address pull tokens out.**
 
-Why: Provides an escape hatch for users who change their mind before execution. If a user sends tokens to their deposit address but doesn't want to proceed, they can call `userWithdraw()` to recover their funds without admin intervention.
+Why: Provides an escape hatch for users who change their mind before execution. If a user sends tokens to their deposit address but doesn't want to proceed, they can call `userWithdraw()` with their route params to recover their funds without admin intervention. The route params are verified against the stored hash before checking the caller against `refundAddress`.
 
 ## Usage Pattern
 
@@ -158,7 +162,7 @@ factory.deployAndExecute(executor, routeParams, salt, amount, nonce, deadline, s
 **Subsequent deposits (clone already deployed):**
 
 ```solidity
-factory.executeOnExisting(depositAddress, amount, nonce, deadline, signature);
+factory.executeOnExisting(depositAddress, routeParams, amount, nonce, deadline, signature);
 ```
 
 ## Security Model

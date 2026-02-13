@@ -48,16 +48,23 @@ contract CounterfactualDepositExecutor {
 
     /**
      * @notice Executes a deposit via SponsoredCCTP
-     * @dev Called on EIP-1167 clone instances; reads route params from clone immutable args,
-     *      builds a SponsoredCCTPQuote, and calls SponsoredCCTPSrcPeriphery.depositForBurn.
+     * @dev Called on EIP-1167 clone instances. The clone stores only a keccak256 hash of the route params;
+     *      full params are passed by the caller and verified against the stored hash before execution.
      *      Signature verification, nonce tracking, and deadline checks are all handled by SrcPeriphery.
+     * @param params Route parameters (verified against stored hash)
      * @param amount Amount of burnToken to deposit
      * @param nonce Unique nonce for replay protection (enforced by SrcPeriphery)
      * @param deadline Quote expiration timestamp (enforced by SrcPeriphery)
      * @param signature Signature from SponsoredCCTP quote signer (verified by SrcPeriphery)
      */
-    function executeDeposit(uint256 amount, bytes32 nonce, uint256 deadline, bytes calldata signature) external {
-        ICounterfactualDepositFactory.CounterfactualImmutables memory params = _getRouteParams();
+    function executeDeposit(
+        ICounterfactualDepositFactory.CounterfactualImmutables memory params,
+        uint256 amount,
+        bytes32 nonce,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
+        _verifyParams(params);
 
         address burnTokenAddr = address(uint160(uint256(params.burnToken)));
         uint256 balance = IERC20(burnTokenAddr).balanceOf(address(this));
@@ -113,13 +120,20 @@ contract CounterfactualDepositExecutor {
 
     /**
      * @notice Allows the refundAddress to withdraw tokens from the deposit contract
-     * @dev Escape hatch for users who change their mind before execution
+     * @dev Escape hatch for users who change their mind before execution.
+     *      Caller must pass the full route params so refundAddress can be extracted after hash verification.
+     * @param params Route parameters (verified against stored hash)
      * @param token Token address to withdraw
      * @param to Recipient address
      * @param amount Amount to withdraw
      */
-    function userWithdraw(address token, address to, uint256 amount) external {
-        ICounterfactualDepositFactory.CounterfactualImmutables memory params = _getRouteParams();
+    function userWithdraw(
+        ICounterfactualDepositFactory.CounterfactualImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external {
+        _verifyParams(params);
         if (msg.sender != address(uint160(uint256(params.refundAddress)))) {
             revert ICounterfactualDepositFactory.Unauthorized();
         }
@@ -127,11 +141,15 @@ contract CounterfactualDepositExecutor {
     }
 
     /**
-     * @notice Gets route parameters from clone immutable args appended to bytecode
-     * @dev Uses OZ Clones.fetchCloneArgs to read args set during cloneDeterministicWithImmutableArgs
+     * @notice Verifies that provided params match the hash stored in clone immutable args
+     * @dev The clone stores only a keccak256 hash (32 bytes) of the full params to minimize deployment gas.
+     *      Callers must pass the full params, which are hashed and compared against the stored hash.
+     * @param params Route parameters to verify
      */
-    function _getRouteParams() internal view returns (ICounterfactualDepositFactory.CounterfactualImmutables memory) {
-        bytes memory args = Clones.fetchCloneArgs(address(this));
-        return abi.decode(args, (ICounterfactualDepositFactory.CounterfactualImmutables));
+    function _verifyParams(ICounterfactualDepositFactory.CounterfactualImmutables memory params) internal view {
+        bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
+        if (keccak256(abi.encode(params)) != storedHash) {
+            revert ICounterfactualDepositFactory.InvalidParamsHash();
+        }
     }
 }

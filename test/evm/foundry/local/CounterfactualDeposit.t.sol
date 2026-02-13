@@ -117,32 +117,16 @@ contract CounterfactualDepositTest is Test {
         factory.deploy(address(executor), defaultParams, salt);
     }
 
-    function testDeployedContractHasCorrectImmutables() public {
+    function testDeployedContractStoresCorrectHash() public {
         bytes32 salt = keccak256("test-salt");
 
         address deployed = factory.deploy(address(executor), defaultParams, salt);
 
         bytes memory args = Clones.fetchCloneArgs(deployed);
-        ICounterfactualDepositFactory.CounterfactualImmutables memory stored = abi.decode(
-            args,
-            (ICounterfactualDepositFactory.CounterfactualImmutables)
-        );
+        bytes32 storedHash = abi.decode(args, (bytes32));
+        bytes32 expectedHash = keccak256(abi.encode(defaultParams));
 
-        assertEq(stored.destinationDomain, DESTINATION_DOMAIN, "destinationDomain mismatch");
-        assertEq(stored.mintRecipient, defaultParams.mintRecipient, "mintRecipient mismatch");
-        assertEq(stored.burnToken, defaultParams.burnToken, "burnToken mismatch");
-        assertEq(stored.destinationCaller, defaultParams.destinationCaller, "destinationCaller mismatch");
-        assertEq(stored.maxFeeBps, 100, "maxFeeBps mismatch");
-        assertEq(stored.minFinalityThreshold, 1000, "minFinalityThreshold mismatch");
-        assertEq(stored.maxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
-        assertEq(stored.maxUserSlippageBps, 50, "maxUserSlippageBps mismatch");
-        assertEq(stored.finalRecipient, finalRecipient, "finalRecipient mismatch");
-        assertEq(stored.finalToken, defaultParams.finalToken, "finalToken mismatch");
-        assertEq(stored.destinationDex, 0, "destinationDex mismatch");
-        assertEq(stored.accountCreationMode, 0, "accountCreationMode mismatch");
-        assertEq(stored.executionMode, 0, "executionMode mismatch");
-        assertEq(stored.refundAddress, refundAddr, "refundAddress mismatch");
-        assertEq(stored.actionData.length, 0, "actionData should be empty");
+        assertEq(storedHash, expectedHash, "Stored hash should match keccak256 of params");
     }
 
     function testDeployAndExecute() public {
@@ -188,7 +172,7 @@ contract CounterfactualDepositTest is Test {
         burnToken.transfer(depositAddress, amount);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, amount, nonce, block.timestamp + 1 hours, "sig");
+        factory.executeOnExisting(depositAddress, defaultParams, amount, nonce, block.timestamp + 1 hours, "sig");
 
         // maxFeeBps = 100 (1%), amount = 100e6
         // Expected maxFee = 100e6 * 100 / 10000 = 1e6
@@ -205,14 +189,28 @@ contract CounterfactualDepositTest is Test {
         burnToken.transfer(depositAddress, 100e6);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours, "sig");
+        factory.executeOnExisting(
+            depositAddress,
+            defaultParams,
+            100e6,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
 
         // Second deposit (reuse same clone)
         vm.prank(user);
         burnToken.transfer(depositAddress, 50e6);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, 50e6, keccak256("nonce-2"), block.timestamp + 1 hours, "sig");
+        factory.executeOnExisting(
+            depositAddress,
+            defaultParams,
+            50e6,
+            keccak256("nonce-2"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
 
         assertEq(srcPeriphery.callCount(), 2, "Should have two deposits");
         assertEq(burnToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
@@ -230,7 +228,14 @@ contract CounterfactualDepositTest is Test {
         // Try to deposit more than balance
         vm.expectRevert(ICounterfactualDepositFactory.InsufficientBalance.selector);
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours, "sig");
+        factory.executeOnExisting(
+            depositAddress,
+            defaultParams,
+            100e6,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
     }
 
     function testAdminWithdraw() public {
@@ -269,9 +274,9 @@ contract CounterfactualDepositTest is Test {
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
-        // refundAddress (user) withdraws tokens
+        // refundAddress (user) withdraws tokens — must pass params for hash verification
         vm.prank(user);
-        CounterfactualDepositExecutor(depositAddress).userWithdraw(address(burnToken), user, 100e6);
+        CounterfactualDepositExecutor(depositAddress).userWithdraw(defaultParams, address(burnToken), user, 100e6);
 
         assertEq(burnToken.balanceOf(user), 1000e6, "User should have all tokens back");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit address should have no balance");
@@ -284,7 +289,7 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDepositFactory.Unauthorized.selector);
         vm.prank(relayer);
-        CounterfactualDepositExecutor(depositAddress).userWithdraw(address(burnToken), relayer, 100e6);
+        CounterfactualDepositExecutor(depositAddress).userWithdraw(defaultParams, address(burnToken), relayer, 100e6);
     }
 
     function testSetAdmin() public {
@@ -339,7 +344,37 @@ contract CounterfactualDepositTest is Test {
         // Calling executeDeposit directly on the executor implementation (not a clone)
         // should revert because fetchCloneArgs will fail on non-clone bytecode
         vm.expectRevert();
-        executor.executeDeposit(100e6, keccak256("nonce"), block.timestamp + 1 hours, "sig");
+        executor.executeDeposit(defaultParams, 100e6, keccak256("nonce"), block.timestamp + 1 hours, "sig");
+    }
+
+    function testInvalidParamsHash() public {
+        bytes32 salt = keccak256("test-salt");
+
+        address depositAddress = factory.deploy(address(executor), defaultParams, salt);
+
+        // Create wrong params (different maxFeeBps)
+        ICounterfactualDepositFactory.CounterfactualImmutables memory wrongParams = defaultParams;
+        wrongParams.maxFeeBps = 200;
+
+        vm.prank(user);
+        burnToken.transfer(depositAddress, 100e6);
+
+        // executeDeposit with wrong params should revert
+        vm.expectRevert(ICounterfactualDepositFactory.InvalidParamsHash.selector);
+        vm.prank(relayer);
+        factory.executeOnExisting(
+            depositAddress,
+            wrongParams,
+            100e6,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
+
+        // userWithdraw with wrong params should also revert
+        vm.expectRevert(ICounterfactualDepositFactory.InvalidParamsHash.selector);
+        vm.prank(user);
+        CounterfactualDepositExecutor(depositAddress).userWithdraw(wrongParams, address(burnToken), user, 100e6);
     }
 
     function testDeployWithActionData() public {
@@ -351,20 +386,24 @@ contract CounterfactualDepositTest is Test {
 
         address depositAddress = factory.deploy(address(executor), params, salt);
 
-        // Verify clone args include the actionData
+        // Verify clone stores the correct hash
         bytes memory args = Clones.fetchCloneArgs(depositAddress);
-        ICounterfactualDepositFactory.CounterfactualImmutables memory stored = abi.decode(
-            args,
-            (ICounterfactualDepositFactory.CounterfactualImmutables)
-        );
-        assertEq(stored.actionData, actionData, "actionData should be stored in clone args");
+        bytes32 storedHash = abi.decode(args, (bytes32));
+        assertEq(storedHash, keccak256(abi.encode(params)), "Stored hash should match params with actionData");
 
         // Fund and execute deposit
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours, "sig");
+        factory.executeOnExisting(
+            depositAddress,
+            params,
+            100e6,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
 
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
         assertEq(srcPeriphery.callCount(), 1, "Deposit should be executed");

@@ -8,8 +8,9 @@ import { CounterfactualDepositExecutor } from "./CounterfactualDepositExecutor.s
 /**
  * @title CounterfactualDepositFactory
  * @notice Factory for deploying and managing counterfactual deposit addresses that deposit via SponsoredCCTP
- * @dev Uses CREATE2 for deterministic address generation. Quote signature verification is delegated
- *      to SponsoredCCTPSrcPeriphery — this factory only handles clone deployment and admin management.
+ * @dev Uses CREATE2 for deterministic address generation. Clones store only a keccak256 hash of the
+ *      route params (32 bytes) rather than the full params, minimizing deployment gas. Full params
+ *      are passed at execution time and verified against the stored hash.
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /// @notice Current admin address (can withdraw from clones and update admin)
@@ -22,7 +23,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
      * @notice Predicts the address of a counterfactual deposit contract
      * @param executor Executor implementation address
-     * @param params CCTP route parameters (stored as clone immutable args)
+     * @param params Route parameters (hashed to produce the clone's immutable arg)
      * @param salt Unique salt for address generation
      * @return Predicted address
      */
@@ -31,13 +32,18 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         CounterfactualImmutables memory params,
         bytes32 salt
     ) public view returns (address) {
-        return Clones.predictDeterministicAddressWithImmutableArgs(executor, abi.encode(params), salt);
+        return
+            Clones.predictDeterministicAddressWithImmutableArgs(
+                executor,
+                abi.encode(keccak256(abi.encode(params))),
+                salt
+            );
     }
 
     /**
      * @notice Deploys a counterfactual deposit contract
      * @param executor Executor implementation address
-     * @param params CCTP route parameters (stored as clone immutable args)
+     * @param params Route parameters (hashed to produce the clone's immutable arg)
      * @param salt Unique salt for address generation
      * @return depositAddress Address of deployed contract
      */
@@ -46,7 +52,11 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         CounterfactualImmutables memory params,
         bytes32 salt
     ) public returns (address depositAddress) {
-        depositAddress = Clones.cloneDeterministicWithImmutableArgs(executor, abi.encode(params), salt);
+        depositAddress = Clones.cloneDeterministicWithImmutableArgs(
+            executor,
+            abi.encode(keccak256(abi.encode(params))),
+            salt
+        );
         emit DepositAddressCreated(
             depositAddress,
             params.burnToken,
@@ -59,7 +69,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
      * @notice Deploys and executes a deposit in one transaction
      * @param executor Executor implementation address
-     * @param params CCTP route parameters (stored as clone immutable args)
+     * @param params Route parameters (hashed for clone, passed in full to executor)
      * @param salt Unique salt for address generation
      * @param amount Amount of burnToken to deposit
      * @param nonce Unique nonce for SponsoredCCTP replay protection
@@ -81,12 +91,13 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         } catch {
             depositAddress = predictDepositAddress(executor, params, salt);
         }
-        CounterfactualDepositExecutor(depositAddress).executeDeposit(amount, nonce, deadline, signature);
+        CounterfactualDepositExecutor(depositAddress).executeDeposit(params, amount, nonce, deadline, signature);
     }
 
     /**
      * @notice Executes a deposit on an existing contract
      * @param depositAddress Address of existing deposit contract
+     * @param params Route parameters (verified against stored hash by executor)
      * @param amount Amount of burnToken to deposit
      * @param nonce Unique nonce for SponsoredCCTP replay protection
      * @param deadline Timestamp after which the quote expires
@@ -94,12 +105,13 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      */
     function executeOnExisting(
         address depositAddress,
+        CounterfactualImmutables memory params,
         uint256 amount,
         bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
     ) external {
-        CounterfactualDepositExecutor(depositAddress).executeDeposit(amount, nonce, deadline, signature);
+        CounterfactualDepositExecutor(depositAddress).executeDeposit(params, amount, nonce, deadline, signature);
     }
 
     /**
