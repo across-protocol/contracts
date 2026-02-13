@@ -47,7 +47,8 @@ contract CounterfactualDepositExecutor {
      *      full params are passed by the caller and verified against the stored hash before execution.
      *      Signature verification, nonce tracking, and deadline checks are all handled by SrcPeriphery.
      * @param params Route parameters (verified against stored hash)
-     * @param amount Amount of burnToken to deposit
+     * @param amount Gross amount of burnToken (includes executionFee)
+     * @param executionFeeRecipient Address that receives the execution fee
      * @param nonce Unique nonce for replay protection (enforced by SrcPeriphery)
      * @param deadline Quote expiration timestamp (enforced by SrcPeriphery)
      * @param signature Signature from SponsoredCCTP quote signer (verified by SrcPeriphery)
@@ -55,6 +56,7 @@ contract CounterfactualDepositExecutor {
     function executeDeposit(
         ICounterfactualDepositFactory.CounterfactualImmutables memory params,
         uint256 amount,
+        address executionFeeRecipient,
         bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
@@ -62,41 +64,43 @@ contract CounterfactualDepositExecutor {
         _verifyParams(params);
 
         address burnTokenAddr = address(uint160(uint256(params.burnToken)));
-        uint256 balance = IERC20(burnTokenAddr).balanceOf(address(this));
-        if (balance < amount) revert ICounterfactualDepositFactory.InsufficientBalance();
+        if (IERC20(burnTokenAddr).balanceOf(address(this)) < amount) {
+            revert ICounterfactualDepositFactory.InsufficientBalance();
+        }
 
-        // Compute maxFee from maxFeeBps and deposit amount
-        uint256 maxFee = (amount * params.maxFeeBps) / 10000;
+        // Pay execution fee to relayer, compute net deposit amount
+        uint256 depositAmount = amount - params.executionFee;
+        if (params.executionFee > 0) {
+            IERC20(burnTokenAddr).safeTransfer(executionFeeRecipient, params.executionFee);
+        }
 
-        // Build the SponsoredCCTPQuote from clone immutable args + execution params
-        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = SponsoredCCTPInterface.SponsoredCCTPQuote({
-            sourceDomain: sourceDomain,
-            destinationDomain: params.destinationDomain,
-            mintRecipient: params.mintRecipient,
-            amount: amount,
-            burnToken: params.burnToken,
-            destinationCaller: params.destinationCaller,
-            maxFee: maxFee,
-            minFinalityThreshold: params.minFinalityThreshold,
-            nonce: nonce,
-            deadline: deadline,
-            maxBpsToSponsor: params.maxBpsToSponsor,
-            maxUserSlippageBps: params.maxUserSlippageBps,
-            finalRecipient: params.finalRecipient,
-            finalToken: params.finalToken,
-            destinationDex: params.destinationDex,
-            accountCreationMode: params.accountCreationMode,
-            executionMode: params.executionMode,
-            actionData: params.actionData
-        });
+        // Approve SrcPeriphery to pull tokens and execute deposit
+        IERC20(burnTokenAddr).safeIncreaseAllowance(srcPeriphery, depositAmount);
+        ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
+            SponsoredCCTPInterface.SponsoredCCTPQuote({
+                sourceDomain: sourceDomain,
+                destinationDomain: params.destinationDomain,
+                mintRecipient: params.mintRecipient,
+                amount: depositAmount,
+                burnToken: params.burnToken,
+                destinationCaller: params.destinationCaller,
+                maxFee: (depositAmount * params.cctpMaxFeeBps) / 10000,
+                minFinalityThreshold: params.minFinalityThreshold,
+                nonce: nonce,
+                deadline: deadline,
+                maxBpsToSponsor: params.maxBpsToSponsor,
+                maxUserSlippageBps: params.maxUserSlippageBps,
+                finalRecipient: params.finalRecipient,
+                finalToken: params.finalToken,
+                destinationDex: params.destinationDex,
+                accountCreationMode: params.accountCreationMode,
+                executionMode: params.executionMode,
+                actionData: params.actionData
+            }),
+            signature
+        );
 
-        // Approve SrcPeriphery to pull tokens (it calls safeTransferFrom)
-        IERC20(burnTokenAddr).safeIncreaseAllowance(srcPeriphery, amount);
-
-        // Execute deposit — SrcPeriphery validates signature, nonce, deadline, and sourceDomain
-        ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(quote, signature);
-
-        emit ICounterfactualDepositFactory.DepositExecuted(address(this), amount, nonce);
+        emit ICounterfactualDepositFactory.DepositExecuted(address(this), depositAmount, nonce);
     }
 
     /**

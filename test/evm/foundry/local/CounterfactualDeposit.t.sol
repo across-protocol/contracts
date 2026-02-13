@@ -70,7 +70,8 @@ contract CounterfactualDepositTest is Test {
             mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
             burnToken: bytes32(uint256(uint160(address(burnToken)))),
             destinationCaller: bytes32(uint256(uint160(makeAddr("bot")))),
-            maxFeeBps: 100, // 1%
+            cctpMaxFeeBps: 100, // 1%
+            executionFee: 1e6, // 1 USDC
             minFinalityThreshold: 1000,
             maxBpsToSponsor: 500,
             maxUserSlippageBps: 50,
@@ -134,6 +135,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes32 nonce = keccak256("nonce-1");
         uint256 amount = 100e6;
+        uint256 expectedDeposit = amount - defaultParams.executionFee; // 99 USDC
 
         address depositAddress = factory.predictDepositAddress(address(executor), defaultParams, salt);
 
@@ -143,7 +145,7 @@ contract CounterfactualDepositTest is Test {
 
         // Execute
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDepositFactory.DepositExecuted(depositAddress, amount, nonce);
+        emit ICounterfactualDepositFactory.DepositExecuted(depositAddress, expectedDeposit, nonce);
 
         vm.prank(relayer);
         address deployed = factory.deployAndExecute(
@@ -151,6 +153,7 @@ contract CounterfactualDepositTest is Test {
             defaultParams,
             salt,
             amount,
+            relayer,
             nonce,
             block.timestamp + 1 hours,
             "sig"
@@ -158,14 +161,16 @@ contract CounterfactualDepositTest is Test {
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(srcPeriphery.lastAmount(), amount, "SrcPeriphery should have received correct amount");
+        assertEq(burnToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
         assertEq(srcPeriphery.lastNonce(), nonce, "SrcPeriphery should have received correct nonce");
     }
 
-    function testMaxFeeBpsCalculation() public {
+    function testCctpMaxFeeBpsCalculation() public {
         bytes32 salt = keccak256("test-salt");
         bytes32 nonce = keccak256("nonce-1");
         uint256 amount = 100e6;
+        uint256 depositAmount = amount - defaultParams.executionFee; // 99 USDC
 
         address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
@@ -173,11 +178,19 @@ contract CounterfactualDepositTest is Test {
         burnToken.transfer(depositAddress, amount);
 
         vm.prank(relayer);
-        factory.executeOnExisting(depositAddress, defaultParams, amount, nonce, block.timestamp + 1 hours, "sig");
+        factory.executeOnExisting(
+            depositAddress,
+            defaultParams,
+            amount,
+            relayer,
+            nonce,
+            block.timestamp + 1 hours,
+            "sig"
+        );
 
-        // maxFeeBps = 100 (1%), amount = 100e6
-        // Expected maxFee = 100e6 * 100 / 10000 = 1e6
-        assertEq(srcPeriphery.lastMaxFee(), 1e6, "maxFee should be 1% of amount");
+        // cctpMaxFeeBps = 100 (1%), depositAmount = 99e6
+        // Expected maxFee = 99e6 * 100 / 10000 = 990000
+        assertEq(srcPeriphery.lastMaxFee(), (depositAmount * 100) / 10000, "maxFee should be 1% of net deposit amount");
     }
 
     function testExecuteOnExisting() public {
@@ -194,6 +207,7 @@ contract CounterfactualDepositTest is Test {
             depositAddress,
             defaultParams,
             100e6,
+            relayer,
             keccak256("nonce-1"),
             block.timestamp + 1 hours,
             "sig"
@@ -208,6 +222,7 @@ contract CounterfactualDepositTest is Test {
             depositAddress,
             defaultParams,
             50e6,
+            relayer,
             keccak256("nonce-2"),
             block.timestamp + 1 hours,
             "sig"
@@ -215,6 +230,11 @@ contract CounterfactualDepositTest is Test {
 
         assertEq(srcPeriphery.callCount(), 2, "Should have two deposits");
         assertEq(burnToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
+        assertEq(
+            burnToken.balanceOf(relayer),
+            2 * defaultParams.executionFee,
+            "Relayer should receive fees from both deposits"
+        );
     }
 
     function testExecuteWithInsufficientBalance() public {
@@ -233,6 +253,7 @@ contract CounterfactualDepositTest is Test {
             depositAddress,
             defaultParams,
             100e6,
+            relayer,
             keccak256("nonce-1"),
             block.timestamp + 1 hours,
             "sig"
@@ -317,6 +338,7 @@ contract CounterfactualDepositTest is Test {
             defaultParams,
             salt,
             amount,
+            relayer,
             keccak256("nonce-1"),
             block.timestamp + 1 hours,
             "sig"
@@ -331,7 +353,7 @@ contract CounterfactualDepositTest is Test {
         // Calling executeDeposit directly on the executor implementation (not a clone)
         // should revert because fetchCloneArgs will fail on non-clone bytecode
         vm.expectRevert();
-        executor.executeDeposit(defaultParams, 100e6, keccak256("nonce"), block.timestamp + 1 hours, "sig");
+        executor.executeDeposit(defaultParams, 100e6, relayer, keccak256("nonce"), block.timestamp + 1 hours, "sig");
     }
 
     function testInvalidParamsHash() public {
@@ -339,9 +361,9 @@ contract CounterfactualDepositTest is Test {
 
         address depositAddress = factory.deploy(address(executor), defaultParams, salt);
 
-        // Create wrong params (different maxFeeBps)
+        // Create wrong params (different cctpMaxFeeBps)
         ICounterfactualDepositFactory.CounterfactualImmutables memory wrongParams = defaultParams;
-        wrongParams.maxFeeBps = 200;
+        wrongParams.cctpMaxFeeBps = 200;
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
@@ -353,6 +375,7 @@ contract CounterfactualDepositTest is Test {
             depositAddress,
             wrongParams,
             100e6,
+            relayer,
             keccak256("nonce-1"),
             block.timestamp + 1 hours,
             "sig"
@@ -387,6 +410,7 @@ contract CounterfactualDepositTest is Test {
             depositAddress,
             params,
             100e6,
+            relayer,
             keccak256("nonce-1"),
             block.timestamp + 1 hours,
             "sig"

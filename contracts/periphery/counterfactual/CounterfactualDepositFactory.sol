@@ -64,7 +64,8 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param executor Executor implementation address
      * @param params Route parameters (hashed for clone, passed in full to executor)
      * @param salt Unique salt for address generation
-     * @param amount Amount of burnToken to deposit
+     * @param amount Gross amount of burnToken (includes executionFee)
+     * @param executionFeeRecipient Address that receives the execution fee
      * @param nonce Unique nonce for SponsoredCCTP replay protection
      * @param deadline Timestamp after which the quote expires
      * @param signature Signature from SponsoredCCTP quote signer
@@ -75,6 +76,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         CounterfactualImmutables memory params,
         bytes32 salt,
         uint256 amount,
+        address executionFeeRecipient,
         bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
@@ -84,14 +86,22 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         } catch {
             depositAddress = predictDepositAddress(executor, params, salt);
         }
-        CounterfactualDepositExecutor(depositAddress).executeDeposit(params, amount, nonce, deadline, signature);
+        CounterfactualDepositExecutor(depositAddress).executeDeposit(
+            params,
+            amount,
+            executionFeeRecipient,
+            nonce,
+            deadline,
+            signature
+        );
     }
 
     /**
      * @notice Executes a deposit on an existing contract
      * @param depositAddress Address of existing deposit contract
      * @param params Route parameters (verified against stored hash by executor)
-     * @param amount Amount of burnToken to deposit
+     * @param amount Gross amount of burnToken (includes executionFee)
+     * @param executionFeeRecipient Address that receives the execution fee
      * @param nonce Unique nonce for SponsoredCCTP replay protection
      * @param deadline Timestamp after which the quote expires
      * @param signature Signature from SponsoredCCTP quote signer
@@ -100,10 +110,18 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         address depositAddress,
         CounterfactualImmutables memory params,
         uint256 amount,
+        address executionFeeRecipient,
         bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
     ) external {
-        CounterfactualDepositExecutor(depositAddress).executeDeposit(params, amount, nonce, deadline, signature);
+        CounterfactualDepositExecutor(depositAddress).executeDeposit(
+            params,
+            amount,
+            executionFeeRecipient,
+            nonce,
+            deadline,
+            signature
+        );
     }
 }

@@ -56,34 +56,36 @@ When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the execu
 
 Each field in the `SponsoredCCTPQuote` is either a route param (committed via hash at address-generation time, passed at execution time), an executor immutable (same for all clones on a chain), computed at execution time, or passed by the caller at execution time:
 
-| Field                  | Source                    | Explanation                                                                                   |
-| ---------------------- | ------------------------- | --------------------------------------------------------------------------------------------- |
-| `sourceDomain`         | **Executor immutable**    | Same for all deposits on this chain (e.g. 0 for Ethereum)                                     |
-| `destinationDomain`    | **Route param**           | Route: which destination chain (e.g. 3 for Hyperliquid)                                       |
-| `mintRecipient`        | **Route param**           | Route: DstPeriphery handler contract on destination chain                                     |
-| `amount`               | **Passed on execution**   | Varies per deposit — clone may hold different balances each time                              |
-| `burnToken`            | **Route param**           | Route: which token to burn (e.g. USDC address as bytes32)                                     |
-| `destinationCaller`    | **Route param**           | Route: permissioned bot that calls `receiveMessage` on destination                            |
-| `maxFee`               | **Computed on execution** | `amount * maxFeeBps / 10000` — computed from the route's `maxFeeBps` and the deposit `amount` |
-| `minFinalityThreshold` | **Route param**           | Route: minimum finality before CCTP attestation is allowed                                    |
-| `nonce`                | **Passed on execution**   | Unique per execution — SrcPeriphery enforces uniqueness                                       |
-| `deadline`             | **Passed on execution**   | Expiration per execution attempt — SrcPeriphery enforces                                      |
-| `maxBpsToSponsor`      | **Route param**           | Route: max basis points of amount the relayer can sponsor                                     |
-| `maxUserSlippageBps`   | **Route param**           | Route: slippage tolerance for fees on destination                                             |
-| `finalRecipient`       | **Route param**           | Route: ultimate receiver of tokens on destination chain                                       |
-| `finalToken`           | **Route param**           | Route: token recipient gets on destination (may differ from burnToken if swapping)            |
-| `destinationDex`       | **Route param**           | Route: which DEX on HyperCore for swaps                                                       |
-| `accountCreationMode`  | **Route param**           | Route: Standard (0) or FromUserFunds (1)                                                      |
-| `executionMode`        | **Route param**           | Route: DirectToCore (0), ArbitraryActionsToCore (1), or ArbitraryActionsToEVM (2)             |
-| `actionData`           | **Route param**           | Route: encoded action data for arbitrary execution modes (empty for DirectToCore)             |
+| Field                  | Source                    | Explanation                                                                        |
+| ---------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
+| `sourceDomain`         | **Executor immutable**    | Same for all deposits on this chain (e.g. 0 for Ethereum)                          |
+| `destinationDomain`    | **Route param**           | Route: which destination chain (e.g. 3 for Hyperliquid)                            |
+| `mintRecipient`        | **Route param**           | Route: DstPeriphery handler contract on destination chain                          |
+| `amount`               | **Computed on execution** | Gross amount minus `executionFee` — net amount bridged via CCTP                    |
+| `burnToken`            | **Route param**           | Route: which token to burn (e.g. USDC address as bytes32)                          |
+| `destinationCaller`    | **Route param**           | Route: permissioned bot that calls `receiveMessage` on destination                 |
+| `maxFee`               | **Computed on execution** | `depositAmount * cctpMaxFeeBps / 10000` — computed from the net deposit amount     |
+| `minFinalityThreshold` | **Route param**           | Route: minimum finality before CCTP attestation is allowed                         |
+| `nonce`                | **Passed on execution**   | Unique per execution — SrcPeriphery enforces uniqueness                            |
+| `deadline`             | **Passed on execution**   | Expiration per execution attempt — SrcPeriphery enforces                           |
+| `maxBpsToSponsor`      | **Route param**           | Route: max basis points of amount the relayer can sponsor                          |
+| `maxUserSlippageBps`   | **Route param**           | Route: slippage tolerance for fees on destination                                  |
+| `finalRecipient`       | **Route param**           | Route: ultimate receiver of tokens on destination chain                            |
+| `finalToken`           | **Route param**           | Route: token recipient gets on destination (may differ from burnToken if swapping) |
+| `destinationDex`       | **Route param**           | Route: which DEX on HyperCore for swaps                                            |
+| `accountCreationMode`  | **Route param**           | Route: Standard (0) or FromUserFunds (1)                                           |
+| `executionMode`        | **Route param**           | Route: DirectToCore (0), ArbitraryActionsToCore (1), or ArbitraryActionsToEVM (2)  |
+| `actionData`           | **Route param**           | Route: encoded action data for arbitrary execution modes (empty for DirectToCore)  |
 
-Additionally, `maxFeeBps` and `refundAddress` are route params that are not part of the SponsoredCCTPQuote:
+Additionally, these route params are not part of the SponsoredCCTPQuote:
 
-| Field                  | Source          | Explanation                                                                   |
-| ---------------------- | --------------- | ----------------------------------------------------------------------------- |
-| `maxFeeBps`            | **Route param** | User's fee limit in basis points — used to compute `maxFee` at execution time |
-| `userWithdrawAddress`  | **Route param** | Address authorized to call `userWithdraw()` — user's escape hatch             |
-| `adminWithdrawAddress` | **Route param** | Address authorized to call `adminWithdraw()` — per-clone admin for recovery   |
+| Field                   | Source                  | Explanation                                                                        |
+| ----------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
+| `cctpMaxFeeBps`         | **Route param**         | User's CCTP fee limit in basis points — used to compute `maxFee` at execution time |
+| `executionFee`          | **Route param**         | Fixed fee (in burnToken units) paid to the relayer who calls `executeDeposit`      |
+| `userWithdrawAddress`   | **Route param**         | Address authorized to call `userWithdraw()` — user's escape hatch                  |
+| `adminWithdrawAddress`  | **Route param**         | Address authorized to call `adminWithdraw()` — per-clone admin for recovery        |
+| `executionFeeRecipient` | **Passed on execution** | Relayer-specified address that receives the `executionFee`                         |
 
 ## Key Design Decisions
 
@@ -108,11 +110,17 @@ Why: The SrcPeriphery already validates:
 
 Adding a second signature layer in the executor would be redundant and increase gas costs. The executor just builds the `SponsoredCCTPQuote` from its immutable args + execution params and forwards it.
 
-### 3. maxFeeBps Instead of maxFee
+### 3. cctpMaxFeeBps Instead of maxFee
 
-**Users set `maxFeeBps` (basis points) as a clone immutable, not a raw `maxFee` amount.**
+**Users set `cctpMaxFeeBps` (basis points) as a route param, not a raw `maxFee` amount.**
 
-Why: At address-generation time, the deposit amount isn't known. The user commits to a fee percentage (e.g., 100 bps = 1%), and the executor computes `maxFee = amount * maxFeeBps / 10000` at execution time. This gives proportional fee protection regardless of deposit size.
+Why: At address-generation time, the deposit amount isn't known. The user commits to a fee percentage (e.g., 100 bps = 1%), and the executor computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time. This gives proportional fee protection regardless of deposit size.
+
+### 3b. Execution Fee for Relayer Incentivization
+
+**Each clone has a fixed `executionFee` (in burnToken units) paid to the relayer who calls `executeDeposit`.**
+
+Why: Relayers incur gas costs to call `executeDeposit` (and potentially `deploy`). The `executionFee` is a fixed amount rather than a percentage because gas costs are independent of the deposit amount. The fee is subtracted from the gross amount before bridging, so the user sends `depositAmount + executionFee` to the clone. The `executionFeeRecipient` is specified at execution time so any relayer can earn the fee.
 
 ### 4. OZ Clones with Hash-Only Immutable Args
 
@@ -168,20 +176,21 @@ factory.executeOnExisting(depositAddress, routeParams, amount, nonce, deadline, 
 
 ## Security Model
 
-- **SponsoredCCTP Signer**: Trusted address that signs CCTP quotes. Compromise allows bad quotes but fees are bounded by user-set `maxFeeBps`.
+- **SponsoredCCTP Signer**: Trusted address that signs CCTP quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`.
 - **Admin**: Per-clone admin (set in route params at address-generation time). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController for additional trust minimization.
 - **userWithdrawAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
-- **Fee Protection**: `maxFeeBps` (clone immutable) bounds the `maxFee` passed to SponsoredCCTPSrcPeriphery proportionally.
+- **CCTP Fee Protection**: `cctpMaxFeeBps` (route param) bounds the `maxFee` passed to SponsoredCCTPSrcPeriphery proportionally.
+- **Execution Fee**: Fixed `executionFee` (route param, in burnToken units) paid to relayer. User commits to this fee at address-generation time.
 - **Nonce Replay Protection**: Handled by SponsoredCCTPSrcPeriphery — each nonce can only be used once.
 - **Deadline Enforcement**: Handled by SponsoredCCTPSrcPeriphery — expired quotes are rejected.
 
 ### Trust-Minimized Admin via TimelockController
 
-The `admin` field can be set to any address — an EOA, a multisig, or an OpenZeppelin `TimelockController`. Using a `TimelockController` as the admin adds a time delay to all `adminWithdraw` calls, giving users a window to react:
+The `adminWithdrawAddress` field can be set to any address — an EOA, a multisig, or an OpenZeppelin `TimelockController`. Using a `TimelockController` as the admin adds a time delay to all `adminWithdraw` calls, giving users a window to react:
 
 1. A proposer schedules the `adminWithdraw` call on the TimelockController
 2. The configured delay elapses (e.g., 24-48 hours)
 3. During this window, the user can see the pending operation on-chain and call `userWithdraw` to pull their funds first
 4. After the delay, an executor can execute the scheduled withdrawal
 
-This requires no contract changes — the TimelockController address is simply set as the `admin` in the clone's `CounterfactualImmutables` at address-generation time. Since admin is committed in the params hash, users can verify the admin is a TimelockController with an adequate delay before depositing.
+This requires no contract changes — the TimelockController address is simply set as the `adminWithdrawAddress` in the clone's `CounterfactualImmutables` at address-generation time. Since it is committed in the params hash, users can verify the admin is a TimelockController with an adequate delay before depositing.

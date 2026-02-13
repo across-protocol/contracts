@@ -18,7 +18,8 @@ interface ICounterfactualDepositFactory {
         bytes32 mintRecipient;
         bytes32 burnToken;
         bytes32 destinationCaller;
-        uint256 maxFeeBps;
+        uint256 cctpMaxFeeBps;
+        uint256 executionFee;
         uint32 minFinalityThreshold;
         uint256 maxBpsToSponsor;
         uint256 maxUserSlippageBps;
@@ -72,6 +73,7 @@ interface ICounterfactualDepositFactory {
         CounterfactualImmutables memory params,
         bytes32 salt,
         uint256 amount,
+        address executionFeeRecipient,
         bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
@@ -81,6 +83,7 @@ interface ICounterfactualDepositFactory {
         address depositAddress,
         CounterfactualImmutables memory params,
         uint256 amount,
+        address executionFeeRecipient,
         bytes32 nonce,
         uint256 deadline,
         bytes calldata signature
