@@ -179,6 +179,16 @@
           "block_number": 24021499,
           "transaction_hash": "0x70b3edf99db66aac34338c3686cd708ddfc2b503c2f707f51ced67dc50e5022f"
         },
+        "DonationBox": {
+          "address": "0xc1a2465c0913438a51d0b6339169f8b944f00cd1",
+          "block_number": 24451558,
+          "transaction_hash": "0x2571a14def62200935cd4c90356b1f1415e6977e60380c7dbdd4b0f4915d12fa"
+        },
+        "SponsoredCCTPDstPeriphery": {
+          "address": "0xde589398a3fe1dcca80c12053a14811f3e4033f4",
+          "block_number": 24451558,
+          "transaction_hash": "0x60497293901970b1fc224cc51f134a171e5430ef6f30ff9a9084b7a0c852718a"
+        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0x6769155b16f25d317819efef011e0a50a48e83c5",
           "block_number": 24451096,
@@ -490,9 +500,9 @@
           "block_number": 15142204
         },
         "DonationBox": {
-          "address": "0x89c001f83f110c116559f371acc3b2a58f6cb517",
-          "block_number": 27220944,
-          "transaction_hash": "0x0993260a64187b70f94baf613739c52c895b3ab0fc7a14e1b3197f263e49d92d"
+          "address": "0xed7422d44045781f4492fa4b569063e5a1eb185b",
+          "block_number": 27222774,
+          "transaction_hash": "0x4eab452b9de97795c5d6644791e824359af36006ec521a7d1fb4c4283d247ff3"
         },
         "PermissionedMulticallHandler": {
           "address": "0xfd0876712dd9003d014cdcd8e5140b4efac9bfcc",
@@ -510,9 +520,9 @@
           "transaction_hash": "0x187b45f39be413aff2ff526946c64f76ed98763129e7e2ffb7d2d4c5bd997519"
         },
         "SponsoredCCTPDstPeriphery": {
-          "address": "0x924323251409b1a6f43838e75c5ac30b533182e2",
-          "block_number": 27220944,
-          "transaction_hash": "0x67c2eb46c9f238a89455f9f95c10d9c19a4ed702843c3956a6d733c0631fbc37"
+          "address": "0x478d451e101be484880a14cf3ccc293cd48e6140",
+          "block_number": 27222774,
+          "transaction_hash": "0x2b293a55b216b63afc96c148a0043b7522c4f6a847b9bc73112d03da3f1d2c6e"
         },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xc611d7c33d1c7915f13ef35f488eaee9d9dc3555",

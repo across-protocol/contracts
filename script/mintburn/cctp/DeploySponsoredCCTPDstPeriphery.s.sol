@@ -15,7 +15,10 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
     function run() external {
         console.log("Deploying SponsoredCCTPDstPeriphery...");
         console.log("Chain ID:", block.chainid);
-        require(block.chainid == 999, "Dst periphery must be deployed on HyperEVM (chain 999)");
+        require(
+            block.chainid == 999 || block.chainid == 1,
+            "Dst periphery must be deployed on HyperEVM (chain 999) or Ink (chain 57073)"
+        );
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
