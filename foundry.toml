@@ -9,7 +9,7 @@ test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
 cache_path = "cache-foundry"
 via_ir = true
-optimizer_runs = 800
+optimizer_runs = 300
 solc_version = "0.8.30"
 revert_strings = "strip"
 fs_permissions = [{ access = "read-write", path = "./" }]
@@ -44,7 +44,7 @@ polygon = "${NODE_URL_137}"
 scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
-world-chain = "${NODE_URL_480}"
+world = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"

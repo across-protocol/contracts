@@ -523,6 +523,11 @@
           "address": "0x1c709fd0db6a6b877ddb19ae3d485b7b4add879f",
           "block_number": 21416410,
           "transaction_hash": "0x9c7604f9254450f13b0941008f5272f68ec58db61f32e5ee6713e72b4b56de0b"
+        },
+        "SponsoredCCTPSrcPeriphery": {
+          "address": "0xc611d7c33d1c7915f13ef35f488eaee9d9dc3555",
+          "block_number": 27219602,
+          "transaction_hash": "0x13b2a5eee6960ab615fe83eaac7203a16878d039fa4a91cb9e1dfafc1bc56298"
         }
       }
     },
@@ -791,9 +796,9 @@
           "block_number": 17456376
         },
         "SponsoredCCTPSrcPeriphery": {
-          "address": "0x1be0bcd689eac8e37346934bfafe8cd0dd231eee",
-          "block_number": 35520683,
-          "transaction_hash": "0x42db2a417e2ef54d9fe40ec3188c34b1427ae85e0fa5241136fa063443d3d10a"
+          "address": "0x1771c470d41b8c39338450c380bf2c080a2cedd8",
+          "block_number": 37528460,
+          "transaction_hash": "0xaac7b7a84b7a801e6306dd2e8e127ddca94e57d27a2a731207e5f6427ee9bdba"
         },
         "SponsoredOFTSrcPeriphery": {
           "address": "0x06c61d54958a0772ee8af41789466d39ffeaeb13",
