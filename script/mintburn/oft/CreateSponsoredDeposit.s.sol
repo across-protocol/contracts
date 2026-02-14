@@ -12,8 +12,8 @@ import { MinimalLZOptions } from "../../../contracts/external/libraries/MinimalL
 import { IOFT, SendParam, MessagingFee, IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @notice Used in place of // import { QuoteSignLib } from "../contracts/periphery/mintburn/sponsored-oft/QuoteSignLib.sol";
 /// just for the hashing function that works with a memory funciton argument
@@ -92,6 +92,11 @@ Examples:
 - Swap flow with explicit recipient, sponsored:
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
     --sig "run(string,uint256,address,uint256,address)" usdt0 1000000 0xRecipient 100 0xFinalToken --rpc-url arbitrum -vvvv
+
+- Account creation from user funds with explicit recipient:
+  USER=0xRecipient
+  forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
+    --sig "runFromUserFunds(string,uint256,address,uint256)" usdt0 1000000 $USER 0 --rpc-url arbitrum -vvvv
 */
 contract CreateSponsoredDeposit is Script, Config {
     using AddressToBytes32 for address;
@@ -106,6 +111,10 @@ contract CreateSponsoredDeposit is Script, Config {
         uint32 srcEid;
         uint32 dstEid;
     }
+
+    uint8 internal constant ACCOUNT_CREATION_STANDARD = 0;
+    uint8 internal constant ACCOUNT_CREATION_FROM_USER_FUNDS = 1;
+    uint8 internal constant EXECUTION_MODE_DIRECT_TO_CORE = 0;
 
     function run() external pure {
         revert("see header for supported run signatures");
@@ -128,7 +137,17 @@ contract CreateSponsoredDeposit is Script, Config {
 
         address recipient = deployer;
         address finalToken = env.dstToken; // default to destination token: simple transfer
-        _execute(env, pk, deployer, amountLD, recipient, maxBpsToSponsor, finalToken);
+        _execute(
+            env,
+            pk,
+            deployer,
+            amountLD,
+            recipient,
+            maxBpsToSponsor,
+            finalToken,
+            ACCOUNT_CREATION_STANDARD,
+            EXECUTION_MODE_DIRECT_TO_CORE
+        );
     }
 
     /// @notice Simple transfer entrypoint with explicit recipient (finalToken defaults to the input token).
@@ -144,7 +163,17 @@ contract CreateSponsoredDeposit is Script, Config {
 
         address recipient = finalRecipient == address(0) ? deployer : finalRecipient;
         address finalToken = env.dstToken; // simple transfer uses destination token
-        _execute(env, pk, deployer, amountLD, recipient, maxBpsToSponsor, finalToken);
+        _execute(
+            env,
+            pk,
+            deployer,
+            amountLD,
+            recipient,
+            maxBpsToSponsor,
+            finalToken,
+            ACCOUNT_CREATION_STANDARD,
+            EXECUTION_MODE_DIRECT_TO_CORE
+        );
     }
 
     /// @notice Run with default finalRecipient = signer, and custom sponsorship and finalToken (swap) configuration.
@@ -159,7 +188,17 @@ contract CreateSponsoredDeposit is Script, Config {
         address deployer = vm.addr(pk);
 
         address recipient = deployer; // default to signer address
-        _execute(env, pk, deployer, amountLD, recipient, maxBpsToSponsor, finalToken);
+        _execute(
+            env,
+            pk,
+            deployer,
+            amountLD,
+            recipient,
+            maxBpsToSponsor,
+            finalToken,
+            ACCOUNT_CREATION_STANDARD,
+            EXECUTION_MODE_DIRECT_TO_CORE
+        );
     }
 
     /// @notice Run with an explicit finalRecipient, and custom sponsorship and finalToken (swap) configuration.
@@ -180,7 +219,47 @@ contract CreateSponsoredDeposit is Script, Config {
         address deployer = vm.addr(pk);
 
         address recipient = finalRecipient == address(0) ? deployer : finalRecipient;
-        _execute(env, pk, deployer, amountLD, recipient, maxBpsToSponsor, finalToken);
+        _execute(
+            env,
+            pk,
+            deployer,
+            amountLD,
+            recipient,
+            maxBpsToSponsor,
+            finalToken,
+            ACCOUNT_CREATION_STANDARD,
+            EXECUTION_MODE_DIRECT_TO_CORE
+        );
+    }
+
+    /// @notice Run simple transfer in FromUserFunds mode with explicit recipient.
+    function runFromUserFunds(
+        string memory tokenName,
+        uint256 amountLD,
+        address finalRecipient,
+        uint256 maxBpsToSponsor
+    ) external {
+        require(bytes(tokenName).length != 0, "token key required");
+        string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
+        _loadConfigAndForks(configPath, false);
+        DepositEnv memory env = _resolveEnv();
+
+        string memory mnemonic = vm.envString("MNEMONIC");
+        uint256 pk = vm.deriveKey(mnemonic, 0);
+        address deployer = vm.addr(pk);
+
+        address recipient = finalRecipient == address(0) ? deployer : finalRecipient;
+        _execute(
+            env,
+            pk,
+            deployer,
+            amountLD,
+            recipient,
+            maxBpsToSponsor,
+            env.dstToken,
+            ACCOUNT_CREATION_FROM_USER_FUNDS,
+            EXECUTION_MODE_DIRECT_TO_CORE
+        );
     }
 
     function _execute(
@@ -190,8 +269,11 @@ contract CreateSponsoredDeposit is Script, Config {
         uint256 amountLD,
         address finalRecipient,
         uint256 maxBpsToSponsor,
-        address finalToken
+        address finalToken,
+        uint8 accountCreationMode,
+        uint8 executionMode
     ) private {
+        require(accountCreationMode <= ACCOUNT_CREATION_FROM_USER_FUNDS, "invalid account mode");
         SponsoredOFTSrcPeriphery srcPeripheryContract = SponsoredOFTSrcPeriphery(env.srcPeriphery);
         require(srcPeripheryContract.signer() == deployer, "quote signer mismatch");
 
@@ -217,8 +299,8 @@ contract CreateSponsoredDeposit is Script, Config {
             lzReceiveGasLimit: lzReceiveGasLimit,
             lzComposeGasLimit: lzComposeGasLimit,
             maxOftFeeBps: 0,
-            accountCreationMode: 0,
-            executionMode: 0,
+            accountCreationMode: accountCreationMode,
+            executionMode: executionMode,
             actionData: ""
         });
 
@@ -279,20 +361,11 @@ contract CreateSponsoredDeposit is Script, Config {
         SponsoredOFTInterface.Quote memory quote
     ) internal view returns (MessagingFee memory) {
         address oftMessenger = srcPeripheryContract.OFT_MESSENGER();
-        address token = srcPeripheryContract.TOKEN();
-
-        uint8 localDecimals = IERC20Metadata(token).decimals();
-        uint8 sharedDecimals = IOFT(oftMessenger).sharedDecimals();
-
-        require(localDecimals >= sharedDecimals, "InvalidLocalDecimals");
-        uint256 decimalConversionRate = 10 ** (localDecimals - sharedDecimals);
-        uint256 _amountSD = quote.signedParams.amountLD / decimalConversionRate;
-        require(_amountSD <= type(uint64).max, "AmountSDOverflowed");
-        uint256 amountSD = uint256(uint64(_amountSD));
+        uint64 amountSD = SafeCast.toUint64(quote.signedParams.amountLD / srcPeripheryContract.decimalConversionRate());
 
         bytes memory composeMsg = ComposeMsgCodec._encode(
             quote.signedParams.nonce,
-            amountSD,
+            uint256(amountSD),
             quote.signedParams.maxBpsToSponsor,
             quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalRecipient,
