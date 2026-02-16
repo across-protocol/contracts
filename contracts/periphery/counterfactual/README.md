@@ -1,196 +1,287 @@
 # Counterfactual Deposit Addresses
 
-Gas-optimized system for creating persistent, reusable deposit addresses via deterministic CREATE2 deployment. Deposits are executed via SponsoredCCTP.
+Gas-optimized system for creating persistent, reusable deposit addresses via deterministic CREATE2 deployment. Supports multiple bridge types: **CCTP**, **OFT** (LayerZero), and **SpokePool** (Across).
 
 ## Architecture
 
-**Two-contract system using OpenZeppelin EIP-1167 Clones with Immutable Args:**
+**Generic factory + bridge-specific executors using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
-- `CounterfactualDepositExecutor` — Implementation contract. Each deposit address is an EIP-1167 minimal proxy (clone) of this contract, with a keccak256 hash of the route parameters appended as the sole immutable arg (32 bytes). On execution, full params are passed by the caller, verified against the stored hash, and used to build a `SponsoredCCTPQuote` for `SponsoredCCTPSrcPeriphery.depositForBurn()`.
-- `CounterfactualDepositFactory` — Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and routes execution calls.
+- `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones. Takes `bytes memory encodedParams` — it never reads struct fields, only hashes them.
+- `CounterfactualDepositCCTP` — Executor for deposits via SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
+- `CounterfactualDepositOFT` — Executor for deposits via SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
+- `CounterfactualDepositSpokePool` — Executor for deposits via Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
 
 ```
-                          ┌─────────────────────────────────────────┐
-                          │       CounterfactualDepositFactory      │
-                          │  - cloneDeterministicWithImmutableArgs  │
-                          │  - predictDeterministicAddress          │
-                          │  - admin management                     │
-                          └──────────┬──────────────────────────────┘
-                                     │ deploys
-                    ┌────────────────┼────────────────┐
-                    ▼                ▼                 ▼
-            ┌──────────────┐ ┌──────────────┐  ┌──────────────┐
-            │  Clone 0x1…  │ │  Clone 0x2…  │  │  Clone 0x3…  │
-            │  (45 bytes   │ │  (45 bytes   │  │  (45 bytes   │
-            │   + args)    │ │   + args)    │  │   + args)    │
-            └──────┬───────┘ └──────┬───────┘  └──────┬───────┘
-                   │ delegatecall   │                  │
-                   └────────────────┼──────────────────┘
-                                    ▼
-                    ┌───────────────────────────────┐
-                    │ CounterfactualDepositExecutor  │
-                    │  - executeDeposit()            │
-                    │  - adminWithdraw()             │
-                    │  - userWithdraw()              │
-                    │  - immutable: factory,         │
-                    │    srcPeriphery, sourceDomain   │
-                    └───────────────┬───────────────┘
-                                    │ depositForBurn()
-                                    ▼
-                    ┌───────────────────────────────┐
-                    │  SponsoredCCTPSrcPeriphery     │
-                    │  - signature verification      │
-                    │  - nonce tracking               │
-                    │  - deadline enforcement          │
-                    │  → CCTP depositForBurnWithHook  │
-                    └───────────────────────────────┘
+                    CounterfactualDepositFactory (generic)
+                    - deploy(executor, encodedParams, salt)
+                    - predictDepositAddress(executor, encodedParams, salt)
+                    - deployAndExecute(executor, encodedParams, salt, executeCalldata)
+                              |
+             +----------------+----------------+
+             |                |                |
+             v                v                v
+     CCTP Deposit       OFT Deposit      SpokePool Deposit
+     -> SponsoredCCTP   -> SponsoredOFT  -> SpokePool.deposit()
+       SrcPeriphery       SrcPeriphery
 ```
 
 When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the executor. Inside that context:
 
 - `address(this)` = the clone's address (holds token balances)
-- Code executing = the executor's bytecode (has `factory`, `srcPeriphery`, `sourceDomain` immutables)
+- Code executing = the executor's bytecode (has executor-specific immutables like `srcPeriphery`, `spokePool`, etc.)
 - Route params hash = read from the clone's bytecode via `Clones.fetchCloneArgs(address(this))`, verified against caller-supplied params
 
-## SponsoredCCTPQuote Field Table
+## Shared Interface
 
-Each field in the `SponsoredCCTPQuote` is either a route param (committed via hash at address-generation time, passed at execution time), an executor immutable (same for all clones on a chain), computed at execution time, or passed by the caller at execution time:
+All executors and the factory implement `ICounterfactualDeposit`, which defines shared errors and events:
 
-| Field                  | Source                    | Explanation                                                                        |
-| ---------------------- | ------------------------- | ---------------------------------------------------------------------------------- |
-| `sourceDomain`         | **Executor immutable**    | Same for all deposits on this chain (e.g. 0 for Ethereum)                          |
-| `destinationDomain`    | **Route param**           | Route: which destination chain (e.g. 3 for Hyperliquid)                            |
-| `mintRecipient`        | **Route param**           | Route: DstPeriphery handler contract on destination chain                          |
-| `amount`               | **Computed on execution** | Gross amount minus `executionFee` — net amount bridged via CCTP                    |
-| `burnToken`            | **Route param**           | Route: which token to burn (e.g. USDC address as bytes32)                          |
-| `destinationCaller`    | **Route param**           | Route: permissioned bot that calls `receiveMessage` on destination                 |
-| `maxFee`               | **Computed on execution** | `depositAmount * cctpMaxFeeBps / 10000` — computed from the net deposit amount     |
-| `minFinalityThreshold` | **Route param**           | Route: minimum finality before CCTP attestation is allowed                         |
-| `nonce`                | **Passed on execution**   | Unique per execution — SrcPeriphery enforces uniqueness                            |
-| `deadline`             | **Passed on execution**   | Expiration per execution attempt — SrcPeriphery enforces                           |
-| `maxBpsToSponsor`      | **Route param**           | Route: max basis points of amount the relayer can sponsor                          |
-| `maxUserSlippageBps`   | **Route param**           | Route: slippage tolerance for fees on destination                                  |
-| `finalRecipient`       | **Route param**           | Route: ultimate receiver of tokens on destination chain                            |
-| `finalToken`           | **Route param**           | Route: token recipient gets on destination (may differ from burnToken if swapping) |
-| `destinationDex`       | **Route param**           | Route: which DEX on HyperCore for swaps                                            |
-| `accountCreationMode`  | **Route param**           | Route: Standard (0) or FromUserFunds (1)                                           |
-| `executionMode`        | **Route param**           | Route: DirectToCore (0), ArbitraryActionsToCore (1), or ArbitraryActionsToEVM (2)  |
-| `actionData`           | **Route param**           | Route: encoded action data for arbitrary execution modes (empty for DirectToCore)  |
+| Error                 | Used By        | Description                                   |
+| --------------------- | -------------- | --------------------------------------------- |
+| `Unauthorized`        | All executors  | Caller is not the authorized withdraw address |
+| `InsufficientBalance` | All executors  | Token balance < requested amount              |
+| `InvalidParamsHash`   | All executors  | Provided params don't match stored hash       |
+| `ExcessiveRelayerFee` | SpokePool only | Relayer fee exceeds `maxRelayerFee`           |
+| `InvalidSignature`    | SpokePool only | EIP-712 signature doesn't match signer        |
 
-Additionally, these route params are not part of the SponsoredCCTPQuote:
+| Event                   | Description                                                   |
+| ----------------------- | ------------------------------------------------------------- |
+| `DepositAddressCreated` | Emitted by factory on clone deployment (executor, paramsHash) |
+| `DepositExecuted`       | Emitted by executor on successful deposit (amount, nonce)     |
+| `AdminWithdraw`         | Admin withdrew tokens from a clone                            |
+| `UserWithdraw`          | User withdrew tokens from a clone                             |
 
-| Field                   | Source                  | Explanation                                                                        |
-| ----------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
-| `cctpMaxFeeBps`         | **Route param**         | User's CCTP fee limit in basis points — used to compute `maxFee` at execution time |
-| `executionFee`          | **Route param**         | Fixed fee (in burnToken units) paid to the relayer who calls `executeDeposit`      |
-| `userWithdrawAddress`   | **Route param**         | Address authorized to call `userWithdraw()` — user's escape hatch                  |
-| `adminWithdrawAddress`  | **Route param**         | Address authorized to call `adminWithdraw()` — per-clone admin for recovery        |
-| `executionFeeRecipient` | **Passed on execution** | Relayer-specified address that receives the `executionFee`                         |
+## CCTP Executor (`CounterfactualDepositCCTP`)
+
+| Variable                | Source                | Description                                                             |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------- |
+| `srcPeriphery`          | Constructor immutable | SponsoredCCTPSrcPeriphery contract address                              |
+| `sourceDomain`          | Constructor immutable | CCTP source domain ID for this chain                                    |
+| `destinationDomain`     | Route immutable       | CCTP destination domain (e.g. 3 for Hyperliquid)                        |
+| `mintRecipient`         | Route immutable       | DstPeriphery handler contract on destination                            |
+| `burnToken`             | Route immutable       | Token to burn (e.g. USDC address as bytes32)                            |
+| `destinationCaller`     | Route immutable       | Permissioned bot that calls `receiveMessage` on destination             |
+| `cctpMaxFeeBps`         | Route immutable       | Max CCTP fee in bps (computed to `maxFee` at execution time)            |
+| `executionFee`          | Route immutable       | Fixed fee (in burnToken units) paid to relayer                          |
+| `minFinalityThreshold`  | Route immutable       | Minimum finality before CCTP attestation                                |
+| `maxBpsToSponsor`       | Route immutable       | Max bps of amount the relayer can sponsor                               |
+| `maxUserSlippageBps`    | Route immutable       | Slippage tolerance for fees on destination                              |
+| `finalRecipient`        | Route immutable       | Ultimate receiver on destination chain                                  |
+| `finalToken`            | Route immutable       | Token recipient receives on destination                                 |
+| `destinationDex`        | Route immutable       | DEX on HyperCore for swaps                                              |
+| `accountCreationMode`   | Route immutable       | Standard (0) or FromUserFunds (1)                                       |
+| `executionMode`         | Route immutable       | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
+| `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                             |
+| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                            |
+| `actionData`            | Route immutable       | Encoded action data for arbitrary execution modes                       |
+| `amount`                | Argument              | Gross amount of burnToken (includes executionFee)                       |
+| `executionFeeRecipient` | Argument              | Address that receives the execution fee                                 |
+| `nonce`                 | Argument              | Unique nonce for SponsoredCCTP replay protection                        |
+| `cctpDeadline`          | Argument              | Deadline for the SponsoredCCTP quote (validated by SrcPeriphery)        |
+| `signature`             | Argument              | Signature from SponsoredCCTP quote signer                               |
+
+Signature verification, nonce tracking, and `cctpDeadline` enforcement are handled by `SponsoredCCTPSrcPeriphery`.
+
+## OFT Executor (`CounterfactualDepositOFT`)
+
+| Variable                | Source                | Description                                                             |
+| ----------------------- | --------------------- | ----------------------------------------------------------------------- |
+| `oftSrcPeriphery`       | Constructor immutable | SponsoredOFTSrcPeriphery contract address                               |
+| `srcEid`                | Constructor immutable | OFT source endpoint ID for this chain                                   |
+| `dstEid`                | Route immutable       | OFT destination endpoint ID                                             |
+| `destinationHandler`    | Route immutable       | Composer contract on destination (OFT `to` param)                       |
+| `token`                 | Route immutable       | Local token address (the OFT token, as bytes32)                         |
+| `maxOftFeeBps`          | Route immutable       | Max OFT bridge fee in bps                                               |
+| `executionFee`          | Route immutable       | Fixed fee paid to relayer                                               |
+| `lzReceiveGasLimit`     | Route immutable       | Gas limit for `lzReceive` on destination                                |
+| `lzComposeGasLimit`     | Route immutable       | Gas limit for `lzCompose` on destination                                |
+| `maxBpsToSponsor`       | Route immutable       | Max bps of amount the relayer can sponsor                               |
+| `maxUserSlippageBps`    | Route immutable       | Slippage tolerance for swap on destination                              |
+| `finalRecipient`        | Route immutable       | User address on destination                                             |
+| `finalToken`            | Route immutable       | Final token user receives                                               |
+| `destinationDex`        | Route immutable       | Destination DEX on HyperCore                                            |
+| `accountCreationMode`   | Route immutable       | Standard (0) or FromUserFunds (1)                                       |
+| `executionMode`         | Route immutable       | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
+| `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                             |
+| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                            |
+| `actionData`            | Route immutable       | Encoded action data for arbitrary execution modes                       |
+| `amount`                | Argument              | Gross amount of token (includes executionFee)                           |
+| `executionFeeRecipient` | Argument              | Address that receives the execution fee (also LZ refund recipient)      |
+| `nonce`                 | Argument              | Unique nonce for SponsoredOFT replay protection                         |
+| `oftDeadline`           | Argument              | Deadline for the SponsoredOFT quote (validated by SrcPeriphery)         |
+| `signature`             | Argument              | Signature from SponsoredOFT quote signer                                |
+| `msg.value`             | Argument              | Native ETH for LayerZero messaging fees                                 |
+
+`executeDeposit` is `payable` — `msg.value` covers LayerZero native messaging fees, forwarded to `SponsoredOFTSrcPeriphery.deposit{value: msg.value}()`. The relayer pays this and recoups via `executionFee`.
+
+Signature verification, nonce tracking, and `oftDeadline` enforcement are handled by `SponsoredOFTSrcPeriphery`.
+
+## SpokePool Executor (`CounterfactualDepositSpokePool`)
+
+| Variable                | Source                | Description                                                                |
+| ----------------------- | --------------------- | -------------------------------------------------------------------------- |
+| `spokePool`             | Constructor immutable | Across SpokePool contract address                                          |
+| `signer`                | Constructor immutable | Address that authorizes execution parameters via EIP-712                   |
+| `destinationChainId`    | Route immutable       | Across destination chain ID                                                |
+| `inputToken`            | Route immutable       | Token deposited on source (as bytes32)                                     |
+| `outputToken`           | Route immutable       | Token received on destination (as bytes32)                                 |
+| `recipient`             | Route immutable       | Recipient on destination                                                   |
+| `exclusiveRelayer`      | Route immutable       | Optional exclusive relayer (bytes32(0) for none)                           |
+| `exchangeRate`          | Route immutable       | inputToken/outputToken price ratio (1e18 = 1:1)                            |
+| `maxRelayerFee`         | Route immutable       | Max Across relayer fee (absolute, in outputToken units)                    |
+| `executionFee`          | Route immutable       | Fixed fee paid to relayer calling execute                                  |
+| `exclusivityPeriod`     | Route immutable       | Seconds of relayer exclusivity (0 for none)                                |
+| `userWithdrawAddress`   | Route immutable       | Used as `depositor` in SpokePool (refunds go here) + `userWithdraw()` auth |
+| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                               |
+| `message`               | Route immutable       | Arbitrary message forwarded to recipient                                   |
+| `amount`                | Argument (signed)     | Gross amount of inputToken (includes executionFee)                         |
+| `outputAmount`          | Argument (signed)     | Output amount passed to SpokePool                                          |
+| `executionFeeRecipient` | Argument              | Address that receives the execution fee                                    |
+| `quoteTimestamp`        | Argument              | Quote timestamp from Across API (SpokePool validates recency)              |
+| `fillDeadline`          | Argument (signed)     | Timestamp by which the deposit must be filled                              |
+| `signature`             | Argument              | EIP-712 signature from signer over signed arguments                        |
+
+### EIP-712 Signature Verification
+
+Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool executor verifies signatures itself since it calls `SpokePool.deposit()` directly.
+
+- **Domain separator** uses `address(this)` (the clone address) — prevents cross-clone replay
+- **No nonce needed**: token balance is consumed on execution (natural replay protection), and short deadlines bound the replay window for re-funded clones
+- **Typehash**: `ExecuteDeposit(uint256 amount,uint256 outputAmount,uint32 fillDeadline)`
+- **Signer** is an immutable set in the executor constructor, shared across all clones
+
+### Relayer Fee Check
+
+The executor enforces that the relayer fee doesn't exceed `maxRelayerFee`:
+
+```
+expectedOutput = depositAmount * exchangeRate / 1e18
+if expectedOutput > outputAmount && expectedOutput - outputAmount > maxRelayerFee:
+    revert ExcessiveRelayerFee
+```
+
+### Depositor Field
+
+The `depositor` parameter passed to `SpokePool.deposit()` is set to `userWithdrawAddress` (not the clone address). This ensures that SpokePool refunds (e.g. expired deposits) go to the user, not the clone.
 
 ## Key Design Decisions
 
-### 1. Immutable Distribution (Gas Optimization)
+### 1. Generic Factory
 
-**SrcPeriphery and sourceDomain are immutable in the Executor, not the clone.**
+**The factory is bridge-agnostic — it takes `bytes memory encodedParams` and `bytes calldata executeCalldata`.**
 
-Why: These values are identical across all deposit addresses on a chain. Storing them in each clone wastes gas.
+Why: Each bridge type defines its own immutables struct. The factory only hashes the encoded params (for deterministic address generation) and forwards raw calldata to clones. This means adding a new bridge type requires only a new executor contract — no factory changes.
 
-The clone only stores route-specific parameters (destinationDomain, burnToken, finalRecipient, admin, etc.) via a hash of the immutable args. Chain-wide constants live in the executor's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
+`deployAndExecute` is `payable` to support bridges that need `msg.value` (e.g. OFT for LayerZero fees). The factory forwards `msg.value` to the clone via low-level `call`.
 
-### 2. Single Signature Model (No Second Signature Layer)
+### 2. No executeOnExisting
 
-**The executor does NOT verify a separate quote signature — it relies entirely on SponsoredCCTPSrcPeriphery.**
+**Callers call the clone directly for subsequent deposits.**
 
-Why: The SrcPeriphery already validates:
+Why: The factory's `executeOnExisting` was just a pass-through that added gas overhead. Since clones are deployed at known addresses, callers can call `executeDeposit` on the clone directly.
 
-- **Signature** — quote must be signed by the authorized signer
-- **Nonce** — prevents replay attacks
-- **Deadline** — prevents stale quote execution
-- **Source domain** — prevents cross-chain replay
+### 3. Immutable Distribution (Gas Optimization)
 
-Adding a second signature layer in the executor would be redundant and increase gas costs. The executor just builds the `SponsoredCCTPQuote` from its immutable args + execution params and forwards it.
+**Chain-wide constants (srcPeriphery, sourceDomain, spokePool, signer) are immutable in the Executor, not the clone.**
 
-### 3. cctpMaxFeeBps Instead of maxFee
-
-**Users set `cctpMaxFeeBps` (basis points) as a route param, not a raw `maxFee` amount.**
-
-Why: At address-generation time, the deposit amount isn't known. The user commits to a fee percentage (e.g., 100 bps = 1%), and the executor computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time. This gives proportional fee protection regardless of deposit size.
-
-### 3b. Execution Fee for Relayer Incentivization
-
-**Each clone has a fixed `executionFee` (in burnToken units) paid to the relayer who calls `executeDeposit`.**
-
-Why: Relayers incur gas costs to call `executeDeposit` (and potentially `deploy`). The `executionFee` is a fixed amount rather than a percentage because gas costs are independent of the deposit amount. The fee is subtracted from the gross amount before bridging, so the user sends `depositAmount + executionFee` to the clone. The `executionFeeRecipient` is specified at execution time so any relayer can earn the fee.
+Why: These values are identical across all deposit addresses on a chain. Storing them in each clone wastes gas. The clone only stores route-specific parameters via a hash of the immutable args. Chain-wide constants live in the executor's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
 
 ### 4. OZ Clones with Hash-Only Immutable Args
 
-**Each clone stores only a keccak256 hash (32 bytes) of the route parameters, not the full params (~595 bytes).**
+**Each clone stores only a keccak256 hash (32 bytes) of the route parameters, not the full params.**
 
 [EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode.
 
-**How it's used here:** The factory computes `keccak256(abi.encode(params))` and stores that 32-byte hash as the clone's sole immutable arg. At execution time, the caller passes the full `CounterfactualImmutables` struct; the executor hashes it and verifies against the stored hash before proceeding.
+The factory computes `keccak256(encodedParams)` and stores that 32-byte hash as the clone's sole immutable arg. At execution time, the caller passes the full params struct; the executor hashes it and verifies against the stored hash before proceeding.
 
-**Why a hash instead of the full params?**
+Storing full params as immutable args would cost ~595+ bytes of deployed code. With a hash, the clone stores only 77 bytes total (45-byte EIP-1167 proxy + 32-byte hash). This saves ~103k gas on deployment. The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash), but since each deposit address is deployed once and potentially reused many times, the net savings are significant.
 
-Storing full params as immutable args costs ~595 bytes of deployed code. With a hash, the clone stores only 77 bytes total (45-byte EIP-1167 proxy + 32-byte hash). This saves ~103k gas on deployment (~200 gas per byte of `CODECOPY`). The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash), but since each deposit address is deployed once and potentially used many times, the net savings are significant — especially at scale with thousands of deposit addresses.
+### 5. CCTP/OFT: Single Signature Model
 
-**Why not normal storage?** Storage-based alternatives are significantly more expensive:
+**CCTP and OFT executors do NOT verify a separate quote signature — they rely entirely on SrcPeriphery.**
 
-- **SSTORE (cold)** costs 22,100 gas per slot on first write. Route params span many slots, so deploying a storage-based proxy would cost ~300k+ gas just for the writes — compared to the clone's total deployment cost of ~50k gas.
-- **SLOAD (cold)** costs 2,100 gas per slot on first read within a transaction. Reading many slots is expensive. `EXTCODECOPY` reads the entire args blob in a single operation for ~2,600 gas (base) + minimal per-word cost.
+Why: The SrcPeriphery already validates signature, nonce, deadline, and source domain. Adding a second signature layer in the executor would be redundant and increase gas costs.
 
-### 5. Address Reusability
+### 6. SpokePool: EIP-712 Signature Model
+
+**The SpokePool executor verifies EIP-712 signatures itself.**
+
+Why: Unlike CCTP/OFT, SpokePool.deposit() does not verify quotes. The executor needs its own signature scheme to prevent unauthorized execution with bad `outputAmount` or `fillDeadline` values. The domain separator includes the clone address to prevent cross-clone replay attacks.
+
+### 7. cctpMaxFeeBps / maxOftFeeBps / maxRelayerFee
+
+**Users set fee limits as route params committed at address-generation time.**
+
+- CCTP: `cctpMaxFeeBps` (basis points) — executor computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time
+- OFT: `maxOftFeeBps` (basis points) — passed through to SponsoredOFTSrcPeriphery
+- SpokePool: `maxRelayerFee` (absolute amount) + `exchangeRate` — executor checks `expectedOutput - outputAmount <= maxRelayerFee`
+
+### 8. Execution Fee for Relayer Incentivization
+
+**Each clone has a fixed `executionFee` (in token units) paid to the relayer who calls `executeDeposit`.**
+
+Why: Relayers incur gas costs to call `executeDeposit` (and potentially `deploy`). The fee is fixed rather than percentage-based because gas costs are independent of the deposit amount. The `executionFeeRecipient` is specified at execution time so any relayer can earn the fee.
+
+### 9. Address Reusability
 
 **The same clone proxy can receive and execute multiple deposits over time.**
 
 Why: Enables persistent "deposit addresses" that users can save, share, and reuse — like a traditional address.
 
-The factory's `deployAndExecute()` uses try/catch to handle already-deployed clones gracefully, while `executeOnExisting()` skips deployment entirely for subsequent deposits.
-
-### 6. userWithdrawAddress and userWithdraw
-
-**Each clone's route params include a `userWithdrawAddress`, and `userWithdraw()` lets only that address pull tokens out.**
-
-Why: Provides an escape hatch for users who change their mind before execution. If a user sends tokens to their deposit address but doesn't want to proceed, they can call `userWithdraw()` with their route params to recover their funds without admin intervention. The route params are verified against the stored hash before checking the caller against `userWithdrawAddress`.
+The factory's `deployAndExecute()` uses try/catch to handle already-deployed clones gracefully.
 
 ## Usage Pattern
 
 **Initial setup:**
 
 ```solidity
-address predictedAddress = factory.predictDepositAddress(executor, routeParams, salt);
-// Share predictedAddress with user — tokens sent here before deployment are safe
+bytes memory encodedParams = abi.encode(params);
+address predictedAddress = factory.predictDepositAddress(executor, encodedParams, salt);
+// Share predictedAddress with user -- tokens sent here before deployment are safe
 ```
 
 **First deposit (deploys clone + executes):**
 
 ```solidity
-factory.deployAndExecute(executor, routeParams, salt, amount, nonce, deadline, signature);
+// CCTP
+bytes memory calldata_ = abi.encodeCall(
+    CounterfactualDepositCCTP.executeDeposit,
+    (params, amount, relayer, nonce, cctpDeadline, signature)
+);
+factory.deployAndExecute(executor, encodedParams, salt, calldata_);
+
+// OFT (with LZ fee)
+bytes memory calldata_ = abi.encodeCall(
+    CounterfactualDepositOFT.executeDeposit,
+    (params, amount, relayer, nonce, oftDeadline, signature)
+);
+factory.deployAndExecute{value: lzFee}(executor, encodedParams, salt, calldata_);
+
+// SpokePool
+bytes memory calldata_ = abi.encodeCall(
+    CounterfactualDepositSpokePool.executeDeposit,
+    (params, amount, outputAmount, relayer, quoteTimestamp, fillDeadline, signature)
+);
+factory.deployAndExecute(executor, encodedParams, salt, calldata_);
 ```
 
-**Subsequent deposits (clone already deployed):**
+**Subsequent deposits (clone already deployed, call directly):**
 
 ```solidity
-factory.executeOnExisting(depositAddress, routeParams, amount, nonce, deadline, signature);
+CounterfactualDepositCCTP(depositAddress).executeDeposit(params, amount, relayer, nonce, cctpDeadline, sig);
+CounterfactualDepositOFT(depositAddress).executeDeposit{value: lzFee}(params, amount, relayer, nonce, oftDeadline, sig);
+CounterfactualDepositSpokePool(depositAddress).executeDeposit(params, amount, outputAmount, relayer, quoteTimestamp, fillDeadline, sig);
 ```
 
 ## Security Model
 
-- **SponsoredCCTP Signer**: Trusted address that signs CCTP quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`.
-- **Admin**: Per-clone admin (set in route params at address-generation time). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController for additional trust minimization.
+- **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.
+- **SpokePool Signer**: Signs `(amount, outputAmount, fillDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxRelayerFee`.
+- **Admin**: Per-clone admin (set in route params). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController.
 - **userWithdrawAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
-- **CCTP Fee Protection**: `cctpMaxFeeBps` (route param) bounds the `maxFee` passed to SponsoredCCTPSrcPeriphery proportionally.
-- **Execution Fee**: Fixed `executionFee` (route param, in burnToken units) paid to relayer. User commits to this fee at address-generation time.
-- **Nonce Replay Protection**: Handled by SponsoredCCTPSrcPeriphery — each nonce can only be used once.
-- **Deadline Enforcement**: Handled by SponsoredCCTPSrcPeriphery — expired quotes are rejected.
+- **Execution Fee**: Fixed `executionFee` (route param, in token units) paid to relayer. User commits to this fee at address-generation time.
+- **Nonce/Deadline**: Protocol-specific deadlines (`cctpDeadline`, `oftDeadline`) and nonces are validated by SrcPeriphery. For SpokePool, token balance consumption provides natural replay protection.
+- **Cross-clone replay (SpokePool)**: Prevented by including the clone address in the EIP-712 domain separator.
 
 ### Trust-Minimized Admin via TimelockController
 
-The `adminWithdrawAddress` field can be set to any address — an EOA, a multisig, or an OpenZeppelin `TimelockController`. Using a `TimelockController` as the admin adds a time delay to all `adminWithdraw` calls, giving users a window to react:
-
-1. A proposer schedules the `adminWithdraw` call on the TimelockController
-2. The configured delay elapses (e.g., 24-48 hours)
-3. During this window, the user can see the pending operation on-chain and call `userWithdraw` to pull their funds first
-4. After the delay, an executor can execute the scheduled withdrawal
-
-This requires no contract changes — the TimelockController address is simply set as the `adminWithdrawAddress` in the clone's `CounterfactualImmutables` at address-generation time. Since it is committed in the params hash, users can verify the admin is a TimelockController with an adequate delay before depositing.
+The `adminWithdrawAddress` field can be set to an OpenZeppelin `TimelockController`. This adds a time delay to all `adminWithdraw` calls, giving users a window to call `userWithdraw` first. No contract changes needed — the TimelockController address is simply set as `adminWithdrawAddress` in the route params at address-generation time.
