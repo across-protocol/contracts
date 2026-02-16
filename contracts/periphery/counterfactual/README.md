@@ -101,11 +101,12 @@ Signature verification, nonce tracking, and `cctpDeadline` enforcement are handl
 | `destinationDex`        | Route immutable       | Destination DEX on HyperCore                                            |
 | `accountCreationMode`   | Route immutable       | Standard (0) or FromUserFunds (1)                                       |
 | `executionMode`         | Route immutable       | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
+| `refundRecipient`       | Route immutable       | LZ refund recipient for excess native messaging fees                    |
 | `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                             |
 | `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                            |
 | `actionData`            | Route immutable       | Encoded action data for arbitrary execution modes                       |
 | `amount`                | Argument              | Gross amount of token (includes executionFee)                           |
-| `executionFeeRecipient` | Argument              | Address that receives the execution fee (also LZ refund recipient)      |
+| `executionFeeRecipient` | Argument              | Address that receives the execution fee                                 |
 | `nonce`                 | Argument              | Unique nonce for SponsoredOFT replay protection                         |
 | `oftDeadline`           | Argument              | Deadline for the SponsoredOFT quote (validated by SrcPeriphery)         |
 | `signature`             | Argument              | Signature from SponsoredOFT quote signer                                |

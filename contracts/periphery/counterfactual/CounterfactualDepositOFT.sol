@@ -32,6 +32,7 @@ struct OFTImmutables {
     uint32 destinationDex;
     uint8 accountCreationMode;
     uint8 executionMode;
+    address refundRecipient;
     bytes32 userWithdrawAddress;
     bytes32 adminWithdrawAddress;
     bytes actionData;
@@ -62,7 +63,7 @@ contract CounterfactualDepositOFT is ICounterfactualDeposit {
      * @notice Executes a deposit via SponsoredOFT
      * @param params Route parameters (verified against stored hash)
      * @param amount Gross amount of token (includes executionFee)
-     * @param executionFeeRecipient Address that receives the execution fee (also used as LZ refund recipient)
+     * @param executionFeeRecipient Address that receives the execution fee
      * @param nonce Unique nonce for SponsoredOFT replay protection
      * @param oftDeadline Deadline for the SponsoredOFT quote (validated by SrcPeriphery)
      * @param signature Signature from SponsoredOFT quote signer
@@ -107,7 +108,7 @@ contract CounterfactualDepositOFT is ICounterfactualDeposit {
                 executionMode: params.executionMode,
                 actionData: params.actionData
             }),
-            unsignedParams: UnsignedQuoteParams({ refundRecipient: executionFeeRecipient })
+            unsignedParams: UnsignedQuoteParams({ refundRecipient: params.refundRecipient })
         });
 
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);

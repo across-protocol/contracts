@@ -97,6 +97,7 @@ contract CounterfactualOFTDepositTest is Test {
             destinationDex: 0,
             accountCreationMode: 0,
             executionMode: 0,
+            refundRecipient: makeAddr("refundRecipient"),
             userWithdrawAddress: userWithdrawAddr,
             adminWithdrawAddress: bytes32(uint256(uint160(admin))),
             actionData: ""
@@ -203,7 +204,11 @@ contract CounterfactualOFTDepositTest is Test {
             defaultParams.destinationHandler,
             "destinationHandler should match"
         );
-        assertEq(srcPeriphery.lastRefundRecipient(), relayer, "refundRecipient should be executionFeeRecipient");
+        assertEq(
+            srcPeriphery.lastRefundRecipient(),
+            defaultParams.refundRecipient,
+            "refundRecipient should match route immutable"
+        );
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "amountLD should be net of execution fee");
     }
 
