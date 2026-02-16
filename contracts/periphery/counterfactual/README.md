@@ -4,19 +4,19 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 
 ## Architecture
 
-**Generic factory + bridge-specific executors using OpenZeppelin EIP-1167 Clones with Immutable Args:**
+**Generic factory + bridge-specific implementations using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
 - `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones. Takes `bytes memory encodedParams` — it never reads struct fields, only hashes them.
-- `CounterfactualDepositBase` — Abstract base contract inherited by all executors. Provides shared logic: params hash verification (`_verifyParamsHash`), withdraw helpers (`_adminWithdraw`, `_userWithdraw`), and constants (`BPS_SCALAR`, `PRECISION_SCALAR`).
-- `CounterfactualDepositCCTP` — Executor for deposits via SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
-- `CounterfactualDepositOFT` — Executor for deposits via SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
-- `CounterfactualDepositSpokePool` — Executor for deposits via Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
+- `CounterfactualDepositBase` — Abstract base contract inherited by all implementations. Provides shared logic: params hash verification (`_verifyParamsHash`), withdraw helpers (`_adminWithdraw`, `_userWithdraw`), and constants (`BPS_SCALAR`, `PRECISION_SCALAR`).
+- `CounterfactualDepositCCTP` — Implementation for deposits via SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
+- `CounterfactualDepositOFT` — Implementation for deposits via SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
+- `CounterfactualDepositSpokePool` — Implementation for deposits via Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
 
 ```
                     CounterfactualDepositFactory (generic)
-                    - deploy(executor, encodedParams, salt)
-                    - predictDepositAddress(executor, encodedParams, salt)
-                    - deployAndExecute(executor, encodedParams, salt, executeCalldata)
+                    - deploy(implementation, encodedParams, salt)
+                    - predictDepositAddress(implementation, encodedParams, salt)
+                    - deployAndExecute(implementation, encodedParams, salt, executeCalldata)
                               |
              +----------------+----------------+
              |                |                |
@@ -26,10 +26,10 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
        SrcPeriphery       SrcPeriphery
 ```
 
-When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the executor. Inside that context:
+When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the implementation. Inside that context:
 
 - `address(this)` = the clone's address (holds token balances)
-- Code executing = the executor's bytecode (has executor-specific immutables like `srcPeriphery`, `spokePool`, etc.)
+- Code executing = the implementation's bytecode (has implementation-specific immutables like `srcPeriphery`, `spokePool`, etc.)
 - Route params hash = read from the clone's bytecode via `Clones.fetchCloneArgs(address(this))`, verified against caller-supplied params
 
 ## Shared Interface
@@ -44,12 +44,12 @@ All executors and the factory implement `ICounterfactualDeposit`, which defines 
 | `MaxFee`              | SpokePool only | Relayer fee exceeds `maxRelayerFee`           |
 | `InvalidSignature`    | SpokePool only | EIP-712 signature doesn't match signer        |
 
-| Event                   | Description                                                   |
-| ----------------------- | ------------------------------------------------------------- |
-| `DepositAddressCreated` | Emitted by factory on clone deployment (executor, paramsHash) |
-| `DepositExecuted`       | Emitted by executor on successful deposit (amount, nonce)     |
-| `AdminWithdraw`         | Admin withdrew tokens from a clone                            |
-| `UserWithdraw`          | User withdrew tokens from a clone                             |
+| Event                   | Description                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| `DepositAddressCreated` | Emitted by factory on clone deployment (implementation, paramsHash) |
+| `DepositExecuted`       | Emitted by implementation on successful deposit (amount, nonce)     |
+| `AdminWithdraw`         | Admin withdrew tokens from a clone                                  |
+| `UserWithdraw`          | User withdrew tokens from a clone                                   |
 
 ## CCTP Executor (`CounterfactualDepositCCTP`)
 
@@ -144,16 +144,16 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 
 ### EIP-712 Signature Verification
 
-Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool executor verifies signatures itself since it calls `SpokePool.deposit()` directly.
+Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool implementation verifies signatures itself since it calls `SpokePool.deposit()` directly.
 
 - **Domain separator** uses OpenZeppelin's `EIP712` base contract with `address(this)` (the clone address) — prevents cross-clone replay
 - **No nonce needed**: token balance is consumed on execution (natural replay protection), and short deadlines bound the replay window for re-funded clones
 - **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,uint32 fillDeadline)`
-- **Signer** is an immutable set in the executor constructor, shared across all clones
+- **Signer** is an immutable set in the implementation constructor, shared across all clones
 
 ### Fee Check
 
-The executor enforces that the total fee (relayer + execution) doesn't exceed `maxFeeBps`:
+The implementation enforces that the total fee (relayer + execution) doesn't exceed `maxFeeBps`:
 
 ```
 outputInInputToken = outputAmount * price / 1e18
@@ -175,7 +175,7 @@ The `depositor` parameter passed to `SpokePool.deposit()` is `address(this)` (th
 
 **The factory is bridge-agnostic — it takes `bytes memory encodedParams` and `bytes calldata executeCalldata`.**
 
-Why: Each bridge type defines its own immutables struct. The factory only hashes the encoded params (for deterministic address generation) and forwards raw calldata to clones. This means adding a new bridge type requires only a new executor contract — no factory changes.
+Why: Each bridge type defines its own immutables struct. The factory only hashes the encoded params (for deterministic address generation) and forwards raw calldata to clones. This means adding a new bridge type requires only a new implementation contract — no factory changes.
 
 `deployAndExecute` is `payable` to support bridges that need `msg.value` (e.g. OFT for LayerZero fees). The factory forwards `msg.value` to the clone via low-level `call`.
 
@@ -189,7 +189,7 @@ Why: The factory's `executeOnExisting` was just a pass-through that added gas ov
 
 **Chain-wide constants (srcPeriphery, sourceDomain, spokePool, signer) are immutable in the Executor, not the clone.**
 
-Why: These values are identical across all deposit addresses on a chain. Storing them in each clone wastes gas. The clone only stores route-specific parameters via a hash of the immutable args. Chain-wide constants live in the executor's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
+Why: These values are identical across all deposit addresses on a chain. Storing them in each clone wastes gas. The clone only stores route-specific parameters via a hash of the immutable args. Chain-wide constants live in the implementation's bytecode and are accessible directly since EIP-1167 proxies use delegatecall.
 
 ### 4. OZ Clones with Hash-Only Immutable Args
 
@@ -197,29 +197,25 @@ Why: These values are identical across all deposit addresses on a chain. Storing
 
 [EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode.
 
-The factory computes `keccak256(encodedParams)` and stores that 32-byte hash as the clone's sole immutable arg. At execution time, the caller passes the full params struct; the executor hashes it and verifies against the stored hash before proceeding.
+The factory computes `keccak256(encodedParams)` and stores that 32-byte hash as the clone's sole immutable arg. At execution time, the caller passes the full params struct; the implementation hashes it and verifies against the stored hash before proceeding.
 
 Storing full params as immutable args would cost ~595+ bytes of deployed code. With a hash, the clone stores only 77 bytes total (45-byte EIP-1167 proxy + 32-byte hash). This saves ~103k gas on deployment. The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash), but since each deposit address is deployed once and potentially reused many times, the net savings are significant.
 
-### 5. CCTP/OFT: Single Signature Model
+### 5. Signature Verification: SpokePool vs CCTP/OFT
 
-**CCTP and OFT executors do NOT verify a separate quote signature — they rely entirely on SrcPeriphery.**
+**CCTP and OFT implementations do NOT verify signatures — the SpokePool implementation does.**
 
-Why: The SrcPeriphery already validates signature, nonce, deadline, and source domain. Adding a second signature layer in the executor would be redundant and increase gas costs.
+Why: CCTP and OFT implementations forward deposits to a `SrcPeriphery` contract, which already validates the quote signature, nonce, and deadline before bridging. The implementation is just a pass-through, so adding its own signature check would be redundant.
 
-### 6. SpokePool: EIP-712 Signature Model
-
-**The SpokePool executor verifies EIP-712 signatures itself.**
-
-Why: Unlike CCTP/OFT, SpokePool.deposit() does not verify quotes. The executor needs its own signature scheme to prevent unauthorized execution with bad `outputAmount` or `fillDeadline` values. The domain separator includes the clone address to prevent cross-clone replay attacks.
+The SpokePool implementation calls `SpokePool.deposit()` directly, and `deposit()` does not validate quotes — it accepts whatever parameters it receives. Without a signature check, anyone could call `executeDeposit` with an inflated `outputAmount` (causing the deposit to never fill) or a manipulated `fillDeadline`. The implementation's EIP-712 signature over `(inputAmount, outputAmount, fillDeadline)` ensures only signer-approved values are used. The domain separator includes the clone address to prevent cross-clone replay.
 
 ### 7. cctpMaxFeeBps / maxOftFeeBps / maxRelayerFee
 
 **Users set fee limits as route params committed at address-generation time.**
 
-- CCTP: `cctpMaxFeeBps` (basis points) — executor computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time
+- CCTP: `cctpMaxFeeBps` (basis points) — implementation computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time
 - OFT: `maxOftFeeBps` (basis points) — passed through to SponsoredOFTSrcPeriphery
-- SpokePool: `maxFeeBps` (basis points) + `price` — executor checks `(relayerFee + executionFee) * 10000 / inputAmount <= maxFeeBps`
+- SpokePool: `maxFeeBps` (basis points) + `price` — implementation checks `(relayerFee + executionFee) * 10000 / inputAmount <= maxFeeBps`
 
 ### 8. Execution Fee for Relayer Incentivization
 
@@ -241,7 +237,7 @@ The factory's `deployAndExecute()` uses try/catch to handle already-deployed clo
 
 ```solidity
 bytes memory encodedParams = abi.encode(params);
-address predictedAddress = factory.predictDepositAddress(executor, encodedParams, salt);
+address predictedAddress = factory.predictDepositAddress(implementation, encodedParams, salt);
 // Share predictedAddress with user -- tokens sent here before deployment are safe
 ```
 
@@ -253,21 +249,21 @@ bytes memory calldata_ = abi.encodeCall(
     CounterfactualDepositCCTP.executeDeposit,
     (params, amount, relayer, nonce, cctpDeadline, signature)
 );
-factory.deployAndExecute(executor, encodedParams, salt, calldata_);
+factory.deployAndExecute(implementation, encodedParams, salt, calldata_);
 
 // OFT (with LZ fee)
 bytes memory calldata_ = abi.encodeCall(
     CounterfactualDepositOFT.executeDeposit,
     (params, amount, relayer, nonce, oftDeadline, signature)
 );
-factory.deployAndExecute{value: lzFee}(executor, encodedParams, salt, calldata_);
+factory.deployAndExecute{value: lzFee}(implementation, encodedParams, salt, calldata_);
 
 // SpokePool
 bytes memory calldata_ = abi.encodeCall(
     CounterfactualDepositSpokePool.executeDeposit,
     (params, inputAmount, outputAmount, relayer, quoteTimestamp, fillDeadline, signature)
 );
-factory.deployAndExecute(executor, encodedParams, salt, calldata_);
+factory.deployAndExecute(implementation, encodedParams, salt, calldata_);
 ```
 
 **Subsequent deposits (clone already deployed, call directly):**

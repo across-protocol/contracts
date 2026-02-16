@@ -77,15 +77,15 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
     ) external payable {
         _verifyParams(params);
 
-        address tokenAddr = address(uint160(uint256(params.token)));
-        if (IERC20(tokenAddr).balanceOf(address(this)) < amount) revert InsufficientBalance();
+        address inputToken = address(uint160(uint256(params.token)));
+        if (IERC20(inputToken).balanceOf(address(this)) < amount) revert InsufficientBalance();
 
         uint256 depositAmount = amount - params.executionFee;
         if (params.executionFee > 0) {
-            IERC20(tokenAddr).safeTransfer(executionFeeRecipient, params.executionFee);
+            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
         }
 
-        IERC20(tokenAddr).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(inputToken).forceApprove(oftSrcPeriphery, depositAmount);
 
         Quote memory quote = Quote({
             signedParams: SignedQuoteParams({

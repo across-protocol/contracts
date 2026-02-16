@@ -29,7 +29,7 @@ struct SpokePoolImmutables {
 /**
  * @title CounterfactualDepositSpokePool
  * @notice Implementation contract for counterfactual deposits via Across SpokePool, deployed as EIP-1167 clones
- * @dev Unlike CCTP/OFT executors, this executor verifies EIP-712 signatures itself since it calls
+ * @dev Unlike CCTP/OFT implementations, this implementation verifies EIP-712 signatures itself since it calls
  *      SpokePool.deposit() directly. The domain separator uses `address(this)` (the clone address)
  *      to prevent cross-clone replay attacks. No nonce is needed: token balance is consumed on
  *      execution (natural replay protection), and short deadlines bound the replay window.

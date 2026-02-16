@@ -77,15 +77,15 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     ) external {
         _verifyParams(params);
 
-        address burnTokenAddr = address(uint160(uint256(params.burnToken)));
-        if (IERC20(burnTokenAddr).balanceOf(address(this)) < amount) revert InsufficientBalance();
+        address inputToken = address(uint160(uint256(params.burnToken)));
+        if (IERC20(inputToken).balanceOf(address(this)) < amount) revert InsufficientBalance();
 
         uint256 depositAmount = amount - params.executionFee;
         if (params.executionFee > 0) {
-            IERC20(burnTokenAddr).safeTransfer(executionFeeRecipient, params.executionFee);
+            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
         }
 
-        IERC20(burnTokenAddr).forceApprove(srcPeriphery, depositAmount);
+        IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,

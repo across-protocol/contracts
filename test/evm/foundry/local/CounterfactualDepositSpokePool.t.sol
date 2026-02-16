@@ -65,7 +65,7 @@ contract MockSpokePool {
 
 contract CounterfactualSpokePoolDepositTest is Test {
     CounterfactualDepositFactory public factory;
-    CounterfactualDepositSpokePool public executor;
+    CounterfactualDepositSpokePool public implementation;
     MockSpokePool public spokePool;
     MintableERC20 public inputToken;
 
@@ -99,7 +99,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
-        executor = new CounterfactualDepositSpokePool(address(spokePool), signerAddr);
+        implementation = new CounterfactualDepositSpokePool(address(spokePool), signerAddr);
 
         inputToken.mint(user, 1000e6);
 
@@ -142,8 +142,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
     function testPredictDepositAddress() public {
         bytes32 salt = keccak256("test-salt");
 
-        address predicted = factory.predictDepositAddress(address(executor), _encodedParams(), salt);
-        address deployed = factory.deploy(address(executor), _encodedParams(), salt);
+        address predicted = factory.predictDepositAddress(address(implementation), _encodedParams(), salt);
+        address deployed = factory.deploy(address(implementation), _encodedParams(), salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
@@ -156,7 +156,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes memory encoded = _encodedParams();
-        address depositAddress = factory.predictDepositAddress(address(executor), encoded, salt);
+        address depositAddress = factory.predictDepositAddress(address(implementation), encoded, salt);
 
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
@@ -172,7 +172,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(executor), encoded, salt, executeCalldata);
+        address deployed = factory.deployAndExecute(address(implementation), encoded, salt, executeCalldata);
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
@@ -186,7 +186,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
@@ -217,7 +217,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 7200; // 2 hours
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
@@ -248,7 +248,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), encoded, salt);
+        address depositAddress = factory.deploy(address(implementation), encoded, salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
@@ -278,7 +278,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
 
         // Sign with wrong key
         uint256 wrongKey = 0xBEEF;
@@ -312,7 +312,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 93e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
@@ -340,7 +340,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 94e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
@@ -367,7 +367,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
@@ -389,7 +389,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
@@ -406,7 +406,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     function testAdminWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
@@ -416,7 +416,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     function testUserWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
 
         vm.prank(user);
         inputToken.transfer(depositAddress, 100e6);
@@ -433,7 +433,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     function testUserWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
@@ -446,7 +446,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         SpokePoolImmutables memory wrongParams = defaultParams;
@@ -477,8 +477,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address clone1 = factory.deploy(address(executor), encoded, salt1);
-        address clone2 = factory.deploy(address(executor), encoded, salt2);
+        address clone1 = factory.deploy(address(implementation), encoded, salt1);
+        address clone2 = factory.deploy(address(implementation), encoded, salt2);
 
         // Sign for clone1
         bytes memory sig = _signExecuteDeposit(clone1, inputAmount, outputAmount, fillDeadline);
@@ -525,7 +525,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount = 98e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
-        address depositAddress = factory.deploy(address(executor), encoded, salt);
+        address depositAddress = factory.deploy(address(implementation), encoded, salt);
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
 
         vm.prank(user);
