@@ -85,7 +85,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
-    bytes32 constant VERSION_HASH = keccak256("1");
+    bytes32 constant VERSION_HASH = keccak256("v1.0.0");
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -112,7 +112,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             price: 1e18, // 1:1
             maxFeeBps: 600, // 6%
             executionFee: 1e6, // 1 USDC
-            exclusivityPeriod: 0,
+            exclusivityDeadline: 0,
             userWithdrawAddress: userWithdrawAddr,
             adminWithdrawAddress: bytes32(uint256(uint160(admin))),
             message: ""
@@ -180,7 +180,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
     }
 
-    function testDepositorIsUserWithdrawAddress() public {
+    function testDepositorIsCloneAddress() public {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
@@ -205,8 +205,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         assertEq(
             spokePool.lastDepositor(),
-            defaultParams.userWithdrawAddress,
-            "Depositor should be userWithdrawAddress"
+            bytes32(uint256(uint160(depositAddress))),
+            "Depositor should be the clone address"
         );
         assertEq(spokePool.lastRecipient(), defaultParams.recipient, "Recipient should match params");
     }
@@ -240,7 +240,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testFillDeadlineWithExclusivity() public {
         SpokePoolImmutables memory params = defaultParams;
-        params.exclusivityPeriod = 300; // 5 minutes
+        params.exclusivityDeadline = 300; // 5 minutes
         params.exclusiveRelayer = bytes32(uint256(uint160(relayer)));
         bytes memory encoded = abi.encode(params);
         bytes32 salt = keccak256("test-salt-excl");
@@ -267,8 +267,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         assertEq(
             spokePool.lastExclusivityDeadline(),
-            uint32(block.timestamp) + params.exclusivityPeriod,
-            "exclusivityDeadline should be block.timestamp + period"
+            params.exclusivityDeadline,
+            "exclusivityDeadline should be passed through to SpokePool"
         );
     }
 

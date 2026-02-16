@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
@@ -19,7 +20,7 @@ struct SpokePoolImmutables {
     uint256 price;
     uint256 maxFeeBps;
     uint256 executionFee;
-    uint32 exclusivityPeriod;
+    uint32 exclusivityDeadline;
     bytes32 userWithdrawAddress;
     bytes32 adminWithdrawAddress;
     bytes message;
@@ -33,17 +34,11 @@ struct SpokePoolImmutables {
  *      to prevent cross-clone replay attacks. No nonce is needed: token balance is consumed on
  *      execution (natural replay protection), and short deadlines bound the replay window.
  */
-contract CounterfactualDepositSpokePool is CounterfactualDepositBase {
+contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     using SafeERC20 for IERC20;
 
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256("ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,uint32 fillDeadline)");
-
-    bytes32 private constant EIP712_DOMAIN_TYPEHASH =
-        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-
-    bytes32 private constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
-    bytes32 private constant VERSION_HASH = keccak256("1");
 
     /// @notice Across SpokePool contract
     address public immutable spokePool;
@@ -51,7 +46,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase {
     /// @notice Signer that authorizes execution parameters
     address public immutable signer;
 
-    constructor(address _spokePool, address _signer) {
+    constructor(address _spokePool, address _signer) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
         spokePool = _spokePool;
         signer = _signer;
     }
@@ -60,7 +55,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase {
      * @notice Executes a deposit via Across SpokePool
      * @param params Route parameters (verified against stored hash)
      * @param inputAmount Gross amount of inputToken (includes executionFee)
-     * @param outputAmount Output amount signed by signer, passed to SpokePool
+     * @param outputAmount Amount of outputToken user should receive on dst
      * @param executionFeeRecipient Address that receives the execution fee
      * @param quoteTimestamp Quote timestamp from Across API (SpokePool validates recency)
      * @param fillDeadline Timestamp by which the deposit must be filled
@@ -90,14 +85,10 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase {
         uint256 totalFee = relayerFee + params.executionFee;
         if (totalFee * BPS_SCALAR > params.maxFeeBps * inputAmount) revert MaxFee();
 
-        uint32 exclusivityDeadline = params.exclusivityPeriod > 0
-            ? uint32(block.timestamp) + params.exclusivityPeriod
-            : 0;
-
         IERC20(inputTokenAddr).forceApprove(spokePool, depositAmount);
 
         V3SpokePoolInterface(spokePool).deposit(
-            params.userWithdrawAddress, // depositor — SpokePool refunds go to user, not clone
+            bytes32(uint256(uint160(address(this)))),
             params.recipient,
             params.inputToken,
             params.outputToken,
@@ -107,7 +98,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase {
             params.exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
-            exclusivityDeadline,
+            params.exclusivityDeadline,
             params.message
         );
 
@@ -135,15 +126,10 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase {
         bytes calldata signature
     ) internal view {
         bytes32 structHash = keccak256(abi.encode(EXECUTE_DEPOSIT_TYPEHASH, inputAmount, outputAmount, fillDeadline));
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(), structHash));
-        if (ECDSA.recover(digest, signature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
     }
 
     function _verifyParams(SpokePoolImmutables memory params) internal view {
         _verifyParamsHash(keccak256(abi.encode(params)));
-    }
-
-    function _domainSeparator() internal view returns (bytes32) {
-        return keccak256(abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, address(this)));
     }
 }

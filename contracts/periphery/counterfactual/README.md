@@ -119,34 +119,34 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 
 ## SpokePool Executor (`CounterfactualDepositSpokePool`)
 
-| Variable                | Source                | Description                                                                |
-| ----------------------- | --------------------- | -------------------------------------------------------------------------- |
-| `spokePool`             | Constructor immutable | Across SpokePool contract address                                          |
-| `signer`                | Constructor immutable | Address that authorizes execution parameters via EIP-712                   |
-| `destinationChainId`    | Route immutable       | Across destination chain ID                                                |
-| `inputToken`            | Route immutable       | Token deposited on source (as bytes32)                                     |
-| `outputToken`           | Route immutable       | Token received on destination (as bytes32)                                 |
-| `recipient`             | Route immutable       | Recipient on destination                                                   |
-| `exclusiveRelayer`      | Route immutable       | Optional exclusive relayer (bytes32(0) for none)                           |
-| `price`                 | Route immutable       | inputToken per outputToken price (1e18 scaled), used for fee calculation   |
-| `maxFeeBps`             | Route immutable       | Max total fee (relayer + execution) in basis points                        |
-| `executionFee`          | Route immutable       | Fixed fee paid to relayer calling execute                                  |
-| `exclusivityPeriod`     | Route immutable       | Seconds of relayer exclusivity (0 for none)                                |
-| `userWithdrawAddress`   | Route immutable       | Used as `depositor` in SpokePool (refunds go here) + `userWithdraw()` auth |
-| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                               |
-| `message`               | Route immutable       | Arbitrary message forwarded to recipient                                   |
-| `inputAmount`           | Argument (signed)     | Gross amount of inputToken (includes executionFee)                         |
-| `outputAmount`          | Argument (signed)     | Output amount passed to SpokePool                                          |
-| `executionFeeRecipient` | Argument              | Address that receives the execution fee                                    |
-| `quoteTimestamp`        | Argument              | Quote timestamp from Across API (SpokePool validates recency)              |
-| `fillDeadline`          | Argument (signed)     | Timestamp by which the deposit must be filled                              |
-| `signature`             | Argument              | EIP-712 signature from signer over signed arguments                        |
+| Variable                | Source                | Description                                                              |
+| ----------------------- | --------------------- | ------------------------------------------------------------------------ |
+| `spokePool`             | Constructor immutable | Across SpokePool contract address                                        |
+| `signer`                | Constructor immutable | Address that authorizes execution parameters via EIP-712                 |
+| `destinationChainId`    | Route immutable       | Across destination chain ID                                              |
+| `inputToken`            | Route immutable       | Token deposited on source (as bytes32)                                   |
+| `outputToken`           | Route immutable       | Token received on destination (as bytes32)                               |
+| `recipient`             | Route immutable       | Recipient on destination                                                 |
+| `exclusiveRelayer`      | Route immutable       | Optional exclusive relayer (bytes32(0) for none)                         |
+| `price`                 | Route immutable       | inputToken per outputToken price (1e18 scaled), used for fee calculation |
+| `maxFeeBps`             | Route immutable       | Max total fee (relayer + execution) in basis points                      |
+| `executionFee`          | Route immutable       | Fixed fee paid to relayer calling execute                                |
+| `exclusivityDeadline`   | Route immutable       | Seconds of relayer exclusivity (0 for none)                              |
+| `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                              |
+| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                             |
+| `message`               | Route immutable       | Arbitrary message forwarded to recipient                                 |
+| `inputAmount`           | Argument (signed)     | Gross amount of inputToken (includes executionFee)                       |
+| `outputAmount`          | Argument (signed)     | Output amount passed to SpokePool                                        |
+| `executionFeeRecipient` | Argument              | Address that receives the execution fee                                  |
+| `quoteTimestamp`        | Argument              | Quote timestamp from Across API (SpokePool validates recency)            |
+| `fillDeadline`          | Argument (signed)     | Timestamp by which the deposit must be filled                            |
+| `signature`             | Argument              | EIP-712 signature from signer over signed arguments                      |
 
 ### EIP-712 Signature Verification
 
 Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool executor verifies signatures itself since it calls `SpokePool.deposit()` directly.
 
-- **Domain separator** uses `address(this)` (the clone address) — prevents cross-clone replay
+- **Domain separator** uses OpenZeppelin's `EIP712` base contract with `address(this)` (the clone address) — prevents cross-clone replay
 - **No nonce needed**: token balance is consumed on execution (natural replay protection), and short deadlines bound the replay window for re-funded clones
 - **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,uint32 fillDeadline)`
 - **Signer** is an immutable set in the executor constructor, shared across all clones
@@ -163,9 +163,11 @@ if totalFee * 10000 > maxFeeBps * inputAmount:
     revert MaxFee
 ```
 
+**Assumption:** The `price` route immutable is fixed at address-generation time, so this fee check assumes `inputToken` and `outputToken` are not volatile relative to each other (e.g. stablecoin pairs, or the same token on different chains). If the real market price drifts significantly from the committed `price`, the fee check may be too lenient or too strict.
+
 ### Depositor Field
 
-The `depositor` parameter passed to `SpokePool.deposit()` is set to `userWithdrawAddress` (not the clone address). This ensures that SpokePool refunds (e.g. expired deposits) go to the user, not the clone.
+The `depositor` parameter passed to `SpokePool.deposit()` is `address(this)` (the clone address). SpokePool refunds for expired deposits go back to the clone, where they can be re-executed or withdrawn via `userWithdraw`.
 
 ## Key Design Decisions
 
