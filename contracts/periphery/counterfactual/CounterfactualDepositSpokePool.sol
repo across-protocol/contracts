@@ -87,6 +87,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
 
         IERC20(inputTokenAddr).forceApprove(spokePool, depositAmount);
 
+        // Depositor is this clone so expired deposit refunds return here.
         V3SpokePoolInterface(spokePool).deposit(
             bytes32(uint256(uint160(address(this)))),
             params.recipient,
@@ -109,16 +110,32 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         emit DepositExecuted(address(this), depositAmount, bytes32(0));
     }
 
+    /// @notice Allows admin to withdraw any token from this clone.
+    /// @param params Route parameters (verified against stored hash).
+    /// @param token ERC20 token to withdraw.
+    /// @param to Recipient of the withdrawn tokens.
+    /// @param amount Amount to withdraw.
     function adminWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
     }
 
+    /// @notice Allows user to withdraw tokens before execution.
+    /// @param params Route parameters (verified against stored hash).
+    /// @param token ERC20 token to withdraw.
+    /// @param to Recipient of the withdrawn tokens.
+    /// @param amount Amount to withdraw.
     function userWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _userWithdraw(params.userWithdrawAddress, token, to, amount);
     }
 
+    /// @dev Verifies that signer authorized (inputAmount, outputAmount, fillDeadline) via EIP-712.
+    ///      Domain separator includes clone address, preventing cross-clone replay.
+    /// @param inputAmount Gross input amount (signed by signer).
+    /// @param outputAmount Output amount on destination (signed by signer).
+    /// @param fillDeadline Fill deadline timestamp (signed by signer).
+    /// @param signature EIP-712 signature from signer.
     function _verifySignature(
         uint256 inputAmount,
         uint256 outputAmount,
@@ -129,6 +146,8 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
     }
 
+    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
+    /// @param params Route parameters to verify.
     function _verifyParams(SpokePoolImmutables memory params) internal view {
         _verifyParamsHash(keccak256(abi.encode(params)));
     }

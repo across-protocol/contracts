@@ -115,16 +115,28 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         emit DepositExecuted(address(this), depositAmount, nonce);
     }
 
+    /// @notice Allows admin to withdraw any token from this clone.
+    /// @param params Route parameters (verified against stored hash).
+    /// @param token ERC20 token to withdraw.
+    /// @param to Recipient of the withdrawn tokens.
+    /// @param amount Amount to withdraw.
     function adminWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
     }
 
+    /// @notice Allows user to withdraw tokens before execution.
+    /// @param params Route parameters (verified against stored hash).
+    /// @param token ERC20 token to withdraw.
+    /// @param to Recipient of the withdrawn tokens.
+    /// @param amount Amount to withdraw.
     function userWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _userWithdraw(params.userWithdrawAddress, token, to, amount);
     }
 
+    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
+    /// @param params Route parameters to verify.
     function _verifyParams(OFTImmutables memory params) internal view {
         _verifyParamsHash(keccak256(abi.encode(params)));
     }

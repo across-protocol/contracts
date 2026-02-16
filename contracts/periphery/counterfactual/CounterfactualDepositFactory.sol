@@ -66,11 +66,13 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes32 salt,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
+        // Deploy if not already deployed; if clone exists, catch the CREATE2 revert and reuse it.
         try this.deploy(counterfactualDepositImplementation, encodedParams, salt) returns (address addr) {
             depositAddress = addr;
         } catch {
             depositAddress = predictDepositAddress(counterfactualDepositImplementation, encodedParams, salt);
         }
+        // Forward calldata (typically executeDeposit) to the clone, bubbling up any revert.
         (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
         if (!success) {
             assembly {
