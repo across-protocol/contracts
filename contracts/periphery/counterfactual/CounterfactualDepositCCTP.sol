@@ -3,9 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
-import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
 /**
  * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
@@ -45,7 +44,7 @@ struct CCTPImmutables {
  *      On execution, the clone builds a SponsoredCCTPQuote from its immutable route params + caller-supplied
  *      execution params (amount, nonce, cctpDeadline, executeDepositDeadline) and forwards it to SponsoredCCTPSrcPeriphery.
  */
-contract CounterfactualDepositCCTP is ICounterfactualDeposit {
+contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
     /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
@@ -86,7 +85,7 @@ contract CounterfactualDepositCCTP is ICounterfactualDeposit {
             IERC20(burnTokenAddr).safeTransfer(executionFeeRecipient, params.executionFee);
         }
 
-        IERC20(burnTokenAddr).safeIncreaseAllowance(srcPeriphery, depositAmount);
+        IERC20(burnTokenAddr).forceApprove(srcPeriphery, depositAmount);
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
@@ -95,7 +94,7 @@ contract CounterfactualDepositCCTP is ICounterfactualDeposit {
                 amount: depositAmount,
                 burnToken: params.burnToken,
                 destinationCaller: params.destinationCaller,
-                maxFee: (depositAmount * params.cctpMaxFeeBps) / 10000,
+                maxFee: (depositAmount * params.cctpMaxFeeBps) / BPS_SCALAR,
                 minFinalityThreshold: params.minFinalityThreshold,
                 nonce: nonce,
                 deadline: cctpDeadline,
@@ -116,20 +115,15 @@ contract CounterfactualDepositCCTP is ICounterfactualDeposit {
 
     function adminWithdraw(CCTPImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        if (msg.sender != address(uint160(uint256(params.adminWithdrawAddress)))) revert Unauthorized();
-        IERC20(token).safeTransfer(to, amount);
-        emit AdminWithdraw(address(this), token, to, amount);
+        _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
     }
 
     function userWithdraw(CCTPImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        if (msg.sender != address(uint160(uint256(params.userWithdrawAddress)))) revert Unauthorized();
-        IERC20(token).safeTransfer(to, amount);
-        emit UserWithdraw(address(this), token, to, amount);
+        _userWithdraw(params.userWithdrawAddress, token, to, amount);
     }
 
     function _verifyParams(CCTPImmutables memory params) internal view {
-        bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
-        if (keccak256(abi.encode(params)) != storedHash) revert InvalidParamsHash();
+        _verifyParamsHash(keccak256(abi.encode(params)));
     }
 }

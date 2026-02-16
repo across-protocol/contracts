@@ -3,9 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../mintburn/sponsored-oft/Structs.sol";
-import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
@@ -45,7 +44,7 @@ struct OFTImmutables {
  *      Quote from its immutable route params + caller-supplied execution params and forwards it to
  *      SponsoredOFTSrcPeriphery. msg.value covers LayerZero native messaging fees.
  */
-contract CounterfactualDepositOFT is ICounterfactualDeposit {
+contract CounterfactualDepositOFT is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
     /// @notice SponsoredOFTSrcPeriphery contract
@@ -86,7 +85,7 @@ contract CounterfactualDepositOFT is ICounterfactualDeposit {
             IERC20(tokenAddr).safeTransfer(executionFeeRecipient, params.executionFee);
         }
 
-        IERC20(tokenAddr).safeIncreaseAllowance(oftSrcPeriphery, depositAmount);
+        IERC20(tokenAddr).forceApprove(oftSrcPeriphery, depositAmount);
 
         Quote memory quote = Quote({
             signedParams: SignedQuoteParams({
@@ -118,20 +117,15 @@ contract CounterfactualDepositOFT is ICounterfactualDeposit {
 
     function adminWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        if (msg.sender != address(uint160(uint256(params.adminWithdrawAddress)))) revert Unauthorized();
-        IERC20(token).safeTransfer(to, amount);
-        emit AdminWithdraw(address(this), token, to, amount);
+        _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
     }
 
     function userWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        if (msg.sender != address(uint160(uint256(params.userWithdrawAddress)))) revert Unauthorized();
-        IERC20(token).safeTransfer(to, amount);
-        emit UserWithdraw(address(this), token, to, amount);
+        _userWithdraw(params.userWithdrawAddress, token, to, amount);
     }
 
     function _verifyParams(OFTImmutables memory params) internal view {
-        bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
-        if (keccak256(abi.encode(params)) != storedHash) revert InvalidParamsHash();
+        _verifyParamsHash(keccak256(abi.encode(params)));
     }
 }

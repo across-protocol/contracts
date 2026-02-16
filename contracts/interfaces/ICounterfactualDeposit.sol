@@ -9,7 +9,7 @@ interface ICounterfactualDeposit {
     error Unauthorized();
     error InsufficientBalance();
     error InvalidParamsHash();
-    error ExcessiveRelayerFee();
+    error MaxFee();
     error InvalidSignature();
 
     event DepositExecuted(address indexed depositAddress, uint256 amount, bytes32 nonce);

@@ -7,6 +7,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 **Generic factory + bridge-specific executors using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
 - `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones. Takes `bytes memory encodedParams` — it never reads struct fields, only hashes them.
+- `CounterfactualDepositBase` — Abstract base contract inherited by all executors. Provides shared logic: params hash verification (`_verifyParamsHash`), withdraw helpers (`_adminWithdraw`, `_userWithdraw`), and constants (`BPS_SCALAR`, `PRECISION_SCALAR`).
 - `CounterfactualDepositCCTP` — Executor for deposits via SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
 - `CounterfactualDepositOFT` — Executor for deposits via SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
 - `CounterfactualDepositSpokePool` — Executor for deposits via Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
@@ -40,7 +41,7 @@ All executors and the factory implement `ICounterfactualDeposit`, which defines 
 | `Unauthorized`        | All executors  | Caller is not the authorized withdraw address |
 | `InsufficientBalance` | All executors  | Token balance < requested amount              |
 | `InvalidParamsHash`   | All executors  | Provided params don't match stored hash       |
-| `ExcessiveRelayerFee` | SpokePool only | Relayer fee exceeds `maxRelayerFee`           |
+| `MaxFee`              | SpokePool only | Relayer fee exceeds `maxRelayerFee`           |
 | `InvalidSignature`    | SpokePool only | EIP-712 signature doesn't match signer        |
 
 | Event                   | Description                                                   |
@@ -127,14 +128,14 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 | `outputToken`           | Route immutable       | Token received on destination (as bytes32)                                 |
 | `recipient`             | Route immutable       | Recipient on destination                                                   |
 | `exclusiveRelayer`      | Route immutable       | Optional exclusive relayer (bytes32(0) for none)                           |
-| `exchangeRate`          | Route immutable       | inputToken/outputToken price ratio (1e18 = 1:1)                            |
-| `maxRelayerFee`         | Route immutable       | Max Across relayer fee (absolute, in outputToken units)                    |
+| `price`                 | Route immutable       | inputToken per outputToken price (1e18 scaled), used for fee calculation   |
+| `maxFeeBps`             | Route immutable       | Max total fee (relayer + execution) in basis points                        |
 | `executionFee`          | Route immutable       | Fixed fee paid to relayer calling execute                                  |
 | `exclusivityPeriod`     | Route immutable       | Seconds of relayer exclusivity (0 for none)                                |
 | `userWithdrawAddress`   | Route immutable       | Used as `depositor` in SpokePool (refunds go here) + `userWithdraw()` auth |
 | `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                               |
 | `message`               | Route immutable       | Arbitrary message forwarded to recipient                                   |
-| `amount`                | Argument (signed)     | Gross amount of inputToken (includes executionFee)                         |
+| `inputAmount`           | Argument (signed)     | Gross amount of inputToken (includes executionFee)                         |
 | `outputAmount`          | Argument (signed)     | Output amount passed to SpokePool                                          |
 | `executionFeeRecipient` | Argument              | Address that receives the execution fee                                    |
 | `quoteTimestamp`        | Argument              | Quote timestamp from Across API (SpokePool validates recency)              |
@@ -147,17 +148,19 @@ Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool execut
 
 - **Domain separator** uses `address(this)` (the clone address) — prevents cross-clone replay
 - **No nonce needed**: token balance is consumed on execution (natural replay protection), and short deadlines bound the replay window for re-funded clones
-- **Typehash**: `ExecuteDeposit(uint256 amount,uint256 outputAmount,uint32 fillDeadline)`
+- **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,uint32 fillDeadline)`
 - **Signer** is an immutable set in the executor constructor, shared across all clones
 
-### Relayer Fee Check
+### Fee Check
 
-The executor enforces that the relayer fee doesn't exceed `maxRelayerFee`:
+The executor enforces that the total fee (relayer + execution) doesn't exceed `maxFeeBps`:
 
 ```
-expectedOutput = depositAmount * exchangeRate / 1e18
-if expectedOutput > outputAmount && expectedOutput - outputAmount > maxRelayerFee:
-    revert ExcessiveRelayerFee
+outputInInputToken = outputAmount * price / 1e18
+relayerFee = depositAmount - outputInInputToken  (0 if negative)
+totalFee = relayerFee + executionFee
+if totalFee * 10000 > maxFeeBps * inputAmount:
+    revert MaxFee
 ```
 
 ### Depositor Field
@@ -214,7 +217,7 @@ Why: Unlike CCTP/OFT, SpokePool.deposit() does not verify quotes. The executor n
 
 - CCTP: `cctpMaxFeeBps` (basis points) — executor computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time
 - OFT: `maxOftFeeBps` (basis points) — passed through to SponsoredOFTSrcPeriphery
-- SpokePool: `maxRelayerFee` (absolute amount) + `exchangeRate` — executor checks `expectedOutput - outputAmount <= maxRelayerFee`
+- SpokePool: `maxFeeBps` (basis points) + `price` — executor checks `(relayerFee + executionFee) * 10000 / inputAmount <= maxFeeBps`
 
 ### 8. Execution Fee for Relayer Incentivization
 
@@ -260,7 +263,7 @@ factory.deployAndExecute{value: lzFee}(executor, encodedParams, salt, calldata_)
 // SpokePool
 bytes memory calldata_ = abi.encodeCall(
     CounterfactualDepositSpokePool.executeDeposit,
-    (params, amount, outputAmount, relayer, quoteTimestamp, fillDeadline, signature)
+    (params, inputAmount, outputAmount, relayer, quoteTimestamp, fillDeadline, signature)
 );
 factory.deployAndExecute(executor, encodedParams, salt, calldata_);
 ```
@@ -270,13 +273,13 @@ factory.deployAndExecute(executor, encodedParams, salt, calldata_);
 ```solidity
 CounterfactualDepositCCTP(depositAddress).executeDeposit(params, amount, relayer, nonce, cctpDeadline, sig);
 CounterfactualDepositOFT(depositAddress).executeDeposit{value: lzFee}(params, amount, relayer, nonce, oftDeadline, sig);
-CounterfactualDepositSpokePool(depositAddress).executeDeposit(params, amount, outputAmount, relayer, quoteTimestamp, fillDeadline, sig);
+CounterfactualDepositSpokePool(depositAddress).executeDeposit(params, inputAmount, outputAmount, relayer, quoteTimestamp, fillDeadline, sig);
 ```
 
 ## Security Model
 
 - **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.
-- **SpokePool Signer**: Signs `(amount, outputAmount, fillDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxRelayerFee`.
+- **SpokePool Signer**: Signs `(inputAmount, outputAmount, fillDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxFeeBps`.
 - **Admin**: Per-clone admin (set in route params). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController.
 - **userWithdrawAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
 - **Execution Fee**: Fixed `executionFee` (route param, in token units) paid to relayer. User commits to this fee at address-generation time.
