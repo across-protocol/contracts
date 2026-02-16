@@ -34,13 +34,13 @@ contract setUpTokens is Script, Config {
             "Checking if sender has DEFAULT_ADMIN_ROLE:",
             dstPeriphery.hasRole(dstPeriphery.DEFAULT_ADMIN_ROLE(), deployer)
         );
-        // dstPeriphery.setCoreTokenInfo(
-        //     baseToken,
-        //     coreIndex,
-        //     canBeUsedForAccountActivation,
-        //     accountActivationFeeCore,
-        //     bridgeSafetyBufferCore
-        // );
+        dstPeriphery.setCoreTokenInfo(
+            baseToken,
+            coreIndex,
+            canBeUsedForAccountActivation,
+            accountActivationFeeCore,
+            bridgeSafetyBufferCore
+        );
 
         console.log("Core token info set for:", baseToken);
         console.log("Core index:", coreIndex);

@@ -5,33 +5,193 @@ import { console } from "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { DeploymentUtils } from "../../utils/DeploymentUtils.sol";
 import { SponsoredCCTPSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPSrcPeriphery.sol";
-import { ArbitraryEVMFlowExecutor } from "../../../contracts/periphery/mintburn/ArbitraryEVMFlowExecutor.sol";
 import { SponsoredCCTPInterface } from "../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { AccountCreationMode } from "../../../contracts/periphery/mintburn/Structs.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
 
-interface IHyperSwapRouter {
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        address recipient;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
-    }
-
-    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
-
-    function multicall(uint256 deadline, bytes[] calldata data) external payable returns (bytes[] memory results);
-}
-
-// Run: forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit --rpc-url <network> -vvvv
+// Usage (pick the entry point matching your use case):
+//
+// 1) DirectToCore (most common):
+//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//      --sig "runDirectToCore(uint256,uint32,address,address,address,uint256)" \
+//      1000000 19 0xMINT_RECIPIENT 0xFINAL_RECIPIENT 0xFINAL_TOKEN 100 \
+//      --rpc-url <network> -vvvv
+//    Args: amount, destinationDomain, mintRecipient, finalRecipient, finalToken, maxFeeBps
+//
+// 2) DirectToCore with custom slippage/sponsor bps:
+//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//      --sig "runDirectToCoreWithFees(uint256,uint32,address,address,address,uint256,uint256,uint256)" \
+//      1000000 19 0xMINT_RECIPIENT 0xFINAL_RECIPIENT 0xFINAL_TOKEN 100 400 400 \
+//      --rpc-url <network> -vvvv
+//    Args: amount, destinationDomain, mintRecipient, finalRecipient, finalToken, maxFeeBps, maxBpsToSponsor, maxUserSlippageBps
+//
+// 3) Arbitrary execution mode (with action data):
+//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//      --sig "runArbitrary(uint256,uint32,address,address,address,uint256,uint8,bytes)" \
+//      1000000 19 0xMINT_RECIPIENT 0xFINAL_RECIPIENT 0xFINAL_TOKEN 100 1 0xACTION_DATA \
+//      --rpc-url <network> -vvvv
+//    Args: amount, destinationDomain, mintRecipient, finalRecipient, finalToken, maxFeeBps, executionMode, actionData
+//
+// 4) Full control over all parameters:
+//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//      --sig "runFull(uint256,uint32,address,address,address,address,uint256,uint32,uint256,uint256,uint256,uint32,uint8,uint8,bytes)" \
+//      ...args --rpc-url <network> -vvvv
+//    Args: amount, destinationDomain, mintRecipient, finalRecipient, finalToken, destinationCaller,
+//          maxFeeBps, minFinalityThreshold, maxBpsToSponsor, maxUserSlippageBps, deadlineOffset,
+//          destinationDex, accountCreationMode, executionMode, actionData
+//
+// Note: maxFeeBps is used to compute maxFee = amount * maxFeeBps / 10000
+//
+// Optional env vars:
+//   APPROVE_AMOUNT - If set, approve USDC to the periphery before deposit
+//   GAS_LIMIT      - Gas limit for depositForBurn (default: 1000000)
 contract CreateSponsoredDeposit is DeploymentUtils {
     using AddressToBytes32 for address;
 
-    function run() external {
+    // DirectToCore with default slippage/sponsor bps (400 each).
+    function runDirectToCore(
+        uint256 amount,
+        uint32 destinationDomain,
+        address mintRecipient,
+        address finalRecipient,
+        address finalToken,
+        uint256 maxFeeBps
+    ) external {
+        _execute(
+            amount,
+            destinationDomain,
+            mintRecipient,
+            mintRecipient, // destinationCaller = mintRecipient
+            finalRecipient,
+            finalToken,
+            (amount * maxFeeBps) / 10000,
+            1000, // minFinalityThreshold
+            400, // maxBpsToSponsor
+            400, // maxUserSlippageBps
+            HyperCoreLib.CORE_SPOT_DEX_ID,
+            uint8(AccountCreationMode.Standard),
+            uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
+            "" // empty actionData
+        );
+    }
+
+    // DirectToCore with custom slippage/sponsor bps.
+    function runDirectToCoreWithFees(
+        uint256 amount,
+        uint32 destinationDomain,
+        address mintRecipient,
+        address finalRecipient,
+        address finalToken,
+        uint256 maxFeeBps,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps
+    ) external {
+        _execute(
+            amount,
+            destinationDomain,
+            mintRecipient,
+            mintRecipient,
+            finalRecipient,
+            finalToken,
+            (amount * maxFeeBps) / 10000,
+            1000,
+            maxBpsToSponsor,
+            maxUserSlippageBps,
+            HyperCoreLib.CORE_SPOT_DEX_ID,
+            uint8(AccountCreationMode.Standard),
+            uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
+            ""
+        );
+    }
+
+    // Arbitrary execution mode (ArbitraryActionsToCore=1 or ArbitraryActionsToEVM=2) with action data.
+    function runArbitrary(
+        uint256 amount,
+        uint32 destinationDomain,
+        address mintRecipient,
+        address finalRecipient,
+        address finalToken,
+        uint256 maxFeeBps,
+        uint8 executionMode,
+        bytes calldata actionData
+    ) external {
+        require(executionMode == 1 || executionMode == 2, "Use runDirectToCore for mode 0");
+        require(actionData.length > 0, "actionData required for arbitrary execution modes");
+
+        _execute(
+            amount,
+            destinationDomain,
+            mintRecipient,
+            mintRecipient,
+            finalRecipient,
+            finalToken,
+            (amount * maxFeeBps) / 10000,
+            1000,
+            400,
+            400,
+            HyperCoreLib.CORE_SPOT_DEX_ID,
+            uint8(AccountCreationMode.Standard),
+            executionMode,
+            actionData
+        );
+    }
+
+    // Full control over every parameter.
+    function runFull(
+        uint256 amount,
+        uint32 destinationDomain,
+        address mintRecipient,
+        address finalRecipient,
+        address finalToken,
+        address destinationCaller,
+        uint256 maxFeeBps,
+        uint32 minFinalityThreshold,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
+        uint256 deadlineOffset,
+        uint32 destinationDex,
+        uint8 accountCreationMode,
+        uint8 executionMode,
+        bytes calldata actionData
+    ) external {
+        require(executionMode <= 2, "Invalid executionMode");
+        require(accountCreationMode <= 1, "Invalid accountCreationMode");
+
+        _execute(
+            amount,
+            destinationDomain,
+            mintRecipient,
+            destinationCaller,
+            finalRecipient,
+            finalToken,
+            (amount * maxFeeBps) / 10000,
+            minFinalityThreshold,
+            maxBpsToSponsor,
+            maxUserSlippageBps,
+            destinationDex,
+            accountCreationMode,
+            executionMode,
+            actionData
+        );
+    }
+
+    function _execute(
+        uint256 amount,
+        uint32 destinationDomain,
+        address mintRecipient,
+        address destinationCaller,
+        address finalRecipient,
+        address finalToken,
+        uint256 maxFee,
+        uint32 minFinalityThreshold,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
+        uint32 destinationDex,
+        uint8 accountCreationMode,
+        uint8 executionMode,
+        bytes memory actionData
+    ) internal {
         console.log("Creating sponsored deposit...");
         console.log("Chain ID:", block.chainid);
 
@@ -44,77 +204,42 @@ contract CreateSponsoredDeposit is DeploymentUtils {
         address contractAddress = config.get("sponsoredCCTPSrcPeriphery").toAddress();
         SponsoredCCTPSrcPeriphery sponsoredCCTPSrcPeriphery = SponsoredCCTPSrcPeriphery(contractAddress);
 
-        // Verify that the signer matches the contract's signer
         require(sponsoredCCTPSrcPeriphery.signer() == deployer, "quote signer mismatch");
 
-        ArbitraryEVMFlowExecutor.CompressedCall[]
-            memory compressedCalls = new ArbitraryEVMFlowExecutor.CompressedCall[](2);
-        compressedCalls[0] = ArbitraryEVMFlowExecutor.CompressedCall({
-            target: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f),
-            callData: abi.encodeWithSelector(
-                IERC20.approve.selector,
-                // HyperSwap Router
-                address(0x6D99e7f6747AF2cDbB5164b6DD50e40D4fDe1e77),
-                99990
-            )
-        });
-        bytes[] memory hyperSwapRouterCalls = new bytes[](1);
-        hyperSwapRouterCalls[0] = abi.encodeWithSelector(
-            IHyperSwapRouter.exactInputSingle.selector,
-            IHyperSwapRouter.ExactInputSingleParams({
-                tokenIn: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f),
-                tokenOut: address(0xB8CE59FC3717ada4C02eaDF9682A9e934F625ebb),
-                fee: 100,
-                recipient: address(0x369232198fBBe6b42921A79B2D3ea4430d378c00),
-                amountIn: 99990,
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0
-            })
-        );
-        compressedCalls[1] = ArbitraryEVMFlowExecutor.CompressedCall({
-            target: address(0x6D99e7f6747AF2cDbB5164b6DD50e40D4fDe1e77),
-            callData: abi.encodeWithSelector(
-                IHyperSwapRouter.multicall.selector,
-                block.timestamp + 60 * 20,
-                hyperSwapRouterCalls
-            )
-        });
-        bytes memory actionData = abi.encode(compressedCalls);
-        bytes memory actionDataEmpty = abi.encode(new ArbitraryEVMFlowExecutor.CompressedCall[](0));
-        bytes memory emptyActionData = "";
-
-        // Create the SponsoredCCTPQuote
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = SponsoredCCTPInterface.SponsoredCCTPQuote({
-            sourceDomain: config.get("cctpDomainId").toUint32(), // Arbitrum CCTP domain
-            destinationDomain: 19, // HyperEVM CCTP domain
-            mintRecipient: address(0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f).toBytes32(), // Destination handler contract
-            amount: 1000000, // 100 USDC (6 decimals)
-            burnToken: config.get("usdc").toAddress().toBytes32(), // USDC on Arbitrum
-            destinationCaller: address(0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f).toBytes32(), // Destination handler contract
-            maxFee: 100, // 0 max fee
-            minFinalityThreshold: 1000, // Minimum finality threshold
-            nonce: keccak256(abi.encodePacked(block.timestamp, deployer, vm.getNonce(deployer))), // Generate nonce
-            deadline: block.timestamp + 10800, // 3 hours from now
-            maxBpsToSponsor: 400, // 4% max sponsorship (400 basis points)
-            maxUserSlippageBps: 400, // 4% max user slippage (400 basis points)
-            finalRecipient: address(0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D).toBytes32(), // Final recipient
-            finalToken: address(0xb88339CB7199b77E23DB6E890353E22632Ba630f).toBytes32(), // USDC on HyperEVM
-            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID, // Spot DEX on HyperCore
-            accountCreationMode: uint8(AccountCreationMode.Standard), // Standard mode
-            executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore), // DirectToCore mode
-            actionData: emptyActionData // Empty for DirectToCore mode
+            sourceDomain: config.get("cctpDomainId").toUint32(),
+            destinationDomain: destinationDomain,
+            mintRecipient: mintRecipient.toBytes32(),
+            amount: amount,
+            burnToken: config.get("usdc").toAddress().toBytes32(),
+            destinationCaller: destinationCaller.toBytes32(),
+            maxFee: maxFee,
+            minFinalityThreshold: minFinalityThreshold,
+            nonce: keccak256(abi.encodePacked(block.timestamp, deployer, vm.getNonce(deployer))),
+            deadline: block.timestamp + 10800,
+            maxBpsToSponsor: maxBpsToSponsor,
+            maxUserSlippageBps: maxUserSlippageBps,
+            finalRecipient: finalRecipient.toBytes32(),
+            finalToken: finalToken.toBytes32(),
+            destinationDex: destinationDex,
+            accountCreationMode: accountCreationMode,
+            executionMode: executionMode,
+            actionData: actionData
         });
 
-        console.log("SponsoredCCTPQuote created:");
+        console.log("SponsoredCCTPQuote:");
         console.log("  sourceDomain:", quote.sourceDomain);
         console.log("  destinationDomain:", quote.destinationDomain);
         console.log("  amount:", quote.amount);
+        console.log("  maxFee:", quote.maxFee);
+        console.log("  maxBpsToSponsor:", quote.maxBpsToSponsor);
+        console.log("  maxUserSlippageBps:", quote.maxUserSlippageBps);
+        console.log("  executionMode:", quote.executionMode);
         console.log("  nonce:");
         console.logBytes32(quote.nonce);
         console.log("  deadline:", quote.deadline);
-        console.logBytes(quote.actionData);
 
-        // Create signature hash (same logic as TypeScript)
+        // Create signature hash
         bytes32 hash1 = keccak256(
             abi.encode(
                 quote.sourceDomain,
@@ -147,20 +272,22 @@ contract CreateSponsoredDeposit is DeploymentUtils {
         console.log("Signature Hash:");
         console.logBytes32(typedDataHash);
 
-        // Sign the hash using the deployer's private key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(deployerPrivateKey, typedDataHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        console.log("Signature created");
-        console.log("Signer:", deployer);
+        console.log("Signature created, signer:", deployer);
 
-        // Call depositForBurn
         vm.startBroadcast(deployerPrivateKey);
 
-        // IERC20(config.get("usdc").toAddress()).approve(address(sponsoredCCTPSrcPeriphery), 11000000);
+        uint256 approveAmount = IERC20(config.get("usdc").toAddress()).balanceOf(deployer);
+        if (approveAmount > 0) {
+            IERC20(config.get("usdc").toAddress()).approve(address(sponsoredCCTPSrcPeriphery), approveAmount);
+            console.log("Approved USDC:", approveAmount);
+        }
 
+        uint256 gasLimit = vm.envOr("GAS_LIMIT", uint256(1000000));
         console.log("Calling depositForBurn...");
-        sponsoredCCTPSrcPeriphery.depositForBurn{ gas: 1000000 }(quote, signature);
+        sponsoredCCTPSrcPeriphery.depositForBurn{ gas: gasLimit }(quote, signature);
 
         console.log("Transaction completed successfully!");
 

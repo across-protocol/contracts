@@ -137,7 +137,7 @@ multicallHandler = "0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC"
 cctpDomainId = 19
 coreIndex = 0
 accountActivationFeeCore = 100000000
-bridgeSafetyBufferCore = 100000000
+bridgeSafetyBufferCore = 100000000000000000
 
 [999.bool]
 canBeUsedForAccountActivation = true
