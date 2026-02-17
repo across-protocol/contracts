@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { DeploymentUtils } from "../../utils/DeploymentUtils.sol";
 import { SponsoredCCTPSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPSrcPeriphery.sol";
 import { SponsoredCCTPInterface } from "../../../contracts/interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredExecutionModeInterface } from "../../../contracts/interfaces/SponsoredExecutionModeInterface.sol";
 import { AccountCreationMode } from "../../../contracts/periphery/mintburn/Structs.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { HyperCoreLib } from "../../../contracts/libraries/HyperCoreLib.sol";
