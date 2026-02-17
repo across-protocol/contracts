@@ -32,8 +32,8 @@ struct OFTImmutables {
     uint8 accountCreationMode;
     uint8 executionMode;
     address refundRecipient;
-    bytes32 userWithdrawAddress;
-    bytes32 adminWithdrawAddress;
+    address userWithdrawAddress;
+    address adminWithdrawAddress;
     bytes actionData;
 }
 

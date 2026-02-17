@@ -21,8 +21,8 @@ struct SpokePoolImmutables {
     uint256 maxFeeBps;
     uint256 executionFee;
     uint32 exclusivityDeadline;
-    bytes32 userWithdrawAddress;
-    bytes32 adminWithdrawAddress;
+    address userWithdrawAddress;
+    address adminWithdrawAddress;
     bytes message;
 }
 

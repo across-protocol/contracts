@@ -31,8 +31,8 @@ struct CCTPImmutables {
     uint32 destinationDex;
     uint8 accountCreationMode;
     uint8 executionMode;
-    bytes32 userWithdrawAddress;
-    bytes32 adminWithdrawAddress;
+    address userWithdrawAddress;
+    address adminWithdrawAddress;
     bytes actionData;
 }
 

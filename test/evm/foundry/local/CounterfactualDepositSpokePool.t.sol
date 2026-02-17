@@ -75,7 +75,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     uint256 public signerPrivateKey;
     address public signerAddr;
 
-    bytes32 public userWithdrawAddr;
+    address public userWithdrawAddr;
 
     SpokePoolImmutables internal defaultParams;
 
@@ -93,7 +93,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         relayer = makeAddr("relayer");
         signerPrivateKey = 0xA11CE;
         signerAddr = vm.addr(signerPrivateKey);
-        userWithdrawAddr = bytes32(uint256(uint160(user)));
+        userWithdrawAddr = user;
 
         inputToken = new MintableERC20("USDC", "USDC", 6);
 
@@ -114,7 +114,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             executionFee: 1e6, // 1 USDC
             exclusivityDeadline: 0,
             userWithdrawAddress: userWithdrawAddr,
-            adminWithdrawAddress: bytes32(uint256(uint160(admin))),
+            adminWithdrawAddress: admin,
             message: ""
         });
     }

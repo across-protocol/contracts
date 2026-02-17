@@ -63,7 +63,7 @@ contract CounterfactualOFTDepositTest is Test {
     uint32 public constant SRC_EID = 30101; // Ethereum LZ eid
     uint32 public constant DST_EID = 30284; // Example destination eid
     bytes32 public finalRecipient;
-    bytes32 public userWithdrawAddr;
+    address public userWithdrawAddr;
 
     OFTImmutables internal defaultParams;
 
@@ -72,7 +72,7 @@ contract CounterfactualOFTDepositTest is Test {
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
-        userWithdrawAddr = bytes32(uint256(uint160(user)));
+        userWithdrawAddr = user;
 
         token = new MintableERC20("USDC", "USDC", 6);
 
@@ -99,7 +99,7 @@ contract CounterfactualOFTDepositTest is Test {
             executionMode: 0,
             refundRecipient: makeAddr("refundRecipient"),
             userWithdrawAddress: userWithdrawAddr,
-            adminWithdrawAddress: bytes32(uint256(uint160(admin))),
+            adminWithdrawAddress: admin,
             actionData: ""
         });
     }

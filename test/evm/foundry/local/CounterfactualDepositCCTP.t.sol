@@ -46,7 +46,7 @@ contract CounterfactualDepositTest is Test {
     uint32 public constant SOURCE_DOMAIN = 0; // Ethereum
     uint32 public constant DESTINATION_DOMAIN = 3; // Hyperliquid
     bytes32 public finalRecipient;
-    bytes32 public userWithdrawAddr;
+    address public userWithdrawAddr;
 
     CCTPImmutables internal defaultParams;
 
@@ -55,7 +55,7 @@ contract CounterfactualDepositTest is Test {
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
-        userWithdrawAddr = bytes32(uint256(uint160(user)));
+        userWithdrawAddr = user;
 
         burnToken = new MintableERC20("USDC", "USDC", 6);
 
@@ -81,7 +81,7 @@ contract CounterfactualDepositTest is Test {
             accountCreationMode: 0,
             executionMode: 0,
             userWithdrawAddress: userWithdrawAddr,
-            adminWithdrawAddress: bytes32(uint256(uint160(admin))),
+            adminWithdrawAddress: admin,
             actionData: ""
         });
     }
