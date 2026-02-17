@@ -2,6 +2,51 @@
 
 This repository contains production smart contracts for the Across Protocol cross-chain bridge.
 
+## Architecture
+
+Across uses a **hub-and-spoke** model with optimistic verification to enable fast cross-chain token transfers.
+
+### Core Contracts
+
+- **HubPool** (Ethereum L1) — Central contract that manages LP liquidity, validates cross-chain transfers via merkle root bundles, and coordinates rebalancing across all SpokePools. Uses UMA's Optimistic Oracle for dispute resolution.
+- **SpokePool** (each L2/sidechain) — Deployed on every supported chain. Handles user deposits, relayer fills, and execution of merkle leaves (relayer refunds, slow fills). UUPS upgradeable. Chain-specific variants (e.g. `Arbitrum_SpokePool`, `Optimism_SpokePool`) override admin verification and bridge-specific logic.
+- **Chain Adapters** (`contracts/chain-adapters/`) — Stateless contracts called via `delegatecall` from HubPool to bridge tokens and relay messages to each L2. Each adapter wraps a chain's native bridge (Arbitrum Inbox, OP Stack messenger, Polygon FxPortal, etc.). Also supports CCTP, LayerZero OFT, and Wormhole.
+
+### Key Roles
+
+| Role | Description |
+|------|-------------|
+| **Depositor** | Calls `deposit()` on origin SpokePool to initiate a cross-chain transfer |
+| **Relayer** | Fills deposits on destination chain by fronting tokens, later reimbursed via merkle proof |
+| **Data Worker** | Off-chain agent that aggregates deposits/fills, constructs merkle trees, and calls `proposeRootBundle()` on HubPool (stakes a bond) |
+| **Disputer** | Monitors proposed bundles; can call `disputeRootBundle()` during the challenge period if a bundle is invalid |
+| **LP** | Deposits L1 tokens into HubPool to earn relay fees |
+
+### Protocol Flow
+
+1. **Deposit**: User locks tokens in origin SpokePool → `FundsDeposited` event emitted
+2. **Fill**: Relayer sees event, calls `fillRelay()` on destination SpokePool → tokens sent to recipient
+3. **Bundle Proposal**: Data worker aggregates fills across all chains into three merkle trees (pool rebalances, relayer refunds, slow fills) and proposes on HubPool
+4. **Challenge Period**: Bundle is open for dispute (default 2 hours). If disputed, UMA oracle resolves
+5. **Execution**: After liveness, `executeRootBundle()` sends tokens via adapters and relays roots to SpokePools
+6. **Refund**: Relayers call `executeRelayerRefundLeaf()` with merkle proofs to claim repayment
+7. **Slow Fill** (fallback): If no relayer fills before deadline, the protocol fills from SpokePool reserves via `executeSlowRelayLeaf()`
+
+### Cross-Chain Ownership
+
+HubPool on L1 owns all L2 SpokePools. Admin functions are relayed cross-chain via `relaySpokePoolAdminFunction()` through the appropriate chain adapter. Each SpokePool's `_requireAdminSender()` verifies the caller using chain-specific logic (address aliasing on Arbitrum, CrossDomainMessenger on OP Stack, etc.).
+
+### Supported Chains
+
+SpokePools exist for: Ethereum, Arbitrum, Optimism, Base, Polygon, Polygon zkEVM, zkSync, Scroll, Linea, Blast, Boba, Lisk, WorldChain, Ink, Lens, Mode, and others via `Universal_SpokePool` (generic OP Stack).
+
+### Key Libraries
+
+- **CircleCCTPAdapter** — USDC bridging via Circle's CCTP (V1/V2), with burn-limit splitting for large transfers
+- **OFTTransportAdapter** — Token bridging via LayerZero OFT standard
+- **MerkleLib** — Merkle proof verification with bitmap tracking to prevent double-claiming
+- **Lockable** — Custom reentrancy guard used across SpokePools
+
 ## Development Frameworks
 
 - **Foundry** (primary) - Used for new tests and deployment scripts
