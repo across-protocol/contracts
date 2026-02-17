@@ -32,26 +32,7 @@ When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the imple
 - Code executing = the implementation's bytecode (has implementation-specific immutables like `srcPeriphery`, `spokePool`, etc.)
 - Route params hash = read from the clone's bytecode via `Clones.fetchCloneArgs(address(this))`, verified against caller-supplied params
 
-## Shared Interface
-
-All executors and the factory implement `ICounterfactualDeposit`, which defines shared errors and events:
-
-| Error                 | Used By        | Description                                   |
-| --------------------- | -------------- | --------------------------------------------- |
-| `Unauthorized`        | All executors  | Caller is not the authorized withdraw address |
-| `InsufficientBalance` | All executors  | Token balance < requested amount              |
-| `InvalidParamsHash`   | All executors  | Provided params don't match stored hash       |
-| `MaxFee`              | SpokePool only | Relayer fee exceeds `maxRelayerFee`           |
-| `InvalidSignature`    | SpokePool only | EIP-712 signature doesn't match signer        |
-
-| Event                   | Description                                                         |
-| ----------------------- | ------------------------------------------------------------------- |
-| `DepositAddressCreated` | Emitted by factory on clone deployment (implementation, paramsHash) |
-| `DepositExecuted`       | Emitted by implementation on successful deposit (amount, nonce)     |
-| `AdminWithdraw`         | Admin withdrew tokens from a clone                                  |
-| `UserWithdraw`          | User withdrew tokens from a clone                                   |
-
-## CCTP Executor (`CounterfactualDepositCCTP`)
+## CCTP Implementation (`CounterfactualDepositCCTP`)
 
 | Variable                | Source                | Description                                                             |
 | ----------------------- | --------------------- | ----------------------------------------------------------------------- |
@@ -82,7 +63,7 @@ All executors and the factory implement `ICounterfactualDeposit`, which defines 
 
 Signature verification, nonce tracking, and `cctpDeadline` enforcement are handled by `SponsoredCCTPSrcPeriphery`.
 
-## OFT Executor (`CounterfactualDepositOFT`)
+## OFT Implementation (`CounterfactualDepositOFT`)
 
 | Variable                | Source                | Description                                                             |
 | ----------------------- | --------------------- | ----------------------------------------------------------------------- |
@@ -117,7 +98,7 @@ Signature verification, nonce tracking, and `cctpDeadline` enforcement are handl
 
 Signature verification, nonce tracking, and `oftDeadline` enforcement are handled by `SponsoredOFTSrcPeriphery`.
 
-## SpokePool Executor (`CounterfactualDepositSpokePool`)
+## SpokePool Implementation (`CounterfactualDepositSpokePool`)
 
 | Variable                | Source                | Description                                                              |
 | ----------------------- | --------------------- | ------------------------------------------------------------------------ |
@@ -230,49 +211,6 @@ Why: Relayers incur gas costs to call `executeDeposit` (and potentially `deploy`
 Why: Enables persistent "deposit addresses" that users can save, share, and reuse — like a traditional address.
 
 The factory's `deployAndExecute()` uses try/catch to handle already-deployed clones gracefully.
-
-## Usage Pattern
-
-**Initial setup:**
-
-```solidity
-bytes memory encodedParams = abi.encode(params);
-address predictedAddress = factory.predictDepositAddress(implementation, encodedParams, salt);
-// Share predictedAddress with user -- tokens sent here before deployment are safe
-```
-
-**First deposit (deploys clone + executes):**
-
-```solidity
-// CCTP
-bytes memory calldata_ = abi.encodeCall(
-    CounterfactualDepositCCTP.executeDeposit,
-    (params, amount, relayer, nonce, cctpDeadline, signature)
-);
-factory.deployAndExecute(implementation, encodedParams, salt, calldata_);
-
-// OFT (with LZ fee)
-bytes memory calldata_ = abi.encodeCall(
-    CounterfactualDepositOFT.executeDeposit,
-    (params, amount, relayer, nonce, oftDeadline, signature)
-);
-factory.deployAndExecute{value: lzFee}(implementation, encodedParams, salt, calldata_);
-
-// SpokePool
-bytes memory calldata_ = abi.encodeCall(
-    CounterfactualDepositSpokePool.executeDeposit,
-    (params, inputAmount, outputAmount, relayer, quoteTimestamp, fillDeadline, signature)
-);
-factory.deployAndExecute(implementation, encodedParams, salt, calldata_);
-```
-
-**Subsequent deposits (clone already deployed, call directly):**
-
-```solidity
-CounterfactualDepositCCTP(depositAddress).executeDeposit(params, amount, relayer, nonce, cctpDeadline, sig);
-CounterfactualDepositOFT(depositAddress).executeDeposit{value: lzFee}(params, amount, relayer, nonce, oftDeadline, sig);
-CounterfactualDepositSpokePool(depositAddress).executeDeposit(params, inputAmount, outputAmount, relayer, quoteTimestamp, fillDeadline, sig);
-```
 
 ## Security Model
 
