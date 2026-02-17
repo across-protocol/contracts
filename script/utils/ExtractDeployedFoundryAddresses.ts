@@ -212,10 +212,10 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       }
 
       for (const tx of transactions) {
-        const txHash = tx.hash;
-        const blockNumber = txHashToBlock[txHash] || null;
-
         if (tx.transactionType === "CREATE" && tx.contractAddress) {
+          const txHash = tx.hash;
+          const blockNumber = txHashToBlock[txHash] || null;
+
           let contractName = tx.contractName as string;
 
           if (contractName === "ERC1967Proxy") {
@@ -263,22 +263,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             transactionHash: txHash,
             blockNumber: blockNumber,
           });
-        }
-
-        // Process additionalContracts (used by ZkSync/EraVM chains where deployments go
-        // through a system contract and the actual CREATE appears here instead of the
-        // top-level transaction).
-        const additionalContracts = tx.additionalContracts || [];
-        for (const additional of additionalContracts) {
-          if (additional.transactionType === "CREATE" && additional.address) {
-            const contractName = additional.contractName || "SpokePool";
-            contracts.push({
-              contractName,
-              contractAddress: additional.address,
-              transactionHash: txHash,
-              blockNumber: blockNumber,
-            });
-          }
         }
       }
 
