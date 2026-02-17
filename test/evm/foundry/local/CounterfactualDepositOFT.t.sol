@@ -104,15 +104,15 @@ contract CounterfactualOFTDepositTest is Test {
         });
     }
 
-    function _encodedParams() internal view returns (bytes memory) {
-        return abi.encode(defaultParams);
+    function _paramsHash() internal view returns (bytes32) {
+        return keccak256(abi.encode(defaultParams));
     }
 
     function testPredictDepositAddress() public {
         bytes32 salt = keccak256("test-salt");
 
-        address predicted = factory.predictDepositAddress(address(implementation), _encodedParams(), salt);
-        address deployed = factory.deploy(address(implementation), _encodedParams(), salt);
+        address predicted = factory.predictDepositAddress(address(implementation), _paramsHash(), salt);
+        address deployed = factory.deploy(address(implementation), _paramsHash(), salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
@@ -123,8 +123,8 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 expectedDeposit = amount - defaultParams.executionFee;
 
-        bytes memory encoded = _encodedParams();
-        address depositAddress = factory.predictDepositAddress(address(implementation), encoded, salt);
+        bytes32 paramsHash = _paramsHash();
+        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -141,7 +141,7 @@ contract CounterfactualOFTDepositTest is Test {
         vm.prank(relayer);
         address deployed = factory.deployAndExecute{ value: 0.1 ether }(
             address(implementation),
-            encoded,
+            paramsHash,
             salt,
             executeCalldata
         );
@@ -158,7 +158,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 lzFee = 0.05 ether;
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -182,7 +182,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 expectedDeposit = amount - defaultParams.executionFee;
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -215,7 +215,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testExecuteOnExistingClone() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         // First deposit
         vm.prank(user);
@@ -257,7 +257,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
@@ -274,7 +274,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testAdminWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
@@ -284,7 +284,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testUserWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, 100e6);
@@ -301,7 +301,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testUserWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
@@ -311,11 +311,10 @@ contract CounterfactualOFTDepositTest is Test {
     function testExecuteWithZeroExecutionFee() public {
         OFTImmutables memory params = defaultParams;
         params.executionFee = 0;
-        bytes memory encoded = abi.encode(params);
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 amount = 100e6;
 
-        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+        address depositAddress = factory.deploy(address(implementation), keccak256(abi.encode(params)), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -348,7 +347,7 @@ contract CounterfactualOFTDepositTest is Test {
 
     function testInvalidParamsHashOnWithdraw() public {
         bytes32 salt = keccak256("test-salt");
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         OFTImmutables memory wrongParams = defaultParams;
         wrongParams.maxOftFeeBps = 200;
@@ -365,7 +364,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testInvalidParamsHash() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         OFTImmutables memory wrongParams = defaultParams;
         wrongParams.maxOftFeeBps = 200;

@@ -86,54 +86,52 @@ contract CounterfactualDepositTest is Test {
         });
     }
 
-    function _encodedParams() internal view returns (bytes memory) {
-        return abi.encode(defaultParams);
+    function _paramsHash() internal view returns (bytes32) {
+        return keccak256(abi.encode(defaultParams));
     }
 
     function testPredictDepositAddress() public {
         bytes32 salt = keccak256("test-salt");
 
-        address predicted = factory.predictDepositAddress(address(implementation), _encodedParams(), salt);
-        address deployed = factory.deploy(address(implementation), _encodedParams(), salt);
+        address predicted = factory.predictDepositAddress(address(implementation), _paramsHash(), salt);
+        address deployed = factory.deploy(address(implementation), _paramsHash(), salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
 
     function testDeployEmitsEvent() public {
         bytes32 salt = keccak256("test-salt");
-        bytes memory encoded = _encodedParams();
-        bytes32 paramsHash = keccak256(encoded);
+        bytes32 paramsHash = _paramsHash();
 
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDepositFactory.DepositAddressCreated(
-            factory.predictDepositAddress(address(implementation), encoded, salt),
+            factory.predictDepositAddress(address(implementation), paramsHash, salt),
             address(implementation),
             paramsHash,
             salt
         );
 
-        factory.deploy(address(implementation), encoded, salt);
+        factory.deploy(address(implementation), paramsHash, salt);
     }
 
     function testCannotDeployTwice() public {
         bytes32 salt = keccak256("test-salt");
 
-        factory.deploy(address(implementation), _encodedParams(), salt);
+        factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.expectRevert();
-        factory.deploy(address(implementation), _encodedParams(), salt);
+        factory.deploy(address(implementation), _paramsHash(), salt);
     }
 
     function testDeployedContractStoresCorrectHash() public {
         bytes32 salt = keccak256("test-salt");
 
-        address deployed = factory.deploy(address(implementation), _encodedParams(), salt);
+        address deployed = factory.deploy(address(implementation), _paramsHash(), salt);
 
         bytes memory args = Clones.fetchCloneArgs(deployed);
         bytes32 storedHash = abi.decode(args, (bytes32));
-        bytes32 expectedHash = keccak256(_encodedParams());
 
-        assertEq(storedHash, expectedHash, "Stored hash should match keccak256 of encoded params");
+        assertEq(storedHash, _paramsHash(), "Stored hash should match keccak256 of encoded params");
     }
 
     function testDeployAndExecute() public {
@@ -142,8 +140,8 @@ contract CounterfactualDepositTest is Test {
         uint256 amount = 100e6;
         uint256 expectedDeposit = amount - defaultParams.executionFee;
 
-        bytes memory encoded = _encodedParams();
-        address depositAddress = factory.predictDepositAddress(address(implementation), encoded, salt);
+        bytes32 paramsHash = _paramsHash();
+        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -157,7 +155,7 @@ contract CounterfactualDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(implementation), encoded, salt, executeCalldata);
+        address deployed = factory.deployAndExecute(address(implementation), paramsHash, salt, executeCalldata);
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
@@ -172,7 +170,7 @@ contract CounterfactualDepositTest is Test {
         uint256 amount = 100e6;
         uint256 depositAmount = amount - defaultParams.executionFee;
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -193,7 +191,7 @@ contract CounterfactualDepositTest is Test {
     function testExecuteOnExistingClone() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         // First deposit
         vm.prank(user);
@@ -235,7 +233,7 @@ contract CounterfactualDepositTest is Test {
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
@@ -253,7 +251,7 @@ contract CounterfactualDepositTest is Test {
     function testAdminWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
@@ -263,7 +261,7 @@ contract CounterfactualDepositTest is Test {
     function testUserWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
@@ -281,7 +279,7 @@ contract CounterfactualDepositTest is Test {
     function testUserWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
@@ -292,8 +290,8 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
 
-        bytes memory encoded = _encodedParams();
-        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+        bytes32 paramsHash = _paramsHash();
+        address depositAddress = factory.deploy(address(implementation), paramsHash, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -304,7 +302,7 @@ contract CounterfactualDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address returned = factory.deployAndExecute(address(implementation), encoded, salt, executeCalldata);
+        address returned = factory.deployAndExecute(address(implementation), paramsHash, salt, executeCalldata);
 
         assertEq(returned, depositAddress, "Should return correct address from catch branch");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit should have executed");
@@ -326,7 +324,7 @@ contract CounterfactualDepositTest is Test {
     function testInvalidParamsHash() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         CCTPImmutables memory wrongParams = defaultParams;
         wrongParams.cctpMaxFeeBps = 200;
@@ -355,11 +353,11 @@ contract CounterfactualDepositTest is Test {
     function testExecuteWithZeroExecutionFee() public {
         CCTPImmutables memory params = defaultParams;
         params.executionFee = 0;
-        bytes memory encoded = abi.encode(params);
+        bytes32 paramsHash = keccak256(abi.encode(params));
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 amount = 100e6;
 
-        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+        address depositAddress = factory.deploy(address(implementation), paramsHash, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -380,7 +378,6 @@ contract CounterfactualDepositTest is Test {
 
     function testDeployAndExecuteRevertBubble() public {
         bytes32 salt = keccak256("test-salt");
-        bytes memory encoded = _encodedParams();
 
         // Don't fund the clone, so executeDeposit will revert on the token transfer
         bytes memory executeCalldata = abi.encodeCall(
@@ -390,12 +387,12 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert();
         vm.prank(relayer);
-        factory.deployAndExecute(address(implementation), encoded, salt, executeCalldata);
+        factory.deployAndExecute(address(implementation), _paramsHash(), salt, executeCalldata);
     }
 
     function testInvalidParamsHashOnWithdraw() public {
         bytes32 salt = keccak256("test-salt");
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         CCTPImmutables memory wrongParams = defaultParams;
         wrongParams.cctpMaxFeeBps = 200;
@@ -411,13 +408,13 @@ contract CounterfactualDepositTest is Test {
 
         CCTPImmutables memory params = defaultParams;
         params.actionData = actionData;
-        bytes memory encoded = abi.encode(params);
+        bytes32 paramsHash = keccak256(abi.encode(params));
 
-        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+        address depositAddress = factory.deploy(address(implementation), paramsHash, salt);
 
         bytes memory args = Clones.fetchCloneArgs(depositAddress);
         bytes32 storedHash = abi.decode(args, (bytes32));
-        assertEq(storedHash, keccak256(encoded), "Stored hash should match params with actionData");
+        assertEq(storedHash, paramsHash, "Stored hash should match params with actionData");
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);

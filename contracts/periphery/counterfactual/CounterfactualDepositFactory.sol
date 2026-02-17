@@ -7,23 +7,22 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
 /**
  * @title CounterfactualDepositFactory
  * @notice Generic factory for deploying counterfactual deposit addresses via CREATE2
- * @dev Bridge-agnostic: takes raw bytes encodedParams and forwards raw calldata to clones.
- *      Each implementation defines its own immutables struct. The factory only hashes the bytes.
+ * @dev Bridge-agnostic: takes a pre-computed paramsHash and stores it in the clone's immutable args.
+ *      Each implementation defines its own immutables struct. The caller hashes the params off-chain.
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
      * @notice Deploys a counterfactual deposit contract
      * @param counterfactualDepositImplementation Implementation contract address
-     * @param encodedParams ABI-encoded route parameters (hashed to produce the clone's immutable arg)
+     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
      * @param salt Unique salt for address generation
      * @return depositAddress Address of deployed contract
      */
     function deploy(
         address counterfactualDepositImplementation,
-        bytes memory encodedParams,
+        bytes32 paramsHash,
         bytes32 salt
     ) public returns (address depositAddress) {
-        bytes32 paramsHash = keccak256(encodedParams);
         depositAddress = Clones.cloneDeterministicWithImmutableArgs(
             counterfactualDepositImplementation,
             abi.encode(paramsHash),
@@ -35,22 +34,22 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
      * @notice Deploys (if needed) and executes a deposit in one transaction
      * @param counterfactualDepositImplementation Implementation contract address
-     * @param encodedParams ABI-encoded route parameters
+     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
      * @param salt Unique salt for address generation
      * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
      * @return depositAddress Address of deposit contract
      */
     function deployAndExecute(
         address counterfactualDepositImplementation,
-        bytes memory encodedParams,
+        bytes32 paramsHash,
         bytes32 salt,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
         // Deploy if not already deployed; if clone exists, catch the CREATE2 revert and reuse it.
-        try this.deploy(counterfactualDepositImplementation, encodedParams, salt) returns (address addr) {
+        try this.deploy(counterfactualDepositImplementation, paramsHash, salt) returns (address addr) {
             depositAddress = addr;
         } catch {
-            depositAddress = predictDepositAddress(counterfactualDepositImplementation, encodedParams, salt);
+            depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, salt);
         }
         // Forward calldata (typically executeDeposit) to the clone, bubbling up any revert.
         (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
@@ -64,19 +63,19 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
      * @notice Predicts the address of a counterfactual deposit contract
      * @param counterfactualDepositImplementation Implementation contract address
-     * @param encodedParams ABI-encoded route parameters (hashed to produce the clone's immutable arg)
+     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
      * @param salt Unique salt for address generation
      * @return Predicted address
      */
     function predictDepositAddress(
         address counterfactualDepositImplementation,
-        bytes memory encodedParams,
+        bytes32 paramsHash,
         bytes32 salt
     ) public view returns (address) {
         return
             Clones.predictDeterministicAddressWithImmutableArgs(
                 counterfactualDepositImplementation,
-                abi.encode(keccak256(encodedParams)),
+                abi.encode(paramsHash),
                 salt
             );
     }
