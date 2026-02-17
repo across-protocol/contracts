@@ -372,6 +372,61 @@ contract CounterfactualDepositTest is Test {
         CounterfactualDepositCCTP(depositAddress).userWithdraw(wrongParams, address(burnToken), user, 100e6);
     }
 
+    function testExecuteWithZeroExecutionFee() public {
+        CCTPImmutables memory params = defaultParams;
+        params.executionFee = 0;
+        bytes memory encoded = abi.encode(params);
+        bytes32 salt = keccak256("test-salt-zero-fee");
+        uint256 amount = 100e6;
+
+        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+
+        vm.prank(user);
+        burnToken.transfer(depositAddress, amount);
+
+        vm.prank(relayer);
+        CounterfactualDepositCCTP(depositAddress).executeDeposit(
+            params,
+            amount,
+            relayer,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
+
+        assertEq(burnToken.balanceOf(relayer), 0, "Relayer should receive no fee");
+        assertEq(srcPeriphery.lastAmount(), amount, "Full amount should be deposited");
+    }
+
+    function testDeployAndExecuteRevertBubble() public {
+        bytes32 salt = keccak256("test-salt");
+        bytes memory encoded = _encodedParams();
+
+        address depositAddress = factory.predictDepositAddress(address(implementation), encoded, salt);
+
+        // Don't fund the clone, so executeDeposit will revert with InsufficientBalance
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositCCTP.executeDeposit,
+            (defaultParams, 100e6, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        );
+
+        vm.expectRevert(ICounterfactualDeposit.InsufficientBalance.selector);
+        vm.prank(relayer);
+        factory.deployAndExecute(address(implementation), encoded, salt, executeCalldata);
+    }
+
+    function testInvalidParamsHashOnWithdraw() public {
+        bytes32 salt = keccak256("test-salt");
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+
+        CCTPImmutables memory wrongParams = defaultParams;
+        wrongParams.cctpMaxFeeBps = 200;
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
+        vm.prank(admin);
+        CounterfactualDepositCCTP(depositAddress).adminWithdraw(wrongParams, address(burnToken), admin, 100e6);
+    }
+
     function testDeployWithActionData() public {
         bytes32 salt = keccak256("test-salt-action");
         bytes memory actionData = abi.encode(uint256(42), address(0xBEEF));

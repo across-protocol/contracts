@@ -17,9 +17,6 @@ interface ICounterfactualDeposit {
     /// @dev EIP-712 signature does not recover to the expected signer. SpokePool only.
     error InvalidSignature();
 
-    /// @param depositAddress The clone address that executed the deposit.
-    /// @param amount Net amount deposited (after executionFee deduction).
-    /// @param nonce Protocol-specific nonce (bytes32(0) for SpokePool which has no nonce).
     event DepositExecuted(address indexed depositAddress, uint256 amount, bytes32 nonce);
     event AdminWithdraw(address indexed depositAddress, address indexed token, address indexed to, uint256 amount);
     event UserWithdraw(address indexed depositAddress, address indexed token, address indexed to, uint256 amount);

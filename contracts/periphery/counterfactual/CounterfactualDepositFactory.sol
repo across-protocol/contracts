@@ -12,26 +12,6 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
-     * @notice Predicts the address of a counterfactual deposit contract
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param encodedParams ABI-encoded route parameters (hashed to produce the clone's immutable arg)
-     * @param salt Unique salt for address generation
-     * @return Predicted address
-     */
-    function predictDepositAddress(
-        address counterfactualDepositImplementation,
-        bytes memory encodedParams,
-        bytes32 salt
-    ) public view returns (address) {
-        return
-            Clones.predictDeterministicAddressWithImmutableArgs(
-                counterfactualDepositImplementation,
-                abi.encode(keccak256(encodedParams)),
-                salt
-            );
-    }
-
-    /**
      * @notice Deploys a counterfactual deposit contract
      * @param counterfactualDepositImplementation Implementation contract address
      * @param encodedParams ABI-encoded route parameters (hashed to produce the clone's immutable arg)
@@ -79,5 +59,25 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
                 revert(add(returnData, 32), mload(returnData))
             }
         }
+    }
+
+    /**
+     * @notice Predicts the address of a counterfactual deposit contract
+     * @param counterfactualDepositImplementation Implementation contract address
+     * @param encodedParams ABI-encoded route parameters (hashed to produce the clone's immutable arg)
+     * @param salt Unique salt for address generation
+     * @return Predicted address
+     */
+    function predictDepositAddress(
+        address counterfactualDepositImplementation,
+        bytes memory encodedParams,
+        bytes32 salt
+    ) public view returns (address) {
+        return
+            Clones.predictDeterministicAddressWithImmutableArgs(
+                counterfactualDepositImplementation,
+                abi.encode(keccak256(encodedParams)),
+                salt
+            );
     }
 }

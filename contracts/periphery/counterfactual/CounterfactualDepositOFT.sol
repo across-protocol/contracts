@@ -78,12 +78,15 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         _verifyParams(params);
 
         address inputToken = address(uint160(uint256(params.token)));
+
         if (IERC20(inputToken).balanceOf(address(this)) < amount) revert InsufficientBalance();
 
-        uint256 depositAmount = amount - params.executionFee;
+        // transfer execution fee to execution fee recipient
         if (params.executionFee > 0) {
             IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
         }
+
+        uint256 depositAmount = amount - params.executionFee;
 
         IERC20(inputToken).forceApprove(oftSrcPeriphery, depositAmount);
 
@@ -115,21 +118,25 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         emit DepositExecuted(address(this), depositAmount, nonce);
     }
 
-    /// @notice Allows admin to withdraw any token from this clone.
-    /// @param params Route parameters (verified against stored hash).
-    /// @param token ERC20 token to withdraw.
-    /// @param to Recipient of the withdrawn tokens.
-    /// @param amount Amount to withdraw.
+    /**
+     * @notice Allows admin to withdraw any token from this clone.
+     * @param params Route parameters (verified against stored hash).
+     * @param token ERC20 token to withdraw.
+     * @param to Recipient of the withdrawn tokens.
+     * @param amount Amount to withdraw.
+     */
     function adminWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
     }
 
-    /// @notice Allows user to withdraw tokens before execution.
-    /// @param params Route parameters (verified against stored hash).
-    /// @param token ERC20 token to withdraw.
-    /// @param to Recipient of the withdrawn tokens.
-    /// @param amount Amount to withdraw.
+    /**
+     * @notice Allows user to withdraw tokens before execution.
+     * @param params Route parameters (verified against stored hash).
+     * @param token ERC20 token to withdraw.
+     * @param to Recipient of the withdrawn tokens.
+     * @param amount Amount to withdraw.
+     */
     function userWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _userWithdraw(params.userWithdrawAddress, token, to, amount);

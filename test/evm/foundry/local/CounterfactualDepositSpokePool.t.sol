@@ -516,6 +516,95 @@ contract CounterfactualSpokePoolDepositTest is Test {
         );
     }
 
+    function testExecuteWithZeroExecutionFee() public {
+        SpokePoolImmutables memory params = defaultParams;
+        params.executionFee = 0;
+        bytes memory encoded = abi.encode(params);
+        bytes32 salt = keccak256("test-salt-zero-fee");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.prank(relayer);
+        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+            params,
+            inputAmount,
+            outputAmount,
+            relayer,
+            uint32(block.timestamp),
+            fillDeadline,
+            sig
+        );
+
+        assertEq(inputToken.balanceOf(relayer), 0, "Relayer should receive no fee");
+        assertEq(spokePool.lastInputAmount(), inputAmount, "Full amount should be deposited");
+    }
+
+    function testExecuteOnImplementationReverts() public {
+        vm.expectRevert();
+        implementation.executeDeposit(
+            defaultParams,
+            100e6,
+            98e6,
+            relayer,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + 3600,
+            "sig"
+        );
+    }
+
+    function testInvalidParamsHashOnWithdraw() public {
+        bytes32 salt = keccak256("test-salt");
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+
+        SpokePoolImmutables memory wrongParams = defaultParams;
+        wrongParams.maxFeeBps = 9999;
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
+        vm.prank(admin);
+        CounterfactualDepositSpokePool(depositAddress).adminWithdraw(wrongParams, address(inputToken), admin, 100e6);
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
+        vm.prank(user);
+        CounterfactualDepositSpokePool(depositAddress).userWithdraw(wrongParams, address(inputToken), user, 100e6);
+    }
+
+    function testZeroRelayerFee() public {
+        bytes32 salt = keccak256("test-salt-zero-relay");
+        uint256 inputAmount = 100e6;
+        // price=1e18 (1:1), depositAmount=99e6, outputAmount=99e6
+        // outputInInputToken = 99e6 >= depositAmount → relayerFee = 0
+        // totalFee = 0 + 1e6 = 1e6, feeBps = 100 < maxFeeBps (600)
+        uint256 outputAmount = 99e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.prank(relayer);
+        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+            defaultParams,
+            inputAmount,
+            outputAmount,
+            relayer,
+            uint32(block.timestamp),
+            fillDeadline,
+            sig
+        );
+
+        assertEq(spokePool.callCount(), 1, "Deposit should succeed with zero relayer fee");
+        assertEq(spokePool.lastOutputAmount(), outputAmount, "outputAmount should be passed through");
+    }
+
     function testDepositWithMessage() public {
         SpokePoolImmutables memory params = defaultParams;
         params.message = abi.encode(uint256(42), "hello");

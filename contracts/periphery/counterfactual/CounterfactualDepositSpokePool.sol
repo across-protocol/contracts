@@ -70,11 +70,17 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint32 fillDeadline,
         bytes calldata signature
     ) external {
-        _verifySignature(inputAmount, outputAmount, fillDeadline, signature);
         _verifyParams(params);
+        _verifySignature(inputAmount, outputAmount, fillDeadline, signature);
 
-        address inputTokenAddr = address(uint160(uint256(params.inputToken)));
-        if (IERC20(inputTokenAddr).balanceOf(address(this)) < inputAmount) revert InsufficientBalance();
+        address inputToken = address(uint160(uint256(params.inputToken)));
+
+        if (IERC20(inputToken).balanceOf(address(this)) < inputAmount) revert InsufficientBalance();
+
+        // transfer execution fee to execution fee recipient
+        if (params.executionFee > 0) {
+            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
+        }
 
         // amount to deposit into SpokePool
         uint256 depositAmount = inputAmount - params.executionFee;
@@ -85,7 +91,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint256 totalFee = relayerFee + params.executionFee;
         if (totalFee * BPS_SCALAR > params.maxFeeBps * inputAmount) revert MaxFee();
 
-        IERC20(inputTokenAddr).forceApprove(spokePool, depositAmount);
+        IERC20(inputToken).forceApprove(spokePool, depositAmount);
 
         // Depositor is this clone so expired deposit refunds return here.
         V3SpokePoolInterface(spokePool).deposit(
@@ -103,39 +109,41 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             params.message
         );
 
-        if (params.executionFee > 0) {
-            IERC20(inputTokenAddr).safeTransfer(executionFeeRecipient, params.executionFee);
-        }
-
         emit DepositExecuted(address(this), depositAmount, bytes32(0));
     }
 
-    /// @notice Allows admin to withdraw any token from this clone.
-    /// @param params Route parameters (verified against stored hash).
-    /// @param token ERC20 token to withdraw.
-    /// @param to Recipient of the withdrawn tokens.
-    /// @param amount Amount to withdraw.
+    /**
+     * @notice Allows admin to withdraw any token from this clone.
+     * @param params Route parameters (verified against stored hash).
+     * @param token ERC20 token to withdraw.
+     * @param to Recipient of the withdrawn tokens.
+     * @param amount Amount to withdraw.
+     */
     function adminWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
     }
 
-    /// @notice Allows user to withdraw tokens before execution.
-    /// @param params Route parameters (verified against stored hash).
-    /// @param token ERC20 token to withdraw.
-    /// @param to Recipient of the withdrawn tokens.
-    /// @param amount Amount to withdraw.
+    /**
+     * @notice Allows user to withdraw tokens before execution.
+     * @param params Route parameters (verified against stored hash).
+     * @param token ERC20 token to withdraw.
+     * @param to Recipient of the withdrawn tokens.
+     * @param amount Amount to withdraw.
+     */
     function userWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
         _userWithdraw(params.userWithdrawAddress, token, to, amount);
     }
 
-    /// @dev Verifies that signer authorized (inputAmount, outputAmount, fillDeadline) via EIP-712.
-    ///      Domain separator includes clone address, preventing cross-clone replay.
-    /// @param inputAmount Gross input amount (signed by signer).
-    /// @param outputAmount Output amount on destination (signed by signer).
-    /// @param fillDeadline Fill deadline timestamp (signed by signer).
-    /// @param signature EIP-712 signature from signer.
+    /**
+     * @dev Verifies that signer authorized (inputAmount, outputAmount, fillDeadline) via EIP-712.
+     *      Domain separator includes clone address, preventing cross-clone replay.
+     * @param inputAmount Gross input amount (signed by signer).
+     * @param outputAmount Output amount on destination (signed by signer).
+     * @param fillDeadline Fill deadline timestamp (signed by signer).
+     * @param signature EIP-712 signature from signer.
+     */
     function _verifySignature(
         uint256 inputAmount,
         uint256 outputAmount,

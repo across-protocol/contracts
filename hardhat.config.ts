@@ -7,8 +7,10 @@ const isTest = process.env.IS_TEST === "true";
 subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any, runSuper: any) => {
   const paths = await runSuper();
 
-  // Filter out sp1-helios contracts (uses Foundry-only git submodule imports)
-  const filteredPaths = paths.filter((p: any) => !p.includes("contracts/sp1-helios"));
+  // Filter out Foundry-only contracts (use git submodule or cross-periphery imports that Hardhat can't resolve)
+  const filteredPaths = paths.filter(
+    (p: any) => !p.includes("contracts/sp1-helios") && !p.includes("contracts/periphery/counterfactual")
+  );
 
   // Filter out files that cause problems when using "paris" hardfork (currently used to compile everything when IS_TEST=true)
   // Reference: https://github.com/NomicFoundation/hardhat/issues/2306#issuecomment-1039452928
@@ -16,7 +18,6 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any
     return filteredPaths.filter((p: any) => {
       return (
         !p.includes("contracts/periphery/mintburn") &&
-        !p.includes("contracts/periphery/counterfactual") &&
         !p.includes("contracts/external/libraries/BytesLib.sol") &&
         !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
         !p.includes("contracts/external/libraries/MinimalLZOptions.sol")

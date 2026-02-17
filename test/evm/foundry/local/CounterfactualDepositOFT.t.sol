@@ -328,6 +328,60 @@ contract CounterfactualOFTDepositTest is Test {
         CounterfactualDepositOFT(depositAddress).userWithdraw(defaultParams, address(token), relayer, 100e6);
     }
 
+    function testExecuteWithZeroExecutionFee() public {
+        OFTImmutables memory params = defaultParams;
+        params.executionFee = 0;
+        bytes memory encoded = abi.encode(params);
+        bytes32 salt = keccak256("test-salt-zero-fee");
+        uint256 amount = 100e6;
+
+        address depositAddress = factory.deploy(address(implementation), encoded, salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        vm.prank(relayer);
+        CounterfactualDepositOFT(depositAddress).executeDeposit(
+            params,
+            amount,
+            relayer,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
+
+        assertEq(token.balanceOf(relayer), 0, "Relayer should receive no fee");
+        assertEq(srcPeriphery.lastAmount(), amount, "Full amount should be deposited");
+    }
+
+    function testExecuteOnImplementationReverts() public {
+        vm.expectRevert();
+        implementation.executeDeposit(
+            defaultParams,
+            100e6,
+            relayer,
+            keccak256("nonce"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
+    }
+
+    function testInvalidParamsHashOnWithdraw() public {
+        bytes32 salt = keccak256("test-salt");
+        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
+
+        OFTImmutables memory wrongParams = defaultParams;
+        wrongParams.maxOftFeeBps = 200;
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
+        vm.prank(admin);
+        CounterfactualDepositOFT(depositAddress).adminWithdraw(wrongParams, address(token), admin, 100e6);
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
+        vm.prank(user);
+        CounterfactualDepositOFT(depositAddress).userWithdraw(wrongParams, address(token), user, 100e6);
+    }
+
     function testInvalidParamsHash() public {
         bytes32 salt = keccak256("test-salt");
 

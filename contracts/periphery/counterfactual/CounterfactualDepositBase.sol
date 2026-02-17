@@ -23,22 +23,26 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
         if (paramsHash != storedHash) revert InvalidParamsHash();
     }
 
-    /// @notice Allows the admin to withdraw any token from this clone (e.g. recovery of stuck funds).
-    /// @param adminWithdrawAddress Authorized admin address (bytes32-encoded).
-    /// @param token ERC20 token to withdraw.
-    /// @param to Recipient of the withdrawn tokens.
-    /// @param amount Amount to withdraw.
+    /**
+     * @notice Allows the admin to withdraw any token from this clone (e.g. recovery of stuck funds).
+     * @param adminWithdrawAddress Authorized admin address (bytes32-encoded).
+     * @param token ERC20 token to withdraw.
+     * @param to Recipient of the withdrawn tokens.
+     * @param amount Amount to withdraw.
+     */
     function _adminWithdraw(bytes32 adminWithdrawAddress, address token, address to, uint256 amount) internal {
         if (msg.sender != address(uint160(uint256(adminWithdrawAddress)))) revert Unauthorized();
         IERC20(token).safeTransfer(to, amount);
         emit AdminWithdraw(address(this), token, to, amount);
     }
 
-    /// @notice Allows the user to withdraw tokens before execution (escape hatch).
-    /// @param userWithdrawAddress Authorized user address (bytes32-encoded).
-    /// @param token ERC20 token to withdraw.
-    /// @param to Recipient of the withdrawn tokens.
-    /// @param amount Amount to withdraw.
+    /**
+     * @notice Allows the user to withdraw tokens before execution (escape hatch).
+     * @param userWithdrawAddress Authorized user address (bytes32-encoded).
+     * @param token ERC20 token to withdraw.
+     * @param to Recipient of the withdrawn tokens.
+     * @param amount Amount to withdraw.
+     */
     function _userWithdraw(bytes32 userWithdrawAddress, address token, address to, uint256 amount) internal {
         if (msg.sender != address(uint160(uint256(userWithdrawAddress)))) revert Unauthorized();
         IERC20(token).safeTransfer(to, amount);
