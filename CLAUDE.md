@@ -16,17 +16,17 @@ Across uses a **hub-and-spoke** model with optimistic verification to enable fas
 
 | Role | Description |
 |------|-------------|
-| **Depositor** | Calls `deposit()` on origin SpokePool to initiate a cross-chain transfer |
-| **Relayer** | Fills deposits on destination chain by fronting tokens, later reimbursed via merkle proof |
-| **Data Worker** | Off-chain agent that aggregates deposits/fills, constructs merkle trees, and calls `proposeRootBundle()` on HubPool (stakes a bond) |
+| **Depositor** | End user (non-technical) who initiates a cross-chain transfer via one of multiple entry points (deposit, sponsored, gasless flows) on the origin SpokePool |
+| **Relayer** | Fills deposits on destination chain by fronting tokens, later reimbursed via merkle proof. Relayers compete on speed and cross-chain inventory management to determine if a deposit is profitable based on the fees offered |
+| **Data Worker** | Off-chain agent that validates and aggregates deposits/fills across multiple chains, constructs merkle trees, and calls `proposeRootBundle()` on HubPool (stakes a bond). Unlike relayers, data workers are RPC-intensive and maintain a longer lookback window; speed is less critical |
 | **Disputer** | Monitors proposed bundles; can call `disputeRootBundle()` during the challenge period if a bundle is invalid |
 | **LP** | Deposits L1 tokens into HubPool to earn relay fees |
 
 ### Protocol Flow
 
-1. **Deposit**: User locks tokens in origin SpokePool → `FundsDeposited` event emitted
+1. **Deposit**: User locks tokens in origin SpokePool and sets the fee amount they're willing to pay to a relayer → `FundsDeposited` event emitted. Relayers evaluate profitability by comparing offered fees against their cost to fulfill the deposit (inventory, gas, slippage). Fair pricing is communicated via hosted API services or directly from exclusive relayers.
 2. **Fill**: Relayer sees event, calls `fillRelay()` on destination SpokePool → tokens sent to recipient
-3. **Bundle Proposal**: Data worker aggregates fills across all chains into three merkle trees (pool rebalances, relayer refunds, slow fills) and proposes on HubPool
+3. **Bundle Proposal**: Data worker validates and aggregates fills across all chains into three merkle trees (pool rebalances, relayer refunds, slow fills) and proposes on HubPool
 4. **Challenge Period**: Bundle is open for dispute (default 2 hours). If disputed, UMA oracle resolves
 5. **Execution**: After liveness, `executeRootBundle()` sends tokens via adapters and relays roots to SpokePools
 6. **Refund**: Relayers call `executeRelayerRefundLeaf()` with merkle proofs to claim repayment
