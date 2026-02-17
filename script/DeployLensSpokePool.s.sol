@@ -11,11 +11,11 @@ import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. yarn forge-script-zksync script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens -vvvv
+// 2. yarn forge-script-zksync script/DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        yarn forge-script-zksync script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens \
-//        --broadcast --verify --verifier blockscout --verifier-url https://verify.lens.xyz/contract_verification
+//        yarn forge-script-zksync script/DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens \
+//        --broadcast --verify --verifier sourcify --verifier-url https://explorer.quicknode.com/api/v1/contracts/verify
 
 contract DeployLensSpokePool is Script, Test, DeploymentUtils {
     function run() external {
@@ -29,7 +29,6 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         address wgho = getWghoAddress(info.spokeChainId);
 
         // Get L2 addresses for Lens
-        address zkErc20Bridge = getL2Address(info.spokeChainId, "zkErc20Bridge");
         address zkUSDCBridge = getL2Address(info.spokeChainId, "zkUSDCBridge");
         address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
 
@@ -51,6 +50,7 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
             wgho, // _wrappedNativeTokenAddress
             usdcAddress, // _circleUSDC
             zkUSDCBridge, // _zkUSDCBridge
+            info.hubChainId, // _l1ChainId
             cctpTokenMessenger, // _cctpTokenMessenger
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
             FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
@@ -62,7 +62,6 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
             // For some reason, the ZkSync_SpokePool.initialize selector is not working.
             ZkSync_SpokePool.initialize.selector,
             0, // _initialDepositId
-            zkErc20Bridge, // _zkErc20Bridge
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
         );
@@ -81,7 +80,6 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         console.log("HubPool address:", info.hubPool);
         console.log("WGHO address:", address(wgho));
         console.log("USDC address:", usdcAddress);
-        console.log("zkErc20Bridge:", zkErc20Bridge);
         console.log("zkUSDCBridge:", zkUSDCBridge);
         console.log("cctpTokenMessenger:", cctpTokenMessenger);
         console.log("Lens_SpokePool proxy deployed to:", result.proxy);
