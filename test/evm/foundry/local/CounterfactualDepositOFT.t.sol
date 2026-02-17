@@ -254,26 +254,6 @@ contract CounterfactualOFTDepositTest is Test {
         );
     }
 
-    function testExecuteWithInsufficientBalance() public {
-        bytes32 salt = keccak256("test-salt");
-
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
-
-        vm.prank(user);
-        token.transfer(depositAddress, 50e6);
-
-        vm.expectRevert(ICounterfactualDeposit.InsufficientBalance.selector);
-        vm.prank(relayer);
-        CounterfactualDepositOFT(depositAddress).executeDeposit(
-            defaultParams,
-            100e6,
-            relayer,
-            keccak256("nonce-1"),
-            block.timestamp + 1 hours,
-            "sig"
-        );
-    }
-
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 

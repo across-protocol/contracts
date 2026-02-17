@@ -75,8 +75,6 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
 
         address inputToken = address(uint160(uint256(params.inputToken)));
 
-        if (IERC20(inputToken).balanceOf(address(this)) < inputAmount) revert InsufficientBalance();
-
         // transfer execution fee to execution fee recipient
         if (params.executionFee > 0) {
             IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);

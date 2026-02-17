@@ -361,31 +361,6 @@ contract CounterfactualSpokePoolDepositTest is Test {
         assertEq(spokePool.lastOutputAmount(), outputAmount, "outputAmount should be passed through");
     }
 
-    function testExecuteWithInsufficientBalance() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
-
-        vm.prank(user);
-        inputToken.transfer(depositAddress, 50e6);
-
-        vm.expectRevert(ICounterfactualDeposit.InsufficientBalance.selector);
-        vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
-            defaultParams,
-            inputAmount,
-            outputAmount,
-            relayer,
-            uint32(block.timestamp),
-            fillDeadline,
-            sig
-        );
-    }
-
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 

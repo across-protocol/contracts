@@ -232,26 +232,6 @@ contract CounterfactualDepositTest is Test {
         );
     }
 
-    function testExecuteWithInsufficientBalance() public {
-        bytes32 salt = keccak256("test-salt");
-
-        address depositAddress = factory.deploy(address(implementation), _encodedParams(), salt);
-
-        vm.prank(user);
-        burnToken.transfer(depositAddress, 50e6);
-
-        vm.expectRevert(ICounterfactualDeposit.InsufficientBalance.selector);
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            defaultParams,
-            100e6,
-            relayer,
-            keccak256("nonce-1"),
-            block.timestamp + 1 hours,
-            "sig"
-        );
-    }
-
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
@@ -402,15 +382,13 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes memory encoded = _encodedParams();
 
-        address depositAddress = factory.predictDepositAddress(address(implementation), encoded, salt);
-
-        // Don't fund the clone, so executeDeposit will revert with InsufficientBalance
+        // Don't fund the clone, so executeDeposit will revert on the token transfer
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDepositCCTP.executeDeposit,
             (defaultParams, 100e6, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
         );
 
-        vm.expectRevert(ICounterfactualDeposit.InsufficientBalance.selector);
+        vm.expectRevert();
         vm.prank(relayer);
         factory.deployAndExecute(address(implementation), encoded, salt, executeCalldata);
     }

@@ -8,8 +8,6 @@ pragma solidity ^0.8.0;
 interface ICounterfactualDeposit {
     /// @dev Caller is not the authorized withdraw address.
     error Unauthorized();
-    /// @dev Clone's token balance is less than the requested deposit amount.
-    error InsufficientBalance();
     /// @dev Caller-supplied params do not match the hash stored in the clone's immutable args.
     error InvalidParamsHash();
     /// @dev Total fee (relayer + execution) exceeds maxFeeBps. SpokePool only.

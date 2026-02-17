@@ -79,8 +79,6 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
 
         address inputToken = address(uint160(uint256(params.burnToken)));
 
-        if (IERC20(inputToken).balanceOf(address(this)) < amount) revert InsufficientBalance();
-
         // transfer execution fee to execution fee recipient
         if (params.executionFee > 0) {
             IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
