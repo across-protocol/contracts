@@ -110,7 +110,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             inputToken: bytes32(uint256(uint160(address(inputToken)))),
             outputToken: bytes32(uint256(uint160(address(inputToken)))), // Same token
             recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-            price: 1e18, // 1:1
+            stableExchangeRate: 1e18, // 1:1
             maxFeeBps: 600, // 6%
             executionFee: 1e6, // 1 USDC
             userWithdrawAddress: userWithdrawAddr,

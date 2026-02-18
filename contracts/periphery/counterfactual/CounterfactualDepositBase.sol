@@ -14,7 +14,7 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     using SafeERC20 for IERC20;
 
     uint256 internal constant BPS_SCALAR = 10_000;
-    uint256 internal constant PRICE_SCALAR = 1e18;
+    uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
 
     /// @dev Reads the stored params hash from the clone's appended immutable args and compares.
     /// @param paramsHash keccak256 hash of the caller-supplied route parameters.
