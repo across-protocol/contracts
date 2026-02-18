@@ -155,17 +155,17 @@ The `depositor` parameter passed to `SpokePool.deposit()` is `address(this)` (th
 
 ### 1. Generic Factory
 
-**The factory is bridge-agnostic — it takes `bytes memory encodedParams` and `bytes calldata executeCalldata`.**
+**The factory is bridge-agnostic — it takes `bytes32 paramsHash` and `bytes calldata executeCalldata`.**
 
-Why: Each bridge type defines its own immutables struct. The factory only hashes the encoded params (for deterministic address generation) and forwards raw calldata to clones. This means adding a new bridge type requires only a new implementation contract — no factory changes.
+Why: Each bridge type defines its own immutables struct. The caller hashes the params off-chain, and the factory stores the hash as the clone's immutable arg. It forwards raw calldata to clones. This means adding a new bridge type requires only a new implementation contract — no factory changes.
 
-`deployAndExecute` is `payable` to support bridges that need `msg.value` (e.g. OFT for LayerZero fees). The factory forwards `msg.value` to the clone via low-level `call`.
+`deployAndExecute` and `execute` are `payable` to support bridges that need `msg.value` (e.g. OFT for LayerZero fees). The factory forwards `msg.value` to the clone via low-level `call`.
 
-### 2. No executeOnExisting
+### 2. Separate `execute()` Entrypoint
 
-**Callers call the clone directly for subsequent deposits.**
+**The factory provides `execute()` for forwarding calldata to already-deployed clones.**
 
-Why: The factory's `executeOnExisting` was just a pass-through that added gas overhead. Since clones are deployed at known addresses, callers can call `executeDeposit` on the clone directly.
+Why: `deployAndExecute` reverts if the clone already exists. For subsequent deposits to an existing clone, callers can either call the clone directly or use `factory.execute()`. The factory entrypoint is a convenience wrapper that forwards `msg.value` and bubbles up reverts.
 
 ### 3. Immutable Distribution (Gas Optimization)
 
@@ -179,7 +179,7 @@ Why: These values are identical across all deposit addresses on a chain. Storing
 
 [EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode.
 
-The factory computes `keccak256(encodedParams)` and stores that 32-byte hash as the clone's sole immutable arg. At execution time, the caller passes the full params struct; the implementation hashes it and verifies against the stored hash before proceeding.
+The caller computes `keccak256(abi.encode(params))` off-chain and passes the 32-byte hash to the factory, which stores it as the clone's sole immutable arg. At execution time, the caller passes the full params struct; the implementation hashes it and verifies against the stored hash before proceeding.
 
 Storing full params as immutable args would cost ~595+ bytes of deployed code. With a hash, the clone stores only 77 bytes total (45-byte EIP-1167 proxy + 32-byte hash). This saves ~103k gas on deployment. The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash), but since each deposit address is deployed once and potentially reused many times, the net savings are significant.
 
@@ -211,7 +211,7 @@ Why: Relayers incur gas costs to call `executeDeposit` (and potentially `deploy`
 
 Why: Enables persistent "deposit addresses" that users can save, share, and reuse — like a traditional address.
 
-The factory's `deployAndExecute()` uses try/catch to handle already-deployed clones gracefully.
+For subsequent deposits, callers can call the clone directly or use `factory.execute()`. `deployAndExecute()` reverts if the clone already exists.
 
 ## Security Model
 
