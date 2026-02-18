@@ -8,7 +8,7 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDepositOFT, OFTImmutables, OFTDepositParams, OFTExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
-import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
+import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 /**
@@ -34,7 +34,7 @@ contract MockSponsoredOFTSrcPeriphery {
         TOKEN = _token;
     }
 
-    function deposit(Quote calldata quote, bytes calldata) external payable {
+    function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata) external payable {
         // Pull tokens from caller (same as real SponsoredOFTSrcPeriphery)
         IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
         lastMsgValue = msg.value;

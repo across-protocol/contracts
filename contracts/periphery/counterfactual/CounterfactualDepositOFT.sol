@@ -3,14 +3,14 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../mintburn/sponsored-oft/Structs.sol";
+import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
  */
 interface ISponsoredOFTSrcPeriphery {
-    function deposit(Quote calldata quote, bytes calldata signature) external payable;
+    function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
 }
 
 /**
@@ -104,8 +104,8 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
 
         IERC20(params.depositParams.token).forceApprove(oftSrcPeriphery, depositAmount);
 
-        Quote memory quote = Quote({
-            signedParams: SignedQuoteParams({
+        SponsoredOFTInterface.Quote memory quote = SponsoredOFTInterface.Quote({
+            signedParams: SponsoredOFTInterface.SignedQuoteParams({
                 srcEid: srcEid,
                 dstEid: params.depositParams.dstEid,
                 destinationHandler: params.depositParams.destinationHandler,
@@ -124,7 +124,9 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
                 executionMode: params.depositParams.executionMode,
                 actionData: params.depositParams.actionData
             }),
-            unsignedParams: UnsignedQuoteParams({ refundRecipient: params.depositParams.refundRecipient })
+            unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({
+                refundRecipient: params.depositParams.refundRecipient
+            })
         });
 
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
