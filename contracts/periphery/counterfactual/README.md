@@ -109,16 +109,16 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 | `inputToken`            | Route immutable       | Token deposited on source (as bytes32)                                   |
 | `outputToken`           | Route immutable       | Token received on destination (as bytes32)                               |
 | `recipient`             | Route immutable       | Recipient on destination                                                 |
-| `exclusiveRelayer`      | Route immutable       | Optional exclusive relayer (bytes32(0) for none)                         |
 | `price`                 | Route immutable       | inputToken per outputToken price (1e18 scaled), used for fee calculation |
 | `maxFeeBps`             | Route immutable       | Max total fee (relayer + execution) in basis points                      |
 | `executionFee`          | Route immutable       | Fixed fee paid to relayer calling execute                                |
-| `exclusivityDeadline`   | Route immutable       | Seconds of relayer exclusivity (0 for none)                              |
 | `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                              |
 | `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                             |
 | `message`               | Route immutable       | Arbitrary message forwarded to recipient                                 |
 | `inputAmount`           | Argument (signed)     | Gross amount of inputToken (includes executionFee)                       |
 | `outputAmount`          | Argument (signed)     | Output amount passed to SpokePool                                        |
+| `exclusiveRelayer`      | Argument (signed)     | Optional exclusive relayer (bytes32(0) for none)                         |
+| `exclusivityDeadline`   | Argument (signed)     | Seconds of relayer exclusivity (0 for none)                              |
 | `executionFeeRecipient` | Argument              | Address that receives the execution fee                                  |
 | `quoteTimestamp`        | Argument              | Quote timestamp from Across API (SpokePool validates recency)            |
 | `fillDeadline`          | Argument (signed)     | Timestamp by which the deposit must be filled                            |
@@ -130,7 +130,7 @@ Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool implem
 
 - **Domain separator** uses OpenZeppelin's `EIP712` base contract with `address(this)` (the clone address) — prevents cross-clone replay
 - **No nonce needed**: token balance is consumed on execution (natural replay protection), and short deadlines bound the replay window for re-funded clones
-- **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,uint32 fillDeadline)`
+- **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 fillDeadline)`
 - **Signer** is an immutable set in the implementation constructor, shared across all clones
 
 ### Fee Check

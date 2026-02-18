@@ -16,11 +16,9 @@ struct SpokePoolImmutables {
     bytes32 inputToken;
     bytes32 outputToken;
     bytes32 recipient;
-    bytes32 exclusiveRelayer;
     uint256 price;
     uint256 maxFeeBps;
     uint256 executionFee;
-    uint32 exclusivityDeadline;
     address userWithdrawAddress;
     address adminWithdrawAddress;
     bytes message;
@@ -38,7 +36,9 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     using SafeERC20 for IERC20;
 
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
-        keccak256("ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,uint32 fillDeadline)");
+        keccak256(
+            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 fillDeadline)"
+        );
 
     /// @notice Across SpokePool contract
     address public immutable spokePool;
@@ -56,22 +56,26 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      * @param params Route parameters (verified against stored hash)
      * @param inputAmount Gross amount of inputToken (includes executionFee)
      * @param outputAmount Amount of outputToken user should receive on dst
+     * @param exclusiveRelayer Optional exclusive relayer (bytes32(0) for none)
+     * @param exclusivityDeadline Seconds of relayer exclusivity (0 for none)
      * @param executionFeeRecipient Address that receives the execution fee
      * @param quoteTimestamp Quote timestamp from Across API (SpokePool validates recency)
      * @param fillDeadline Timestamp by which the deposit must be filled
-     * @param signature EIP-712 signature from signer over (inputAmount, outputAmount, fillDeadline)
+     * @param signature EIP-712 signature from signer over signed arguments
      */
     function executeDeposit(
         SpokePoolImmutables memory params,
         uint256 inputAmount,
         uint256 outputAmount,
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityDeadline,
         address executionFeeRecipient,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         bytes calldata signature
     ) external {
         _verifyParams(params);
-        _verifySignature(inputAmount, outputAmount, fillDeadline, signature);
+        _verifySignature(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, fillDeadline, signature);
 
         address inputToken = address(uint160(uint256(params.inputToken)));
 
@@ -100,10 +104,10 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             depositAmount,
             outputAmount,
             params.destinationChainId,
-            params.exclusiveRelayer,
+            exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
-            params.exclusivityDeadline,
+            exclusivityDeadline,
             params.message
         );
 
@@ -135,20 +139,33 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     }
 
     /**
-     * @dev Verifies that signer authorized (inputAmount, outputAmount, fillDeadline) via EIP-712.
+     * @dev Verifies that signer authorized execution parameters via EIP-712.
      *      Domain separator includes clone address, preventing cross-clone replay.
      * @param inputAmount Gross input amount (signed by signer).
      * @param outputAmount Output amount on destination (signed by signer).
+     * @param exclusiveRelayer Optional exclusive relayer (signed by signer).
+     * @param exclusivityDeadline Seconds of relayer exclusivity (signed by signer).
      * @param fillDeadline Fill deadline timestamp (signed by signer).
      * @param signature EIP-712 signature from signer.
      */
     function _verifySignature(
         uint256 inputAmount,
         uint256 outputAmount,
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityDeadline,
         uint32 fillDeadline,
         bytes calldata signature
     ) internal view {
-        bytes32 structHash = keccak256(abi.encode(EXECUTE_DEPOSIT_TYPEHASH, inputAmount, outputAmount, fillDeadline));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                EXECUTE_DEPOSIT_TYPEHASH,
+                inputAmount,
+                outputAmount,
+                exclusiveRelayer,
+                exclusivityDeadline,
+                fillDeadline
+            )
+        );
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
     }
 
