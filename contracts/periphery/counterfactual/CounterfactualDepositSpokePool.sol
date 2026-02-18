@@ -51,7 +51,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
 
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 fillDeadline)"
+            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline)"
         );
 
     /// @notice Across SpokePool contract
@@ -94,7 +94,15 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint32 fillDeadline,
         bytes calldata signature
     ) external verifyParams(params) {
-        _verifySignature(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, fillDeadline, signature);
+        _verifySignature(
+            inputAmount,
+            outputAmount,
+            exclusiveRelayer,
+            exclusivityDeadline,
+            quoteTimestamp,
+            fillDeadline,
+            signature
+        );
 
         address inputToken = address(uint160(uint256(params.depositParams.inputToken)));
 
@@ -172,6 +180,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      * @param outputAmount Output amount on destination (signed by signer).
      * @param exclusiveRelayer Optional exclusive relayer (signed by signer).
      * @param exclusivityDeadline Seconds of relayer exclusivity (signed by signer).
+     * @param quoteTimestamp Quote timestamp from Across API (signed by signer).
      * @param fillDeadline Fill deadline timestamp (signed by signer).
      * @param signature EIP-712 signature from signer.
      */
@@ -180,6 +189,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint256 outputAmount,
         bytes32 exclusiveRelayer,
         uint32 exclusivityDeadline,
+        uint32 quoteTimestamp,
         uint32 fillDeadline,
         bytes calldata signature
     ) internal view {
@@ -190,6 +200,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
                 outputAmount,
                 exclusiveRelayer,
                 exclusivityDeadline,
+                quoteTimestamp,
                 fillDeadline
             )
         );

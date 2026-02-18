@@ -82,7 +82,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 fillDeadline)"
+            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -137,6 +137,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 outputAmount,
         bytes32 exclusiveRelayer,
         uint32 exclusivityDeadline,
+        uint32 quoteTimestamp,
         uint32 fillDeadline
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
@@ -146,6 +147,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 outputAmount,
                 exclusiveRelayer,
                 exclusivityDeadline,
+                quoteTimestamp,
                 fillDeadline
             )
         );
@@ -173,7 +175,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 paramsHash = _paramsHash();
         address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
 
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -217,7 +227,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -256,7 +274,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -289,7 +315,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 7200; // 2 hours
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -326,6 +360,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             outputAmount,
             exclusiveRelayer,
             exclusivityDeadline,
+            uint32(block.timestamp),
             fillDeadline
         );
 
@@ -368,7 +403,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         // Sign with wrong key
         uint256 wrongKey = 0xBEEF;
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_DEPOSIT_TYPEHASH, inputAmount, outputAmount, bytes32(0), uint32(0), fillDeadline)
+            abi.encode(
+                EXECUTE_DEPOSIT_TYPEHASH,
+                inputAmount,
+                outputAmount,
+                bytes32(0),
+                uint32(0),
+                uint32(block.timestamp),
+                fillDeadline
+            )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(depositAddress), structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, digest);
@@ -402,7 +445,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -432,7 +483,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -515,7 +574,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         SpokePoolImmutables memory wrongParams = defaultParams;
         wrongParams.executionParams.maxFeeBps = 9999;
@@ -551,7 +618,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         address clone2 = factory.deploy(address(implementation), paramsHash, salt2);
 
         // Sign for clone1
-        bytes memory sig = _signExecuteDeposit(clone1, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            clone1,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         // Fund both clones
         vm.prank(user);
@@ -599,7 +674,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), keccak256(abi.encode(params)), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -662,7 +745,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -693,7 +784,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), keccak256(abi.encode(params)), salt);
-        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
