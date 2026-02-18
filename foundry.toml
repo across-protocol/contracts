@@ -9,7 +9,7 @@ test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
 cache_path = "cache-foundry"
 via_ir = true
-optimizer_runs = 300
+optimizer_runs = 800
 solc_version = "0.8.30"
 revert_strings = "strip"
 fs_permissions = [{ access = "read-write", path = "./" }]
@@ -26,6 +26,10 @@ compile = true
 fallback_oz = true
 mode = '3'
 zksolc = "1.5.15"
+
+[profile.mintburn]
+# Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
+optimizer_runs = 300
 
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"

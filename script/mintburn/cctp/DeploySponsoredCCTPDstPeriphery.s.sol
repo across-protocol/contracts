@@ -52,6 +52,8 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         vm.stopBroadcast();
 
+        config.set("sponsoredCCTPDstPeriphery", address(sponsoredCCTPDstPeriphery));
+
         // Post-deployment verification.
         assertEq(address(sponsoredCCTPDstPeriphery.cctpMessageTransmitter()), cctpMessageTransmitter);
         assertEq(sponsoredCCTPDstPeriphery.baseToken(), baseToken);
