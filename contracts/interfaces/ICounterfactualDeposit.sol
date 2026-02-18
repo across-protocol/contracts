@@ -16,6 +16,8 @@ interface ICounterfactualDeposit {
     error InvalidSignature();
     /// @dev Native ETH transfer failed.
     error NativeTransferFailed();
+    /// @dev EIP-712 signature deadline has passed. SpokePool only.
+    error SignatureExpired();
 
     event CounterfactualDepositExecuted(
         uint256 amount,

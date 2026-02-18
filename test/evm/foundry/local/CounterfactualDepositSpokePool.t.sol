@@ -90,7 +90,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline)"
+            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -170,7 +170,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 exclusiveRelayer,
         uint32 exclusivityDeadline,
         uint32 quoteTimestamp,
-        uint32 fillDeadline
+        uint32 fillDeadline,
+        uint32 signatureDeadline
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
             abi.encode(
@@ -180,7 +181,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 exclusiveRelayer,
                 exclusivityDeadline,
                 quoteTimestamp,
-                fillDeadline
+                fillDeadline,
+                signatureDeadline
             )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
@@ -214,7 +216,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -239,6 +242,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 relayer,
                 uint32(block.timestamp),
                 fillDeadline,
+                uint32(block.timestamp) + 3600,
                 sig
             )
         );
@@ -271,7 +275,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -288,6 +293,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 relayer,
                 uint32(block.timestamp),
                 fillDeadline,
+                uint32(block.timestamp) + 3600,
                 sig
             )
         );
@@ -318,7 +324,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -334,6 +341,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -359,7 +367,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -375,6 +384,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -398,7 +408,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             exclusiveRelayer,
             exclusivityDeadline,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -414,6 +425,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -439,6 +451,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         // Sign with wrong key
         uint256 wrongKey = 0xBEEF;
+        uint32 signatureDeadline = uint32(block.timestamp) + 3600;
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
@@ -447,7 +460,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 bytes32(0),
                 uint32(0),
                 uint32(block.timestamp),
-                fillDeadline
+                fillDeadline,
+                signatureDeadline
             )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(depositAddress), structHash));
@@ -468,7 +482,48 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            signatureDeadline,
             badSig
+        );
+    }
+
+    function testExpiredSignatureReverts() public {
+        bytes32 salt = keccak256("test-salt-expired");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+        uint32 signatureDeadline = uint32(block.timestamp) + 100;
+
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            signatureDeadline
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.warp(block.timestamp + 101);
+
+        vm.expectRevert(ICounterfactualDeposit.SignatureExpired.selector);
+        vm.prank(relayer);
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
+            defaultParams,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            relayer,
+            uint32(block.timestamp),
+            fillDeadline,
+            signatureDeadline,
+            sig
         );
     }
 
@@ -489,7 +544,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -506,6 +562,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
     }
@@ -527,7 +584,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -543,6 +601,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -638,7 +697,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         SpokePoolImmutables memory wrongParams = defaultParams;
@@ -658,6 +718,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
     }
@@ -682,7 +743,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         // Fund both clones
@@ -703,6 +765,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -718,6 +781,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
     }
@@ -738,7 +802,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -754,6 +819,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -771,6 +837,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             0,
             relayer,
             uint32(block.timestamp),
+            uint32(block.timestamp) + 3600,
             uint32(block.timestamp) + 3600,
             "sig"
         );
@@ -819,7 +886,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -835,6 +903,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -858,7 +927,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -874,6 +944,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -903,7 +974,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         // Send native ETH to the predicted address
@@ -928,6 +1000,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 relayer,
                 uint32(block.timestamp),
                 fillDeadline,
+                uint32(block.timestamp) + 3600,
                 sig
             )
         );
@@ -967,7 +1040,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.deal(depositAddress, inputAmount);
@@ -983,6 +1057,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
     }
@@ -1003,7 +1078,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.deal(depositAddress, inputAmount);
@@ -1018,6 +1094,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 
@@ -1096,7 +1173,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(0),
             0,
             uint32(block.timestamp),
-            fillDeadline
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         vm.prank(user);
@@ -1112,6 +1190,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             relayer,
             uint32(block.timestamp),
             fillDeadline,
+            uint32(block.timestamp) + 3600,
             sig
         );
 

@@ -123,6 +123,7 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 | `executionFeeRecipient` | Argument              | Address that receives the execution fee                                          |
 | `quoteTimestamp`        | Argument (signed)     | Quote timestamp from Across API (SpokePool validates recency)                    |
 | `fillDeadline`          | Argument (signed)     | Timestamp by which the deposit must be filled                                    |
+| `signatureDeadline`     | Argument (signed)     | Timestamp after which the signature is no longer valid                           |
 | `signature`             | Argument              | EIP-712 signature from signer over signed arguments                              |
 
 ### EIP-712 Signature Verification
@@ -131,7 +132,7 @@ Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool implem
 
 - **Domain separator** uses OpenZeppelin's `EIP712` base contract with `address(this)` (the clone address) — prevents cross-clone replay
 - **No nonce needed**: token balance is consumed on execution (natural replay protection), and short deadlines bound the replay window for re-funded clones
-- **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline)`
+- **Typehash**: `ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)`
 - **Signer** is an immutable set in the implementation constructor, shared across all clones
 
 ### Fee Check
@@ -205,7 +206,7 @@ Storing full params as immutable args would cost ~595+ bytes of deployed code. W
 
 Why: CCTP and OFT implementations forward deposits to a `SrcPeriphery` contract, which already validates the quote signature, nonce, and deadline before bridging. The implementation is just a pass-through, so adding its own signature check would be redundant.
 
-The SpokePool implementation calls `SpokePool.deposit()` directly, and `deposit()` does not validate quotes — it accepts whatever parameters it receives. Without a signature check, anyone could call `executeDeposit` with an inflated `outputAmount` (causing the deposit to never fill) or a manipulated `fillDeadline`. The implementation's EIP-712 signature over `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline)` ensures only signer-approved values are used. The domain separator includes the clone address to prevent cross-clone replay.
+The SpokePool implementation calls `SpokePool.deposit()` directly, and `deposit()` does not validate quotes — it accepts whatever parameters it receives. Without a signature check, anyone could call `executeDeposit` with an inflated `outputAmount` (causing the deposit to never fill) or a manipulated `fillDeadline`. The implementation's EIP-712 signature over `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline, signatureDeadline)` ensures only signer-approved values are used. The `signatureDeadline` bounds the window during which a signature can be replayed against a re-funded clone. The domain separator includes the clone address to prevent cross-clone replay.
 
 ### 7. cctpMaxFeeBps / maxOftFeeBps / maxRelayerFee
 
@@ -232,7 +233,7 @@ For subsequent deposits, callers can call the clone directly or use `factory.exe
 ## Security Model
 
 - **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.
-- **SpokePool Signer**: Signs `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxFeeBps`.
+- **SpokePool Signer**: Signs `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline, signatureDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxFeeBps`.
 - **Admin**: Per-clone admin (set in route params). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController.
 - **userWithdrawAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
 - **Execution Fee**: Fixed `executionFee` (route param, in token units) paid to relayer. User commits to this fee at address-generation time.

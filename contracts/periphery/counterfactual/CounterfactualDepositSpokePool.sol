@@ -51,7 +51,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
 
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline)"
+            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
 
     /// @notice Across SpokePool contract
@@ -92,6 +92,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      * @param executionFeeRecipient Address that receives the execution fee
      * @param quoteTimestamp Quote timestamp from Across API (SpokePool validates recency)
      * @param fillDeadline Timestamp by which the deposit must be filled
+     * @param signatureDeadline Timestamp after which the signature is no longer valid
      * @param signature EIP-712 signature from signer over signed arguments
      */
     function executeDeposit(
@@ -103,8 +104,10 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         address executionFeeRecipient,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
+        uint32 signatureDeadline,
         bytes calldata signature
     ) external verifyParams(params) {
+        if (block.timestamp > signatureDeadline) revert SignatureExpired();
         _verifySignature(
             inputAmount,
             outputAmount,
@@ -112,6 +115,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             exclusivityDeadline,
             quoteTimestamp,
             fillDeadline,
+            signatureDeadline,
             signature
         );
 
@@ -202,6 +206,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      * @param exclusivityDeadline Seconds of relayer exclusivity (signed by signer).
      * @param quoteTimestamp Quote timestamp from Across API (signed by signer).
      * @param fillDeadline Fill deadline timestamp (signed by signer).
+     * @param signatureDeadline Signature expiry timestamp (signed by signer).
      * @param signature EIP-712 signature from signer.
      */
     function _verifySignature(
@@ -211,6 +216,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint32 exclusivityDeadline,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
+        uint32 signatureDeadline,
         bytes calldata signature
     ) internal view {
         bytes32 structHash = keccak256(
@@ -221,7 +227,8 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
                 exclusiveRelayer,
                 exclusivityDeadline,
                 quoteTimestamp,
-                fillDeadline
+                fillDeadline,
+                signatureDeadline
             )
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
