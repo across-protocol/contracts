@@ -84,7 +84,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint256 depositAmount = inputAmount - params.executionFee;
 
         // Fee check: convert outputAmount to inputToken units, compute total fee in bps
-        uint256 outputInInputToken = (outputAmount * params.price) / PRECISION_SCALAR;
+        uint256 outputInInputToken = (outputAmount * params.price) / PRICE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
         uint256 totalFee = relayerFee + params.executionFee;
         if (totalFee * BPS_SCALAR > params.maxFeeBps * inputAmount) revert MaxFee();
