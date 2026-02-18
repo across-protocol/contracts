@@ -19,7 +19,7 @@ interface ISponsoredOFTSrcPeriphery {
 struct OFTImmutables {
     uint32 dstEid;
     bytes32 destinationHandler;
-    bytes32 token;
+    address token;
     uint256 maxOftFeeBps;
     uint256 executionFee;
     uint256 lzReceiveGasLimit;
@@ -77,16 +77,14 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
     ) external payable {
         _verifyParams(params);
 
-        address inputToken = address(uint160(uint256(params.token)));
-
         // transfer execution fee to execution fee recipient
         if (params.executionFee > 0) {
-            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
+            IERC20(params.token).safeTransfer(executionFeeRecipient, params.executionFee);
         }
 
         uint256 depositAmount = amount - params.executionFee;
 
-        IERC20(inputToken).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(params.token).forceApprove(oftSrcPeriphery, depositAmount);
 
         Quote memory quote = Quote({
             signedParams: SignedQuoteParams({

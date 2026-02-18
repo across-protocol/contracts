@@ -85,7 +85,7 @@ contract CounterfactualOFTDepositTest is Test {
         defaultParams = OFTImmutables({
             dstEid: DST_EID,
             destinationHandler: bytes32(uint256(uint160(makeAddr("composer")))),
-            token: bytes32(uint256(uint160(address(token)))),
+            token: address(token),
             maxOftFeeBps: 100,
             executionFee: 1e6,
             lzReceiveGasLimit: 200000,

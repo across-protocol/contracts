@@ -72,7 +72,7 @@ Signature verification, nonce tracking, and `cctpDeadline` enforcement are handl
 | `srcEid`                | Constructor immutable | OFT source endpoint ID for this chain                                   |
 | `dstEid`                | Route immutable       | OFT destination endpoint ID                                             |
 | `destinationHandler`    | Route immutable       | Composer contract on destination (OFT `to` param)                       |
-| `token`                 | Route immutable       | Local token address (the OFT token, as bytes32)                         |
+| `token`                 | Route immutable       | Local token address (the OFT token on source chain)                     |
 | `maxOftFeeBps`          | Route immutable       | Max OFT bridge fee in bps                                               |
 | `executionFee`          | Route immutable       | Fixed fee paid to relayer                                               |
 | `lzReceiveGasLimit`     | Route immutable       | Gas limit for `lzReceive` on destination                                |
