@@ -32,7 +32,16 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     }
 
     /**
-     * @notice Deploys (if needed) and executes a deposit in one transaction
+     * @notice Forwards calldata to a deployed clone, bubbling up any revert
+     * @param depositAddress Address of the deployed clone
+     * @param executeCalldata Calldata to forward (e.g. abi.encodeCall of executeDeposit)
+     */
+    function execute(address depositAddress, bytes calldata executeCalldata) public payable {
+        _execute(depositAddress, executeCalldata);
+    }
+
+    /**
+     * @notice Deploys and executes a deposit in one transaction
      * @param counterfactualDepositImplementation Implementation contract address
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters
      * @param salt Unique salt for address generation
@@ -45,19 +54,8 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes32 salt,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
-        // Deploy if not already deployed; if clone exists, catch the CREATE2 revert and reuse it.
-        try this.deploy(counterfactualDepositImplementation, paramsHash, salt) returns (address addr) {
-            depositAddress = addr;
-        } catch {
-            depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, salt);
-        }
-        // Forward calldata (typically executeDeposit) to the clone, bubbling up any revert.
-        (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
-        if (!success) {
-            assembly {
-                revert(add(returnData, 32), mload(returnData))
-            }
-        }
+        depositAddress = deploy(counterfactualDepositImplementation, paramsHash, salt);
+        _execute(depositAddress, executeCalldata);
     }
 
     /**
@@ -78,5 +76,15 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
                 abi.encode(paramsHash),
                 salt
             );
+    }
+
+    /// @dev Forwards calldata to a clone, bubbling up any revert.
+    function _execute(address depositAddress, bytes calldata executeCalldata) internal {
+        (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
+        if (!success) {
+            assembly {
+                revert(add(returnData, 32), mload(returnData))
+            }
+        }
     }
 }

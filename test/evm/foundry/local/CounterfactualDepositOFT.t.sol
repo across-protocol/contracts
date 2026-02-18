@@ -254,6 +254,51 @@ contract CounterfactualOFTDepositTest is Test {
         );
     }
 
+    function testExecuteViaFactory() public {
+        bytes32 salt = keccak256("test-salt");
+        uint256 amount = 100e6;
+        uint256 expectedDeposit = amount - defaultParams.executionFee;
+
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositOFT.executeDeposit,
+            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        );
+
+        vm.prank(relayer);
+        factory.execute(depositAddress, executeCalldata);
+
+        assertEq(token.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
+        assertEq(token.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
+    }
+
+    function testExecuteViaFactoryForwardsMsgValue() public {
+        bytes32 salt = keccak256("test-salt");
+        uint256 amount = 100e6;
+        uint256 lzFee = 0.05 ether;
+
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositOFT.executeDeposit,
+            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        );
+
+        vm.deal(relayer, 1 ether);
+        vm.prank(relayer);
+        factory.execute{ value: lzFee }(depositAddress, executeCalldata);
+
+        assertEq(srcPeriphery.lastMsgValue(), lzFee, "msg.value should be forwarded through factory");
+    }
+
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 

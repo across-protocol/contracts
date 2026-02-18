@@ -230,6 +230,29 @@ contract CounterfactualDepositTest is Test {
         );
     }
 
+    function testExecuteViaFactory() public {
+        bytes32 salt = keccak256("test-salt");
+        uint256 amount = 100e6;
+        uint256 expectedDeposit = amount - defaultParams.executionFee;
+
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+
+        vm.prank(user);
+        burnToken.transfer(depositAddress, amount);
+
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositCCTP.executeDeposit,
+            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        );
+
+        vm.prank(relayer);
+        factory.execute(depositAddress, executeCalldata);
+
+        assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
+        assertEq(burnToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
+    }
+
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
@@ -284,29 +307,6 @@ contract CounterfactualDepositTest is Test {
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
         CounterfactualDepositCCTP(depositAddress).userWithdraw(defaultParams, address(burnToken), relayer, 100e6);
-    }
-
-    function testDeployAndExecuteWhenAlreadyDeployed() public {
-        bytes32 salt = keccak256("test-salt");
-        uint256 amount = 100e6;
-
-        bytes32 paramsHash = _paramsHash();
-        address depositAddress = factory.deploy(address(implementation), paramsHash, salt);
-
-        vm.prank(user);
-        burnToken.transfer(depositAddress, amount);
-
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDepositCCTP.executeDeposit,
-            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
-        );
-
-        vm.prank(relayer);
-        address returned = factory.deployAndExecute(address(implementation), paramsHash, salt, executeCalldata);
-
-        assertEq(returned, depositAddress, "Should return correct address from catch branch");
-        assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit should have executed");
-        assertEq(srcPeriphery.callCount(), 1, "SrcPeriphery should have been called once");
     }
 
     function testExecuteOnImplementationReverts() public {

@@ -27,6 +27,8 @@ interface ICounterfactualDepositFactory {
         bytes32 salt
     ) external returns (address);
 
+    function execute(address depositAddress, bytes calldata executeCalldata) external payable;
+
     function deployAndExecute(
         address counterfactualDepositImplementation,
         bytes32 paramsHash,

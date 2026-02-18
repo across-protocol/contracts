@@ -180,6 +180,32 @@ contract CounterfactualSpokePoolDepositTest is Test {
         assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
     }
 
+    function testExecuteViaFactory() public {
+        bytes32 salt = keccak256("test-salt");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, fillDeadline);
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositSpokePool.executeDeposit,
+            (defaultParams, inputAmount, outputAmount, relayer, uint32(block.timestamp), fillDeadline, sig)
+        );
+
+        vm.prank(relayer);
+        factory.execute(depositAddress, executeCalldata);
+
+        assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
+        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
+    }
+
     function testDepositorIsCloneAddress() public {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
