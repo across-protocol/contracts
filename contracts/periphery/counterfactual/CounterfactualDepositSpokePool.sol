@@ -60,16 +60,27 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     /// @notice Signer that authorizes execution parameters
     address public immutable signer;
 
+    /// @notice Wrapped native token address (e.g. WETH) passed to SpokePool for native deposits.
+    address public immutable wrappedNativeToken;
+
     /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
     modifier verifyParams(SpokePoolImmutables memory params) {
         _verifyParamsHash(keccak256(abi.encode(params)));
         _;
     }
 
-    constructor(address _spokePool, address _signer) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
+    constructor(
+        address _spokePool,
+        address _signer,
+        address _wrappedNativeToken
+    ) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
         spokePool = _spokePool;
         signer = _signer;
+        wrappedNativeToken = _wrappedNativeToken;
     }
+
+    /// @dev Accept native ETH sent to the clone (e.g. user deposits or SpokePool refunds).
+    receive() external payable {}
 
     /**
      * @notice Executes a deposit via Across SpokePool
@@ -106,11 +117,6 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
 
         address inputToken = address(uint160(uint256(params.depositParams.inputToken)));
 
-        // transfer execution fee to execution fee recipient
-        if (params.executionParams.executionFee > 0) {
-            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
-        }
-
         // amount to deposit into SpokePool
         uint256 depositAmount = inputAmount - params.executionParams.executionFee;
 
@@ -120,13 +126,18 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint256 totalFee = relayerFee + params.executionParams.executionFee;
         if (totalFee * BPS_SCALAR > params.executionParams.maxFeeBps * inputAmount) revert MaxFee();
 
-        IERC20(inputToken).forceApprove(spokePool, depositAmount);
+        bool isNative = inputToken == NATIVE_ASSET;
+        if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
 
         // Depositor is this clone so expired deposit refunds return here.
-        V3SpokePoolInterface(spokePool).deposit(
+        // For native deposits, substitute wrappedNativeToken as inputToken so SpokePool wraps the ETH.
+        bytes32 spokePoolInputToken = isNative
+            ? bytes32(uint256(uint160(wrappedNativeToken)))
+            : params.depositParams.inputToken;
+        V3SpokePoolInterface(spokePool).deposit{ value: isNative ? depositAmount : 0 }(
             bytes32(uint256(uint160(address(this)))),
             params.depositParams.recipient,
-            params.depositParams.inputToken,
+            spokePoolInputToken,
             params.depositParams.outputToken,
             depositAmount,
             outputAmount,
@@ -137,6 +148,10 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             exclusivityDeadline,
             params.depositParams.message
         );
+
+        // Pay execution fee
+        if (params.executionParams.executionFee > 0)
+            _transferOut(inputToken, executionFeeRecipient, params.executionParams.executionFee);
 
         emit CounterfactualDepositExecuted(
             depositAmount,

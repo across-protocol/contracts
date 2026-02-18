@@ -11,7 +11,7 @@ import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounte
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 /**
- * @notice Mock SpokePool that records deposit parameters
+ * @notice Mock SpokePool that records deposit parameters. Accepts native ETH when msg.value > 0.
  */
 contract MockSpokePool {
     using SafeERC20 for IERC20;
@@ -29,6 +29,7 @@ contract MockSpokePool {
     uint32 public lastFillDeadline;
     uint32 public lastExclusivityDeadline;
     bytes public lastMessage;
+    uint256 public lastMsgValue;
 
     function deposit(
         bytes32 depositor,
@@ -44,8 +45,12 @@ contract MockSpokePool {
         uint32 exclusivityDeadline,
         bytes calldata message
     ) external payable {
-        address tokenAddr = address(uint160(uint256(inputToken)));
-        IERC20(tokenAddr).safeTransferFrom(msg.sender, address(this), inputAmount);
+        if (msg.value > 0) {
+            require(msg.value == inputAmount, "MockSpokePool: msg.value mismatch");
+        } else {
+            address tokenAddr = address(uint160(uint256(inputToken)));
+            IERC20(tokenAddr).safeTransferFrom(msg.sender, address(this), inputAmount);
+        }
 
         lastDepositor = depositor;
         lastRecipient = recipient;
@@ -59,6 +64,7 @@ contract MockSpokePool {
         lastFillDeadline = fillDeadline;
         lastExclusivityDeadline = exclusivityDeadline;
         lastMessage = message;
+        lastMsgValue = msg.value;
         callCount++;
     }
 }
@@ -68,6 +74,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     CounterfactualDepositSpokePool public implementation;
     MockSpokePool public spokePool;
     MintableERC20 public inputToken;
+    address public weth;
 
     address public admin;
     address public user;
@@ -78,6 +85,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     address public userWithdrawAddr;
 
     SpokePoolImmutables internal defaultParams;
+    SpokePoolImmutables internal nativeParams;
 
     // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
@@ -89,6 +97,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
     bytes32 constant VERSION_HASH = keccak256("v1.0.0");
 
+    address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     function setUp() public {
         admin = makeAddr("admin");
         user = makeAddr("user");
@@ -98,10 +108,11 @@ contract CounterfactualSpokePoolDepositTest is Test {
         userWithdrawAddr = user;
 
         inputToken = new MintableERC20("USDC", "USDC", 6);
+        weth = makeAddr("weth");
 
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
-        implementation = new CounterfactualDepositSpokePool(address(spokePool), signerAddr);
+        implementation = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
 
         inputToken.mint(user, 1000e6);
 
@@ -121,6 +132,27 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 adminWithdrawAddress: admin
             })
         });
+
+        nativeParams = SpokePoolImmutables({
+            depositParams: SpokePoolDepositParams({
+                destinationChainId: 42161,
+                inputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
+                outputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
+                recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+                message: ""
+            }),
+            executionParams: SpokePoolExecutionParams({
+                stableExchangeRate: 1e18,
+                maxFeeBps: 600,
+                executionFee: 0.01 ether,
+                userWithdrawAddress: userWithdrawAddr,
+                adminWithdrawAddress: admin
+            })
+        });
+    }
+
+    function _nativeParamsHash() internal view returns (bytes32) {
+        return keccak256(abi.encode(nativeParams));
     }
 
     function _paramsHash() internal view returns (bytes32) {
@@ -293,7 +325,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -334,7 +366,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -373,7 +405,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -427,7 +459,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidSignature.selector);
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -465,7 +497,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.MaxFee.selector);
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -502,7 +534,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -530,7 +562,12 @@ contract CounterfactualSpokePoolDepositTest is Test {
         emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
 
         vm.prank(admin);
-        CounterfactualDepositSpokePool(depositAddress).adminWithdraw(defaultParams, address(wrongToken), admin, 100e18);
+        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
+            defaultParams,
+            address(wrongToken),
+            admin,
+            100e18
+        );
 
         assertEq(wrongToken.balanceOf(admin), 100e18, "Admin should receive withdrawn tokens");
     }
@@ -542,7 +579,12 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
-        CounterfactualDepositSpokePool(depositAddress).adminWithdraw(defaultParams, address(inputToken), user, 100e6);
+        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
+            defaultParams,
+            address(inputToken),
+            user,
+            100e6
+        );
     }
 
     function testUserWithdraw() public {
@@ -557,7 +599,12 @@ contract CounterfactualSpokePoolDepositTest is Test {
         emit ICounterfactualDeposit.UserWithdraw(address(inputToken), user, 100e6);
 
         vm.prank(user);
-        CounterfactualDepositSpokePool(depositAddress).userWithdraw(defaultParams, address(inputToken), user, 100e6);
+        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(
+            defaultParams,
+            address(inputToken),
+            user,
+            100e6
+        );
 
         assertEq(inputToken.balanceOf(user), 1000e6, "User should have all tokens back");
     }
@@ -569,7 +616,12 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).userWithdraw(defaultParams, address(inputToken), relayer, 100e6);
+        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(
+            defaultParams,
+            address(inputToken),
+            relayer,
+            100e6
+        );
     }
 
     function testInvalidParamsHash() public {
@@ -597,7 +649,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             wrongParams,
             inputAmount,
             outputAmount,
@@ -642,7 +694,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         // Execute on clone1 should work
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(clone1).executeDeposit(
+        CounterfactualDepositSpokePool(payable(clone1)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -657,7 +709,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         // Replay the same signature on clone2 should fail (different domain separator)
         vm.expectRevert(ICounterfactualDeposit.InvalidSignature.selector);
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(clone2).executeDeposit(
+        CounterfactualDepositSpokePool(payable(clone2)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -693,7 +745,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             params,
             inputAmount,
             outputAmount,
@@ -733,11 +785,21 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(admin);
-        CounterfactualDepositSpokePool(depositAddress).adminWithdraw(wrongParams, address(inputToken), admin, 100e6);
+        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
+            wrongParams,
+            address(inputToken),
+            admin,
+            100e6
+        );
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(user);
-        CounterfactualDepositSpokePool(depositAddress).userWithdraw(wrongParams, address(inputToken), user, 100e6);
+        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(
+            wrongParams,
+            address(inputToken),
+            user,
+            100e6
+        );
     }
 
     function testZeroRelayerFee() public {
@@ -764,7 +826,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             defaultParams,
             inputAmount,
             outputAmount,
@@ -803,7 +865,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(depositAddress).executeDeposit(
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
             params,
             inputAmount,
             outputAmount,
@@ -820,5 +882,241 @@ contract CounterfactualSpokePoolDepositTest is Test {
             keccak256(params.depositParams.message),
             "Message should be forwarded"
         );
+    }
+
+    // --- Native ETH tests ---
+
+    function testNativeDeployAndExecute() public {
+        bytes32 salt = keccak256("native-salt");
+        uint256 inputAmount = 1 ether;
+        uint256 outputAmount = 0.98 ether;
+        uint256 expectedDeposit = inputAmount - nativeParams.executionParams.executionFee;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        bytes32 paramsHash = _nativeParamsHash();
+        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
+
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
+
+        // Send native ETH to the predicted address
+        vm.deal(depositAddress, inputAmount);
+
+        vm.expectEmit(true, true, true, true);
+        emit ICounterfactualDeposit.CounterfactualDepositExecuted(
+            expectedDeposit,
+            bytes32(0),
+            relayer,
+            nativeParams.executionParams.executionFee
+        );
+
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositSpokePool.executeDeposit,
+            (
+                nativeParams,
+                inputAmount,
+                outputAmount,
+                bytes32(0),
+                0,
+                relayer,
+                uint32(block.timestamp),
+                fillDeadline,
+                sig
+            )
+        );
+
+        vm.prank(relayer);
+        address deployed = factory.deployAndExecute(address(implementation), paramsHash, salt, executeCalldata);
+
+        assertEq(deployed, depositAddress, "Deployed address should match prediction");
+        assertEq(depositAddress.balance, 0, "Clone should have no ETH left");
+        assertEq(
+            relayer.balance,
+            nativeParams.executionParams.executionFee,
+            "Relayer should receive execution fee in ETH"
+        );
+        assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
+        assertEq(spokePool.lastMsgValue(), expectedDeposit, "SpokePool should have received ETH via msg.value");
+        assertEq(
+            spokePool.lastInputToken(),
+            bytes32(uint256(uint160(weth))),
+            "SpokePool should receive wrappedNativeToken as inputToken"
+        );
+    }
+
+    function testNativeExecuteFeeCheck() public {
+        bytes32 salt = keccak256("native-fee-check");
+        uint256 inputAmount = 1 ether;
+        // relayerFee = 0.99e18 - 0.93e18 = 0.06e18, totalFee = 0.06e18 + 0.01e18 = 0.07e18
+        // totalFeeBps = 0.07e18 * 10000 / 1e18 = 700 > maxFeeBps (600)
+        uint256 outputAmount = 0.93 ether;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        address depositAddress = factory.deploy(address(implementation), _nativeParamsHash(), salt);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
+
+        vm.deal(depositAddress, inputAmount);
+
+        vm.expectRevert(ICounterfactualDeposit.MaxFee.selector);
+        vm.prank(relayer);
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
+            nativeParams,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            relayer,
+            uint32(block.timestamp),
+            fillDeadline,
+            sig
+        );
+    }
+
+    function testNativeZeroExecutionFee() public {
+        SpokePoolImmutables memory params = nativeParams;
+        params.executionParams.executionFee = 0;
+        bytes32 salt = keccak256("native-zero-fee");
+        uint256 inputAmount = 1 ether;
+        uint256 outputAmount = 0.98 ether;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        address depositAddress = factory.deploy(address(implementation), keccak256(abi.encode(params)), salt);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
+
+        vm.deal(depositAddress, inputAmount);
+
+        vm.prank(relayer);
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
+            params,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            relayer,
+            uint32(block.timestamp),
+            fillDeadline,
+            sig
+        );
+
+        assertEq(relayer.balance, 0, "Relayer should receive no fee");
+        assertEq(spokePool.lastInputAmount(), inputAmount, "Full amount should be deposited");
+        assertEq(spokePool.lastMsgValue(), inputAmount, "Full amount sent as msg.value");
+    }
+
+    function testNativeUserWithdraw() public {
+        bytes32 salt = keccak256("native-user-withdraw");
+        address depositAddress = factory.deploy(address(implementation), _nativeParamsHash(), salt);
+        address nativeAsset = implementation.NATIVE_ASSET();
+
+        vm.deal(depositAddress, 1 ether);
+
+        uint256 userBalBefore = user.balance;
+
+        vm.expectEmit(true, true, true, true);
+        emit ICounterfactualDeposit.UserWithdraw(nativeAsset, user, 1 ether);
+
+        vm.prank(user);
+        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(nativeParams, nativeAsset, user, 1 ether);
+
+        assertEq(user.balance - userBalBefore, 1 ether, "User should receive ETH");
+        assertEq(depositAddress.balance, 0, "Clone should have no ETH");
+    }
+
+    function testNativeAdminWithdraw() public {
+        bytes32 salt = keccak256("native-admin-withdraw");
+        address depositAddress = factory.deploy(address(implementation), _nativeParamsHash(), salt);
+        address nativeAsset = implementation.NATIVE_ASSET();
+
+        vm.deal(depositAddress, 1 ether);
+
+        uint256 adminBalBefore = admin.balance;
+
+        vm.expectEmit(true, true, true, true);
+        emit ICounterfactualDeposit.AdminWithdraw(nativeAsset, admin, 1 ether);
+
+        vm.prank(admin);
+        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
+            nativeParams,
+            nativeAsset,
+            admin,
+            1 ether
+        );
+
+        assertEq(admin.balance - adminBalBefore, 1 ether, "Admin should receive ETH");
+    }
+
+    function testNativeReceiveAfterDeployment() public {
+        bytes32 salt = keccak256("native-receive");
+        address depositAddress = factory.deploy(address(implementation), _nativeParamsHash(), salt);
+
+        // Send ETH after deployment
+        vm.deal(user, 2 ether);
+        vm.prank(user);
+        (bool success, ) = depositAddress.call{ value: 1 ether }("");
+        assertTrue(success, "Should accept ETH via receive()");
+        assertEq(depositAddress.balance, 1 ether, "Clone should hold ETH");
+    }
+
+    function testErc20DepositUsesErc20Flow() public {
+        // When inputToken is a regular ERC20 (not NATIVE_ASSET), ERC20 flow is used
+        bytes32 salt = keccak256("erc20-flow");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint256 expectedDeposit = inputAmount - defaultParams.executionParams.executionFee;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.prank(relayer);
+        CounterfactualDepositSpokePool(payable(depositAddress)).executeDeposit(
+            defaultParams,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            relayer,
+            uint32(block.timestamp),
+            fillDeadline,
+            sig
+        );
+
+        assertEq(spokePool.lastMsgValue(), 0, "Should use ERC20 flow (no msg.value)");
+        assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should receive net amount");
+        assertEq(inputToken.balanceOf(relayer), defaultParams.executionParams.executionFee, "Relayer gets ERC20 fee");
     }
 }

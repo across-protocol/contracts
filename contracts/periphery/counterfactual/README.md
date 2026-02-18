@@ -105,8 +105,9 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 | ----------------------- | --------------------- | -------------------------------------------------------------------------------- |
 | `spokePool`             | Constructor immutable | Across SpokePool contract address                                                |
 | `signer`                | Constructor immutable | Address that authorizes execution parameters via EIP-712                         |
+| `wrappedNativeToken`    | Constructor immutable | WETH address, substituted as inputToken for native deposits to SpokePool         |
 | `destinationChainId`    | Deposit param         | Across destination chain ID                                                      |
-| `inputToken`            | Deposit param         | Token deposited on source (as bytes32)                                           |
+| `inputToken`            | Deposit param         | Token deposited on source (as bytes32), or `NATIVE_ASSET` for native ETH         |
 | `outputToken`           | Deposit param         | Token received on destination (as bytes32)                                       |
 | `recipient`             | Deposit param         | Recipient on destination                                                         |
 | `message`               | Deposit param         | Arbitrary message forwarded to recipient                                         |
@@ -150,6 +151,21 @@ if totalFee * 10000 > maxFeeBps * inputAmount:
 ### Depositor Field
 
 The `depositor` parameter passed to `SpokePool.deposit()` is `address(this)` (the clone address). SpokePool refunds for expired deposits go back to the clone, where they can be re-executed or withdrawn via `userWithdraw`.
+
+### Native ETH Deposits
+
+When `inputToken` is set to `NATIVE_ASSET` (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) in the route params, users send native ETH to the predicted CREATE2 address instead of ERC20 tokens. At execution time, the clone detects native ETH by checking:
+
+```
+isNative = inputToken == NATIVE_ASSET
+```
+
+- **Native flow**: `wrappedNativeToken` is substituted as `inputToken` in the `spokePool.deposit{value: depositAmount}()` call so SpokePool recognizes and wraps the ETH. Execution fee paid in ETH via `_transferOut`.
+- **ERC20 flow**: existing `forceApprove` + `deposit` path (for any non-`NATIVE_ASSET` inputToken). Execution fee paid in ERC20 via `_transferOut`.
+
+The clone has a `receive()` function to accept ETH before deployment (sent to the predicted address) and after deployment.
+
+**Withdraw**: `userWithdraw` and `adminWithdraw` accept `token = NATIVE_ASSET` (`0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE`) to withdraw native ETH from the clone.
 
 ## Key Design Decisions
 

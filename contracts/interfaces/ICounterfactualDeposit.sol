@@ -14,6 +14,8 @@ interface ICounterfactualDeposit {
     error MaxFee();
     /// @dev EIP-712 signature does not recover to the expected signer. SpokePool only.
     error InvalidSignature();
+    /// @dev Native ETH transfer failed.
+    error NativeTransferFailed();
 
     event CounterfactualDepositExecuted(
         uint256 amount,

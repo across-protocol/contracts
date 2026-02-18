@@ -16,6 +16,9 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     uint256 internal constant BPS_SCALAR = 10_000;
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
 
+    /// @notice Sentinel address representing native ETH in withdraw calls.
+    address public constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     /// @dev Reads the stored params hash from the clone's appended immutable args and compares.
     /// @param paramsHash keccak256 hash of the caller-supplied route parameters.
     function _verifyParamsHash(bytes32 paramsHash) internal view {
@@ -26,26 +29,36 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     /**
      * @notice Allows the admin to withdraw any token from this clone (e.g. recovery of stuck funds).
      * @param adminWithdrawAddress Authorized admin address.
-     * @param token ERC20 token to withdraw.
+     * @param token ERC20 token to withdraw, or NATIVE_ASSET for native ETH.
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
     function _adminWithdraw(address adminWithdrawAddress, address token, address to, uint256 amount) internal {
         if (msg.sender != adminWithdrawAddress) revert Unauthorized();
-        IERC20(token).safeTransfer(to, amount);
+        _transferOut(token, to, amount);
         emit AdminWithdraw(token, to, amount);
     }
 
     /**
      * @notice Allows the user to withdraw tokens before execution (escape hatch).
      * @param userWithdrawAddress Authorized user address.
-     * @param token ERC20 token to withdraw.
+     * @param token ERC20 token to withdraw, or NATIVE_ASSET for native ETH.
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
     function _userWithdraw(address userWithdrawAddress, address token, address to, uint256 amount) internal {
         if (msg.sender != userWithdrawAddress) revert Unauthorized();
-        IERC20(token).safeTransfer(to, amount);
+        _transferOut(token, to, amount);
         emit UserWithdraw(token, to, amount);
+    }
+
+    /// @dev Transfers native ETH (token == NATIVE_ASSET) or ERC20 tokens.
+    function _transferOut(address token, address to, uint256 amount) internal {
+        if (token == NATIVE_ASSET) {
+            (bool success, ) = to.call{ value: amount }("");
+            if (!success) revert NativeTransferFailed();
+        } else {
+            IERC20(token).safeTransfer(to, amount);
+        }
     }
 }
