@@ -189,7 +189,12 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.DepositExecuted(depositAddress, expectedDeposit, bytes32(0));
+        emit ICounterfactualDeposit.CounterfactualDepositExecuted(
+            expectedDeposit,
+            bytes32(0),
+            relayer,
+            defaultParams.executionParams.executionFee
+        );
 
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDepositSpokePool.executeDeposit,
@@ -522,7 +527,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         wrongToken.mint(depositAddress, 100e18);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.AdminWithdraw(depositAddress, address(wrongToken), admin, 100e18);
+        emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
 
         vm.prank(admin);
         CounterfactualDepositSpokePool(depositAddress).adminWithdraw(defaultParams, address(wrongToken), admin, 100e18);
@@ -549,7 +554,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, 100e6);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.UserWithdraw(depositAddress, address(inputToken), user, 100e6);
+        emit ICounterfactualDeposit.UserWithdraw(address(inputToken), user, 100e6);
 
         vm.prank(user);
         CounterfactualDepositSpokePool(depositAddress).userWithdraw(defaultParams, address(inputToken), user, 100e6);

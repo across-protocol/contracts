@@ -129,7 +129,12 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
 
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
 
-        emit DepositExecuted(address(this), depositAmount, nonce);
+        emit CounterfactualDepositExecuted(
+            depositAmount,
+            nonce,
+            executionFeeRecipient,
+            params.executionParams.executionFee
+        );
     }
 
     /**

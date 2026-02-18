@@ -15,7 +15,12 @@ interface ICounterfactualDeposit {
     /// @dev EIP-712 signature does not recover to the expected signer. SpokePool only.
     error InvalidSignature();
 
-    event DepositExecuted(address indexed depositAddress, uint256 amount, bytes32 nonce);
-    event AdminWithdraw(address indexed depositAddress, address indexed token, address indexed to, uint256 amount);
-    event UserWithdraw(address indexed depositAddress, address indexed token, address indexed to, uint256 amount);
+    event CounterfactualDepositExecuted(
+        uint256 amount,
+        bytes32 nonce,
+        address executionFeeRecipient,
+        uint256 executionFee
+    );
+    event AdminWithdraw(address indexed token, address indexed to, uint256 amount);
+    event UserWithdraw(address indexed token, address indexed to, uint256 amount);
 }

@@ -138,7 +138,12 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             params.depositParams.message
         );
 
-        emit DepositExecuted(address(this), depositAmount, bytes32(0));
+        emit CounterfactualDepositExecuted(
+            depositAmount,
+            bytes32(0),
+            executionFeeRecipient,
+            params.executionParams.executionFee
+        );
     }
 
     /**

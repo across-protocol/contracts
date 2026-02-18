@@ -33,7 +33,7 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     function _adminWithdraw(address adminWithdrawAddress, address token, address to, uint256 amount) internal {
         if (msg.sender != adminWithdrawAddress) revert Unauthorized();
         IERC20(token).safeTransfer(to, amount);
-        emit AdminWithdraw(address(this), token, to, amount);
+        emit AdminWithdraw(token, to, amount);
     }
 
     /**
@@ -46,6 +46,6 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     function _userWithdraw(address userWithdrawAddress, address token, address to, uint256 amount) internal {
         if (msg.sender != userWithdrawAddress) revert Unauthorized();
         IERC20(token).safeTransfer(to, amount);
-        emit UserWithdraw(address(this), token, to, amount);
+        emit UserWithdraw(token, to, amount);
     }
 }

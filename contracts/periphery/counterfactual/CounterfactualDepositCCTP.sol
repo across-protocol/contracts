@@ -130,7 +130,12 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
             signature
         );
 
-        emit DepositExecuted(address(this), depositAmount, nonce);
+        emit CounterfactualDepositExecuted(
+            depositAmount,
+            nonce,
+            executionFeeRecipient,
+            params.executionParams.executionFee
+        );
     }
 
     /**

@@ -134,7 +134,12 @@ contract CounterfactualOFTDepositTest is Test {
         token.transfer(depositAddress, amount);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.DepositExecuted(depositAddress, expectedDeposit, nonce);
+        emit ICounterfactualDeposit.CounterfactualDepositExecuted(
+            expectedDeposit,
+            nonce,
+            relayer,
+            defaultParams.executionParams.executionFee
+        );
 
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDepositOFT.executeDeposit,
@@ -320,7 +325,7 @@ contract CounterfactualOFTDepositTest is Test {
         wrongToken.mint(depositAddress, 100e18);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.AdminWithdraw(depositAddress, address(wrongToken), admin, 100e18);
+        emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
 
         vm.prank(admin);
         CounterfactualDepositOFT(depositAddress).adminWithdraw(defaultParams, address(wrongToken), admin, 100e18);
@@ -347,7 +352,7 @@ contract CounterfactualOFTDepositTest is Test {
         token.transfer(depositAddress, 100e6);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.UserWithdraw(depositAddress, address(token), user, 100e6);
+        emit ICounterfactualDeposit.UserWithdraw(address(token), user, 100e6);
 
         vm.prank(user);
         CounterfactualDepositOFT(depositAddress).userWithdraw(defaultParams, address(token), user, 100e6);
