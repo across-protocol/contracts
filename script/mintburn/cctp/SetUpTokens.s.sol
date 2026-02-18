@@ -35,35 +35,7 @@ contract SetUpTokens is DeploymentUtils {
         string memory bridgeSafetyBufferCoreStr = vm.toString(bridgeSafetyBufferCore);
         string memory canBeUsedForAccountActivationStr = canBeUsedForAccountActivation ? "true" : "false";
 
-        // 1. Check DEFAULT_ADMIN_ROLE
-        console.log("# Checking DEFAULT_ADMIN_ROLE...");
-        string[] memory callCmd = new string[](6);
-        callCmd[0] = "cast";
-        callCmd[1] = "call";
-        callCmd[2] = dstPeripheryStr;
-        callCmd[3] = "DEFAULT_ADMIN_ROLE()(bytes32)";
-        callCmd[4] = "--rpc-url";
-        callCmd[5] = chain;
-        bytes memory roleResult = vm.ffi(callCmd);
-        // vm.ffi hex-decodes output starting with 0x, so convert raw bytes back to a hex string.
-        string memory role = vm.toString(bytes32(roleResult));
-        console.log("DEFAULT_ADMIN_ROLE:", role);
-
-        // 2. Check if deployer has DEFAULT_ADMIN_ROLE
-        console.log("# Checking if deployer has DEFAULT_ADMIN_ROLE...");
-        string[] memory hasRoleCmd = new string[](8);
-        hasRoleCmd[0] = "cast";
-        hasRoleCmd[1] = "call";
-        hasRoleCmd[2] = dstPeripheryStr;
-        hasRoleCmd[3] = "hasRole(bytes32,address)(bool)";
-        hasRoleCmd[4] = role;
-        hasRoleCmd[5] = vm.toString(deployer);
-        hasRoleCmd[6] = "--rpc-url";
-        hasRoleCmd[7] = chain;
-        bytes memory hasRoleResult = vm.ffi(hasRoleCmd);
-        console.log("Deployer has admin role:", string(hasRoleResult));
-
-        // 3. Set core token info
+        // Set core token info
         console.log("# Setting core token info...");
         string[] memory sendCmd = new string[](13);
         sendCmd[0] = "cast";
