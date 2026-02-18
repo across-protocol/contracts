@@ -39,23 +39,23 @@ When a clone receives a call, the EIP-1167 bytecode `delegatecall`s to the imple
 | ----------------------- | --------------------- | ----------------------------------------------------------------------- |
 | `srcPeriphery`          | Constructor immutable | SponsoredCCTPSrcPeriphery contract address                              |
 | `sourceDomain`          | Constructor immutable | CCTP source domain ID for this chain                                    |
-| `destinationDomain`     | Route immutable       | CCTP destination domain (e.g. 3 for Hyperliquid)                        |
-| `mintRecipient`         | Route immutable       | DstPeriphery handler contract on destination                            |
-| `burnToken`             | Route immutable       | Token to burn (e.g. USDC address as bytes32)                            |
-| `destinationCaller`     | Route immutable       | Permissioned bot that calls `receiveMessage` on destination             |
-| `cctpMaxFeeBps`         | Route immutable       | Max CCTP fee in bps (computed to `maxFee` at execution time)            |
-| `executionFee`          | Route immutable       | Fixed fee (in burnToken units) paid to relayer                          |
-| `minFinalityThreshold`  | Route immutable       | Minimum finality before CCTP attestation                                |
-| `maxBpsToSponsor`       | Route immutable       | Max bps of amount the relayer can sponsor                               |
-| `maxUserSlippageBps`    | Route immutable       | Slippage tolerance for fees on destination                              |
-| `finalRecipient`        | Route immutable       | Ultimate receiver on destination chain                                  |
-| `finalToken`            | Route immutable       | Token recipient receives on destination                                 |
-| `destinationDex`        | Route immutable       | DEX on HyperCore for swaps                                              |
-| `accountCreationMode`   | Route immutable       | Standard (0) or FromUserFunds (1)                                       |
-| `executionMode`         | Route immutable       | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
-| `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                             |
-| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                            |
-| `actionData`            | Route immutable       | Encoded action data for arbitrary execution modes                       |
+| `destinationDomain`     | Deposit param         | CCTP destination domain (e.g. 3 for Hyperliquid)                        |
+| `mintRecipient`         | Deposit param         | DstPeriphery handler contract on destination                            |
+| `burnToken`             | Deposit param         | Token to burn (e.g. USDC address as bytes32)                            |
+| `destinationCaller`     | Deposit param         | Permissioned bot that calls `receiveMessage` on destination             |
+| `cctpMaxFeeBps`         | Deposit param         | Max CCTP fee in bps (computed to `maxFee` at execution time)            |
+| `minFinalityThreshold`  | Deposit param         | Minimum finality before CCTP attestation                                |
+| `maxBpsToSponsor`       | Deposit param         | Max bps of amount the relayer can sponsor                               |
+| `maxUserSlippageBps`    | Deposit param         | Slippage tolerance for fees on destination                              |
+| `finalRecipient`        | Deposit param         | Ultimate receiver on destination chain                                  |
+| `finalToken`            | Deposit param         | Token recipient receives on destination                                 |
+| `destinationDex`        | Deposit param         | DEX on HyperCore for swaps                                              |
+| `accountCreationMode`   | Deposit param         | Standard (0) or FromUserFunds (1)                                       |
+| `executionMode`         | Deposit param         | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
+| `actionData`            | Deposit param         | Encoded action data for arbitrary execution modes                       |
+| `executionFee`          | Execution param       | Fixed fee (in burnToken units) paid to relayer                          |
+| `userWithdrawAddress`   | Execution param       | Address authorized to call `userWithdraw()`                             |
+| `adminWithdrawAddress`  | Execution param       | Address authorized to call `adminWithdraw()`                            |
 | `amount`                | Argument              | Gross amount of burnToken (includes executionFee)                       |
 | `executionFeeRecipient` | Argument              | Address that receives the execution fee                                 |
 | `nonce`                 | Argument              | Unique nonce for SponsoredCCTP replay protection                        |
@@ -70,24 +70,24 @@ Signature verification, nonce tracking, and `cctpDeadline` enforcement are handl
 | ----------------------- | --------------------- | ----------------------------------------------------------------------- |
 | `oftSrcPeriphery`       | Constructor immutable | SponsoredOFTSrcPeriphery contract address                               |
 | `srcEid`                | Constructor immutable | OFT source endpoint ID for this chain                                   |
-| `dstEid`                | Route immutable       | OFT destination endpoint ID                                             |
-| `destinationHandler`    | Route immutable       | Composer contract on destination (OFT `to` param)                       |
-| `token`                 | Route immutable       | Local token address (the OFT token on source chain)                     |
-| `maxOftFeeBps`          | Route immutable       | Max OFT bridge fee in bps                                               |
-| `executionFee`          | Route immutable       | Fixed fee paid to relayer                                               |
-| `lzReceiveGasLimit`     | Route immutable       | Gas limit for `lzReceive` on destination                                |
-| `lzComposeGasLimit`     | Route immutable       | Gas limit for `lzCompose` on destination                                |
-| `maxBpsToSponsor`       | Route immutable       | Max bps of amount the relayer can sponsor                               |
-| `maxUserSlippageBps`    | Route immutable       | Slippage tolerance for swap on destination                              |
-| `finalRecipient`        | Route immutable       | User address on destination                                             |
-| `finalToken`            | Route immutable       | Final token user receives                                               |
-| `destinationDex`        | Route immutable       | Destination DEX on HyperCore                                            |
-| `accountCreationMode`   | Route immutable       | Standard (0) or FromUserFunds (1)                                       |
-| `executionMode`         | Route immutable       | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
-| `refundRecipient`       | Route immutable       | LZ refund recipient for excess native messaging fees                    |
-| `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                             |
-| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                            |
-| `actionData`            | Route immutable       | Encoded action data for arbitrary execution modes                       |
+| `dstEid`                | Deposit param         | OFT destination endpoint ID                                             |
+| `destinationHandler`    | Deposit param         | Composer contract on destination (OFT `to` param)                       |
+| `token`                 | Deposit param         | Local token address (the OFT token on source chain)                     |
+| `maxOftFeeBps`          | Deposit param         | Max OFT bridge fee in bps                                               |
+| `lzReceiveGasLimit`     | Deposit param         | Gas limit for `lzReceive` on destination                                |
+| `lzComposeGasLimit`     | Deposit param         | Gas limit for `lzCompose` on destination                                |
+| `maxBpsToSponsor`       | Deposit param         | Max bps of amount the relayer can sponsor                               |
+| `maxUserSlippageBps`    | Deposit param         | Slippage tolerance for swap on destination                              |
+| `finalRecipient`        | Deposit param         | User address on destination                                             |
+| `finalToken`            | Deposit param         | Final token user receives                                               |
+| `destinationDex`        | Deposit param         | Destination DEX on HyperCore                                            |
+| `accountCreationMode`   | Deposit param         | Standard (0) or FromUserFunds (1)                                       |
+| `executionMode`         | Deposit param         | DirectToCore (0), ArbitraryActionsToCore (1), ArbitraryActionsToEVM (2) |
+| `refundRecipient`       | Deposit param         | LZ refund recipient for excess native messaging fees                    |
+| `actionData`            | Deposit param         | Encoded action data for arbitrary execution modes                       |
+| `executionFee`          | Execution param       | Fixed fee paid to relayer                                               |
+| `userWithdrawAddress`   | Execution param       | Address authorized to call `userWithdraw()`                             |
+| `adminWithdrawAddress`  | Execution param       | Address authorized to call `adminWithdraw()`                            |
 | `amount`                | Argument              | Gross amount of token (includes executionFee)                           |
 | `executionFeeRecipient` | Argument              | Address that receives the execution fee                                 |
 | `nonce`                 | Argument              | Unique nonce for SponsoredOFT replay protection                         |
@@ -105,16 +105,16 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 | ----------------------- | --------------------- | -------------------------------------------------------------------------------- |
 | `spokePool`             | Constructor immutable | Across SpokePool contract address                                                |
 | `signer`                | Constructor immutable | Address that authorizes execution parameters via EIP-712                         |
-| `destinationChainId`    | Route immutable       | Across destination chain ID                                                      |
-| `inputToken`            | Route immutable       | Token deposited on source (as bytes32)                                           |
-| `outputToken`           | Route immutable       | Token received on destination (as bytes32)                                       |
-| `recipient`             | Route immutable       | Recipient on destination                                                         |
-| `stableExchangeRate`    | Route immutable       | inputToken per outputToken exchange rate (1e18 scaled), used for fee calculation |
-| `maxFeeBps`             | Route immutable       | Max total fee (relayer + execution) in basis points                              |
-| `executionFee`          | Route immutable       | Fixed fee paid to relayer calling execute                                        |
-| `userWithdrawAddress`   | Route immutable       | Address authorized to call `userWithdraw()`                                      |
-| `adminWithdrawAddress`  | Route immutable       | Address authorized to call `adminWithdraw()`                                     |
-| `message`               | Route immutable       | Arbitrary message forwarded to recipient                                         |
+| `destinationChainId`    | Deposit param         | Across destination chain ID                                                      |
+| `inputToken`            | Deposit param         | Token deposited on source (as bytes32)                                           |
+| `outputToken`           | Deposit param         | Token received on destination (as bytes32)                                       |
+| `recipient`             | Deposit param         | Recipient on destination                                                         |
+| `message`               | Deposit param         | Arbitrary message forwarded to recipient                                         |
+| `stableExchangeRate`    | Execution param       | inputToken per outputToken exchange rate (1e18 scaled), used for fee calculation |
+| `maxFeeBps`             | Execution param       | Max total fee (relayer + execution) in basis points                              |
+| `executionFee`          | Execution param       | Fixed fee paid to relayer calling execute                                        |
+| `userWithdrawAddress`   | Execution param       | Address authorized to call `userWithdraw()`                                      |
+| `adminWithdrawAddress`  | Execution param       | Address authorized to call `adminWithdraw()`                                     |
 | `inputAmount`           | Argument (signed)     | Gross amount of inputToken (includes executionFee)                               |
 | `outputAmount`          | Argument (signed)     | Output amount passed to SpokePool                                                |
 | `exclusiveRelayer`      | Argument (signed)     | Optional exclusive relayer (bytes32(0) for none)                                 |

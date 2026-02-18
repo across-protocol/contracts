@@ -9,19 +9,33 @@ import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol"
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
 /**
- * @notice Route parameters for SpokePool deposits
+ * @notice Parameters passed through to SpokePool.deposit()
  */
-struct SpokePoolImmutables {
+struct SpokePoolDepositParams {
     uint256 destinationChainId;
     bytes32 inputToken;
     bytes32 outputToken;
     bytes32 recipient;
+    bytes message;
+}
+
+/**
+ * @notice Parameters used by the clone's execution logic
+ */
+struct SpokePoolExecutionParams {
     uint256 stableExchangeRate;
     uint256 maxFeeBps;
     uint256 executionFee;
     address userWithdrawAddress;
     address adminWithdrawAddress;
-    bytes message;
+}
+
+/**
+ * @notice Combined route parameters for SpokePool deposits
+ */
+struct SpokePoolImmutables {
+    SpokePoolDepositParams depositParams;
+    SpokePoolExecutionParams executionParams;
 }
 
 /**
@@ -77,38 +91,38 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         _verifyParams(params);
         _verifySignature(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, fillDeadline, signature);
 
-        address inputToken = address(uint160(uint256(params.inputToken)));
+        address inputToken = address(uint160(uint256(params.depositParams.inputToken)));
 
         // transfer execution fee to execution fee recipient
-        if (params.executionFee > 0) {
-            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
+        if (params.executionParams.executionFee > 0) {
+            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
         }
 
         // amount to deposit into SpokePool
-        uint256 depositAmount = inputAmount - params.executionFee;
+        uint256 depositAmount = inputAmount - params.executionParams.executionFee;
 
         // Fee check: convert outputAmount to inputToken units, compute total fee in bps
-        uint256 outputInInputToken = (outputAmount * params.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
+        uint256 outputInInputToken = (outputAmount * params.executionParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + params.executionFee;
-        if (totalFee * BPS_SCALAR > params.maxFeeBps * inputAmount) revert MaxFee();
+        uint256 totalFee = relayerFee + params.executionParams.executionFee;
+        if (totalFee * BPS_SCALAR > params.executionParams.maxFeeBps * inputAmount) revert MaxFee();
 
         IERC20(inputToken).forceApprove(spokePool, depositAmount);
 
         // Depositor is this clone so expired deposit refunds return here.
         V3SpokePoolInterface(spokePool).deposit(
             bytes32(uint256(uint160(address(this)))),
-            params.recipient,
-            params.inputToken,
-            params.outputToken,
+            params.depositParams.recipient,
+            params.depositParams.inputToken,
+            params.depositParams.outputToken,
             depositAmount,
             outputAmount,
-            params.destinationChainId,
+            params.depositParams.destinationChainId,
             exclusiveRelayer,
             quoteTimestamp,
             fillDeadline,
             exclusivityDeadline,
-            params.message
+            params.depositParams.message
         );
 
         emit DepositExecuted(address(this), depositAmount, bytes32(0));
@@ -123,7 +137,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      */
     function adminWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
+        _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
     }
 
     /**
@@ -135,7 +149,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      */
     function userWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        _userWithdraw(params.userWithdrawAddress, token, to, amount);
+        _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
     }
 
     /**

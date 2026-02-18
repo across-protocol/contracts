@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDepositSpokePool, SpokePoolImmutables } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CounterfactualDepositSpokePool, SpokePoolImmutables, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
@@ -106,16 +106,20 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.mint(user, 1000e6);
 
         defaultParams = SpokePoolImmutables({
-            destinationChainId: 42161, // Arbitrum
-            inputToken: bytes32(uint256(uint160(address(inputToken)))),
-            outputToken: bytes32(uint256(uint160(address(inputToken)))), // Same token
-            recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-            stableExchangeRate: 1e18, // 1:1
-            maxFeeBps: 600, // 6%
-            executionFee: 1e6, // 1 USDC
-            userWithdrawAddress: userWithdrawAddr,
-            adminWithdrawAddress: admin,
-            message: ""
+            depositParams: SpokePoolDepositParams({
+                destinationChainId: 42161, // Arbitrum
+                inputToken: bytes32(uint256(uint160(address(inputToken)))),
+                outputToken: bytes32(uint256(uint160(address(inputToken)))), // Same token
+                recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+                message: ""
+            }),
+            executionParams: SpokePoolExecutionParams({
+                stableExchangeRate: 1e18, // 1:1
+                maxFeeBps: 600, // 6%
+                executionFee: 1e6, // 1 USDC
+                userWithdrawAddress: userWithdrawAddr,
+                adminWithdrawAddress: admin
+            })
         });
     }
 
@@ -163,7 +167,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee; // 99 USDC
+        uint256 expectedDeposit = inputAmount - defaultParams.executionParams.executionFee; // 99 USDC
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes32 paramsHash = _paramsHash();
@@ -197,7 +201,11 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(
+            inputToken.balanceOf(relayer),
+            defaultParams.executionParams.executionFee,
+            "Relayer should receive execution fee"
+        );
         assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
     }
 
@@ -205,7 +213,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
+        uint256 expectedDeposit = inputAmount - defaultParams.executionParams.executionFee;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
@@ -233,7 +241,11 @@ contract CounterfactualSpokePoolDepositTest is Test {
         factory.execute(depositAddress, executeCalldata);
 
         assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(
+            inputToken.balanceOf(relayer),
+            defaultParams.executionParams.executionFee,
+            "Relayer should receive execution fee"
+        );
         assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
     }
 
@@ -267,7 +279,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             bytes32(uint256(uint160(depositAddress))),
             "Depositor should be the clone address"
         );
-        assertEq(spokePool.lastRecipient(), defaultParams.recipient, "Recipient should match params");
+        assertEq(spokePool.lastRecipient(), defaultParams.depositParams.recipient, "Recipient should match params");
     }
 
     function testFillDeadlinePassedThrough() public {
@@ -506,7 +518,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes memory sig = _signExecuteDeposit(depositAddress, inputAmount, outputAmount, bytes32(0), 0, fillDeadline);
 
         SpokePoolImmutables memory wrongParams = defaultParams;
-        wrongParams.maxFeeBps = 9999;
+        wrongParams.executionParams.maxFeeBps = 9999;
 
         vm.prank(user);
         inputToken.transfer(depositAddress, inputAmount);
@@ -580,7 +592,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testExecuteWithZeroExecutionFee() public {
         SpokePoolImmutables memory params = defaultParams;
-        params.executionFee = 0;
+        params.executionParams.executionFee = 0;
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
@@ -629,7 +641,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         SpokePoolImmutables memory wrongParams = defaultParams;
-        wrongParams.maxFeeBps = 9999;
+        wrongParams.executionParams.maxFeeBps = 9999;
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(admin);
@@ -674,7 +686,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testDepositWithMessage() public {
         SpokePoolImmutables memory params = defaultParams;
-        params.message = abi.encode(uint256(42), "hello");
+        params.depositParams.message = abi.encode(uint256(42), "hello");
         bytes32 salt = keccak256("test-salt-msg");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
@@ -699,6 +711,10 @@ contract CounterfactualSpokePoolDepositTest is Test {
             sig
         );
 
-        assertEq(keccak256(spokePool.lastMessage()), keccak256(params.message), "Message should be forwarded");
+        assertEq(
+            keccak256(spokePool.lastMessage()),
+            keccak256(params.depositParams.message),
+            "Message should be forwarded"
+        );
     }
 }

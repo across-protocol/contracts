@@ -14,14 +14,13 @@ interface ISponsoredOFTSrcPeriphery {
 }
 
 /**
- * @notice Route parameters for OFT deposits
+ * @notice Parameters passed through to SponsoredOFTSrcPeriphery.deposit()
  */
-struct OFTImmutables {
+struct OFTDepositParams {
     uint32 dstEid;
     bytes32 destinationHandler;
     address token;
     uint256 maxOftFeeBps;
-    uint256 executionFee;
     uint256 lzReceiveGasLimit;
     uint256 lzComposeGasLimit;
     uint256 maxBpsToSponsor;
@@ -32,9 +31,24 @@ struct OFTImmutables {
     uint8 accountCreationMode;
     uint8 executionMode;
     address refundRecipient;
+    bytes actionData;
+}
+
+/**
+ * @notice Parameters used by the clone's execution logic
+ */
+struct OFTExecutionParams {
+    uint256 executionFee;
     address userWithdrawAddress;
     address adminWithdrawAddress;
-    bytes actionData;
+}
+
+/**
+ * @notice Combined route parameters for OFT deposits
+ */
+struct OFTImmutables {
+    OFTDepositParams depositParams;
+    OFTExecutionParams executionParams;
 }
 
 /**
@@ -78,35 +92,35 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         _verifyParams(params);
 
         // transfer execution fee to execution fee recipient
-        if (params.executionFee > 0) {
-            IERC20(params.token).safeTransfer(executionFeeRecipient, params.executionFee);
+        if (params.executionParams.executionFee > 0) {
+            IERC20(params.depositParams.token).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
         }
 
-        uint256 depositAmount = amount - params.executionFee;
+        uint256 depositAmount = amount - params.executionParams.executionFee;
 
-        IERC20(params.token).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(params.depositParams.token).forceApprove(oftSrcPeriphery, depositAmount);
 
         Quote memory quote = Quote({
             signedParams: SignedQuoteParams({
                 srcEid: srcEid,
-                dstEid: params.dstEid,
-                destinationHandler: params.destinationHandler,
+                dstEid: params.depositParams.dstEid,
+                destinationHandler: params.depositParams.destinationHandler,
                 amountLD: depositAmount,
                 nonce: nonce,
                 deadline: oftDeadline,
-                maxBpsToSponsor: params.maxBpsToSponsor,
-                maxUserSlippageBps: params.maxUserSlippageBps,
-                finalRecipient: params.finalRecipient,
-                finalToken: params.finalToken,
-                destinationDex: params.destinationDex,
-                lzReceiveGasLimit: params.lzReceiveGasLimit,
-                lzComposeGasLimit: params.lzComposeGasLimit,
-                maxOftFeeBps: params.maxOftFeeBps,
-                accountCreationMode: params.accountCreationMode,
-                executionMode: params.executionMode,
-                actionData: params.actionData
+                maxBpsToSponsor: params.depositParams.maxBpsToSponsor,
+                maxUserSlippageBps: params.depositParams.maxUserSlippageBps,
+                finalRecipient: params.depositParams.finalRecipient,
+                finalToken: params.depositParams.finalToken,
+                destinationDex: params.depositParams.destinationDex,
+                lzReceiveGasLimit: params.depositParams.lzReceiveGasLimit,
+                lzComposeGasLimit: params.depositParams.lzComposeGasLimit,
+                maxOftFeeBps: params.depositParams.maxOftFeeBps,
+                accountCreationMode: params.depositParams.accountCreationMode,
+                executionMode: params.depositParams.executionMode,
+                actionData: params.depositParams.actionData
             }),
-            unsignedParams: UnsignedQuoteParams({ refundRecipient: params.refundRecipient })
+            unsignedParams: UnsignedQuoteParams({ refundRecipient: params.depositParams.refundRecipient })
         });
 
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
@@ -123,7 +137,7 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
      */
     function adminWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
+        _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
     }
 
     /**
@@ -135,7 +149,7 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
      */
     function userWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        _userWithdraw(params.userWithdrawAddress, token, to, amount);
+        _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
     }
 
     /// @dev Hashes caller-supplied params and checks against the clone's stored hash.

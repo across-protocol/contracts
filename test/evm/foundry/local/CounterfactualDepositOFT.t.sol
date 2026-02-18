@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDepositOFT, OFTImmutables } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { CounterfactualDepositOFT, OFTImmutables, OFTDepositParams, OFTExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -83,24 +83,28 @@ contract CounterfactualOFTDepositTest is Test {
         token.mint(user, 1000e6);
 
         defaultParams = OFTImmutables({
-            dstEid: DST_EID,
-            destinationHandler: bytes32(uint256(uint160(makeAddr("composer")))),
-            token: address(token),
-            maxOftFeeBps: 100,
-            executionFee: 1e6,
-            lzReceiveGasLimit: 200000,
-            lzComposeGasLimit: 500000,
-            maxBpsToSponsor: 500,
-            maxUserSlippageBps: 50,
-            finalRecipient: finalRecipient,
-            finalToken: bytes32(uint256(uint160(address(token)))),
-            destinationDex: 0,
-            accountCreationMode: 0,
-            executionMode: 0,
-            refundRecipient: makeAddr("refundRecipient"),
-            userWithdrawAddress: userWithdrawAddr,
-            adminWithdrawAddress: admin,
-            actionData: ""
+            depositParams: OFTDepositParams({
+                dstEid: DST_EID,
+                destinationHandler: bytes32(uint256(uint160(makeAddr("composer")))),
+                token: address(token),
+                maxOftFeeBps: 100,
+                lzReceiveGasLimit: 200000,
+                lzComposeGasLimit: 500000,
+                maxBpsToSponsor: 500,
+                maxUserSlippageBps: 50,
+                finalRecipient: finalRecipient,
+                finalToken: bytes32(uint256(uint160(address(token)))),
+                destinationDex: 0,
+                accountCreationMode: 0,
+                executionMode: 0,
+                refundRecipient: makeAddr("refundRecipient"),
+                actionData: ""
+            }),
+            executionParams: OFTExecutionParams({
+                executionFee: 1e6,
+                userWithdrawAddress: userWithdrawAddr,
+                adminWithdrawAddress: admin
+            })
         });
     }
 
@@ -121,7 +125,7 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes32 nonce = keccak256("nonce-1");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultParams.executionFee;
+        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
 
         bytes32 paramsHash = _paramsHash();
         address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
@@ -148,7 +152,11 @@ contract CounterfactualOFTDepositTest is Test {
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(token.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(token.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(
+            token.balanceOf(relayer),
+            defaultParams.executionParams.executionFee,
+            "Relayer should receive execution fee"
+        );
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
         assertEq(srcPeriphery.lastNonce(), nonce, "SrcPeriphery should have received correct nonce");
     }
@@ -180,7 +188,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testQuoteParamsBuiltCorrectly() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultParams.executionFee;
+        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
@@ -201,12 +209,12 @@ contract CounterfactualOFTDepositTest is Test {
         assertEq(srcPeriphery.lastDstEid(), DST_EID, "dstEid should match");
         assertEq(
             srcPeriphery.lastDestinationHandler(),
-            defaultParams.destinationHandler,
+            defaultParams.depositParams.destinationHandler,
             "destinationHandler should match"
         );
         assertEq(
             srcPeriphery.lastRefundRecipient(),
-            defaultParams.refundRecipient,
+            defaultParams.depositParams.refundRecipient,
             "refundRecipient should match route immutable"
         );
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "amountLD should be net of execution fee");
@@ -249,7 +257,7 @@ contract CounterfactualOFTDepositTest is Test {
         assertEq(token.balanceOf(depositAddress), 0, "All tokens should be deposited");
         assertEq(
             token.balanceOf(relayer),
-            2 * defaultParams.executionFee,
+            2 * defaultParams.executionParams.executionFee,
             "Relayer should receive fees from both deposits"
         );
     }
@@ -257,7 +265,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testExecuteViaFactory() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultParams.executionFee;
+        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
@@ -273,7 +281,11 @@ contract CounterfactualOFTDepositTest is Test {
         factory.execute(depositAddress, executeCalldata);
 
         assertEq(token.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(token.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(
+            token.balanceOf(relayer),
+            defaultParams.executionParams.executionFee,
+            "Relayer should receive execution fee"
+        );
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
     }
 
@@ -355,7 +367,7 @@ contract CounterfactualOFTDepositTest is Test {
 
     function testExecuteWithZeroExecutionFee() public {
         OFTImmutables memory params = defaultParams;
-        params.executionFee = 0;
+        params.executionParams.executionFee = 0;
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 amount = 100e6;
 
@@ -395,7 +407,7 @@ contract CounterfactualOFTDepositTest is Test {
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         OFTImmutables memory wrongParams = defaultParams;
-        wrongParams.maxOftFeeBps = 200;
+        wrongParams.depositParams.maxOftFeeBps = 200;
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(admin);
@@ -412,7 +424,7 @@ contract CounterfactualOFTDepositTest is Test {
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
 
         OFTImmutables memory wrongParams = defaultParams;
-        wrongParams.maxOftFeeBps = 200;
+        wrongParams.depositParams.maxOftFeeBps = 200;
 
         vm.prank(user);
         token.transfer(depositAddress, 100e6);

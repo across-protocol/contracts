@@ -14,15 +14,14 @@ interface ISponsoredCCTPSrcPeriphery {
 }
 
 /**
- * @notice Route parameters for CCTP deposits
+ * @notice Parameters passed through to SponsoredCCTPSrcPeriphery.depositForBurn()
  */
-struct CCTPImmutables {
+struct CCTPDepositParams {
     uint32 destinationDomain;
     bytes32 mintRecipient;
     bytes32 burnToken;
     bytes32 destinationCaller;
     uint256 cctpMaxFeeBps;
-    uint256 executionFee;
     uint32 minFinalityThreshold;
     uint256 maxBpsToSponsor;
     uint256 maxUserSlippageBps;
@@ -31,9 +30,24 @@ struct CCTPImmutables {
     uint32 destinationDex;
     uint8 accountCreationMode;
     uint8 executionMode;
+    bytes actionData;
+}
+
+/**
+ * @notice Parameters used by the clone's execution logic
+ */
+struct CCTPExecutionParams {
+    uint256 executionFee;
     address userWithdrawAddress;
     address adminWithdrawAddress;
-    bytes actionData;
+}
+
+/**
+ * @notice Combined route parameters for CCTP deposits
+ */
+struct CCTPImmutables {
+    CCTPDepositParams depositParams;
+    CCTPExecutionParams executionParams;
 }
 
 /**
@@ -77,37 +91,37 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     ) external {
         _verifyParams(params);
 
-        address inputToken = address(uint160(uint256(params.burnToken)));
+        address inputToken = address(uint160(uint256(params.depositParams.burnToken)));
 
         // transfer execution fee to execution fee recipient
-        if (params.executionFee > 0) {
-            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionFee);
+        if (params.executionParams.executionFee > 0) {
+            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
         }
 
-        uint256 depositAmount = amount - params.executionFee;
+        uint256 depositAmount = amount - params.executionParams.executionFee;
 
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
-                destinationDomain: params.destinationDomain,
-                mintRecipient: params.mintRecipient,
+                destinationDomain: params.depositParams.destinationDomain,
+                mintRecipient: params.depositParams.mintRecipient,
                 amount: depositAmount,
-                burnToken: params.burnToken,
-                destinationCaller: params.destinationCaller,
-                maxFee: (depositAmount * params.cctpMaxFeeBps) / BPS_SCALAR, // Convert bps to absolute amount
-                minFinalityThreshold: params.minFinalityThreshold,
+                burnToken: params.depositParams.burnToken,
+                destinationCaller: params.depositParams.destinationCaller,
+                maxFee: (depositAmount * params.depositParams.cctpMaxFeeBps) / BPS_SCALAR,
+                minFinalityThreshold: params.depositParams.minFinalityThreshold,
                 nonce: nonce,
                 deadline: cctpDeadline,
-                maxBpsToSponsor: params.maxBpsToSponsor,
-                maxUserSlippageBps: params.maxUserSlippageBps,
-                finalRecipient: params.finalRecipient,
-                finalToken: params.finalToken,
-                destinationDex: params.destinationDex,
-                accountCreationMode: params.accountCreationMode,
-                executionMode: params.executionMode,
-                actionData: params.actionData
+                maxBpsToSponsor: params.depositParams.maxBpsToSponsor,
+                maxUserSlippageBps: params.depositParams.maxUserSlippageBps,
+                finalRecipient: params.depositParams.finalRecipient,
+                finalToken: params.depositParams.finalToken,
+                destinationDex: params.depositParams.destinationDex,
+                accountCreationMode: params.depositParams.accountCreationMode,
+                executionMode: params.depositParams.executionMode,
+                actionData: params.depositParams.actionData
             }),
             signature
         );
@@ -124,7 +138,7 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
      */
     function adminWithdraw(CCTPImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        _adminWithdraw(params.adminWithdrawAddress, token, to, amount);
+        _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
     }
 
     /**
@@ -136,7 +150,7 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
      */
     function userWithdraw(CCTPImmutables memory params, address token, address to, uint256 amount) external {
         _verifyParams(params);
-        _userWithdraw(params.userWithdrawAddress, token, to, amount);
+        _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
     }
 
     /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
