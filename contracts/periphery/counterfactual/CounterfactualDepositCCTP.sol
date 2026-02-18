@@ -67,6 +67,12 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     /// @notice CCTP source domain ID for this chain
     uint32 public immutable sourceDomain;
 
+    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
+    modifier verifyParams(CCTPImmutables memory params) {
+        _verifyParamsHash(keccak256(abi.encode(params)));
+        _;
+    }
+
     constructor(address _srcPeriphery, uint32 _sourceDomain) {
         srcPeriphery = _srcPeriphery;
         sourceDomain = _sourceDomain;
@@ -88,9 +94,7 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
         bytes32 nonce,
         uint256 cctpDeadline,
         bytes calldata signature
-    ) external {
-        _verifyParams(params);
-
+    ) external verifyParams(params) {
         address inputToken = address(uint160(uint256(params.depositParams.burnToken)));
 
         // transfer execution fee to execution fee recipient
@@ -136,8 +140,12 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function adminWithdraw(CCTPImmutables memory params, address token, address to, uint256 amount) external {
-        _verifyParams(params);
+    function adminWithdraw(
+        CCTPImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParams(params) {
         _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
     }
 
@@ -148,14 +156,12 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function userWithdraw(CCTPImmutables memory params, address token, address to, uint256 amount) external {
-        _verifyParams(params);
+    function userWithdraw(
+        CCTPImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParams(params) {
         _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
-    }
-
-    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
-    /// @param params Route parameters to verify.
-    function _verifyParams(CCTPImmutables memory params) internal view {
-        _verifyParamsHash(keccak256(abi.encode(params)));
     }
 }

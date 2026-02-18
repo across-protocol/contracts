@@ -67,6 +67,12 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
     /// @notice OFT source endpoint ID for this chain
     uint32 public immutable srcEid;
 
+    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
+    modifier verifyParams(OFTImmutables memory params) {
+        _verifyParamsHash(keccak256(abi.encode(params)));
+        _;
+    }
+
     constructor(address _oftSrcPeriphery, uint32 _srcEid) {
         oftSrcPeriphery = _oftSrcPeriphery;
         srcEid = _srcEid;
@@ -88,9 +94,7 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         bytes32 nonce,
         uint256 oftDeadline,
         bytes calldata signature
-    ) external payable {
-        _verifyParams(params);
-
+    ) external payable verifyParams(params) {
         // transfer execution fee to execution fee recipient
         if (params.executionParams.executionFee > 0) {
             IERC20(params.depositParams.token).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
@@ -135,8 +139,12 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function adminWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
-        _verifyParams(params);
+    function adminWithdraw(
+        OFTImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParams(params) {
         _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
     }
 
@@ -147,14 +155,12 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function userWithdraw(OFTImmutables memory params, address token, address to, uint256 amount) external {
-        _verifyParams(params);
+    function userWithdraw(
+        OFTImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParams(params) {
         _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
-    }
-
-    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
-    /// @param params Route parameters to verify.
-    function _verifyParams(OFTImmutables memory params) internal view {
-        _verifyParamsHash(keccak256(abi.encode(params)));
     }
 }

@@ -60,6 +60,12 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     /// @notice Signer that authorizes execution parameters
     address public immutable signer;
 
+    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
+    modifier verifyParams(SpokePoolImmutables memory params) {
+        _verifyParamsHash(keccak256(abi.encode(params)));
+        _;
+    }
+
     constructor(address _spokePool, address _signer) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
         spokePool = _spokePool;
         signer = _signer;
@@ -87,8 +93,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         bytes calldata signature
-    ) external {
-        _verifyParams(params);
+    ) external verifyParams(params) {
         _verifySignature(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, fillDeadline, signature);
 
         address inputToken = address(uint160(uint256(params.depositParams.inputToken)));
@@ -135,8 +140,12 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function adminWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
-        _verifyParams(params);
+    function adminWithdraw(
+        SpokePoolImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParams(params) {
         _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
     }
 
@@ -147,8 +156,12 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function userWithdraw(SpokePoolImmutables memory params, address token, address to, uint256 amount) external {
-        _verifyParams(params);
+    function userWithdraw(
+        SpokePoolImmutables memory params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParams(params) {
         _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
     }
 
@@ -181,11 +194,5 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             )
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
-    }
-
-    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
-    /// @param params Route parameters to verify.
-    function _verifyParams(SpokePoolImmutables memory params) internal view {
-        _verifyParamsHash(keccak256(abi.encode(params)));
     }
 }
