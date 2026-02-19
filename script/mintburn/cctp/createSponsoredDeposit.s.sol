@@ -101,7 +101,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
             maxUserSlippageBps,
             HyperCoreLib.CORE_SPOT_DEX_ID,
             uint8(AccountCreationMode.Standard),
-            uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
+            uint8(SponsoredExecutionModeInterface.ExecutionMode.DirectToCore),
             ""
         );
     }
