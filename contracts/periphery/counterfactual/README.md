@@ -17,6 +17,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
                     - deploy(implementation, paramsHash, salt)
                     - execute(depositAddress, executeCalldata)
                     - deployAndExecute(implementation, paramsHash, salt, executeCalldata)
+                    - deployIfNeededAndExecute(implementation, paramsHash, salt, executeCalldata)
                     - predictDepositAddress(implementation, paramsHash, salt)
                               |
              +----------------+----------------+
@@ -232,7 +233,7 @@ Why: Relayers incur gas costs to call `executeDeposit` (and potentially `deploy`
 
 Why: Enables persistent "deposit addresses" that users can save, share, and reuse — like a traditional address.
 
-For subsequent deposits, callers can call the clone directly or use `factory.execute()`. `deployAndExecute()` reverts if the clone already exists.
+For subsequent deposits, callers can call the clone directly or use `factory.execute()`. `deployAndExecute()` reverts if the clone already exists; `deployIfNeededAndExecute()` skips deployment if the clone is already deployed (checked via `code.length`), making it safe to call regardless of deployment state.
 
 ## Security Model
 

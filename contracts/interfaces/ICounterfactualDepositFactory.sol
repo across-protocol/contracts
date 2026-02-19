@@ -35,4 +35,11 @@ interface ICounterfactualDepositFactory {
         bytes32 salt,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress);
+
+    function deployIfNeededAndExecute(
+        address counterfactualDepositImplementation,
+        bytes32 paramsHash,
+        bytes32 salt,
+        bytes calldata executeCalldata
+    ) external payable returns (address depositAddress);
 }

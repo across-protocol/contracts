@@ -42,6 +42,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
 
     /**
      * @notice Deploys and executes a deposit in one transaction
+     * @dev Reverts if the clone is already deployed. Use deployIfNeededAndExecute for idempotent behavior.
      * @param counterfactualDepositImplementation Implementation contract address
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters
      * @param salt Unique salt for address generation
@@ -55,6 +56,26 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
         depositAddress = deploy(counterfactualDepositImplementation, paramsHash, salt);
+        _execute(depositAddress, executeCalldata);
+    }
+
+    /**
+     * @notice Deploys (if not already deployed) and executes a deposit in one transaction
+     * @dev Unlike deployAndExecute, this does not revert if the clone already exists.
+     * @param counterfactualDepositImplementation Implementation contract address
+     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
+     * @param salt Unique salt for address generation
+     * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
+     * @return depositAddress Address of deposit contract
+     */
+    function deployIfNeededAndExecute(
+        address counterfactualDepositImplementation,
+        bytes32 paramsHash,
+        bytes32 salt,
+        bytes calldata executeCalldata
+    ) external payable returns (address depositAddress) {
+        depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, salt);
+        if (depositAddress.code.length == 0) deploy(counterfactualDepositImplementation, paramsHash, salt);
         _execute(depositAddress, executeCalldata);
     }
 

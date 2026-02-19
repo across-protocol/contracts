@@ -440,4 +440,46 @@ contract CounterfactualOFTDepositTest is Test {
             "sig"
         );
     }
+
+    function testDeployIfNeededAndExecute() public {
+        bytes32 salt = keccak256("test-salt");
+        uint256 amount = 100e6;
+        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
+
+        bytes32 paramsHash = _paramsHash();
+        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes memory executeCalldata = abi.encodeCall(
+            CounterfactualDepositOFT.executeDeposit,
+            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        );
+
+        // First call deploys and executes
+        vm.prank(relayer);
+        address deployed = factory.deployIfNeededAndExecute(address(implementation), paramsHash, salt, executeCalldata);
+        assertEq(deployed, depositAddress, "Should return predicted address");
+        assertEq(srcPeriphery.lastAmount(), expectedDeposit, "First deposit should execute");
+
+        // Second call with clone already deployed — should not revert
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes memory executeCalldata2 = abi.encodeCall(
+            CounterfactualDepositOFT.executeDeposit,
+            (defaultParams, amount, relayer, keccak256("nonce-2"), block.timestamp + 1 hours, "sig")
+        );
+
+        vm.prank(relayer);
+        address deployed2 = factory.deployIfNeededAndExecute(
+            address(implementation),
+            paramsHash,
+            salt,
+            executeCalldata2
+        );
+        assertEq(deployed2, depositAddress, "Should return same address");
+        assertEq(srcPeriphery.callCount(), 2, "Both deposits should execute");
+    }
 }

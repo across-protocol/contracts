@@ -1170,6 +1170,100 @@ contract CounterfactualSpokePoolDepositTest is Test {
         assertEq(depositAddress.balance, 1 ether, "Clone should hold ETH");
     }
 
+    function testDeployIfNeededAndExecute() public {
+        bytes32 salt = keccak256("test-salt");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint256 expectedDeposit = inputAmount - defaultParams.executionParams.executionFee;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        bytes32 paramsHash = _paramsHash();
+        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
+
+        bytes memory sig1 = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        bytes memory executeCalldata1 = abi.encodeCall(
+            CounterfactualDepositSpokePool.executeDeposit,
+            (
+                defaultParams,
+                inputAmount,
+                outputAmount,
+                bytes32(0),
+                0,
+                relayer,
+                uint32(block.timestamp),
+                fillDeadline,
+                uint32(block.timestamp) + 3600,
+                sig1
+            )
+        );
+
+        // First call deploys and executes
+        vm.prank(relayer);
+        address deployed = factory.deployIfNeededAndExecute(
+            address(implementation),
+            paramsHash,
+            salt,
+            executeCalldata1
+        );
+        assertEq(deployed, depositAddress, "Should return predicted address");
+        assertEq(spokePool.lastInputAmount(), expectedDeposit, "First deposit should execute");
+
+        // Second call with clone already deployed — should not revert
+        inputToken.mint(user, inputAmount);
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        bytes memory sig2 = _signExecuteDeposit(
+            depositAddress,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
+        );
+
+        bytes memory executeCalldata2 = abi.encodeCall(
+            CounterfactualDepositSpokePool.executeDeposit,
+            (
+                defaultParams,
+                inputAmount,
+                outputAmount,
+                bytes32(0),
+                0,
+                relayer,
+                uint32(block.timestamp),
+                fillDeadline,
+                uint32(block.timestamp) + 3600,
+                sig2
+            )
+        );
+
+        vm.prank(relayer);
+        address deployed2 = factory.deployIfNeededAndExecute(
+            address(implementation),
+            paramsHash,
+            salt,
+            executeCalldata2
+        );
+        assertEq(deployed2, depositAddress, "Should return same address");
+        assertEq(spokePool.callCount(), 2, "Both deposits should execute");
+    }
+
     function testErc20DepositUsesErc20Flow() public {
         // When inputToken is a regular ERC20 (not NATIVE_ASSET), ERC20 flow is used
         bytes32 salt = keccak256("erc20-flow");
