@@ -112,7 +112,8 @@ Signature verification, nonce tracking, and `oftDeadline` enforcement are handle
 | `recipient`             | Deposit param         | Recipient on destination                                                         |
 | `message`               | Deposit param         | Arbitrary message forwarded to recipient                                         |
 | `stableExchangeRate`    | Execution param       | inputToken per outputToken exchange rate (1e18 scaled), used for fee calculation |
-| `maxFeeBps`             | Execution param       | Max total fee (relayer + execution) in basis points                              |
+| `maxFeeFixed`           | Execution param       | Max fixed fee component (in inputToken units), covers gas-like fixed costs       |
+| `maxFeeBps`             | Execution param       | Max variable fee component in basis points, scales with deposit size             |
 | `executionFee`          | Execution param       | Fixed fee paid to relayer calling execute                                        |
 | `userWithdrawAddress`   | Execution param       | Address authorized to call `userWithdraw()`                                      |
 | `adminWithdrawAddress`  | Execution param       | Address authorized to call `adminWithdraw()`                                     |
@@ -137,15 +138,18 @@ Unlike CCTP/OFT (where `SrcPeriphery` verifies signatures), the SpokePool implem
 
 ### Fee Check
 
-The implementation enforces that the total fee (relayer + execution) doesn't exceed `maxFeeBps`:
+The implementation enforces that the total fee (relayer + execution) doesn't exceed a combined fixed + variable cap:
 
 ```
 outputInInputToken = outputAmount * stableExchangeRate / 1e18
 relayerFee = depositAmount - outputInInputToken  (0 if negative)
 totalFee = relayerFee + executionFee
-if totalFee * 10000 > maxFeeBps * inputAmount:
+maxFee = maxFeeFixed + (maxFeeBps * inputAmount) / 10000
+if totalFee > maxFee:
     revert MaxFee
 ```
+
+The two-component cap (`maxFeeFixed + maxFeeBps`) handles deposits of varying sizes. Fixed costs (origin/destination gas, execution fee) don't scale with amount, so a pure bps cap would be too restrictive for small deposits and too permissive for large ones. `maxFeeFixed` covers the fixed costs, `maxFeeBps` covers the relayer fee that scales with size.
 
 **Assumption:** The `stableExchangeRate` route immutable is fixed at address-generation time, so this fee check assumes `inputToken` and `outputToken` are not volatile relative to each other (e.g. stablecoin pairs, or the same token on different chains). If the real market rate drifts significantly from the committed `stableExchangeRate`, the fee check may be too lenient or too strict.
 
@@ -214,7 +218,7 @@ The SpokePool implementation calls `SpokePool.deposit()` directly, and `deposit(
 
 - CCTP: `cctpMaxFeeBps` (basis points) — implementation computes `maxFee = depositAmount * cctpMaxFeeBps / 10000` at execution time
 - OFT: `maxOftFeeBps` (basis points) — passed through to SponsoredOFTSrcPeriphery
-- SpokePool: `maxFeeBps` (basis points) + `price` — implementation checks `(relayerFee + executionFee) * 10000 / inputAmount <= maxFeeBps`
+- SpokePool: `maxFeeFixed` (token units) + `maxFeeBps` (basis points) — implementation checks `relayerFee + executionFee <= maxFeeFixed + maxFeeBps * inputAmount / 10000`
 
 ### 8. Execution Fee for Relayer Incentivization
 
@@ -233,7 +237,7 @@ For subsequent deposits, callers can call the clone directly or use `factory.exe
 ## Security Model
 
 - **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.
-- **SpokePool Signer**: Signs `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline, signatureDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxFeeBps`.
+- **SpokePool Signer**: Signs `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline, signatureDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxFeeFixed + maxFeeBps`.
 - **Admin**: Per-clone admin (set in route params). Can withdraw any tokens from its clone via `adminWithdraw` (for recovery of wrongly sent tokens). Can be a multisig or TimelockController.
 - **userWithdrawAddress**: Can withdraw tokens from the clone via `userWithdraw` (escape hatch before execution).
 - **Execution Fee**: Fixed `executionFee` (route param, in token units) paid to relayer. User commits to this fee at address-generation time.

@@ -126,7 +126,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             }),
             executionParams: SpokePoolExecutionParams({
                 stableExchangeRate: 1e18, // 1:1
-                maxFeeBps: 600, // 6%
+                maxFeeFixed: 1e6, // 1 USDC fixed
+                maxFeeBps: 500, // 5% variable
                 executionFee: 1e6, // 1 USDC
                 userWithdrawAddress: userWithdrawAddr,
                 adminWithdrawAddress: admin
@@ -143,7 +144,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
             }),
             executionParams: SpokePoolExecutionParams({
                 stableExchangeRate: 1e18,
-                maxFeeBps: 600,
+                maxFeeFixed: 0.01 ether, // fixed component
+                maxFeeBps: 500, // 5% variable
                 executionFee: 0.01 ether,
                 userWithdrawAddress: userWithdrawAddr,
                 adminWithdrawAddress: admin
@@ -530,10 +532,11 @@ contract CounterfactualSpokePoolDepositTest is Test {
     function testExcessiveRelayerFeeReverts() public {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
-        // price=1e18 (1:1), depositAmount=99e6, outputAmount=93e6
-        // relayerFee = 99e6 - 93e6 = 6e6, totalFee = 6e6 + 1e6 = 7e6
-        // totalFeeBps = 7e6 * 10000 / 100e6 = 700 > maxFeeBps (600)
-        uint256 outputAmount = 93e6;
+        // price=1e18 (1:1), depositAmount=99e6, outputAmount=92e6
+        // relayerFee = 99e6 - 92e6 = 7e6, totalFee = 7e6 + 1e6 = 8e6
+        // maxFee = maxFeeFixed + (maxFeeBps * inputAmount) / 10000 = 1e6 + (500 * 100e6) / 10000 = 1e6 + 5e6 = 6e6
+        // totalFee (8e6) > maxFee (6e6) → revert
+        uint256 outputAmount = 92e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
@@ -572,7 +575,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 inputAmount = 100e6;
         // price=1e18 (1:1), depositAmount=99e6, outputAmount=94e6
         // relayerFee = 99e6 - 94e6 = 5e6, totalFee = 5e6 + 1e6 = 6e6
-        // totalFeeBps = 6e6 * 10000 / 100e6 = 600 = maxFeeBps (600)
+        // maxFee = 1e6 + (500 * 100e6) / 10000 = 1e6 + 5e6 = 6e6
+        // totalFee (6e6) = maxFee (6e6) → passes
         uint256 outputAmount = 94e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
@@ -874,7 +878,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 inputAmount = 100e6;
         // price=1e18 (1:1), depositAmount=99e6, outputAmount=99e6
         // outputInInputToken = 99e6 >= depositAmount → relayerFee = 0
-        // totalFee = 0 + 1e6 = 1e6, feeBps = 100 < maxFeeBps (600)
+        // totalFee = 0 + 1e6 = 1e6, maxFee = 1e6 + 5e6 = 6e6 → passes
         uint256 outputAmount = 99e6;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
@@ -1028,7 +1032,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("native-fee-check");
         uint256 inputAmount = 1 ether;
         // relayerFee = 0.99e18 - 0.93e18 = 0.06e18, totalFee = 0.06e18 + 0.01e18 = 0.07e18
-        // totalFeeBps = 0.07e18 * 10000 / 1e18 = 700 > maxFeeBps (600)
+        // maxFee = 0.01e18 + (500 * 1e18) / 10000 = 0.01e18 + 0.05e18 = 0.06e18
+        // totalFee (0.07e18) > maxFee (0.06e18) → revert
         uint256 outputAmount = 0.93 ether;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 

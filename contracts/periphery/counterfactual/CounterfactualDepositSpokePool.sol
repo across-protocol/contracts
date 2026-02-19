@@ -24,6 +24,7 @@ struct SpokePoolDepositParams {
  */
 struct SpokePoolExecutionParams {
     uint256 stableExchangeRate;
+    uint256 maxFeeFixed;
     uint256 maxFeeBps;
     uint256 executionFee;
     address userWithdrawAddress;
@@ -124,11 +125,14 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         // amount to deposit into SpokePool
         uint256 depositAmount = inputAmount - params.executionParams.executionFee;
 
-        // Fee check: convert outputAmount to inputToken units, compute total fee in bps
+        // Fee check: convert outputAmount to inputToken units, verify total fee within fixed + variable cap
         uint256 outputInInputToken = (outputAmount * params.executionParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
         uint256 totalFee = relayerFee + params.executionParams.executionFee;
-        if (totalFee * BPS_SCALAR > params.executionParams.maxFeeBps * inputAmount) revert MaxFee();
+        uint256 maxFee = params.executionParams.maxFeeFixed +
+            (params.executionParams.maxFeeBps * inputAmount) /
+            BPS_SCALAR;
+        if (totalFee > maxFee) revert MaxFee();
 
         bool isNative = inputToken == NATIVE_ASSET;
         if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
