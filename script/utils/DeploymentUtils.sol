@@ -5,7 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Config } from "forge-std/Config.sol";
-import { Upgrades, Core, UnsafeUpgrades } from "@openzeppelin/foundry-upgrades/src/LegacyUpgrades.sol";
+import { Upgrades } from "@openzeppelin/foundry-upgrades/src/Upgrades.sol";
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { Constants } from "./Constants.sol";
@@ -86,7 +86,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     ) public returns (DeploymentResult memory result) {
         uint256 chainId = block.chainid;
 
-        contractName = string(abi.encodePacked("contracts/", contractName, ".sol:", contractName));
+        contractName = string(abi.encodePacked(contractName, ".sol:", contractName));
 
         // Check if a SpokePool already exists on this chain
         address existingProxy = getDeployedAddress("SpokePool", chainId, false);
@@ -99,7 +99,13 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
         Options memory opts;
 
         opts.constructorData = constructorArgs;
-        // opts.referenceBuildInfoDir = "artifacts";
+        opts.unsafeAllow = "delegatecall";
+        // Runs OZ upgrade safety checks via FFI before deployment.
+        // NOTE: If the script reverts with no error message, the revert is likely from OZ validation
+        // (revert strings are stripped in production builds). To debug:
+        //   1. Run `forge clean && forge build` to ensure a fresh build, then re-run the script.
+        //   2. Re-run with `--revert-strings default` to see the full error message.
+        opts.unsafeSkipAllChecks = false;
 
         if (implementationOnly && existingProxy != address(0)) {
             console.log(
@@ -110,20 +116,20 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
             );
 
             // For upgrades, we'll use the prepareUpgrade method from LegacyUpgrades
-            address implementation = Core.deploy(contractName, constructorArgs, opts);
+            address implementation = Upgrades.deployImplementation(contractName, opts);
 
             result = DeploymentResult({ proxy: existingProxy, implementation: implementation, isNewProxy: false });
 
             console.log("New", contractName, "implementation deployed @", implementation);
         } else {
-            address implementation = Core.deploy(contractName, constructorArgs, opts);
+            // Deploy implementation first, then proxy using the OZ v4 ERC1967Proxy directly
+            // to avoid vm.getCode ambiguity with multiple ERC1967Proxy artifacts.
+            address implementation = Upgrades.deployImplementation(contractName, opts);
+            address proxy = address(new ERC1967Proxy(implementation, initArgs));
 
-            ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), initArgs);
+            result = DeploymentResult({ proxy: proxy, implementation: implementation, isNewProxy: true });
 
-            // For now, return a placeholder result
-            result = DeploymentResult({ proxy: address(proxy), implementation: implementation, isNewProxy: true });
-
-            console.log("New", contractName, "proxy deployed @", address(proxy));
+            console.log("New", contractName, "proxy deployed @", proxy);
             console.log("New", contractName, "implementation deployed @", implementation);
         }
 

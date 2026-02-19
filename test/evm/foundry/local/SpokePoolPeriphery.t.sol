@@ -456,35 +456,42 @@ contract SpokePoolPeripheryTest is Test {
         // This test calls deposit with native token value
         deal(depositor, mintAmount);
 
+        // Cache values to avoid stack-too-deep
+        bytes32 inputToken = address(mockWETH).toBytes32();
+        bytes32 depositorBytes32 = depositor.toBytes32();
+        uint32 quoteTimestamp = uint32(block.timestamp);
+        uint32 fillDeadline = quoteTimestamp + fillDeadlineBuffer;
+
         // Should emit expected deposit event
         vm.startPrank(depositor);
         vm.expectEmit(address(ethereumSpokePool));
         emit V3SpokePoolInterface.FundsDeposited(
-            address(mockWETH).toBytes32(),
-            address(mockWETH).toBytes32(),
+            inputToken,
+            inputToken,
             mintAmount,
             mintAmount,
             destinationChainId,
             0, // depositId
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
+            quoteTimestamp,
+            fillDeadline,
             0, // exclusivityDeadline
-            depositor.toBytes32(),
-            depositor.toBytes32(),
+            depositorBytes32,
+            depositorBytes32,
             bytes32(0), // exclusiveRelayer
             new bytes(0)
         );
         spokePoolPeriphery.depositNative{ value: mintAmount }(
             address(ethereumSpokePool), // spokePool address
-            depositor.toBytes32(), // recipient
+            depositor, // depositor
+            depositorBytes32, // recipient
             address(mockWETH), // inputToken
             mintAmount,
-            address(mockWETH).toBytes32(), // outputToken
+            inputToken, // outputToken
             mintAmount,
             destinationChainId,
             bytes32(0), // exclusiveRelayer
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
+            quoteTimestamp,
+            fillDeadline,
             0,
             new bytes(0)
         );
@@ -494,19 +501,27 @@ contract SpokePoolPeripheryTest is Test {
     function testDepositWrongValue() public {
         // Should revert when trying to call deposit with wrong msg.value amount
         deal(depositor, mintAmount + 1); // Give some ETH to send
+
+        // Cache values to avoid stack-too-deep
+        bytes32 outputToken = address(mockWETH).toBytes32();
+        bytes32 depositorBytes32 = depositor.toBytes32();
+        uint32 quoteTimestamp = uint32(block.timestamp);
+        uint32 fillDeadline = quoteTimestamp + fillDeadlineBuffer;
+
         vm.startPrank(depositor);
         vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
         spokePoolPeriphery.depositNative{ value: 1 }( // Send 1 wei but expecting mintAmount
             address(ethereumSpokePool), // spokePool address
-            depositor.toBytes32(), // recipient
+            depositor, // depositor
+            depositorBytes32, // recipient
             address(mockWETH), // inputToken
             mintAmount, // This doesn't match msg.value of 1
-            address(mockWETH).toBytes32(), // outputToken
+            outputToken, // outputToken
             mintAmount,
             destinationChainId,
             bytes32(0), // exclusiveRelayer
-            uint32(block.timestamp),
-            uint32(block.timestamp) + fillDeadlineBuffer,
+            quoteTimestamp,
+            fillDeadline,
             0,
             new bytes(0)
         );
@@ -527,6 +542,7 @@ contract SpokePoolPeripheryTest is Test {
         vm.expectRevert();
         spokePoolPeriphery.depositNative{ value: 1 wei }(
             nonContractAddress, // spokePool - this is not a contract
+            depositor, // depositor
             depositor.toBytes32(), // recipient
             address(mockWETH), // inputToken
             1 wei, // inputAmount

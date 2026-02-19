@@ -32,15 +32,17 @@ forge build                           # Foundry
 yarn build-evm                        # Hardhat
 
 # Run tests
-yarn test-evm-foundry                 # Foundry local tests (recommended)
-FOUNDRY_PROFILE=local-test forge test      # Same as above
+yarn test-evm-foundry                 # Foundry local tests (recommended; uses FOUNDRY_PROFILE=local-test)
+FOUNDRY_PROFILE=local-test forge test # Required for local Foundry tests in this repo
 yarn test-evm-hardhat                 # Hardhat tests (legacy)
 
 # Run specific Foundry tests
-forge test --match-test testDeposit
-forge test --match-contract Router_Adapter
-forge test -vvv                       # Verbose output
+FOUNDRY_PROFILE=local-test forge test --match-test testDeposit
+FOUNDRY_PROFILE=local-test forge test --match-contract Router_Adapter
+FOUNDRY_PROFILE=local-test forge test -vvv # Verbose output
 ```
+
+Use `FOUNDRY_PROFILE=local-test` (or `yarn test-evm-foundry`) for local Foundry test runs; do not use plain `forge test`.
 
 ## Naming Conventions
 
