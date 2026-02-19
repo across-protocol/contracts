@@ -134,12 +134,7 @@ contract CounterfactualOFTDepositTest is Test {
         token.transfer(depositAddress, amount);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.CounterfactualDepositExecuted(
-            expectedDeposit,
-            nonce,
-            relayer,
-            defaultParams.executionParams.executionFee
-        );
+        emit CounterfactualDepositOFT.OFTDepositExecuted(amount, relayer, nonce, block.timestamp + 1 hours);
 
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDepositOFT.executeDeposit,

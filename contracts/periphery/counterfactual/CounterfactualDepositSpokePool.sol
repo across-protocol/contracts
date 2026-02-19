@@ -50,6 +50,17 @@ struct SpokePoolImmutables {
 contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     using SafeERC20 for IERC20;
 
+    event SpokePoolDepositExecuted(
+        uint256 inputAmount,
+        uint256 outputAmount,
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        address executionFeeRecipient,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 signatureDeadline
+    );
+
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
             "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
@@ -161,11 +172,15 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         if (params.executionParams.executionFee > 0)
             _transferOut(inputToken, executionFeeRecipient, params.executionParams.executionFee);
 
-        emit CounterfactualDepositExecuted(
-            depositAmount,
-            bytes32(0),
+        emit SpokePoolDepositExecuted(
+            inputAmount,
+            outputAmount,
+            exclusiveRelayer,
+            exclusivityDeadline,
             executionFeeRecipient,
-            params.executionParams.executionFee
+            quoteTimestamp,
+            fillDeadline,
+            signatureDeadline
         );
     }
 

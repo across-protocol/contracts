@@ -61,6 +61,8 @@ struct CCTPImmutables {
 contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
+    event CCTPDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 cctpDeadline);
+
     /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
     address public immutable srcPeriphery;
 
@@ -130,12 +132,7 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
             signature
         );
 
-        emit CounterfactualDepositExecuted(
-            depositAmount,
-            nonce,
-            executionFeeRecipient,
-            params.executionParams.executionFee
-        );
+        emit CCTPDepositExecuted(amount, executionFeeRecipient, nonce, cctpDeadline);
     }
 
     /**

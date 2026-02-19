@@ -61,6 +61,8 @@ struct OFTImmutables {
 contract CounterfactualDepositOFT is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
+    event OFTDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
+
     /// @notice SponsoredOFTSrcPeriphery contract
     address public immutable oftSrcPeriphery;
 
@@ -136,12 +138,7 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         // Forward caller-supplied msg.value to cover LayerZero native messaging fee.
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
 
-        emit CounterfactualDepositExecuted(
-            depositAmount,
-            nonce,
-            executionFeeRecipient,
-            params.executionParams.executionFee
-        );
+        emit OFTDepositExecuted(amount, executionFeeRecipient, nonce, oftDeadline);
     }
 
     /**

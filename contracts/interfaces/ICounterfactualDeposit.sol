@@ -19,12 +19,6 @@ interface ICounterfactualDeposit {
     /// @dev EIP-712 signature deadline has passed. SpokePool only.
     error SignatureExpired();
 
-    event CounterfactualDepositExecuted(
-        uint256 amount,
-        bytes32 nonce,
-        address executionFeeRecipient,
-        uint256 executionFee
-    );
     event AdminWithdraw(address indexed token, address indexed to, uint256 amount);
     event UserWithdraw(address indexed token, address indexed to, uint256 amount);
 }

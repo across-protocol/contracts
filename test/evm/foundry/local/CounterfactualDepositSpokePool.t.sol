@@ -226,11 +226,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         inputToken.transfer(depositAddress, inputAmount);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.CounterfactualDepositExecuted(
-            expectedDeposit,
+        emit CounterfactualDepositSpokePool.SpokePoolDepositExecuted(
+            inputAmount,
+            outputAmount,
             bytes32(0),
+            0,
             relayer,
-            defaultParams.executionParams.executionFee
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         bytes memory executeCalldata = abi.encodeCall(
@@ -986,11 +990,15 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.deal(depositAddress, inputAmount);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.CounterfactualDepositExecuted(
-            expectedDeposit,
+        emit CounterfactualDepositSpokePool.SpokePoolDepositExecuted(
+            inputAmount,
+            outputAmount,
             bytes32(0),
+            0,
             relayer,
-            nativeParams.executionParams.executionFee
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
         );
 
         bytes memory executeCalldata = abi.encodeCall(
