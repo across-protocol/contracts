@@ -80,6 +80,10 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
 
     /**
      * @notice Executes a deposit via SponsoredOFT
+     * @dev The caller must supply msg.value to cover the LayerZero native messaging fee.
+     *      This fee is paid by the caller, not from the user's deposited tokens—so the
+     *      executor's incentive (executionFee) must cover both the origin tx gas cost
+     *      and the LayerZero fee.
      * @param params Route parameters (verified against stored hash)
      * @param amount Gross amount of token (includes executionFee)
      * @param executionFeeRecipient Address that receives the execution fee
@@ -129,6 +133,7 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
             })
         });
 
+        // Forward caller-supplied msg.value to cover LayerZero native messaging fee.
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
 
         emit CounterfactualDepositExecuted(
