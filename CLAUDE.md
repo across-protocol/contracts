@@ -141,11 +141,7 @@ See `foundry.toml` for Foundry configuration. **Do not modify `foundry.toml` wit
 
 ## Linting
 
-```bash
-yarn lint-solidity    # Solhint for Solidity
-yarn lint-js          # Prettier for JS/TS
-yarn lint-fix         # Auto-fix all
-```
+Run `yarn lint-fix` to auto-fix all lint issues. For checking only: `yarn lint-solidity` (Solhint) and `yarn lint-js` (Prettier).
 
 ## License
 
