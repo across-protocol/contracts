@@ -38,6 +38,7 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
 
         uint256 heliosAdminBufferUpdateSeconds = 1 days;
         address helios = getDeployedAddress("SP1Helios", info.spokeChainId, true);
+
         address l1HubPoolStore = getL1Addresses(info.hubChainId).hubPoolStore;
 
         bool hasCctpDomain = hasCctpDomain(info.spokeChainId);
