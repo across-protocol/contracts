@@ -148,7 +148,7 @@ solana program set-upgrade-authority \
   --new-upgrade-authority $MULTISIG
 ```
 
-Update and commit `deployments/deployments.json` with the deployed program ID and deployment slot.
+Update and commit `broadcast/deployed-addresses.json` with the deployed program ID and deployment slot.
 
 Upload the IDL and set the upgrade authority to the multisig:
 

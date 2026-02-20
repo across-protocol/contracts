@@ -308,7 +308,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MessageTransmitter        | [CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd](https://solscan.io/account/CCTPmbSD7gX1bxKPAmg77w8oFzNFpaQiQUWD43TKaecd) |
 | MessageTransmitterV2      | [CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC](https://solscan.io/account/CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC) |
 | MulticallHandler          | [HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be](https://solscan.io/account/HaQe51FWtnmaEcuYEfPA7MRCXKrtqptat4oJdJ8zV5Be) |
-| SponsoredCctpSrcPeriphery | [CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq](https://solscan.io/account/CPr4bRvkVKcSCLyrQpkZrRrwGzQeVAXutFU8WupuBLXq) |
+| SponsoredCctpSrcPeriphery | [FsD4uqAyXiAcQapVTokNvdz1ZC5hMHjY6a93nYmEqZQS](https://solscan.io/account/FsD4uqAyXiAcQapVTokNvdz1ZC5hMHjY6a93nYmEqZQS) |
 | SvmSpoke                  | [DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru](https://solscan.io/account/DLv3NggMiSaef97YCkew5xKUHDh13tVGZ7tydt3ZeAru) |
 | TokenMessengerMinter      | [CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3](https://solscan.io/account/CCTPiPYPc6AsJuwueEnWgSgucamXDZwBd53dQ11YiKX3) |
 | TokenMessengerMinterV2    | [CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe](https://solscan.io/account/CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe) |
