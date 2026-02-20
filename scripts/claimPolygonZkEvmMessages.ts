@@ -4,8 +4,6 @@ import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "../src/consts";
 import { getNodeUrl } from "../utils/network";
 import { getProvider, getSigner, getChainId } from "./utils";
 import { getDeployedAddress } from "../src/DeploymentUtils";
-import fetch from "node-fetch";
-
 type Message = {
   leaf_type: number;
   orig_net: number;

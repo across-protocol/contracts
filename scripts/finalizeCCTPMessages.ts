@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import { Event, Wallet, providers, Contract, ContractFactory } from "ethers";
 import { ethers } from "../utils/utils";
 import { getNodeUrl } from "../utils";

@@ -39,17 +39,15 @@ import {
   TransactionMessage,
   VersionedTransaction,
 } from "@solana/web3.js";
-// eslint-disable-next-line camelcase
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
-// eslint-disable-next-line camelcase
-import { HubPool__factory } from "../../typechain";
 import {
   constructEmptyPoolRebalanceTree,
   constructSimpleRebalanceTreeToHubPool,
   formatUsdc,
+  getHubPoolContract,
   requireEnv,
 } from "./utils/helpers";
 
@@ -102,7 +100,7 @@ const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(
 
 // Get the HubPool contract instance.
 const hubPoolAddress = ethers.utils.getAddress(requireEnv("HUB_POOL_ADDRESS"));
-const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
+const hubPool = getHubPoolContract(hubPoolAddress, ethersProvider);
 
 // CCTP domains.
 const ethereumDomain = 0; // Ethereum
