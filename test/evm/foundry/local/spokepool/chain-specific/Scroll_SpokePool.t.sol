@@ -5,8 +5,8 @@ import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 // Contracts under test
-import { Scroll_SpokePool } from "../../../../../../contracts/Scroll_SpokePool.sol";
-import { SpokePool } from "../../../../../../contracts/SpokePool.sol";
+import { Scroll_SpokePool } from "../../../../../../contracts/spoke-pools/Scroll_SpokePool.sol";
+import { SpokePool } from "../../../../../../contracts/spoke-pools/SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Mocks
@@ -18,7 +18,7 @@ import { WETH9 } from "../../../../../../contracts/external/WETH9.sol";
 import { MerkleTreeUtils } from "../../../utils/MerkleTreeUtils.sol";
 
 // Scroll interfaces
-import { IL2GatewayRouterExtended } from "../../../../../../contracts/Scroll_SpokePool.sol";
+import { IL2GatewayRouterExtended } from "../../../../../../contracts/spoke-pools/Scroll_SpokePool.sol";
 import { IScrollMessenger } from "@scroll-tech/contracts/libraries/IScrollMessenger.sol";
 
 /**

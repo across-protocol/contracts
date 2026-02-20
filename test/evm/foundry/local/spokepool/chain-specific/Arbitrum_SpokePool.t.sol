@@ -6,8 +6,8 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 // Contracts under test
-import { Arbitrum_SpokePool } from "../../../../../../contracts/Arbitrum_SpokePool.sol";
-import { SpokePool } from "../../../../../../contracts/SpokePool.sol";
+import { Arbitrum_SpokePool } from "../../../../../../contracts/spoke-pools/Arbitrum_SpokePool.sol";
+import { SpokePool } from "../../../../../../contracts/spoke-pools/SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Libraries
