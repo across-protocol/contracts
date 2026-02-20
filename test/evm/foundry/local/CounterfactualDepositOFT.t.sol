@@ -323,7 +323,12 @@ contract CounterfactualOFTDepositTest is Test {
         emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
 
         vm.prank(admin);
-        CounterfactualDepositOFT(depositAddress).adminWithdraw(defaultParams, address(wrongToken), admin, 100e18);
+        ICounterfactualDeposit(depositAddress).adminWithdraw(
+            abi.encode(defaultParams),
+            address(wrongToken),
+            admin,
+            100e18
+        );
 
         assertEq(wrongToken.balanceOf(admin), 100e18, "Admin should receive withdrawn tokens");
     }
@@ -335,7 +340,7 @@ contract CounterfactualOFTDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
-        CounterfactualDepositOFT(depositAddress).adminWithdraw(defaultParams, address(token), user, 100e6);
+        ICounterfactualDeposit(depositAddress).adminWithdraw(abi.encode(defaultParams), address(token), user, 100e6);
     }
 
     function testUserWithdraw() public {
@@ -350,7 +355,7 @@ contract CounterfactualOFTDepositTest is Test {
         emit ICounterfactualDeposit.UserWithdraw(address(token), user, 100e6);
 
         vm.prank(user);
-        CounterfactualDepositOFT(depositAddress).userWithdraw(defaultParams, address(token), user, 100e6);
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(defaultParams), address(token), user, 100e6);
 
         assertEq(token.balanceOf(user), 1000e6, "User should have all tokens back");
     }
@@ -362,7 +367,7 @@ contract CounterfactualOFTDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
-        CounterfactualDepositOFT(depositAddress).userWithdraw(defaultParams, address(token), relayer, 100e6);
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(defaultParams), address(token), relayer, 100e6);
     }
 
     function testExecuteWithZeroExecutionFee() public {
@@ -411,11 +416,11 @@ contract CounterfactualOFTDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(admin);
-        CounterfactualDepositOFT(depositAddress).adminWithdraw(wrongParams, address(token), admin, 100e6);
+        ICounterfactualDeposit(depositAddress).adminWithdraw(abi.encode(wrongParams), address(token), admin, 100e6);
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(user);
-        CounterfactualDepositOFT(depositAddress).userWithdraw(wrongParams, address(token), user, 100e6);
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(wrongParams), address(token), user, 100e6);
     }
 
     function testInvalidParamsHash() public {

@@ -99,7 +99,11 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
             );
     }
 
-    /// @dev Forwards calldata to a clone, bubbling up any revert.
+    /**
+     * @dev Forwards calldata to a clone, bubbling up any revert.
+     * @param depositAddress Address of the deployed clone.
+     * @param executeCalldata Calldata to forward.
+     */
     function _execute(address depositAddress, bytes calldata executeCalldata) internal {
         (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
         if (!success) {

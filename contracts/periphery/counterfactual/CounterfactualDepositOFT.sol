@@ -69,12 +69,10 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
     /// @notice OFT source endpoint ID for this chain
     uint32 public immutable srcEid;
 
-    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
-    modifier verifyParams(OFTImmutables memory params) {
-        _verifyParamsHash(keccak256(abi.encode(params)));
-        _;
-    }
-
+    /**
+     * @param _oftSrcPeriphery SponsoredOFTSrcPeriphery contract address.
+     * @param _srcEid OFT source endpoint ID for this chain.
+     */
     constructor(address _oftSrcPeriphery, uint32 _srcEid) {
         oftSrcPeriphery = _oftSrcPeriphery;
         srcEid = _srcEid;
@@ -100,7 +98,7 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         bytes32 nonce,
         uint256 oftDeadline,
         bytes calldata signature
-    ) external payable verifyParams(params) {
+    ) external payable verifyParamsHash(keccak256(abi.encode(params))) {
         // transfer execution fee to execution fee recipient
         if (params.executionParams.executionFee > 0) {
             IERC20(params.depositParams.token).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
@@ -141,35 +139,13 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
         emit OFTDepositExecuted(amount, executionFeeRecipient, nonce, oftDeadline);
     }
 
-    /**
-     * @notice Allows admin to withdraw any token from this clone.
-     * @param params Route parameters (verified against stored hash).
-     * @param token ERC20 token to withdraw.
-     * @param to Recipient of the withdrawn tokens.
-     * @param amount Amount to withdraw.
-     */
-    function adminWithdraw(
-        OFTImmutables memory params,
-        address token,
-        address to,
-        uint256 amount
-    ) external verifyParams(params) {
-        _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
+    /// @inheritdoc CounterfactualDepositBase
+    function _getUserWithdrawAddress(bytes calldata params) internal pure override returns (address) {
+        return abi.decode(params, (OFTImmutables)).executionParams.userWithdrawAddress;
     }
 
-    /**
-     * @notice Allows user to withdraw tokens before execution.
-     * @param params Route parameters (verified against stored hash).
-     * @param token ERC20 token to withdraw.
-     * @param to Recipient of the withdrawn tokens.
-     * @param amount Amount to withdraw.
-     */
-    function userWithdraw(
-        OFTImmutables memory params,
-        address token,
-        address to,
-        uint256 amount
-    ) external verifyParams(params) {
-        _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
+    /// @inheritdoc CounterfactualDepositBase
+    function _getAdminWithdrawAddress(bytes calldata params) internal pure override returns (address) {
+        return abi.decode(params, (OFTImmutables)).executionParams.adminWithdrawAddress;
     }
 }

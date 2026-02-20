@@ -277,7 +277,12 @@ contract CounterfactualDepositTest is Test {
         emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
 
         vm.prank(admin);
-        CounterfactualDepositCCTP(depositAddress).adminWithdraw(defaultParams, address(wrongToken), admin, 100e18);
+        ICounterfactualDeposit(depositAddress).adminWithdraw(
+            abi.encode(defaultParams),
+            address(wrongToken),
+            admin,
+            100e18
+        );
 
         assertEq(wrongToken.balanceOf(admin), 100e18, "Admin should receive withdrawn tokens");
         assertEq(wrongToken.balanceOf(depositAddress), 0, "Deposit address should have no balance");
@@ -290,7 +295,12 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
-        CounterfactualDepositCCTP(depositAddress).adminWithdraw(defaultParams, address(burnToken), user, 100e6);
+        ICounterfactualDeposit(depositAddress).adminWithdraw(
+            abi.encode(defaultParams),
+            address(burnToken),
+            user,
+            100e6
+        );
     }
 
     function testUserWithdraw() public {
@@ -305,7 +315,7 @@ contract CounterfactualDepositTest is Test {
         emit ICounterfactualDeposit.UserWithdraw(address(burnToken), user, 100e6);
 
         vm.prank(user);
-        CounterfactualDepositCCTP(depositAddress).userWithdraw(defaultParams, address(burnToken), user, 100e6);
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(defaultParams), address(burnToken), user, 100e6);
 
         assertEq(burnToken.balanceOf(user), 1000e6, "User should have all tokens back");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit address should have no balance");
@@ -318,7 +328,12 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).userWithdraw(defaultParams, address(burnToken), relayer, 100e6);
+        ICounterfactualDeposit(depositAddress).userWithdraw(
+            abi.encode(defaultParams),
+            address(burnToken),
+            relayer,
+            100e6
+        );
     }
 
     function testExecuteOnImplementationReverts() public {
@@ -359,7 +374,7 @@ contract CounterfactualDepositTest is Test {
         // userWithdraw with wrong params should also revert
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(user);
-        CounterfactualDepositCCTP(depositAddress).userWithdraw(wrongParams, address(burnToken), user, 100e6);
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(wrongParams), address(burnToken), user, 100e6);
     }
 
     function testExecuteWithZeroExecutionFee() public {
@@ -411,7 +426,7 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(admin);
-        CounterfactualDepositCCTP(depositAddress).adminWithdraw(wrongParams, address(burnToken), admin, 100e6);
+        ICounterfactualDeposit(depositAddress).adminWithdraw(abi.encode(wrongParams), address(burnToken), admin, 100e6);
     }
 
     function testDeployWithActionData() public {

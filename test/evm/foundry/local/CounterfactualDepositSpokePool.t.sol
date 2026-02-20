@@ -629,8 +629,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
 
         vm.prank(admin);
-        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
-            defaultParams,
+        ICounterfactualDeposit(depositAddress).adminWithdraw(
+            abi.encode(defaultParams),
             address(wrongToken),
             admin,
             100e18
@@ -646,8 +646,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(user);
-        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
-            defaultParams,
+        ICounterfactualDeposit(depositAddress).adminWithdraw(
+            abi.encode(defaultParams),
             address(inputToken),
             user,
             100e6
@@ -666,8 +666,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         emit ICounterfactualDeposit.UserWithdraw(address(inputToken), user, 100e6);
 
         vm.prank(user);
-        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(
-            defaultParams,
+        ICounterfactualDeposit(depositAddress).userWithdraw(
+            abi.encode(defaultParams),
             address(inputToken),
             user,
             100e6
@@ -683,8 +683,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
         vm.prank(relayer);
-        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(
-            defaultParams,
+        ICounterfactualDeposit(depositAddress).userWithdraw(
+            abi.encode(defaultParams),
             address(inputToken),
             relayer,
             100e6
@@ -860,8 +860,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(admin);
-        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
-            wrongParams,
+        ICounterfactualDeposit(depositAddress).adminWithdraw(
+            abi.encode(wrongParams),
             address(inputToken),
             admin,
             100e6
@@ -869,12 +869,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
         vm.prank(user);
-        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(
-            wrongParams,
-            address(inputToken),
-            user,
-            100e6
-        );
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(wrongParams), address(inputToken), user, 100e6);
     }
 
     function testZeroRelayerFee() public {
@@ -1129,7 +1124,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         emit ICounterfactualDeposit.UserWithdraw(nativeAsset, user, 1 ether);
 
         vm.prank(user);
-        CounterfactualDepositSpokePool(payable(depositAddress)).userWithdraw(nativeParams, nativeAsset, user, 1 ether);
+        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(nativeParams), nativeAsset, user, 1 ether);
 
         assertEq(user.balance - userBalBefore, 1 ether, "User should receive ETH");
         assertEq(depositAddress.balance, 0, "Clone should have no ETH");
@@ -1148,12 +1143,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         emit ICounterfactualDeposit.AdminWithdraw(nativeAsset, admin, 1 ether);
 
         vm.prank(admin);
-        CounterfactualDepositSpokePool(payable(depositAddress)).adminWithdraw(
-            nativeParams,
-            nativeAsset,
-            admin,
-            1 ether
-        );
+        ICounterfactualDeposit(depositAddress).adminWithdraw(abi.encode(nativeParams), nativeAsset, admin, 1 ether);
 
         assertEq(admin.balance - adminBalBefore, 1 ether, "Admin should receive ETH");
     }

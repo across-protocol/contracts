@@ -69,12 +69,10 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     /// @notice CCTP source domain ID for this chain
     uint32 public immutable sourceDomain;
 
-    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
-    modifier verifyParams(CCTPImmutables memory params) {
-        _verifyParamsHash(keccak256(abi.encode(params)));
-        _;
-    }
-
+    /**
+     * @param _srcPeriphery SponsoredCCTPSrcPeriphery contract address.
+     * @param _sourceDomain CCTP source domain ID for this chain.
+     */
     constructor(address _srcPeriphery, uint32 _sourceDomain) {
         srcPeriphery = _srcPeriphery;
         sourceDomain = _sourceDomain;
@@ -96,7 +94,7 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
         bytes32 nonce,
         uint256 cctpDeadline,
         bytes calldata signature
-    ) external verifyParams(params) {
+    ) external verifyParamsHash(keccak256(abi.encode(params))) {
         address inputToken = address(uint160(uint256(params.depositParams.burnToken)));
 
         // transfer execution fee to execution fee recipient
@@ -135,35 +133,13 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
         emit CCTPDepositExecuted(amount, executionFeeRecipient, nonce, cctpDeadline);
     }
 
-    /**
-     * @notice Allows admin to withdraw any token from this clone.
-     * @param params Route parameters (verified against stored hash).
-     * @param token ERC20 token to withdraw.
-     * @param to Recipient of the withdrawn tokens.
-     * @param amount Amount to withdraw.
-     */
-    function adminWithdraw(
-        CCTPImmutables memory params,
-        address token,
-        address to,
-        uint256 amount
-    ) external verifyParams(params) {
-        _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
+    /// @inheritdoc CounterfactualDepositBase
+    function _getUserWithdrawAddress(bytes calldata params) internal pure override returns (address) {
+        return abi.decode(params, (CCTPImmutables)).executionParams.userWithdrawAddress;
     }
 
-    /**
-     * @notice Allows user to withdraw tokens before execution.
-     * @param params Route parameters (verified against stored hash).
-     * @param token ERC20 token to withdraw.
-     * @param to Recipient of the withdrawn tokens.
-     * @param amount Amount to withdraw.
-     */
-    function userWithdraw(
-        CCTPImmutables memory params,
-        address token,
-        address to,
-        uint256 amount
-    ) external verifyParams(params) {
-        _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
+    /// @inheritdoc CounterfactualDepositBase
+    function _getAdminWithdrawAddress(bytes calldata params) internal pure override returns (address) {
+        return abi.decode(params, (CCTPImmutables)).executionParams.adminWithdrawAddress;
     }
 }

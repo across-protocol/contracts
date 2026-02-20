@@ -19,40 +19,87 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     /// @notice Sentinel address representing native ETH in withdraw calls.
     address public constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-    /// @dev Reads the stored params hash from the clone's appended immutable args and compares.
-    /// @param paramsHash keccak256 hash of the caller-supplied route parameters.
-    function _verifyParamsHash(bytes32 paramsHash) internal view {
+    /// @dev Verifies caller-supplied params hash against the clone's stored hash.
+    modifier verifyParamsHash(bytes32 paramsHash) {
         bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
         if (paramsHash != storedHash) revert InvalidParamsHash();
+        _;
     }
 
     /**
      * @notice Allows the admin to withdraw any token from this clone (e.g. recovery of stuck funds).
-     * @param adminWithdrawAddress Authorized admin address.
+     * @param params ABI-encoded route parameters (verified against stored hash).
      * @param token ERC20 token to withdraw, or NATIVE_ASSET for native ETH.
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function _adminWithdraw(address adminWithdrawAddress, address token, address to, uint256 amount) internal {
-        if (msg.sender != adminWithdrawAddress) revert Unauthorized();
+    function adminWithdraw(
+        bytes calldata params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParamsHash(keccak256(params)) {
+        if (msg.sender != _getAdminWithdrawAddress(params)) revert Unauthorized();
+        _transferOut(token, to, amount);
+        emit AdminWithdraw(token, to, amount);
+    }
+
+    /**
+     * @notice Admin withdraw that always sends to the clone's userWithdrawAddress.
+     * @dev Used by AdminWithdrawManager.signedWithdrawToUser so the recipient is enforced on-chain.
+     * @param params ABI-encoded route parameters (verified against stored hash).
+     * @param token ERC20 token to withdraw, or NATIVE_ASSET for native ETH.
+     * @param amount Amount to withdraw.
+     */
+    function adminWithdrawToUser(
+        bytes calldata params,
+        address token,
+        uint256 amount
+    ) external verifyParamsHash(keccak256(params)) {
+        if (msg.sender != _getAdminWithdrawAddress(params)) revert Unauthorized();
+        address to = _getUserWithdrawAddress(params);
         _transferOut(token, to, amount);
         emit AdminWithdraw(token, to, amount);
     }
 
     /**
      * @notice Allows the user to withdraw tokens before execution (escape hatch).
-     * @param userWithdrawAddress Authorized user address.
+     * @param params ABI-encoded route parameters (verified against stored hash).
      * @param token ERC20 token to withdraw, or NATIVE_ASSET for native ETH.
      * @param to Recipient of the withdrawn tokens.
      * @param amount Amount to withdraw.
      */
-    function _userWithdraw(address userWithdrawAddress, address token, address to, uint256 amount) internal {
-        if (msg.sender != userWithdrawAddress) revert Unauthorized();
+    function userWithdraw(
+        bytes calldata params,
+        address token,
+        address to,
+        uint256 amount
+    ) external verifyParamsHash(keccak256(params)) {
+        if (msg.sender != _getUserWithdrawAddress(params)) revert Unauthorized();
         _transferOut(token, to, amount);
         emit UserWithdraw(token, to, amount);
     }
 
-    /// @dev Transfers native ETH (token == NATIVE_ASSET) or ERC20 tokens.
+    /**
+     * @dev Extracts the user withdraw address from implementation-specific params.
+     * @param params ABI-encoded route parameters.
+     * @return User withdraw address.
+     */
+    function _getUserWithdrawAddress(bytes calldata params) internal pure virtual returns (address);
+
+    /**
+     * @dev Extracts the admin withdraw address from implementation-specific params.
+     * @param params ABI-encoded route parameters.
+     * @return Admin withdraw address.
+     */
+    function _getAdminWithdrawAddress(bytes calldata params) internal pure virtual returns (address);
+
+    /**
+     * @dev Transfers native ETH (token == NATIVE_ASSET) or ERC20 tokens.
+     * @param token ERC20 token address, or NATIVE_ASSET for native ETH.
+     * @param to Recipient address.
+     * @param amount Amount to transfer.
+     */
     function _transferOut(address token, address to, uint256 amount) internal {
         if (token == NATIVE_ASSET) {
             (bool success, ) = to.call{ value: amount }("");

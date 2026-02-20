@@ -75,12 +75,11 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     /// @notice Wrapped native token address (e.g. WETH) passed to SpokePool for native deposits.
     address public immutable wrappedNativeToken;
 
-    /// @dev Hashes caller-supplied params and checks against the clone's stored hash.
-    modifier verifyParams(SpokePoolImmutables memory params) {
-        _verifyParamsHash(keccak256(abi.encode(params)));
-        _;
-    }
-
+    /**
+     * @param _spokePool Across SpokePool contract address.
+     * @param _signer Signer that authorizes execution parameters.
+     * @param _wrappedNativeToken Wrapped native token address (e.g. WETH).
+     */
     constructor(
         address _spokePool,
         address _signer,
@@ -118,7 +117,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint32 fillDeadline,
         uint32 signatureDeadline,
         bytes calldata signature
-    ) external verifyParams(params) {
+    ) external verifyParamsHash(keccak256(abi.encode(params))) {
         if (block.timestamp > signatureDeadline) revert SignatureExpired();
         _verifySignature(
             inputAmount,
@@ -184,36 +183,14 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         );
     }
 
-    /**
-     * @notice Allows admin to withdraw any token from this clone.
-     * @param params Route parameters (verified against stored hash).
-     * @param token ERC20 token to withdraw.
-     * @param to Recipient of the withdrawn tokens.
-     * @param amount Amount to withdraw.
-     */
-    function adminWithdraw(
-        SpokePoolImmutables memory params,
-        address token,
-        address to,
-        uint256 amount
-    ) external verifyParams(params) {
-        _adminWithdraw(params.executionParams.adminWithdrawAddress, token, to, amount);
+    /// @inheritdoc CounterfactualDepositBase
+    function _getUserWithdrawAddress(bytes calldata params) internal pure override returns (address) {
+        return abi.decode(params, (SpokePoolImmutables)).executionParams.userWithdrawAddress;
     }
 
-    /**
-     * @notice Allows user to withdraw tokens before execution.
-     * @param params Route parameters (verified against stored hash).
-     * @param token ERC20 token to withdraw.
-     * @param to Recipient of the withdrawn tokens.
-     * @param amount Amount to withdraw.
-     */
-    function userWithdraw(
-        SpokePoolImmutables memory params,
-        address token,
-        address to,
-        uint256 amount
-    ) external verifyParams(params) {
-        _userWithdraw(params.executionParams.userWithdrawAddress, token, to, amount);
+    /// @inheritdoc CounterfactualDepositBase
+    function _getAdminWithdrawAddress(bytes calldata params) internal pure override returns (address) {
+        return abi.decode(params, (SpokePoolImmutables)).executionParams.adminWithdrawAddress;
     }
 
     /**

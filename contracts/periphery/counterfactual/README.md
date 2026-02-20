@@ -7,10 +7,11 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 **Generic factory + bridge-specific implementations using OpenZeppelin EIP-1167 Clones with Immutable Args:**
 
 - `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones. Takes `bytes32 paramsHash` — the caller hashes the params off-chain, and the factory never reads struct fields.
-- `CounterfactualDepositBase` — Abstract base contract inherited by all implementations. Provides shared logic: params hash verification (`_verifyParamsHash`), withdraw helpers (`_adminWithdraw`, `_userWithdraw`), and constants (`BPS_SCALAR`, `EXCHANGE_RATE_SCALAR`).
+- `CounterfactualDepositBase` — Abstract base contract inherited by all implementations. Provides shared logic: params hash verification (`_verifyParamsHash`), generic bytes-based `adminWithdraw(bytes,...)`, `userWithdraw(bytes,...)`, and `verifyUserWithdrawer(bytes)`, and constants (`BPS_SCALAR`, `EXCHANGE_RATE_SCALAR`). Withdraw functions take raw `bytes calldata params` so the `AdminWithdrawManager` can interact with any implementation without knowing the specific struct type. Each implementation overrides `_getUserWithdrawAddress` and `_getAdminWithdrawAddress` to decode its own immutables struct.
 - `CounterfactualDepositCCTP` — Implementation for deposits via SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
 - `CounterfactualDepositOFT` — Implementation for deposits via SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
 - `CounterfactualDepositSpokePool` — Implementation for deposits via Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
+- `AdminWithdrawManager` — Contract set as `adminWithdrawAddress` on clones. Enables two withdrawal paths: (1) direct withdraw by a trusted `directWithdrawer` to any recipient, and (2) signed withdraw by anyone with a valid EIP-712 signature from `signer`, always paying out to the clone's `userWithdrawAddress`.
 
 ```
                     CounterfactualDepositFactory (generic)
@@ -244,6 +245,18 @@ For subsequent deposits, callers can call the clone directly or use `factory.exe
 - **Execution Fee**: Fixed `executionFee` (route param, in token units) paid to relayer. User commits to this fee at address-generation time.
 - **Nonce/Deadline**: Protocol-specific deadlines (`cctpDeadline`, `oftDeadline`) and nonces are validated by SrcPeriphery. For SpokePool, token balance consumption provides natural replay protection.
 - **Cross-clone replay (SpokePool)**: Prevented by including the clone address in the EIP-712 domain separator.
+
+### AdminWithdrawManager
+
+The `AdminWithdrawManager` is designed to be set as the `adminWithdrawAddress` on all clones, providing two withdrawal paths:
+
+1. **Direct withdraw** (`directWithdraw`) — A trusted `directWithdrawer` address (e.g. a bot or multisig) can call with arbitrary calldata forwarded to the clone. The caller encodes the implementation-specific `adminWithdraw` call, enabling withdrawals to any recipient.
+
+2. **Signed withdraw to user** (`signedWithdrawToUser`) — Anyone can trigger a withdrawal by providing a valid EIP-712 signature from `signer`. The recipient is always the clone's `userWithdrawAddress`, enforced on-chain by `adminWithdrawToUser`. This allows permissionless fund recovery to the user without trusting the caller.
+
+The manager uses EIP-712 signatures with typehash `SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)`. The `owner` can update `directWithdrawer` and `signer` addresses.
+
+The `adminWithdrawToUser(bytes calldata params, address token, uint256 amount)` function on `CounterfactualDepositBase` enforces the recipient as `userWithdrawAddress` on-chain, so the manager doesn't need to resolve or specify the recipient. The generic `adminWithdraw(bytes calldata params, address token, address to, uint256 amount)` is used by `directWithdraw` where the caller specifies any recipient.
 
 ### Trust-Minimized Admin via TimelockController
 
