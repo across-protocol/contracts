@@ -204,8 +204,8 @@
       "name": "Tempo",
       "family": "NONE",
       "nativeToken": "pathUSD",
-      "publicRPC": "https://rpc.tempo.xyz",
-      "blockExplorer": "https://explore.mainnet.tempo.xyz",
+      "publicRPC": "",
+      "blockExplorer": "",
       "cctpDomain": -1,
       "oftEid": 30410,
       "hypDomainId": -1
@@ -678,7 +678,7 @@
     },
     "4217": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-      "helios": "0x3CA11702f7c0F28e0b4e03C31F7492969862C569"
+      "helios": "0x2BC84A3777469f67e040DAb9d00512a5D5258f39"
     },
     "4326": {
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
@@ -946,7 +946,6 @@
     "324": "0x3355df6D4c9C3035724Fd0e3914dE96A5a83aaf4",
     "1135": "0xF242275d3a6527d877f2c927a82D9b057609cc71",
     "1868": "0xbA9986D2381edf1DA03B0B9c1f8b00dc4AacC369",
-    "4217": "0x20c000000000000000000000b9537d11c60e8b50",
     "34443": "0xd988097fb8612cc24eeC14542bC03424c656005f",
     "41455": "0x18d25B4e18165c97e1285212e5d1f80eDD6d3Aa7",
     "42161": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",

@@ -598,9 +598,8 @@
       "chain_name": "Tempo",
       "contracts": {
         "SpokePool": {
-          "address": "0x2d4710f04da90184255782d3715224a6c776955d",
-          "block_number": 4341825,
-          "transaction_hash": "0x2042b4ae549cd4b3047c56ef4dea4a5b7f34f256e5c2d18925948a961362ad21"
+          "address": "0x2d4710F04Da90184255782d3715224A6C776955D",
+          "block_number": 4341825
         },
         "MulticallHandler": {
           "address": "0x7d6adcbb51ea70c134d7b0b96aa9af50fe504d90",
@@ -611,9 +610,9 @@
           "block_number": 4035644
         },
         "SP1Helios": {
-          "address": "0x3ca11702f7c0f28e0b4e03c31f7492969862c569",
-          "block_number": 4340584,
-          "transaction_hash": "0x0f377cf3b6f210a1bdd2bae9cca87946f66fedf13af196dd33719a1786ae6568"
+          "address": "0x2bc84a3777469f67e040dab9d00512a5d5258f39",
+          "block_number": 5673252,
+          "transaction_hash": "0xb499f362e8b95a9ea011aa984a94e46394bf9c23e51643198e9b3c280b805f81"
         }
       }
     },
