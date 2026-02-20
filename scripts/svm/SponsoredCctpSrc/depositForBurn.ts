@@ -42,6 +42,11 @@ enum ExecutionMode {
   ArbitraryActionsToEVM,
 }
 
+enum AccountCreationMode {
+  Standard,
+  FromUserFunds,
+}
+
 // Parse arguments
 const argv = yargs(hideBin(process.argv))
   .option("amount", {
@@ -98,6 +103,19 @@ const argv = yargs(hideBin(process.argv))
     default: 1000, // 10 bps
     describe: "Maximum user slippage in bps, defaults to 1000 (10 bps)",
   })
+  .option("destinationDex", {
+    type: "number",
+    demandOption: false,
+    default: 0xffff_ffff,
+    describe: "Destination DEX for the sponsored CCTP flow, defaults to CORE_SPOT_DEX_ID = type(uint32).max",
+  })
+  .option("accountCreationMode", {
+    type: "number",
+    demandOption: false,
+    default: AccountCreationMode.Standard,
+    choices: Object.values(AccountCreationMode),
+    describe: "Account creation mode for the sponsored CCTP flow",
+  })
   .option("executionMode", {
     type: "number",
     demandOption: false,
@@ -136,6 +154,8 @@ async function depositForBurn(): Promise<void> {
   const minFinalityThreshold = resolvedArgv.minFinalityThreshold;
   const maxBpsToSponsor = resolvedArgv.maxBpsToSponsor;
   const maxUserSlippageBps = resolvedArgv.maxUserSlippageBps;
+  const destinationDex = resolvedArgv.destinationDex;
+  const accountCreationMode = Number(resolvedArgv.accountCreationMode);
   const executionMode = Number(resolvedArgv.executionMode);
   const actionData = ethers.utils.hexlify(resolvedArgv.actionData);
   const deadline = resolvedArgv.deadline;
@@ -197,6 +217,8 @@ async function depositForBurn(): Promise<void> {
     maxUserSlippageBps,
     finalRecipient: ethers.utils.hexZeroPad(finalRecipient, 32),
     finalToken: ethers.utils.hexZeroPad(finalToken, 32),
+    destinationDex,
+    accountCreationMode,
     executionMode,
     actionData,
   };
@@ -219,7 +241,7 @@ async function depositForBurn(): Promise<void> {
   );
   const hash2 = ethers.utils.keccak256(
     ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint8", "bytes32"],
+      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint32", "uint8", "uint8", "bytes32"],
       [
         quoteDataEvm.nonce,
         quoteDataEvm.deadline,
@@ -227,6 +249,8 @@ async function depositForBurn(): Promise<void> {
         quoteDataEvm.maxUserSlippageBps,
         quoteDataEvm.finalRecipient,
         quoteDataEvm.finalToken,
+        quoteDataEvm.destinationDex,
+        quoteDataEvm.accountCreationMode,
         quoteDataEvm.executionMode,
         ethers.utils.keccak256(quoteDataEvm.actionData),
       ]
@@ -255,6 +279,8 @@ async function depositForBurn(): Promise<void> {
     maxUserSlippageBps: new BN(quoteDataEvm.maxUserSlippageBps.toString()),
     finalRecipient: new PublicKey(ethers.utils.arrayify(quoteDataEvm.finalRecipient)),
     finalToken: new PublicKey(ethers.utils.arrayify(quoteDataEvm.finalToken)),
+    destinationDex: quoteDataEvm.destinationDex,
+    accountCreationMode: quoteDataEvm.accountCreationMode,
     executionMode: quoteDataEvm.executionMode,
     actionData: Buffer.from(ethers.utils.arrayify(quoteDataEvm.actionData)),
   };
@@ -296,6 +322,8 @@ async function depositForBurn(): Promise<void> {
     { Property: "minFinalityThreshold", Value: minFinalityThreshold.toString() },
     { Property: "maxBpsToSponsor", Value: maxBpsToSponsor.toString() },
     { Property: "maxUserSlippageBps", Value: maxUserSlippageBps.toString() },
+    { Property: "destinationDex", Value: destinationDex.toString() },
+    { Property: "accountCreationMode", Value: accountCreationMode.toString() },
     { Property: "executionMode", Value: executionMode.toString() },
     { Property: "actionData", Value: actionData },
     { Property: "depositorTokenAccount", Value: depositorTokenAccount.toString() },

@@ -50,6 +50,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
   const minFinalityThreshold = 5;
   const maxBpsToSponsor = 500;
   const maxUserSlippageBps = 1000;
+  const destinationDex = 0xffff_ffff; // CORE_SPOT_DEX_ID = type(uint32).max;
+  const accountCreationMode = 0; // Standard
   const executionMode = 0; // DirectToCore
   const actionData = "0x"; // Empty in DirectToCore mode
 
@@ -96,7 +98,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       ]
     );
     const encodedPart2 = ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint8", "bytes32"],
+      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint32", "uint8", "uint8", "bytes32"],
       [
         quoteData.nonce,
         quoteData.deadline,
@@ -104,6 +106,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.maxUserSlippageBps,
         quoteData.finalRecipient,
         quoteData.finalToken,
+        quoteData.destinationDex,
+        quoteData.accountCreationMode,
         quoteData.executionMode,
         ethers.utils.keccak256(quoteData.actionData),
       ]
@@ -134,6 +138,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps: new BN(quote.maxUserSlippageBps.toString()),
       finalRecipient: new PublicKey(ethers.utils.arrayify(quote.finalRecipient)),
       finalToken: new PublicKey(ethers.utils.arrayify(quote.finalToken)),
+      destinationDex: quote.destinationDex,
+      accountCreationMode: quote.accountCreationMode,
       executionMode: quote.executionMode,
       actionData: Buffer.from(ethers.utils.arrayify(quote.actionData)),
     };
@@ -152,7 +158,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
 
   const getHookDataFromQuote = (quoteData: SponsoredCCTPQuote): Buffer => {
     const encodedHexString = ethers.utils.defaultAbiCoder.encode(
-      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint8", "bytes"],
+      ["bytes32", "uint256", "uint256", "uint256", "bytes32", "bytes32", "uint32", "uint8", "uint8", "bytes"],
       [
         quoteData.nonce,
         quoteData.deadline,
@@ -160,6 +166,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
         quoteData.maxUserSlippageBps,
         quoteData.finalRecipient,
         quoteData.finalToken,
+        quoteData.destinationDex,
+        quoteData.accountCreationMode,
         quoteData.executionMode,
         quoteData.actionData,
       ]
@@ -176,6 +184,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       "uint256", // maxUserSlippageBps
       "bytes32", // finalRecipient
       "bytes32", // finalToken
+      "uint32", // destinationDex
+      "uint8", // accountCreationMode
       "uint8", // executionMode
       "bytes", // actionData
     ] as const;
@@ -189,9 +199,22 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient,
       finalToken,
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
-    ] = decoded as [string, ethers.BigNumber, ethers.BigNumber, ethers.BigNumber, string, string, number, string];
+    ] = decoded as [
+      string,
+      ethers.BigNumber,
+      ethers.BigNumber,
+      ethers.BigNumber,
+      string,
+      string,
+      number,
+      number,
+      number,
+      string
+    ];
 
     return {
       nonce,
@@ -200,6 +223,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient,
       finalToken,
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
     };
@@ -411,6 +436,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
     };
@@ -477,6 +504,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     );
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
     assert.strictEqual(depositEvent.finalToken.toString(), new PublicKey(finalToken).toString(), "Invalid finalToken");
+    assert.strictEqual(depositEvent.destinationDex, destinationDex, "Invalid destinationDex");
+    assert.strictEqual(depositEvent.accountCreationMode, accountCreationMode, "Invalid accountCreationMode");
     assert.isTrue(depositEvent.signature.equals(Buffer.from(signature)), "Invalid signature");
 
     const createdEventAccountEvent = events.find((event) => event.name === "createdEventAccount")?.data;
@@ -537,6 +566,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
     };
@@ -616,7 +647,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
     const usedNonce = getUsedNonce(nonce);
     const deadline = ethers.BigNumber.from(Math.floor(Date.now() / 1000) + 3600);
     const executionMode = 1; // ArbitraryActionsToCore
-    const actionDataLenth = 442; // Larger actionData would exceed the transaction message size limits on Solana.
+    const actionDataLenth = 437; // Larger actionData would exceed the transaction message size limits on Solana.
     const actionData = crypto.randomBytes(actionDataLenth);
 
     const quoteData: SponsoredCCTPQuote = {
@@ -634,6 +665,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData: ethers.utils.hexlify(actionData),
     };
@@ -702,6 +735,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
     };
@@ -769,6 +804,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
     };
@@ -883,6 +920,8 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       maxUserSlippageBps,
       finalRecipient: ethers.utils.hexlify(finalRecipient),
       finalToken: ethers.utils.hexlify(finalToken),
+      destinationDex,
+      accountCreationMode,
       executionMode,
       actionData,
     };
