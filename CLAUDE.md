@@ -14,13 +14,13 @@ Across uses a **hub-and-spoke** model with optimistic verification to enable fas
 
 ### Key Roles
 
-| Role | Description |
-|------|-------------|
-| **Depositor** | End user (non-technical) who initiates a cross-chain transfer via one of multiple entry points (deposit, sponsored, gasless flows) on the origin SpokePool |
-| **Relayer** | Fills deposits on destination chain by fronting tokens, later reimbursed via merkle proof. Relayers compete on speed and cross-chain inventory management to determine if a deposit is profitable based on the fees offered |
+| Role            | Description                                                                                                                                                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Depositor**   | End user (non-technical) who initiates a cross-chain transfer via one of multiple entry points (deposit, sponsored, gasless flows) on the origin SpokePool                                                                                                                              |
+| **Relayer**     | Fills deposits on destination chain by fronting tokens, later reimbursed via merkle proof. Relayers compete on speed and cross-chain inventory management to determine if a deposit is profitable based on the fees offered                                                             |
 | **Data Worker** | Off-chain agent that validates and aggregates deposits/fills across multiple chains, constructs merkle trees, and calls `proposeRootBundle()` on HubPool (stakes a bond). Unlike relayers, data workers are RPC-intensive and maintain a longer lookback window; speed is less critical |
-| **Disputer** | Monitors proposed bundles; can call `disputeRootBundle()` during the challenge period if a bundle is invalid |
-| **LP** | Deposits L1 tokens into HubPool to earn relay fees |
+| **Disputer**    | Monitors proposed bundles; can call `disputeRootBundle()` during the challenge period if a bundle is invalid                                                                                                                                                                            |
+| **LP**          | Deposits L1 tokens into HubPool to earn relay fees                                                                                                                                                                                                                                      |
 
 ### Protocol Flow
 
@@ -39,7 +39,6 @@ HubPool on L1 owns all L2 SpokePools. Admin functions are relayed cross-chain vi
 ### Supported Chains
 
 SpokePool is deployed on many chains. For the list of all available chains, see `broadcast/deployed-addresses.md`.
-
 
 ## Development Frameworks
 
@@ -99,36 +98,12 @@ Use `FOUNDRY_PROFILE=local-test` (or `yarn test-evm-foundry`) for local Foundry 
 
 ### Deployment Scripts
 
-- Numbered with `.s.sol` suffix: `001DeployHubPool.s.sol`, `004DeployArbitrumAdapter.s.sol`
+- `.s.sol` suffix, see `script/` for examples (e.g. `script/DeployArbitrumAdapter.s.sol`)
 - Script contracts: `contract Deploy<ContractName> is Script, Test, Constants`
 
 ## Writing Tests
 
-```solidity
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
-
-import { Test } from "forge-std/Test.sol";
-import { MyContract } from "../contracts/MyContract.sol";
-
-contract MyContractTest is Test {
-  MyContract public myContract;
-
-  function setUp() public {
-    myContract = new MyContract();
-  }
-
-  function testBasicFunctionality() public {
-    // Test implementation
-    assertEq(myContract.value(), expected);
-  }
-
-  function testRevertOnInvalidInput() public {
-    vm.expectRevert();
-    myContract.doSomething(invalidInput);
-  }
-}
-```
+See `test/evm/foundry/local/` for examples (e.g. `Router_Adapter.t.sol`).
 
 ### Test Gotchas
 
@@ -142,60 +117,9 @@ contract MyContractTest is Test {
   ```
 - **Delegatecall context**: Adapter tests via HubPool emit events from HubPool's address; `vm.expectRevert()` may lose error data
 
-## Deployment Scripts
-
-Scripts follow a numbered pattern and use shared utilities from `script/utils/`.
-
-```solidity
-// SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.0;
-
-import { Script } from "forge-std/Script.sol";
-import { Test } from "forge-std/Test.sol";
-import { console } from "forge-std/console.sol";
-import { Constants } from "./utils/Constants.sol";
-import { MyContract } from "../contracts/MyContract.sol";
-
-// How to run:
-// 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
-// 2. forge script script/00XDeployMyContract.s.sol:DeployMyContract --rpc-url $NODE_URL_1 -vvvv
-// 3. Verify simulation works
-// 4. Deploy: forge script script/00XDeployMyContract.s.sol:DeployMyContract --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
-
-contract DeployMyContract is Script, Test, Constants {
-  function run() external {
-    string memory deployerMnemonic = vm.envString("MNEMONIC");
-    uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
-
-    uint256 chainId = block.chainid;
-    // Validate chain if needed
-    require(chainId == getChainId("MAINNET"), "Deploy on mainnet only");
-
-    vm.startBroadcast(deployerPrivateKey);
-
-    MyContract myContract = new MyContract /* constructor args */();
-
-    console.log("Chain ID:", chainId);
-    console.log("MyContract deployed to:", address(myContract));
-
-    vm.stopBroadcast();
-  }
-}
-```
-
-For upgradeable contracts, use `DeploymentUtils` which provides `deployNewProxy()`.
-
 ## Configuration
 
-See `foundry.toml` for Foundry configuration. Key settings:
-
-- Source: `contracts/`
-- Tests: `test/evm/foundry/`
-- Solidity: 0.8.30
-- EVM: Prague
-- Optimizer: 800 runs with via-ir
-
-**Do not modify `foundry.toml` without asking** - explain what you want to change and why.
+See `foundry.toml` for Foundry configuration. **Do not modify `foundry.toml` without asking.**
 
 ## Security Practices
 
