@@ -1,57 +1,137 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.30;
 
-struct ExecutionStep {
-    /*
-    NOTE: `tokenReq` is a mandatory param:
-    - amount == 0 means no enforccement
-    - token is used to inform the final user action. The action is made with (tokenReq.token, balanceOf(tokenReq.token, address(this))) on the executor
-    */
-    bytes tokenReq; // (token, amount)
-    // NOTE: if an order is sponsored, this is forced by the API to be one of the trusted relayers, to prevent self-
-    // submission and self-sandwiching on the sponsored orders
-    bytes submitterReq; // None OR address (can be bytes32 for non-EVM chains)
-    bytes deadlineReq; // None OR uint256 deadline
-    // A list of other requiremens that can be checked in a static way (no state changes) after execution of submitter actions.
-    bytes[] otherStaticReqs;
-    // NOTE: if we want obfuscation to encompass both the requirements and the final action, we can record auction `Changes`
-    // and apply them after the deobfuscation (send them to the next steps similarly to how we send `nextSteps`)
-    bytes hashOrUserAction;
-    // NOTE: If the current step hasn't been executed by `deadline`, this address can break the execution chain and withdraw
-    // the assets associated with the order
-    address refundRecipient;
+enum GenericStepType {
+    AuctionSubmitterUser,
+    SubmitterUser,
+    User
 }
 
-// The struct that the user signs/submits. Contains all of the user's preferences
-struct Order {
-    // NOTE: there's no (token, amount) here that the user submits. That's provided separately at the time of the submit.. call
-    bytes32 salt;
-    ExecutionStep[] steps;
+enum TokenRequirementType {
+    StrictAmount,
+    MinAmount
 }
 
-// Same as above, if a user is using an auction
-struct OrderWithAuction {
-    Order order;
-    // `auctionAuthority` has the power to change the execution steps (see `struct Change` below)
-    address auctionAuthority;
+enum StaticRequirementType {
+    Submitter,
+    Deadline,
+    ExternalStaticCall
 }
 
-// A struct that represents some change in user requirement as a result of the auction
-struct Change {
-    // enum for: token, deadline, submitter or custom
+enum SubmitterActionType {
+    None,
+    MulticallHandler,
+    Weiroll // Reserved for future support.
+}
+
+enum TransferType {
+    Approval,
+    Transfer,
+    Permit2Approval // Reserved for future support.
+}
+
+enum AuctionType {
+    Offchain,
+    DutchOnchain // Reserved for future support.
+}
+
+enum ContinuationType {
+    GenericSteps,
+    StepAndNextHash,
+    StepAndNextData
+}
+
+struct TypedData {
     uint8 typ;
-    // NOTE: if a type is custom, data can inlcude an index of the otherStaticReqs that the auction wants to change. The
-    // funtion to apply the change has to be implemented on the OrderGateway for this to work
-    // data gets interpreted by the Gateway to apply the change depending on the type
     bytes data;
 }
 
-// Auction changes can do things like change the submitter, improve the token requirement or shorten the deadline etc.
-struct AuctionChanges {
-    // changes[idx] are relevant to the requirements of order.steps[idx]
-    Change[][] changes;
-    // sig is over (orderId, changes) by the auction authority specified in OrderWithAuction
+// `parts` encoding:
+// - AuctionSubmitterUser: [abi.encode(AuctionAction), abi.encode(UserRequirementsAndAction)]
+// - SubmitterUser: [abi.encode(UserRequirementsAndAction)]
+// - User: [abi.encode(UserRequirementsAndAction)]
+struct GenericStep {
+    GenericStepType typ;
+    bytes[] parts;
+}
+
+// User-provided auction instruction. Submitter-provided auction resolution data is separate.
+struct AuctionAction {
+    AuctionType typ;
+    bytes data;
+}
+
+struct UserRequirementsAndAction {
+    // token requirement encoded as (typ, data)
+    TypedData tokenReq;
+    // static requirements encoded as (typ, data)
+    TypedData[] staticReqs;
+    // user action executor target for this step
+    address target;
+    // transfer strategy encoded as (typ, data)
+    TypedData transfer;
+    // params for execution on `target`.
+    bytes userAction;
+    address refundRecipient;
+}
+
+struct AmountTokenRequirement {
+    address token;
+    uint256 amount;
+}
+
+struct SubmitterRequirement {
+    address submitter;
+}
+
+struct DeadlineRequirement {
+    uint256 deadline;
+}
+
+struct ExternalStaticCallRequirement {
+    address target;
+    bytes data;
+    bytes32 expectedResultHash; // 0 disables return-data hash check.
+}
+
+struct SubmitterActions {
+    SubmitterActionType typ;
+    bytes data;
+}
+
+struct ExecutorCall {
+    address target;
+    bytes callData;
+    uint256 value;
+}
+
+struct OffchainAuctionConfig {
+    address authority;
+    uint256 deadline;
+}
+
+struct RequirementChange {
+    uint8 stepOffset;
+    uint8 reqId;
+    bytes change;
+}
+
+struct AuctionResolution {
+    RequirementChange[] changes;
     bytes sig;
+}
+
+struct Continuation {
+    ContinuationType typ;
+    // GenericSteps: abi.encode(GenericStep[])
+    // StepAndNextHash: abi.encode(bytes32)
+    // StepAndNextData: abi.encode(StepAndNext)
+    bytes data;
+}
+
+struct MerkleOrder {
+    bytes32 salt;
+    bytes32 routesRoot;
 }
 
 struct TokenAmount {
@@ -59,87 +139,66 @@ struct TokenAmount {
     uint256 amount;
 }
 
-// Provided to support the execution of a single step
-struct SubmitterData {
-    // ? TODO: hard to create relevant good `witness`, as `orderId` is only present on initial submission. Maybe there's a way?
-    // NOTE: only approval-based token pulls are supported from submitters
-    TokenAmount[] extraFunding;
-    bytes actions; // MulticallHandler.Instructions or weiroll (support can be expanded to any format)
-    bytes deobfuscation; // if user's finalAction is obfuscated
+// Represents one explicit execution chunk. `nextContinuation` recursively carries the rest.
+struct StepAndNext {
+    GenericStep curStep;
+    bytes nextContinuation;
 }
 
-// Entrypoint contract for all order submissions
-abstract contract OrderGateway {
-    // NOTE: `funding` here is (token, amount) for approval flows. For gasless flows something like (transfer data object + sig)
+struct MerkleRoute {
+    StepAndNext stepAndNext;
+    bytes32[] proof;
+}
+
+struct SubmitterData {
+    // token == address(0) means native token funding from submitter.
+    TokenAmount[] extraFunding;
+    // Step-specific submitter data consumed by executor substeps.
+    bytes[] parts;
+}
+
+interface IOrderGateway {
     function submit(
-        Order calldata order,
+        MerkleOrder calldata order,
+        MerkleRoute calldata route,
         bytes calldata funding,
         SubmitterData calldata submitterData
-    ) external payable virtual;
-
-    function submitWithAuction(
-        OrderWithAuction memory order,
-        bytes calldata funding,
-        SubmitterData calldata submitterData,
-        AuctionChanges calldata auctionChanges
-    ) external payable virtual;
-}
-
-// Contract responsible for executing submitter actions, checking user requirements and executing the final user action
-abstract contract Executor {
-    function execute(
-        // `submitter` is propagated by the caller: either `OrderGateway` or `OrderStore`
-        address submitter,
-        // Provided by the submitter to try to meet user's requirements
-        bytes calldata submitterActions, // MulticallHandler.Instructions or weiroll (support can be expanded to any format)
-        // Current and the remaining execution steps, initially defined by the user in `Order.steps`
-        // NOTE: the executor just executes a `currentStep`, only propagating `nextSteps` to the user action executor
-        ExecutionStep calldata currentStep,
-        ExecutionStep[] calldata nextSteps
-    ) external payable virtual;
-}
-
-// NOTE: it is a responsibility of `IUserActionExecutor` to propagate `nextSteps` to the future execution layer
-interface IUserActionExecutor {
-    function execute(
-        // `ExecutionStep.tokenReq.token`
-        address token,
-        // `balanceOf(address(IExecutor), ExecutionStep.tokenReq.token)`
-        uint256 amount,
-        // Hardcoded in the `ExecutionStep.hashOrUserAction` either directly or as a cryptographical commitment. Have to
-        // be deobfuscated by this point
-        bytes calldata actionParams,
-        // these are the remaining execution steps, initially defined by the user in `Order.steps`
-        ExecutionStep[] calldata nextSteps
     ) external payable;
 }
 
-abstract contract OrderStore {
-    // Called by a Mint-burn receiver contract after it's done all of the relevant checks and ready to hand over tokens
-    function handle(
-        // ? TODO: we can be a bit more generic wrt how we handle token pulling here. `bytes calldata funding`
+interface IExecutor {
+    function execute(
+        address submitter,
+        bytes32 orderId,
+        address userTokenIn,
+        uint256 userAmountIn,
+        uint256 submitterNativeAmount,
+        bytes[] calldata submitterParts,
+        StepAndNext calldata stepAndNext
+    ) external payable;
+}
+
+interface IUserActionExecutor {
+    function execute(
         address token,
         uint256 amount,
-        /*
-        NOTE: remainingSteps[0] is the "current step" to exeute. If the array is empty, we can't proceed as we don't even
-        know the refundAddress from the execution step struct. In this case, we have to store an empty order and allow
-        retrieval by admin.
-        Maybe src periphery can check that nextSteps is not empty on submission. However, that would lock the src periphery
-        to only working with this type of flow (src -> dst -> orderStore). Maybe that _is_ the only required route
-        */
-        ExecutionStep[] calldata remainingSteps
-    ) external payable virtual;
+        bytes32 orderId,
+        bytes calldata actionParams,
+        bytes calldata nextContinuation
+    ) external payable;
+}
 
-    // Perform a handle + fill atomically. Available for e.g. CCTP finalizers to also be submitters
+interface IOrderStore {
+    function handle(address token, uint256 amount, bytes32 orderId, bytes calldata continuation) external payable;
+
     function handleAtomic(
         address token,
         uint256 amount,
-        ExecutionStep[] calldata remainingSteps,
-        // NOTE: propagated by the msg.sender. We can trust this, since msg.sender is providing the funds
+        bytes32 orderId,
+        bytes calldata continuation,
         address submitter,
         SubmitterData calldata submitterData
-    ) external payable virtual;
+    ) external payable;
 
-    // Fill an order stored in the store
-    function fill(uint256 localOrderIndex, SubmitterData calldata submitterData) external payable virtual;
+    function fill(uint256 localOrderIndex, SubmitterData calldata submitterData) external payable;
 }
