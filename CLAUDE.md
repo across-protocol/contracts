@@ -38,14 +38,8 @@ HubPool on L1 owns all L2 SpokePools. Admin functions are relayed cross-chain vi
 
 ### Supported Chains
 
-SpokePools exist for: Ethereum, Arbitrum, Optimism, Base, Polygon, Polygon zkEVM, zkSync, Scroll, Linea, Blast, Boba, Lisk, WorldChain, Ink, Lens, Mode, and others via `Universal_SpokePool` (generic OP Stack).
+SpokePool is deployed on many chains. For the list of all available chains, see `broadcast/deployed-addresses.md`.
 
-### Key Libraries
-
-- **CircleCCTPAdapter** — USDC bridging via Circle's CCTP (V1/V2), with burn-limit splitting for large transfers
-- **OFTTransportAdapter** — Token bridging via LayerZero OFT standard
-- **MerkleLib** — Merkle proof verification with bitmap tracking to prevent double-claiming
-- **Lockable** — Custom reentrancy guard used across SpokePools
 
 ## Development Frameworks
 
