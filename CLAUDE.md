@@ -10,7 +10,7 @@ Across uses a **hub-and-spoke** model with optimistic verification to enable fas
 
 - **HubPool** (Ethereum L1) — Central contract that manages LP liquidity, validates cross-chain transfers via merkle root bundles, and coordinates rebalancing across all SpokePools. Uses UMA's Optimistic Oracle for dispute resolution.
 - **SpokePool** (each L2/sidechain) — Deployed on every supported chain. Handles user deposits, relayer fills, and execution of merkle leaves (relayer refunds, slow fills). UUPS upgradeable. Chain-specific variants (e.g. `Arbitrum_SpokePool`, `Optimism_SpokePool`) override admin verification and bridge-specific logic.
-- **Chain Adapters** (`@contracts/chain-adapters/`) — Stateless contracts called via `delegatecall` from HubPool to bridge tokens and relay messages to each L2. Each adapter wraps a chain's native bridge (Arbitrum Inbox, OP Stack messenger, Polygon FxPortal, etc.). Also supports CCTP, LayerZero OFT, and Wormhole.
+- **Chain Adapters** (`contracts/chain-adapters/`) — Stateless contracts called via `delegatecall` from HubPool to bridge tokens and relay messages to each L2. Each adapter wraps a chain's native bridge (Arbitrum Inbox, OP Stack messenger, Polygon FxPortal, etc.). Also supports CCTP, LayerZero OFT, and Wormhole.
 
 ### Key Roles
 
@@ -38,7 +38,7 @@ HubPool on L1 owns all L2 SpokePools. Admin functions are relayed cross-chain vi
 
 ### Supported Chains
 
-SpokePool is deployed on many chains. For the list of all available chains, see `@broadcast/deployed-addresses.md`.
+SpokePool is deployed on many chains. Search for contracts with `SpokePool` in the name to see all chain-specific variants.
 
 ## Development Frameworks
 
@@ -98,16 +98,16 @@ Use `FOUNDRY_PROFILE=local-test` (or `yarn test-evm-foundry`) for local Foundry 
 
 ### Deployment Scripts
 
-- `.s.sol` suffix, see `@script/` for examples (e.g. `@script/DeployArbitrumAdapter.s.sol`)
+- `.s.sol` suffix, see `script/` for examples (e.g. `script/DeployArbitrumAdapter.s.sol`)
 - Script contracts: `contract Deploy<ContractName> is Script, Test, Constants`
 
 ## Writing Tests
 
-See `@test/evm/foundry/local/` for examples (e.g. `@test/evm/foundry/local/Router_Adapter.t.sol`).
+See `test/evm/foundry/local/` for examples (e.g. `test/evm/foundry/local/Router_Adapter.t.sol`).
 
 ### Test Gotchas
 
-- **Mocks**: Check `@contracts/test/` for existing mocks before creating new ones (MockCCTP.sol, ArbitrumMocks.sol, etc.)
+- **Mocks**: Check `contracts/test/` for existing mocks before creating new ones (MockCCTP.sol, ArbitrumMocks.sol, etc.)
 - **MockSpokePool**: Requires UUPS proxy deployment: `new ERC1967Proxy(address(new MockSpokePool(weth)), abi.encodeCall(MockSpokePool.initialize, (...)))`
 - **vm.mockCall pattern** (prefer over custom mocks for simple return values):
   ```solidity
@@ -119,7 +119,7 @@ See `@test/evm/foundry/local/` for examples (e.g. `@test/evm/foundry/local/Route
 
 ## Configuration
 
-See `@foundry.toml` for Foundry configuration. **Do not modify `foundry.toml` without asking.**
+See `foundry.toml` for Foundry configuration. **Do not modify `foundry.toml` without asking.**
 
 ## Security Practices
 
