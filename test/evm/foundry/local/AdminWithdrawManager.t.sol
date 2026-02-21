@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDepositSpokePool, SpokePoolImmutables, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CounterfactualDeposit, CounterfactualDepositParams, SpokePoolRoute } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 contract AdminWithdrawManagerTest is Test {
     CounterfactualDepositFactory public factory;
-    CounterfactualDepositSpokePool public implementation;
+    CounterfactualDeposit public implementation;
     AdminWithdrawManager public manager;
     MintableERC20 public token;
 
@@ -23,7 +23,7 @@ contract AdminWithdrawManagerTest is Test {
     uint256 public spokePoolSignerKey;
     address public spokePoolSigner;
 
-    SpokePoolImmutables internal defaultParams;
+    CounterfactualDepositParams internal defaultParams;
     address public depositAddress;
 
     // EIP-712 constants for AdminWithdrawManager
@@ -46,25 +46,25 @@ contract AdminWithdrawManagerTest is Test {
         token = new MintableERC20("USDC", "USDC", 6);
 
         factory = new CounterfactualDepositFactory();
-        implementation = new CounterfactualDepositSpokePool(makeAddr("spokePool"), spokePoolSigner, makeAddr("weth"));
+        implementation = new CounterfactualDeposit(
+            makeAddr("spokePool"),
+            spokePoolSigner,
+            makeAddr("weth"),
+            makeAddr("cctpPeriphery"),
+            2,
+            makeAddr("oftPeriphery"),
+            30110
+        );
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
 
-        defaultParams = SpokePoolImmutables({
-            depositParams: SpokePoolDepositParams({
-                destinationChainId: 42161,
-                inputToken: bytes32(uint256(uint160(address(token)))),
-                outputToken: bytes32(uint256(uint160(address(token)))),
-                recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                message: ""
-            }),
-            executionParams: SpokePoolExecutionParams({
-                stableExchangeRate: 1e18,
-                maxFeeFixed: 1e6,
-                maxFeeBps: 500,
-                executionFee: 1e6,
-                userWithdrawAddress: user,
-                adminWithdrawAddress: address(manager)
-            })
+        defaultParams = CounterfactualDepositParams({
+            inputToken: address(token),
+            executionFee: 1e6,
+            userWithdrawAddress: user,
+            adminWithdrawAddress: address(manager),
+            spokePoolRouteHash: bytes32(0),
+            cctpRouteHash: bytes32(0),
+            oftRouteHash: bytes32(0)
         });
 
         bytes32 paramsHash = keccak256(abi.encode(defaultParams));
