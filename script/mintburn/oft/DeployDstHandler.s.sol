@@ -11,6 +11,7 @@ import { DstOFTHandler } from "../../../contracts/periphery/mintburn/sponsored-o
 import { DstHandlerConfigLib } from "./DstHandlerConfigLib.s.sol";
 import { IOAppCore } from "../../../contracts/interfaces/IOFT.sol";
 import { PermissionedMulticallHandler } from "../../../contracts/handlers/PermissionedMulticallHandler.sol";
+import { Variable, TypeKind } from "forge-std/LibVariable.sol";
 
 /*
 forge script script/mintburn/oft/DeployDstHandler.s.sol:DeployDstOFTHandler \
@@ -35,16 +36,16 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
 
         address ioft = config.get("oft_messenger").toAddress();
         address baseToken = config.get("token").toAddress();
-        // address multicallHandler = _getOptionalAddress("multicall_handler");
+        address multicallHandler = _getOptionalAddress("multicall_handler");
         address oftEndpoint = address(IOAppCore(ioft).endpoint());
         require(oftEndpoint != address(0) && ioft != address(0) && baseToken != address(0), "config missing");
 
         vm.startBroadcast(deployerPrivateKey);
 
         DonationBox donationBox = new DonationBox();
-        // if (multicallHandler == address(0)) {
-        PermissionedMulticallHandler multicallHandler = new PermissionedMulticallHandler(deployer);
-        // }
+        if (multicallHandler == address(0)) {
+            multicallHandler = address(new PermissionedMulticallHandler(deployer));
+        }
         DstOFTHandler dstOFTHandler = new DstOFTHandler(
             oftEndpoint,
             ioft,
@@ -53,8 +54,13 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
             address(multicallHandler)
         );
         donationBox.transferOwnership(address(dstOFTHandler));
-        // TODO: this won't work for multisig-owned `multicallHandler`s
-        multicallHandler.grantRole(multicallHandler.WHITELISTED_CALLER_ROLE(), address(dstOFTHandler));
+
+        PermissionedMulticallHandler handler = PermissionedMulticallHandler(payable(multicallHandler));
+        if (handler.hasRole(handler.DEFAULT_ADMIN_ROLE(), deployer)) {
+            handler.grantRole(handler.WHITELISTED_CALLER_ROLE(), address(dstOFTHandler));
+        } else {
+            console.log("WARNING: deployer is not multicallHandler admin, skipping WHITELISTED_CALLER_ROLE grant");
+        }
 
         console.log("DstOFTHandler deployed to:", address(dstOFTHandler));
 
@@ -63,21 +69,19 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
         // Persist the deployment address under this chain in TOML
         config.set("dst_handler", address(dstOFTHandler));
 
-        // TODO: right, Foundry can't work with precompiles at all :(
+        // Note: foundry doesn't work with precompiles, configure it manually via cast or blockchain explorer
         // _configureCoreTokenInfo(tokenName, address(dstOFTHandler));
+        // Note: this sometimes sends way too many transactions so you might want to comment it when deploying
         _configureAuthorizedPeripheries(address(dstOFTHandler), deployerPrivateKey);
     }
 
-    /// @notice Returns a default zero address if not present
-    function _getOptionalAddress(string memory key) internal returns (address addr) {
-        try this.getAddress(key) returns (address value) {
-            addr = value;
-        } catch {
+    /// @notice Returns a default zero address if not present in config.
+    function _getOptionalAddress(string memory key) internal view returns (address) {
+        Variable memory v = config.get(key);
+        if (v.ty.kind == TypeKind.None) {
             console.log("Optional not found: ", key);
+            return address(0);
         }
-    }
-
-    function getAddress(string memory key) external returns (address) {
-        return config.get(key).toAddress();
+        return v.toAddress();
     }
 }
