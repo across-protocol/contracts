@@ -7,28 +7,34 @@ import { DeploymentUtils } from "../../utils/DeploymentUtils.sol";
 import { DonationBox } from "../../../contracts/chain-adapters/DonationBox.sol";
 import { SponsoredCCTPDstPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 
-// Deploy: forge script script/mintburn/cctp/114DeploySponsoredCCTPDstPeriphery.sol:DeploySponsoredCCTPDstPeriphery --rpc-url <network> -vvvv
+// How to run:
+// 1. source .env (needs MNEMONIC="x x x ... x")
+// 2. Simulate: forge script script/mintburn/cctp/DeploySponsoredCCTPDstPeriphery.s.sol:DeploySponsoredCCTPDstPeriphery --rpc-url <network> -vvvv
+// 3. Deploy:   forge script script/mintburn/cctp/DeploySponsoredCCTPDstPeriphery.s.sol:DeploySponsoredCCTPDstPeriphery --rpc-url <network> --broadcast --verify -vvvv
 contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
     function run() external {
         console.log("Deploying SponsoredCCTPDstPeriphery...");
         console.log("Chain ID:", block.chainid);
+        require(
+            block.chainid == 999 || block.chainid == 1,
+            "Dst periphery must be deployed on HyperEVM (chain 999) or Ink (chain 57073)"
+        );
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
+        console.log("Deployer:", deployer);
 
         _loadConfig("./script/mintburn/cctp/config.toml", true);
 
         address cctpMessageTransmitter = config.get("cctpMessageTransmitter").toAddress();
+        address baseToken = config.get("baseToken").toAddress();
+        address multicallHandler = config.get("multicallHandler").toAddress();
 
         vm.startBroadcast(deployerPrivateKey);
 
         DonationBox donationBox = new DonationBox();
         console.log("DonationBox deployed to:", address(donationBox));
-
-        // USDC on HyperEVM
-        address baseToken = config.get("baseToken").toAddress();
-        address multicallHandler = config.get("multicallHandler").toAddress();
 
         SponsoredCCTPDstPeriphery sponsoredCCTPDstPeriphery = new SponsoredCCTPDstPeriphery(
             cctpMessageTransmitter,
@@ -45,5 +51,13 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
         console.log("DonationBox ownership transferred to:", address(sponsoredCCTPDstPeriphery));
 
         vm.stopBroadcast();
+
+        config.set("sponsoredCCTPDstPeriphery", address(sponsoredCCTPDstPeriphery));
+
+        // Post-deployment verification.
+        assertEq(address(sponsoredCCTPDstPeriphery.cctpMessageTransmitter()), cctpMessageTransmitter);
+        assertEq(sponsoredCCTPDstPeriphery.baseToken(), baseToken);
+        assertEq(sponsoredCCTPDstPeriphery.signer(), deployer);
+        assertEq(donationBox.owner(), address(sponsoredCCTPDstPeriphery));
     }
 }

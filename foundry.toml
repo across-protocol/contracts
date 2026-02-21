@@ -27,6 +27,10 @@ fallback_oz = true
 mode = '3'
 zksolc = "1.5.15"
 
+[profile.mintburn]
+# Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
+optimizer_runs = 300
+
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"
 base = "${NODE_URL_8453}"
@@ -44,7 +48,7 @@ polygon = "${NODE_URL_137}"
 scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
 unichain = "${NODE_URL_130}"
-world-chain = "${NODE_URL_480}"
+world = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"
