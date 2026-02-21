@@ -18,6 +18,10 @@ interface ICounterfactualDeposit {
     error NativeTransferFailed();
     /// @dev EIP-712 signature deadline has passed. SpokePool only.
     error SignatureExpired();
+    /// @dev The requested bridging route is not enabled on this clone (route hash is zero).
+    error RouteDisabled();
+    /// @dev Caller-supplied route params do not match the committed route hash.
+    error InvalidRouteHash();
 
     /// @notice Emitted when the admin withdraws tokens from the clone.
     event AdminWithdraw(address indexed token, address indexed to, uint256 amount);
