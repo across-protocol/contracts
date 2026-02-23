@@ -42,7 +42,7 @@ contract TransferProxy {
         uint32, // fillDeadline
         uint32, // exclusivityDeadline
         bytes calldata message
-    ) external payable {
+    ) external {
         _transfer(inputToken, outputToken, recipient, inputAmount, outputAmount, destinationChainId, message);
     }
 
@@ -60,7 +60,7 @@ contract TransferProxy {
         uint32, // fillDeadline
         uint32, // exclusivityParameter
         bytes calldata message
-    ) external payable {
+    ) external {
         _transfer(inputToken, outputToken, recipient, inputAmount, outputAmount, destinationChainId, message);
     }
 
