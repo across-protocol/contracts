@@ -16,6 +16,8 @@ interface ICounterfactualDeposit {
     error InvalidRouteHash();
     /// @dev Bridge route is disabled for this clone (committed hash is zero).
     error RouteDisabled();
+    /// @dev Selected module implementation has no runtime bytecode.
+    error InvalidModuleImplementation();
     /// @dev Total fee (relayer + execution) exceeds maxFeeBps. SpokePool only.
     error MaxFee();
     /// @dev EIP-712 signature does not recover to the expected signer. SpokePool only.
