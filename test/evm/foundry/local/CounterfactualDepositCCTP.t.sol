@@ -5,8 +5,11 @@ import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { Merkle } from "murky/Merkle.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDepositCCTP, CCTPImmutables, CCTPDepositParams, CCTPExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
+import { CounterfactualDepositCCTP, CCTPDepositParams, CCTPSubmitterData } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
+import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
+import { WithdrawImplementation, WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualDepositFactory } from "../../../../contracts/interfaces/ICounterfactualDepositFactory.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
@@ -35,9 +38,12 @@ contract MockSponsoredCCTPSrcPeriphery {
 
 contract CounterfactualDepositTest is Test {
     CounterfactualDepositFactory public factory;
-    CounterfactualDepositCCTP public implementation;
+    CounterfactualDeposit public dispatcher;
+    CounterfactualDepositCCTP public cctpImpl;
+    WithdrawImplementation public withdrawImpl;
     MockSponsoredCCTPSrcPeriphery public srcPeriphery;
     MintableERC20 public burnToken;
+    Merkle public merkle;
 
     address public admin;
     address public user;
@@ -46,106 +52,161 @@ contract CounterfactualDepositTest is Test {
     uint32 public constant SOURCE_DOMAIN = 0; // Ethereum
     uint32 public constant DESTINATION_DOMAIN = 3; // Hyperliquid
     bytes32 public finalRecipient;
-    address public userWithdrawAddr;
 
-    CCTPImmutables internal defaultParams;
+    CCTPDepositParams internal defaultDepositParams;
 
     function setUp() public {
         admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
-        userWithdrawAddr = user;
 
         burnToken = new MintableERC20("USDC", "USDC", 6);
 
         srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
         factory = new CounterfactualDepositFactory();
-        implementation = new CounterfactualDepositCCTP(address(srcPeriphery), SOURCE_DOMAIN);
+        dispatcher = new CounterfactualDeposit();
+        cctpImpl = new CounterfactualDepositCCTP(address(srcPeriphery), SOURCE_DOMAIN);
+        withdrawImpl = new WithdrawImplementation();
+        merkle = new Merkle();
 
         burnToken.mint(user, 1000e6);
 
-        defaultParams = CCTPImmutables({
-            depositParams: CCTPDepositParams({
-                destinationDomain: DESTINATION_DOMAIN,
-                mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
-                burnToken: bytes32(uint256(uint160(address(burnToken)))),
-                destinationCaller: bytes32(uint256(uint160(makeAddr("bot")))),
-                cctpMaxFeeBps: 100,
-                minFinalityThreshold: 1000,
-                maxBpsToSponsor: 500,
-                maxUserSlippageBps: 50,
-                finalRecipient: finalRecipient,
-                finalToken: bytes32(uint256(uint160(address(burnToken)))),
-                destinationDex: 0,
-                accountCreationMode: 0,
-                executionMode: 0,
-                actionData: ""
-            }),
-            executionParams: CCTPExecutionParams({
-                executionFee: 1e6,
-                userWithdrawAddress: userWithdrawAddr,
-                adminWithdrawAddress: admin
-            })
+        defaultDepositParams = CCTPDepositParams({
+            destinationDomain: DESTINATION_DOMAIN,
+            mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
+            burnToken: bytes32(uint256(uint160(address(burnToken)))),
+            destinationCaller: bytes32(uint256(uint160(makeAddr("bot")))),
+            cctpMaxFeeBps: 100,
+            minFinalityThreshold: 1000,
+            maxBpsToSponsor: 500,
+            maxUserSlippageBps: 50,
+            finalRecipient: finalRecipient,
+            finalToken: bytes32(uint256(uint160(address(burnToken)))),
+            destinationDex: 0,
+            accountCreationMode: 0,
+            executionMode: 0,
+            actionData: "",
+            executionFee: 1e6
         });
     }
 
-    function _paramsHash() internal view returns (bytes32) {
-        return keccak256(abi.encode(defaultParams));
+    // -- Helpers --
+
+    /// @dev Build a merkle tree with a single CCTP deposit leaf and return (root, proof).
+    function _depositOnlyTree(
+        bytes memory depositParams
+    ) internal view returns (bytes32 merkleRoot, bytes32[] memory proof) {
+        // For a single-leaf tree, murky requires at least 2 leaves. Use the deposit leaf and a dummy.
+        bytes32 depositLeaf = keccak256(abi.encode(address(cctpImpl), keccak256(depositParams)));
+        bytes32 dummyLeaf = keccak256(abi.encode(address(0), keccak256("")));
+
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = depositLeaf;
+        leaves[1] = dummyLeaf;
+
+        merkleRoot = merkle.getRoot(leaves);
+        proof = merkle.getProof(leaves, 0);
+    }
+
+    /// @dev Build a 2-leaf merkle tree with CCTP deposit + withdraw leaves.
+    function _depositAndWithdrawTree(
+        bytes memory depositParams,
+        bytes memory withdrawParams
+    ) internal view returns (bytes32 merkleRoot, bytes32[] memory depositProof, bytes32[] memory withdrawProof) {
+        bytes32 depositLeaf = keccak256(abi.encode(address(cctpImpl), keccak256(depositParams)));
+        bytes32 withdrawLeaf = keccak256(abi.encode(address(withdrawImpl), keccak256(withdrawParams)));
+
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = depositLeaf;
+        leaves[1] = withdrawLeaf;
+
+        merkleRoot = merkle.getRoot(leaves);
+        depositProof = merkle.getProof(leaves, 0);
+        withdrawProof = merkle.getProof(leaves, 1);
+    }
+
+    /// @dev Encode default deposit params.
+    function _encodedDepositParams() internal view returns (bytes memory) {
+        return abi.encode(defaultDepositParams);
+    }
+
+    /// @dev Build a default tree with deposit-only and return the merkle root.
+    function _defaultMerkleRoot() internal view returns (bytes32) {
+        (bytes32 root, ) = _depositOnlyTree(_encodedDepositParams());
+        return root;
+    }
+
+    /// @dev Encode the execute calldata for a CCTP deposit through the dispatcher.
+    function _executeCalldata(
+        bytes memory depositParams,
+        uint256 amount,
+        address feeRecipient,
+        bytes32 nonce,
+        uint256 deadline,
+        bytes memory sig,
+        bytes32[] memory proof
+    ) internal view returns (bytes memory) {
+        bytes memory submitterData = abi.encode(CCTPSubmitterData(amount, feeRecipient, nonce, deadline, sig));
+        return abi.encodeCall(CounterfactualDeposit.execute, (address(cctpImpl), depositParams, submitterData, proof));
     }
 
     function testPredictDepositAddress() public {
         bytes32 salt = keccak256("test-salt");
+        bytes32 merkleRoot = _defaultMerkleRoot();
 
-        address predicted = factory.predictDepositAddress(address(implementation), _paramsHash(), salt);
-        address deployed = factory.deploy(address(implementation), _paramsHash(), salt);
+        address predicted = factory.predictDepositAddress(address(dispatcher), merkleRoot, salt);
+        address deployed = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
 
     function testDeployEmitsEvent() public {
         bytes32 salt = keccak256("test-salt");
-        bytes32 paramsHash = _paramsHash();
+        bytes32 merkleRoot = _defaultMerkleRoot();
 
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDepositFactory.DepositAddressCreated(
-            factory.predictDepositAddress(address(implementation), paramsHash, salt),
-            address(implementation),
-            paramsHash,
+            factory.predictDepositAddress(address(dispatcher), merkleRoot, salt),
+            address(dispatcher),
+            merkleRoot,
             salt
         );
 
-        factory.deploy(address(implementation), paramsHash, salt);
+        factory.deploy(address(dispatcher), merkleRoot, salt);
     }
 
     function testCannotDeployTwice() public {
         bytes32 salt = keccak256("test-salt");
+        bytes32 merkleRoot = _defaultMerkleRoot();
 
-        factory.deploy(address(implementation), _paramsHash(), salt);
+        factory.deploy(address(dispatcher), merkleRoot, salt);
 
         vm.expectRevert();
-        factory.deploy(address(implementation), _paramsHash(), salt);
+        factory.deploy(address(dispatcher), merkleRoot, salt);
     }
 
     function testDeployedContractStoresCorrectHash() public {
         bytes32 salt = keccak256("test-salt");
+        bytes32 merkleRoot = _defaultMerkleRoot();
 
-        address deployed = factory.deploy(address(implementation), _paramsHash(), salt);
+        address deployed = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         bytes memory args = Clones.fetchCloneArgs(deployed);
         bytes32 storedHash = abi.decode(args, (bytes32));
 
-        assertEq(storedHash, _paramsHash(), "Stored hash should match keccak256 of encoded params");
+        assertEq(storedHash, merkleRoot, "Stored hash should match merkle root");
     }
 
     function testDeployAndExecute() public {
         bytes32 salt = keccak256("test-salt");
         bytes32 nonce = keccak256("nonce-1");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
+        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
-        bytes32 paramsHash = _paramsHash();
-        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.predictDepositAddress(address(dispatcher), merkleRoot, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -153,19 +214,24 @@ contract CounterfactualDepositTest is Test {
         vm.expectEmit(true, true, true, true);
         emit CounterfactualDepositCCTP.CCTPDepositExecuted(amount, relayer, nonce, block.timestamp + 1 hours);
 
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDepositCCTP.executeDeposit,
-            (defaultParams, amount, relayer, nonce, block.timestamp + 1 hours, "sig")
+        bytes memory execCalldata = _executeCalldata(
+            depositParams,
+            amount,
+            relayer,
+            nonce,
+            block.timestamp + 1 hours,
+            "sig",
+            proof
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(implementation), paramsHash, salt, executeCalldata);
+        address deployed = factory.deployAndExecute(address(dispatcher), merkleRoot, salt, execCalldata);
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
         assertEq(
             burnToken.balanceOf(relayer),
-            defaultParams.executionParams.executionFee,
+            defaultDepositParams.executionFee,
             "Relayer should receive execution fee"
         );
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
@@ -176,22 +242,20 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes32 nonce = keccak256("nonce-1");
         uint256 amount = 100e6;
-        uint256 depositAmount = amount - defaultParams.executionParams.executionFee;
+        uint256 depositAmount = amount - defaultDepositParams.executionFee;
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
 
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            defaultParams,
-            amount,
-            relayer,
-            nonce,
-            block.timestamp + 1 hours,
-            "sig"
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(amount, relayer, nonce, block.timestamp + 1 hours, bytes("sig"))
         );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData, proof);
 
         assertEq(srcPeriphery.lastMaxFee(), (depositAmount * 100) / 10000, "maxFee should be 1% of net deposit amount");
     }
@@ -199,41 +263,35 @@ contract CounterfactualDepositTest is Test {
     function testExecuteOnExistingClone() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         // First deposit
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            defaultParams,
-            100e6,
-            relayer,
-            keccak256("nonce-1"),
-            block.timestamp + 1 hours,
-            "sig"
+        bytes memory submitterData1 = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce-1"), block.timestamp + 1 hours, bytes("sig"))
         );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData1, proof);
 
         // Second deposit (reuse same clone)
         vm.prank(user);
         burnToken.transfer(depositAddress, 50e6);
 
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            defaultParams,
-            50e6,
-            relayer,
-            keccak256("nonce-2"),
-            block.timestamp + 1 hours,
-            "sig"
+        bytes memory submitterData2 = abi.encode(
+            CCTPSubmitterData(uint256(50e6), relayer, keccak256("nonce-2"), block.timestamp + 1 hours, bytes("sig"))
         );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData2, proof);
 
         assertEq(srcPeriphery.callCount(), 2, "Should have two deposits");
         assertEq(burnToken.balanceOf(depositAddress), 0, "All tokens should be deposited");
         assertEq(
             burnToken.balanceOf(relayer),
-            2 * defaultParams.executionParams.executionFee,
+            2 * defaultDepositParams.executionFee,
             "Relayer should receive fees from both deposits"
         );
     }
@@ -241,25 +299,32 @@ contract CounterfactualDepositTest is Test {
     function testExecuteViaFactory() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
+        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
 
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDepositCCTP.executeDeposit,
-            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        bytes memory execCalldata = _executeCalldata(
+            depositParams,
+            amount,
+            relayer,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig",
+            proof
         );
 
         vm.prank(relayer);
-        factory.execute(depositAddress, executeCalldata);
+        factory.execute(depositAddress, execCalldata);
 
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
         assertEq(
             burnToken.balanceOf(relayer),
-            defaultParams.executionParams.executionFee,
+            defaultDepositParams.executionFee,
             "Relayer should receive execution fee"
         );
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
@@ -268,20 +333,27 @@ contract CounterfactualDepositTest is Test {
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
+        bytes memory withdrawParams = abi.encode(wp);
+
+        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.AdminWithdraw(address(wrongToken), admin, 100e18);
+        emit WithdrawImplementation.Withdraw(address(wrongToken), admin, 100e18);
 
+        bytes memory submitterData = abi.encode(address(wrongToken), admin, uint256(100e18));
         vm.prank(admin);
-        ICounterfactualDeposit(depositAddress).adminWithdraw(
-            abi.encode(defaultParams),
-            address(wrongToken),
-            admin,
-            100e18
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            withdrawParams,
+            submitterData,
+            withdrawProof
         );
 
         assertEq(wrongToken.balanceOf(admin), 100e18, "Admin should receive withdrawn tokens");
@@ -291,31 +363,50 @@ contract CounterfactualDepositTest is Test {
     function testAdminWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
+        bytes memory withdrawParams = abi.encode(wp);
 
-        vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
+        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        bytes memory submitterData = abi.encode(address(burnToken), user, uint256(100e6));
+        vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
         vm.prank(user);
-        ICounterfactualDeposit(depositAddress).adminWithdraw(
-            abi.encode(defaultParams),
-            address(burnToken),
-            user,
-            100e6
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            withdrawParams,
+            submitterData,
+            withdrawProof
         );
     }
 
     function testUserWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: user, forcedRecipient: user });
+        bytes memory withdrawParams = abi.encode(wp);
+
+        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
         vm.expectEmit(true, true, true, true);
-        emit ICounterfactualDeposit.UserWithdraw(address(burnToken), user, 100e6);
+        emit WithdrawImplementation.Withdraw(address(burnToken), user, 100e6);
 
+        bytes memory submitterData = abi.encode(address(burnToken), user, uint256(100e6));
         vm.prank(user);
-        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(defaultParams), address(burnToken), user, 100e6);
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            withdrawParams,
+            submitterData,
+            withdrawProof
+        );
 
         assertEq(burnToken.balanceOf(user), 1000e6, "User should have all tokens back");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit address should have no balance");
@@ -324,80 +415,109 @@ contract CounterfactualDepositTest is Test {
     function testUserWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: user, forcedRecipient: user });
+        bytes memory withdrawParams = abi.encode(wp);
 
-        vm.expectRevert(ICounterfactualDeposit.Unauthorized.selector);
+        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        bytes memory submitterData = abi.encode(address(burnToken), relayer, uint256(100e6));
+        vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
         vm.prank(relayer);
-        ICounterfactualDeposit(depositAddress).userWithdraw(
-            abi.encode(defaultParams),
-            address(burnToken),
-            relayer,
-            100e6
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            withdrawParams,
+            submitterData,
+            withdrawProof
         );
     }
 
     function testExecuteOnImplementationReverts() public {
-        vm.expectRevert();
-        implementation.executeDeposit(
-            defaultParams,
-            100e6,
-            relayer,
-            keccak256("nonce"),
-            block.timestamp + 1 hours,
-            "sig"
+        // Calling execute directly on the dispatcher (not a clone) should revert
+        // because fetchCloneArgs will fail on a non-clone address.
+        bytes memory depositParams = _encodedDepositParams();
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce"), block.timestamp + 1 hours, bytes("sig"))
         );
+        bytes32[] memory proof = new bytes32[](0);
+
+        vm.expectRevert();
+        dispatcher.execute(address(cctpImpl), depositParams, submitterData, proof);
     }
 
-    function testInvalidParamsHash() public {
+    function testInvalidProof() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, ) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
-        CCTPImmutables memory wrongParams = defaultParams;
-        wrongParams.depositParams.cctpMaxFeeBps = 200;
+        // Modify deposit params to create mismatched proof
+        CCTPDepositParams memory wrongParams = defaultDepositParams;
+        wrongParams.cctpMaxFeeBps = 200;
+        bytes memory wrongDepositParams = abi.encode(wrongParams);
+
+        // Use the proof from the correct tree but with wrong params
+        (, bytes32[] memory proof) = _depositOnlyTree(depositParams);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
-        // executeDeposit with wrong params should revert
-        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            wrongParams,
-            100e6,
-            relayer,
-            keccak256("nonce-1"),
-            block.timestamp + 1 hours,
-            "sig"
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce-1"), block.timestamp + 1 hours, bytes("sig"))
         );
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), wrongDepositParams, submitterData, proof);
+    }
 
-        // userWithdraw with wrong params should also revert
-        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
-        vm.prank(user);
-        ICounterfactualDeposit(depositAddress).userWithdraw(abi.encode(wrongParams), address(burnToken), user, 100e6);
+    function testInvalidProofOnWithdraw() public {
+        bytes32 salt = keccak256("test-salt");
+
+        bytes memory depositParams = _encodedDepositParams();
+        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
+        bytes memory withdrawParams = abi.encode(wp);
+
+        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        // Use wrong withdraw params but correct proof
+        WithdrawParams memory wrongWp = WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) });
+        bytes memory wrongWithdrawParams = abi.encode(wrongWp);
+
+        bytes memory submitterData = abi.encode(address(burnToken), admin, uint256(100e6));
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        vm.prank(admin);
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            wrongWithdrawParams,
+            submitterData,
+            withdrawProof
+        );
     }
 
     function testExecuteWithZeroExecutionFee() public {
-        CCTPImmutables memory params = defaultParams;
-        params.executionParams.executionFee = 0;
-        bytes32 paramsHash = keccak256(abi.encode(params));
+        CCTPDepositParams memory params = defaultDepositParams;
+        params.executionFee = 0;
+        bytes memory depositParams = abi.encode(params);
+
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 amount = 100e6;
 
-        address depositAddress = factory.deploy(address(implementation), paramsHash, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
 
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            params,
-            amount,
-            relayer,
-            keccak256("nonce-1"),
-            block.timestamp + 1 hours,
-            "sig"
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, bytes("sig"))
         );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData, proof);
 
         assertEq(burnToken.balanceOf(relayer), 0, "Relayer should receive no fee");
         assertEq(srcPeriphery.lastAmount(), amount, "Full amount should be deposited");
@@ -406,55 +526,49 @@ contract CounterfactualDepositTest is Test {
     function testDeployAndExecuteRevertBubble() public {
         bytes32 salt = keccak256("test-salt");
 
-        // Don't fund the clone, so executeDeposit will revert on the token transfer
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDepositCCTP.executeDeposit,
-            (defaultParams, 100e6, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+
+        // Don't fund the clone, so execute will revert on the token transfer
+        bytes memory execCalldata = _executeCalldata(
+            depositParams,
+            100e6,
+            relayer,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig",
+            proof
         );
 
         vm.expectRevert();
         vm.prank(relayer);
-        factory.deployAndExecute(address(implementation), _paramsHash(), salt, executeCalldata);
-    }
-
-    function testInvalidParamsHashOnWithdraw() public {
-        bytes32 salt = keccak256("test-salt");
-        address depositAddress = factory.deploy(address(implementation), _paramsHash(), salt);
-
-        CCTPImmutables memory wrongParams = defaultParams;
-        wrongParams.depositParams.cctpMaxFeeBps = 200;
-
-        vm.expectRevert(ICounterfactualDeposit.InvalidParamsHash.selector);
-        vm.prank(admin);
-        ICounterfactualDeposit(depositAddress).adminWithdraw(abi.encode(wrongParams), address(burnToken), admin, 100e6);
+        factory.deployAndExecute(address(dispatcher), merkleRoot, salt, execCalldata);
     }
 
     function testDeployWithActionData() public {
         bytes32 salt = keccak256("test-salt-action");
         bytes memory actionData = abi.encode(uint256(42), address(0xBEEF));
 
-        CCTPImmutables memory params = defaultParams;
-        params.depositParams.actionData = actionData;
-        bytes32 paramsHash = keccak256(abi.encode(params));
+        CCTPDepositParams memory params = defaultDepositParams;
+        params.actionData = actionData;
+        bytes memory depositParams = abi.encode(params);
 
-        address depositAddress = factory.deploy(address(implementation), paramsHash, salt);
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         bytes memory args = Clones.fetchCloneArgs(depositAddress);
         bytes32 storedHash = abi.decode(args, (bytes32));
-        assertEq(storedHash, paramsHash, "Stored hash should match params with actionData");
+        assertEq(storedHash, merkleRoot, "Stored hash should match merkle root with actionData");
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
 
-        vm.prank(relayer);
-        CounterfactualDepositCCTP(depositAddress).executeDeposit(
-            params,
-            100e6,
-            relayer,
-            keccak256("nonce-1"),
-            block.timestamp + 1 hours,
-            "sig"
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce-1"), block.timestamp + 1 hours, bytes("sig"))
         );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData, proof);
 
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
         assertEq(srcPeriphery.callCount(), 1, "Deposit should be executed");
@@ -463,42 +577,85 @@ contract CounterfactualDepositTest is Test {
     function testDeployIfNeededAndExecute() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultParams.executionParams.executionFee;
+        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
-        bytes32 paramsHash = _paramsHash();
-        address depositAddress = factory.predictDepositAddress(address(implementation), paramsHash, salt);
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.predictDepositAddress(address(dispatcher), merkleRoot, salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
 
-        bytes memory executeCalldata = abi.encodeCall(
-            CounterfactualDepositCCTP.executeDeposit,
-            (defaultParams, amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig")
+        bytes memory execCalldata = _executeCalldata(
+            depositParams,
+            amount,
+            relayer,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            "sig",
+            proof
         );
 
         // First call deploys and executes
         vm.prank(relayer);
-        address deployed = factory.deployIfNeededAndExecute(address(implementation), paramsHash, salt, executeCalldata);
+        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), merkleRoot, salt, execCalldata);
         assertEq(deployed, depositAddress, "Should return predicted address");
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "First deposit should execute");
 
-        // Second call with clone already deployed — should not revert
+        // Second call with clone already deployed -- should not revert
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
 
-        bytes memory executeCalldata2 = abi.encodeCall(
-            CounterfactualDepositCCTP.executeDeposit,
-            (defaultParams, amount, relayer, keccak256("nonce-2"), block.timestamp + 1 hours, "sig")
+        bytes memory execCalldata2 = _executeCalldata(
+            depositParams,
+            amount,
+            relayer,
+            keccak256("nonce-2"),
+            block.timestamp + 1 hours,
+            "sig",
+            proof
         );
 
         vm.prank(relayer);
-        address deployed2 = factory.deployIfNeededAndExecute(
-            address(implementation),
-            paramsHash,
-            salt,
-            executeCalldata2
-        );
+        address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), merkleRoot, salt, execCalldata2);
         assertEq(deployed2, depositAddress, "Should return same address");
         assertEq(srcPeriphery.callCount(), 2, "Both deposits should execute");
+    }
+
+    function testWithdrawForcedRecipient() public {
+        bytes32 salt = keccak256("test-salt-forced");
+
+        bytes memory depositParams = _encodedDepositParams();
+        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: admin });
+        bytes memory withdrawParams = abi.encode(wp);
+
+        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
+
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        burnToken.mint(depositAddress, 50e6);
+
+        // Trying to withdraw to a different recipient should revert
+        bytes memory badSubmitterData = abi.encode(address(burnToken), user, uint256(50e6));
+        vm.expectRevert(WithdrawImplementation.InvalidRecipient.selector);
+        vm.prank(admin);
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            withdrawParams,
+            badSubmitterData,
+            withdrawProof
+        );
+
+        // Withdrawing to the forced recipient should succeed
+        bytes memory goodSubmitterData = abi.encode(address(burnToken), admin, uint256(50e6));
+        vm.prank(admin);
+        ICounterfactualDeposit(depositAddress).execute(
+            address(withdrawImpl),
+            withdrawParams,
+            goodSubmitterData,
+            withdrawProof
+        );
+
+        assertEq(burnToken.balanceOf(admin), 50e6, "Admin should receive withdrawn tokens");
     }
 }
