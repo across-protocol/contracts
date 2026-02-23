@@ -135,14 +135,14 @@ This makes new bridge families addable without touching the dispatcher contract:
 ### Built-in modular adapters
 
 - `CounterfactualDepositModularCCTPModule`
-  - `guardrailParams = abi.encode(CCTPUserParams)`
-  - `submitterParams = abi.encode(CCTPSubmitterParams)` (contains signature)
+  - `guardrailParams = abi.encode(CCTPRoute)`
+  - `submitterParams = abi.encode(CCTPSubmitterParams)` (amount, fee recipient, nonce, deadline, signature)
 - `CounterfactualDepositModularOFTModule`
-  - `guardrailParams = abi.encode(OFTUserParams)`
-  - `submitterParams = abi.encode(OFTSubmitterParams)` (contains signature)
+  - `guardrailParams = abi.encode(OFTRoute)`
+  - `submitterParams = abi.encode(OFTSubmitterParams)` (amount, fee recipient, nonce, deadline, signature)
 - `CounterfactualDepositModularSpokePoolModule`
-  - `guardrailParams = abi.encode(SpokePoolUserParams)`
-  - `submitterParams = abi.encode(SpokePoolSubmitterParams)` (contains signature)
+  - `guardrailParams = abi.encode(SpokePoolRoute)`
+  - `submitterParams = abi.encode(SpokePoolSubmitterParams)` (runtime execution fields + signature)
 
 ## Route structs and behavior
 

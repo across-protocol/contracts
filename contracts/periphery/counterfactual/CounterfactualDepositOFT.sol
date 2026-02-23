@@ -92,32 +92,46 @@ abstract contract CounterfactualDepositOFTModule is CounterfactualDepositBase {
         uint256 depositAmount = amount - route.executionFee;
         IERC20(route.depositParams.token).forceApprove(oftSrcPeriphery, depositAmount);
 
-        SponsoredOFTInterface.Quote memory quote = SponsoredOFTInterface.Quote({
-            signedParams: SponsoredOFTInterface.SignedQuoteParams({
-                srcEid: srcEid,
-                dstEid: route.depositParams.dstEid,
-                destinationHandler: route.depositParams.destinationHandler,
-                amountLD: depositAmount,
-                nonce: nonce,
-                deadline: oftDeadline,
-                maxBpsToSponsor: route.depositParams.maxBpsToSponsor,
-                maxUserSlippageBps: route.depositParams.maxUserSlippageBps,
-                finalRecipient: route.depositParams.finalRecipient,
-                finalToken: route.depositParams.finalToken,
-                destinationDex: route.depositParams.destinationDex,
-                lzReceiveGasLimit: route.depositParams.lzReceiveGasLimit,
-                lzComposeGasLimit: route.depositParams.lzComposeGasLimit,
-                maxOftFeeBps: route.depositParams.maxOftFeeBps,
-                accountCreationMode: route.depositParams.accountCreationMode,
-                executionMode: route.depositParams.executionMode,
-                actionData: route.depositParams.actionData
-            }),
-            unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({
-                refundRecipient: route.depositParams.refundRecipient
-            })
-        });
-
-        ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
+        ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
+            _buildOFTQuote(route, depositAmount, nonce, oftDeadline),
+            signature
+        );
         emit OFTDepositExecuted(amount, executionFeeRecipient, nonce, oftDeadline);
+    }
+
+    /**
+     * @dev Builds the SponsoredOFT quote payload for `deposit`.
+     */
+    function _buildOFTQuote(
+        OFTRoute memory route,
+        uint256 depositAmount,
+        bytes32 nonce,
+        uint256 oftDeadline
+    ) private view returns (SponsoredOFTInterface.Quote memory) {
+        return
+            SponsoredOFTInterface.Quote({
+                signedParams: SponsoredOFTInterface.SignedQuoteParams({
+                    srcEid: srcEid,
+                    dstEid: route.depositParams.dstEid,
+                    destinationHandler: route.depositParams.destinationHandler,
+                    amountLD: depositAmount,
+                    nonce: nonce,
+                    deadline: oftDeadline,
+                    maxBpsToSponsor: route.depositParams.maxBpsToSponsor,
+                    maxUserSlippageBps: route.depositParams.maxUserSlippageBps,
+                    finalRecipient: route.depositParams.finalRecipient,
+                    finalToken: route.depositParams.finalToken,
+                    destinationDex: route.depositParams.destinationDex,
+                    lzReceiveGasLimit: route.depositParams.lzReceiveGasLimit,
+                    lzComposeGasLimit: route.depositParams.lzComposeGasLimit,
+                    maxOftFeeBps: route.depositParams.maxOftFeeBps,
+                    accountCreationMode: route.depositParams.accountCreationMode,
+                    executionMode: route.depositParams.executionMode,
+                    actionData: route.depositParams.actionData
+                }),
+                unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({
+                    refundRecipient: route.depositParams.refundRecipient
+                })
+            });
     }
 }

@@ -7,9 +7,9 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDepositGlobalConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositBase.sol";
 import { CounterfactualDepositMultiBridgeModular } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositMultiBridgeModular.sol";
-import { CounterfactualDepositModularCCTPModule, CCTPUserParams, CCTPSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularCCTPModule.sol";
-import { CounterfactualDepositModularOFTModule, OFTUserParams, OFTSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularOFTModule.sol";
-import { CounterfactualDepositModularSpokePoolModule, SpokePoolUserParams, SpokePoolSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularSpokePoolModule.sol";
+import { CounterfactualDepositModularCCTPModule, CCTPSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularCCTPModule.sol";
+import { CounterfactualDepositModularOFTModule, OFTSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularOFTModule.sol";
+import { CounterfactualDepositModularSpokePoolModule, SpokePoolSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularSpokePoolModule.sol";
 import { CCTPRoute, CCTPDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { OFTRoute, OFTDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { SpokePoolRoute, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
@@ -94,7 +94,6 @@ contract MockSpokePoolModular {
 struct TransferUserParams {
     address token;
     address recipient;
-    uint256 maxAmount;
 }
 
 struct TransferSubmitterParams {
@@ -111,7 +110,7 @@ contract MockTransferRouteModule is ICounterfactualDepositRouteModule {
         TransferUserParams memory user = abi.decode(guardrailParams, (TransferUserParams));
         TransferSubmitterParams memory submitter = abi.decode(submitterParams, (TransferSubmitterParams));
 
-        if (submitter.caller != msg.sender || submitter.amount > user.maxAmount) revert GuardrailViolation();
+        if (submitter.caller != msg.sender) revert GuardrailViolation();
         IERC20(user.token).safeTransfer(user.recipient, submitter.amount);
     }
 }
@@ -279,12 +278,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
     }
 
     function testPredictAddressAndExecuteCCTPModule() public {
-        CCTPUserParams memory userParams = CCTPUserParams({
-            route: cctpRoute,
-            maxAmount: 100e6,
-            maxCctpDeadline: block.timestamp + 2 hours
-        });
-        bytes memory guardrailParams = abi.encode(userParams);
+        bytes memory guardrailParams = abi.encode(cctpRoute);
         bytes memory submitterParams = abi.encode(
             CCTPSubmitterParams({
                 amount: 100e6,
@@ -319,12 +313,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
     }
 
     function testExecuteOFTModuleWithValue() public {
-        OFTUserParams memory userParams = OFTUserParams({
-            route: oftRoute,
-            maxAmount: 100e6,
-            maxOftDeadline: block.timestamp + 2 hours
-        });
-        bytes memory guardrailParams = abi.encode(userParams);
+        bytes memory guardrailParams = abi.encode(oftRoute);
         bytes memory submitterParams = abi.encode(
             OFTSubmitterParams({
                 amount: 100e6,
@@ -369,15 +358,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         uint32 quoteTimestamp = uint32(block.timestamp);
         uint32 fillDeadline = quoteTimestamp + 1800;
         uint32 signatureDeadline = quoteTimestamp + 3600;
-
-        SpokePoolUserParams memory userParams = SpokePoolUserParams({
-            route: spokePoolRoute,
-            maxInputAmount: 100e6,
-            minOutputAmount: 95e6,
-            maxFillDeadline: quoteTimestamp + 1 hours,
-            maxSignatureDeadline: quoteTimestamp + 2 hours
-        });
-        bytes memory guardrailParams = abi.encode(userParams);
+        bytes memory guardrailParams = abi.encode(spokePoolRoute);
 
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
             _routeLeaf(address(spokePoolModule), guardrailParams)
@@ -433,12 +414,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
     }
 
     function testSingleAddressCanExecuteMultipleModules() public {
-        CCTPUserParams memory cctpUser = CCTPUserParams({
-            route: cctpRoute,
-            maxAmount: 100e6,
-            maxCctpDeadline: block.timestamp + 2 hours
-        });
-        bytes memory cctpGuardrails = abi.encode(cctpUser);
+        bytes memory cctpGuardrails = abi.encode(cctpRoute);
         bytes memory cctpSubmitter = abi.encode(
             CCTPSubmitterParams({
                 amount: 100e6,
@@ -450,11 +426,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         );
 
         address recipient = makeAddr("custom-module-recipient");
-        TransferUserParams memory transferUser = TransferUserParams({
-            token: address(token),
-            recipient: recipient,
-            maxAmount: 30e6
-        });
+        TransferUserParams memory transferUser = TransferUserParams({ token: address(token), recipient: recipient });
         bytes memory transferGuardrails = abi.encode(transferUser);
         bytes memory transferSubmitter = abi.encode(TransferSubmitterParams({ caller: relayer, amount: 30e6 }));
 
@@ -493,12 +465,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
     }
 
     function testInvalidRouteProofReverts() public {
-        CCTPUserParams memory userParams = CCTPUserParams({
-            route: cctpRoute,
-            maxAmount: 100e6,
-            maxCctpDeadline: block.timestamp + 2 hours
-        });
-        bytes memory guardrailParams = abi.encode(userParams);
+        bytes memory guardrailParams = abi.encode(cctpRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
             _routeLeaf(address(cctpModule), guardrailParams)
         );
@@ -508,17 +475,11 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             keccak256("salt-proof")
         );
 
-        OFTUserParams memory oftUser = OFTUserParams({
-            route: oftRoute,
-            maxAmount: 100e6,
-            maxOftDeadline: block.timestamp + 2 hours
-        });
-
         vm.expectRevert(ICounterfactualDeposit.InvalidRouteProof.selector);
         CounterfactualDepositMultiBridgeModular(payable(depositAddress)).execute(
             config,
             address(oftModule),
-            abi.encode(oftUser),
+            abi.encode(oftRoute),
             abi.encode(
                 OFTSubmitterParams({
                     amount: 100e6,
@@ -533,18 +494,10 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
     }
 
     function testInvalidGuardrailCommitmentReverts() public {
-        CCTPUserParams memory committed = CCTPUserParams({
-            route: cctpRoute,
-            maxAmount: 100e6,
-            maxCctpDeadline: block.timestamp + 2 hours
-        });
-        CCTPUserParams memory provided = CCTPUserParams({
-            route: cctpRoute,
-            maxAmount: 90e6,
-            maxCctpDeadline: block.timestamp + 2 hours
-        });
+        CCTPRoute memory provided = cctpRoute;
+        provided.executionFee = cctpRoute.executionFee + 1;
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
-            _routeLeaf(address(cctpModule), abi.encode(committed))
+            _routeLeaf(address(cctpModule), abi.encode(cctpRoute))
         );
         address depositAddress = factory.deploy(
             address(implementation),
@@ -570,45 +523,9 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         );
     }
 
-    function testGuardrailViolationReverts() public {
-        CCTPUserParams memory userParams = CCTPUserParams({
-            route: cctpRoute,
-            maxAmount: 90e6,
-            maxCctpDeadline: block.timestamp + 2 hours
-        });
-        bytes memory guardrailParams = abi.encode(userParams);
-        CounterfactualDepositGlobalConfig memory config = _globalConfig(
-            _routeLeaf(address(cctpModule), guardrailParams)
-        );
-        address depositAddress = factory.deploy(
-            address(implementation),
-            keccak256(abi.encode(config)),
-            keccak256("salt-guardrail-violation")
-        );
-
-        vm.expectRevert(CounterfactualDepositModularCCTPModule.GuardrailViolation.selector);
-        CounterfactualDepositMultiBridgeModular(payable(depositAddress)).execute(
-            config,
-            address(cctpModule),
-            guardrailParams,
-            abi.encode(
-                CCTPSubmitterParams({
-                    amount: 100e6,
-                    executionFeeRecipient: relayer,
-                    nonce: keccak256("nonce"),
-                    cctpDeadline: block.timestamp + 1 hours,
-                    signature: "sig"
-                })
-            ),
-            new bytes32[](0)
-        );
-    }
-
     function testInvalidModuleImplementationReverts() public {
         address invalidImplementation = makeAddr("invalid-implementation");
-        bytes memory guardrailParams = abi.encode(
-            CCTPUserParams({ route: cctpRoute, maxAmount: 100e6, maxCctpDeadline: block.timestamp + 2 hours })
-        );
+        bytes memory guardrailParams = abi.encode(cctpRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
             _routeLeaf(invalidImplementation, guardrailParams)
         );
@@ -630,9 +547,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
 
     function testSupportsNewModulesWithoutChangingDispatcher() public {
         address recipient = makeAddr("recipient");
-        bytes memory guardrailParams = abi.encode(
-            TransferUserParams({ token: address(token), recipient: recipient, maxAmount: 25e6 })
-        );
+        bytes memory guardrailParams = abi.encode(TransferUserParams({ token: address(token), recipient: recipient }));
         bytes memory submitterParams = abi.encode(TransferSubmitterParams({ caller: relayer, amount: 25e6 }));
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
             _routeLeaf(address(transferModule), guardrailParams)
