@@ -8,6 +8,8 @@ import { SpokePoolPeriphery, SwapProxy } from "../../../../contracts/SpokePoolPe
 import { Ethereum_SpokePool } from "../../../../contracts/Ethereum_SpokePool.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 import { SpokePoolPeripheryInterface } from "../../../../contracts/interfaces/SpokePoolPeripheryInterface.sol";
+import { MulticallHandler } from "../../../../contracts/handlers/MulticallHandler.sol";
+import { AcrossMessageHandler } from "../../../../contracts/interfaces/SpokePoolMessageHandler.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../../../../contracts/external/interfaces/IPermit2.sol";
@@ -49,6 +51,19 @@ contract HashUtils {
     }
 }
 
+/// @dev Simple target contract that records calls from the MulticallHandler.
+contract RecordingTarget {
+    address public lastToken;
+    uint256 public lastAmount;
+    bool public wasCalled;
+
+    function recordTransfer(address token, uint256 amount) external {
+        lastToken = token;
+        lastAmount = amount;
+        wasCalled = true;
+    }
+}
+
 contract TransferProxyTest is Test {
     using AddressToBytes32 for address;
 
@@ -57,6 +72,7 @@ contract TransferProxyTest is Test {
     HashUtils hashUtils;
     Exchange dex;
     IPermit2 permit2;
+    MulticallHandler multicallHandler;
 
     WETH9Interface mockWETH;
     MockERC20 mockERC20;
@@ -66,7 +82,6 @@ contract TransferProxyTest is Test {
     address recipient;
     address relayer;
 
-    uint256 destinationChainId = 10;
     uint256 mintAmount = 10 ** 22;
     uint256 submissionFeeAmount = 1;
     uint256 depositAmount = 5 * (10 ** 18);
@@ -96,6 +111,7 @@ contract TransferProxyTest is Test {
         relayer = vm.addr(4);
         permit2 = IPermit2(new MockPermit2());
         dex = new Exchange(permit2);
+        multicallHandler = new MulticallHandler();
 
         vm.startPrank(owner);
         spokePoolPeriphery = new SpokePoolPeriphery(permit2);
@@ -130,15 +146,15 @@ contract TransferProxyTest is Test {
             depositor.toBytes32(),
             recipient.toBytes32(),
             address(mockERC20).toBytes32(),
-            bytes32(0), // outputToken (ignored)
+            address(mockERC20).toBytes32(),
             amount,
-            0, // outputAmount (ignored)
-            0, // destinationChainId (ignored)
+            amount,
+            block.chainid,
             bytes32(0), // exclusiveRelayer (ignored)
             0, // quoteTimestamp (ignored)
             0, // fillDeadline (ignored)
             0, // exclusivityDeadline (ignored)
-            "" // message (ignored)
+            "" // message
         );
         vm.stopPrank();
 
@@ -155,16 +171,16 @@ contract TransferProxyTest is Test {
             depositor.toBytes32(),
             recipient.toBytes32(),
             address(mockERC20).toBytes32(),
-            bytes32(0), // outputToken (ignored)
+            address(mockERC20).toBytes32(),
             amount,
-            0, // outputAmount (ignored)
-            0, // destinationChainId (ignored)
+            amount,
+            block.chainid,
             bytes32(0), // exclusiveRelayer (ignored)
             0, // depositNonce (ignored)
             0, // quoteTimestamp (ignored)
             0, // fillDeadline (ignored)
             0, // exclusivityParameter (ignored)
-            "" // message (ignored)
+            "" // message
         );
         vm.stopPrank();
 
@@ -185,10 +201,10 @@ contract TransferProxyTest is Test {
             depositor.toBytes32(),
             recipient.toBytes32(),
             address(mockERC20).toBytes32(),
-            bytes32(0),
+            address(mockERC20).toBytes32(),
             amount,
-            0,
-            0,
+            amount,
+            block.chainid,
             bytes32(0),
             0,
             0,
@@ -196,6 +212,184 @@ contract TransferProxyTest is Test {
             ""
         );
         vm.stopPrank();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Safety checks
+    // ──────────────────────────────────────────────────────────────
+
+    function testDepositRevertsOnWrongChainId() public {
+        uint256 amount = 1 ether;
+        deal(address(mockERC20), depositor, amount, true);
+
+        vm.startPrank(depositor);
+        mockERC20.approve(address(transferProxy), amount);
+
+        vm.expectRevert(TransferProxy.InvalidDestinationChainId.selector);
+        transferProxy.deposit(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            amount,
+            amount,
+            block.chainid + 1, // wrong chain
+            bytes32(0),
+            0,
+            0,
+            0,
+            ""
+        );
+        vm.stopPrank();
+    }
+
+    function testUnsafeDepositRevertsOnWrongChainId() public {
+        uint256 amount = 1 ether;
+        deal(address(mockERC20), depositor, amount, true);
+
+        vm.startPrank(depositor);
+        mockERC20.approve(address(transferProxy), amount);
+
+        vm.expectRevert(TransferProxy.InvalidDestinationChainId.selector);
+        transferProxy.unsafeDeposit(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            amount,
+            amount,
+            999, // wrong chain
+            bytes32(0),
+            0,
+            0,
+            0,
+            0,
+            ""
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositRevertsOnMismatchedOutputToken() public {
+        uint256 amount = 1 ether;
+        deal(address(mockERC20), depositor, amount, true);
+
+        vm.startPrank(depositor);
+        mockERC20.approve(address(transferProxy), amount);
+
+        vm.expectRevert(TransferProxy.InvalidOutputToken.selector);
+        transferProxy.deposit(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            address(mockERC20).toBytes32(),
+            address(mockWETH).toBytes32(), // different token
+            amount,
+            amount,
+            block.chainid,
+            bytes32(0),
+            0,
+            0,
+            0,
+            ""
+        );
+        vm.stopPrank();
+    }
+
+    function testDepositRevertsOnMismatchedOutputAmount() public {
+        uint256 amount = 1 ether;
+        deal(address(mockERC20), depositor, amount, true);
+
+        vm.startPrank(depositor);
+        mockERC20.approve(address(transferProxy), amount);
+
+        vm.expectRevert(TransferProxy.InvalidOutputAmount.selector);
+        transferProxy.deposit(
+            depositor.toBytes32(),
+            recipient.toBytes32(),
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            amount,
+            amount - 1, // different amount
+            block.chainid,
+            bytes32(0),
+            0,
+            0,
+            0,
+            ""
+        );
+        vm.stopPrank();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Message execution (handleV3AcrossMessage)
+    // ──────────────────────────────────────────────────────────────
+
+    function testDepositCallsHandleMessageOnContractRecipient() public {
+        RecordingTarget target = new RecordingTarget();
+        uint256 amount = 1 ether;
+        deal(address(mockERC20), depositor, amount, true);
+
+        // Build MulticallHandler instructions: transfer tokens from handler to the recording target.
+        MulticallHandler.Call[] memory calls = new MulticallHandler.Call[](1);
+        calls[0] = MulticallHandler.Call({
+            target: address(target),
+            callData: abi.encodeWithSelector(RecordingTarget.recordTransfer.selector, address(mockERC20), amount),
+            value: 0
+        });
+        MulticallHandler.Instructions memory instructions = MulticallHandler.Instructions({
+            calls: calls,
+            fallbackRecipient: recipient
+        });
+        bytes memory message = abi.encode(instructions);
+
+        vm.startPrank(depositor);
+        mockERC20.approve(address(transferProxy), amount);
+        transferProxy.deposit(
+            depositor.toBytes32(),
+            address(multicallHandler).toBytes32(),
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            amount,
+            amount,
+            block.chainid,
+            bytes32(0),
+            0,
+            0,
+            0,
+            message
+        );
+        vm.stopPrank();
+
+        assertTrue(target.wasCalled(), "MulticallHandler should have called target");
+        assertEq(target.lastToken(), address(mockERC20), "Target should see correct token");
+        assertEq(target.lastAmount(), amount, "Target should see correct amount");
+    }
+
+    function testDepositSkipsMessageForEOARecipient() public {
+        uint256 amount = 1 ether;
+        deal(address(mockERC20), depositor, amount, true);
+
+        // Pass non-empty message but recipient is an EOA — should not revert.
+        bytes memory message = abi.encode("some data");
+
+        vm.startPrank(depositor);
+        mockERC20.approve(address(transferProxy), amount);
+        transferProxy.deposit(
+            depositor.toBytes32(),
+            recipient.toBytes32(), // EOA
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            amount,
+            amount,
+            block.chainid,
+            bytes32(0),
+            0,
+            0,
+            0,
+            message
+        );
+        vm.stopPrank();
+
+        assertEq(mockERC20.balanceOf(recipient), amount, "EOA recipient should receive tokens even with message");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -218,9 +412,6 @@ contract TransferProxyTest is Test {
             false,
             0
         );
-        // Point at the TransferProxy instead of a real SpokePool.
-        data.spokePool = address(transferProxy);
-        // For swap-only the recipient should receive the output tokens.
         data.depositData.recipient = recipient.toBytes32();
 
         uint256 recipientBefore = mockERC20.balanceOf(recipient);
@@ -255,7 +446,6 @@ contract TransferProxyTest is Test {
             false,
             permit.nonce
         );
-        data.spokePool = address(transferProxy);
         data.depositData.recipient = recipient.toBytes32();
 
         bytes32 typehash = keccak256(
@@ -313,7 +503,6 @@ contract TransferProxyTest is Test {
             false,
             spokePoolPeriphery.permitNonces(depositor)
         );
-        data.spokePool = address(transferProxy);
         data.depositData.recipient = recipient.toBytes32();
 
         bytes32 nonce = 0;
@@ -370,7 +559,6 @@ contract TransferProxyTest is Test {
             false,
             0
         );
-        data.spokePool = address(transferProxy);
         data.depositData.recipient = recipient.toBytes32();
 
         // Compute the witness that will be used as the ERC-3009 nonce.
@@ -427,7 +615,6 @@ contract TransferProxyTest is Test {
             false,
             permit.nonce
         );
-        data.spokePool = address(transferProxy);
         data.depositData.recipient = recipient.toBytes32();
 
         bytes32 typehash = keccak256(
@@ -466,9 +653,7 @@ contract TransferProxyTest is Test {
         );
     }
 
-    function testRecipientReceivesSwapOutput() public {
-        // The recipient should get the actual swap output amount, not depositData.outputAmount (which is ignored).
-        // Set outputAmount to something different from depositAmount to prove it's ignored.
+    function testSwapAndBridgeRevertsOnMismatchedOutputAmount() public {
         vm.startPrank(depositor);
 
         SpokePoolPeripheryInterface.SwapAndDepositData memory data = _defaultSwapAndDepositData(
@@ -484,22 +669,63 @@ contract TransferProxyTest is Test {
             false,
             0
         );
-        data.spokePool = address(transferProxy);
         data.depositData.recipient = recipient.toBytes32();
-        // Set outputAmount to a value different from actual swap output — TransferProxy ignores it.
+        // Set outputAmount to a value different from actual swap output — TransferProxy should reject it.
         data.depositData.outputAmount = 999;
 
-        uint256 recipientBefore = mockERC20.balanceOf(recipient);
+        vm.expectRevert(TransferProxy.InvalidOutputAmount.selector);
+        spokePoolPeriphery.swapAndBridge(data);
+        vm.stopPrank();
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Integration: swap + MulticallHandler via TransferProxy
+    // ──────────────────────────────────────────────────────────────
+
+    function testSwapAndBridgeWithMulticallMessage() public {
+        RecordingTarget target = new RecordingTarget();
+
+        // Build MulticallHandler instructions.
+        MulticallHandler.Call[] memory calls = new MulticallHandler.Call[](1);
+        calls[0] = MulticallHandler.Call({
+            target: address(target),
+            callData: abi.encodeWithSelector(
+                RecordingTarget.recordTransfer.selector,
+                address(mockERC20),
+                depositAmount
+            ),
+            value: 0
+        });
+        MulticallHandler.Instructions memory instructions = MulticallHandler.Instructions({
+            calls: calls,
+            fallbackRecipient: recipient
+        });
+        bytes memory message = abi.encode(instructions);
+
+        vm.startPrank(depositor);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory data = _defaultSwapAndDepositData(
+            address(mockWETH),
+            mintAmount,
+            0,
+            address(0),
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Approval,
+            address(mockERC20),
+            depositAmount,
+            depositor,
+            false,
+            0
+        );
+        data.depositData.recipient = address(multicallHandler).toBytes32();
+        data.depositData.message = message;
 
         spokePoolPeriphery.swapAndBridge(data);
         vm.stopPrank();
 
-        // Recipient receives the actual swap output (depositAmount), not outputAmount (999).
-        assertEq(
-            mockERC20.balanceOf(recipient) - recipientBefore,
-            depositAmount,
-            "Recipient should receive actual swap output, not outputAmount"
-        );
+        assertTrue(target.wasCalled(), "MulticallHandler should execute calls after swap");
+        assertEq(target.lastToken(), address(mockERC20), "Target should see correct token");
+        assertEq(target.lastAmount(), depositAmount, "Target should see correct amount");
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -529,7 +755,7 @@ contract TransferProxyTest is Test {
                     outputAmount: _amount,
                     depositor: _depositor,
                     recipient: _depositor.toBytes32(),
-                    destinationChainId: destinationChainId,
+                    destinationChainId: block.chainid,
                     exclusiveRelayer: bytes32(0),
                     quoteTimestamp: uint32(block.timestamp),
                     fillDeadline: uint32(block.timestamp) + fillDeadlineBuffer,
