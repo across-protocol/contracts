@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
-import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
+import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
@@ -14,7 +14,7 @@ interface ISponsoredOFTSrcPeriphery {
 }
 
 /**
- * @notice Parameters passed through to SponsoredOFTSrcPeriphery.deposit()
+ * @notice Route parameters committed to in the merkle leaf.
  */
 struct OFTDepositParams {
     uint32 dstEid;
@@ -32,33 +32,27 @@ struct OFTDepositParams {
     uint8 executionMode;
     address refundRecipient;
     bytes actionData;
-}
-
-/**
- * @notice Parameters used by the clone's execution logic
- */
-struct OFTExecutionParams {
     uint256 executionFee;
-    address userWithdrawAddress;
-    address adminWithdrawAddress;
 }
 
 /**
- * @notice Combined route parameters for OFT deposits
+ * @notice Data supplied by the submitter at execution time.
  */
-struct OFTImmutables {
-    OFTDepositParams depositParams;
-    OFTExecutionParams executionParams;
+struct OFTSubmitterData {
+    uint256 amount;
+    address executionFeeRecipient;
+    bytes32 nonce;
+    uint256 oftDeadline;
+    bytes signature;
 }
 
 /**
  * @title CounterfactualDepositOFT
- * @notice Implementation contract for counterfactual deposits via SponsoredOFT, deployed as EIP-1167 clones
- * @dev The factory deploys minimal proxies (clones) of this contract. On execution, the clone builds a
- *      Quote from its immutable route params + caller-supplied execution params and forwards it to
- *      SponsoredOFTSrcPeriphery. msg.value covers LayerZero native messaging fees.
+ * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
+ * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ *      msg.value covers LayerZero native messaging fees.
  */
-contract CounterfactualDepositOFT is CounterfactualDepositBase {
+contract CounterfactualDepositOFT is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
 
     event OFTDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
@@ -69,83 +63,52 @@ contract CounterfactualDepositOFT is CounterfactualDepositBase {
     /// @notice OFT source endpoint ID for this chain
     uint32 public immutable srcEid;
 
-    /**
-     * @param _oftSrcPeriphery SponsoredOFTSrcPeriphery contract address.
-     * @param _srcEid OFT source endpoint ID for this chain.
-     */
     constructor(address _oftSrcPeriphery, uint32 _srcEid) {
         oftSrcPeriphery = _oftSrcPeriphery;
         srcEid = _srcEid;
     }
 
-    /**
-     * @notice Executes a deposit via SponsoredOFT
-     * @dev The caller must supply msg.value to cover the LayerZero native messaging fee.
-     *      This fee is paid by the caller, not from the user's deposited tokens—so the
-     *      executor's incentive (executionFee) must cover both the origin tx gas cost
-     *      and the LayerZero fee.
-     * @param params Route parameters (verified against stored hash)
-     * @param amount Gross amount of token (includes executionFee)
-     * @param executionFeeRecipient Address that receives the execution fee
-     * @param nonce Unique nonce for SponsoredOFT replay protection
-     * @param oftDeadline Deadline for the SponsoredOFT quote (validated by SrcPeriphery)
-     * @param signature Signature from SponsoredOFT quote signer
-     */
-    function executeDeposit(
-        OFTImmutables memory params,
-        uint256 amount,
-        address executionFeeRecipient,
-        bytes32 nonce,
-        uint256 oftDeadline,
-        bytes calldata signature
-    ) external payable verifyParamsHash(keccak256(abi.encode(params))) {
-        // transfer execution fee to execution fee recipient
-        if (params.executionParams.executionFee > 0) {
-            IERC20(params.depositParams.token).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
-        }
+    /// @inheritdoc ICounterfactualImplementation
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
+        OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
+        OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
-        uint256 depositAmount = amount - params.executionParams.executionFee;
+        if (dp.executionFee > 0) IERC20(dp.token).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
 
-        IERC20(params.depositParams.token).forceApprove(oftSrcPeriphery, depositAmount);
+        uint256 depositAmount = sd.amount - dp.executionFee;
 
-        SponsoredOFTInterface.Quote memory quote = SponsoredOFTInterface.Quote({
-            signedParams: SponsoredOFTInterface.SignedQuoteParams({
-                srcEid: srcEid,
-                dstEid: params.depositParams.dstEid,
-                destinationHandler: params.depositParams.destinationHandler,
-                amountLD: depositAmount,
-                nonce: nonce,
-                deadline: oftDeadline,
-                maxBpsToSponsor: params.depositParams.maxBpsToSponsor,
-                maxUserSlippageBps: params.depositParams.maxUserSlippageBps,
-                finalRecipient: params.depositParams.finalRecipient,
-                finalToken: params.depositParams.finalToken,
-                destinationDex: params.depositParams.destinationDex,
-                lzReceiveGasLimit: params.depositParams.lzReceiveGasLimit,
-                lzComposeGasLimit: params.depositParams.lzComposeGasLimit,
-                maxOftFeeBps: params.depositParams.maxOftFeeBps,
-                accountCreationMode: params.depositParams.accountCreationMode,
-                executionMode: params.depositParams.executionMode,
-                actionData: params.depositParams.actionData
+        IERC20(dp.token).forceApprove(oftSrcPeriphery, depositAmount);
+
+        _deposit(dp, sd, depositAmount);
+
+        emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline);
+    }
+
+    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) internal {
+        ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
+            SponsoredOFTInterface.Quote({
+                signedParams: SponsoredOFTInterface.SignedQuoteParams({
+                    srcEid: srcEid,
+                    dstEid: dp.dstEid,
+                    destinationHandler: dp.destinationHandler,
+                    amountLD: depositAmount,
+                    nonce: sd.nonce,
+                    deadline: sd.oftDeadline,
+                    maxBpsToSponsor: dp.maxBpsToSponsor,
+                    maxUserSlippageBps: dp.maxUserSlippageBps,
+                    finalRecipient: dp.finalRecipient,
+                    finalToken: dp.finalToken,
+                    destinationDex: dp.destinationDex,
+                    lzReceiveGasLimit: dp.lzReceiveGasLimit,
+                    lzComposeGasLimit: dp.lzComposeGasLimit,
+                    maxOftFeeBps: dp.maxOftFeeBps,
+                    accountCreationMode: dp.accountCreationMode,
+                    executionMode: dp.executionMode,
+                    actionData: dp.actionData
+                }),
+                unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({ refundRecipient: dp.refundRecipient })
             }),
-            unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({
-                refundRecipient: params.depositParams.refundRecipient
-            })
-        });
-
-        // Forward caller-supplied msg.value to cover LayerZero native messaging fee.
-        ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(quote, signature);
-
-        emit OFTDepositExecuted(amount, executionFeeRecipient, nonce, oftDeadline);
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getUserWithdrawAddress(bytes calldata params) internal pure override returns (address) {
-        return abi.decode(params, (OFTImmutables)).executionParams.userWithdrawAddress;
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getAdminWithdrawAddress(bytes calldata params) internal pure override returns (address) {
-        return abi.decode(params, (OFTImmutables)).executionParams.adminWithdrawAddress;
+            sd.signature
+        );
     }
 }
