@@ -71,6 +71,20 @@ abstract contract CounterfactualDepositOFTModule is CounterfactualDepositBase {
         uint256 oftDeadline,
         bytes calldata signature
     ) internal {
+        _executeOFTRouteMemory(route, amount, executionFeeRecipient, nonce, oftDeadline, signature);
+    }
+
+    /**
+     * @dev Executes an OFT deposit route using a memory signature payload.
+     */
+    function _executeOFTRouteMemory(
+        OFTRoute memory route,
+        uint256 amount,
+        address executionFeeRecipient,
+        bytes32 nonce,
+        uint256 oftDeadline,
+        bytes memory signature
+    ) internal {
         if (route.executionFee > 0) {
             IERC20(route.depositParams.token).safeTransfer(executionFeeRecipient, route.executionFee);
         }

@@ -7,9 +7,9 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDepositGlobalConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositBase.sol";
 import { CounterfactualDepositMultiBridgeModular } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositMultiBridgeModular.sol";
-import { CounterfactualDepositModularCCTPModule, CCTPExecutionRequest } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularCCTPModule.sol";
-import { CounterfactualDepositModularOFTModule, OFTExecutionRequest } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularOFTModule.sol";
-import { CounterfactualDepositModularSpokePoolModule, SpokePoolExecutionRequest } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularSpokePoolModule.sol";
+import { CounterfactualDepositModularCCTPModule, CCTPExecutionRequest, CCTPSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularCCTPModule.sol";
+import { CounterfactualDepositModularOFTModule, OFTExecutionRequest, OFTSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularOFTModule.sol";
+import { CounterfactualDepositModularSpokePoolModule, SpokePoolExecutionRequest, SpokePoolSubmitterParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositModularSpokePoolModule.sol";
 import { CCTPRoute, CCTPDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { OFTRoute, OFTDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { SpokePoolRoute, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
@@ -102,12 +102,22 @@ struct TransferExecutionRequest {
     uint256 amount;
 }
 
+struct TransferSubmitterParams {
+    address caller;
+}
+
 contract MockTransferRouteModule is ICounterfactualDepositRouteModule {
     using SafeERC20 for IERC20;
 
-    function execute(bytes calldata routeParams, bytes calldata executionParams) external payable {
+    function execute(
+        bytes calldata routeParams,
+        bytes calldata executionParams,
+        bytes calldata submitterParams
+    ) external payable {
         TransferRoute memory route = abi.decode(routeParams, (TransferRoute));
         TransferExecutionRequest memory request = abi.decode(executionParams, (TransferExecutionRequest));
+        TransferSubmitterParams memory submitter = abi.decode(submitterParams, (TransferSubmitterParams));
+        require(submitter.caller == msg.sender, "caller");
         IERC20(route.token).safeTransfer(request.recipient, request.amount);
     }
 }
@@ -238,8 +248,12 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         return a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
     }
 
-    function _routeLeaf(address moduleImplementation, bytes memory routeParams) internal pure returns (bytes32) {
-        return keccak256(abi.encode(moduleImplementation, keccak256(routeParams)));
+    function _routeLeaf(
+        address moduleImplementation,
+        bytes memory routeParams,
+        bytes memory executionParams
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encode(moduleImplementation, keccak256(routeParams), keccak256(executionParams)));
     }
 
     function _spokeDomainSeparator(address clone) internal view returns (bytes32) {
@@ -276,9 +290,17 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
 
     function testPredictAddressAndExecuteCCTPModule() public {
         bytes memory routeParams = abi.encode(cctpRoute);
-        bytes32 root = _routeLeaf(address(cctpModule), routeParams);
-        CounterfactualDepositGlobalConfig memory config = _globalConfig(root);
+        CCTPExecutionRequest memory request = CCTPExecutionRequest({
+            amount: 100e6,
+            executionFeeRecipient: relayer,
+            nonce: keccak256("nonce-cctp"),
+            cctpDeadline: block.timestamp + 1 hours
+        });
+        bytes memory executionParams = abi.encode(request);
+        bytes memory submitterParams = abi.encode(CCTPSubmitterParams({ signature: "sig" }));
 
+        bytes32 root = _routeLeaf(address(cctpModule), routeParams, executionParams);
+        CounterfactualDepositGlobalConfig memory config = _globalConfig(root);
         bytes32 paramsHash = keccak256(abi.encode(config));
         bytes32 salt = keccak256("salt-modular-cctp");
         address predicted = factory.predictDepositAddress(address(implementation), paramsHash, salt);
@@ -286,18 +308,10 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         vm.prank(user);
         token.transfer(predicted, 100e6);
 
-        CCTPExecutionRequest memory request = CCTPExecutionRequest({
-            amount: 100e6,
-            executionFeeRecipient: relayer,
-            nonce: keccak256("nonce-cctp"),
-            cctpDeadline: block.timestamp + 1 hours,
-            signature: "sig"
-        });
-
         bytes32[] memory proof = new bytes32[](0);
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDepositMultiBridgeModular.execute,
-            (config, address(cctpModule), routeParams, abi.encode(request), proof)
+            (config, address(cctpModule), routeParams, executionParams, submitterParams, proof)
         );
 
         vm.prank(relayer);
@@ -311,7 +325,18 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
 
     function testExecuteOFTModuleWithValue() public {
         bytes memory routeParams = abi.encode(oftRoute);
-        CounterfactualDepositGlobalConfig memory config = _globalConfig(_routeLeaf(address(oftModule), routeParams));
+        OFTExecutionRequest memory request = OFTExecutionRequest({
+            amount: 100e6,
+            executionFeeRecipient: relayer,
+            nonce: keccak256("nonce-oft"),
+            oftDeadline: block.timestamp + 1 hours
+        });
+        bytes memory executionParams = abi.encode(request);
+        bytes memory submitterParams = abi.encode(OFTSubmitterParams({ signature: "sig" }));
+
+        CounterfactualDepositGlobalConfig memory config = _globalConfig(
+            _routeLeaf(address(oftModule), routeParams, executionParams)
+        );
         address depositAddress = factory.deploy(
             address(implementation),
             keccak256(abi.encode(config)),
@@ -321,14 +346,6 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         vm.prank(user);
         token.transfer(depositAddress, 100e6);
 
-        OFTExecutionRequest memory request = OFTExecutionRequest({
-            amount: 100e6,
-            executionFeeRecipient: relayer,
-            nonce: keccak256("nonce-oft"),
-            oftDeadline: block.timestamp + 1 hours,
-            signature: "sig"
-        });
-
         bytes32[] memory proof = new bytes32[](0);
         vm.deal(relayer, 1 ether);
         vm.prank(relayer);
@@ -336,7 +353,8 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             config,
             address(oftModule),
             routeParams,
-            abi.encode(request),
+            executionParams,
+            submitterParams,
             proof
         );
 
@@ -348,20 +366,31 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
 
     function testExecuteSpokePoolModule() public {
         bytes memory routeParams = abi.encode(spokePoolRoute);
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 quoteTimestamp = uint32(block.timestamp);
+        uint32 fillDeadline = quoteTimestamp + 3600;
+        uint32 signatureDeadline = quoteTimestamp + 3600;
+
+        SpokePoolExecutionRequest memory request = SpokePoolExecutionRequest({
+            inputAmount: inputAmount,
+            outputAmount: outputAmount,
+            exclusiveRelayer: bytes32(0),
+            exclusivityDeadline: 0,
+            executionFeeRecipient: relayer,
+            quoteTimestamp: quoteTimestamp,
+            fillDeadline: fillDeadline,
+            signatureDeadline: signatureDeadline
+        });
+        bytes memory executionParams = abi.encode(request);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
-            _routeLeaf(address(spokePoolModule), routeParams)
+            _routeLeaf(address(spokePoolModule), routeParams, executionParams)
         );
         address depositAddress = factory.deploy(
             address(implementation),
             keccak256(abi.encode(config)),
             keccak256("salt-spoke")
         );
-
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 quoteTimestamp = uint32(block.timestamp);
-        uint32 fillDeadline = quoteTimestamp + 3600;
-        uint32 signatureDeadline = quoteTimestamp + 3600;
 
         bytes memory sig = _signSpoke(
             depositAddress,
@@ -374,18 +403,7 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             signatureDeadline,
             signerKey
         );
-
-        SpokePoolExecutionRequest memory request = SpokePoolExecutionRequest({
-            inputAmount: inputAmount,
-            outputAmount: outputAmount,
-            exclusiveRelayer: bytes32(0),
-            exclusivityDeadline: 0,
-            executionFeeRecipient: relayer,
-            quoteTimestamp: quoteTimestamp,
-            fillDeadline: fillDeadline,
-            signatureDeadline: signatureDeadline,
-            signature: sig
-        });
+        bytes memory submitterParams = abi.encode(SpokePoolSubmitterParams({ signature: sig }));
 
         vm.prank(user);
         token.transfer(depositAddress, inputAmount);
@@ -396,7 +414,8 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             config,
             address(spokePoolModule),
             routeParams,
-            abi.encode(request),
+            executionParams,
+            submitterParams,
             proof
         );
 
@@ -411,8 +430,25 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         bytes memory cctpRouteParams = abi.encode(cctpRoute);
         bytes memory transferRouteParams = abi.encode(TransferRoute({ token: address(token) }));
 
-        bytes32 cctpLeaf = _routeLeaf(address(cctpModule), cctpRouteParams);
-        bytes32 transferLeaf = _routeLeaf(address(transferModule), transferRouteParams);
+        CCTPExecutionRequest memory cctpRequest = CCTPExecutionRequest({
+            amount: 100e6,
+            executionFeeRecipient: relayer,
+            nonce: keccak256("nonce-modular-multi-cctp"),
+            cctpDeadline: block.timestamp + 1 hours
+        });
+        bytes memory cctpExecutionParams = abi.encode(cctpRequest);
+        bytes memory cctpSubmitterParams = abi.encode(CCTPSubmitterParams({ signature: "sig" }));
+
+        address recipient = makeAddr("custom-module-recipient");
+        TransferExecutionRequest memory transferRequest = TransferExecutionRequest({
+            recipient: recipient,
+            amount: 30e6
+        });
+        bytes memory transferExecutionParams = abi.encode(transferRequest);
+        bytes memory transferSubmitterParams = abi.encode(TransferSubmitterParams({ caller: relayer }));
+
+        bytes32 cctpLeaf = _routeLeaf(address(cctpModule), cctpRouteParams, cctpExecutionParams);
+        bytes32 transferLeaf = _routeLeaf(address(transferModule), transferRouteParams, transferExecutionParams);
         bytes32 root = _hashPair(cctpLeaf, transferLeaf);
 
         CounterfactualDepositGlobalConfig memory config = _globalConfig(root);
@@ -425,14 +461,6 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         vm.prank(user);
         token.transfer(depositAddress, 130e6);
 
-        CCTPExecutionRequest memory cctpRequest = CCTPExecutionRequest({
-            amount: 100e6,
-            executionFeeRecipient: relayer,
-            nonce: keccak256("nonce-modular-multi-cctp"),
-            cctpDeadline: block.timestamp + 1 hours,
-            signature: "sig"
-        });
-
         bytes32[] memory cctpProof = new bytes32[](1);
         cctpProof[0] = transferLeaf;
         vm.prank(relayer);
@@ -440,15 +468,11 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             config,
             address(cctpModule),
             cctpRouteParams,
-            abi.encode(cctpRequest),
+            cctpExecutionParams,
+            cctpSubmitterParams,
             cctpProof
         );
 
-        address recipient = makeAddr("custom-module-recipient");
-        TransferExecutionRequest memory transferRequest = TransferExecutionRequest({
-            recipient: recipient,
-            amount: 30e6
-        });
         bytes32[] memory transferProof = new bytes32[](1);
         transferProof[0] = cctpLeaf;
         vm.prank(relayer);
@@ -456,7 +480,8 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             config,
             address(transferModule),
             transferRouteParams,
-            abi.encode(transferRequest),
+            transferExecutionParams,
+            transferSubmitterParams,
             transferProof
         );
 
@@ -466,28 +491,80 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
 
     function testInvalidRouteProofReverts() public {
         bytes memory cctpRouteParams = abi.encode(cctpRoute);
-        bytes32 root = _routeLeaf(address(cctpModule), cctpRouteParams);
-        CounterfactualDepositGlobalConfig memory config = _globalConfig(root);
+        bytes memory cctpExecutionParams = abi.encode(
+            CCTPExecutionRequest({
+                amount: 100e6,
+                executionFeeRecipient: relayer,
+                nonce: keccak256("nonce-proof-root"),
+                cctpDeadline: block.timestamp + 1 hours
+            })
+        );
+
+        CounterfactualDepositGlobalConfig memory config = _globalConfig(
+            _routeLeaf(address(cctpModule), cctpRouteParams, cctpExecutionParams)
+        );
         address depositAddress = factory.deploy(
             address(implementation),
             keccak256(abi.encode(config)),
             keccak256("salt-proof")
         );
 
-        OFTExecutionRequest memory request = OFTExecutionRequest({
-            amount: 100e6,
-            executionFeeRecipient: relayer,
-            nonce: keccak256("nonce-proof"),
-            oftDeadline: block.timestamp + 1 hours,
-            signature: "sig"
-        });
+        bytes memory oftRouteParams = abi.encode(oftRoute);
+        bytes memory oftExecutionParams = abi.encode(
+            OFTExecutionRequest({
+                amount: 100e6,
+                executionFeeRecipient: relayer,
+                nonce: keccak256("nonce-proof-oft"),
+                oftDeadline: block.timestamp + 1 hours
+            })
+        );
 
         vm.expectRevert(ICounterfactualDeposit.InvalidRouteProof.selector);
         CounterfactualDepositMultiBridgeModular(payable(depositAddress)).execute(
             config,
             address(oftModule),
-            abi.encode(oftRoute),
-            abi.encode(request),
+            oftRouteParams,
+            oftExecutionParams,
+            abi.encode(OFTSubmitterParams({ signature: "sig" })),
+            new bytes32[](0)
+        );
+    }
+
+    function testInvalidExecutionCommitmentReverts() public {
+        bytes memory routeParams = abi.encode(cctpRoute);
+        bytes memory committedExecutionParams = abi.encode(
+            CCTPExecutionRequest({
+                amount: 100e6,
+                executionFeeRecipient: relayer,
+                nonce: keccak256("nonce-committed"),
+                cctpDeadline: block.timestamp + 1 hours
+            })
+        );
+        bytes memory providedExecutionParams = abi.encode(
+            CCTPExecutionRequest({
+                amount: 90e6,
+                executionFeeRecipient: relayer,
+                nonce: keccak256("nonce-committed"),
+                cctpDeadline: block.timestamp + 1 hours
+            })
+        );
+
+        CounterfactualDepositGlobalConfig memory config = _globalConfig(
+            _routeLeaf(address(cctpModule), routeParams, committedExecutionParams)
+        );
+        address depositAddress = factory.deploy(
+            address(implementation),
+            keccak256(abi.encode(config)),
+            keccak256("salt-exec-mismatch")
+        );
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidRouteProof.selector);
+        CounterfactualDepositMultiBridgeModular(payable(depositAddress)).execute(
+            config,
+            address(cctpModule),
+            routeParams,
+            providedExecutionParams,
+            abi.encode(CCTPSubmitterParams({ signature: "sig" })),
             new bytes32[](0)
         );
     }
@@ -495,7 +572,17 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
     function testInvalidModuleImplementationReverts() public {
         address invalidImplementation = makeAddr("invalid-implementation");
         bytes memory routeParams = abi.encode(cctpRoute);
-        CounterfactualDepositGlobalConfig memory config = _globalConfig(_routeLeaf(invalidImplementation, routeParams));
+        bytes memory executionParams = abi.encode(
+            CCTPExecutionRequest({
+                amount: 1,
+                executionFeeRecipient: relayer,
+                nonce: bytes32(0),
+                cctpDeadline: block.timestamp + 1
+            })
+        );
+        CounterfactualDepositGlobalConfig memory config = _globalConfig(
+            _routeLeaf(invalidImplementation, routeParams, executionParams)
+        );
         address depositAddress = factory.deploy(
             address(implementation),
             keccak256(abi.encode(config)),
@@ -507,23 +594,19 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
             config,
             invalidImplementation,
             routeParams,
-            abi.encode(
-                CCTPExecutionRequest({
-                    amount: 1,
-                    executionFeeRecipient: relayer,
-                    nonce: bytes32(0),
-                    cctpDeadline: block.timestamp + 1,
-                    signature: "sig"
-                })
-            ),
+            executionParams,
+            bytes(""),
             new bytes32[](0)
         );
     }
 
     function testSupportsNewModulesWithoutChangingDispatcher() public {
         bytes memory routeParams = abi.encode(TransferRoute({ token: address(token) }));
+        address recipient = makeAddr("recipient");
+        bytes memory executionParams = abi.encode(TransferExecutionRequest({ recipient: recipient, amount: 25e6 }));
+        bytes memory submitterParams = abi.encode(TransferSubmitterParams({ caller: relayer }));
         CounterfactualDepositGlobalConfig memory config = _globalConfig(
-            _routeLeaf(address(transferModule), routeParams)
+            _routeLeaf(address(transferModule), routeParams, executionParams)
         );
         address depositAddress = factory.deploy(
             address(implementation),
@@ -534,14 +617,13 @@ contract CounterfactualDepositMultiBridgeModularTest is Test {
         vm.prank(user);
         token.transfer(depositAddress, 40e6);
 
-        address recipient = makeAddr("recipient");
-        TransferExecutionRequest memory request = TransferExecutionRequest({ recipient: recipient, amount: 25e6 });
         vm.prank(relayer);
         CounterfactualDepositMultiBridgeModular(payable(depositAddress)).execute(
             config,
             address(transferModule),
             routeParams,
-            abi.encode(request),
+            executionParams,
+            submitterParams,
             new bytes32[](0)
         );
 

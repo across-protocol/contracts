@@ -10,6 +10,10 @@ struct CCTPExecutionRequest {
     address executionFeeRecipient;
     bytes32 nonce;
     uint256 cctpDeadline;
+}
+
+/// @notice Runtime submitter arguments for modular CCTP execution.
+struct CCTPSubmitterParams {
     bytes signature;
 }
 
@@ -26,34 +30,21 @@ contract CounterfactualDepositModularCCTPModule is CounterfactualDepositCCTPModu
     /**
      * @inheritdoc ICounterfactualDepositRouteModule
      */
-    function execute(bytes calldata routeParams, bytes calldata executionParams) external payable {
+    function execute(
+        bytes calldata routeParams,
+        bytes calldata executionParams,
+        bytes calldata submitterParams
+    ) external payable {
         CCTPRoute memory route = abi.decode(routeParams, (CCTPRoute));
-        (
-            uint256 requestOffset,
-            uint256 amount,
-            address executionFeeRecipient,
-            bytes32 nonce,
-            uint256 cctpDeadline,
-            uint256 signatureOffset
-        ) = abi.decode(executionParams, (uint256, uint256, address, bytes32, uint256, uint256));
-        _executeCCTPRoute(
+        CCTPExecutionRequest memory request = abi.decode(executionParams, (CCTPExecutionRequest));
+        CCTPSubmitterParams memory submitter = abi.decode(submitterParams, (CCTPSubmitterParams));
+        _executeCCTPRouteMemory(
             route,
-            amount,
-            executionFeeRecipient,
-            nonce,
-            cctpDeadline,
-            _decodeTrailingBytes(executionParams, requestOffset + signatureOffset)
+            request.amount,
+            request.executionFeeRecipient,
+            request.nonce,
+            request.cctpDeadline,
+            submitter.signature
         );
-    }
-
-    /**
-     * @dev Decodes a trailing bytes value from ABI-encoded calldata using its head offset.
-     */
-    function _decodeTrailingBytes(bytes calldata encoded, uint256 offset) internal pure returns (bytes calldata value) {
-        uint256 length;
-        assembly {
-            length := calldataload(add(encoded.offset, offset))
-        }
-        return encoded[offset + 32:offset + 32 + length];
     }
 }

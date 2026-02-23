@@ -87,8 +87,37 @@ abstract contract CounterfactualDepositSpokePoolModule is CounterfactualDepositB
         uint32 signatureDeadline,
         bytes calldata signature
     ) internal {
+        _executeSpokePoolRouteMemory(
+            route,
+            inputAmount,
+            outputAmount,
+            exclusiveRelayer,
+            exclusivityDeadline,
+            executionFeeRecipient,
+            quoteTimestamp,
+            fillDeadline,
+            signatureDeadline,
+            signature
+        );
+    }
+
+    /**
+     * @dev Executes a SpokePool deposit route using a memory signature payload.
+     */
+    function _executeSpokePoolRouteMemory(
+        SpokePoolRoute memory route,
+        uint256 inputAmount,
+        uint256 outputAmount,
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        address executionFeeRecipient,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 signatureDeadline,
+        bytes memory signature
+    ) internal {
         if (block.timestamp > signatureDeadline) revert SignatureExpired();
-        _verifySpokePoolSignature(
+        _verifySpokePoolSignatureMemory(
             inputAmount,
             outputAmount,
             exclusiveRelayer,
@@ -159,6 +188,31 @@ abstract contract CounterfactualDepositSpokePoolModule is CounterfactualDepositB
         uint32 fillDeadline,
         uint32 signatureDeadline,
         bytes calldata signature
+    ) internal view {
+        _verifySpokePoolSignatureMemory(
+            inputAmount,
+            outputAmount,
+            exclusiveRelayer,
+            exclusivityDeadline,
+            quoteTimestamp,
+            fillDeadline,
+            signatureDeadline,
+            signature
+        );
+    }
+
+    /**
+     * @dev Verifies signer authorization for SpokePool execution fields using a memory signature payload.
+     */
+    function _verifySpokePoolSignatureMemory(
+        uint256 inputAmount,
+        uint256 outputAmount,
+        bytes32 exclusiveRelayer,
+        uint32 exclusivityDeadline,
+        uint32 quoteTimestamp,
+        uint32 fillDeadline,
+        uint32 signatureDeadline,
+        bytes memory signature
     ) internal view {
         bytes32 structHash = keccak256(
             abi.encode(

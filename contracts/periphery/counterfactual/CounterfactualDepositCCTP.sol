@@ -70,6 +70,20 @@ abstract contract CounterfactualDepositCCTPModule is CounterfactualDepositBase {
         uint256 cctpDeadline,
         bytes calldata signature
     ) internal {
+        _executeCCTPRouteMemory(route, amount, executionFeeRecipient, nonce, cctpDeadline, signature);
+    }
+
+    /**
+     * @dev Executes a CCTP deposit route using a memory signature payload.
+     */
+    function _executeCCTPRouteMemory(
+        CCTPRoute memory route,
+        uint256 amount,
+        address executionFeeRecipient,
+        bytes32 nonce,
+        uint256 cctpDeadline,
+        bytes memory signature
+    ) internal {
         address inputToken = address(uint160(uint256(route.depositParams.burnToken)));
         if (route.executionFee > 0) IERC20(inputToken).safeTransfer(executionFeeRecipient, route.executionFee);
 
@@ -77,6 +91,23 @@ abstract contract CounterfactualDepositCCTPModule is CounterfactualDepositBase {
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
+            _buildCCTPQuote(route, depositAmount, nonce, cctpDeadline),
+            signature
+        );
+
+        emit CCTPDepositExecuted(amount, executionFeeRecipient, nonce, cctpDeadline);
+    }
+
+    /**
+     * @dev Builds the SponsoredCCTP quote payload for `depositForBurn`.
+     */
+    function _buildCCTPQuote(
+        CCTPRoute memory route,
+        uint256 depositAmount,
+        bytes32 nonce,
+        uint256 cctpDeadline
+    ) private view returns (SponsoredCCTPInterface.SponsoredCCTPQuote memory) {
+        return
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
                 destinationDomain: route.depositParams.destinationDomain,
@@ -96,10 +127,6 @@ abstract contract CounterfactualDepositCCTPModule is CounterfactualDepositBase {
                 accountCreationMode: route.depositParams.accountCreationMode,
                 executionMode: route.depositParams.executionMode,
                 actionData: route.depositParams.actionData
-            }),
-            signature
-        );
-
-        emit CCTPDepositExecuted(amount, executionFeeRecipient, nonce, cctpDeadline);
+            });
     }
 }
