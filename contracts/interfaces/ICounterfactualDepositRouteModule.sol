@@ -9,13 +9,8 @@ interface ICounterfactualDepositRouteModule {
     /**
      * @notice Executes one bridge route.
      * @dev Called by CounterfactualDepositMultiBridgeModular via delegatecall.
-     * @param routeParams ABI-encoded user-committed route parameters.
-     * @param executionParams ABI-encoded user-committed execution parameters.
+     * @param guardrailParams ABI-encoded user-committed guardrails.
      * @param submitterParams ABI-encoded runtime submitter parameters.
      */
-    function execute(
-        bytes calldata routeParams,
-        bytes calldata executionParams,
-        bytes calldata submitterParams
-    ) external payable;
+    function execute(bytes calldata guardrailParams, bytes calldata submitterParams) external payable;
 }

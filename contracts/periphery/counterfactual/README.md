@@ -38,7 +38,7 @@ All three are non-custodial and use the same CREATE2/predict/deploy semantics.
   - Delegatecall module adapter for SpokePool routes
 - `ICounterfactualDepositRouteModule`
   - Common interface for modular route modules:
-    - `execute(bytes routeParams, bytes executionParams, bytes submitterParams)`
+    - `execute(bytes guardrailParams, bytes submitterParams)`
 - `AdminWithdrawManager`
   - Optional manager for admin withdrawal workflows
 
@@ -104,7 +104,7 @@ Uses the same `CounterfactualDepositGlobalConfig` as Backend A.
 
 Leaf format is generic:
 
-- `keccak256(abi.encode(moduleImplementation, keccak256(routeParams), keccak256(executionParams)))`
+- `keccak256(abi.encode(moduleImplementation, keccak256(guardrailParams)))`
 
 Dispatcher entrypoint:
 
@@ -112,8 +112,7 @@ Dispatcher entrypoint:
 execute(
   CounterfactualDepositGlobalConfig globalConfig,
   address implementation,
-  bytes routeParams,
-  bytes executionParams,
+  bytes guardrailParams,
   bytes submitterParams,
   bytes32[] proof
 )
@@ -123,29 +122,26 @@ Execution verifies:
 
 1. config hash matches clone commitment
 2. `implementation` has bytecode
-3. Merkle proof includes `(implementation, keccak256(routeParams), keccak256(executionParams))`
-4. delegatecall to `implementation.execute(routeParams, executionParams, submitterParams)`
+3. Merkle proof includes `(implementation, keccak256(guardrailParams))`
+4. delegatecall to `implementation.execute(guardrailParams, submitterParams)`
 
 This enforces a clean split:
 
-- user commitments: `routeParams` and `executionParams` (Merkle-committed)
+- user commitments: `guardrailParams` (Merkle-committed)
 - submitter runtime inputs: `submitterParams` (not committed)
 
-This makes new bridge families addable without touching the dispatcher contract: deploy a new module implementation that follows `ICounterfactualDepositRouteModule` and include its `(implementation, routeHash, executionHash)` leaves in the user’s Merkle root.
+This makes new bridge families addable without touching the dispatcher contract: deploy a new module implementation that follows `ICounterfactualDepositRouteModule` and include `(implementation, guardrailHash)` leaves in the user’s Merkle root.
 
 ### Built-in modular adapters
 
 - `CounterfactualDepositModularCCTPModule`
-  - `routeParams = abi.encode(CCTPRoute)`
-  - `executionParams = abi.encode(CCTPExecutionRequest)`
+  - `guardrailParams = abi.encode(CCTPUserParams)`
   - `submitterParams = abi.encode(CCTPSubmitterParams)` (contains signature)
 - `CounterfactualDepositModularOFTModule`
-  - `routeParams = abi.encode(OFTRoute)`
-  - `executionParams = abi.encode(OFTExecutionRequest)`
+  - `guardrailParams = abi.encode(OFTUserParams)`
   - `submitterParams = abi.encode(OFTSubmitterParams)` (contains signature)
 - `CounterfactualDepositModularSpokePoolModule`
-  - `routeParams = abi.encode(SpokePoolRoute)`
-  - `executionParams = abi.encode(SpokePoolExecutionRequest)`
+  - `guardrailParams = abi.encode(SpokePoolUserParams)`
   - `submitterParams = abi.encode(SpokePoolSubmitterParams)` (contains signature)
 
 ## Route structs and behavior
@@ -223,7 +219,8 @@ Use `CounterfactualDepositMultiBridgeSimple` when:
 Use `CounterfactualDepositMultiBridgeModular` when:
 
 - you want plug-in bridge extensibility without dispatcher changes
-- backend can build Merkle leaves keyed by module implementation + route hash + execution hash
+- you want very clear separation between user guardrails and submitter runtime options
+- backend can build Merkle leaves keyed by module implementation + guardrail hash
 
 ## Errors
 

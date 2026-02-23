@@ -4,8 +4,17 @@ pragma solidity ^0.8.0;
 import { CounterfactualDepositSpokePoolModule, SpokePoolRoute } from "./CounterfactualDepositSpokePool.sol";
 import { ICounterfactualDepositRouteModule } from "../../interfaces/ICounterfactualDepositRouteModule.sol";
 
-/// @notice Runtime arguments for modular SpokePool execution.
-struct SpokePoolExecutionRequest {
+/// @notice User-committed guardrails for modular SpokePool execution.
+struct SpokePoolUserParams {
+    SpokePoolRoute route;
+    uint256 maxInputAmount;
+    uint256 minOutputAmount;
+    uint32 maxFillDeadline;
+    uint32 maxSignatureDeadline;
+}
+
+/// @notice Runtime submitter arguments for modular SpokePool execution.
+struct SpokePoolSubmitterParams {
     uint256 inputAmount;
     uint256 outputAmount;
     bytes32 exclusiveRelayer;
@@ -14,10 +23,6 @@ struct SpokePoolExecutionRequest {
     uint32 quoteTimestamp;
     uint32 fillDeadline;
     uint32 signatureDeadline;
-}
-
-/// @notice Runtime submitter arguments for modular SpokePool execution.
-struct SpokePoolSubmitterParams {
     bytes signature;
 }
 
@@ -29,6 +34,8 @@ contract CounterfactualDepositModularSpokePoolModule is
     CounterfactualDepositSpokePoolModule,
     ICounterfactualDepositRouteModule
 {
+    error GuardrailViolation();
+
     constructor(
         address _spokePool,
         address _signer,
@@ -38,25 +45,27 @@ contract CounterfactualDepositModularSpokePoolModule is
     /**
      * @inheritdoc ICounterfactualDepositRouteModule
      */
-    function execute(
-        bytes calldata routeParams,
-        bytes calldata executionParams,
-        bytes calldata submitterParams
-    ) external payable {
-        SpokePoolRoute memory route = abi.decode(routeParams, (SpokePoolRoute));
-        SpokePoolExecutionRequest memory request = abi.decode(executionParams, (SpokePoolExecutionRequest));
+    function execute(bytes calldata guardrailParams, bytes calldata submitterParams) external payable {
+        SpokePoolUserParams memory user = abi.decode(guardrailParams, (SpokePoolUserParams));
         SpokePoolSubmitterParams memory submitter = abi.decode(submitterParams, (SpokePoolSubmitterParams));
 
+        if (
+            submitter.inputAmount > user.maxInputAmount ||
+            submitter.outputAmount < user.minOutputAmount ||
+            submitter.fillDeadline > user.maxFillDeadline ||
+            submitter.signatureDeadline > user.maxSignatureDeadline
+        ) revert GuardrailViolation();
+
         _executeSpokePoolRouteMemory(
-            route,
-            request.inputAmount,
-            request.outputAmount,
-            request.exclusiveRelayer,
-            request.exclusivityDeadline,
-            request.executionFeeRecipient,
-            request.quoteTimestamp,
-            request.fillDeadline,
-            request.signatureDeadline,
+            user.route,
+            submitter.inputAmount,
+            submitter.outputAmount,
+            submitter.exclusiveRelayer,
+            submitter.exclusivityDeadline,
+            submitter.executionFeeRecipient,
+            submitter.quoteTimestamp,
+            submitter.fillDeadline,
+            submitter.signatureDeadline,
             submitter.signature
         );
     }
