@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDeposit, CounterfactualDepositParams, SpokePoolRoute } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
+import { CounterfactualDeposit, CounterfactualDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -58,8 +58,6 @@ contract AdminWithdrawManagerTest is Test {
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
 
         defaultParams = CounterfactualDepositParams({
-            inputToken: address(token),
-            executionFee: 1e6,
             userWithdrawAddress: user,
             adminWithdrawAddress: address(manager),
             spokePoolRouteHash: bytes32(0),
