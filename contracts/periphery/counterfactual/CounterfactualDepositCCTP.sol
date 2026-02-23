@@ -69,7 +69,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
     }
 
     /// @inheritdoc ICounterfactualImplementation
-    function execute(bytes calldata params, bytes calldata submitterData) external payable returns (bytes memory) {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
         CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
 
@@ -84,8 +84,6 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         _depositForBurn(dp, sd, depositAmount);
 
         emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
-
-        return "";
     }
 
     function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) internal {

@@ -34,7 +34,7 @@ contract WithdrawImplementation is ICounterfactualImplementation {
     error NativeTransferFailed();
 
     /// @inheritdoc ICounterfactualImplementation
-    function execute(bytes calldata params, bytes calldata submitterData) external payable returns (bytes memory) {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
         WithdrawParams memory wp = abi.decode(params, (WithdrawParams));
         (address token, address to, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
 
@@ -49,7 +49,5 @@ contract WithdrawImplementation is ICounterfactualImplementation {
         }
 
         emit Withdraw(token, to, amount);
-
-        return "";
     }
 }

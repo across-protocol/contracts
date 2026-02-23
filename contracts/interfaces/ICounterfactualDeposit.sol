@@ -15,12 +15,11 @@ interface ICounterfactualDeposit {
      * @param params ABI-encoded route parameters (hashed into the merkle leaf).
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
      * @param proof Merkle proof for the (implementation, keccak256(params)) leaf.
-     * @return Result bytes from the implementation.
      */
     function execute(
         address implementation,
         bytes calldata params,
         bytes calldata submitterData,
         bytes32[] calldata proof
-    ) external payable returns (bytes memory);
+    ) external payable;
 }

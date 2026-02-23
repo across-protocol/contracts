@@ -69,7 +69,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
     }
 
     /// @inheritdoc ICounterfactualImplementation
-    function execute(bytes calldata params, bytes calldata submitterData) external payable returns (bytes memory) {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
         OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
@@ -82,8 +82,6 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
         _deposit(dp, sd, depositAmount);
 
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline);
-
-        return "";
     }
 
     function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) internal {

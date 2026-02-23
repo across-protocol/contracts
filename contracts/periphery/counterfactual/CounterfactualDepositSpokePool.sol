@@ -93,7 +93,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     }
 
     /// @inheritdoc ICounterfactualImplementation
-    function execute(bytes calldata params, bytes calldata submitterData) external payable returns (bytes memory) {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
         SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
@@ -144,8 +144,6 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
             sd.fillDeadline,
             sd.signatureDeadline
         );
-
-        return "";
     }
 
     function _checkFee(

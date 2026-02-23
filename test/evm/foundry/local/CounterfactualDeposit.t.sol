@@ -17,9 +17,8 @@ import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 contract MockImplementation is ICounterfactualImplementation {
     event MockExecuted(bytes params, bytes submitterData);
 
-    function execute(bytes calldata params, bytes calldata submitterData) external payable returns (bytes memory) {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
         emit MockExecuted(params, submitterData);
-        return abi.encode(uint256(42));
     }
 }
 
@@ -29,7 +28,7 @@ contract MockImplementation is ICounterfactualImplementation {
 contract RevertingImplementation is ICounterfactualImplementation {
     error CustomRevert(string reason);
 
-    function execute(bytes calldata, bytes calldata) external payable returns (bytes memory) {
+    function execute(bytes calldata, bytes calldata) external payable {
         revert CustomRevert("test revert");
     }
 }
@@ -86,8 +85,7 @@ contract CounterfactualDepositTest is Test {
         vm.expectEmit(false, false, false, true);
         emit MockImplementation.MockExecuted(params, "submitter");
 
-        bytes memory result = ICounterfactualDeposit(clone).execute(address(mockImpl), params, "submitter", proof);
-        assertEq(abi.decode(result, (uint256)), 42);
+        ICounterfactualDeposit(clone).execute(address(mockImpl), params, "submitter", proof);
     }
 
     function testInvalidProofReverts() public {
