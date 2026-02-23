@@ -10,6 +10,8 @@ interface ICounterfactualDeposit {
     error Unauthorized();
     /// @dev Caller-supplied params do not match the hash stored in the clone's immutable args.
     error InvalidParamsHash();
+    /// @dev Merkle proof does not prove the route is allowed by this clone.
+    error InvalidRouteProof();
     /// @dev Total fee (relayer + execution) exceeds maxFeeBps. SpokePool only.
     error MaxFee();
     /// @dev EIP-712 signature does not recover to the expected signer. SpokePool only.

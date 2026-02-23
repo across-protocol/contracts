@@ -4,13 +4,21 @@ pragma solidity ^0.8.0;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+
+struct CounterfactualDepositGlobalConfig {
+    bytes32 sharedParamsHash;
+    bytes32 routesRoot;
+    address userWithdrawAddress;
+    address adminWithdrawAddress;
+}
 
 /**
  * @title CounterfactualDepositBase
- * @notice Shared logic for all counterfactual deposit executors (CCTP, OFT, SpokePool)
+ * @notice Shared logic for the unified counterfactual deposit executor.
  */
-abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
+contract CounterfactualDepositBase is ICounterfactualDeposit {
     using SafeERC20 for IERC20;
 
     uint256 internal constant BPS_SCALAR = 10_000;
@@ -24,6 +32,14 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
         bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
         if (paramsHash != storedHash) revert InvalidParamsHash();
         _;
+    }
+
+    function _verifyRoute(
+        CounterfactualDepositGlobalConfig memory globalConfig,
+        bytes32 routeLeaf,
+        bytes32[] calldata proof
+    ) internal pure {
+        if (!MerkleProof.verify(proof, globalConfig.routesRoot, routeLeaf)) revert InvalidRouteProof();
     }
 
     /**
@@ -81,20 +97,6 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
     }
 
     /**
-     * @dev Extracts the user withdraw address from implementation-specific params.
-     * @param params ABI-encoded route parameters.
-     * @return User withdraw address.
-     */
-    function _getUserWithdrawAddress(bytes calldata params) internal pure virtual returns (address);
-
-    /**
-     * @dev Extracts the admin withdraw address from implementation-specific params.
-     * @param params ABI-encoded route parameters.
-     * @return Admin withdraw address.
-     */
-    function _getAdminWithdrawAddress(bytes calldata params) internal pure virtual returns (address);
-
-    /**
      * @dev Transfers native ETH (token == NATIVE_ASSET) or ERC20 tokens.
      * @param token ERC20 token address, or NATIVE_ASSET for native ETH.
      * @param to Recipient address.
@@ -107,5 +109,13 @@ abstract contract CounterfactualDepositBase is ICounterfactualDeposit {
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
+    }
+
+    function _getUserWithdrawAddress(bytes calldata params) internal pure virtual returns (address) {
+        return abi.decode(params, (CounterfactualDepositGlobalConfig)).userWithdrawAddress;
+    }
+
+    function _getAdminWithdrawAddress(bytes calldata params) internal pure virtual returns (address) {
+        return abi.decode(params, (CounterfactualDepositGlobalConfig)).adminWithdrawAddress;
     }
 }

@@ -6,16 +6,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
-/**
- * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
- */
 interface ISponsoredCCTPSrcPeriphery {
     function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory signature) external;
 }
 
-/**
- * @notice Parameters passed through to SponsoredCCTPSrcPeriphery.depositForBurn()
- */
 struct CCTPDepositParams {
     uint32 destinationDomain;
     bytes32 mintRecipient;
@@ -33,113 +27,66 @@ struct CCTPDepositParams {
     bytes actionData;
 }
 
-/**
- * @notice Parameters used by the clone's execution logic
- */
-struct CCTPExecutionParams {
-    uint256 executionFee;
-    address userWithdrawAddress;
-    address adminWithdrawAddress;
-}
-
-/**
- * @notice Combined route parameters for CCTP deposits
- */
-struct CCTPImmutables {
+struct CCTPRoute {
     CCTPDepositParams depositParams;
-    CCTPExecutionParams executionParams;
+    uint256 executionFee;
 }
 
-/**
- * @title CounterfactualDepositCCTP
- * @notice Implementation contract for counterfactual deposits via SponsoredCCTP, deployed as EIP-1167 clones
- * @dev The factory deploys minimal proxies (clones) of this contract using OZ Clones.cloneDeterministicWithImmutableArgs.
- *      Route parameters are appended to the clone bytecode and read via Clones.fetchCloneArgs.
- *      On execution, the clone builds a SponsoredCCTPQuote from its immutable route params + caller-supplied
- *      execution params (amount, nonce, cctpDeadline, executeDepositDeadline) and forwards it to SponsoredCCTPSrcPeriphery.
- */
-contract CounterfactualDepositCCTP is CounterfactualDepositBase {
+abstract contract CounterfactualDepositCCTPModule is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
     event CCTPDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 cctpDeadline);
 
-    /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
     address public immutable srcPeriphery;
-
-    /// @notice CCTP source domain ID for this chain
     uint32 public immutable sourceDomain;
 
-    /**
-     * @param _srcPeriphery SponsoredCCTPSrcPeriphery contract address.
-     * @param _sourceDomain CCTP source domain ID for this chain.
-     */
     constructor(address _srcPeriphery, uint32 _sourceDomain) {
         srcPeriphery = _srcPeriphery;
         sourceDomain = _sourceDomain;
     }
 
-    /**
-     * @notice Executes a deposit via SponsoredCCTP
-     * @param params Route parameters (verified against stored hash)
-     * @param amount Gross amount of burnToken (includes executionFee)
-     * @param executionFeeRecipient Address that receives the execution fee
-     * @param nonce Unique nonce for SponsoredCCTP replay protection
-     * @param cctpDeadline Deadline for the SponsoredCCTP quote (validated by SrcPeriphery)
-     * @param signature Signature from SponsoredCCTP quote signer
-     */
-    function executeDeposit(
-        CCTPImmutables memory params,
+    function _cctpRouteHash(CCTPRoute memory route) internal pure returns (bytes32) {
+        return keccak256(abi.encode(route));
+    }
+
+    function _executeCCTPRoute(
+        CCTPRoute memory route,
         uint256 amount,
         address executionFeeRecipient,
         bytes32 nonce,
         uint256 cctpDeadline,
         bytes calldata signature
-    ) external verifyParamsHash(keccak256(abi.encode(params))) {
-        address inputToken = address(uint160(uint256(params.depositParams.burnToken)));
+    ) internal {
+        address inputToken = address(uint160(uint256(route.depositParams.burnToken)));
+        if (route.executionFee > 0) IERC20(inputToken).safeTransfer(executionFeeRecipient, route.executionFee);
 
-        // transfer execution fee to execution fee recipient
-        if (params.executionParams.executionFee > 0) {
-            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
-        }
-
-        uint256 depositAmount = amount - params.executionParams.executionFee;
-
+        uint256 depositAmount = amount - route.executionFee;
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
-                destinationDomain: params.depositParams.destinationDomain,
-                mintRecipient: params.depositParams.mintRecipient,
+                destinationDomain: route.depositParams.destinationDomain,
+                mintRecipient: route.depositParams.mintRecipient,
                 amount: depositAmount,
-                burnToken: params.depositParams.burnToken,
-                destinationCaller: params.depositParams.destinationCaller,
-                maxFee: (depositAmount * params.depositParams.cctpMaxFeeBps) / BPS_SCALAR,
-                minFinalityThreshold: params.depositParams.minFinalityThreshold,
+                burnToken: route.depositParams.burnToken,
+                destinationCaller: route.depositParams.destinationCaller,
+                maxFee: (depositAmount * route.depositParams.cctpMaxFeeBps) / BPS_SCALAR,
+                minFinalityThreshold: route.depositParams.minFinalityThreshold,
                 nonce: nonce,
                 deadline: cctpDeadline,
-                maxBpsToSponsor: params.depositParams.maxBpsToSponsor,
-                maxUserSlippageBps: params.depositParams.maxUserSlippageBps,
-                finalRecipient: params.depositParams.finalRecipient,
-                finalToken: params.depositParams.finalToken,
-                destinationDex: params.depositParams.destinationDex,
-                accountCreationMode: params.depositParams.accountCreationMode,
-                executionMode: params.depositParams.executionMode,
-                actionData: params.depositParams.actionData
+                maxBpsToSponsor: route.depositParams.maxBpsToSponsor,
+                maxUserSlippageBps: route.depositParams.maxUserSlippageBps,
+                finalRecipient: route.depositParams.finalRecipient,
+                finalToken: route.depositParams.finalToken,
+                destinationDex: route.depositParams.destinationDex,
+                accountCreationMode: route.depositParams.accountCreationMode,
+                executionMode: route.depositParams.executionMode,
+                actionData: route.depositParams.actionData
             }),
             signature
         );
 
         emit CCTPDepositExecuted(amount, executionFeeRecipient, nonce, cctpDeadline);
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getUserWithdrawAddress(bytes calldata params) internal pure override returns (address) {
-        return abi.decode(params, (CCTPImmutables)).executionParams.userWithdrawAddress;
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getAdminWithdrawAddress(bytes calldata params) internal pure override returns (address) {
-        return abi.decode(params, (CCTPImmutables)).executionParams.adminWithdrawAddress;
     }
 }

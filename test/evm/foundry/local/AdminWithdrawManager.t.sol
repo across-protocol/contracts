@@ -4,14 +4,15 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { CounterfactualDepositSpokePool, SpokePoolImmutables, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CounterfactualDepositMultiBridge } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositMultiBridge.sol";
+import { CounterfactualDepositGlobalConfig } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositBase.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 contract AdminWithdrawManagerTest is Test {
     CounterfactualDepositFactory public factory;
-    CounterfactualDepositSpokePool public implementation;
+    CounterfactualDepositMultiBridge public implementation;
     AdminWithdrawManager public manager;
     MintableERC20 public token;
 
@@ -20,13 +21,10 @@ contract AdminWithdrawManagerTest is Test {
     address public user;
     uint256 public signerPrivateKey;
     address public signerAddr;
-    uint256 public spokePoolSignerKey;
-    address public spokePoolSigner;
 
-    SpokePoolImmutables internal defaultParams;
+    CounterfactualDepositGlobalConfig internal config;
     address public depositAddress;
 
-    // EIP-712 constants for AdminWithdrawManager
     bytes32 constant SIGNED_WITHDRAW_TYPEHASH =
         keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
@@ -40,38 +38,32 @@ contract AdminWithdrawManagerTest is Test {
         user = makeAddr("user");
         signerPrivateKey = 0xA11CE;
         signerAddr = vm.addr(signerPrivateKey);
-        spokePoolSignerKey = 0xBEEF;
-        spokePoolSigner = vm.addr(spokePoolSignerKey);
 
         token = new MintableERC20("USDC", "USDC", 6);
 
         factory = new CounterfactualDepositFactory();
-        implementation = new CounterfactualDepositSpokePool(makeAddr("spokePool"), spokePoolSigner, makeAddr("weth"));
+        implementation = new CounterfactualDepositMultiBridge(
+            makeAddr("cctp"),
+            0,
+            makeAddr("oft"),
+            30101,
+            makeAddr("spoke"),
+            makeAddr("spokeSigner"),
+            makeAddr("weth")
+        );
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
 
-        defaultParams = SpokePoolImmutables({
-            depositParams: SpokePoolDepositParams({
-                destinationChainId: 42161,
-                inputToken: bytes32(uint256(uint160(address(token)))),
-                outputToken: bytes32(uint256(uint160(address(token)))),
-                recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                message: ""
-            }),
-            executionParams: SpokePoolExecutionParams({
-                stableExchangeRate: 1e18,
-                maxFeeFixed: 1e6,
-                maxFeeBps: 500,
-                executionFee: 1e6,
-                userWithdrawAddress: user,
-                adminWithdrawAddress: address(manager)
-            })
+        config = CounterfactualDepositGlobalConfig({
+            sharedParamsHash: keccak256("shared"),
+            routesRoot: keccak256("root"),
+            userWithdrawAddress: user,
+            adminWithdrawAddress: address(manager)
         });
 
-        bytes32 paramsHash = keccak256(abi.encode(defaultParams));
+        bytes32 paramsHash = keccak256(abi.encode(config));
         bytes32 salt = keccak256("test-salt");
         depositAddress = factory.deploy(address(implementation), paramsHash, salt);
 
-        // Fund the clone
         token.mint(depositAddress, 100e6);
     }
 
@@ -103,10 +95,8 @@ contract AdminWithdrawManagerTest is Test {
     }
 
     function _paramsBytes() internal view returns (bytes memory) {
-        return abi.encode(defaultParams);
+        return abi.encode(config);
     }
-
-    // --- directWithdraw tests ---
 
     function testDirectWithdraw() public {
         address recipient = makeAddr("recipient");
@@ -120,7 +110,7 @@ contract AdminWithdrawManagerTest is Test {
             abi.encodeCall(ICounterfactualDeposit.adminWithdraw, (_paramsBytes(), address(token), recipient, 50e6))
         );
 
-        assertEq(token.balanceOf(recipient), 50e6, "Recipient should receive tokens");
+        assertEq(token.balanceOf(recipient), 50e6);
     }
 
     function testDirectWithdrawUnauthorized() public {
@@ -132,8 +122,6 @@ contract AdminWithdrawManagerTest is Test {
         );
     }
 
-    // --- signedWithdrawToUser tests ---
-
     function testSignedWithdrawToUser() public {
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 3600;
@@ -144,14 +132,13 @@ contract AdminWithdrawManagerTest is Test {
 
         manager.signedWithdrawToUser(depositAddress, _paramsBytes(), address(token), amount, deadline, sig);
 
-        assertEq(token.balanceOf(user), amount, "User should receive tokens via signed withdraw");
+        assertEq(token.balanceOf(user), amount);
     }
 
     function testSignedWithdrawToUserInvalidSignature() public {
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 3600;
 
-        // Sign with wrong key
         uint256 wrongKey = 0xDEAD;
         bytes32 structHash = keccak256(
             abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, address(token), amount, deadline)
@@ -174,8 +161,6 @@ contract AdminWithdrawManagerTest is Test {
         vm.expectRevert(AdminWithdrawManager.SignatureExpired.selector);
         manager.signedWithdrawToUser(depositAddress, _paramsBytes(), address(token), amount, deadline, sig);
     }
-
-    // --- Owner functions ---
 
     function testSetDirectWithdrawer() public {
         address newWithdrawer = makeAddr("newWithdrawer");
@@ -211,8 +196,6 @@ contract AdminWithdrawManagerTest is Test {
         manager.setSigner(makeAddr("newSigner"));
     }
 
-    // --- Deposit contract direct calls ---
-
     function testAdminWithdrawToUser() public {
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDeposit.AdminWithdraw(address(token), user, 50e6);
@@ -220,7 +203,7 @@ contract AdminWithdrawManagerTest is Test {
         vm.prank(address(manager));
         ICounterfactualDeposit(depositAddress).adminWithdrawToUser(_paramsBytes(), address(token), 50e6);
 
-        assertEq(token.balanceOf(user), 50e6, "User should receive tokens via adminWithdrawToUser");
+        assertEq(token.balanceOf(user), 50e6);
     }
 
     function testBytesAdminWithdraw() public {
@@ -232,6 +215,6 @@ contract AdminWithdrawManagerTest is Test {
         vm.prank(address(manager));
         ICounterfactualDeposit(depositAddress).adminWithdraw(_paramsBytes(), address(token), recipient, 50e6);
 
-        assertEq(token.balanceOf(recipient), 50e6, "Recipient should receive tokens via bytes adminWithdraw");
+        assertEq(token.balanceOf(recipient), 50e6);
     }
 }
