@@ -5,6 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
  * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
@@ -52,8 +53,6 @@ struct CCTPSubmitterData {
  */
 contract CounterfactualDepositCCTP is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
-
-    uint256 internal constant BPS_SCALAR = 10_000;
 
     event CCTPDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 cctpDeadline);
 

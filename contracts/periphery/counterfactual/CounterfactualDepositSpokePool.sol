@@ -7,6 +7,7 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
@@ -48,9 +49,7 @@ struct SpokePoolSubmitterData {
 contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712 {
     using SafeERC20 for IERC20;
 
-    uint256 internal constant BPS_SCALAR = 10_000;
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
-    address public constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
