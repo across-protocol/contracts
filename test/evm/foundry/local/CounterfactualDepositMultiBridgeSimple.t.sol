@@ -192,7 +192,6 @@ contract CounterfactualDepositMultiBridgeSimpleTest is Test {
     ) internal view returns (CounterfactualDepositSimpleConfig memory) {
         return
             CounterfactualDepositSimpleConfig({
-                commonParamsHash: keccak256("common-params"),
                 cctpRouteHash: cctpHash,
                 oftRouteHash: oftHash,
                 spokePoolRouteHash: spokeHash,

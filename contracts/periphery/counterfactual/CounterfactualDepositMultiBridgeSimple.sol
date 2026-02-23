@@ -7,13 +7,11 @@ import { CounterfactualDepositSpokePoolModule, SpokePoolRoute } from "./Counterf
 
 /**
  * @notice Simple hash-committed config for a multi-bridge counterfactual address.
- * @dev `commonParamsHash` is an optional application-level commitment.
- *      Each route hash enables/disables a bridge:
+ * @dev Each route hash enables/disables a bridge:
  *      - hash == 0: route disabled
  *      - hash != 0: route enabled and must match keccak256(route params) at execution.
  */
 struct CounterfactualDepositSimpleConfig {
-    bytes32 commonParamsHash;
     bytes32 cctpRouteHash;
     bytes32 oftRouteHash;
     bytes32 spokePoolRouteHash;
