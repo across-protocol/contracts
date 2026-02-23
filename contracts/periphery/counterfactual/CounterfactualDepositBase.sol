@@ -8,9 +8,11 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
 
 struct CounterfactualDepositGlobalConfig {
-    bytes32 sharedParamsHash;
+    /// @notice Merkle root of all bridge routes this address allows.
     bytes32 routesRoot;
+    /// @notice Address allowed to call `userWithdraw`.
     address userWithdrawAddress;
+    /// @notice Address allowed to call `adminWithdraw` and `adminWithdrawToUser`.
     address adminWithdrawAddress;
 }
 
@@ -34,6 +36,12 @@ contract CounterfactualDepositBase is ICounterfactualDeposit {
         _;
     }
 
+    /**
+     * @dev Verifies that a route leaf belongs to `globalConfig.routesRoot`.
+     * @param globalConfig Clone-level global config committed via CREATE2.
+     * @param routeLeaf Leaf hash for the selected bridge route.
+     * @param proof Merkle proof proving leaf inclusion in `routesRoot`.
+     */
     function _verifyRoute(
         CounterfactualDepositGlobalConfig memory globalConfig,
         bytes32 routeLeaf,
@@ -111,10 +119,16 @@ contract CounterfactualDepositBase is ICounterfactualDeposit {
         }
     }
 
+    /**
+     * @dev Extracts user withdraw address from global config bytes.
+     */
     function _getUserWithdrawAddress(bytes calldata params) internal pure virtual returns (address) {
         return abi.decode(params, (CounterfactualDepositGlobalConfig)).userWithdrawAddress;
     }
 
+    /**
+     * @dev Extracts admin withdraw address from global config bytes.
+     */
     function _getAdminWithdrawAddress(bytes calldata params) internal pure virtual returns (address) {
         return abi.decode(params, (CounterfactualDepositGlobalConfig)).adminWithdrawAddress;
     }

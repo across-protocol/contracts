@@ -6,15 +6,33 @@ import { CounterfactualDepositCCTPModule, CCTPRoute } from "./CounterfactualDepo
 import { CounterfactualDepositOFTModule, OFTRoute } from "./CounterfactualDepositOFT.sol";
 import { CounterfactualDepositSpokePoolModule, SpokePoolRoute } from "./CounterfactualDepositSpokePool.sol";
 
+/// @notice Bridge families supported by this unified implementation.
+enum BridgeType {
+    CCTP,
+    OFT,
+    SPOKE_POOL
+}
+
+/**
+ * @title CounterfactualDepositMultiBridge
+ * @notice Unified counterfactual deposit implementation that supports CCTP, OFT, and SpokePool routes.
+ * @dev Clone immutables commit to `keccak256(abi.encode(CounterfactualDepositGlobalConfig))`.
+ *      The global config commits withdraw recipients and a merkle root of all allowed bridge routes.
+ */
 contract CounterfactualDepositMultiBridge is
     CounterfactualDepositCCTPModule,
     CounterfactualDepositOFTModule,
     CounterfactualDepositSpokePoolModule
 {
-    uint8 internal constant BRIDGE_TYPE_CCTP = 0;
-    uint8 internal constant BRIDGE_TYPE_OFT = 1;
-    uint8 internal constant BRIDGE_TYPE_SPOKE_POOL = 2;
-
+    /**
+     * @param _srcPeriphery SponsoredCCTPSrcPeriphery address.
+     * @param _sourceDomain CCTP source domain.
+     * @param _oftSrcPeriphery SponsoredOFTSrcPeriphery address.
+     * @param _srcEid OFT source endpoint id.
+     * @param _spokePool SpokePool address.
+     * @param _signer SpokePool quote signer.
+     * @param _wrappedNativeToken Wrapped native token used for native SpokePool deposits.
+     */
     constructor(
         address _srcPeriphery,
         uint32 _sourceDomain,
@@ -31,21 +49,30 @@ contract CounterfactualDepositMultiBridge is
 
     receive() external payable {}
 
-    function computeCCTPRouteLeaf(bytes32 sharedParamsHash, CCTPRoute memory route) public pure returns (bytes32) {
-        return keccak256(abi.encode(BRIDGE_TYPE_CCTP, sharedParamsHash, _cctpRouteHash(route)));
+    /**
+     * @notice Computes CCTP route leaf hash for merkle proofs.
+     */
+    function computeCCTPRouteLeaf(CCTPRoute memory route) public pure returns (bytes32) {
+        return keccak256(abi.encode(uint8(BridgeType.CCTP), _cctpRouteHash(route)));
     }
 
-    function computeOFTRouteLeaf(bytes32 sharedParamsHash, OFTRoute memory route) public pure returns (bytes32) {
-        return keccak256(abi.encode(BRIDGE_TYPE_OFT, sharedParamsHash, _oftRouteHash(route)));
+    /**
+     * @notice Computes OFT route leaf hash for merkle proofs.
+     */
+    function computeOFTRouteLeaf(OFTRoute memory route) public pure returns (bytes32) {
+        return keccak256(abi.encode(uint8(BridgeType.OFT), _oftRouteHash(route)));
     }
 
-    function computeSpokePoolRouteLeaf(
-        bytes32 sharedParamsHash,
-        SpokePoolRoute memory route
-    ) public pure returns (bytes32) {
-        return keccak256(abi.encode(BRIDGE_TYPE_SPOKE_POOL, sharedParamsHash, _spokePoolRouteHash(route)));
+    /**
+     * @notice Computes SpokePool route leaf hash for merkle proofs.
+     */
+    function computeSpokePoolRouteLeaf(SpokePoolRoute memory route) public pure returns (bytes32) {
+        return keccak256(abi.encode(uint8(BridgeType.SPOKE_POOL), _spokePoolRouteHash(route)));
     }
 
+    /**
+     * @notice Executes a CCTP route if it is authorized by the clone's routes merkle root.
+     */
     function executeCCTP(
         CounterfactualDepositGlobalConfig memory globalConfig,
         CCTPRoute memory route,
@@ -56,10 +83,13 @@ contract CounterfactualDepositMultiBridge is
         bytes calldata signature,
         bytes32[] calldata proof
     ) external verifyParamsHash(keccak256(abi.encode(globalConfig))) {
-        _verifyRoute(globalConfig, computeCCTPRouteLeaf(globalConfig.sharedParamsHash, route), proof);
+        _verifyRoute(globalConfig, computeCCTPRouteLeaf(route), proof);
         _executeCCTPRoute(route, amount, executionFeeRecipient, nonce, cctpDeadline, signature);
     }
 
+    /**
+     * @notice Executes an OFT route if it is authorized by the clone's routes merkle root.
+     */
     function executeOFT(
         CounterfactualDepositGlobalConfig memory globalConfig,
         OFTRoute memory route,
@@ -70,10 +100,13 @@ contract CounterfactualDepositMultiBridge is
         bytes calldata signature,
         bytes32[] calldata proof
     ) external payable verifyParamsHash(keccak256(abi.encode(globalConfig))) {
-        _verifyRoute(globalConfig, computeOFTRouteLeaf(globalConfig.sharedParamsHash, route), proof);
+        _verifyRoute(globalConfig, computeOFTRouteLeaf(route), proof);
         _executeOFTRoute(route, amount, executionFeeRecipient, nonce, oftDeadline, signature);
     }
 
+    /**
+     * @notice Executes a SpokePool route if it is authorized by the clone's routes merkle root.
+     */
     function executeSpokePool(
         CounterfactualDepositGlobalConfig memory globalConfig,
         SpokePoolRoute memory route,
@@ -88,7 +121,7 @@ contract CounterfactualDepositMultiBridge is
         bytes calldata signature,
         bytes32[] calldata proof
     ) external verifyParamsHash(keccak256(abi.encode(globalConfig))) {
-        _verifyRoute(globalConfig, computeSpokePoolRouteLeaf(globalConfig.sharedParamsHash, route), proof);
+        _verifyRoute(globalConfig, computeSpokePoolRouteLeaf(route), proof);
         _executeSpokePoolRoute(
             route,
             inputAmount,

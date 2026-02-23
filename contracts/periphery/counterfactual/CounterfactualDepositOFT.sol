@@ -6,10 +6,12 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
+/// @notice Minimal source periphery interface used by this module.
 interface ISponsoredOFTSrcPeriphery {
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
 }
 
+/// @notice OFT fields forwarded into SponsoredOFT quotes.
 struct OFTDepositParams {
     uint32 dstEid;
     bytes32 destinationHandler;
@@ -28,11 +30,16 @@ struct OFTDepositParams {
     bytes actionData;
 }
 
+/// @notice OFT route leaf payload committed into the routes merkle tree.
 struct OFTRoute {
     OFTDepositParams depositParams;
     uint256 executionFee;
 }
 
+/**
+ * @title CounterfactualDepositOFTModule
+ * @notice OFT execution module used by the unified counterfactual implementation.
+ */
 abstract contract CounterfactualDepositOFTModule is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
@@ -46,10 +53,16 @@ abstract contract CounterfactualDepositOFTModule is CounterfactualDepositBase {
         srcEid = _srcEid;
     }
 
+    /**
+     * @dev Hashes OFT route params into a merkle leaf payload component.
+     */
     function _oftRouteHash(OFTRoute memory route) internal pure returns (bytes32) {
         return keccak256(abi.encode(route));
     }
 
+    /**
+     * @dev Executes an OFT deposit route after outer merkle proof validation.
+     */
     function _executeOFTRoute(
         OFTRoute memory route,
         uint256 amount,

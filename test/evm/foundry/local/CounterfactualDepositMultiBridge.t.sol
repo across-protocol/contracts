@@ -98,8 +98,8 @@ contract CounterfactualDepositMultiBridgeTest is Test {
         );
     bytes32 internal constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    bytes32 internal constant NAME_HASH = keccak256("CounterfactualDepositMultiBridge");
-    bytes32 internal constant VERSION_HASH = keccak256("v1.0.0");
+    bytes32 internal constant NAME_HASH = keccak256("CFSpokePool");
+    bytes32 internal constant VERSION_HASH = keccak256("1");
 
     CounterfactualDepositFactory public factory;
     CounterfactualDepositMultiBridge public implementation;
@@ -114,8 +114,6 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     uint256 public signerKey;
     address public signer;
     address public weth;
-
-    bytes32 public sharedParamsHash;
 
     CCTPRoute internal cctpRoute;
     OFTRoute internal oftRoute;
@@ -144,8 +142,6 @@ contract CounterfactualDepositMultiBridgeTest is Test {
             signer,
             weth
         );
-
-        sharedParamsHash = keccak256("shared-params");
 
         cctpRoute = CCTPRoute({
             depositParams: CCTPDepositParams({
@@ -210,7 +206,6 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     function _globalConfig(bytes32 routesRoot) internal view returns (CounterfactualDepositGlobalConfig memory) {
         return
             CounterfactualDepositGlobalConfig({
-                sharedParamsHash: sharedParamsHash,
                 routesRoot: routesRoot,
                 userWithdrawAddress: user,
                 adminWithdrawAddress: admin
@@ -254,7 +249,7 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testPredictAddressAndExecuteCCTP() public {
-        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(sharedParamsHash, cctpRoute);
+        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(cctpRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(cctpLeaf);
         bytes32 paramsHash = keccak256(abi.encode(config));
         bytes32 salt = keccak256("salt-cctp");
@@ -279,7 +274,7 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testExecuteOFTWithProofAndValue() public {
-        bytes32 oftLeaf = implementation.computeOFTRouteLeaf(sharedParamsHash, oftRoute);
+        bytes32 oftLeaf = implementation.computeOFTRouteLeaf(oftRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(oftLeaf);
         bytes32 salt = keccak256("salt-oft");
         address depositAddress = factory.deploy(address(implementation), keccak256(abi.encode(config)), salt);
@@ -308,7 +303,7 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testExecuteSpokePoolWithProof() public {
-        bytes32 spokeLeaf = implementation.computeSpokePoolRouteLeaf(sharedParamsHash, spokePoolRoute);
+        bytes32 spokeLeaf = implementation.computeSpokePoolRouteLeaf(spokePoolRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(spokeLeaf);
         bytes32 salt = keccak256("salt-spoke");
         address depositAddress = factory.deploy(address(implementation), keccak256(abi.encode(config)), salt);
@@ -358,8 +353,8 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testSingleAddressCanExecuteMultipleRoutes() public {
-        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(sharedParamsHash, cctpRoute);
-        bytes32 oftLeaf = implementation.computeOFTRouteLeaf(sharedParamsHash, oftRoute);
+        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(cctpRoute);
+        bytes32 oftLeaf = implementation.computeOFTRouteLeaf(oftRoute);
         bytes32 root = _hashPair(cctpLeaf, oftLeaf);
 
         CounterfactualDepositGlobalConfig memory config = _globalConfig(root);
@@ -406,7 +401,7 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testInvalidRouteProofReverts() public {
-        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(sharedParamsHash, cctpRoute);
+        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(cctpRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(cctpLeaf);
         address depositAddress = factory.deploy(
             address(implementation),
@@ -429,7 +424,7 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testUserAndAdminWithdrawUseGlobalConfig() public {
-        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(sharedParamsHash, cctpRoute);
+        bytes32 cctpLeaf = implementation.computeCCTPRouteLeaf(cctpRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(cctpLeaf);
         address depositAddress = factory.deploy(
             address(implementation),
@@ -451,7 +446,7 @@ contract CounterfactualDepositMultiBridgeTest is Test {
     }
 
     function testSpokePoolInvalidSignatureReverts() public {
-        bytes32 spokeLeaf = implementation.computeSpokePoolRouteLeaf(sharedParamsHash, spokePoolRoute);
+        bytes32 spokeLeaf = implementation.computeSpokePoolRouteLeaf(spokePoolRoute);
         CounterfactualDepositGlobalConfig memory config = _globalConfig(spokeLeaf);
         address depositAddress = factory.deploy(
             address(implementation),

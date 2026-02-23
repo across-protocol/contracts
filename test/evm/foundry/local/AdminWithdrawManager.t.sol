@@ -54,7 +54,6 @@ contract AdminWithdrawManagerTest is Test {
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
 
         config = CounterfactualDepositGlobalConfig({
-            sharedParamsHash: keccak256("shared"),
             routesRoot: keccak256("root"),
             userWithdrawAddress: user,
             adminWithdrawAddress: address(manager)

@@ -6,10 +6,12 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
+/// @notice Minimal source periphery interface used by this module.
 interface ISponsoredCCTPSrcPeriphery {
     function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory signature) external;
 }
 
+/// @notice CCTP fields forwarded into SponsoredCCTP quotes.
 struct CCTPDepositParams {
     uint32 destinationDomain;
     bytes32 mintRecipient;
@@ -27,11 +29,16 @@ struct CCTPDepositParams {
     bytes actionData;
 }
 
+/// @notice CCTP route leaf payload committed into the routes merkle tree.
 struct CCTPRoute {
     CCTPDepositParams depositParams;
     uint256 executionFee;
 }
 
+/**
+ * @title CounterfactualDepositCCTPModule
+ * @notice CCTP execution module used by the unified counterfactual implementation.
+ */
 abstract contract CounterfactualDepositCCTPModule is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
@@ -45,10 +52,16 @@ abstract contract CounterfactualDepositCCTPModule is CounterfactualDepositBase {
         sourceDomain = _sourceDomain;
     }
 
+    /**
+     * @dev Hashes CCTP route params into a merkle leaf payload component.
+     */
     function _cctpRouteHash(CCTPRoute memory route) internal pure returns (bytes32) {
         return keccak256(abi.encode(route));
     }
 
+    /**
+     * @dev Executes a CCTP deposit route after outer merkle proof validation.
+     */
     function _executeCCTPRoute(
         CCTPRoute memory route,
         uint256 amount,

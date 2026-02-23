@@ -8,6 +8,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
+/// @notice SpokePool deposit fields committed into route leaves.
 struct SpokePoolDepositParams {
     uint256 destinationChainId;
     bytes32 inputToken;
@@ -16,6 +17,7 @@ struct SpokePoolDepositParams {
     bytes message;
 }
 
+/// @notice SpokePool execution constraints committed into route leaves.
 struct SpokePoolExecutionParams {
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
@@ -23,11 +25,17 @@ struct SpokePoolExecutionParams {
     uint256 executionFee;
 }
 
+/// @notice SpokePool route leaf payload committed into the routes merkle tree.
 struct SpokePoolRoute {
     SpokePoolDepositParams depositParams;
     SpokePoolExecutionParams executionParams;
 }
 
+/**
+ * @title CounterfactualDepositSpokePoolModule
+ * @notice SpokePool execution module used by the unified counterfactual implementation.
+ * @dev Keeps existing SpokePool-specific EIP-712 signing and fee bound semantics.
+ */
 abstract contract CounterfactualDepositSpokePoolModule is CounterfactualDepositBase, EIP712 {
     using SafeERC20 for IERC20;
 
@@ -51,20 +59,22 @@ abstract contract CounterfactualDepositSpokePoolModule is CounterfactualDepositB
     address public immutable signer;
     address public immutable wrappedNativeToken;
 
-    constructor(
-        address _spokePool,
-        address _signer,
-        address _wrappedNativeToken
-    ) EIP712("CounterfactualDepositMultiBridge", "v1.0.0") {
+    constructor(address _spokePool, address _signer, address _wrappedNativeToken) EIP712("CFSpokePool", "1") {
         spokePool = _spokePool;
         signer = _signer;
         wrappedNativeToken = _wrappedNativeToken;
     }
 
+    /**
+     * @dev Hashes SpokePool route params into a merkle leaf payload component.
+     */
     function _spokePoolRouteHash(SpokePoolRoute memory route) internal pure returns (bytes32) {
         return keccak256(abi.encode(route));
     }
 
+    /**
+     * @dev Executes a SpokePool deposit route after outer merkle proof validation.
+     */
     function _executeSpokePoolRoute(
         SpokePoolRoute memory route,
         uint256 inputAmount,
@@ -137,6 +147,9 @@ abstract contract CounterfactualDepositSpokePoolModule is CounterfactualDepositB
         );
     }
 
+    /**
+     * @dev Verifies signer authorization for SpokePool execution fields.
+     */
     function _verifySpokePoolSignature(
         uint256 inputAmount,
         uint256 outputAmount,
