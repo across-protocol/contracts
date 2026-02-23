@@ -334,8 +334,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         bytes memory depositParams = _encodedDepositParams();
-        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
-        bytes memory withdrawParams = abi.encode(wp);
+        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
@@ -364,16 +363,15 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         bytes memory depositParams = _encodedDepositParams();
-        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
-        bytes memory withdrawParams = abi.encode(wp);
+        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
         address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
-        bytes memory submitterData = abi.encode(address(burnToken), user, uint256(100e6));
+        bytes memory submitterData = abi.encode(address(burnToken), relayer, uint256(100e6));
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
-        vm.prank(user);
+        vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
             withdrawParams,
@@ -386,8 +384,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         bytes memory depositParams = _encodedDepositParams();
-        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: user, forcedRecipient: user });
-        bytes memory withdrawParams = abi.encode(wp);
+        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
@@ -416,8 +413,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         bytes memory depositParams = _encodedDepositParams();
-        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: user, forcedRecipient: user });
-        bytes memory withdrawParams = abi.encode(wp);
+        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
@@ -477,16 +473,14 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         bytes memory depositParams = _encodedDepositParams();
-        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
-        bytes memory withdrawParams = abi.encode(wp);
+        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
         address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
 
         // Use wrong withdraw params but correct proof
-        WithdrawParams memory wrongWp = WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) });
-        bytes memory wrongWithdrawParams = abi.encode(wrongWp);
+        bytes memory wrongWithdrawParams = abi.encode(WithdrawParams({ admin: relayer, user: user }));
 
         bytes memory submitterData = abi.encode(address(burnToken), admin, uint256(100e6));
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
@@ -620,42 +614,5 @@ contract CounterfactualDepositTest is Test {
         address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), merkleRoot, salt, execCalldata2);
         assertEq(deployed2, depositAddress, "Should return same address");
         assertEq(srcPeriphery.callCount(), 2, "Both deposits should execute");
-    }
-
-    function testWithdrawForcedRecipient() public {
-        bytes32 salt = keccak256("test-salt-forced");
-
-        bytes memory depositParams = _encodedDepositParams();
-        WithdrawParams memory wp = WithdrawParams({ authorizedCaller: admin, forcedRecipient: admin });
-        bytes memory withdrawParams = abi.encode(wp);
-
-        (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
-
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
-
-        burnToken.mint(depositAddress, 50e6);
-
-        // Trying to withdraw to a different recipient should revert
-        bytes memory badSubmitterData = abi.encode(address(burnToken), user, uint256(50e6));
-        vm.expectRevert(WithdrawImplementation.InvalidRecipient.selector);
-        vm.prank(admin);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            withdrawParams,
-            badSubmitterData,
-            withdrawProof
-        );
-
-        // Withdrawing to the forced recipient should succeed
-        bytes memory goodSubmitterData = abi.encode(address(burnToken), admin, uint256(50e6));
-        vm.prank(admin);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            withdrawParams,
-            goodSubmitterData,
-            withdrawProof
-        );
-
-        assertEq(burnToken.balanceOf(admin), 50e6, "Admin should receive withdrawn tokens");
     }
 }

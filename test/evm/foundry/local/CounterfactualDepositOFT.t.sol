@@ -70,8 +70,7 @@ contract CounterfactualOFTDepositTest is Test {
     bytes32 public finalRecipient;
 
     OFTDepositParams internal defaultDepositParams;
-    WithdrawParams internal userWithdrawParams;
-    WithdrawParams internal adminWithdrawParams;
+    WithdrawParams internal withdrawParamsVal;
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -109,23 +108,22 @@ contract CounterfactualOFTDepositTest is Test {
             executionFee: 1e6
         });
 
-        userWithdrawParams = WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) });
-        adminWithdrawParams = WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) });
+        withdrawParamsVal = WithdrawParams({ admin: admin, user: user });
     }
 
-    // ─── Merkle helpers ───────────────────────────────────────────────
+    // --- Merkle helpers ---
 
     function _leaf(address impl, bytes memory params) internal pure returns (bytes32) {
         return keccak256(abi.encode(impl, keccak256(params)));
     }
 
-    /// @dev Build a 4-leaf merkle tree: [OFT deposit, user withdraw, admin withdraw, padding].
+    /// @dev Build a 4-leaf merkle tree: [OFT deposit, withdraw, padding-a, padding-b].
     function _defaultLeaves() internal view returns (bytes32[] memory leaves) {
         leaves = new bytes32[](4);
         leaves[0] = _leaf(address(oftImpl), abi.encode(defaultDepositParams));
-        leaves[1] = _leaf(address(withdrawImpl), abi.encode(userWithdrawParams));
-        leaves[2] = _leaf(address(withdrawImpl), abi.encode(adminWithdrawParams));
-        leaves[3] = keccak256("padding");
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(withdrawParamsVal));
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
     }
 
     function _merkleRoot() internal view returns (bytes32) {
@@ -136,12 +134,8 @@ contract CounterfactualOFTDepositTest is Test {
         return merkle.getProof(_defaultLeaves(), 0);
     }
 
-    function _userWithdrawProof() internal view returns (bytes32[] memory) {
+    function _withdrawProof() internal view returns (bytes32[] memory) {
         return merkle.getProof(_defaultLeaves(), 1);
-    }
-
-    function _adminWithdrawProof() internal view returns (bytes32[] memory) {
-        return merkle.getProof(_defaultLeaves(), 2);
     }
 
     function _encodeDepositSubmitterData(
@@ -162,7 +156,7 @@ contract CounterfactualOFTDepositTest is Test {
         return abi.encode(tokenAddr, to, amount);
     }
 
-    // ─── Tests ────────────────────────────────────────────────────────
+    // --- Tests ---
 
     function testPredictDepositAddress() public {
         bytes32 salt = keccak256("test-salt");
@@ -367,7 +361,7 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
-        bytes32[] memory proof = _userWithdrawProof();
+        bytes32[] memory proof = _withdrawProof();
 
         vm.prank(user);
         token.transfer(depositAddress, 100e6);
@@ -378,7 +372,7 @@ contract CounterfactualOFTDepositTest is Test {
         vm.prank(user);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            abi.encode(userWithdrawParams),
+            abi.encode(withdrawParamsVal),
             _encodeWithdrawSubmitterData(address(token), user, 100e6),
             proof
         );
@@ -390,13 +384,13 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
-        bytes32[] memory proof = _userWithdrawProof();
+        bytes32[] memory proof = _withdrawProof();
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
         vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            abi.encode(userWithdrawParams),
+            abi.encode(withdrawParamsVal),
             _encodeWithdrawSubmitterData(address(token), relayer, 100e6),
             proof
         );
@@ -406,7 +400,7 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
-        bytes32[] memory proof = _adminWithdrawProof();
+        bytes32[] memory proof = _withdrawProof();
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
@@ -417,7 +411,7 @@ contract CounterfactualOFTDepositTest is Test {
         vm.prank(admin);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            abi.encode(adminWithdrawParams),
+            abi.encode(withdrawParamsVal),
             _encodeWithdrawSubmitterData(address(wrongToken), admin, 100e18),
             proof
         );
@@ -429,14 +423,14 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
-        bytes32[] memory proof = _adminWithdrawProof();
+        bytes32[] memory proof = _withdrawProof();
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
-        vm.prank(user);
+        vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            abi.encode(adminWithdrawParams),
-            _encodeWithdrawSubmitterData(address(token), user, 100e6),
+            abi.encode(withdrawParamsVal),
+            _encodeWithdrawSubmitterData(address(token), relayer, 100e6),
             proof
         );
     }
@@ -448,9 +442,9 @@ contract CounterfactualOFTDepositTest is Test {
         // Build a new merkle tree with the zero-fee deposit params.
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _leaf(address(oftImpl), abi.encode(zeroFeeParams));
-        leaves[1] = _leaf(address(withdrawImpl), abi.encode(userWithdrawParams));
-        leaves[2] = _leaf(address(withdrawImpl), abi.encode(adminWithdrawParams));
-        leaves[3] = keccak256("padding");
+        leaves[1] = _leaf(address(withdrawImpl), abi.encode(withdrawParamsVal));
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
         bytes32 root = merkle.getRoot(leaves);
         bytes32[] memory proof = merkle.getProof(leaves, 0);
 
@@ -501,14 +495,14 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
-        bytes32[] memory proof = _userWithdrawProof();
+        bytes32[] memory proof = _withdrawProof();
 
         // Use the withdraw proof but with the OFT implementation address -- proof won't match.
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         vm.prank(user);
         ICounterfactualDeposit(depositAddress).execute(
             address(oftImpl),
-            abi.encode(userWithdrawParams),
+            abi.encode(withdrawParamsVal),
             _encodeWithdrawSubmitterData(address(token), user, 100e6),
             proof
         );

@@ -154,14 +154,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes memory depositParamsEncoded,
         bytes32 salt
     ) internal returns (address clone, bytes32[] memory depositProof) {
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         depositProof = merkle.getProof(leaves, 0);
@@ -172,14 +171,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes memory depositParamsEncoded,
         bytes32 salt
     ) internal returns (address predicted, bytes32 root, bytes32[] memory depositProof) {
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         root = merkle.getRoot(leaves);
         depositProof = merkle.getProof(leaves, 0);
@@ -255,14 +253,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testPredictDepositAddress() public {
         bytes memory paramsEncoded = abi.encode(defaultParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), paramsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         bytes32 salt = keccak256("test-salt");
@@ -593,14 +590,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testUserWithdraw() public {
         bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         bytes32 salt = keccak256("test-salt");
@@ -616,7 +612,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.prank(user);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            userWp,
+            wp,
             abi.encode(address(inputToken), user, 100e6),
             userProof
         );
@@ -626,14 +622,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testUserWithdrawUnauthorized() public {
         bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
@@ -643,7 +638,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            userWp,
+            wp,
             abi.encode(address(inputToken), relayer, 100e6),
             userProof
         );
@@ -651,18 +646,17 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testAdminWithdraw() public {
         bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-        bytes32[] memory adminProof = merkle.getProof(leaves, 2);
+        bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
@@ -673,9 +667,9 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.prank(admin);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            adminWp,
+            wp,
             abi.encode(address(wrongToken), admin, 100e18),
-            adminProof
+            withdrawProof
         );
 
         assertEq(wrongToken.balanceOf(admin), 100e18);
@@ -683,26 +677,25 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testAdminWithdrawUnauthorized() public {
         bytes memory depositParamsEncoded = abi.encode(defaultParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-        bytes32[] memory adminProof = merkle.getProof(leaves, 2);
+        bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
-        vm.prank(user);
+        vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            adminWp,
-            abi.encode(address(inputToken), user, 100e6),
-            adminProof
+            wp,
+            abi.encode(address(inputToken), relayer, 100e6),
+            withdrawProof
         );
     }
 
@@ -981,14 +974,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testNativeUserWithdraw() public {
         bytes memory nativeParamsEncoded = abi.encode(nativeParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), nativeParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-user-withdraw"));
@@ -1004,7 +996,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.prank(user);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            userWp,
+            wp,
             abi.encode(NATIVE_ASSET, user, 1 ether),
             userProof
         );
@@ -1015,18 +1007,17 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testNativeAdminWithdraw() public {
         bytes memory nativeParamsEncoded = abi.encode(nativeParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](4);
         leaves[0] = _computeLeaf(address(spokePoolImpl), nativeParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[3] = keccak256("padding");
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
         address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-admin-withdraw"));
-        bytes32[] memory adminProof = merkle.getProof(leaves, 2);
+        bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
 
         vm.deal(depositAddress, 1 ether);
 
@@ -1038,9 +1029,9 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.prank(admin);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            adminWp,
+            wp,
             abi.encode(NATIVE_ASSET, admin, 1 ether),
-            adminProof
+            withdrawProof
         );
 
         assertEq(admin.balance - adminBalBefore, 1 ether);
@@ -1048,11 +1039,11 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testNativeReceiveAfterDeployment() public {
         bytes memory nativeParamsEncoded = abi.encode(nativeParams);
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = _computeLeaf(address(spokePoolImpl), nativeParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWp);
+        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
 
         bytes32 root = merkle.getRoot(leaves);
         address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-receive"));

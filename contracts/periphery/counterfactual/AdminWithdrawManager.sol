@@ -5,13 +5,14 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+import { WithdrawParams } from "./WithdrawImplementation.sol";
 
 /**
  * @title AdminWithdrawManager
  * @notice Manages admin withdrawals from counterfactual deposit clones via two paths:
  *         1. Direct withdraw — trusted `directWithdrawer` calls clone.execute() with arbitrary submitterData
  *         2. Signed withdraw — anyone can trigger with a `signer` signature; recipient is forced to the user
- * @dev Set this contract's address as `authorizedCaller` in withdrawal merkle leaves.
+ * @dev Set this contract's address as `admin` in withdrawal merkle leaves.
  */
 contract AdminWithdrawManager is Ownable, EIP712 {
     event DirectWithdrawerUpdated(address indexed directWithdrawer);
@@ -41,7 +42,7 @@ contract AdminWithdrawManager is Ownable, EIP712 {
      * @dev Only callable by `directWithdrawer`. Caller provides all merkle proof data.
      * @param depositAddress Address of the deployed clone.
      * @param implementation WithdrawImplementation address (merkle leaf implementation).
-     * @param params ABI-encoded WithdrawParams (authorizedCaller must be this contract).
+     * @param params ABI-encoded WithdrawParams (admin must be this contract).
      * @param submitterData ABI-encoded (token, to, amount) for the withdrawal.
      * @param proof Merkle proof for the withdrawal leaf.
      */
@@ -58,13 +59,11 @@ contract AdminWithdrawManager is Ownable, EIP712 {
 
     /**
      * @notice Signed withdraw to user — anyone can trigger with a valid signature from `signer`.
-     * @dev The `submitterData` must encode `(token, forcedRecipient, amount)` where forcedRecipient matches
-     *      the WithdrawParams.forcedRecipient committed in the merkle leaf.
+     * @dev Recipient is forced to the `user` address committed in the merkle leaf's WithdrawParams.
      * @param depositAddress Address of the deployed clone.
      * @param implementation WithdrawImplementation address (merkle leaf implementation).
-     * @param params ABI-encoded WithdrawParams (authorizedCaller = this, forcedRecipient = user).
+     * @param params ABI-encoded WithdrawParams (admin = this, user = recipient).
      * @param token Token to withdraw.
-     * @param to Recipient (must match forcedRecipient in params).
      * @param amount Amount to withdraw.
      * @param proof Merkle proof for the withdrawal leaf.
      * @param deadline Timestamp after which the signature is no longer valid.
@@ -75,7 +74,6 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         address implementation,
         bytes calldata params,
         address token,
-        address to,
         uint256 amount,
         bytes32[] calldata proof,
         uint256 deadline,
@@ -86,6 +84,7 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         bytes32 structHash = keccak256(abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, token, amount, deadline));
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
 
+        address to = abi.decode(params, (WithdrawParams)).user;
         ICounterfactualDeposit(depositAddress).execute(implementation, params, abi.encode(token, to, amount), proof);
     }
 

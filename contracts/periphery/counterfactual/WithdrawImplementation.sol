@@ -7,12 +7,12 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
 
 /**
  * @notice Withdrawal parameters committed to in the merkle leaf.
- * @param authorizedCaller Address authorized to execute this withdrawal leaf.
- * @param forcedRecipient If non-zero, the withdrawal must go to this address. If zero, any recipient is allowed.
+ * @param admin Admin address authorized to execute this withdrawal leaf.
+ * @param user User address authorized to execute this withdrawal leaf.
  */
 struct WithdrawParams {
-    address authorizedCaller;
-    address forcedRecipient;
+    address admin;
+    address user;
 }
 
 /**
@@ -30,7 +30,6 @@ contract WithdrawImplementation is ICounterfactualImplementation {
     event Withdraw(address indexed token, address indexed to, uint256 amount);
 
     error Unauthorized();
-    error InvalidRecipient();
     error NativeTransferFailed();
 
     /// @inheritdoc ICounterfactualImplementation
@@ -38,8 +37,7 @@ contract WithdrawImplementation is ICounterfactualImplementation {
         WithdrawParams memory wp = abi.decode(params, (WithdrawParams));
         (address token, address to, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
 
-        if (msg.sender != wp.authorizedCaller) revert Unauthorized();
-        if (wp.forcedRecipient != address(0) && to != wp.forcedRecipient) revert InvalidRecipient();
+        if (msg.sender != wp.admin && msg.sender != wp.user) revert Unauthorized();
 
         if (token == NATIVE_ASSET) {
             (bool success, ) = to.call{ value: amount }("");

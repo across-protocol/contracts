@@ -27,15 +27,9 @@ contract AdminWithdrawManagerTest is Test {
 
     address public depositAddress;
 
-    // Withdraw params for the merkle leaves
-    bytes internal directWithdrawParams; // manager as caller, any recipient
-    bytes internal signedWithdrawParams; // manager as caller, forced to user
-    bytes internal userWithdrawParams; // user as caller, any recipient
-
-    // Proofs
-    bytes32[] internal directProof;
-    bytes32[] internal signedProof;
-    bytes32[] internal userProof;
+    // Single withdraw leaf: admin = manager, user = user
+    bytes internal withdrawParams;
+    bytes32[] internal withdrawProof;
 
     // EIP-712 constants for AdminWithdrawManager
     bytes32 constant SIGNED_WITHDRAW_TYPEHASH =
@@ -59,25 +53,15 @@ contract AdminWithdrawManagerTest is Test {
         withdrawImpl = new WithdrawImplementation();
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
 
-        // Build merkle tree with three withdraw leaves
-        directWithdrawParams = abi.encode(
-            WithdrawParams({ authorizedCaller: address(manager), forcedRecipient: address(0) })
-        );
-        signedWithdrawParams = abi.encode(
-            WithdrawParams({ authorizedCaller: address(manager), forcedRecipient: user })
-        );
-        userWithdrawParams = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+        // Build merkle tree with one withdraw leaf
+        withdrawParams = abi.encode(WithdrawParams({ admin: address(manager), user: user }));
 
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(withdrawImpl), directWithdrawParams);
-        leaves[1] = _computeLeaf(address(withdrawImpl), signedWithdrawParams);
-        leaves[2] = _computeLeaf(address(withdrawImpl), userWithdrawParams);
-        leaves[3] = keccak256("padding");
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _computeLeaf(address(withdrawImpl), withdrawParams);
+        leaves[1] = keccak256("padding");
 
         bytes32 root = merkle.getRoot(leaves);
-        directProof = merkle.getProof(leaves, 0);
-        signedProof = merkle.getProof(leaves, 1);
-        userProof = merkle.getProof(leaves, 2);
+        withdrawProof = merkle.getProof(leaves, 0);
 
         depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
 
@@ -128,9 +112,9 @@ contract AdminWithdrawManagerTest is Test {
         manager.directWithdraw(
             depositAddress,
             address(withdrawImpl),
-            directWithdrawParams,
+            withdrawParams,
             abi.encode(address(token), recipient, 50e6),
-            directProof
+            withdrawProof
         );
 
         assertEq(token.balanceOf(recipient), 50e6);
@@ -142,9 +126,9 @@ contract AdminWithdrawManagerTest is Test {
         manager.directWithdraw(
             depositAddress,
             address(withdrawImpl),
-            directWithdrawParams,
+            withdrawParams,
             abi.encode(address(token), user, 50e6),
-            directProof
+            withdrawProof
         );
     }
 
@@ -161,11 +145,10 @@ contract AdminWithdrawManagerTest is Test {
         manager.signedWithdrawToUser(
             depositAddress,
             address(withdrawImpl),
-            signedWithdrawParams,
+            withdrawParams,
             address(token),
-            user,
             amount,
-            signedProof,
+            withdrawProof,
             deadline,
             sig
         );
@@ -190,11 +173,10 @@ contract AdminWithdrawManagerTest is Test {
         manager.signedWithdrawToUser(
             depositAddress,
             address(withdrawImpl),
-            signedWithdrawParams,
+            withdrawParams,
             address(token),
-            user,
             amount,
-            signedProof,
+            withdrawProof,
             deadline,
             badSig
         );
@@ -211,31 +193,10 @@ contract AdminWithdrawManagerTest is Test {
         manager.signedWithdrawToUser(
             depositAddress,
             address(withdrawImpl),
-            signedWithdrawParams,
+            withdrawParams,
             address(token),
-            user,
             amount,
-            signedProof,
-            deadline,
-            sig
-        );
-    }
-
-    function testSignedWithdrawWrongRecipientReverts() public {
-        uint256 amount = 50e6;
-        uint256 deadline = block.timestamp + 3600;
-        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, deadline);
-
-        // Try sending to admin instead of forced user
-        vm.expectRevert(WithdrawImplementation.InvalidRecipient.selector);
-        manager.signedWithdrawToUser(
-            depositAddress,
-            address(withdrawImpl),
-            signedWithdrawParams,
-            address(token),
-            makeAddr("notUser"), // wrong recipient, forcedRecipient is user
-            amount,
-            signedProof,
+            withdrawProof,
             deadline,
             sig
         );
@@ -286,9 +247,9 @@ contract AdminWithdrawManagerTest is Test {
         vm.prank(user);
         ICounterfactualDeposit(depositAddress).execute(
             address(withdrawImpl),
-            userWithdrawParams,
+            withdrawParams,
             abi.encode(address(token), user, 50e6),
-            userProof
+            withdrawProof
         );
 
         assertEq(token.balanceOf(user), 50e6);

@@ -178,24 +178,16 @@ contract CounterfactualDepositTest is Test {
         ICounterfactualDeposit(clone).execute(address(revertImpl), params3, "", proof2);
     }
 
-    // --- Typical merkle tree: deposit + withdrawals ---
+    // --- Typical merkle tree: deposit + withdrawal ---
 
     function testTypicalMerkleTree() public {
-        // Simulate a typical tree with deposit (mock) + user withdraw + admin withdraw
+        // Simulate a typical tree with deposit (mock) + single withdraw leaf
         bytes memory depositParams = abi.encode(uint256(42));
-        bytes memory userWithdrawParams = abi.encode(
-            WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) })
-        );
-        bytes memory adminWithdrawParams = abi.encode(
-            WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) })
-        );
-        bytes memory adminToUserParams = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: user }));
+        bytes memory withdrawParams = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
-        bytes32[] memory leaves = new bytes32[](4);
+        bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = _computeLeaf(address(mockImpl), depositParams);
-        leaves[1] = _computeLeaf(address(withdrawImpl), userWithdrawParams);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminWithdrawParams);
-        leaves[3] = _computeLeaf(address(withdrawImpl), adminToUserParams);
+        leaves[1] = _computeLeaf(address(withdrawImpl), withdrawParams);
 
         bytes32 root = merkle.getRoot(leaves);
         address clone = _deployClone(root, keccak256("typical"));
@@ -208,22 +200,21 @@ contract CounterfactualDepositTest is Test {
         vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
-            userWithdrawParams,
+            withdrawParams,
             abi.encode(address(token), user, 50e6),
             userProof
         );
         assertEq(token.balanceOf(user), 50e6);
 
-        // Admin withdraw to user (forced recipient)
-        bytes32[] memory adminToUserProof = merkle.getProof(leaves, 3);
+        // Admin withdraw (same leaf, same proof)
         vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
-            adminToUserParams,
-            abi.encode(address(token), user, 50e6),
-            adminToUserProof
+            withdrawParams,
+            abi.encode(address(token), admin, 50e6),
+            userProof
         );
-        assertEq(token.balanceOf(user), 100e6);
+        assertEq(token.balanceOf(admin), 50e6);
         assertEq(token.balanceOf(clone), 0);
     }
 

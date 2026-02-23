@@ -51,8 +51,8 @@ contract WithdrawImplementationTest is Test {
 
     // --- ERC20 withdraw tests ---
 
-    function testERC20Withdraw() public {
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+    function testERC20WithdrawByUser() public {
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
         (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
         token.mint(clone, 100e6);
@@ -72,9 +72,28 @@ contract WithdrawImplementationTest is Test {
         assertEq(token.balanceOf(clone), 0);
     }
 
+    function testERC20WithdrawByAdmin() public {
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
+        (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
+
+        token.mint(clone, 100e6);
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawImplementation.Withdraw(address(token), admin, 100e6);
+
+        vm.prank(admin);
+        ICounterfactualDeposit(clone).execute(
+            address(withdrawImpl),
+            wp,
+            abi.encode(address(token), admin, 100e6),
+            proof
+        );
+
+        assertEq(token.balanceOf(admin), 100e6);
+    }
+
     function testERC20WithdrawToOtherRecipient() public {
-        // forcedRecipient == address(0), so any recipient is allowed
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
         (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
         token.mint(clone, 100e6);
@@ -91,13 +110,13 @@ contract WithdrawImplementationTest is Test {
     }
 
     function testUnauthorizedCallerReverts() public {
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
         (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
         token.mint(clone, 100e6);
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
-        vm.prank(relayer); // not the authorized caller
+        vm.prank(relayer); // not admin or user
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
             wp,
@@ -106,35 +125,8 @@ contract WithdrawImplementationTest is Test {
         );
     }
 
-    function testForcedRecipientEnforced() public {
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: user }));
-        (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
-
-        token.mint(clone, 100e6);
-
-        // Trying to send to admin instead of forced user recipient
-        vm.expectRevert(WithdrawImplementation.InvalidRecipient.selector);
-        vm.prank(admin);
-        ICounterfactualDeposit(clone).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(address(token), admin, 100e6), // wrong recipient
-            proof
-        );
-
-        // Correct recipient works
-        vm.prank(admin);
-        ICounterfactualDeposit(clone).execute(
-            address(withdrawImpl),
-            wp,
-            abi.encode(address(token), user, 100e6),
-            proof
-        );
-        assertEq(token.balanceOf(user), 100e6);
-    }
-
     function testPartialWithdraw() public {
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
         (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
         token.mint(clone, 100e6);
@@ -155,7 +147,7 @@ contract WithdrawImplementationTest is Test {
     // --- Native ETH withdraw tests ---
 
     function testNativeETHWithdraw() public {
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
         (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
         vm.deal(clone, 1 ether);
@@ -177,74 +169,52 @@ contract WithdrawImplementationTest is Test {
         assertEq(clone.balance, 0);
     }
 
-    function testNativeETHWithdrawForcedRecipient() public {
-        bytes memory wp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: user }));
+    function testNativeETHWithdrawByAdmin() public {
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
         (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
         vm.deal(clone, 1 ether);
 
-        uint256 userBalBefore = user.balance;
+        uint256 adminBalBefore = admin.balance;
 
         vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
             wp,
-            abi.encode(NATIVE_ASSET, user, 1 ether),
+            abi.encode(NATIVE_ASSET, admin, 1 ether),
             proof
         );
 
-        assertEq(user.balance - userBalBefore, 1 ether);
+        assertEq(admin.balance - adminBalBefore, 1 ether);
     }
 
-    // --- Multi-leaf withdraw tree ---
+    // --- Single-leaf withdraw tree (both callers share one leaf) ---
 
-    function testMultipleWithdrawLeaves() public {
-        bytes memory userWp = abi.encode(WithdrawParams({ authorizedCaller: user, forcedRecipient: address(0) }));
-        bytes memory adminWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: address(0) }));
-        bytes memory adminToUserWp = abi.encode(WithdrawParams({ authorizedCaller: admin, forcedRecipient: user }));
+    function testBothCallersShareOneLeaf() public {
+        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
+        (address clone, bytes32[] memory proof) = _deployCloneWithWithdrawLeaf(wp);
 
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(withdrawImpl), userWp);
-        leaves[1] = _computeLeaf(address(withdrawImpl), adminWp);
-        leaves[2] = _computeLeaf(address(withdrawImpl), adminToUserWp);
-        leaves[3] = keccak256("padding");
-
-        bytes32 root = merkle.getRoot(leaves);
-        address clone = factory.deploy(address(dispatcher), root, keccak256("multi-withdraw"));
-
-        token.mint(clone, 300e6);
+        token.mint(clone, 200e6);
 
         // User withdraws 100
-        bytes32[] memory proof0 = merkle.getProof(leaves, 0);
         vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
-            userWp,
+            wp,
             abi.encode(address(token), user, 100e6),
-            proof0
+            proof
         );
 
-        // Admin withdraws 100 to themselves
-        bytes32[] memory proof1 = merkle.getProof(leaves, 1);
+        // Admin withdraws 100
         vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
-            adminWp,
+            wp,
             abi.encode(address(token), admin, 100e6),
-            proof1
+            proof
         );
 
-        // Admin withdraws 100 to user (forced)
-        bytes32[] memory proof2 = merkle.getProof(leaves, 2);
-        vm.prank(admin);
-        ICounterfactualDeposit(clone).execute(
-            address(withdrawImpl),
-            adminToUserWp,
-            abi.encode(address(token), user, 100e6),
-            proof2
-        );
-
-        assertEq(token.balanceOf(user), 200e6);
+        assertEq(token.balanceOf(user), 100e6);
         assertEq(token.balanceOf(admin), 100e6);
         assertEq(token.balanceOf(clone), 0);
     }
