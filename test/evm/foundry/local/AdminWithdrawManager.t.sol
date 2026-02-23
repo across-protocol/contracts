@@ -60,6 +60,7 @@ contract AdminWithdrawManagerTest is Test {
         defaultParams = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: address(manager),
+            executionFee: 0,
             spokePoolRouteHash: bytes32(0),
             cctpRouteHash: bytes32(0),
             oftRouteHash: bytes32(0)

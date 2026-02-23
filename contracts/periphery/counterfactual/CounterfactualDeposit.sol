@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import { CounterfactualDepositSpokePool, SpokePoolImmutables } from "./CounterfactualDepositSpokePool.sol";
-import { CounterfactualDepositCCTP, CCTPImmutables } from "./CounterfactualDepositCCTP.sol";
-import { CounterfactualDepositOFT, OFTImmutables } from "./CounterfactualDepositOFT.sol";
+import { CounterfactualDepositCCTP, CCTPDepositParams } from "./CounterfactualDepositCCTP.sol";
+import { CounterfactualDepositOFT, OFTDepositParams } from "./CounterfactualDepositOFT.sol";
 import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 
 /**
@@ -14,9 +14,10 @@ import { CounterfactualDepositBase } from "./CounterfactualDepositBase.sol";
 struct CounterfactualDepositParams {
     address userWithdrawAddress;
     address adminWithdrawAddress;
+    uint256 executionFee;
     bytes32 spokePoolRouteHash; // keccak256(abi.encode(SpokePoolImmutables)) or bytes32(0)
-    bytes32 cctpRouteHash; // keccak256(abi.encode(CCTPImmutables)) or bytes32(0)
-    bytes32 oftRouteHash; // keccak256(abi.encode(OFTImmutables)) or bytes32(0)
+    bytes32 cctpRouteHash; // keccak256(abi.encode(CCTPDepositParams)) or bytes32(0)
+    bytes32 oftRouteHash; // keccak256(abi.encode(OFTDepositParams)) or bytes32(0)
 }
 
 /**
@@ -68,13 +69,14 @@ contract CounterfactualDeposit is CounterfactualDepositSpokePool, Counterfactual
             quoteTimestamp,
             fillDeadline,
             signatureDeadline,
-            signature
+            signature,
+            params.executionFee
         );
     }
 
     function executeCCTPDeposit(
         CounterfactualDepositParams memory params,
-        CCTPImmutables memory routeParams,
+        CCTPDepositParams memory routeParams,
         uint256 amount,
         address executionFeeRecipient,
         bytes32 nonce,
@@ -83,12 +85,20 @@ contract CounterfactualDeposit is CounterfactualDepositSpokePool, Counterfactual
     ) external verifyParamsHash(keccak256(abi.encode(params))) {
         if (params.cctpRouteHash == bytes32(0)) revert RouteDisabled();
         if (keccak256(abi.encode(routeParams)) != params.cctpRouteHash) revert InvalidRouteHash();
-        _executeCCTPDeposit(routeParams, amount, executionFeeRecipient, nonce, cctpDeadline, signature);
+        _executeCCTPDeposit(
+            routeParams,
+            amount,
+            executionFeeRecipient,
+            nonce,
+            cctpDeadline,
+            signature,
+            params.executionFee
+        );
     }
 
     function executeOFTDeposit(
         CounterfactualDepositParams memory params,
-        OFTImmutables memory routeParams,
+        OFTDepositParams memory routeParams,
         uint256 amount,
         address executionFeeRecipient,
         bytes32 nonce,
@@ -97,32 +107,26 @@ contract CounterfactualDeposit is CounterfactualDepositSpokePool, Counterfactual
     ) external payable verifyParamsHash(keccak256(abi.encode(params))) {
         if (params.oftRouteHash == bytes32(0)) revert RouteDisabled();
         if (keccak256(abi.encode(routeParams)) != params.oftRouteHash) revert InvalidRouteHash();
-        _executeOFTDeposit(routeParams, amount, executionFeeRecipient, nonce, oftDeadline, signature);
+        _executeOFTDeposit(
+            routeParams,
+            amount,
+            executionFeeRecipient,
+            nonce,
+            oftDeadline,
+            signature,
+            params.executionFee
+        );
     }
 
     // ─── Withdraw address resolution (unified params) ─────────────────
 
     /// @inheritdoc CounterfactualDepositBase
-    function _getUserWithdrawAddress(
-        bytes calldata params
-    )
-        internal
-        pure
-        override(CounterfactualDepositSpokePool, CounterfactualDepositCCTP, CounterfactualDepositOFT)
-        returns (address)
-    {
+    function _getUserWithdrawAddress(bytes calldata params) internal pure override returns (address) {
         return abi.decode(params, (CounterfactualDepositParams)).userWithdrawAddress;
     }
 
     /// @inheritdoc CounterfactualDepositBase
-    function _getAdminWithdrawAddress(
-        bytes calldata params
-    )
-        internal
-        pure
-        override(CounterfactualDepositSpokePool, CounterfactualDepositCCTP, CounterfactualDepositOFT)
-        returns (address)
-    {
+    function _getAdminWithdrawAddress(bytes calldata params) internal pure override returns (address) {
         return abi.decode(params, (CounterfactualDepositParams)).adminWithdrawAddress;
     }
 }

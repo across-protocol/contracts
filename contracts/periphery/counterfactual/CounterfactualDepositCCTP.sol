@@ -34,31 +34,10 @@ struct CCTPDepositParams {
 }
 
 /**
- * @notice Parameters used by the clone's execution logic
- */
-struct CCTPExecutionParams {
-    uint256 executionFee;
-    address userWithdrawAddress;
-    address adminWithdrawAddress;
-}
-
-/**
- * @notice Combined route parameters for CCTP deposits
- */
-struct CCTPImmutables {
-    CCTPDepositParams depositParams;
-    CCTPExecutionParams executionParams;
-}
-
-/**
  * @title CounterfactualDepositCCTP
  * @notice Implementation contract for counterfactual deposits via SponsoredCCTP, deployed as EIP-1167 clones
- * @dev The factory deploys minimal proxies (clones) of this contract using OZ Clones.cloneDeterministicWithImmutableArgs.
- *      Route parameters are appended to the clone bytecode and read via Clones.fetchCloneArgs.
- *      On execution, the clone builds a SponsoredCCTPQuote from its immutable route params + caller-supplied
- *      execution params (amount, nonce, cctpDeadline, executeDepositDeadline) and forwards it to SponsoredCCTPSrcPeriphery.
  */
-contract CounterfactualDepositCCTP is CounterfactualDepositBase {
+abstract contract CounterfactualDepositCCTP is CounterfactualDepositBase {
     using SafeERC20 for IERC20;
 
     event CCTPDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 cctpDeadline);
@@ -78,79 +57,49 @@ contract CounterfactualDepositCCTP is CounterfactualDepositBase {
         sourceDomain = _sourceDomain;
     }
 
-    /**
-     * @notice Executes a deposit via SponsoredCCTP
-     * @param params Route parameters (verified against stored hash)
-     * @param amount Gross amount of burnToken (includes executionFee)
-     * @param executionFeeRecipient Address that receives the execution fee
-     * @param nonce Unique nonce for SponsoredCCTP replay protection
-     * @param cctpDeadline Deadline for the SponsoredCCTP quote (validated by SrcPeriphery)
-     * @param signature Signature from SponsoredCCTP quote signer
-     */
-    function executeDeposit(
-        CCTPImmutables memory params,
-        uint256 amount,
-        address executionFeeRecipient,
-        bytes32 nonce,
-        uint256 cctpDeadline,
-        bytes calldata signature
-    ) external verifyParamsHash(keccak256(abi.encode(params))) {
-        _executeCCTPDeposit(params, amount, executionFeeRecipient, nonce, cctpDeadline, signature);
-    }
-
     function _executeCCTPDeposit(
-        CCTPImmutables memory params,
+        CCTPDepositParams memory params,
         uint256 amount,
         address executionFeeRecipient,
         bytes32 nonce,
         uint256 cctpDeadline,
-        bytes calldata signature
+        bytes calldata signature,
+        uint256 executionFee
     ) internal virtual {
-        address inputToken = address(uint160(uint256(params.depositParams.burnToken)));
+        address inputToken = address(uint160(uint256(params.burnToken)));
 
-        // transfer execution fee to execution fee recipient
-        if (params.executionParams.executionFee > 0) {
-            IERC20(inputToken).safeTransfer(executionFeeRecipient, params.executionParams.executionFee);
+        if (executionFee > 0) {
+            IERC20(inputToken).safeTransfer(executionFeeRecipient, executionFee);
         }
 
-        uint256 depositAmount = amount - params.executionParams.executionFee;
+        uint256 depositAmount = amount - executionFee;
 
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
-                destinationDomain: params.depositParams.destinationDomain,
-                mintRecipient: params.depositParams.mintRecipient,
+                destinationDomain: params.destinationDomain,
+                mintRecipient: params.mintRecipient,
                 amount: depositAmount,
-                burnToken: params.depositParams.burnToken,
-                destinationCaller: params.depositParams.destinationCaller,
-                maxFee: (depositAmount * params.depositParams.cctpMaxFeeBps) / BPS_SCALAR,
-                minFinalityThreshold: params.depositParams.minFinalityThreshold,
+                burnToken: params.burnToken,
+                destinationCaller: params.destinationCaller,
+                maxFee: (depositAmount * params.cctpMaxFeeBps) / BPS_SCALAR,
+                minFinalityThreshold: params.minFinalityThreshold,
                 nonce: nonce,
                 deadline: cctpDeadline,
-                maxBpsToSponsor: params.depositParams.maxBpsToSponsor,
-                maxUserSlippageBps: params.depositParams.maxUserSlippageBps,
-                finalRecipient: params.depositParams.finalRecipient,
-                finalToken: params.depositParams.finalToken,
-                destinationDex: params.depositParams.destinationDex,
-                accountCreationMode: params.depositParams.accountCreationMode,
-                executionMode: params.depositParams.executionMode,
-                actionData: params.depositParams.actionData
+                maxBpsToSponsor: params.maxBpsToSponsor,
+                maxUserSlippageBps: params.maxUserSlippageBps,
+                finalRecipient: params.finalRecipient,
+                finalToken: params.finalToken,
+                destinationDex: params.destinationDex,
+                accountCreationMode: params.accountCreationMode,
+                executionMode: params.executionMode,
+                actionData: params.actionData
             }),
             signature
         );
 
         emit CCTPDepositExecuted(amount, executionFeeRecipient, nonce, cctpDeadline);
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getUserWithdrawAddress(bytes calldata params) internal pure virtual override returns (address) {
-        return abi.decode(params, (CCTPImmutables)).executionParams.userWithdrawAddress;
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getAdminWithdrawAddress(bytes calldata params) internal pure virtual override returns (address) {
-        return abi.decode(params, (CCTPImmutables)).executionParams.adminWithdrawAddress;
     }
 }

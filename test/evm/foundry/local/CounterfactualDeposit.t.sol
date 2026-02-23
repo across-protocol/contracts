@@ -6,9 +6,9 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDeposit, CounterfactualDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
-import { CounterfactualDepositSpokePool, SpokePoolImmutables, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
-import { CounterfactualDepositCCTP, CCTPImmutables, CCTPDepositParams, CCTPExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
-import { CounterfactualDepositOFT, OFTImmutables, OFTDepositParams, OFTExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { SpokePoolImmutables, SpokePoolDepositParams, SpokePoolExecutionParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CCTPDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
+import { OFTDepositParams } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
@@ -129,8 +129,8 @@ contract CounterfactualDepositTest is Test {
 
     CounterfactualDepositParams internal defaultParams;
     SpokePoolImmutables internal defaultSpokePoolRoute;
-    CCTPImmutables internal defaultCCTPRoute;
-    OFTImmutables internal defaultOFTRoute;
+    CCTPDepositParams internal defaultCCTPRoute;
+    OFTDepositParams internal defaultOFTRoute;
 
     // EIP-712 constants (must match contract — name inherited from CounterfactualDepositSpokePool)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
@@ -178,68 +178,48 @@ contract CounterfactualDepositTest is Test {
                 recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
                 message: ""
             }),
-            executionParams: SpokePoolExecutionParams({
-                stableExchangeRate: 1e18,
-                maxFeeFixed: 1e6,
-                maxFeeBps: 500,
-                executionFee: 1e6,
-                userWithdrawAddress: user,
-                adminWithdrawAddress: admin
-            })
+            executionParams: SpokePoolExecutionParams({ stableExchangeRate: 1e18, maxFeeFixed: 1e6, maxFeeBps: 500 })
         });
 
-        defaultCCTPRoute = CCTPImmutables({
-            depositParams: CCTPDepositParams({
-                destinationDomain: 3,
-                mintRecipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                burnToken: bytes32(uint256(uint160(address(token)))),
-                destinationCaller: bytes32(0),
-                cctpMaxFeeBps: 100,
-                minFinalityThreshold: 1,
-                maxBpsToSponsor: 0,
-                maxUserSlippageBps: 100,
-                finalRecipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                finalToken: bytes32(uint256(uint160(address(token)))),
-                destinationDex: 0,
-                accountCreationMode: 0,
-                executionMode: 0,
-                actionData: ""
-            }),
-            executionParams: CCTPExecutionParams({
-                executionFee: 1e6,
-                userWithdrawAddress: user,
-                adminWithdrawAddress: admin
-            })
+        defaultCCTPRoute = CCTPDepositParams({
+            destinationDomain: 3,
+            mintRecipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+            burnToken: bytes32(uint256(uint160(address(token)))),
+            destinationCaller: bytes32(0),
+            cctpMaxFeeBps: 100,
+            minFinalityThreshold: 1,
+            maxBpsToSponsor: 0,
+            maxUserSlippageBps: 100,
+            finalRecipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+            finalToken: bytes32(uint256(uint160(address(token)))),
+            destinationDex: 0,
+            accountCreationMode: 0,
+            executionMode: 0,
+            actionData: ""
         });
 
-        defaultOFTRoute = OFTImmutables({
-            depositParams: OFTDepositParams({
-                dstEid: 30101,
-                destinationHandler: bytes32(uint256(uint160(makeAddr("handler")))),
-                token: address(token),
-                maxOftFeeBps: 50,
-                lzReceiveGasLimit: 200_000,
-                lzComposeGasLimit: 200_000,
-                maxBpsToSponsor: 0,
-                maxUserSlippageBps: 100,
-                finalRecipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                finalToken: bytes32(uint256(uint160(address(token)))),
-                destinationDex: 0,
-                accountCreationMode: 0,
-                executionMode: 0,
-                refundRecipient: relayer,
-                actionData: ""
-            }),
-            executionParams: OFTExecutionParams({
-                executionFee: 1e6,
-                userWithdrawAddress: user,
-                adminWithdrawAddress: admin
-            })
+        defaultOFTRoute = OFTDepositParams({
+            dstEid: 30101,
+            destinationHandler: bytes32(uint256(uint160(makeAddr("handler")))),
+            token: address(token),
+            maxOftFeeBps: 50,
+            lzReceiveGasLimit: 200_000,
+            lzComposeGasLimit: 200_000,
+            maxBpsToSponsor: 0,
+            maxUserSlippageBps: 100,
+            finalRecipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+            finalToken: bytes32(uint256(uint160(address(token)))),
+            destinationDex: 0,
+            accountCreationMode: 0,
+            executionMode: 0,
+            refundRecipient: relayer,
+            actionData: ""
         });
 
         defaultParams = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: admin,
+            executionFee: 1e6,
             spokePoolRouteHash: keccak256(abi.encode(defaultSpokePoolRoute)),
             cctpRouteHash: keccak256(abi.encode(defaultCCTPRoute)),
             oftRouteHash: keccak256(abi.encode(defaultOFTRoute))
@@ -345,8 +325,8 @@ contract CounterfactualDepositTest is Test {
 
         assertEq(deployed, depositAddr);
         assertEq(token.balanceOf(depositAddr), 0);
-        assertEq(token.balanceOf(relayer), defaultSpokePoolRoute.executionParams.executionFee);
-        assertEq(spokePool.lastInputAmount(), inputAmount - defaultSpokePoolRoute.executionParams.executionFee);
+        assertEq(token.balanceOf(relayer), defaultParams.executionFee);
+        assertEq(spokePool.lastInputAmount(), inputAmount - defaultParams.executionFee);
         assertEq(spokePool.lastDepositor(), bytes32(uint256(uint160(depositAddr))));
     }
 
@@ -574,16 +554,14 @@ contract CounterfactualDepositTest is Test {
             executionParams: SpokePoolExecutionParams({
                 stableExchangeRate: 1e18,
                 maxFeeFixed: 0.01 ether,
-                maxFeeBps: 500,
-                executionFee: 0.01 ether,
-                userWithdrawAddress: user,
-                adminWithdrawAddress: admin
+                maxFeeBps: 500
             })
         });
 
         CounterfactualDepositParams memory nativeParams = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: admin,
+            executionFee: 0.01 ether,
             spokePoolRouteHash: keccak256(abi.encode(nativeRoute)),
             cctpRouteHash: bytes32(0),
             oftRouteHash: bytes32(0)
@@ -631,9 +609,9 @@ contract CounterfactualDepositTest is Test {
         factory.deployAndExecute(address(implementation), paramsHash, salt, execData);
 
         assertEq(depositAddr.balance, 0);
-        assertEq(relayer.balance, nativeRoute.executionParams.executionFee);
-        assertEq(spokePool.lastInputAmount(), inputAmount - nativeRoute.executionParams.executionFee);
-        assertEq(spokePool.lastMsgValue(), inputAmount - nativeRoute.executionParams.executionFee);
+        assertEq(relayer.balance, nativeParams.executionFee);
+        assertEq(spokePool.lastInputAmount(), inputAmount - nativeParams.executionFee);
+        assertEq(spokePool.lastMsgValue(), inputAmount - nativeParams.executionFee);
         assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(weth))));
     }
 
@@ -656,15 +634,15 @@ contract CounterfactualDepositTest is Test {
 
         assertEq(deployed, depositAddr);
         assertEq(token.balanceOf(depositAddr), 0);
-        assertEq(token.balanceOf(relayer), defaultCCTPRoute.executionParams.executionFee);
-        assertEq(cctpPeriphery.lastAmount(), amount - defaultCCTPRoute.executionParams.executionFee);
+        assertEq(token.balanceOf(relayer), defaultParams.executionFee);
+        assertEq(cctpPeriphery.lastAmount(), amount - defaultParams.executionFee);
         assertEq(cctpPeriphery.callCount(), 1);
     }
 
     function testCCTPMaxFeeCalculation() public {
         bytes32 salt = keccak256("cctp-fee");
         uint256 amount = 100e6;
-        uint256 depositAmount = amount - defaultCCTPRoute.executionParams.executionFee;
+        uint256 depositAmount = amount - defaultParams.executionFee;
 
         address depositAddr = _deployClone(salt);
         _fundClone(depositAddr, amount);
@@ -708,11 +686,11 @@ contract CounterfactualDepositTest is Test {
         );
 
         assertEq(deployed, depositAddr);
-        assertEq(token.balanceOf(relayer), defaultOFTRoute.executionParams.executionFee);
-        assertEq(oftPeriphery.lastAmount(), amount - defaultOFTRoute.executionParams.executionFee);
+        assertEq(token.balanceOf(relayer), defaultParams.executionFee);
+        assertEq(oftPeriphery.lastAmount(), amount - defaultParams.executionFee);
         assertEq(oftPeriphery.lastMsgValue(), lzFee);
         assertEq(oftPeriphery.lastSrcEid(), OFT_SRC_EID);
-        assertEq(oftPeriphery.lastDstEid(), defaultOFTRoute.depositParams.dstEid);
+        assertEq(oftPeriphery.lastDstEid(), defaultOFTRoute.dstEid);
         assertEq(oftPeriphery.callCount(), 1);
     }
 
@@ -760,6 +738,7 @@ contract CounterfactualDepositTest is Test {
         CounterfactualDepositParams memory params = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: admin,
+            executionFee: 1e6,
             spokePoolRouteHash: bytes32(0),
             cctpRouteHash: keccak256(abi.encode(defaultCCTPRoute)),
             oftRouteHash: keccak256(abi.encode(defaultOFTRoute))
@@ -804,6 +783,7 @@ contract CounterfactualDepositTest is Test {
         CounterfactualDepositParams memory params = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: admin,
+            executionFee: 1e6,
             spokePoolRouteHash: keccak256(abi.encode(defaultSpokePoolRoute)),
             cctpRouteHash: bytes32(0),
             oftRouteHash: keccak256(abi.encode(defaultOFTRoute))
@@ -927,6 +907,7 @@ contract CounterfactualDepositTest is Test {
         CounterfactualDepositParams memory nativeParams = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: admin,
+            executionFee: 0,
             spokePoolRouteHash: bytes32(0),
             cctpRouteHash: bytes32(0),
             oftRouteHash: bytes32(0)
@@ -1096,13 +1077,11 @@ contract CounterfactualDepositTest is Test {
     }
 
     function testExecuteWithZeroExecutionFee() public {
-        SpokePoolImmutables memory zeroFeeRoute = defaultSpokePoolRoute;
-        zeroFeeRoute.executionParams.executionFee = 0;
-
         CounterfactualDepositParams memory params = CounterfactualDepositParams({
             userWithdrawAddress: user,
             adminWithdrawAddress: admin,
-            spokePoolRouteHash: keccak256(abi.encode(zeroFeeRoute)),
+            executionFee: 0,
+            spokePoolRouteHash: keccak256(abi.encode(defaultSpokePoolRoute)),
             cctpRouteHash: keccak256(abi.encode(defaultCCTPRoute)),
             oftRouteHash: keccak256(abi.encode(defaultOFTRoute))
         });
@@ -1127,7 +1106,7 @@ contract CounterfactualDepositTest is Test {
         vm.prank(relayer);
         CounterfactualDeposit(payable(depositAddr)).executeSpokePoolDeposit(
             params,
-            zeroFeeRoute,
+            defaultSpokePoolRoute,
             inputAmount,
             98e6,
             bytes32(0),

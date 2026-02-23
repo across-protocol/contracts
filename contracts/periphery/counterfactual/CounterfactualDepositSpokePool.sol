@@ -20,15 +20,12 @@ struct SpokePoolDepositParams {
 }
 
 /**
- * @notice Parameters used by the clone's execution logic
+ * @notice SpokePool-specific execution parameters for fee verification
  */
 struct SpokePoolExecutionParams {
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
-    uint256 executionFee;
-    address userWithdrawAddress;
-    address adminWithdrawAddress;
 }
 
 /**
@@ -47,7 +44,7 @@ struct SpokePoolImmutables {
  *      to prevent cross-clone replay attacks. No nonce is needed: token balance is consumed on
  *      execution (natural replay protection), and short deadlines bound the replay window.
  */
-contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
+abstract contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     using SafeERC20 for IERC20;
 
     event SpokePoolDepositExecuted(
@@ -93,45 +90,6 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or SpokePool refunds).
     receive() external payable {}
 
-    /**
-     * @notice Executes a deposit via Across SpokePool
-     * @param params Route parameters (verified against stored hash)
-     * @param inputAmount Gross amount of inputToken (includes executionFee)
-     * @param outputAmount Amount of outputToken user should receive on dst
-     * @param exclusiveRelayer Optional exclusive relayer (bytes32(0) for none)
-     * @param exclusivityDeadline Seconds of relayer exclusivity (0 for none)
-     * @param executionFeeRecipient Address that receives the execution fee
-     * @param quoteTimestamp Quote timestamp from Across API (SpokePool validates recency)
-     * @param fillDeadline Timestamp by which the deposit must be filled
-     * @param signatureDeadline Timestamp after which the signature is no longer valid
-     * @param signature EIP-712 signature from signer over signed arguments
-     */
-    function executeDeposit(
-        SpokePoolImmutables memory params,
-        uint256 inputAmount,
-        uint256 outputAmount,
-        bytes32 exclusiveRelayer,
-        uint32 exclusivityDeadline,
-        address executionFeeRecipient,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 signatureDeadline,
-        bytes calldata signature
-    ) external verifyParamsHash(keccak256(abi.encode(params))) {
-        _executeSpokePoolDeposit(
-            params,
-            inputAmount,
-            outputAmount,
-            exclusiveRelayer,
-            exclusivityDeadline,
-            executionFeeRecipient,
-            quoteTimestamp,
-            fillDeadline,
-            signatureDeadline,
-            signature
-        );
-    }
-
     function _executeSpokePoolDeposit(
         SpokePoolImmutables memory params,
         uint256 inputAmount,
@@ -142,7 +100,8 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 signatureDeadline,
-        bytes calldata signature
+        bytes calldata signature,
+        uint256 executionFee
     ) internal virtual {
         if (block.timestamp > signatureDeadline) revert SignatureExpired();
         _verifySignature(
@@ -158,13 +117,12 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
 
         address inputToken = address(uint160(uint256(params.depositParams.inputToken)));
 
-        // amount to deposit into SpokePool
-        uint256 depositAmount = inputAmount - params.executionParams.executionFee;
+        uint256 depositAmount = inputAmount - executionFee;
 
         // Fee check: convert outputAmount to inputToken units, verify total fee within fixed + variable cap
         uint256 outputInInputToken = (outputAmount * params.executionParams.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + params.executionParams.executionFee;
+        uint256 totalFee = relayerFee + executionFee;
         uint256 maxFee = params.executionParams.maxFeeFixed +
             (params.executionParams.maxFeeBps * inputAmount) /
             BPS_SCALAR;
@@ -193,9 +151,7 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
             params.depositParams.message
         );
 
-        // Pay execution fee
-        if (params.executionParams.executionFee > 0)
-            _transferOut(inputToken, executionFeeRecipient, params.executionParams.executionFee);
+        if (executionFee > 0) _transferOut(inputToken, executionFeeRecipient, executionFee);
 
         emit SpokePoolDepositExecuted(
             inputAmount,
@@ -209,27 +165,9 @@ contract CounterfactualDepositSpokePool is CounterfactualDepositBase, EIP712 {
         );
     }
 
-    /// @inheritdoc CounterfactualDepositBase
-    function _getUserWithdrawAddress(bytes calldata params) internal pure virtual override returns (address) {
-        return abi.decode(params, (SpokePoolImmutables)).executionParams.userWithdrawAddress;
-    }
-
-    /// @inheritdoc CounterfactualDepositBase
-    function _getAdminWithdrawAddress(bytes calldata params) internal pure virtual override returns (address) {
-        return abi.decode(params, (SpokePoolImmutables)).executionParams.adminWithdrawAddress;
-    }
-
     /**
      * @dev Verifies that signer authorized execution parameters via EIP-712.
      *      Domain separator includes clone address, preventing cross-clone replay.
-     * @param inputAmount Gross input amount (signed by signer).
-     * @param outputAmount Output amount on destination (signed by signer).
-     * @param exclusiveRelayer Optional exclusive relayer (signed by signer).
-     * @param exclusivityDeadline Seconds of relayer exclusivity (signed by signer).
-     * @param quoteTimestamp Quote timestamp from Across API (signed by signer).
-     * @param fillDeadline Fill deadline timestamp (signed by signer).
-     * @param signatureDeadline Signature expiry timestamp (signed by signer).
-     * @param signature EIP-712 signature from signer.
      */
     function _verifySignature(
         uint256 inputAmount,
