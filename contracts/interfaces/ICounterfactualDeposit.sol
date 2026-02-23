@@ -12,6 +12,10 @@ interface ICounterfactualDeposit {
     error InvalidParamsHash();
     /// @dev Merkle proof does not prove the route is allowed by this clone.
     error InvalidRouteProof();
+    /// @dev Route hash does not match the committed hash for this bridge.
+    error InvalidRouteHash();
+    /// @dev Bridge route is disabled for this clone (committed hash is zero).
+    error RouteDisabled();
     /// @dev Total fee (relayer + execution) exceeds maxFeeBps. SpokePool only.
     error MaxFee();
     /// @dev EIP-712 signature does not recover to the expected signer. SpokePool only.
