@@ -758,6 +758,31 @@
           "address": "0x767e4c20F521a829dE4Ffc40C25176676878147f",
           "block_number": 428777334
         },
+        "AdminWithdrawManager": {
+          "address": "0x4ac61f74dd8c5ac565976e5acecb069250058091",
+          "block_number": 435605828,
+          "transaction_hash": "0xc2b4d5992ab303684d17a8f762d968965c2043382d908dcd582fc1a02fde2ff2"
+        },
+        "CounterfactualDepositCCTP": {
+          "address": "0x36334d17b5a79a416b4070dd6f181ea368bd4be6",
+          "block_number": 435607157,
+          "transaction_hash": "0xa26a1f8201516c8f90ff0aabaa389b3fc4e528db39117fa8d2f7c6590cbb8667"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0xa157cb19a8c3061d9bbce11ad08129bee70988fe",
+          "block_number": 435608025,
+          "transaction_hash": "0x4b19826ef8c4f797675309d8c504fd4d09ffebf74252d23accb386ba3523cb89"
+        },
+        "CounterfactualDepositOFT": {
+          "address": "0x79506dfe04e822d237a692f260c6be650ab5d26a",
+          "block_number": 435609238,
+          "transaction_hash": "0xcfb98db6d14228d3c803a6d7cec85a2d3ea26b217bc24a099a7b252d783dcd1f"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "0xb4df3686ae3133cd8da52b575ff490e5e09ba65d",
+          "block_number": 435610849,
+          "transaction_hash": "0x7afdf6c9305a11a027aacb437ff479938aa8944609c07038457aa68837798c5a"
+        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b",
           "block_number": 406495696,
@@ -767,6 +792,11 @@
           "address": "0x2ac5ee3796e027da274fbde84c82173a65868940",
           "block_number": 406587622,
           "transaction_hash": "0xaf2427171b1d55e27dc75985001ce5a6be8c89a817f51b479f223b4c9799c7eb"
+        },
+        "WithdrawImplementation": {
+          "address": "0xdaf3439c4f803f3766cddd1964f9dd3d065d9ea0",
+          "block_number": 435612232,
+          "transaction_hash": "0xc1b233a7ba70eafb19bc3dcb06fdb4670ab71ac408815539b386fbc63f6272de"
         }
       }
     },
