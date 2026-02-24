@@ -184,6 +184,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     l2GatewayRouter: "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872",
+    cctpV2TokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.ARBITRUM]: {
@@ -226,6 +228,9 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     fxChild: "0xE5930336866d0388f0f745A2d9207C7781047C0f",
     cctpTokenMessenger: "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+    cctpV2TokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.ZK_SYNC]: {
     cctpTokenMessenger: ZERO_ADDRESS, // CCTP not available on zkSync.
@@ -244,6 +249,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0xd8866E76441df243fc98B892362Fc6264dC3ca80", // Mock_UniswapV3SwapRouter.sol
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    cctpV2TokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   },
   [CHAIN_IDs.BASE]: {
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
@@ -257,6 +264,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpMessageTransmitter: "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
     uniswapV3SwapRouter: "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648", // Mock_UniswapV3SwapRouter.sol
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    cctpV2TokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   },
   [CHAIN_IDs.BOB]: {
     cctpV2TokenMessenger: "0x0000000000000000000000000000000000000000",
@@ -342,6 +351,8 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
   },
   [CHAIN_IDs.SEPOLIA]: {
     permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+    cctpV2TokenMessenger: "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+    cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   },
 };
 

@@ -841,6 +841,10 @@
         "MulticallHandler": {
           "address": "0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E",
           "block_number": 24181411
+        },
+        "SpokePoolPeriphery": {
+          "address": "0x1cFC76f039e01970355Cf73a37B785A81847796C",
+          "block_number": 34394404
         }
       }
     },

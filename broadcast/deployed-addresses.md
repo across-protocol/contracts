@@ -347,6 +347,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler    | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://amoy.polygonscan.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | PolygonTokenBridger | [0x4e3737679081c4D3029D88cA560918094f2e0284](https://amoy.polygonscan.com/address/0x4e3737679081c4D3029D88cA560918094f2e0284) |
 | SpokePool           | [0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5](https://amoy.polygonscan.com/address/0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5) |
+| SpokePoolPeriphery  | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://amoy.polygonscan.com/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
 
 ## Base Sepolia (84532)
 

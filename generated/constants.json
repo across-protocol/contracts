@@ -728,7 +728,10 @@
     "80002": {
       "fxChild": "0xE5930336866d0388f0f745A2d9207C7781047C0f",
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
-      "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD"
+      "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "81457": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -737,12 +740,16 @@
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
       "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
       "uniswapV3SwapRouter": "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648",
-      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
     },
     "421614": {
       "l2GatewayRouter": "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
       "cctpMessageTransmitter": "0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "534351": {
@@ -764,13 +771,17 @@
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "11155111": {
-      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
     },
     "11155420": {
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
       "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
       "uniswapV3SwapRouter": "0xd8866E76441df243fc98B892362Fc6264dC3ca80",
-      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
     }
   },
   "L1_ADDRESS_MAP": {
