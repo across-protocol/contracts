@@ -10,6 +10,11 @@ This guide covers deploying the **Universal SpokePool** infrastructure to a new 
 - A funded deployer wallet (via mnemonic)
 - `generated/constants.json` with chain configuration (run `yarn generate-constants` if missing)
 
+## A Note to Deployers
+
+When you deploy a new Universal Spoke pool to be used by Across, there is a time limit you must follow from Sp1Helios deployment to config store activation.
+The SP1Helios contract has a constant `MAX_SLOT_AGE = 7 days`, which is the upper-bound on how long updates may be spaced apart from each other. If the `stateUpdater` is not actively updating helios within seven days of deployment, the Sp1Helios contract will revert to a state where no further updates can be made, and by extension the Universal spoke will become inert and must be upgraded by the `owner` (where the upgrade implementation candidate has a fresh Sp1Helios contract set in its constructor).
+
 ## Environment Variables
 
 Create a `.env` file with the following variables:

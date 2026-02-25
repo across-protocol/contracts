@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
+import { SpokePoolInterface } from "../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 /**
  * @title MerkleTreeUtils
@@ -85,6 +86,46 @@ library MerkleTreeUtils {
             l1Tokens: tokens
         });
 
+        root = keccak256(abi.encode(leaf));
+    }
+
+    /**
+     * @notice Builds a single relayer refund leaf for testing.
+     * @param chainId The destination chain ID
+     * @param l2Token The L2 token address
+     * @param amountToReturn Amount to bridge back to L1
+     * @return leaf The relayer refund leaf struct
+     */
+    function buildRelayerRefundLeaf(
+        uint256 chainId,
+        address l2Token,
+        uint256 amountToReturn
+    ) internal pure returns (SpokePoolInterface.RelayerRefundLeaf memory leaf) {
+        return
+            SpokePoolInterface.RelayerRefundLeaf({
+                amountToReturn: amountToReturn,
+                chainId: chainId,
+                refundAmounts: new uint256[](0),
+                leafId: 0,
+                l2TokenAddress: l2Token,
+                refundAddresses: new address[](0)
+            });
+    }
+
+    /**
+     * @notice Builds a relayer refund leaf and computes its merkle root.
+     * @param chainId The destination chain ID
+     * @param l2Token The L2 token address
+     * @param amountToReturn Amount to bridge back to L1
+     * @return leaf The relayer refund leaf struct
+     * @return root The merkle root (hash of the single leaf)
+     */
+    function buildRelayerRefundLeafAndRoot(
+        uint256 chainId,
+        address l2Token,
+        uint256 amountToReturn
+    ) internal pure returns (SpokePoolInterface.RelayerRefundLeaf memory leaf, bytes32 root) {
+        leaf = buildRelayerRefundLeaf(chainId, l2Token, amountToReturn);
         root = keccak256(abi.encode(leaf));
     }
 

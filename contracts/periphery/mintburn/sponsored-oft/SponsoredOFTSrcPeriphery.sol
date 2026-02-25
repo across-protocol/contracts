@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.23;
 
-import { Quote } from "./Structs.sol";
+import { SponsoredOFTInterface } from "../../../interfaces/SponsoredOFTInterface.sol";
 import { QuoteSignLib } from "./QuoteSignLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 
@@ -17,7 +17,7 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Accross-supported flows on destination chain. Uses LayzerZero's OFT as an underlying bridge
-contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
+contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface {
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
@@ -48,47 +48,6 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath {
             $.slot := MAIN_STORAGE_LOCATION
         }
     }
-
-    /**
-     * @notice Event with auxiliary information. To be used in concert with OftSent event to get relevant quote details
-     * @param quoteNonce Unique identifier for this quote/transaction
-     * @param originSender The address initiating the transfer on the source chain
-     * @param finalRecipient The final recipient address on the destination chain (as bytes32)
-     * @param destinationHandler The handler contract address on the destination chain (as bytes32)
-     * @param quoteDeadline The timestamp by which the quote expires
-     * @param maxBpsToSponsor Maximum basis points that can be sponsored
-     * @param maxUserSlippageBps Maximum user slippage in basis points
-     * @param finalToken The final token address on the destination chain (as bytes32)
-     * @param sig The signature authorizing this transfer
-     */
-    event SponsoredOFTSend(
-        bytes32 indexed quoteNonce,
-        address indexed originSender,
-        bytes32 indexed finalRecipient,
-        bytes32 destinationHandler,
-        uint256 quoteDeadline,
-        uint256 maxBpsToSponsor,
-        uint256 maxUserSlippageBps,
-        bytes32 finalToken,
-        bytes sig
-    );
-
-    /// @notice Thrown when the source eid of the ioft messenger does not match the src eid supplied
-    error IncorrectSrcEid();
-    /// @notice Thrown when the supplied token does not match the supplied ioft messenger
-    error TokenIOFTMismatch();
-    /// @notice Thrown when the signer for quote does not match `signer`
-    error IncorrectSignature();
-    /// @notice Thrown if Quote has expired
-    error QuoteExpired();
-    /// @notice Thrown if Quote nonce was already used
-    error NonceAlreadyUsed();
-    /// @notice Thrown when provided msg.value is not sufficient to cover OFT bridging fee
-    error InsufficientNativeFee();
-    /// @notice Thrown when array lengths do not match
-    error ArrayLengthMismatch();
-    /// @notice Thrown when maxOftFeeBps is greater than 10000
-    error InvalidMaxOftFeeBps();
 
     constructor(
         address _token,

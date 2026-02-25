@@ -16,12 +16,14 @@ pub struct SponsoredCCTPQuote {
     pub max_user_slippage_bps: u64,
     pub final_recipient: Pubkey,
     pub final_token: Pubkey,
+    pub destination_dex: u32,
+    pub account_creation_mode: u8,
     pub execution_mode: u8,
     pub action_data: Vec<u8>,
 }
 
 impl SponsoredCCTPQuote {
-    const HOOK_DATA_STATIC_FIELDS: usize = 7; // Number of static fields in the hook data.
+    const HOOK_DATA_STATIC_FIELDS: usize = 9; // Number of static fields in the hook data.
 
     /// EVM-compatible typed hash used for signature verification.
     ///
@@ -60,13 +62,13 @@ impl SponsoredCCTPQuote {
     }
 
     /// `hash2` (EVM: second part) = keccak256(abi.encode(nonce, deadline, maxBpsToSponsor, maxUserSlippageBps,
-    ///   finalRecipient, finalToken, executionMode, keccak256(actionData)))
+    ///   finalRecipient, finalToken, destinationDex, accountCreationMode, executionMode, keccak256(actionData)))
     ///
     /// We hash the static words (`nonce..executionMode`) directly from the head with appended `keccak(actionData)` as a
     /// `bytes32` (static) value.
     fn hash2(&self) -> [u8; 32] {
-        // Encode the following 7 static quote data fields + action_data hash.
-        let mut encoded = Vec::with_capacity(8 * 32);
+        // Encode the following 9 static quote data fields + action_data hash.
+        let mut encoded = Vec::with_capacity(10 * 32);
 
         Self::encode_bytes32(&mut encoded, &self.nonce);
         Self::encode_u64(&mut encoded, self.deadline);
@@ -74,6 +76,8 @@ impl SponsoredCCTPQuote {
         Self::encode_u64(&mut encoded, self.max_user_slippage_bps);
         Self::encode_pubkey(&mut encoded, &self.final_recipient);
         Self::encode_pubkey(&mut encoded, &self.final_token);
+        Self::encode_u32(&mut encoded, self.destination_dex);
+        Self::encode_u8(&mut encoded, self.account_creation_mode);
         Self::encode_u8(&mut encoded, self.execution_mode);
         Self::encode_bytes32(&mut encoded, &keccak::hash(&self.action_data).to_bytes());
 
@@ -81,7 +85,7 @@ impl SponsoredCCTPQuote {
     }
 
     pub fn encode_hook_data(&self) -> Vec<u8> {
-        // ABI encoded hookData on EVM holds 7 static 32-byte words followed by the actionData offset that points to the
+        // ABI encoded hookData on EVM holds 9 static 32-byte words followed by the actionData offset that points to the
         // length-prefixed actionData bytes. The actionData bytes are padded to 32-byte word length.
         let action_data_offset = (Self::HOOK_DATA_STATIC_FIELDS + 1) * 32;
         let mut hook_data = Vec::with_capacity(self.encoded_hook_data_len());
@@ -92,6 +96,8 @@ impl SponsoredCCTPQuote {
         Self::encode_u64(&mut hook_data, self.max_user_slippage_bps);
         Self::encode_pubkey(&mut hook_data, &self.final_recipient);
         Self::encode_pubkey(&mut hook_data, &self.final_token);
+        Self::encode_u32(&mut hook_data, self.destination_dex);
+        Self::encode_u8(&mut hook_data, self.account_creation_mode);
         Self::encode_u8(&mut hook_data, self.execution_mode);
         Self::encode_bytes(&mut hook_data, &self.action_data, action_data_offset as u64);
 
@@ -107,7 +113,7 @@ impl SponsoredCCTPQuote {
             action_data_len + (32 - remainder)
         };
 
-        // ABI encoded hookData on EVM holds 7 static 32-byte words followed by the actionData offset (32 bytes), the
+        // ABI encoded hookData on EVM holds 9 static 32-byte words followed by the actionData offset (32 bytes), the
         // length of the actionData (32 bytes), and the padded actionData bytes.
         (Self::HOOK_DATA_STATIC_FIELDS + 2) * 32 + padded_action_data_len
     }
