@@ -48,7 +48,7 @@
     "test:report-gas": "IS_TEST=true REPORT_GAS=true hardhat test",
     "evm-contract-sizes": "sh scripts/evm-contract-sizes.sh",
     "generate-evm-artifacts": "rm -rf typechain && TYPECHAIN=ethers yarn hardhat typechain",
-    "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/deployments.json",
+    "process-hardhat-export": "hardhat export --export-all ./cache/massExport.json && ts-node ./scripts/processHardhatExport.ts && prettier --write ./deployments/legacy-addresses.json",
     "pre-commit-hook": "sh scripts/preCommitHook.sh",
     "extract-addresses": "./script/utils/extract_foundry_addresses.sh",
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
