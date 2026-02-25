@@ -584,7 +584,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         if (amountToSponsor > 0) {
             // This will succeed because we checked the balance earlier
-            donationBox.withdraw(finalToken, amountToSponsor);
+            donationBox.withdraw(IERC20(finalToken), amountToSponsor);
         }
 
         $.cumulativeSponsoredAmount[finalToken] += amountToSponsor;
@@ -834,7 +834,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
             // ! Notice: as per HyperEVM <> HyperCore rules, this amount will land on HyperCore *before* all of the core > core sends get executed
             // Get additional amount to send from donation box, and send it to self on core
-            donationBox.withdraw(finalToken, totalAdditionalToSendEVM);
+            donationBox.withdraw(IERC20(finalToken), totalAdditionalToSendEVM);
             IERC20(finalToken).safeTransfer(address(finalTokenInfo.swapHandler), totalAdditionalToSendEVM);
             finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
                 finalToken,
@@ -918,7 +918,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
             sponsorshipFundsToForward = 0;
         }
         if (sponsorshipFundsToForward > 0) {
-            donationBox.withdraw(params.finalToken, sponsorshipFundsToForward);
+            donationBox.withdraw(IERC20(params.finalToken), sponsorshipFundsToForward);
         }
         uint256 totalAmountToForward = params.amountInEVM + sponsorshipFundsToForward;
         IERC20(params.finalToken).safeTransfer(params.finalRecipient, totalAmountToForward);
@@ -1046,7 +1046,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
 
         emit SentSponsorshipFundsToSwapHandler(token, amountEVMToSend);
 
-        donationBox.withdraw(token, amountEVMToSend);
+        donationBox.withdraw(IERC20(token), amountEVMToSend);
         IERC20(token).safeTransfer(address(finalTokenInfo.swapHandler), amountEVMToSend);
         finalTokenInfo.swapHandler.transferFundsToSelfOnCore(
             token,
@@ -1163,7 +1163,7 @@ contract HyperCoreFlowExecutor is AccessControlUpgradeable, AuthorizedFundedFlow
     }
 
     function sweepErc20FromDonationBox(address token, uint256 amount) external onlyRole(FUNDS_SWEEPER_ROLE) {
-        donationBox.withdraw(token, amount);
+        donationBox.withdraw(IERC20(token), amount);
         IERC20(token).safeTransfer(msg.sender, amount);
     }
 

@@ -223,7 +223,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
      * @param user The address of the user to send the tokens to
      */
     function sweepDonationBoxFundsToUser(address token, uint256 amount, address user) external onlyOwner nonReentrant {
-        donationBox.withdraw(token, amount);
+        donationBox.withdraw(IERC20(token), amount);
         IERC20(token).safeTransfer(user, amount);
     }
 
@@ -292,7 +292,7 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
             accountActivationFeeCore = coreTokenInfo.accountActivationFeeCore;
 
             if (mode == AccountActivationMode.FromDonationBox) {
-                donationBox.withdraw(token, coreTokenInfo.accountActivationFeeEVM);
+                donationBox.withdraw(IERC20(token), coreTokenInfo.accountActivationFeeEVM);
                 sponsoredAmount = accountActivationFeeCore;
             }
         }

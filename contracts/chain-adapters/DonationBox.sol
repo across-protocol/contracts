@@ -30,7 +30,7 @@ contract DonationBox is AccessControl {
      * @param token Token to withdraw.
      * @param amount Amount of tokens to withdraw.
      */
-    function withdraw(address token, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
-        IERC20(token).safeTransfer(msg.sender, amount);
+    function withdraw(IERC20 token, uint256 amount) external onlyRole(WITHDRAWER_ROLE) {
+        token.safeTransfer(msg.sender, amount);
     }
 }
