@@ -66,8 +66,8 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
           path: ${{ env.ARTIFACTS_PATHS }}
           if-no-files-found: error
-  lint:
-    name: Lint
+  lint-and-check-generated:
+    name: Lint and Check Generated Files
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -96,6 +96,18 @@ jobs:
       - name: Lint rust
         shell: bash
         run: yarn lint-rust
+      - name: Regenerate constants.json
+        run: yarn generate-constants-json && yarn prettier --write generated/constants.json
+      - name: Regenerate deployed-addresses
+        run: yarn extract-addresses && yarn prettier --write broadcast/deployed-addresses.json && yarn prettier --write broadcast/deployed-addresses.md
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code generated/constants.json broadcast/deployed-addresses.json broadcast/deployed-addresses.md; then
+            echo ""
+            echo "ERROR: Generated files are out of date."
+            echo "Please run 'yarn generate-constants-json' and 'yarn extract-addresses' (or ensure the pre-commit hook runs) and commit the results."
+            exit 1
+          fi
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts
