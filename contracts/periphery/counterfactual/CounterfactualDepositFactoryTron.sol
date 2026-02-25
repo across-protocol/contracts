@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { TronClones } from "./TronClones.sol";
+import { TronClones } from "../../libraries/TronClones.sol";
 import { CounterfactualDepositFactory } from "./CounterfactualDepositFactory.sol";
 
 /**
