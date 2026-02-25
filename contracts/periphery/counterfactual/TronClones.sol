@@ -14,7 +14,11 @@ pragma solidity ^0.8.0;
  */
 library TronClones {
     /**
-     * @dev Predicts the Tron CREATE2 address of a clone with immutable args, deployed from this contract.
+     * @notice Predicts the Tron CREATE2 address of a clone with immutable args, deployed from this contract.
+     * @param implementation The implementation contract the clone delegates to.
+     * @param args The immutable args appended to the clone bytecode.
+     * @param salt The CREATE2 salt for deterministic address generation.
+     * @return The predicted clone address on Tron.
      */
     function predictDeterministicAddressWithImmutableArgs(
         address implementation,
@@ -25,7 +29,12 @@ library TronClones {
     }
 
     /**
-     * @dev Predicts the Tron CREATE2 address of a clone with immutable args, deployed from `deployer`.
+     * @notice Predicts the Tron CREATE2 address of a clone with immutable args, deployed from `deployer`.
+     * @param implementation The implementation contract the clone delegates to.
+     * @param args The immutable args appended to the clone bytecode.
+     * @param salt The CREATE2 salt for deterministic address generation.
+     * @param deployer The address of the contract that will deploy the clone.
+     * @return predicted The predicted clone address on Tron.
      */
     function predictDeterministicAddressWithImmutableArgs(
         address implementation,
@@ -39,7 +48,11 @@ library TronClones {
 
     /**
      * @dev Tron CREATE2 address computation using 0x41 prefix.
-     *      Layout mirrors OZ Create2.computeAddress but replaces 0xff with 0x41.
+     *      Memory layout mirrors OZ Create2.computeAddress but replaces 0xff with 0x41.
+     * @param salt The CREATE2 salt.
+     * @param bytecodeHash The keccak256 hash of the clone's init code.
+     * @param deployer The deploying contract address.
+     * @return addr The predicted address.
      */
     function _computeTronAddress(
         bytes32 salt,
@@ -58,8 +71,11 @@ library TronClones {
     }
 
     /**
-     * @dev EIP-1167 clone bytecode with immutable args appended.
-     *      Identical to OZ Clones._cloneCodeWithImmutableArgs (which is private).
+     * @dev Generates EIP-1167 minimal proxy bytecode with immutable args appended.
+     *      Identical to OZ Clones._cloneCodeWithImmutableArgs (replicated because it is private).
+     * @param implementation The implementation contract address embedded in the proxy bytecode.
+     * @param args The immutable args appended after the proxy bytecode.
+     * @return The complete clone init code.
      */
     function _cloneCodeWithImmutableArgs(
         address implementation,
