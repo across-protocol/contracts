@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
+// Forked from OpenZeppelin Contracts v5.5.0 (proxy/Clones.sol) and (utils/Create2.sol):
+// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/proxy/Clones.sol
+// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.5.0/contracts/utils/Create2.sol
+
 /**
  * @title TronClones
  * @notice Tron-compatible CREATE2 address prediction for EIP-1167 clones with immutable args.
