@@ -16,6 +16,8 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_: any, __: any
     return filteredPaths.filter((p: any) => {
       return (
         !p.includes("contracts/periphery/mintburn") &&
+        !p.includes("contracts/chain-adapters/DonationBox.sol") &&
+        !p.includes("contracts/handlers/HyperliquidDepositHandler.sol") &&
         !p.includes("contracts/external/libraries/BytesLib.sol") &&
         !p.includes("contracts/libraries/SponsoredCCTPQuoteLib.sol") &&
         !p.includes("contracts/external/libraries/MinimalLZOptions.sol")
