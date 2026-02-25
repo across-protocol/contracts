@@ -315,6 +315,14 @@ interface V3SpokePoolInterface {
 
     function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external;
 
+    function getUnsafeDepositId(
+        address msgSender,
+        bytes32 depositor,
+        uint256 depositNonce
+    ) external pure returns (uint256);
+
+    function numberOfDeposits() external view returns (uint32);
+
     /**************************************
      *              ERRORS                *
      **************************************/
