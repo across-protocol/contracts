@@ -38,11 +38,7 @@ contract CrossDomainEnabled {
      * @param _message The data to send to the target (usually calldata to a function with
      *  onlyFromCrossDomainAccount())
      */
-    function sendCrossDomainMessage(
-        address _crossDomainTarget,
-        uint32 _gasLimit,
-        bytes calldata _message
-    ) internal {
+    function sendCrossDomainMessage(address _crossDomainTarget, uint32 _gasLimit, bytes calldata _message) internal {
         // slither-disable-next-line reentrancy-events, reentrancy-benign
         getCrossDomainMessenger().sendMessage(_crossDomainTarget, _message, _gasLimit);
     }

@@ -96,6 +96,9 @@ jobs:
       - name: Lint solidity
         shell: bash
         run: yarn lint-solidity
+      - name: Check Solidity formatting
+        shell: bash
+        run: yarn check-format-contracts
       - name: Lint rust
         shell: bash
         run: yarn lint-rust

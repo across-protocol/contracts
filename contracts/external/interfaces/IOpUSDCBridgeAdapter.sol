@@ -12,9 +12,5 @@ interface IOpUSDCBridgeAdapter {
      * @param _amount The amount of tokens to send
      * @param _minGasLimit Minimum gas limit that the message can be executed with
      */
-    function sendMessage(
-        address _to,
-        uint256 _amount,
-        uint32 _minGasLimit
-    ) external;
+    function sendMessage(address _to, uint256 _amount, uint32 _minGasLimit) external;
 }

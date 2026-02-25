@@ -36,11 +36,7 @@ interface ForwarderInterface {
      * @param destinationChainId Chain ID of the L3 network.
      * @param message Message to send to `target`.
      */
-    function relayMessage(
-        address target,
-        uint256 destinationChainId,
-        bytes calldata message
-    ) external payable;
+    function relayMessage(address target, uint256 destinationChainId, bytes calldata message) external payable;
 
     /**
      * @notice Send `amount` of `l2Token` to `to` on L3. `l3oken` is the L3 address equivalent of `l2Token`.
