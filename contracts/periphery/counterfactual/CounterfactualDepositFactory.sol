@@ -90,7 +90,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
         bytes32 salt
-    ) public view returns (address) {
+    ) public view virtual returns (address) {
         return
             Clones.predictDeterministicAddressWithImmutableArgs(
                 counterfactualDepositImplementation,
