@@ -31,7 +31,7 @@ contract Blast_RescueAdapter is AdapterInterface {
 
     /**
      * @notice Rescues the tokens from the calling contract.
-     * @param message The encoded address of the ERC20 to send to the rescue addres.
+     * @param message The encoded address of the ERC20 to send to the rescue address.
      */
     function relayMessage(address, bytes memory message) external payable override {
         (uint256 requestId, uint256 hintId) = abi.decode(message, (uint256, uint256));
