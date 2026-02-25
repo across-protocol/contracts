@@ -20,11 +20,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const artifact = await deployer.loadArtifact(contractName);
 
-  const { zkErc20Bridge, zkUSDCBridge, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
+  const { zkUSDCBridge, cctpTokenMessenger } = L2_ADDRESS_MAP[spokeChainId];
 
   const initArgs = [
     100_000, // Redeployment of the Spoke Pool proxy @ 09-01-2025. Offset the initial deposit ID by 100k
-    zkErc20Bridge,
     hubPool.address,
     hubPool.address,
   ];
@@ -44,6 +43,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     WGHO[spokeChainId],
     usdcAddress,
     zkUSDCBridge,
+    hubChainId,
     cctpTokenMessenger,
     QUOTE_TIME_BUFFER,
     FILL_DEADLINE_BUFFER,
@@ -52,7 +52,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   let newAddress: string;
   // On production, we'll rarely want to deploy a new proxy contract so we'll default to deploying a new implementation
   // contract.
-  // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
+  // If a SpokePool can be found in deployments/legacy-addresses.json, then only deploy an implementation contract.
   const proxy = getDeployedAddress("SpokePool", spokeChainId, false);
   const implementationOnly = proxy !== undefined;
   if (implementationOnly) {

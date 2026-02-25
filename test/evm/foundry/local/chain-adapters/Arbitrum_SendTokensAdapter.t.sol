@@ -34,10 +34,6 @@ contract Arbitrum_SendTokensAdapterTest is HubPoolTestBase {
 
     uint256 constant ARBITRUM_CHAIN_ID = 42161;
 
-    // ============ Test Amounts ============
-
-    uint256 constant AMOUNT_TO_LP = 1000 ether;
-
     // ============ Setup ============
 
     function setUp() public {

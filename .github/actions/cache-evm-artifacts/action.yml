@@ -23,7 +23,7 @@ runs:
         # The job that generates the artifacts is responsible for archiving them to the cache tarball. This avoids any
         # conflicts with other caching actions that might have cleaned some of cached contents.
         path: evm-artifacts.tar
-        key: evm-artifacts-${{ runner.os }}-node-${{ steps.resolved-node.outputs.version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'contracts/**/*.sol') }}
+        key: evm-artifacts-${{ runner.os }}-node-${{ steps.resolved-node.outputs.version }}-${{ hashFiles('yarn.lock', 'hardhat.config.ts', 'foundry.toml', 'contracts/**/*.sol') }}
     - name: Unpack restored EVM artifacts
       if: steps.evm-artifacts-cache.outputs.cache-hit == 'true'
       shell: bash

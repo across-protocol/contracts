@@ -3,6 +3,9 @@ pragma solidity ^0.8.0;
 
 /**
  * @notice Contains common data structures and functions used by all SpokePool implementations.
+ * @dev Active depositor functions (`deposit`, `depositV3`, `depositNow`, `depositV3Now`, `unsafeDeposit`) are
+ * defined in `V3SpokePoolInterface.sol`. This interface primarily contains shared admin/root functions and removed
+ * legacy selectors that are intentionally preserved to avoid accidental selector reuse.
  */
 interface SpokePoolInterface {
     // This leaf is meant to be decoded in the SpokePool to pay out successful relayers.
@@ -46,6 +49,17 @@ interface SpokePoolInterface {
 
     function emergencyDeleteRootBundle(uint256 rootBundleId) external;
 
+    // REMOVED FUNCTIONS: These functions have been removed and are now disallowed.
+    // See V3SpokePoolInterface for active deposit functions.
+    // Function selectors are preserved to prevent accidental reuse in future versions.
+    // All calls to these functions will revert.
+
+    /**
+     * @dev REMOVED: This function has been removed and is now disallowed.
+     * @notice Calling this function will revert. Use deposit() or depositV3() instead.
+     * @notice This function shares the same selector as the original "deposit" function that was removed.
+     * The collision was intentionally created to allow reusing the "deposit" name for a different function signature.
+     */
     function depositDeprecated_5947912356(
         address recipient,
         address originToken,
@@ -57,6 +71,10 @@ interface SpokePoolInterface {
         uint256 maxCount
     ) external payable;
 
+    /**
+     * @dev REMOVED: This function has been removed and is now disallowed.
+     * @notice Calling this function will revert. Use deposit() or depositV3() instead.
+     */
     function depositFor(
         address depositor,
         address recipient,
@@ -79,8 +97,6 @@ interface SpokePoolInterface {
 
     error NotEOA();
     error InvalidDepositorSignature();
-    error InvalidRelayerFeePct();
-    error MaxTransferSizeExceeded();
     error InvalidCrossDomainAdmin();
     error InvalidWithdrawalRecipient();
     error DepositsArePaused();

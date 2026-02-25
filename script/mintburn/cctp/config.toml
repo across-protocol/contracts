@@ -112,6 +112,16 @@ usdc = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
 [143.uint]
 cctpDomainId = 15
 
+[57073]
+endpoint_url = "${NODE_URL_57073}"
+
+[57073.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0x2D270e6886d130D724215A266106e6832161EAEd"
+
+[57073.uint]
+cctpDomainId = 21
+
 # HyperEVM Mainnet
 [999]
 endpoint_url = "${NODE_URL_999}"

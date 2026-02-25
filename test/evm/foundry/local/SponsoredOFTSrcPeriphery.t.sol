@@ -2,15 +2,15 @@
 pragma solidity ^0.8.23;
 
 import { Test } from "forge-std/Test.sol";
-
+import { console } from "forge-std/console.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
-import { Quote, SignedQuoteParams, UnsignedQuoteParams } from "../../../../contracts/periphery/mintburn/sponsored-oft/Structs.sol";
+import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
 import { MockEndpoint } from "../../../../contracts/test/MockEndpoint.sol";
-
+import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { DebugQuoteSignLib } from "../../../../script/mintburn/oft/CreateSponsoredDeposit.s.sol";
 
@@ -66,8 +66,8 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         address destHandlerAddr,
         address finalRecipientAddr,
         address finalTokenAddr
-    ) internal view returns (Quote memory q) {
-        SignedQuoteParams memory sp = SignedQuoteParams({
+    ) internal view returns (SponsoredOFTInterface.Quote memory q) {
+        SponsoredOFTInterface.SignedQuoteParams memory sp = SponsoredOFTInterface.SignedQuoteParams({
             srcEid: SRC_EID,
             dstEid: uint32(201),
             destinationHandler: destHandlerAddr.toBytes32(),
@@ -75,23 +75,26 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             nonce: nonce,
             deadline: deadline,
             maxBpsToSponsor: 500, // 5%
+            maxUserSlippageBps: 300, // 3%
             finalRecipient: finalRecipientAddr.toBytes32(),
             finalToken: finalTokenAddr.toBytes32(),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
             lzReceiveGasLimit: 500_000,
             lzComposeGasLimit: 500_000,
+            maxOftFeeBps: 0,
+            accountCreationMode: uint8(0), // Standard
             executionMode: uint8(0), // DirectToCore
             actionData: ""
         });
 
-        UnsignedQuoteParams memory up = UnsignedQuoteParams({
-            refundRecipient: refundRecipient,
-            maxUserSlippageBps: 300 // 3%
+        SponsoredOFTInterface.UnsignedQuoteParams memory up = SponsoredOFTInterface.UnsignedQuoteParams({
+            refundRecipient: refundRecipient
         });
 
-        q = Quote({ signedParams: sp, unsignedParams: up });
+        q = SponsoredOFTInterface.Quote({ signedParams: sp, unsignedParams: up });
     }
 
-    function signQuote(uint256 pk, Quote memory q) internal view returns (bytes memory sig) {
+    function signQuote(uint256 pk, SponsoredOFTInterface.Quote memory q) internal view returns (bytes memory sig) {
         sig = DebugQuoteSignLib.signMemory(vm, pk, q.signedParams);
     }
 
@@ -102,7 +105,13 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         address finalRecipientAddr = address(0xBEEF);
         address finalTokenAddr = address(0xCAFE);
 
-        Quote memory quote = createDefaultQuote(nonce, deadline, destHandler, finalRecipientAddr, finalTokenAddr);
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            destHandler,
+            finalRecipientAddr,
+            finalTokenAddr
+        );
         bytes memory signature = signQuote(signerPk, quote);
 
         uint256 extra = 0.123 ether;
@@ -110,7 +119,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
 
         vm.prank(user);
         vm.expectEmit(address(periphery));
-        emit SponsoredOFTSrcPeriphery.SponsoredOFTSend(
+        emit SponsoredOFTInterface.SponsoredOFTSend(
             nonce,
             user,
             finalRecipientAddr.toBytes32(),
@@ -145,27 +154,34 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(spDstEid, quote.signedParams.dstEid, "dstEid mismatch");
         assertEq(spTo, quote.signedParams.destinationHandler, "destination handler mismatch");
         assertEq(spAmountLD, SEND_AMOUNT, "amountLD mismatch");
-        assertEq(spMinAmountLD, SEND_AMOUNT, "minAmountLD should equal amountLD (no fee-in-token)");
+        assertEq(spMinAmountLD, SEND_AMOUNT, "minAmountLD should be SEND_AMOUNT (no dust loss)");
         assertEq(spOftCmd.length, 0, "oftCmd must be empty");
 
         // Validate composeMsg encoding (layout from ComposeMsgCodec._encode)
         (
             bytes32 gotNonce,
-            uint256 gotDeadline,
+            uint256 gotAmountSD,
             uint256 gotMaxBpsToSponsor,
             uint256 gotMaxUserSlippageBps,
             bytes32 gotFinalRecipient,
             bytes32 gotFinalToken,
+            uint32 gotDestinationDex,
+            uint8 gotAccountCreationMode,
             uint8 gotExecutionMode,
             bytes memory gotActionData
-        ) = abi.decode(spComposeMsg, (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint8, bytes));
+        ) = abi.decode(
+                spComposeMsg,
+                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
+            );
 
         assertEq(gotNonce, nonce, "nonce mismatch");
-        assertEq(gotDeadline, deadline, "deadline mismatch");
+        assertEq(gotAmountSD, SEND_AMOUNT / 1e12, "amountSD mismatch");
         assertEq(gotMaxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
         assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
         assertEq(gotFinalRecipient, finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
         assertEq(gotFinalToken, finalTokenAddr.toBytes32(), "finalToken mismatch");
+        assertEq(gotDestinationDex, HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
+        assertEq(gotAccountCreationMode, 0, "accountCreationMode mismatch");
         assertEq(gotExecutionMode, 0, "executionMode mismatch");
         assertEq(keccak256(gotActionData), keccak256(""), "actionData mismatch");
 
@@ -181,18 +197,30 @@ contract SponsoredOFTSrcPeripheryTest is Test {
     function testDepositRevertsOnInsufficientNativeFee() public {
         bytes32 nonce = keccak256("q-2");
         uint256 deadline = block.timestamp + 1 days;
-        Quote memory quote = createDefaultQuote(nonce, deadline, address(0x1234), address(0xBEEF), address(0xCAFE));
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            address(0x1234),
+            address(0xBEEF),
+            address(0xCAFE)
+        );
         bytes memory signature = signQuote(signerPk, quote);
 
         vm.prank(user);
-        vm.expectRevert(SponsoredOFTSrcPeriphery.InsufficientNativeFee.selector);
+        vm.expectRevert(SponsoredOFTInterface.InsufficientNativeFee.selector);
         periphery.deposit{ value: QUOTED_NATIVE_FEE - 1 }(quote, signature);
     }
 
     function testDepositRevertsOnInvalidSignature() public {
         bytes32 nonce = keccak256("q-3");
         uint256 deadline = block.timestamp + 1 days;
-        Quote memory quote = createDefaultQuote(nonce, deadline, address(0x9999), address(0x8888), address(0x7777));
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            address(0x9999),
+            address(0x8888),
+            address(0x7777)
+        );
         bytes memory signature = signQuote(signerPk, quote);
 
         // Corrupt the signature (flip 1 bit)
@@ -213,30 +241,48 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         bytes32 nonce = keccak256("q-3b");
         uint256 deadline = block.timestamp + 1 days;
 
-        Quote memory quote = createDefaultQuote(nonce, deadline, address(0x1111), address(0x2222), address(0x3333));
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            address(0x1111),
+            address(0x2222),
+            address(0x3333)
+        );
         // Sign with wrong private key
         bytes memory signature = signQuote(wrongPk, quote);
 
         vm.prank(user);
-        vm.expectRevert(SponsoredOFTSrcPeriphery.IncorrectSignature.selector);
+        vm.expectRevert(SponsoredOFTInterface.IncorrectSignature.selector);
         periphery.deposit{ value: QUOTED_NATIVE_FEE }(quote, signature);
     }
 
     function testDepositRevertsOnExpiredQuote() public {
         bytes32 nonce = keccak256("q-4");
         uint256 pastDeadline = block.timestamp - 1;
-        Quote memory quote = createDefaultQuote(nonce, pastDeadline, address(0xA1), address(0xB2), address(0xC3));
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            pastDeadline,
+            address(0xA1),
+            address(0xB2),
+            address(0xC3)
+        );
         bytes memory signature = signQuote(signerPk, quote);
 
         vm.prank(user);
-        vm.expectRevert(SponsoredOFTSrcPeriphery.QuoteExpired.selector);
+        vm.expectRevert(SponsoredOFTInterface.QuoteExpired.selector);
         periphery.deposit{ value: QUOTED_NATIVE_FEE }(quote, signature);
     }
 
     function testDepositRevertsOnNonceReuse() public {
         bytes32 nonce = keccak256("q-5");
         uint256 deadline = block.timestamp + 1 days;
-        Quote memory quote = createDefaultQuote(nonce, deadline, address(0xD1), address(0xD2), address(0xD3));
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            address(0xD1),
+            address(0xD2),
+            address(0xD3)
+        );
         bytes memory signature = signQuote(signerPk, quote);
 
         vm.prank(user);
@@ -244,7 +290,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
 
         // Try again with the same quote/nonce
         vm.prank(user);
-        vm.expectRevert(SponsoredOFTSrcPeriphery.NonceAlreadyUsed.selector);
+        vm.expectRevert(SponsoredOFTInterface.NonceAlreadyUsed.selector);
         periphery.deposit{ value: QUOTED_NATIVE_FEE }(quote, signature);
     }
 }

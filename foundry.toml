@@ -25,7 +25,7 @@ src = "contracts/Lens_SpokePool.sol"
 compile = true
 fallback_oz = true
 mode = '3'
-zksolc = "1.5.7"
+zksolc = "1.5.15"
 
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"

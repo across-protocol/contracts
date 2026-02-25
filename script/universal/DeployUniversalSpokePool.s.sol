@@ -11,6 +11,8 @@ import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfa
 /// @title DeployUniversalSpokePool
 /// @notice Deploy script for the Universal_SpokePool contract.
 /// @dev See script/universal/README.md for detailed usage instructions.
+/// @dev Be familiar with the README in this directory before deploying, as there are time
+/// considerations and follow-up transactions to execute after deployments.
 ///
 /// Example:
 ///   forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
@@ -36,6 +38,7 @@ contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {
 
         uint256 heliosAdminBufferUpdateSeconds = 1 days;
         address helios = getDeployedAddress("SP1Helios", info.spokeChainId, true);
+
         address l1HubPoolStore = getL1Addresses(info.hubChainId).hubPoolStore;
 
         bool hasCctpDomain = hasCctpDomain(info.spokeChainId);

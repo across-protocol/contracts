@@ -11,8 +11,10 @@ import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9I
 import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpTokenFactoryInterface.sol";
 import { FinderInterface } from "../../../../contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 import { OracleInterfaces } from "../../../../contracts/external/uma/core/contracts/data-verification-mechanism/implementation/Constants.sol";
+import { Timer } from "../../../../contracts/external/uma/core/contracts/common/implementation/Timer.sol";
+import { SkinnyOptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/SkinnyOptimisticOracleInterface.sol";
+import { OptimisticOracleInterface } from "../../../../contracts/external/uma/core/contracts/optimistic-oracle-v2/interfaces/OptimisticOracleInterface.sol";
 import { Constants } from "../../../../script/utils/Constants.sol";
-
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { MockSpokePool } from "../../../../contracts/test/MockSpokePool.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
@@ -48,32 +50,238 @@ contract MockFinder is FinderInterface {
 
 /**
  * @title MockAddressWhitelist
- * @notice Mock collateral whitelist that approves all tokens.
+ * @notice Mock collateral whitelist that tracks whitelisted addresses.
  */
 contract MockAddressWhitelist {
-    function addToWhitelist(address) external {}
-    function removeFromWhitelist(address) external {}
-    function isOnWhitelist(address) external pure returns (bool) {
-        return true;
+    mapping(address => bool) private _whitelist;
+
+    function addToWhitelist(address token) external {
+        _whitelist[token] = true;
     }
+
+    function removeFromWhitelist(address token) external {
+        _whitelist[token] = false;
+    }
+
+    function isOnWhitelist(address token) external view returns (bool) {
+        return _whitelist[token];
+    }
+
     function getWhitelist() external pure returns (address[] memory) {
         return new address[](0);
     }
 }
 
 /**
+ * @title MockIdentifierWhitelist
+ * @notice Mock identifier whitelist for testing setIdentifier.
+ */
+contract MockIdentifierWhitelist {
+    mapping(bytes32 => bool) public supportedIdentifiers;
+
+    function addSupportedIdentifier(bytes32 identifier) external {
+        supportedIdentifiers[identifier] = true;
+    }
+
+    function removeSupportedIdentifier(bytes32 identifier) external {
+        supportedIdentifiers[identifier] = false;
+    }
+
+    function isIdentifierSupported(bytes32 identifier) external view returns (bool) {
+        return supportedIdentifiers[identifier];
+    }
+}
+
+/**
  * @title MockStore
- * @notice Mock UMA Store that returns zero final fees.
+ * @notice Mock UMA Store with configurable final fees.
  */
 contract MockStore {
     struct FinalFee {
         uint256 rawValue;
     }
 
+    mapping(address => uint256) public finalFees;
+
+    function setFinalFee(address token, FinalFee memory fee) external {
+        finalFees[token] = fee.rawValue;
+    }
+
     function payOracleFees() external payable {}
     function payOracleFeesErc20(address, uint256) external {}
-    function computeFinalFee(address) external pure returns (FinalFee memory) {
-        return FinalFee(0);
+
+    function computeFinalFee(address token) external view returns (FinalFee memory) {
+        return FinalFee(finalFees[token]);
+    }
+}
+
+/**
+ * @title MockOptimisticOracle
+ * @notice Mock of UMA's SkinnyOptimisticOracle matching the real implementation behavior.
+ * @dev This mock replicates the real oracle's behavior for testing dispute functionality.
+ *      Inherits from SkinnyOptimisticOracleInterface to ensure correct function signatures.
+ */
+contract MockOptimisticOracle is SkinnyOptimisticOracleInterface {
+    uint256 public defaultLiveness;
+    MockStore public store;
+
+    // Store requests by their ID (we use our own storage, not the interface's)
+    mapping(bytes32 => Request) public requests;
+
+    constructor(uint256 _defaultLiveness, MockStore _store) {
+        defaultLiveness = _defaultLiveness;
+        store = _store;
+    }
+
+    // ============ Implemented Functions ============
+
+    function requestAndProposePriceFor(
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        IERC20 currency,
+        uint256 /* reward */,
+        uint256 bond,
+        uint256 customLiveness,
+        address proposer,
+        int256 proposedPrice
+    ) external override returns (uint256 totalBond) {
+        bytes32 requestId = keccak256(abi.encode(msg.sender, identifier, timestamp, ancillaryData));
+
+        // Get final fee from store (matching real oracle behavior)
+        uint256 finalFee = store.computeFinalFee(address(currency)).rawValue;
+
+        // Pull bond + finalFee from caller (matching real oracle: bond + finalFee)
+        totalBond = bond + finalFee;
+        currency.transferFrom(msg.sender, address(this), totalBond);
+
+        requests[requestId] = Request({
+            proposer: proposer,
+            disputer: address(0),
+            currency: currency,
+            settled: false,
+            proposedPrice: proposedPrice,
+            resolvedPrice: 0,
+            expirationTime: block.timestamp + customLiveness,
+            reward: 0,
+            finalFee: finalFee,
+            bond: bond,
+            customLiveness: customLiveness
+        });
+
+        return totalBond;
+    }
+
+    function disputePriceFor(
+        bytes32 identifier,
+        uint32 timestamp,
+        bytes memory ancillaryData,
+        Request memory request,
+        address disputer,
+        address requester
+    ) public override returns (uint256 totalBond) {
+        bytes32 requestId = keccak256(abi.encode(requester, identifier, timestamp, ancillaryData));
+        Request storage storedRequest = requests[requestId];
+
+        // Pull full bondAmount from disputer (bond + finalFee from the Request parameter)
+        // This matches what HubPool approves: bondAmount = bond + finalFee
+        // Matching real oracle: totalBond = request.requestSettings.bond.add(request.finalFee)
+        totalBond = request.bond + request.finalFee;
+        storedRequest.currency.transferFrom(msg.sender, address(this), totalBond);
+
+        // Compute burned bond: floor(bond / 2)
+        // Matching real oracle: _computeBurnedBond()
+        uint256 burnedBond = request.bond / 2;
+
+        // The total fee is the burned bond and the final fee added together
+        // Matching real oracle: totalFee = request.finalFee.add(burnedBond)
+        uint256 totalFee = request.finalFee + burnedBond;
+
+        // Send totalFee to store (matching real oracle behavior)
+        if (totalFee > 0) {
+            storedRequest.currency.transfer(address(store), totalFee);
+            store.payOracleFeesErc20(address(storedRequest.currency), totalFee);
+        }
+
+        // Update stored request with disputer
+        storedRequest.disputer = disputer;
+
+        return totalBond;
+    }
+
+    // ============ Stub Functions (not used in tests but required by interface) ============
+
+    function requestPrice(
+        bytes32,
+        uint32,
+        bytes memory,
+        IERC20,
+        uint256,
+        uint256,
+        uint256
+    ) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function proposePriceFor(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory,
+        address,
+        int256
+    ) public pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function proposePrice(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory,
+        int256
+    ) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function disputePrice(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory
+    ) external pure override returns (uint256) {
+        revert("Not implemented");
+    }
+
+    function settle(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory
+    ) external pure override returns (uint256, int256) {
+        revert("Not implemented");
+    }
+
+    function getState(
+        address,
+        bytes32,
+        uint32,
+        bytes memory,
+        Request memory
+    ) external pure override returns (OptimisticOracleInterface.State) {
+        revert("Not implemented");
+    }
+
+    function hasPrice(address, bytes32, uint32, bytes memory, Request memory) public pure override returns (bool) {
+        revert("Not implemented");
+    }
+
+    function stampAncillaryData(bytes memory, address) public pure override returns (bytes memory) {
+        revert("Not implemented");
     }
 }
 
@@ -91,11 +299,14 @@ struct HubPoolFixtureData {
     MintableERC20 dai;
     MintableERC20 usdc;
     MintableERC20 usdt;
-    // UMA mocks
+    // UMA ecosystem mocks
+    Timer timer;
     MockLpTokenFactory lpTokenFactory;
     MockFinder finder;
     MockAddressWhitelist addressWhitelist;
+    MockIdentifierWhitelist identifierWhitelist;
     MockStore store;
+    MockOptimisticOracle optimisticOracle;
     // L2 token addresses
     address l2Weth;
     address l2Dai;
@@ -113,8 +324,12 @@ abstract contract HubPoolTestBase is Test, Constants {
     // ============ Constants ============
 
     uint256 public constant BOND_AMOUNT = 5 ether;
+    uint256 public constant FINAL_FEE = 1 ether;
+    uint256 public constant TOTAL_BOND = BOND_AMOUNT + FINAL_FEE;
     uint256 public constant INITIAL_ETH = 100 ether;
     uint256 public constant LP_ETH_FUNDING = 10 ether;
+    uint32 public constant REFUND_PROPOSAL_LIVENESS = 7200; // 2 hours
+    bytes32 public constant DEFAULT_IDENTIFIER = bytes32("ACROSS-V2");
 
     // ============ Common Test Amounts ============
 
@@ -125,12 +340,15 @@ abstract contract HubPoolTestBase is Test, Constants {
     uint256 public constant USDT_TO_SEND = 100e6; // USDT has 6 decimals
     uint256 public constant USDT_LP_FEES = 10e6;
     uint256 public constant BURN_LIMIT = 1_000_000e6; // 1M USDC per message
+    uint256 public constant AMOUNT_TO_LP = 1000 ether;
+    uint256 public constant REPAYMENT_CHAIN_ID = 777;
 
     // ============ Common Mock Roots ============
 
     bytes32 public constant MOCK_TREE_ROOT = keccak256("mockTreeRoot");
     bytes32 public constant MOCK_RELAYER_REFUND_ROOT = keccak256("mockRelayerRefundRoot");
     bytes32 public constant MOCK_SLOW_RELAY_ROOT = keccak256("mockSlowRelayRoot");
+    bytes32 public constant MOCK_POOL_REBALANCE_ROOT = keccak256("mockPoolRebalanceRoot");
 
     // ============ Internal Storage ============
 
@@ -141,18 +359,38 @@ abstract contract HubPoolTestBase is Test, Constants {
     /**
      * @notice Deploys and configures a HubPool with all necessary mocks.
      * @dev Call this in your setUp() function. The caller becomes the owner.
+     *      This mimics the Hardhat UmaEcosystem.Fixture + HubPool.Fixture setup.
      * @return data The fixture data containing all deployed contracts
      */
     function createHubPoolFixture() internal returns (HubPoolFixtureData memory data) {
+        // Deploy Timer for time control (matches UmaEcosystem.Fixture)
+        data.timer = new Timer();
+
         // Deploy UMA ecosystem mocks
         data.lpTokenFactory = new MockLpTokenFactory();
         data.finder = new MockFinder();
         data.addressWhitelist = new MockAddressWhitelist();
+        data.identifierWhitelist = new MockIdentifierWhitelist();
         data.store = new MockStore();
+
+        // Deploy OptimisticOracle with liveness * 10 (matches UmaEcosystem.Fixture)
+        // Pass store reference so oracle can distribute final fees (matching real oracle)
+        data.optimisticOracle = new MockOptimisticOracle(REFUND_PROPOSAL_LIVENESS * 10, data.store);
 
         // Configure finder with UMA ecosystem addresses
         data.finder.changeImplementationAddress(OracleInterfaces.CollateralWhitelist, address(data.addressWhitelist));
+        data.finder.changeImplementationAddress(
+            OracleInterfaces.IdentifierWhitelist,
+            address(data.identifierWhitelist)
+        );
         data.finder.changeImplementationAddress(OracleInterfaces.Store, address(data.store));
+        data.finder.changeImplementationAddress(
+            OracleInterfaces.SkinnyOptimisticOracle,
+            address(data.optimisticOracle)
+        );
+
+        // Add supported identifier (matches UmaEcosystem.Fixture)
+        data.identifierWhitelist.addSupportedIdentifier(DEFAULT_IDENTIFIER);
 
         // Deploy WETH and tokens
         data.weth = new WETH9();
@@ -160,17 +398,38 @@ abstract contract HubPoolTestBase is Test, Constants {
         data.usdc = new MintableERC20("USDC", "USDC", 6);
         data.usdt = new MintableERC20("USDT", "USDT", 6);
 
+        // Whitelist tokens for collateral (required for bond token)
+        data.addressWhitelist.addToWhitelist(address(data.weth));
+        data.addressWhitelist.addToWhitelist(address(data.dai));
+        data.addressWhitelist.addToWhitelist(address(data.usdc));
+        data.addressWhitelist.addToWhitelist(address(data.usdt));
+
+        // Set final fees for tokens (matches HubPool.Fixture)
+        data.store.setFinalFee(address(data.weth), MockStore.FinalFee({ rawValue: FINAL_FEE }));
+        data.store.setFinalFee(address(data.dai), MockStore.FinalFee({ rawValue: FINAL_FEE }));
+        data.store.setFinalFee(address(data.usdc), MockStore.FinalFee({ rawValue: 1e6 })); // 1 USDC
+        data.store.setFinalFee(address(data.usdt), MockStore.FinalFee({ rawValue: 1e6 })); // 1 USDT
+
         // Create L2 token addresses
         data.l2Weth = makeAddr("l2Weth");
         data.l2Dai = makeAddr("l2Dai");
         data.l2Usdc = makeAddr("l2Usdc");
         data.l2Usdt = makeAddr("l2Usdt");
 
-        // Deploy HubPool
-        data.hubPool = new HubPool(data.lpTokenFactory, data.finder, WETH9Interface(address(data.weth)), address(0));
+        // Deploy HubPool without Timer - use vm.warp() for time control in Foundry
+        // Timer is still available in fixture.timer if needed for other purposes
+        data.hubPool = new HubPool(
+            data.lpTokenFactory,
+            data.finder,
+            WETH9Interface(address(data.weth)),
+            address(0) // Use block.timestamp, controlled via vm.warp()
+        );
 
-        // Set bond token
+        // Set bond token (will add FINAL_FEE to get total bond)
         data.hubPool.setBond(IERC20(address(data.weth)), BOND_AMOUNT);
+
+        // Set liveness
+        data.hubPool.setLiveness(REFUND_PROPOSAL_LIVENESS);
 
         // Fund caller with ETH and WETH for bond
         vm.deal(address(this), INITIAL_ETH);
@@ -234,6 +493,35 @@ abstract contract HubPoolTestBase is Test, Constants {
         vm.warp(block.timestamp + fixture.hubPool.liveness() + 1);
     }
 
+    /**
+     * @notice Executes a pool rebalance leaf from a root bundle.
+     * @param leaf The pool rebalance leaf to execute
+     * @param proof The merkle proof for the leaf
+     */
+    function executeLeaf(HubPoolInterface.PoolRebalanceLeaf memory leaf, bytes32[] memory proof) internal {
+        fixture.hubPool.executeRootBundle(
+            leaf.chainId,
+            leaf.groupIndex,
+            leaf.bundleLpFees,
+            leaf.netSendAmounts,
+            leaf.runningBalances,
+            leaf.leafId,
+            leaf.l1Tokens,
+            proof
+        );
+    }
+
+    /**
+     * @notice Seeds a user with ETH and WETH.
+     * @param user The address to seed
+     * @param amount The amount of ETH/WETH to seed
+     */
+    function seedUserWithWeth(address user, uint256 amount) internal {
+        vm.deal(user, amount);
+        vm.prank(user);
+        fixture.weth.deposit{ value: amount }();
+    }
+
     // ============ MockSpokePool Deployment ============
 
     /**
@@ -259,13 +547,9 @@ abstract contract HubPoolTestBase is Test, Constants {
      * @param l2Usdc The L2 USDC address
      */
     function setupTokenRoutes(uint256 chainId, address l2Weth, address l2Dai, address l2Usdc) internal {
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.weth), l2Weth);
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.dai), l2Dai);
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.usdc), l2Usdc);
-
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.weth));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.dai));
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdc));
+        enableToken(chainId, address(fixture.weth), l2Weth);
+        enableToken(chainId, address(fixture.dai), l2Dai);
+        enableToken(chainId, address(fixture.usdc), l2Usdc);
     }
 
     /**
@@ -284,8 +568,7 @@ abstract contract HubPoolTestBase is Test, Constants {
         address l2Usdt
     ) internal {
         setupTokenRoutes(chainId, l2Weth, l2Dai, l2Usdc);
-        fixture.hubPool.setPoolRebalanceRoute(chainId, address(fixture.usdt), l2Usdt);
-        fixture.hubPool.enableL1TokenForLiquidityProvision(address(fixture.usdt));
+        enableToken(chainId, address(fixture.usdt), l2Usdt);
     }
 
     // ============ WETH Liquidity Helpers ============
@@ -304,55 +587,7 @@ abstract contract HubPoolTestBase is Test, Constants {
         fixture.hubPool.addLiquidity(address(fixture.weth), amount);
     }
 
-    // ============ Root Bundle Execution ============
-
-    /**
-     * @notice Full flow: build merkle leaf, propose, advance time, and execute root bundle.
-     * @param chainId The destination chain ID
-     * @param l1Token The L1 token to bridge
-     * @param amount The amount to send
-     * @param lpFees The LP fees
-     * @param relayerRefundRoot The relayer refund root (use MOCK_RELAYER_REFUND_ROOT or bytes32(0))
-     * @param slowRelayRoot The slow relay root (use MOCK_SLOW_RELAY_ROOT or bytes32(0))
-     * @return leaf The executed pool rebalance leaf
-     */
-    function executeRootBundleForToken(
-        uint256 chainId,
-        address l1Token,
-        uint256 amount,
-        uint256 lpFees,
-        bytes32 relayerRefundRoot,
-        bytes32 slowRelayRoot
-    ) internal returns (HubPoolInterface.PoolRebalanceLeaf memory leaf) {
-        bytes32 root;
-        (leaf, root) = MerkleTreeUtils.buildSingleTokenLeaf(chainId, l1Token, amount, lpFees);
-
-        proposeBundleAndAdvanceTime(root, relayerRefundRoot, slowRelayRoot);
-
-        bytes32[] memory proof = MerkleTreeUtils.emptyProof();
-        fixture.hubPool.executeRootBundle(
-            leaf.chainId,
-            leaf.groupIndex,
-            leaf.bundleLpFees,
-            leaf.netSendAmounts,
-            leaf.runningBalances,
-            leaf.leafId,
-            leaf.l1Tokens,
-            proof
-        );
-    }
-
     // ============ vm.etch Helper ============
-
-    /**
-     * @notice Puts dummy bytecode at an address to pass extcodesize checks.
-     * @dev Use this when mocking external contracts with vm.mockCall.
-     *      Without code, calls to the address will revert due to Solidity's extcodesize check.
-     * @param target The address to put dummy code at
-     */
-    function etchDummyCode(address target) internal {
-        vm.etch(target, hex"00");
-    }
 
     /**
      * @notice Creates a fake address and puts dummy bytecode at it.
