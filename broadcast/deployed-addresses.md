@@ -333,6 +333,14 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia-blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://sepolia-blockscout.lisk.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 
+## Chain 4217 (4217)
+
+| Contract Name      | Address                                    |
+| ------------------ | ------------------------------------------ |
+| MulticallHandler   | 0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90 |
+| SpokePool          | 0x2d4710F04Da90184255782d3715224A6C776955D |
+| SpokePoolPeriphery | 0x1cFC76f039e01970355Cf73a37B785A81847796C |
+
 ## Lens Sepolia (37111)
 
 | Contract Name    | Address                                                                                                                                  |
@@ -347,7 +355,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler    | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://amoy.polygonscan.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | PolygonTokenBridger | [0x4e3737679081c4D3029D88cA560918094f2e0284](https://amoy.polygonscan.com/address/0x4e3737679081c4D3029D88cA560918094f2e0284) |
 | SpokePool           | [0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5](https://amoy.polygonscan.com/address/0xd08baaE74D6d2eAb1F3320B2E1a53eeb391ce8e5) |
-| SpokePoolPeriphery  | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://amoy.polygonscan.com/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
 
 ## Base Sepolia (84532)
 
@@ -355,7 +362,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
 | MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool          | [0x82B564983aE7274c86695917BBf8C99ECb6F0F8F](https://sepolia.basescan.org/address/0x82B564983aE7274c86695917BBf8C99ECb6F0F8F) |
-| SpokePoolPeriphery | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://sepolia.basescan.org/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
+| SpokePoolPeriphery | [0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C](https://sepolia.basescan.org/address/0x89415a82d909a7238d69094C3Dd1dCC1aCbDa85C) |
 
 ## Tatara (129399)
 
@@ -367,11 +374,10 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Arbitrum Sepolia (421614)
 
-| Contract Name      | Address                                                                                                                      |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://sepolia.arbiscan.io/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
-| SpokePoolPeriphery | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://sepolia.arbiscan.io/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
+| Contract Name    | Address                                                                                                                      |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool        | [0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75](https://sepolia.arbiscan.io/address/0x7E63A5f1a8F0B4d0934B2f2327DAED3F6bb2ee75) |
 
 ## BOB Sepolia (808813)
 
@@ -396,15 +402,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 | PolygonTokenBridger | [0x4e3737679081c4D3029D88cA560918094f2e0284](https://sepolia.etherscan.io/address/0x4e3737679081c4D3029D88cA560918094f2e0284) |
 | Solana_Adapter      | [0x9b2c2f3fD98cF8468715Be31155cc053C56f822A](https://sepolia.etherscan.io/address/0x9b2c2f3fD98cF8468715Be31155cc053C56f822A) |
 | SpokePool           | [0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662](https://sepolia.etherscan.io/address/0x5ef6C01E11889d86803e0B23e3cB3F9E9d97B662) |
-| SpokePoolPeriphery  | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://sepolia.etherscan.io/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
 
 ## Optimism Sepolia (11155420)
 
-| Contract Name      | Address                                                                                                                                |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia-optimism.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x4e8E101924eDE233C13e2D8622DC8aED2872d505](https://sepolia-optimism.etherscan.io/address/0x4e8E101924eDE233C13e2D8622DC8aED2872d505) |
-| SpokePoolPeriphery | [0x1cFC76f039e01970355Cf73a37B785A81847796C](https://sepolia-optimism.etherscan.io/address/0x1cFC76f039e01970355Cf73a37B785A81847796C) |
+| Contract Name    | Address                                                                                                                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia-optimism.etherscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool        | [0x4e8E101924eDE233C13e2D8622DC8aED2872d505](https://sepolia-optimism.etherscan.io/address/0x4e8E101924eDE233C13e2D8622DC8aED2872d505) |
 
 ## Blast Sepolia (168587773)
 

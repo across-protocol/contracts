@@ -59,7 +59,6 @@ hyperevm_testnet = "${NODE_URL_998}"
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
-sepolia = { key = "${ETHERSCAN_API_KEY}" }
 
 # A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
 [profile.local-test]
