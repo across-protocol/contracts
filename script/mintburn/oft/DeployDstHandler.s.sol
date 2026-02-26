@@ -41,7 +41,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
 
         vm.startBroadcast(deployerPrivateKey);
 
-        DonationBox donationBox = new DonationBox();
+        DonationBox donationBox = DonationBox(config.get("donationBox").toAddress());
         // if (multicallHandler == address(0)) {
         PermissionedMulticallHandler multicallHandler = new PermissionedMulticallHandler(deployer);
         // }
@@ -52,7 +52,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
             baseToken,
             address(multicallHandler)
         );
-        donationBox.transferOwnership(address(dstOFTHandler));
+        donationBox.grantRole(donationBox.WITHDRAWER_ROLE(), address(dstOFTHandler));
         // TODO: this won't work for multisig-owned `multicallHandler`s
         multicallHandler.grantRole(multicallHandler.WHITELISTED_CALLER_ROLE(), address(dstOFTHandler));
 
