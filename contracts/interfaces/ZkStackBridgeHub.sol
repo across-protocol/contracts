@@ -25,10 +25,9 @@ interface BridgeHubInterface {
      * allowance of the base Token.
      * @param _request the direct request.
      */
-    function requestL2TransactionDirect(L2TransactionRequestDirect calldata _request)
-        external
-        payable
-        returns (bytes32 canonicalTxHash);
+    function requestL2TransactionDirect(
+        L2TransactionRequestDirect calldata _request
+    ) external payable returns (bytes32 canonicalTxHash);
 
     struct L2TransactionRequestTwoBridgesOuter {
         uint256 chainId;
@@ -51,10 +50,9 @@ interface BridgeHubInterface {
      * This function is great for contract calls to L2, the secondBridge can be any contract.
      * @param _request the two bridges request.
      */
-    function requestL2TransactionTwoBridges(L2TransactionRequestTwoBridgesOuter calldata _request)
-        external
-        payable
-        returns (bytes32 canonicalTxHash);
+    function requestL2TransactionTwoBridges(
+        L2TransactionRequestTwoBridgesOuter calldata _request
+    ) external payable returns (bytes32 canonicalTxHash);
 
     /**
      * @notice Gets the shared bridge.
