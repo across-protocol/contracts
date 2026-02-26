@@ -246,10 +246,13 @@ async function main(): Promise<void> {
 
   const base58Address = tronWeb.address.fromHex(tronHexAddress);
 
-  console.error(`Contract deployed!`);
+  const tronscanBase = TRONSCAN_URLS[chainId] || "https://tronscan.org";
+
+  console.error(`\nContract deployed!`);
+  console.error(`  EVM address:  0x${evmAddress}`);
   console.error(`  Tron address: ${base58Address}`);
-  console.error(`  Hex address:  0x${evmAddress}`);
   console.error(`  TX ID:        ${txID}`);
+  console.error(`  Tronscan:     ${tronscanBase}/#/contract/${base58Address}`);
 
   // Write deployment artifact to deployments/tron/
   const deploymentsDir = path.resolve(__dirname, "../../../deployments/tron");
