@@ -333,14 +333,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia-blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0xeF684C38F94F48775959ECf2012D7E864ffb9dd4](https://sepolia-blockscout.lisk.com/address/0xeF684C38F94F48775959ECf2012D7E864ffb9dd4) |
 
-## Chain 4217 (4217)
-
-| Contract Name      | Address                                    |
-| ------------------ | ------------------------------------------ |
-| MulticallHandler   | 0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90 |
-| SpokePool          | 0x2d4710F04Da90184255782d3715224A6C776955D |
-| SpokePoolPeriphery | 0x1cFC76f039e01970355Cf73a37B785A81847796C |
-
 ## Lens Sepolia (37111)
 
 | Contract Name    | Address                                                                                                                                  |
