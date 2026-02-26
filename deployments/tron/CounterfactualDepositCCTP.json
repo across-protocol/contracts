@@ -1,0 +1,114 @@
+{
+  "contractName": "CounterfactualDepositCCTP",
+  "address": "0x5010684cc3ab1c7fb689d9e308870bc17cc1cb6e",
+  "tronAddress": "THGYiQumCY5dtY3oxgvWKPhdhTXJHYfSg2",
+  "transactionHash": "c643830c87f4b591f61926ef7019d14796283b42cd5de55019e32ee31fc860eb",
+  "constructorArgs": "0x000000000000000000000000bb1823127f95a6d9b661500fc98dc5872c3fae120000000000000000000000000000000000000000000000000000000000000001",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_srcPeriphery",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_sourceDomain",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "execute",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "submitterData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "sourceDomain",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "srcPeriphery",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "CCTPDepositExecuted",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "executionFeeRecipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "nonce",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "cctpDeadline",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "deployedAt": "2026-02-26T23:30:04.989Z",
+  "network": "https://nile.trongrid.io",
+  "solcVersion": "0.8.25"
+}

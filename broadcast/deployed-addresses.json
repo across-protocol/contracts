@@ -1049,10 +1049,15 @@
     "3448148188": {
       "chain_name": "Chain 3448148188",
       "contracts": {
+        "CounterfactualDepositCCTP": {
+          "address": "0x5010684cc3ab1c7fb689d9e308870bc17cc1cb6e",
+          "block_number": 65227926,
+          "transaction_hash": "0xc643830c87f4b591f61926ef7019d14796283b42cd5de55019e32ee31fc860eb"
+        },
         "CounterfactualDepositFactoryTron": {
-          "address": "0x14cf2c567dc83685149675c719a5705d29b26b81",
-          "block_number": 65225482,
-          "transaction_hash": "0xfb02ac767843c1e4a9510151d07e8d931b6999baf6dca83eb2fc03faa8e55065"
+          "address": "0xbb1823127f95a6d9b661500fc98dc5872c3fae12",
+          "block_number": 65227788,
+          "transaction_hash": "0x25fe47078d2152b56633f48b68dbbc3082cf7c3e8e86aae4a80f6e5939104720"
         }
       }
     },

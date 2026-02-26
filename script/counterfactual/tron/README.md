@@ -27,7 +27,21 @@ Foundry script (type-safe args)
 
 ## Prerequisites
 
-1. Compile Tron-compatible artifacts (Solidity 0.8.25):
+1. Download the Tron solc binary (required for TronScan-verifiable bytecode):
+
+   ```bash
+   # macOS
+   curl -L -o bin/solc-tron \
+     https://github.com/tronprotocol/solidity/releases/download/tv_0.8.25/solc-macos
+   chmod +x bin/solc-tron
+
+   # Linux
+   curl -L -o bin/solc-tron \
+     https://github.com/tronprotocol/solidity/releases/download/tv_0.8.25/solc-static-linux
+   chmod +x bin/solc-tron
+   ```
+
+2. Compile Tron-compatible artifacts (Solidity 0.8.25, using Tron's solc fork):
 
    ```bash
    FOUNDRY_PROFILE=tron forge build
@@ -35,13 +49,13 @@ Foundry script (type-safe args)
 
    This outputs artifacts to `out-tron/`.
 
-2. Set environment variables (same `MNEMONIC` used by other deploy scripts):
+3. Set environment variables (same `MNEMONIC` used by other deploy scripts):
 
    ```bash
    source .env  # needs MNEMONIC="x x x ... x" and NODE_URL_<chainId>="<node URL>"
    ```
 
-3. Optional: set `TRON_FEE_LIMIT` in sun (default: `1500000000` = 1500 TRX).
+4. Optional: set `TRON_FEE_LIMIT` in sun (default: `1500000000` = 1500 TRX).
 
 ## Deploy Commands
 
@@ -129,9 +143,29 @@ Written to `deployments/tron/<ContractName>.json` with TRON-specific fields (Bas
 
 Re-deploying the same contract overwrites this artifact (broadcast artifacts are never overwritten — each run gets a new timestamped file).
 
+## TronScan Verification
+
+TronScan uses Tron's own solc fork, so contracts must be compiled with it to produce matching bytecode. The `[profile.tron]` Foundry profile is configured to use `bin/solc-tron` for this (see [Prerequisites](#prerequisites) step 1).
+
+To verify a contract on TronScan:
+
+1. Flatten the contract source:
+
+   ```bash
+   FOUNDRY_PROFILE=tron forge flatten contracts/periphery/counterfactual/<ContractName>.sol \
+     -o flattened/<ContractName>.sol
+   ```
+
+2. Go to the contract's page on [TronScan](https://tronscan.org/) (or [Nile TronScan](https://nile.tronscan.org/) for testnet) and click **Verify & Publish**.
+
+3. Upload the flattened `.sol` file with these settings:
+   - **Compiler version**: `tron_v0.8.25`
+   - **Optimization**: `Yes`, `800` runs
+   - **License**: `BUSL-1.1`
+
 ## Notes
 
 - The deploy scripts compile under the **default Foundry profile** (0.8.30). They don't import any counterfactual contracts — only `forge-std`.
-- The contract **artifacts** are compiled separately with `FOUNDRY_PROFILE=tron` (0.8.25, the max Tron supports) and read from `out-tron/` at deploy time.
+- The contract **artifacts** are compiled separately with `FOUNDRY_PROFILE=tron` (using Tron's solc 0.8.25 fork for TronScan-verifiable bytecode) and read from `out-tron/` at deploy time.
 - `deploy.ts` writes human-readable logs to stderr (visible in the console) and the ABI-encoded address to stdout (consumed by Foundry's `vm.ffi`).
 - On failure (rejected tx, timeout, on-chain revert), `deploy.ts` exits non-zero, which causes Foundry's `vm.ffi` to revert the script.
