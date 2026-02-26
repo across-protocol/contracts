@@ -95,7 +95,23 @@ forge script script/counterfactual/tron/TronDeployWithdrawImplementation.s.sol \
 
 ## Deployment Artifacts
 
-Each successful deployment writes a JSON artifact to `deployments/tron/<ContractName>.json`:
+Each successful deployment writes two artifacts:
+
+### 1. Foundry broadcast (`broadcast/`)
+
+Written to `broadcast/TronDeploy<ContractName>.s.sol/<chainId>/run-<timestamp>.json` (plus a `run-latest.json` copy), matching the exact schema Foundry uses for `forge script --broadcast`. This means existing tooling that reads the `broadcast/` folder (e.g. `extract_foundry_addresses.sh`, deployment tracking) picks up TRON deployments automatically.
+
+```
+broadcast/
+  TronDeployCounterfactualDepositFactoryTron.s.sol/
+    3448148188/
+      run-1771969799325.json
+      run-latest.json
+```
+
+### 2. TRON deployment (`deployments/tron/`)
+
+Written to `deployments/tron/<ContractName>.json` with TRON-specific fields (Base58Check address, node URL):
 
 ```json
 {
@@ -111,7 +127,7 @@ Each successful deployment writes a JSON artifact to `deployments/tron/<Contract
 }
 ```
 
-Re-deploying the same contract overwrites the previous artifact.
+Re-deploying the same contract overwrites this artifact (broadcast artifacts are never overwritten — each run gets a new timestamped file).
 
 ## Notes
 

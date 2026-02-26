@@ -17,11 +17,123 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import { Wallet } from "ethers";
+import { execSync } from "child_process";
+import { Wallet, utils } from "ethers";
 import { TronWeb } from "tronweb";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes
+
+const TRONSCAN_URLS: Record<string, string> = {
+  "728126428": "https://tronscan.org",
+  "3448148188": "https://nile.tronscan.org",
+};
+
+/** Decode ABI-encoded constructor args into human-readable strings for the broadcast `arguments` field. */
+function decodeConstructorArgs(abi: any[], parameterHex: string): string[] | null {
+  const ctor = abi.find((e: any) => e.type === "constructor");
+  if (!ctor || !ctor.inputs?.length || !parameterHex) return null;
+  try {
+    const types = ctor.inputs.map((i: any) => i.type);
+    const decoded = utils.defaultAbiCoder.decode(types, "0x" + parameterHex);
+    return ctor.inputs.map((input: any, i: number) => {
+      const val = decoded[i];
+      if (input.type === "address") return utils.getAddress(val);
+      return val.toString();
+    });
+  } catch {
+    return null;
+  }
+}
+
+function getGitCommit(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
+  } catch {
+    return "";
+  }
+}
+
+/** Write a Foundry-compatible broadcast artifact to broadcast/<ScriptName>.s.sol/<chainId>/. */
+function writeBroadcastArtifact(opts: {
+  contractName: string;
+  contractAddress: string;
+  txID: string;
+  chainId: string;
+  deployerAddress: string;
+  bytecode: string;
+  parameter: string | undefined;
+  abi: any[];
+  feeLimit: number;
+  txInfo: any;
+}): void {
+  const scriptName = `TronDeploy${opts.contractName}.s.sol`;
+  const chainIdNum = parseInt(opts.chainId, 10);
+  const now = Date.now();
+  const txHash = `0x${opts.txID}`;
+  const initcode = `0x${opts.bytecode}${opts.parameter || ""}`;
+  const blockNum = opts.txInfo.blockNumber ? "0x" + opts.txInfo.blockNumber.toString(16) : "0x0";
+  const energyUsed = opts.txInfo.receipt?.energy_usage_total;
+  const gasUsed = energyUsed ? "0x" + energyUsed.toString(16) : "0x0";
+
+  const broadcast = {
+    transactions: [
+      {
+        hash: txHash,
+        transactionType: "CREATE",
+        contractName: opts.contractName,
+        contractAddress: opts.contractAddress,
+        function: null,
+        arguments: decodeConstructorArgs(opts.abi, opts.parameter || ""),
+        transaction: {
+          from: opts.deployerAddress,
+          gas: "0x" + opts.feeLimit.toString(16),
+          value: "0x0",
+          input: initcode,
+          nonce: "0x0",
+          chainId: "0x" + chainIdNum.toString(16),
+        },
+        additionalContracts: [],
+        isFixedGasLimit: false,
+      },
+    ],
+    receipts: [
+      {
+        status: "0x1",
+        cumulativeGasUsed: gasUsed,
+        logs: [],
+        logsBloom: "0x" + "00".repeat(256),
+        type: "0x0",
+        transactionHash: txHash,
+        transactionIndex: "0x0",
+        blockHash: txHash, // TRON doesn't expose blockHash via getTransactionInfo
+        blockNumber: blockNum,
+        gasUsed,
+        effectiveGasPrice: "0x0",
+        from: opts.deployerAddress,
+        to: null,
+        contractAddress: opts.contractAddress,
+      },
+    ],
+    libraries: [],
+    pending: [],
+    returns: {},
+    timestamp: now,
+    chain: chainIdNum,
+    commit: getGitCommit(),
+  };
+
+  const broadcastDir = path.resolve(__dirname, "../../../broadcast", scriptName, opts.chainId);
+  fs.mkdirSync(broadcastDir, { recursive: true });
+
+  const json = JSON.stringify(broadcast, null, 2) + "\n";
+  const runFile = path.join(broadcastDir, `run-${now}.json`);
+  const latestFile = path.join(broadcastDir, "run-latest.json");
+
+  fs.writeFileSync(runFile, json);
+  fs.writeFileSync(latestFile, json);
+  console.error(`  Broadcast:    ${runFile}`);
+}
 
 async function main(): Promise<void> {
   const chainId = process.argv[2];
@@ -45,7 +157,9 @@ async function main(): Promise<void> {
   }
 
   // Derive account 0 private key from mnemonic (same derivation as Foundry's vm.deriveKey(mnemonic, 0))
-  const privateKey = Wallet.fromMnemonic(mnemonic).privateKey.slice(2); // strip 0x for TronWeb
+  const wallet = Wallet.fromMnemonic(mnemonic);
+  const privateKey = wallet.privateKey.slice(2); // strip 0x for TronWeb
+  const deployerAddress = wallet.address.toLowerCase();
 
   const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
 
@@ -137,7 +251,7 @@ async function main(): Promise<void> {
   console.error(`  Hex address:  0x${evmAddress}`);
   console.error(`  TX ID:        ${txID}`);
 
-  // Write deployment artifact
+  // Write deployment artifact to deployments/tron/
   const deploymentsDir = path.resolve(__dirname, "../../../deployments/tron");
   fs.mkdirSync(deploymentsDir, { recursive: true });
   const artifactFile = path.join(deploymentsDir, `${contractName}.json`);
@@ -156,6 +270,20 @@ async function main(): Promise<void> {
 
   fs.writeFileSync(artifactFile, JSON.stringify(deployment, null, 2) + "\n");
   console.error(`  Artifact:     ${artifactFile}`);
+
+  // Write Foundry-compatible broadcast artifact to broadcast/
+  writeBroadcastArtifact({
+    contractName,
+    contractAddress: `0x${evmAddress}`,
+    txID,
+    chainId,
+    deployerAddress,
+    bytecode,
+    parameter,
+    abi,
+    feeLimit,
+    txInfo,
+  });
 
   // ABI-encode the address for Foundry: left-pad to 32 bytes
   const padded = evmAddress.toLowerCase().padStart(64, "0");

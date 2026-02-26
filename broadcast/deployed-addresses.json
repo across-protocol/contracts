@@ -1046,6 +1046,16 @@
         }
       }
     },
+    "3448148188": {
+      "chain_name": "Chain 3448148188",
+      "contracts": {
+        "CounterfactualDepositFactoryTron": {
+          "address": "0xcf9fcabb14b7bf8379c64550c8c3599e9b8aee7c",
+          "block_number": 65223121,
+          "transaction_hash": "0x318b454562d6701722d8290c26f689eb2658d9abe94fd72a302c6fa83f5de2a9"
+        }
+      }
+    },
     "133268194659241": {
       "chain_name": "Solana Devnet",
       "contracts": {
