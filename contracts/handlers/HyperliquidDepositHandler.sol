@@ -71,13 +71,18 @@ contract HyperliquidDepositHandler is AcrossMessageHandler, ReentrancyGuard, Own
 
     /**
      * @notice Constructor.
-     * @dev Creates a new donation box contract owned by this contract.
+     * @dev Requires the DonationBox contract to be deployed and this contract be granted the WITHDRAWER_ROLE.
+     * @param _donationBox Address of the DonationBox contract to use for account activation fees.
      * @param _signer Address of the signer that will sign the payloads used for calling handleV3AcrossMessage. This signer
      * should be one controlled by the Across API to prevent griefing attacks that attempt to drain the Donation Box.
      * @param _spokePool Address of the SpokePool contract that can call handleV3AcrossMessage.
      */
-    constructor(address _signer, address _spokePool) Ownable(msg.sender) EIP712("HyperliquidDepositHandler", "1.0.0") {
-        donationBox = new DonationBox();
+    constructor(
+        address _donationBox,
+        address _signer,
+        address _spokePool
+    ) Ownable(msg.sender) EIP712("HyperliquidDepositHandler", "1.0.0") {
+        donationBox = DonationBox(_donationBox);
         signer = _signer;
         spokePool = _spokePool;
     }
