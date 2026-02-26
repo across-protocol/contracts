@@ -1050,9 +1050,9 @@
       "chain_name": "Chain 3448148188",
       "contracts": {
         "CounterfactualDepositFactoryTron": {
-          "address": "0xcf9fcabb14b7bf8379c64550c8c3599e9b8aee7c",
-          "block_number": 65223121,
-          "transaction_hash": "0x318b454562d6701722d8290c26f689eb2658d9abe94fd72a302c6fa83f5de2a9"
+          "address": "0x14cf2c567dc83685149675c719a5705d29b26b81",
+          "block_number": 65225482,
+          "transaction_hash": "0xfb02ac767843c1e4a9510151d07e8d931b6999baf6dca83eb2fc03faa8e55065"
         }
       }
     },

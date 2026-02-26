@@ -1,8 +1,8 @@
 {
   "contractName": "CounterfactualDepositFactoryTron",
-  "address": "0xcf9fcabb14b7bf8379c64550c8c3599e9b8aee7c",
-  "tronAddress": "TUu2JJe4u4VuSXw4VjbfWQAPaaF4cG8241",
-  "transactionHash": "318b454562d6701722d8290c26f689eb2658d9abe94fd72a302c6fa83f5de2a9",
+  "address": "0x14cf2c567dc83685149675c719a5705d29b26b81",
+  "tronAddress": "TBsEhYMyWL5QToMbDJL2S6YgiXQf57ZNqn",
+  "transactionHash": "fb02ac767843c1e4a9510151d07e8d931b6999baf6dca83eb2fc03faa8e55065",
   "constructorArgs": null,
   "abi": [
     {
@@ -212,7 +212,7 @@
       ]
     }
   ],
-  "deployedAt": "2026-02-26T19:28:59.904Z",
+  "deployedAt": "2026-02-26T21:27:29.266Z",
   "network": "https://nile.trongrid.io",
   "solcVersion": "0.8.25"
 }
