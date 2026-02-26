@@ -304,3 +304,18 @@ The manager uses EIP-712 signatures with typehash `SignedWithdraw(address deposi
 ### Trust-Minimized Admin via TimelockController
 
 The `admin` field in a withdraw leaf can be set to an OpenZeppelin `TimelockController`. This adds a time delay to all admin withdrawals, giving users a window to call `userWithdraw` (via the same withdraw leaf as `user`) first. No contract changes needed — the TimelockController address is simply set as `admin` in `WithdrawParams` at address-generation time.
+
+## TRON Deployment
+
+TRON contracts are deployed via a local JSON-RPC proxy that translates `forge create` commands into TRON transactions. See [`script/tron/README.md`](../../../script/tron/README.md) for full documentation.
+
+```bash
+# Build, start proxy, deploy
+FOUNDRY_PROFILE=tron forge build
+npx ts-node script/tron/proxy.ts 3448148188   # Terminal 1 (Nile testnet)
+FOUNDRY_PROFILE=tron forge create \            # Terminal 2
+  --rpc-url http://127.0.0.1:8545 --mnemonic "$MNEMONIC" --legacy \
+  contracts/periphery/counterfactual/CounterfactualDepositFactoryTron.sol:CounterfactualDepositFactoryTron
+```
+
+TRON uses `CounterfactualDepositFactoryTron` (which uses `TronClones` with the `0x41` CREATE2 prefix) instead of the base `CounterfactualDepositFactory`.

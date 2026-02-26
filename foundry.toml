@@ -70,6 +70,7 @@ out = "out-local"
 solc_version = "0.8.25"
 solc = "0.8.25"
 evm_version = "cancun"
+via_ir = false
 src = "contracts/periphery/counterfactual"
 test = "test/evm/foundry/tron"
 script = "script/counterfactual"
