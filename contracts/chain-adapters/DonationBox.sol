@@ -21,7 +21,6 @@ contract DonationBox is AccessControl {
 
     constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(WITHDRAWER_ROLE, msg.sender);
     }
 
     /**
