@@ -1,22 +1,8 @@
 # Tron Deploy Scripts
 
-Deploys counterfactual deposit contracts to Tron via Foundry FFI + TronWeb.
+Deploys counterfactual deposit contracts to Tron via TronWeb.
 
-## Why FFI?
-
-Foundry cannot broadcast transactions to Tron directly — Tron uses protobuf-encoded transactions with SHA-256 signing, while Foundry uses RLP + keccak256. Each Foundry script here is a typed wrapper that ABI-encodes constructor args, then FFI-calls `deploy.ts` which handles the actual TronWeb deployment.
-
-```
-Foundry script (type-safe args)
-  → abi.encode(constructorArgs)
-  → vm.ffi(["npx", "ts-node", "deploy.ts", chainId, artifactPath, encodedArgs])
-      → deploy.ts resolves NODE_URL_<chainId> from env
-      → reads artifact from out-tron/
-      → TronWeb builds, signs, and broadcasts the transaction
-      → polls for confirmation
-      → returns ABI-encoded deployed address via stdout
-  → abi.decode(result) → logs deployed address
-```
+Foundry cannot broadcast transactions to Tron directly — Tron uses protobuf-encoded transactions with SHA-256 signing, while Foundry uses RLP + keccak256. Each deploy script is a TypeScript wrapper that validates typed args, ABI-encodes constructor args, and calls the shared `deploy.ts` deployer which handles the TronWeb deployment.
 
 ## Networks
 
@@ -49,13 +35,15 @@ Foundry script (type-safe args)
 
    This outputs artifacts to `out-tron/`.
 
-3. Set environment variables (same `MNEMONIC` used by other deploy scripts):
+3. Set environment variables in `.env` (loaded automatically via dotenv):
 
-   ```bash
-   source .env  # needs MNEMONIC="x x x ... x" and NODE_URL_<chainId>="<node URL>"
+   ```
+   MNEMONIC="x x x ... x"
+   NODE_URL_728126428=https://api.trongrid.io
+   NODE_URL_3448148188=https://nile.trongrid.io
    ```
 
-4. Optional: set `TRON_FEE_LIMIT` in sun (default: `1500000000` = 1500 TRX).
+4. Optional: set `TRON_FEE_LIMIT` in `.env` (in sun, default: `1500000000` = 1500 TRX).
 
 ## Deploy Commands
 
@@ -64,48 +52,52 @@ Every script takes `chainId` as its first argument (`728126428` for mainnet, `34
 ### CounterfactualDepositFactoryTron (no constructor args)
 
 ```bash
-forge script script/counterfactual/tron/TronDeployCounterfactualDepositFactoryTron.s.sol \
-  --sig "run(uint256)" 3448148188
+yarn tron-deploy-counterfactual-factory <chainId>
 ```
 
 ### CounterfactualDepositCCTP
 
 ```bash
-forge script script/counterfactual/tron/TronDeployCounterfactualDepositCCTP.s.sol \
-  --sig "run(uint256,address,uint32)" <chainId> <srcPeriphery> <sourceDomain>
+yarn tron-deploy-counterfactual-deposit-cctp <chainId> <srcPeriphery> <sourceDomain>
 ```
 
 ### CounterfactualDepositOFT
 
 ```bash
-forge script script/counterfactual/tron/TronDeployCounterfactualDepositOFT.s.sol \
-  --sig "run(uint256,address,uint32)" <chainId> <oftSrcPeriphery> <srcEid>
+yarn tron-deploy-counterfactual-deposit-oft <chainId> <oftSrcPeriphery> <srcEid>
 ```
 
 ### CounterfactualDepositSpokePool
 
 ```bash
-forge script script/counterfactual/tron/TronDeployCounterfactualDepositSpokePool.s.sol \
-  --sig "run(uint256,address,address,address)" <chainId> <spokePool> <signer> <wrappedNativeToken>
+yarn tron-deploy-counterfactual-deposit-spokepool <chainId> <spokePool> <signer> <wrappedNativeToken>
 ```
 
 ### WithdrawImplementation (no constructor args)
 
 ```bash
-forge script script/counterfactual/tron/TronDeployWithdrawImplementation.s.sol \
-  --sig "run(uint256)" <chainId>
+yarn tron-deploy-withdraw-implementation <chainId>
+```
+
+### Deploy Clone (test address prediction)
+
+Deploys a clone from the factory and verifies the predicted address matches the actual deployed address.
+
+```bash
+yarn tron-deploy-counterfactual-clone <chainId> <factory> <implementation> <paramsHash> <salt>
 ```
 
 ## File Overview
 
-| File                                               | Purpose                                                                                                       |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `deploy.ts`                                        | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb, returns ABI-encoded address to stdout |
-| `TronDeployCounterfactualDepositFactoryTron.s.sol` | Deploys `CounterfactualDepositFactoryTron` (no args)                                                          |
-| `TronDeployCounterfactualDepositCCTP.s.sol`        | Deploys `CounterfactualDepositCCTP(srcPeriphery, sourceDomain)`                                               |
-| `TronDeployCounterfactualDepositOFT.s.sol`         | Deploys `CounterfactualDepositOFT(oftSrcPeriphery, srcEid)`                                                   |
-| `TronDeployCounterfactualDepositSpokePool.s.sol`   | Deploys `CounterfactualDepositSpokePool(spokePool, signer, wrappedNativeToken)`                               |
-| `TronDeployWithdrawImplementation.s.sol`           | Deploys `WithdrawImplementation` (no args)                                                                    |
+| File                                              | Purpose                                                                         |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `deploy.ts`                                       | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb          |
+| `tron-deploy-counterfactual-factory.ts`           | Deploys `CounterfactualDepositFactoryTron` (no args)                            |
+| `tron-deploy-counterfactual-deposit-cctp.ts`      | Deploys `CounterfactualDepositCCTP(srcPeriphery, sourceDomain)`                 |
+| `tron-deploy-counterfactual-deposit-oft.ts`       | Deploys `CounterfactualDepositOFT(oftSrcPeriphery, srcEid)`                     |
+| `tron-deploy-counterfactual-deposit-spokepool.ts` | Deploys `CounterfactualDepositSpokePool(spokePool, signer, wrappedNativeToken)` |
+| `tron-deploy-withdraw-implementation.ts`          | Deploys `WithdrawImplementation` (no args)                                      |
+| `tron-deploy-counterfactual-clone.ts`             | Deploys a clone from factory, verifies address prediction                       |
 
 ## Deployment Artifacts
 
@@ -165,7 +157,7 @@ To verify a contract on TronScan:
 
 ## Notes
 
-- The deploy scripts compile under the **default Foundry profile** (0.8.30). They don't import any counterfactual contracts — only `forge-std`.
-- The contract **artifacts** are compiled separately with `FOUNDRY_PROFILE=tron` (using Tron's solc 0.8.25 fork for TronScan-verifiable bytecode) and read from `out-tron/` at deploy time.
-- `deploy.ts` writes human-readable logs to stderr (visible in the console) and the ABI-encoded address to stdout (consumed by Foundry's `vm.ffi`).
-- On failure (rejected tx, timeout, on-chain revert), `deploy.ts` exits non-zero, which causes Foundry's `vm.ffi` to revert the script.
+- The contract **artifacts** are compiled with `FOUNDRY_PROFILE=tron` (using Tron's solc 0.8.25 fork for TronScan-verifiable bytecode) and read from `out-tron/` at deploy time.
+- All scripts load `.env` automatically via dotenv — no need to run `source .env` first.
+- `deploy.ts` can also be used directly for any contract: `npx ts-node deploy.ts <chainId> <artifactPath> [encodedArgs]`.
+- On failure (rejected tx, timeout, on-chain revert), scripts exit non-zero.

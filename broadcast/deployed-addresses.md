@@ -413,8 +413,11 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name                    | Address                                    |
 | -------------------------------- | ------------------------------------------ |
-| CounterfactualDepositCCTP        | 0x5010684CC3ab1C7fb689d9E308870Bc17cc1cb6e |
-| CounterfactualDepositFactoryTron | 0xBB1823127F95a6D9B661500Fc98DC5872c3fAE12 |
+| CounterfactualDepositCCTP        | 0x30c4BDd3Fa4D158900220167408dFFFDa0D8c837 |
+| CounterfactualDepositFactoryTron | 0x550EE30d4516f1161e58131aD2aD46d83dbeDc9a |
+| CounterfactualDepositOFT         | 0x79f641FaDD8E6DD031fF26f63C0Ba0B85cbF0719 |
+| CounterfactualDepositSpokePool   | 0x6f7C7ADE7ca678540176373eAa65F74e2F3c3056 |
+| WithdrawImplementation           | 0xe26C875a224D6B1107D2c2046c916C42ff728B2f |
 
 ## Solana Devnet (133268194659241)
 

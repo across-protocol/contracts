@@ -1,20 +1,20 @@
 {
-  "contractName": "CounterfactualDepositCCTP",
-  "address": "0x30c4bdd3fa4d158900220167408dfffda0d8c837",
-  "tronAddress": "TER587AHJfAx1cuQDTmGrRbrC6QnJAbp4X",
-  "transactionHash": "eedb28f85bb5c01b477476e79fa575a952943bff2e5867254ad23be853a371d2",
-  "constructorArgs": "0x0000000000000000000000001234567890abcdef1234567890abcdef123456780000000000000000000000000000000000000000000000000000000000000007",
+  "contractName": "CounterfactualDepositOFT",
+  "address": "0x79f641fadd8e6dd031ff26f63c0ba0b85cbf0719",
+  "tronAddress": "TM65mZJjbVuFZwLpEqztP4HkzKaTuuwQC1",
+  "transactionHash": "396be083d630b849c3125ce907e55b449b4efda99c88f393d9a9e410ef93080e",
+  "constructorArgs": "0x0000000000000000000000001234567890abcdef1234567890abcdef123456780000000000000000000000000000000000000000000000000000000000007595",
   "abi": [
     {
       "type": "constructor",
       "inputs": [
         {
-          "name": "_srcPeriphery",
+          "name": "_oftSrcPeriphery",
           "type": "address",
           "internalType": "address"
         },
         {
-          "name": "_sourceDomain",
+          "name": "_srcEid",
           "type": "uint32",
           "internalType": "uint32"
         }
@@ -41,20 +41,7 @@
     },
     {
       "type": "function",
-      "name": "sourceDomain",
-      "inputs": [],
-      "outputs": [
-        {
-          "name": "",
-          "type": "uint32",
-          "internalType": "uint32"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "srcPeriphery",
+      "name": "oftSrcPeriphery",
       "inputs": [],
       "outputs": [
         {
@@ -66,8 +53,21 @@
       "stateMutability": "view"
     },
     {
+      "type": "function",
+      "name": "srcEid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
       "type": "event",
-      "name": "CCTPDepositExecuted",
+      "name": "OFTDepositExecuted",
       "inputs": [
         {
           "name": "amount",
@@ -88,7 +88,7 @@
           "internalType": "bytes32"
         },
         {
-          "name": "cctpDeadline",
+          "name": "oftDeadline",
           "type": "uint256",
           "indexed": false,
           "internalType": "uint256"
@@ -108,7 +108,7 @@
       ]
     }
   ],
-  "deployedAt": "2026-02-27T23:01:48.101Z",
+  "deployedAt": "2026-02-27T23:03:08.371Z",
   "network": "https://nile.trongrid.io",
   "solcVersion": "0.8.25"
 }
