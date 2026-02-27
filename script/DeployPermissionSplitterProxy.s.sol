@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 
-import { PermissionSplitterProxy } from "../contracts/PermissionSplitterProxy.sol";
+import { PermissionSplitterProxy } from "../contracts/hub-pool/PermissionSplitterProxy.sol";
 
 // How to run:
 // 1. `source .env` where `.env has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries

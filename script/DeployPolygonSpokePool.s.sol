@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Polygon_SpokePool } from "../contracts/Polygon_SpokePool.sol";
-import { PolygonTokenBridger } from "../contracts/PolygonTokenBridger.sol";
+import { Polygon_SpokePool } from "../contracts/spoke-pools/Polygon_SpokePool.sol";
+import { PolygonTokenBridger } from "../contracts/spoke-pools/PolygonTokenBridger.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
-import { IOFT } from "./interfaces/IOFT.sol";
+import { IOFT } from "../interfaces/IOFT.sol";
 
 /**
  * @title MessengerTypes

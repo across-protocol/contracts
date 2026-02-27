@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
-import "./MerkleLib.sol";
-import "./erc7683/ERC7683.sol";
-import "./erc7683/ERC7683Permit2Lib.sol";
-import "./external/interfaces/WETH9Interface.sol";
-import "./interfaces/SpokePoolMessageHandler.sol";
-import "./interfaces/SpokePoolInterface.sol";
-import "./interfaces/V3SpokePoolInterface.sol";
-import "./upgradeable/MultiCallerUpgradeable.sol";
-import "./upgradeable/EIP712CrossChainUpgradeable.sol";
-import "./upgradeable/AddressLibUpgradeable.sol";
-import "./libraries/AddressConverters.sol";
-import { IOFT, SendParam, MessagingFee } from "./interfaces/IOFT.sol";
-import { OFTTransportAdapter } from "./libraries/OFTTransportAdapter.sol";
+import "../libraries/MerkleLib.sol";
+import "../erc7683/ERC7683.sol";
+import "../erc7683/ERC7683Permit2Lib.sol";
+import "../external/interfaces/WETH9Interface.sol";
+import "../interfaces/SpokePoolMessageHandler.sol";
+import "../interfaces/SpokePoolInterface.sol";
+import "../interfaces/V3SpokePoolInterface.sol";
+import "../upgradeable/MultiCallerUpgradeable.sol";
+import "../upgradeable/EIP712CrossChainUpgradeable.sol";
+import "../upgradeable/AddressLibUpgradeable.sol";
+import "../libraries/AddressConverters.sol";
+import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
+import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
 
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-v4/token/ERC20/utils/SafeERC20Upgradeable.sol";

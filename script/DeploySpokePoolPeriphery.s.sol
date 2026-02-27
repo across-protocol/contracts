@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { SpokePoolPeriphery, SwapProxy } from "../contracts/SpokePoolPeriphery.sol";
+import { SpokePoolPeriphery, SwapProxy } from "../contracts/periphery/SpokePoolPeriphery.sol";
 import { Constants } from "./utils/Constants.sol";
 import { IPermit2 } from "../contracts/external/interfaces/IPermit2.sol";
 

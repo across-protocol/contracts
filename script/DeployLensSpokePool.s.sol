@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Lens_SpokePool } from "../contracts/Lens_SpokePool.sol";
-import { ZkSync_SpokePool } from "../contracts/ZkSync_SpokePool.sol";
+import { Lens_SpokePool } from "../contracts/spoke-pools/Lens_SpokePool.sol";
+import { ZkSync_SpokePool } from "../contracts/spoke-pools/ZkSync_SpokePool.sol";
 import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
 import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 

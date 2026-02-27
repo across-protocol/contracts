@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
-import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "./libraries/CircleCCTPAdapter.sol";
-import { CrossDomainAddressUtils } from "./libraries/CrossDomainAddressUtils.sol";
+import { CircleCCTPAdapter, CircleDomainIds, ITokenMessenger } from "../libraries/CircleCCTPAdapter.sol";
+import { CrossDomainAddressUtils } from "../libraries/CrossDomainAddressUtils.sol";
 import "./SpokePool.sol";
 
 // https://github.com/matter-labs/era-contracts/blob/48e189814aabb43964ed29817a7f05aa36f09fd6/l1-contracts/contracts/bridge/asset-router/L2AssetRouter.sol#L321

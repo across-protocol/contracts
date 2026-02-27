@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 // Contracts under test
-import { PolygonZkEVM_SpokePool } from "../../../../../../contracts/PolygonZkEVM_SpokePool.sol";
+import { PolygonZkEVM_SpokePool } from "../../../../../../contracts/spoke-pools/PolygonZkEVM_SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { IPolygonZkEVMBridge } from "../../../../../../contracts/external/interfaces/IPolygonZkEVMBridge.sol";
 

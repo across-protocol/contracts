@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { OFTTransportAdapter } from "./OFTTransportAdapter.sol";
-import { AdapterStore, MessengerTypes } from "../AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../hub-pool/AdapterStore.sol";
 
 /**
  * @dev A wrapper of `OFTTransportAdapter` to be used by chain-specific adapters

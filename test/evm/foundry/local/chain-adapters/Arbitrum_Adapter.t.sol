@@ -19,7 +19,7 @@ import { ArbitrumInboxLike, ArbitrumL1ERC20GatewayLike } from "../../../../../co
 import { ArbitrumMockErc20GatewayRouter, Inbox } from "../../../../../contracts/test/ArbitrumMocks.sol";
 import { MockCCTPMessenger, MockCCTPMinter } from "../../../../../contracts/test/MockCCTP.sol";
 import { MockOFTMessenger } from "../../../../../contracts/test/MockOFTMessenger.sol";
-import { AdapterStore, MessengerTypes } from "../../../../../contracts/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../../../../../contracts/hub-pool/AdapterStore.sol";
 import { MintableERC20 } from "../../../../../contracts/test/MockERC20.sol";
 
 /**

@@ -7,10 +7,10 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 
 // Contracts under test
-import { Polygon_SpokePool } from "../../../../../../contracts/Polygon_SpokePool.sol";
-import { PolygonTokenBridger, PolygonIERC20Upgradeable, PolygonRegistry } from "../../../../../../contracts/PolygonTokenBridger.sol";
+import { Polygon_SpokePool } from "../../../../../../contracts/spoke-pools/Polygon_SpokePool.sol";
+import { PolygonTokenBridger, PolygonIERC20Upgradeable, PolygonRegistry } from "../../../../../../contracts/spoke-pools/PolygonTokenBridger.sol";
 import { WETH9Interface } from "../../../../../../contracts/external/interfaces/WETH9Interface.sol";
-import { SpokePool } from "../../../../../../contracts/SpokePool.sol";
+import { SpokePool } from "../../../../../../contracts/spoke-pools/SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 import { V3SpokePoolInterface } from "../../../../../../contracts/interfaces/V3SpokePoolInterface.sol";
 

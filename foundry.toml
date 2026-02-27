@@ -19,7 +19,7 @@ solc = "0.8.30"
 evm_version = "prague"
 
 [profile.zksync]
-src = "contracts/Lens_SpokePool.sol"
+src = "contracts/spoke-pools/Lens_SpokePool.sol"
 
 [profile.zksync.zksync]
 compile = true

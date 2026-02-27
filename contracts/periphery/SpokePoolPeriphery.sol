@@ -9,13 +9,13 @@ import { MultiCaller } from "contracts/external/uma/core/contracts/common/implem
 import { ReentrancyGuard } from "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
 import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
-import { V3SpokePoolInterface } from "./interfaces/V3SpokePoolInterface.sol";
-import { IERC20Auth } from "./external/interfaces/IERC20Auth.sol";
-import { WETH9Interface } from "./external/interfaces/WETH9Interface.sol";
-import { IPermit2 } from "./external/interfaces/IPermit2.sol";
-import { PeripherySigningLib } from "./libraries/PeripherySigningLib.sol";
-import { SpokePoolPeripheryInterface } from "./interfaces/SpokePoolPeripheryInterface.sol";
-import { AddressToBytes32 } from "./libraries/AddressConverters.sol";
+import { V3SpokePoolInterface } from "../interfaces/V3SpokePoolInterface.sol";
+import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
+import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
+import { IPermit2 } from "../external/interfaces/IPermit2.sol";
+import { PeripherySigningLib } from "../libraries/PeripherySigningLib.sol";
+import { SpokePoolPeripheryInterface } from "../interfaces/SpokePoolPeripheryInterface.sol";
+import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
  * @title SwapProxy

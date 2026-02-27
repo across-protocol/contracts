@@ -5,8 +5,8 @@ import { Test } from "forge-std/Test.sol";
 import { ERC20 } from "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 
-import { Universal_SpokePool, IHelios } from "../../../../contracts/Universal_SpokePool.sol";
-import "../../../../contracts/SpokePool.sol";
+import { Universal_SpokePool, IHelios } from "../../../../contracts/spoke-pools/Universal_SpokePool.sol";
+import "../../../../contracts/spoke-pools/SpokePool.sol";
 import "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import "../../../../contracts/test/MockCCTP.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
