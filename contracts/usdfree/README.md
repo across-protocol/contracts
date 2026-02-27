@@ -2,7 +2,7 @@
 
 `Interfaces.sol` is the canonical design surface for this folder.
 
-This iteration uses a generic `(enum, data)` pattern for auction, requirements, transfer, and continuation payloads.
+This iteration uses a generic `(enum, data)` pattern for requirement modifiers, requirements, and continuation payloads.
 
 ## Contracts
 
@@ -20,22 +20,29 @@ This iteration uses a generic `(enum, data)` pattern for auction, requirements, 
     - `_executeAuctionSubmitterUser`
     - `_executeSubmitterUser`
     - `_executeUser`
-  - Supports generic auction dispatch (`Offchain` implemented; `DutchOnchain` reserved in enum).
-  - Applies generic auction changes via `RequirementChange[]`.
+  - Supports generic requirement-modifier dispatch (`Offchain` implemented; `DutchOnchain` reserved in enum).
+  - Applies generic requirement changes via `RequirementChange[]`.
   - Executes submitter actions by type (internal multicall-like `ExecutorCall[]` now, `Weiroll` reserved).
+  - Decodes typed step user payload (`TypedData userData`) with versioned variants.
+  - Uses explicit forwarding amounts with submitter override and user fallback.
+  - Supports both:
+    - `UserRequirementsAndAction`: approval-based ERC20 + native `msg.value` to `IUserActionExecutor`.
+    - `UserRequirementsAndSend`: push-based ERC20/native directly to recipient.
 
 - `OrderStore.sol`:
-  - Open `handle()` / `handleAtomic()` / `fill()` entrypoints.
+  - Open `handle()` / `handleAtomic()` / `fill()` / `refundByUser()` / `refundByAdmin()` entrypoints.
   - Uses typed continuation wrapper (no length-based hash checks).
-  - Supports transparent, hash-obfuscated, and explicit `StepAndNext` continuation forms.
+  - Supports transparent, hash-obfuscated, and explicit `StepAndNext` continuation forms for fill path.
+  - Stores per-step refund config (`refundRecipient`, `reverseDeadline`) when persisting orders.
 
 ## Type Pattern
 
 Most extensibility surfaces are encoded as `(typ, data)`:
 
 - `TypedData { uint8 typ; bytes data }`
-- `AuctionAction { AuctionType typ; bytes data }`
+- `RequirementModifierAction { AuctionType typ; bytes data }`
 - `SubmitterActions { SubmitterActionType typ; bytes data }`
+- `ForwardingAmounts { uint256 erc20Amount; uint256 nativeAmount }`
 - `Continuation { ContinuationType typ; bytes data }`
 
 This keeps interfaces stable while allowing new variants to be added in executor logic.
@@ -56,29 +63,40 @@ Supported modes:
 4. `Authorization` (ERC-3009, nonce = `orderId`)
 5. `Native`
 
-`SubmitterData.extraFunding` also supports native submitter funding via `TokenAmount{token: address(0), amount}`.
+`SubmitterData.extraErc20Funding` is ERC20-only; submitter native funding is `msg.value` surplus above user native funding.
 
-## Auction Flow
+## Requirement Modifier Flow
 
 For `GenericStepType.AuctionSubmitterUser`:
 
-- User parts:
-  1. `AuctionAction`
-  2. `UserRequirementsAndAction`
+- Step `userData`:
+  - `TypedData{ typ: RequirementsAndActionV1, data: abi.encode(UserRequirementsAndAction) }`, or
+  - `TypedData{ typ: RequirementsAndSendV1, data: abi.encode(UserRequirementsAndSend) }`
+- Step `parts`:
+  1. `RequirementModifierAction`
 - Submitter parts:
   1. `AuctionResolution` (contains `RequirementChange[]` + signature)
   2. `SubmitterActions`
+  3. optional `ForwardingAmounts`
+
+For `GenericStepType.SubmitterUser`, submitter parts are:
+
+1. `SubmitterActions`
+2. optional `ForwardingAmounts`
+
+For `GenericStepType.User`, submitter parts are always empty and forwarding comes from user payload defaults.
 
 `RequirementChange` supports:
 
-- `stepOffset`: currently `0` implemented (current step), future offsets reserved.
 - `reqId` routing:
   - `0`: token requirement
   - `1..N`: static requirement index replace
   - `254`: user action replace
   - `255`: append static requirement
 
-Token requirement changes enforce user-improvement constraints (same token, non-decreasing amount, no strict->min downgrade).
+Token requirement changes enforce user-improvement constraints (same token, non-decreasing amount).
+
+Token requirement type is `MinAmount` only. Requirement evaluation is performed against explicit forwarded amounts (ERC20/native) instead of full executor balances.
 
 ## Continuations
 
@@ -92,4 +110,4 @@ Token requirement changes enforce user-improvement constraints (same token, non-
 
 ## Token Handover
 
-`OrderGateway` and `OrderStore` use balance-delta handoff patterns when moving ERC20s to `Executor`, so the executor uses actual received amounts (more robust for fee-on-transfer tokens).
+`OrderGateway` and `OrderStore` pull ERC20s into themselves first, then push ERC20s to `Executor` using balance-delta handoff patterns. This keeps token movement explicit and robust for fee-on-transfer tokens.

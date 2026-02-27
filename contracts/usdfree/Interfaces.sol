@@ -8,7 +8,6 @@ enum GenericStepType {
 }
 
 enum TokenRequirementType {
-    StrictAmount,
     MinAmount
 }
 
@@ -21,18 +20,20 @@ enum StaticRequirementType {
 enum SubmitterActionType {
     None,
     MulticallHandler,
-    Weiroll // Reserved for future support.
+    // Reserved for future support.
+    Weiroll
 }
 
-enum TransferType {
-    Approval,
-    Transfer,
-    Permit2Approval // Reserved for future support.
+enum UserDataType {
+    RequirementsAndActionV1,
+    RequirementsAndSendV1
 }
 
 enum AuctionType {
     Offchain,
-    DutchOnchain // Reserved for future support.
+    // Reserved for future support.
+    DutchOnchain,
+    HybridOffchainDutch
 }
 
 enum ContinuationType {
@@ -46,33 +47,56 @@ struct TypedData {
     bytes data;
 }
 
+struct ForwardingAmounts {
+    uint256 erc20Amount;
+    uint256 nativeAmount;
+}
+
+// `userData` encoding:
+// - UserDataType.RequirementsAndActionV1: abi.encode(UserRequirementsAndAction)
+// - UserDataType.RequirementsAndSendV1: abi.encode(UserRequirementsAndSend)
 // `parts` encoding:
-// - AuctionSubmitterUser: [abi.encode(AuctionAction), abi.encode(UserRequirementsAndAction)]
-// - SubmitterUser: [abi.encode(UserRequirementsAndAction)]
-// - User: [abi.encode(UserRequirementsAndAction)]
+// - AuctionSubmitterUser: [abi.encode(RequirementModifierAction)]
+// - SubmitterUser: []
+// - User: []
+// submitter `parts` encoding:
+// - AuctionSubmitterUser: [if Offchain: abi.encode(AuctionResolution), abi.encode(SubmitterActions), optional abi.encode(ForwardingAmounts)]
+// - SubmitterUser: [abi.encode(SubmitterActions), optional abi.encode(ForwardingAmounts)]
+// - User: []
 struct GenericStep {
     GenericStepType typ;
+    RefundConfig refundConfig;
+    TypedData userData;
     bytes[] parts;
 }
 
-// User-provided auction instruction. Submitter-provided auction resolution data is separate.
-struct AuctionAction {
+// User-provided requirement-modifier config. Submitter-provided resolution data is separate.
+struct RequirementModifierAction {
     AuctionType typ;
     bytes data;
 }
 
-struct UserRequirementsAndAction {
+struct UserRequirements {
     // token requirement encoded as (typ, data)
     TypedData tokenReq;
     // static requirements encoded as (typ, data)
     TypedData[] staticReqs;
-    // user action executor target for this step
+    // user defaults; submitter may override via submitter `parts`.
+    ForwardingAmounts forwarding;
+}
+
+struct UserRequirementsAndAction {
+    UserRequirements reqs;
+    // user action executor target for this step.
     address target;
-    // transfer strategy encoded as (typ, data)
-    TypedData transfer;
     // params for execution on `target`.
     bytes userAction;
-    address refundRecipient;
+}
+
+struct UserRequirementsAndSend {
+    UserRequirements reqs;
+    // recipient for direct transfer.
+    address recipient;
 }
 
 struct AmountTokenRequirement {
@@ -82,6 +106,7 @@ struct AmountTokenRequirement {
 
 struct SubmitterRequirement {
     address submitter;
+    uint256 exclusivityDeadline;
 }
 
 struct DeadlineRequirement {
@@ -111,7 +136,6 @@ struct OffchainAuctionConfig {
 }
 
 struct RequirementChange {
-    uint8 stepOffset;
     uint8 reqId;
     bytes change;
 }
@@ -119,6 +143,11 @@ struct RequirementChange {
 struct AuctionResolution {
     RequirementChange[] changes;
     bytes sig;
+}
+
+struct RefundConfig {
+    address refundRecipient;
+    uint256 reverseDeadline;
 }
 
 struct Continuation {
@@ -151,8 +180,8 @@ struct MerkleRoute {
 }
 
 struct SubmitterData {
-    // token == address(0) means native token funding from submitter.
-    TokenAmount[] extraFunding;
+    // Additional ERC20 funding pulled from submitter and sent to executor.
+    TokenAmount[] extraErc20Funding;
     // Step-specific submitter data consumed by executor substeps.
     bytes[] parts;
 }
@@ -201,4 +230,8 @@ interface IOrderStore {
     ) external payable;
 
     function fill(uint256 localOrderIndex, SubmitterData calldata submitterData) external payable;
+
+    function refundByUser(uint256 localOrderIndex) external;
+
+    function refundByAdmin(uint256 localOrderIndex) external;
 }

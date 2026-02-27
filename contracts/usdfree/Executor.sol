@@ -20,11 +20,21 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
         bytes nextContinuation;
     }
 
+    struct ResolvedUserData {
+        UserRequirements reqs;
+        bool isAction;
+        address target;
+        bytes userAction;
+        address recipient;
+    }
+
     mapping(address => bool) public authorizedCaller;
 
     uint8 internal constant CHANGE_REQ_ID_TOKEN_REQ = 0;
     uint8 internal constant CHANGE_REQ_ID_USER_ACTION = 254;
     uint8 internal constant CHANGE_REQ_ID_APPEND_STATIC_REQ = 255;
+    uint8 internal constant USER_DATA_TYPE_ACTION = uint8(UserDataType.RequirementsAndActionV1);
+    uint8 internal constant USER_DATA_TYPE_SEND = uint8(UserDataType.RequirementsAndSendV1);
 
     event AuthorizedCallerSet(address indexed caller, bool enabled);
 
@@ -38,10 +48,12 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
     error InvalidAuctionSignature();
     error MissingSubmitterPart();
     error UnsupportedSubmitterActionType();
-    error UnsupportedTransferType();
+    error InvalidUserDataType();
+    error InvalidForwarding();
+    error InvalidRecipient();
+    error DirectTransferFailed();
     error RequirementNotMet();
     error ExternalRequirementFailed();
-    error UnsupportedAuctionChange();
     error InvalidAuctionChange();
     error SubmitterActionCallFailed(uint256 index);
     error InvalidSubmitterActionCall(uint256 index);
@@ -78,25 +90,27 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
             nextContinuation: stepAndNext.nextContinuation
         });
 
+        ResolvedUserData memory userData = _decodeUserData(stepAndNext.curStep.userData);
+
         if (stepAndNext.curStep.typ == GenericStepType.AuctionSubmitterUser) {
-            _executeAuctionSubmitterUser(ctx, stepAndNext.curStep.parts, submitterParts);
+            _executeAuctionSubmitterUser(ctx, userData, stepAndNext.curStep.parts, submitterParts);
             return;
         }
 
         if (stepAndNext.curStep.typ == GenericStepType.SubmitterUser) {
-            _executeSubmitterUser(ctx, stepAndNext.curStep.parts, submitterParts);
+            _executeSubmitterUser(ctx, userData, stepAndNext.curStep.parts, submitterParts);
             return;
         }
 
         if (stepAndNext.curStep.typ == GenericStepType.User) {
-            _executeUser(ctx, stepAndNext.curStep.parts, submitterParts);
+            _executeUser(ctx, userData, stepAndNext.curStep.parts, submitterParts);
             return;
         }
 
         revert InvalidStep();
     }
 
-    function hashAuctionResolution(
+    function hashRequirementModifierResolution(
         bytes32 orderId,
         address tokenIn,
         uint256 amountIn,
@@ -110,51 +124,68 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
 
     function _executeAuctionSubmitterUser(
         ExecutionContext memory ctx,
-        bytes[] calldata userParts,
+        ResolvedUserData memory userData,
+        bytes[] calldata stepParts,
         bytes[] calldata submitterParts
     ) internal {
-        if (userParts.length != 2) revert InvalidStep();
+        if (stepParts.length != 1) revert InvalidStep();
 
         uint256 submitterCursor;
-        AuctionAction memory auctionAction = abi.decode(userParts[0], (AuctionAction));
-        UserRequirementsAndAction memory reqAction = abi.decode(userParts[1], (UserRequirementsAndAction));
+        RequirementModifierAction memory requirementModifierAction = abi.decode(
+            stepParts[0],
+            (RequirementModifierAction)
+        );
         RequirementChange[] memory changes;
 
-        (changes, submitterCursor) = _runAuctionSubstep(ctx, auctionAction, submitterParts, submitterCursor);
-        reqAction = _applyAuctionChanges(reqAction, changes);
+        (changes, submitterCursor) = _runAuctionSubstep(
+            ctx,
+            requirementModifierAction,
+            submitterParts,
+            submitterCursor
+        );
+        userData = _applyAuctionChanges(userData, changes);
         submitterCursor = _runSubmitterActionsSubstep(ctx, submitterParts, submitterCursor);
-        _runUserRequirementAndActionSubstep(ctx, reqAction);
+        (ForwardingAmounts memory forwarding, uint256 forwardingCursor) = _resolveForwarding(
+            submitterParts,
+            submitterCursor,
+            userData.reqs.forwarding
+        );
+        _runUserRequirementAndActionSubstep(ctx, userData, forwarding);
 
-        if (submitterCursor != submitterParts.length) revert InvalidStep();
+        if (forwardingCursor != submitterParts.length) revert InvalidStep();
     }
 
     function _executeSubmitterUser(
         ExecutionContext memory ctx,
-        bytes[] calldata userParts,
+        ResolvedUserData memory userData,
+        bytes[] calldata stepParts,
         bytes[] calldata submitterParts
     ) internal {
-        if (userParts.length != 1) revert InvalidStep();
-
-        UserRequirementsAndAction memory reqAction = abi.decode(userParts[0], (UserRequirementsAndAction));
+        if (stepParts.length != 0) revert InvalidStep();
         uint256 submitterCursor = _runSubmitterActionsSubstep(ctx, submitterParts, 0);
-        _runUserRequirementAndActionSubstep(ctx, reqAction);
+        (ForwardingAmounts memory forwarding, uint256 forwardingCursor) = _resolveForwarding(
+            submitterParts,
+            submitterCursor,
+            userData.reqs.forwarding
+        );
+        _runUserRequirementAndActionSubstep(ctx, userData, forwarding);
 
-        if (submitterCursor != submitterParts.length) revert InvalidStep();
+        if (forwardingCursor != submitterParts.length) revert InvalidStep();
     }
 
     function _executeUser(
         ExecutionContext memory ctx,
-        bytes[] calldata userParts,
+        ResolvedUserData memory userData,
+        bytes[] calldata stepParts,
         bytes[] calldata submitterParts
     ) internal {
-        if (userParts.length != 1 || submitterParts.length != 0) revert InvalidStep();
-        UserRequirementsAndAction memory reqAction = abi.decode(userParts[0], (UserRequirementsAndAction));
-        _runUserRequirementAndActionSubstep(ctx, reqAction);
+        if (stepParts.length != 0 || submitterParts.length != 0) revert InvalidStep();
+        _runUserRequirementAndActionSubstep(ctx, userData, userData.reqs.forwarding);
     }
 
     function _runAuctionSubstep(
         ExecutionContext memory ctx,
-        AuctionAction memory action,
+        RequirementModifierAction memory action,
         bytes[] calldata submitterParts,
         uint256 submitterCursor
     ) internal view returns (RequirementChange[] memory changes, uint256 newSubmitterCursor) {
@@ -183,7 +214,6 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
         }
         if (actions.typ == SubmitterActionType.Weiroll) {
             _executeWeirollSubmitterActions(ctx, actions.data);
-            return submitterCursor;
         }
 
         revert UnsupportedSubmitterActionType();
@@ -201,50 +231,98 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
 
     function _runUserRequirementAndActionSubstep(
         ExecutionContext memory ctx,
-        UserRequirementsAndAction memory reqAction
+        ResolvedUserData memory userData,
+        ForwardingAmounts memory forwarding
     ) internal {
-        if (reqAction.target == address(0)) revert InvalidStep();
+        (address requiredToken, uint256 requiredAmount) = _decodeTokenRequirement(userData.reqs.tokenReq);
+        _checkForwarding(requiredToken, requiredAmount, forwarding);
+        _checkStaticRequirements(ctx, userData.reqs.staticReqs);
 
-        (address outToken, uint256 outAmount) = _checkTokenRequirement(reqAction.tokenReq);
-        _checkStaticRequirements(ctx, reqAction.staticReqs);
+        if (userData.isAction) {
+            if (userData.target == address(0)) revert InvalidStep();
 
-        uint8 transferType = reqAction.transfer.typ;
-        if (transferType == uint8(TransferType.Approval)) {
-            if (outToken == address(0)) revert UnsupportedTransferType();
-            IERC20(outToken).forceApprove(reqAction.target, outAmount);
-        } else if (transferType == uint8(TransferType.Transfer)) {
-            if (outToken != address(0)) IERC20(outToken).safeTransfer(reqAction.target, outAmount);
-        } else {
-            revert UnsupportedTransferType();
+            if (requiredToken != address(0) && forwarding.erc20Amount != 0) {
+                IERC20(requiredToken).forceApprove(userData.target, forwarding.erc20Amount);
+            }
+
+            IUserActionExecutor(userData.target).execute{ value: forwarding.nativeAmount }(
+                requiredToken,
+                forwarding.erc20Amount,
+                ctx.orderId,
+                userData.userAction,
+                ctx.nextContinuation
+            );
+
+            if (requiredToken != address(0) && forwarding.erc20Amount != 0) {
+                IERC20(requiredToken).forceApprove(userData.target, 0);
+            }
+            return;
         }
 
-        IUserActionExecutor(reqAction.target).execute{ value: outToken == address(0) ? outAmount : 0 }(
-            outToken,
-            outAmount,
-            ctx.orderId,
-            reqAction.userAction,
-            ctx.nextContinuation
-        );
-
-        if (transferType == uint8(TransferType.Approval) && outToken != address(0)) {
-            IERC20(outToken).forceApprove(reqAction.target, 0);
+        if (userData.recipient == address(0)) revert InvalidRecipient();
+        if (requiredToken != address(0) && forwarding.erc20Amount != 0) {
+            IERC20(requiredToken).safeTransfer(userData.recipient, forwarding.erc20Amount);
+        }
+        if (forwarding.nativeAmount != 0) {
+            (bool ok, ) = userData.recipient.call{ value: forwarding.nativeAmount }("");
+            if (!ok) revert DirectTransferFailed();
         }
     }
 
-    function _checkTokenRequirement(TypedData memory tokenReq) internal view returns (address token, uint256 amount) {
-        if (
-            tokenReq.typ != uint8(TokenRequirementType.StrictAmount) &&
-            tokenReq.typ != uint8(TokenRequirementType.MinAmount)
-        ) revert InvalidTokenRequirement();
+    function _decodeUserData(TypedData calldata userData) internal pure returns (ResolvedUserData memory out) {
+        if (userData.typ == USER_DATA_TYPE_ACTION) {
+            UserRequirementsAndAction memory reqAction = abi.decode(userData.data, (UserRequirementsAndAction));
+            out.reqs = reqAction.reqs;
+            out.isAction = true;
+            out.target = reqAction.target;
+            out.userAction = reqAction.userAction;
+            return out;
+        }
 
+        if (userData.typ == USER_DATA_TYPE_SEND) {
+            UserRequirementsAndSend memory reqSend = abi.decode(userData.data, (UserRequirementsAndSend));
+            out.reqs = reqSend.reqs;
+            out.recipient = reqSend.recipient;
+            return out;
+        }
+
+        revert InvalidUserDataType();
+    }
+
+    function _decodeTokenRequirement(TypedData memory tokenReq) internal pure returns (address token, uint256 amount) {
+        if (tokenReq.typ != uint8(TokenRequirementType.MinAmount)) revert InvalidTokenRequirement();
         AmountTokenRequirement memory req = abi.decode(tokenReq.data, (AmountTokenRequirement));
-        amount = _balanceOf(req.token);
+        return (req.token, req.amount);
+    }
 
-        if (tokenReq.typ == uint8(TokenRequirementType.StrictAmount) && amount != req.amount)
+    function _decodeForwarding(bytes calldata data) internal pure returns (ForwardingAmounts memory forwarding) {
+        return abi.decode(data, (ForwardingAmounts));
+    }
+
+    function _resolveForwarding(
+        bytes[] calldata submitterParts,
+        uint256 submitterCursor,
+        ForwardingAmounts memory fallbackForwarding
+    ) internal pure returns (ForwardingAmounts memory forwarding, uint256 nextCursor) {
+        if (submitterCursor >= submitterParts.length) return (fallbackForwarding, submitterCursor);
+        return (_decodeForwarding(submitterParts[submitterCursor]), submitterCursor + 1);
+    }
+
+    function _checkForwarding(
+        address requiredToken,
+        uint256 requiredAmount,
+        ForwardingAmounts memory forwarding
+    ) internal view {
+        uint256 requiredForwardedAmount = requiredToken == address(0)
+            ? forwarding.nativeAmount
+            : forwarding.erc20Amount;
+        if (requiredForwardedAmount < requiredAmount) revert RequirementNotMet();
+        if (requiredToken == address(0) && forwarding.erc20Amount != 0) revert InvalidForwarding();
+
+        if (requiredToken != address(0) && _balanceOf(requiredToken) < forwarding.erc20Amount) {
             revert RequirementNotMet();
-        if (tokenReq.typ == uint8(TokenRequirementType.MinAmount) && amount < req.amount) revert RequirementNotMet();
-
-        return (req.token, amount);
+        }
+        if (_balanceOf(address(0)) < forwarding.nativeAmount) revert RequirementNotMet();
     }
 
     function _checkStaticRequirements(ExecutionContext memory ctx, TypedData[] memory reqs) internal view {
@@ -269,9 +347,10 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
         }
     }
 
-    function _checkSubmitterRequirement(ExecutionContext memory ctx, bytes memory data) internal pure {
+    function _checkSubmitterRequirement(ExecutionContext memory ctx, bytes memory data) internal view {
         SubmitterRequirement memory req = abi.decode(data, (SubmitterRequirement));
-        if (req.submitter != address(0) && req.submitter != ctx.submitter) revert RequirementNotMet();
+        if (req.submitter != address(0) && req.submitter != ctx.submitter && block.timestamp <= req.exclusivityDeadline)
+            revert RequirementNotMet();
     }
 
     function _checkDeadlineRequirement(bytes memory data) internal view {
@@ -289,35 +368,34 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
     }
 
     function _applyAuctionChanges(
-        UserRequirementsAndAction memory reqAction,
+        ResolvedUserData memory userData,
         RequirementChange[] memory changes
-    ) internal pure returns (UserRequirementsAndAction memory) {
+    ) internal pure returns (ResolvedUserData memory) {
         for (uint256 i = 0; i < changes.length; ++i) {
             RequirementChange memory change = changes[i];
-            if (change.stepOffset != 0) revert UnsupportedAuctionChange();
-
             if (change.reqId == CHANGE_REQ_ID_TOKEN_REQ) {
-                reqAction.tokenReq = _applyTokenReqChange(reqAction.tokenReq, change.change);
+                userData.reqs.tokenReq = _applyTokenReqChange(userData.reqs.tokenReq, change.change);
                 continue;
             }
 
             if (change.reqId == CHANGE_REQ_ID_USER_ACTION) {
-                reqAction.userAction = abi.decode(change.change, (bytes));
+                if (!userData.isAction) revert InvalidAuctionChange();
+                userData.userAction = abi.decode(change.change, (bytes));
                 continue;
             }
 
             if (change.reqId == CHANGE_REQ_ID_APPEND_STATIC_REQ) {
                 TypedData memory newReq = abi.decode(change.change, (TypedData));
-                reqAction.staticReqs = _appendStaticReq(reqAction.staticReqs, newReq);
+                userData.reqs.staticReqs = _appendStaticReq(userData.reqs.staticReqs, newReq);
                 continue;
             }
 
             uint256 staticIdx = uint256(change.reqId) - 1;
-            if (staticIdx >= reqAction.staticReqs.length) revert InvalidAuctionChange();
-            reqAction.staticReqs[staticIdx] = abi.decode(change.change, (TypedData));
+            if (staticIdx >= userData.reqs.staticReqs.length) revert InvalidAuctionChange();
+            userData.reqs.staticReqs[staticIdx] = abi.decode(change.change, (TypedData));
         }
 
-        return reqAction;
+        return userData;
     }
 
     function _applyTokenReqChange(
@@ -326,26 +404,14 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
     ) internal pure returns (TypedData memory) {
         TypedData memory newReq = abi.decode(changeData, (TypedData));
 
-        if (
-            newReq.typ != uint8(TokenRequirementType.StrictAmount) &&
-            newReq.typ != uint8(TokenRequirementType.MinAmount)
-        ) revert InvalidTokenRequirement();
+        if (newReq.typ != uint8(TokenRequirementType.MinAmount)) revert InvalidTokenRequirement();
 
-        if (
-            originalReq.typ != uint8(TokenRequirementType.StrictAmount) &&
-            originalReq.typ != uint8(TokenRequirementType.MinAmount)
-        ) revert InvalidTokenRequirement();
+        if (originalReq.typ != uint8(TokenRequirementType.MinAmount)) revert InvalidTokenRequirement();
 
         AmountTokenRequirement memory orig = abi.decode(originalReq.data, (AmountTokenRequirement));
         AmountTokenRequirement memory next = abi.decode(newReq.data, (AmountTokenRequirement));
 
         if (orig.token != next.token || next.amount < orig.amount) revert InvalidAuctionChange();
-        if (
-            originalReq.typ == uint8(TokenRequirementType.StrictAmount) &&
-            newReq.typ != uint8(TokenRequirementType.StrictAmount)
-        ) {
-            revert InvalidAuctionChange();
-        }
 
         return newReq;
     }
@@ -366,7 +432,7 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
     function _hashRequirementChanges(RequirementChange[] memory changes) internal pure returns (bytes32) {
         bytes32[] memory hashes = new bytes32[](changes.length);
         for (uint256 i = 0; i < changes.length; ++i) {
-            hashes[i] = keccak256(abi.encode(changes[i].stepOffset, changes[i].reqId, keccak256(changes[i].change)));
+            hashes[i] = keccak256(abi.encode(changes[i].reqId, keccak256(changes[i].change)));
         }
         return keccak256(abi.encodePacked(hashes));
     }
@@ -384,7 +450,7 @@ contract Executor is Ownable, ReentrancyGuard, IExecutor {
         if (config.deadline != 0 && block.timestamp > config.deadline) revert AuctionExpired();
 
         AuctionResolution memory resolution = abi.decode(submitterParts[submitterCursor], (AuctionResolution));
-        bytes32 digest = hashAuctionResolution(ctx.orderId, ctx.tokenIn, ctx.amountIn, resolution.changes);
+        bytes32 digest = hashRequirementModifierResolution(ctx.orderId, ctx.tokenIn, ctx.amountIn, resolution.changes);
         if (!SignatureChecker.isValidSignatureNow(config.authority, digest, resolution.sig)) {
             revert InvalidAuctionSignature();
         }

@@ -5,17 +5,21 @@ import "./Interfaces.sol";
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
 
-contract OrderStore is ReentrancyGuard, IOrderStore {
+contract OrderStore is Ownable, ReentrancyGuard, IOrderStore {
     using SafeERC20 for IERC20;
 
     struct StoredOrder {
+        address user;
         address token;
         uint256 amount;
         bytes32 orderId;
+        RefundConfig refundConfig;
         bytes continuation;
         bool filled;
+        bool refunded;
     }
 
     IExecutor public immutable executor;
@@ -23,14 +27,19 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
 
     event OrderStored(uint256 indexed localOrderIndex, bytes32 indexed orderId, address token, uint256 amount);
     event OrderFilled(uint256 indexed localOrderIndex, bytes32 indexed orderId, address submitter);
+    event OrderRefundedByUser(uint256 indexed localOrderIndex, bytes32 indexed orderId, address recipient);
+    event OrderRefundedByAdmin(uint256 indexed localOrderIndex, bytes32 indexed orderId, address recipient);
 
     error InvalidFunding();
     error InvalidStoredOrder();
     error InvalidDeobfuscation();
     error MissingDeobfuscationPart();
     error InvalidContinuation();
+    error UnauthorizedRefund();
+    error RefundExpired();
+    error RefundTransferFailed();
 
-    constructor(address _executor) {
+    constructor(address _executor) Ownable() {
         executor = IExecutor(_executor);
     }
 
@@ -40,12 +49,22 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         bytes32 orderId,
         bytes calldata continuation
     ) external payable override nonReentrant {
-        _validateMsgValue(token, amount, 0);
+        _validateUserMsgValue(token, amount);
         uint256 received = _pullToken(msg.sender, token, amount);
+        RefundConfig memory refundConfig = _extractRefundConfig(continuation);
 
         uint256 localOrderIndex = storedOrders.length;
         storedOrders.push(
-            StoredOrder({ token: token, amount: received, orderId: orderId, continuation: continuation, filled: false })
+            StoredOrder({
+                user: msg.sender,
+                token: token,
+                amount: received,
+                orderId: orderId,
+                refundConfig: refundConfig,
+                continuation: continuation,
+                filled: false,
+                refunded: false
+            })
         );
 
         emit OrderStored(localOrderIndex, orderId, token, received);
@@ -59,8 +78,9 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         address submitter,
         SubmitterData calldata submitterData
     ) external payable override nonReentrant {
-        uint256 submitterNativeAmount = _sumNativeExtraFunding(submitterData.extraFunding);
-        _validateMsgValue(token, amount, submitterNativeAmount);
+        uint256 userNativeAmount = token == address(0) ? amount : 0;
+        if (msg.value < userNativeAmount) revert InvalidFunding();
+        uint256 submitterNativeAmount = msg.value - userNativeAmount;
         uint256 received = _pullToken(msg.sender, token, amount);
         _execute(token, received, orderId, continuation, submitter, submitterData, submitterNativeAmount);
     }
@@ -72,11 +92,10 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         if (localOrderIndex >= storedOrders.length) revert InvalidStoredOrder();
 
         StoredOrder storage order = storedOrders[localOrderIndex];
-        if (order.filled) revert InvalidStoredOrder();
+        if (order.filled || order.refunded) revert InvalidStoredOrder();
         order.filled = true;
 
-        uint256 submitterNativeAmount = _sumNativeExtraFunding(submitterData.extraFunding);
-        if (msg.value != submitterNativeAmount) revert InvalidFunding();
+        uint256 submitterNativeAmount = msg.value;
 
         _execute(
             order.token,
@@ -89,6 +108,38 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         );
 
         emit OrderFilled(localOrderIndex, order.orderId, msg.sender);
+    }
+
+    function refundByUser(uint256 localOrderIndex) external override nonReentrant {
+        if (localOrderIndex >= storedOrders.length) revert InvalidStoredOrder();
+
+        StoredOrder storage order = storedOrders[localOrderIndex];
+        if (order.filled || order.refunded) revert InvalidStoredOrder();
+        if (msg.sender != order.user) revert UnauthorizedRefund();
+        if (order.refundConfig.reverseDeadline != 0 && block.timestamp > order.refundConfig.reverseDeadline) {
+            revert RefundExpired();
+        }
+
+        order.refunded = true;
+        address recipient = order.refundConfig.refundRecipient == address(0)
+            ? order.user
+            : order.refundConfig.refundRecipient;
+        _refund(order.token, order.amount, recipient);
+        emit OrderRefundedByUser(localOrderIndex, order.orderId, recipient);
+    }
+
+    function refundByAdmin(uint256 localOrderIndex) external override onlyOwner nonReentrant {
+        if (localOrderIndex >= storedOrders.length) revert InvalidStoredOrder();
+
+        StoredOrder storage order = storedOrders[localOrderIndex];
+        if (order.filled || order.refunded) revert InvalidStoredOrder();
+        if (order.refundConfig.reverseDeadline != 0 && block.timestamp > order.refundConfig.reverseDeadline) {
+            revert RefundExpired();
+        }
+
+        order.refunded = true;
+        _refund(order.token, order.amount, owner());
+        emit OrderRefundedByAdmin(localOrderIndex, order.orderId, owner());
     }
 
     function _execute(
@@ -106,8 +157,7 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         );
 
         bytes[] memory submitterParts = _sliceParts(submitterData.parts, consumedParts);
-        uint256 pulledSubmitterNative = _pullExtraFunding(submitter, submitterData.extraFunding);
-        if (pulledSubmitterNative != submitterNativeAmount) revert InvalidFunding();
+        _pullExtraFunding(submitter, submitterData.extraErc20Funding);
 
         uint256 amountIn = token == address(0) ? amount : _sendLocalTokenToExecutor(token, amount);
 
@@ -166,6 +216,24 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         revert InvalidContinuation();
     }
 
+    function _extractRefundConfig(bytes calldata continuationBytes) internal pure returns (RefundConfig memory config) {
+        Continuation memory continuation = abi.decode(continuationBytes, (Continuation));
+
+        if (continuation.typ == ContinuationType.StepAndNextData) {
+            StepAndNext memory stepAndNext = abi.decode(continuation.data, (StepAndNext));
+            return stepAndNext.curStep.refundConfig;
+        }
+
+        if (continuation.typ == ContinuationType.GenericSteps) {
+            GenericStep[] memory allSteps = abi.decode(continuation.data, (GenericStep[]));
+            if (allSteps.length == 0) revert InvalidDeobfuscation();
+            return allSteps[0].refundConfig;
+        }
+
+        // StepAndNextHash cannot expose refund metadata at storage time.
+        revert InvalidContinuation();
+    }
+
     function _sliceParts(bytes[] calldata parts, uint256 start) internal pure returns (bytes[] memory sliced) {
         if (start == 0) {
             sliced = new bytes[](parts.length);
@@ -194,33 +262,29 @@ contract OrderStore is ReentrancyGuard, IOrderStore {
         return IERC20(token).balanceOf(address(executor)) - beforeBal;
     }
 
-    function _pullExtraFunding(
-        address submitter,
-        TokenAmount[] calldata extraFunding
-    ) internal returns (uint256 nativeAmount) {
-        for (uint256 i = 0; i < extraFunding.length; ++i) {
-            TokenAmount calldata funding = extraFunding[i];
-            if (funding.token == address(0)) {
-                nativeAmount += funding.amount;
-                continue;
-            }
-
-            uint256 beforeBal = IERC20(funding.token).balanceOf(address(executor));
-            IERC20(funding.token).safeTransferFrom(submitter, address(executor), funding.amount);
-            if (funding.amount != 0 && IERC20(funding.token).balanceOf(address(executor)) == beforeBal) {
+    function _pullExtraFunding(address submitter, TokenAmount[] calldata extraErc20Funding) internal {
+        for (uint256 i = 0; i < extraErc20Funding.length; ++i) {
+            TokenAmount calldata funding = extraErc20Funding[i];
+            if (funding.token == address(0)) revert InvalidFunding();
+            uint256 pulled = _pullToken(submitter, funding.token, funding.amount);
+            uint256 received = _sendLocalTokenToExecutor(funding.token, pulled);
+            if (funding.amount != 0 && received == 0) {
                 revert InvalidFunding();
             }
         }
     }
 
-    function _sumNativeExtraFunding(TokenAmount[] calldata extraFunding) internal pure returns (uint256 nativeAmount) {
-        for (uint256 i = 0; i < extraFunding.length; ++i) {
-            if (extraFunding[i].token == address(0)) nativeAmount += extraFunding[i].amount;
-        }
+    function _validateUserMsgValue(address token, uint256 amount) internal view {
+        uint256 expectedUserNative = token == address(0) ? amount : 0;
+        if (msg.value != expectedUserNative) revert InvalidFunding();
     }
 
-    function _validateMsgValue(address token, uint256 amount, uint256 submitterNativeAmount) internal view {
-        uint256 expected = submitterNativeAmount + (token == address(0) ? amount : 0);
-        if (msg.value != expected) revert InvalidFunding();
+    function _refund(address token, uint256 amount, address recipient) internal {
+        if (token == address(0)) {
+            (bool success, ) = recipient.call{ value: amount }("");
+            if (!success) revert RefundTransferFailed();
+            return;
+        }
+        IERC20(token).safeTransfer(recipient, amount);
     }
 }

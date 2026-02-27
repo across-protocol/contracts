@@ -136,13 +136,15 @@ contract OrderGateway is
 
         bytes32 orderId = computeOrderId(order);
         if (usedOrderIds[orderId]) revert DuplicateOrderId();
+        usedOrderIds[orderId] = true;
 
         (address userTokenIn, uint256 userAmountIn, uint256 userNativeAmount) = _pullFundingAndHandoverToExecutor(
             orderId,
             funding
         );
-        uint256 submitterNativeAmount = _pullExtraFunding(msg.sender, submitterData.extraFunding);
-        if (msg.value != userNativeAmount + submitterNativeAmount) revert InvalidFunding();
+        if (msg.value < userNativeAmount) revert InvalidFunding();
+        uint256 submitterNativeAmount = msg.value - userNativeAmount;
+        _pullExtraFunding(msg.sender, submitterData.extraErc20Funding);
 
         executor.execute{ value: userNativeAmount + submitterNativeAmount }(
             msg.sender,
@@ -154,7 +156,6 @@ contract OrderGateway is
             route.stepAndNext
         );
 
-        usedOrderIds[orderId] = true;
         emit OrderSubmitted(orderId, msg.sender, userTokenIn, userAmountIn);
     }
 
@@ -166,7 +167,8 @@ contract OrderGateway is
 
         if (fundingData.typ == FundingType.Approval) {
             ApprovalFunding memory approval = abi.decode(fundingData.data, (ApprovalFunding));
-            uint256 received = _pullToExecutor(approval.token, msg.sender, approval.amount);
+            uint256 pulled = _pullToGateway(approval.token, msg.sender, approval.amount);
+            uint256 received = _sendLocalTokenToExecutor(approval.token, pulled);
             return (approval.token, received, 0);
         }
 
@@ -174,25 +176,27 @@ contract OrderGateway is
             PermitFunding memory permitFunding = abi.decode(fundingData.data, (PermitFunding));
             _verifyPermitFundingSignature(orderId, permitFunding.owner, permitFunding.orderSig);
             _redeemPermitFunding(permitFunding);
-            uint256 received = _pullToExecutor(permitFunding.token, permitFunding.owner, permitFunding.amount);
+            uint256 pulled = _pullToGateway(permitFunding.token, permitFunding.owner, permitFunding.amount);
+            uint256 received = _sendLocalTokenToExecutor(permitFunding.token, pulled);
             return (permitFunding.token, received, 0);
         }
 
         if (fundingData.typ == FundingType.Permit2) {
             Permit2Funding memory permit2Funding = abi.decode(fundingData.data, (Permit2Funding));
             if (permit2Funding.permit.permitted.amount < permit2Funding.amount) revert InvalidFunding();
-            uint256 beforeBal = IERC20(permit2Funding.permit.permitted.token).balanceOf(address(executor));
+            uint256 beforeBal = IERC20(permit2Funding.permit.permitted.token).balanceOf(address(this));
 
             permit2.permitWitnessTransferFrom(
                 permit2Funding.permit,
-                IPermit2.SignatureTransferDetails({ to: address(executor), requestedAmount: permit2Funding.amount }),
+                IPermit2.SignatureTransferDetails({ to: address(this), requestedAmount: permit2Funding.amount }),
                 permit2Funding.owner,
                 keccak256(abi.encode(ORDER_WITNESS_TYPEHASH, orderId)),
                 PERMIT2_ORDER_WITNESS_TYPE,
                 permit2Funding.signature
             );
 
-            uint256 received = IERC20(permit2Funding.permit.permitted.token).balanceOf(address(executor)) - beforeBal;
+            uint256 pulled = IERC20(permit2Funding.permit.permitted.token).balanceOf(address(this)) - beforeBal;
+            uint256 received = _sendLocalTokenToExecutor(permit2Funding.permit.permitted.token, pulled);
             return (permit2Funding.permit.permitted.token, received, 0);
         }
 
@@ -250,25 +254,20 @@ contract OrderGateway is
         consumedPermitOrderWitness[owner][orderId] = true;
     }
 
-    function _pullExtraFunding(
-        address submitter,
-        TokenAmount[] calldata extraFunding
-    ) internal returns (uint256 nativeAmount) {
-        uint256 length = extraFunding.length;
+    function _pullExtraFunding(address submitter, TokenAmount[] calldata extraErc20Funding) internal {
+        uint256 length = extraErc20Funding.length;
         for (uint256 i = 0; i < length; ++i) {
-            TokenAmount calldata funding = extraFunding[i];
-            if (funding.token == address(0)) {
-                nativeAmount += funding.amount;
-            } else {
-                _pullToExecutor(funding.token, submitter, funding.amount);
-            }
+            TokenAmount calldata funding = extraErc20Funding[i];
+            if (funding.token == address(0)) revert InvalidFunding();
+            uint256 pulled = _pullToGateway(funding.token, submitter, funding.amount);
+            _sendLocalTokenToExecutor(funding.token, pulled);
         }
     }
 
-    function _pullToExecutor(address token, address from, uint256 amount) internal returns (uint256 received) {
-        uint256 beforeBal = IERC20(token).balanceOf(address(executor));
-        IERC20(token).safeTransferFrom(from, address(executor), amount);
-        return IERC20(token).balanceOf(address(executor)) - beforeBal;
+    function _pullToGateway(address token, address from, uint256 amount) internal returns (uint256 received) {
+        uint256 beforeBal = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransferFrom(from, address(this), amount);
+        return IERC20(token).balanceOf(address(this)) - beforeBal;
     }
 
     function _sendLocalTokenToExecutor(address token, uint256 amount) internal returns (uint256 received) {
