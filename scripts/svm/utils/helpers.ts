@@ -4,33 +4,15 @@ import { MerkleTree } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import { relayerRefundHashFn } from "../../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";
-
-// Minimal ABIs for HubPool and BondToken (ERC20-like) contracts used by SVM scripts.
-// These replace the typechain-generated factories that were removed with hardhat.
-
-const hubPoolAbi = [
-  "function rootBundleProposal() view returns (bytes32 poolRebalanceRoot, bytes32 relayerRefundRoot, bytes32 slowRelayRoot, uint256 claimedBitMap, uint256 unclaimedPoolRebalanceLeafCount, uint256 challengePeriodEndTimestamp)",
-  "function executeRootBundle(uint256 chainId, uint256 groupIndex, uint256[] bundleLpFees, int256[] netSendAmounts, int256[] runningBalances, uint8 leafId, address[] l1Tokens, bytes32[] proof)",
-  "function proposeRootBundle(uint256[] bundleEvaluationBlockNumbers, uint8 poolRebalanceLeafCount, bytes32 poolRebalanceRoot, bytes32 relayerRefundRoot, bytes32 slowRelayRoot)",
-  "function relaySpokePoolAdminFunction(uint256 chainId, bytes calldata functionData)",
-  "function bondToken() view returns (address)",
-  "function bondAmount() view returns (uint256)",
-  "function getCurrentTime() view returns (uint256)",
-];
-
-const bondTokenAbi = [
-  "function balanceOf(address account) view returns (uint256)",
-  "function deposit() payable",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)",
-];
+import HubPoolArtifact from "../../../out/HubPool.sol/HubPool.json";
+import WETH9Artifact from "../../../out/WETH9.sol/WETH9.json";
 
 export function getHubPoolContract(address: string, signerOrProvider: ethers.Signer | ethers.providers.Provider) {
-  return new ethers.Contract(address, hubPoolAbi, signerOrProvider);
+  return new ethers.Contract(address, HubPoolArtifact.abi, signerOrProvider);
 }
 
 export function getBondTokenContract(address: string, signerOrProvider: ethers.Signer | ethers.providers.Provider) {
-  return new ethers.Contract(address, bondTokenAbi, signerOrProvider);
+  return new ethers.Contract(address, WETH9Artifact.abi, signerOrProvider);
 }
 
 export const requireEnv = (name: string): string => {
