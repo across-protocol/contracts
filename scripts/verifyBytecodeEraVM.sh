@@ -6,11 +6,11 @@ set -euo pipefail
 # broadcast/<script_filename>/<chain_id>/dry-run/run-latest.json
 #
 # Usage:
-#   ./scripts/verifyBytecodeZksync2.sh <tx_hash> <rpc_url> <script_path_or_script_spec>
+#   ./scripts/verifyBytecodeEraVM.sh <tx_hash> <rpc_url> <script_path_or_script_spec>
 #
 # Example (recommended two-step flow):
-# yarn forge-script-zksync script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url "$NODE_URL_324" && \
-# ./scripts/verifyBytecodeZksync2.sh 0x0ca83c1523292bcd5bdff9eb7aee5c17ec4ab2147d23e648384b14ed400a7317 "$NODE_URL_324" script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool
+# forge clean && forge cache clean && yarn forge-script-zksync script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url "$NODE_URL_324"
+# ./scripts/verifyBytecodeEraVM.sh 0x0ca83c1523292bcd5bdff9eb7aee5c17ec4ab2147d23e648384b14ed400a7317 "$NODE_URL_324" script/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool
 
 ZKSYNC_CREATE_SELECTOR="0x9c4d535b" # create(bytes32,bytes32,bytes)
 
