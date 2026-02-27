@@ -11,8 +11,8 @@ import { BPS_SCALAR, BPS_DECIMALS } from "./Constants.sol";
 
 // Note: v5 is necessary since v4 does not use ERC-7201.
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
-import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title HyperCoreFlowExecutor

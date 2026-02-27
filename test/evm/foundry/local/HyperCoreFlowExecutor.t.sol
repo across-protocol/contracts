@@ -70,9 +70,8 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
         donationBox = new DonationBox();
         handler = new TestHyperCoreHandler(address(donationBox), address(token));
 
-        // Make the handler the owner of DonationBox so it can withdraw during sponsorship
-        vm.prank(donationBox.owner());
-        donationBox.transferOwnership(address(handler));
+        // Grant WITHDRAWER_ROLE to handler so it can withdraw during sponsorship
+        donationBox.grantRole(donationBox.WITHDRAWER_ROLE(), address(handler));
 
         // Set token info in the module via delegatecall
         handler.callSetCoreTokenInfo(address(token), CORE_INDEX, true, 1e6, 1e6);

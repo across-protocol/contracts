@@ -23,8 +23,8 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        DonationBox donationBox = new DonationBox();
-        console.log("DonationBox deployed to:", address(donationBox));
+        DonationBox donationBox = DonationBox(config.get("donationBox").toAddress());
+        console.log("DonationBox:", address(donationBox));
 
         // USDC on HyperEVM
         address baseToken = config.get("baseToken").toAddress();
@@ -40,9 +40,9 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         console.log("SponsoredCCTPDstPeriphery deployed to:", address(sponsoredCCTPDstPeriphery));
 
-        donationBox.transferOwnership(address(sponsoredCCTPDstPeriphery));
+        donationBox.grantRole(donationBox.WITHDRAWER_ROLE(), address(sponsoredCCTPDstPeriphery));
 
-        console.log("DonationBox ownership transferred to:", address(sponsoredCCTPDstPeriphery));
+        console.log("DonationBox WITHDRAWER_ROLE granted to:", address(sponsoredCCTPDstPeriphery));
 
         vm.stopBroadcast();
     }
