@@ -16,7 +16,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Used in place of // import { QuoteSignLib } from "../contracts/periphery/mintburn/sponsored-oft/QuoteSignLib.sol";
-/// just for the hashing function that works with a memory funciton argument
+/// just for the hashing function that works with a memory function argument
 library DebugQuoteSignLib {
     /// @notice Compute the keccak of all `SignedQuoteParams` fields. Accept memory arg
     function hashMemory(SponsoredOFTInterface.SignedQuoteParams memory p) internal pure returns (bytes32) {
