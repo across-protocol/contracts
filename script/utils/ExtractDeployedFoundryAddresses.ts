@@ -212,7 +212,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       }
 
       for (const tx of transactions) {
-        if (tx.transactionType === "CREATE" && tx.contractAddress) {
+        if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
 
@@ -471,7 +471,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
       for (const contract of contracts as Contract[]) {
         const contractName = contract.contractName;
         jsonOutput.chains[chainId].contracts[contractName] = {
-          address: contract.contractAddress,
+          address: toChecksumAddress(contract.contractAddress),
           ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
           ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
         };
