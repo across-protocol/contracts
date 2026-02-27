@@ -245,6 +245,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | 1inch_SwapAndBridge            | [0xC456398D5eE3B93828252e48beDEDbc39e03368E](https://arbiscan.io/address/0xC456398D5eE3B93828252e48beDEDbc39e03368E) |
 | AdminWithdrawManager           | [0x4Ac61F74Dd8c5Ac565976E5aCeCB069250058091](https://arbiscan.io/address/0x4Ac61F74Dd8c5Ac565976E5aCeCB069250058091) |
+| CounterfactualDeposit          | [0x654321F334b949A48c710E80b35334A4047d10B1](https://arbiscan.io/address/0x654321F334b949A48c710E80b35334A4047d10B1) |
 | CounterfactualDepositCCTP      | [0x36334d17B5a79A416B4070dD6F181Ea368Bd4Be6](https://arbiscan.io/address/0x36334d17B5a79A416B4070dD6F181Ea368Bd4Be6) |
 | CounterfactualDepositFactory   | [0xA157CB19a8C3061D9bbce11Ad08129bEe70988FE](https://arbiscan.io/address/0xA157CB19a8C3061D9bbce11Ad08129bEe70988FE) |
 | CounterfactualDepositOFT       | [0x79506dFe04E822D237a692F260c6Be650aB5d26A](https://arbiscan.io/address/0x79506dFe04E822D237a692F260c6Be650aB5d26A) |

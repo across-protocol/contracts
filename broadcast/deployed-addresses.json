@@ -763,6 +763,11 @@
           "block_number": 435605828,
           "transaction_hash": "0xc2b4d5992ab303684d17a8f762d968965c2043382d908dcd582fc1a02fde2ff2"
         },
+        "CounterfactualDeposit": {
+          "address": "0x654321f334b949a48c710e80b35334a4047d10b1",
+          "block_number": 436554379,
+          "transaction_hash": "0x7ba4539c8685f9b041ed490b53f315ba015fe4539a5ebab4f8362430de3d1865"
+        },
         "CounterfactualDepositCCTP": {
           "address": "0x36334d17b5a79a416b4070dd6f181ea368bd4be6",
           "block_number": 435607157,
