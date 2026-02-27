@@ -14,7 +14,7 @@ solc_version = "0.8.30"
 revert_strings = "strip"
 fs_permissions = [{ access = "read-write", path = "./" }]
 use_literal_content = true
-metadata = "none"
+bytecode_hash = "none"
 
 solc = "0.8.30"
 evm_version = "prague"
