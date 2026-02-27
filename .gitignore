@@ -29,9 +29,11 @@ artifacts-zk
 # Foundry files
 out
 out-local
+out-tron
 zkout
 cache-foundry
 cache-foundry-local
+cache-foundry-tron
 
 
 # Upgradeability files
