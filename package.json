@@ -21,6 +21,7 @@
   "scripts": {
     "compile-zksync": "COMPILE_ZK=true yarn hardhat compile",
     "forge-script-zksync": " FOUNDRY_PROFILE=zksync forge script --zksync --suppress-errors sendtransfer",
+    "forge-build-zksync": "FOUNDRY_PROFILE=zksync forge build --zksync --suppress-errors sendtransfer --skip test --skip script",
     "forge-verify-zksync": "FOUNDRY_PROFILE=zksync forge verify-contract",
     "lint": "yarn lint-solidity && yarn lint-js && yarn lint-rust",
     "lint-solidity": "yarn solhint ./contracts/**/*.sol",
