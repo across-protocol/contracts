@@ -2,19 +2,24 @@
 //         test net.
 // @dev    Command: `npx ts-node ./scripts/buildSampleTree.ts`
 
+import { ethers } from "ethers";
 import { toBN, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
 import { V3SlowFill, PoolRebalanceLeaf, RelayerRefundLeaf } from "../utils/MerkleLib.types";
+import MerkleLibTestArtifact from "../out/MerkleLibTest.sol/MerkleLibTest.json";
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
-// ABI type strings matching the Solidity struct definitions in MerkleLibTest.
-const POOL_REBALANCE_LEAF_TYPE =
-  "tuple(uint256 chainId, uint256 groupIndex, uint256[] bundleLpFees, uint256[] netSendAmounts, int256[] runningBalances, uint256 leafId, address[] l1Tokens)";
-const RELAYER_REFUND_LEAF_TYPE =
-  "tuple(uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)";
-const V3_SLOW_FILL_TYPE =
-  "tuple(tuple(bytes32 depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 originChainId, uint256 depositId, uint32 fillDeadline, uint32 exclusivityDeadline, bytes message) relayData, uint256 chainId, uint256 updatedOutputAmount)";
+// Extract ABI types from the MerkleLibTest Foundry artifact so they stay in sync with the Solidity structs.
+function getStructType(functionName: string): ethers.utils.ParamType {
+  const entry = MerkleLibTestArtifact.abi.find((e: any) => e.name === functionName);
+  const tupleInput = entry!.inputs.find((i: any) => i.type === "tuple");
+  return ethers.utils.ParamType.from(tupleInput!);
+}
+
+const POOL_REBALANCE_LEAF_TYPE = getStructType("verifyPoolRebalance");
+const RELAYER_REFUND_LEAF_TYPE = getStructType("verifyRelayerRefund");
+const V3_SLOW_FILL_TYPE = getStructType("verifyV3SlowRelayFulfillment");
 
 // Any variables not configurable in this set of constants is not used in this script and not important for testing in
 // production.
