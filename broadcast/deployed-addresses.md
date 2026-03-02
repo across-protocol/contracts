@@ -246,9 +246,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 | 1inch_SwapAndBridge            | [0xC456398D5eE3B93828252e48beDEDbc39e03368E](https://arbiscan.io/address/0xC456398D5eE3B93828252e48beDEDbc39e03368E) |
 | AdminWithdrawManager           | [0x4Ac61F74Dd8c5Ac565976E5aCeCB069250058091](https://arbiscan.io/address/0x4Ac61F74Dd8c5Ac565976E5aCeCB069250058091) |
 | CounterfactualDeposit          | [0x654321F334b949A48c710E80b35334A4047d10B1](https://arbiscan.io/address/0x654321F334b949A48c710E80b35334A4047d10B1) |
-| CounterfactualDepositCCTP      | [0x36334d17B5a79A416B4070dD6F181Ea368Bd4Be6](https://arbiscan.io/address/0x36334d17B5a79A416B4070dD6F181Ea368Bd4Be6) |
+| CounterfactualDepositCCTP      | [0xd35EF02824E7Cd644b351be913e77b384BEfB0Ad](https://arbiscan.io/address/0xd35EF02824E7Cd644b351be913e77b384BEfB0Ad) |
 | CounterfactualDepositFactory   | [0xA157CB19a8C3061D9bbce11Ad08129bEe70988FE](https://arbiscan.io/address/0xA157CB19a8C3061D9bbce11Ad08129bEe70988FE) |
-| CounterfactualDepositOFT       | [0x79506dFe04E822D237a692F260c6Be650aB5d26A](https://arbiscan.io/address/0x79506dFe04E822D237a692F260c6Be650aB5d26A) |
+| CounterfactualDepositOFT       | [0x2124980dCADD6c2dad71032B5E422085bCd62Ce3](https://arbiscan.io/address/0x2124980dCADD6c2dad71032B5E422085bCd62Ce3) |
 | CounterfactualDepositSpokePool | [0xB4dF3686Ae3133CD8Da52B575ff490E5e09Ba65d](https://arbiscan.io/address/0xB4dF3686Ae3133CD8Da52B575ff490E5e09Ba65d) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
