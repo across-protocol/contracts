@@ -27,33 +27,40 @@ BridgeHandler → OrderStore → Executor → IUserActionExecutor
 **OrderGateway** - Entry point for all order submissions
 
 - `submit()` calculates `orderId` and pulls tokens from user and submitter (gasless- or approval-based)
-- Pushes all of the tokens to `Executor` based on `ForwardingAmounts` specified by the submitter
+- Pushes all of token amounts to `Executor`. Pushes tokens one by one starting from the orderFunding token. If submitter
+  provided extraFunding and the first token in that array is the same as the orderFunding token, the amounts get pushed
+  via a single Transfer to reduce gas costs.
 
 **Executor** - Executes a single step (a series of atomic substeps)
 
 - Runs a series of substeps
 
-AuctionSubmitterUser variant:
+_AlterSubmitterUser_ variant
 
-- Run auction substep (produces `Changes` to modify user requirements in the later step)
-- Run submitter substep (e.g. DEX swaps, or taking a fee as long as it meets token requirement later)
-- Run user step: check requirements and execute transfer or action (based on `UserSubstepType`). Action variant calls
-  `IUserActionExecutor`
+- Run alter substep (produces `Changes` to modify user requirements in the later step):
+  alter user requirements may take many different forms. For example, an offchain auction authority can sign
+  over some payload to bump up the user's balanceReq. Or a user can trust a submitter (e.g. RL submitter) to bump
+  up balanceReq (effectively, this is the same as having auction authority == RL submitter). Alternatively, imagine
+  an Alter substep that: takes token amount in (from mint on dst chain), takes onchain oracle price, takes user
+  BPS discount / premium required, alters balanceReq: balanceReq = tokenIn _ price _ (1 + bps_disc_or_premium)
+- Run submitter substep (e.g. DEX swaps, or taking a fee as long as it meets user balance requirement in the next step)
+- Run user substep: check requirements and execute transfer or action (based on `UserSubstepType`). Action variant calls
+  `IUserActionExecutor`. Transfer is push-based, action is approve-tranferFrom-based.
 
-AuctionSubmitterUser
+_SubmitterUser_
 
-- only submitter and user parts from above
+- only submitter and user substeps from above
 
-User
+_User_
 
-- only user part
-
-TBD: ForwardingAmounts have to be presented either by user in `parts` or by submitter in `parts`. TBD by implementation
+- only user substep
 
 **IUserActionExecutor** - Final action interface
 
-- Receives tokens and executes user-specified action (e.g. bridge via OFT / CCTP / deposit into SpokePool)
-- Propagates `nextSteps` to continue cross-chain execution
+- Pull tokens from Executor using the provided tokenAmount
+- Execute user-specified action. For example, talk to IOFT to bridge tokens over to the next chain. It's the responsibility
+  of the user action executor to propagate next steps correctly to the next execution leg (e.g. in `composeMsg` for OFT).
+  Other bridge options can include CCTP, SpokePool and others.
 
 **OrderStore** - Destination-side order management
 
@@ -81,7 +88,7 @@ spoofed on destination chains. Crosschain tracking is done as described below.
 **CCTP/OFT flows**: Oft/CctpHandler → OrderStore.handle() → fill()
 \*Cctp finalizer can call CctpHandler.handleAtomic → OrderStore.handleAtomic()
 
-**Across (SpokePool)**: Uses `handleV3AcrossMessage` wrapper that routes to IUserActionExecutor directly (skips OrderStore since SpokePool already checks requirements).
+**SpokePool**: Uses `handleV3AcrossMessage` wrapper that routes to IUserActionExecutor directly (skips OrderStore since SpokePool already checks requirements).
 
 ## Sponsorship
 

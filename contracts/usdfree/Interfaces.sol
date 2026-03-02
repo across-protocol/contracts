@@ -8,8 +8,18 @@ struct TypedData {
 
 // Defines sequence of substeps performed as a part of that step
 enum StepType {
-    AuctionSubmitterUser,
+    // 1. Alter user reqs
+    // Note. Alter user requirements can take many different forms. For example, an offchain auction authority can sign
+    // over some payload to bump up the user's balanceReq. Or a user can trust a submitter (e.g. RL submitter) to bump
+    // up balanceReq (effectively, this is the same as having auction authority == RL submitter). Alternatively, imagine
+    // an Alter substep that: takes token amount in (from mint on dst chain), takes onchain oracle price, takes user
+    // BPS discount / premium required, alters balanceReq: balanceReq = tokenIn * price * (1 + bps_disc_or_premium)
+    // 2. Submitter actions to meet user reqs (MulticallHandler instructions or weiroll)
+    // 3. User req checks and action/transfer (see UserReqsAndAction / UserReqsAndTransfer)
+    AlterSubmitterUser,
+    // only 2. and 3.
     SubmitterUser,
+    // only 3.
     User
 }
 
@@ -18,10 +28,12 @@ struct RefundSettings {
     uint256 reverseDeadline;
 }
 
-enum AuctionSubstepType {
-    Offchain,
-    DutchOnchain,
-    OffchainWithDutchOnchainFallback
+enum AlterSubstepType {
+    OffchainAuction, // user specifies auction authority
+    DutchOnchainAuction, // user specifies dutch auction params
+    OffchainAuctionWithDutchOnchainFallback, // user specifies offchain auction authority + fallback deadline + onchain dutch auction params
+    PriceOraclePlusDelta, // user specifies oracle address plus a delta (discount or permium) that they expect
+    SimpleSubmitterAlter // user doesn't specify anything besides the type. Submitter (checked by submitterReq) has the option to bump the user balanceReq up (e.g. a trusted submitter like RL submitter)
 }
 
 enum UserSubstepType {
@@ -29,8 +41,14 @@ enum UserSubstepType {
     ReqPlusTransfer
 }
 
+enum UserReqType {
+    Deadline,
+    Submitter,
+    Staticcall
+}
+
 struct UserReqs {
-    TypedData tokenReq;
+    TypedData balanceReq;
     TypedData[] otherReqs;
 }
 
@@ -78,42 +96,13 @@ struct MerkleRoute {
     bytes32[] proof;
 }
 
-// Forwarding information is provided by the submitter and acts as a guide to what tokens to transfer betwee different
-// contracts involved
-enum ForwardingAmountsType {
-    OnlyErc20,
-    Erc20AndNative,
-    MultiErc20,
-    MultiErc20AndNative
-}
-
-struct ForwardingErc20 {
-    TokenAmount tokenAmount;
-}
-
-struct ForwardingErc20AndNative {
-    ForwardingErc20 erc20;
-    uint256 nativeAmount;
-}
-
-struct ForwardingMultiErc20 {
-    TokenAmount[] tokenAmounts;
-}
-
-struct ForwardingMultiErc20AndNative {
-    ForwardingMultiErc20 erc20;
-    uint256 nativeAmount;
-}
-
 struct SubmitterData {
     TokenAmount[] extraFunding;
-    TypedData forwardingToExecutor;
-    bytes[] parts; // This can have forwardingToUserExecutor as the last part
+    bytes[] parts;
 }
 
-enum TransferType {
-    Push,
-    ApproveTransferFrom,
+enum OrderFundingType {
+    Approval,
     Permit2,
     TransferWithAuthorization
 }
@@ -122,7 +111,8 @@ abstract contract OrderGateway {
     function submit(
         MerkleOrder calldata order,
         MerkleRoute calldata route,
-        TypedData calldata funding,
+        // Funding by the party authorizing the order. Funding has the amount of a single ERC20 token
+        TypedData calldata orderFunding,
         SubmitterData calldata submitterData
     ) external payable virtual;
 }
@@ -130,10 +120,6 @@ abstract contract OrderGateway {
 abstract contract Executor {
     function execute(
         bytes32 orderId,
-        // Note: `userTokenAmount` is trusted by the executor and used to execute substeps that require price information.
-        // In canonical order flows, `execute` is called by trusted contracts, so fine to trust these values
-        // Note: alternatively, userTokenAmount can be the only approval-transferFrom to ensure that this amount is correct
-        // instead of relying onlyOrderGateway / onlyOrderStore for trust
         TokenAmount calldata userTokenAmount,
         StepAndNext calldata stepAndNext,
         address submitter,
@@ -162,7 +148,7 @@ abstract contract OrderStore {
         bytes32 orderId,
         TokenAmount calldata tokenAmount,
         TypedData calldata steps,
-        // Note: submitter here is technically untrusted. However, it's up to the user on src chain to ensure that they're
+        // Note: submitter here is technically an untrusted argument. However, it's up to the user on src chain to ensure that they're
         // setting a receiving contract on the DST chain that will only allow a valid submitter value here (think, DstCctpPeriphery
         // that will allow to finalize cctp + handleAtomic and just pass in msg.sender). It's on the underlying bridge to
         // ensure the validity of the message passed, and on the receiving periphery contract to ensure the correctness of
