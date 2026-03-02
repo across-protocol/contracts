@@ -107,24 +107,24 @@ enum OrderFundingType {
     TransferWithAuthorization
 }
 
-abstract contract OrderGateway {
+interface IOrderGateway {
     function submit(
         MerkleOrder calldata order,
         MerkleRoute calldata route,
         // Funding by the party authorizing the order. Funding has the amount of a single ERC20 token
         TypedData calldata orderFunding,
         SubmitterData calldata submitterData
-    ) external payable virtual;
+    ) external payable;
 }
 
-abstract contract Executor {
+interface IExecutor {
     function execute(
         bytes32 orderId,
         TokenAmount calldata userTokenAmount,
         StepAndNext calldata stepAndNext,
         address submitter,
         bytes[] calldata submitterParts
-    ) external payable virtual; // onlyOrderGateway / onlyOrderStore
+    ) external payable; // onlyOrderGateway / onlyOrderStore
 }
 
 interface IUserActionExecutor {
@@ -136,12 +136,8 @@ interface IUserActionExecutor {
     ) external payable;
 }
 
-abstract contract OrderStore {
-    function handle(
-        bytes32 orderId,
-        TokenAmount calldata tokenAmount,
-        TypedData calldata steps
-    ) external payable virtual;
+interface IOrderStore {
+    function handle(bytes32 orderId, TokenAmount calldata tokenAmount, TypedData calldata steps) external payable;
 
     // handle + fill immediately
     function handleAtomic(
@@ -155,7 +151,7 @@ abstract contract OrderStore {
         // submitter address passed
         address submitter,
         SubmitterData calldata submitterData
-    ) external payable virtual;
+    ) external payable;
 
-    function fill(uint256 localOrderIndex, SubmitterData calldata submitterData) external payable virtual;
+    function fill(uint256 localOrderIndex, SubmitterData calldata submitterData) external payable;
 }
