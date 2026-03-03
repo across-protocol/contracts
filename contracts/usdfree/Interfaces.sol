@@ -107,6 +107,22 @@ enum OrderFundingType {
     TransferWithAuthorization
 }
 
+struct Permit2Funding {
+    address signer;
+    TokenAmount tokenAmount;
+    uint256 nonce;
+    uint256 deadline;
+    bytes signature;
+}
+
+struct AuthorizationFunding {
+    address signer;
+    TokenAmount tokenAmount;
+    uint256 validAfter;
+    uint256 validBefore;
+    bytes signature;
+}
+
 interface IOrderGateway {
     function submit(
         MerkleOrder calldata order,
