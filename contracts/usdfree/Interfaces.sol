@@ -67,6 +67,10 @@ struct Step {
     StepType typ;
     RefundSettings refundSettings;
     TypedData userSubstep;
+    // TODO: `parts` are inherently not very robust. A mismatch between a part and an expected sequence can lead to incorrect
+    // TODO: interpretation of parts. Should each `part` have some sort of signature(like a 4-byte function sig) to signify
+    // TODO: what is the supposed meaning of that part? E.g. we can have a global `enum Parts`, that will contain all of the
+    // TODO: possible part variants and will be checked for each part. Parts then can be TypedData
     bytes[] parts; // user-defined settings (often guardrails) for other steps
 }
 
