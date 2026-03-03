@@ -1,20 +1,25 @@
 // @notice Run script to produce simple merkle roots required to test the HubPool/SpokePool interaction on a public
 //         test net.
-// @dev    Modify constants to modify merkle leaves. Command: `yarn hardhat run ./scripts/buildSampleTree.ts`
+// @dev    Command: `npx ts-node ./scripts/buildSampleTree.ts`
 
-import {
-  toBN,
-  getParamType,
-  defaultAbiCoder,
-  keccak256,
-  toBNWeiWithDecimals,
-  createRandomBytes32,
-} from "../utils/utils";
+import { ethers } from "ethers";
+import { toBN, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
-import { V3SlowFill } from "../test/evm/hardhat/fixtures/SpokePool.Fixture";
+import { V3SlowFill, PoolRebalanceLeaf, RelayerRefundLeaf } from "../utils/MerkleLib.types";
+import MerkleLibTestArtifact from "../out/MerkleLibTest.sol/MerkleLibTest.json";
 
-import { PoolRebalanceLeaf, RelayerRefundLeaf } from "../test/evm/hardhat/MerkleLib.utils";
-import { zeroAddress } from "../test-utils";
+const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+// Extract ABI types from the MerkleLibTest Foundry artifact so they stay in sync with the Solidity structs.
+function getStructType(functionName: string): ethers.utils.ParamType {
+  const entry = MerkleLibTestArtifact.abi.find((e: any) => e.name === functionName);
+  const tupleInput = entry!.inputs.find((i: any) => i.type === "tuple");
+  return ethers.utils.ParamType.from(tupleInput!);
+}
+
+const POOL_REBALANCE_LEAF_TYPE = getStructType("verifyPoolRebalance");
+const RELAYER_REFUND_LEAF_TYPE = getStructType("verifyRelayerRefund");
+const V3_SLOW_FILL_TYPE = getStructType("verifyV3SlowRelayFulfillment");
 
 // Any variables not configurable in this set of constants is not used in this script and not important for testing in
 // production.
@@ -68,8 +73,7 @@ async function main() {
       } amount of ${L1_TOKEN} to bridge to the SpokePool`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifyPoolRebalance", "rebalance");
-    const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const hashFn = (input: PoolRebalanceLeaf) => keccak256(defaultAbiCoder.encode([POOL_REBALANCE_LEAF_TYPE], [input]));
     const tree = new MerkleTree<PoolRebalanceLeaf>(leaves, hashFn);
     console.log("- Pool rebalance root: ", tree.getHexRoot());
     console.group();
@@ -109,8 +113,7 @@ async function main() {
       } amount of ${L2_TOKEN} to bridge to the HubPool and send ${RELAYER_REFUND_LEAF_COUNT} refunds`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifyRelayerRefund", "refund");
-    const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const hashFn = (input: RelayerRefundLeaf) => keccak256(defaultAbiCoder.encode([RELAYER_REFUND_LEAF_TYPE], [input]));
     const tree = new MerkleTree<RelayerRefundLeaf>(leaves, hashFn);
     console.log("- Relayer refund root: ", tree.getHexRoot());
     console.group();
@@ -163,8 +166,7 @@ async function main() {
       } amount of ${L2_TOKEN} to fulfill ${SLOW_RELAY_LEAF_COUNT} relays`
     );
 
-    const paramType = await getParamType("MerkleLibTest", "verifyV3SlowRelayFulfillment", "slowFill");
-    const hashFn = (input: V3SlowFill) => keccak256(defaultAbiCoder.encode([paramType!], [input]));
+    const hashFn = (input: V3SlowFill) => keccak256(defaultAbiCoder.encode([V3_SLOW_FILL_TYPE], [input]));
     const tree = new MerkleTree<V3SlowFill>(leaves, hashFn);
     console.log("- Slow relay root: ", tree.getHexRoot());
     console.group();

@@ -42,8 +42,7 @@ SpokePool is deployed on many chains. Search for contracts with `SpokePool` in t
 
 ## Development Frameworks
 
-- **Foundry** (primary) - Used for new tests and deployment scripts
-- **Hardhat** (legacy) - Some tests still use Hardhat; we're migrating to Foundry
+- **Foundry** - Used for all tests and deployment scripts
 
 ## Project Structure
 
@@ -56,7 +55,6 @@ test/evm/
   foundry/           # Foundry tests (.t.sol)
     local/           # Local unit tests
     fork/            # Fork tests
-  hardhat/           # Legacy Hardhat tests (.ts)
 script/              # Foundry deployment scripts (.s.sol)
   utils/             # Script utilities (Constants.sol, DeploymentUtils.sol)
 lib/                 # External dependencies (git submodules)
@@ -66,13 +64,11 @@ lib/                 # External dependencies (git submodules)
 
 ```bash
 # Build contracts
-forge build                           # Foundry
-yarn build-evm                        # Hardhat
+forge build
 
 # Run tests
-yarn test-evm-foundry                 # Foundry local tests (recommended; uses FOUNDRY_PROFILE=local-test)
-FOUNDRY_PROFILE=local-test forge test # Required for local Foundry tests in this repo
-yarn test-evm-hardhat                 # Hardhat tests (legacy)
+yarn test-evm-foundry                 # Foundry local tests (recommended)
+FOUNDRY_PROFILE=local-test forge test      # Same as above
 
 # Run specific Foundry tests
 FOUNDRY_PROFILE=local-test forge test --match-test testDeposit

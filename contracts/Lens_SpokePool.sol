@@ -5,7 +5,7 @@ import "./ZkSync_SpokePool.sol";
 
 /**
  * @notice Lens specific SpokePool. Wrapper around the ZkSync_SpokePool contract.
- * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
+ * @dev Resources for compiling and deploying ZkSync contracts: https://docs.zksync.io/build/tooling/foundry/overview
  * @custom:security-contact bugs@across.to
  */
 contract Lens_SpokePool is ZkSync_SpokePool {
