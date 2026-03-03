@@ -60,6 +60,17 @@ interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
         bytes sig
     );
 
+    /**
+     * @notice Event emitted when quote is executed locally without OFT bridging.
+     */
+    event SponsoredOFTDirectExecution(
+        bytes32 indexed quoteNonce,
+        address indexed originSender,
+        bytes32 indexed destinationHandler,
+        uint256 amountLD,
+        bytes sig
+    );
+
     /// @notice Thrown when the source eid of the ioft messenger does not match the src eid supplied.
     error IncorrectSrcEid();
     /// @notice Thrown when the supplied token does not match the supplied ioft messenger.
@@ -76,6 +87,10 @@ interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
     error ArrayLengthMismatch();
     /// @notice Thrown when maxOftFeeBps is greater than 10000.
     error InvalidMaxOftFeeBps();
+    /// @notice Thrown when direct flow quote does not target current source eid.
+    error InvalidDirectDstEid();
+    /// @notice Thrown when destination handler is not a contract.
+    error InvalidDirectHandler();
 
     /**
      * @notice Returns the signer address that is used to validate the signatures of the quotes.
@@ -96,6 +111,15 @@ interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
      * @param signature The signature authorizing the quote.
      */
     function deposit(Quote calldata quote, bytes calldata signature) external payable;
+
+    /**
+     * @notice Executes quote locally without OFT bridging by calling destinationHandler directly.
+     * @dev Reuses the same signed quote validation and nonce replay protection.
+     * Requires quote.signedParams.dstEid to equal SRC_EID.
+     * @param quote The quote struct containing all transfer parameters.
+     * @param signature The signature authorizing the quote.
+     */
+    function depositDirect(Quote calldata quote, bytes calldata signature) external;
 
     /**
      * @notice Sets the quote signer.
