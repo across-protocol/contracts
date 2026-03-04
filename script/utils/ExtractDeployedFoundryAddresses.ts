@@ -468,20 +468,28 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   };
 
   for (const [chainId, chainInfo] of Object.entries(allContracts)) {
+    // Deduplicate by contract name, keeping the latest by block number
+    const contractMap = new Map<string, Contract>();
+    for (const contracts of Object.values(chainInfo.scripts)) {
+      for (const contract of contracts as Contract[]) {
+        const existing = contractMap.get(contract.contractName);
+        if (!existing || (contract.blockNumber ?? 0) > (existing.blockNumber ?? 0)) {
+          contractMap.set(contract.contractName, contract);
+        }
+      }
+    }
+
     jsonOutput.chains[chainId] = {
       chain_name: chainInfo.chainName,
       contracts: {},
     };
 
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      for (const contract of contracts as Contract[]) {
-        const contractName = contract.contractName;
-        jsonOutput.chains[chainId].contracts[contractName] = {
-          address: toChecksumAddress(contract.contractAddress),
-          ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
-          ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
-        };
-      }
+    for (const [contractName, contract] of contractMap) {
+      jsonOutput.chains[chainId].contracts[contractName] = {
+        address: toChecksumAddress(contract.contractAddress),
+        ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
+        ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
+      };
     }
   }
 
