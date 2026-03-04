@@ -3,24 +3,36 @@ pragma solidity ^0.8.30;
 
 import { Order, Path, IExecutor, TokenAmount, TypedData, SubmitterData, IOrderGateway, OrderFundingType, Permit2Funding, AuthorizationFunding, ApprovalFunding } from "./Interfaces.sol";
 import { OrderIdLib } from "./OrderIdLib.sol";
-import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
-import { MerkleProof } from "@openzeppelin/contracts-v4/utils/cryptography/MerkleProof.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { EIP712Upgradeable } from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import { AccessControlDefaultAdminRulesUpgradeable } from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
 
-contract OrderGateway is IOrderGateway, ReentrancyGuard {
+contract OrderGateway is
+    Initializable,
+    IOrderGateway,
+    UUPSUpgradeable,
+    EIP712Upgradeable,
+    ReentrancyGuard,
+    AccessControlDefaultAdminRulesUpgradeable
+{
     using SafeERC20 for IERC20;
 
+    string public constant EIP712_NAME = "USDFreeOrderGateway";
+    string public constant EIP712_VERSION = "1";
     struct PendingOrder {
         TokenAmount orderIn;
         Order order;
         bool exists;
     }
 
-    IPermit2 public immutable permit2;
-    bytes32 public immutable domainHash;
+    IPermit2 public permit2;
     mapping(address => mapping(bytes32 => bool)) public usedApprovalSalts;
     mapping(bytes32 => PendingOrder) internal pendingOrders;
 
@@ -29,6 +41,7 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
         "OrderIdWitness witness)OrderIdWitness(bytes32 orderId)TokenPermissions(address token,uint256 amount)";
 
     error DuplicateApprovalSalt();
+    error InvalidAddress();
     error InvalidExecutor();
     error InvalidSubOrder();
     error InvalidPermit2Salt();
@@ -38,11 +51,16 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
     error UnknownOrderId();
     error UnknownOrderFundingType();
 
-    constructor(address _permit2) {
-        permit2 = IPermit2(_permit2);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
-        // TODO: should we also include a version string? Perhaps a more standard EIP-712 domainHash
-        domainHash = OrderIdLib.domainHash(block.chainid, address(this));
+    function initialize(address _owner, address _permit2) external initializer {
+        if (_permit2 == address(0)) revert InvalidAddress();
+        __EIP712_init(EIP712_NAME, EIP712_VERSION);
+        __AccessControlDefaultAdminRules_init(0, _owner);
+        permit2 = IPermit2(_permit2);
     }
 
     // TODO: perhaps this warrants a rename. Since `msg.sender` here does not get recorded as `submitter`. Submitter
@@ -135,17 +153,25 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
+        bytes32 _domainHash = _domainSeparatorV4();
         bytes32 orderHash = _orderHash(order);
         OrderFundingType typ = OrderFundingType(orderFunding.typ);
-        if (typ == OrderFundingType.Approval) return _pullFundsApproval(orderHash, orderFunding, fundsRecipient);
-        if (typ == OrderFundingType.Permit2) return _pullFundsPermit2(orderHash, orderFunding, fundsRecipient);
-        if (typ == OrderFundingType.TransferWithAuthorization)
-            return _pullFundsTWA(orderHash, orderFunding, fundsRecipient);
+
+        if (typ == OrderFundingType.Approval) {
+            return _pullFundsApproval(_domainHash, orderHash, orderFunding, fundsRecipient);
+        }
+        if (typ == OrderFundingType.Permit2) {
+            return _pullFundsPermit2(_domainHash, orderHash, orderFunding, fundsRecipient);
+        }
+        if (typ == OrderFundingType.TransferWithAuthorization) {
+            return _pullFundsTWA(_domainHash, orderHash, orderFunding, fundsRecipient);
+        }
 
         revert UnknownOrderFundingType();
     }
 
     function _pullFundsApproval(
+        bytes32 _domainHash,
         bytes32 orderHash,
         TypedData calldata orderFunding,
         address fundsRecipient
@@ -155,20 +181,21 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
         usedApprovalSalts[msg.sender][f.salt] = true;
         IERC20(f.tokenAmount.token).safeTransferFrom(msg.sender, fundsRecipient, f.tokenAmount.amount);
         return (
-            OrderIdLib.orderId(domainHash, uint8(OrderFundingType.Approval), msg.sender, orderHash, f.salt),
+            OrderIdLib.orderId(_domainHash, uint8(OrderFundingType.Approval), msg.sender, orderHash, f.salt),
             f.tokenAmount.token,
             f.tokenAmount.amount
         );
     }
 
     function _pullFundsPermit2(
+        bytes32 _domainHash,
         bytes32 orderHash,
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
         Permit2Funding memory f = abi.decode(orderFunding.data, (Permit2Funding));
         orderId = OrderIdLib.orderId(
-            domainHash,
+            _domainHash,
             uint8(OrderFundingType.Permit2),
             f.signer,
             orderHash,
@@ -191,13 +218,14 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
     }
 
     function _pullFundsTWA(
+        bytes32 _domainHash,
         bytes32 orderHash,
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
         AuthorizationFunding memory f = abi.decode(orderFunding.data, (AuthorizationFunding));
         orderId = OrderIdLib.orderId(
-            domainHash,
+            _domainHash,
             uint8(OrderFundingType.TransferWithAuthorization),
             f.signer,
             orderHash,
@@ -235,5 +263,16 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
 
     function _orderHash(Order calldata order) internal pure returns (bytes32) {
         return keccak256(abi.encode(order));
+    }
+
+    function _authorizeUpgrade(address) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    function setPermit2(address _permit2) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (_permit2 == address(0)) revert InvalidAddress();
+        permit2 = IPermit2(_permit2);
+    }
+
+    function domainHash() external view returns (bytes32) {
+        return _domainSeparatorV4();
     }
 }
