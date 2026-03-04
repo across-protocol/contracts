@@ -13,9 +13,16 @@ import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
 contract OrderGateway is IOrderGateway, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
+    struct PendingOrder {
+        TokenAmount orderIn;
+        Order order;
+        bool exists;
+    }
+
     IPermit2 public immutable permit2;
     bytes32 public immutable domainHash;
     mapping(address => mapping(bytes32 => bool)) public usedApprovalSalts;
+    mapping(bytes32 => PendingOrder) internal pendingOrders;
 
     bytes32 public constant ORDER_ID_WITNESS_TYPEHASH = keccak256("OrderIdWitness(bytes32 orderId)");
     string public constant PERMIT2_ORDER_WITNESS_TYPE =
@@ -25,22 +32,33 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
     error InvalidExecutor();
     error InvalidSubOrder();
     error InvalidPermit2Salt();
+    error OrderAlreadyStored();
+    error RefundNotReady();
+    error InvalidRefundRecipient();
+    error UnknownOrderId();
     error UnknownOrderFundingType();
 
     constructor(address _permit2) {
         permit2 = IPermit2(_permit2);
+
+        // TODO: should we also include a version string? Perhaps a more standard EIP-712 domainHash
         domainHash = OrderIdLib.domainHash(block.chainid, address(this));
     }
 
     // TODO: perhaps this warrants a rename. Since `msg.sender` here does not get recorded as `submitter`. Submitter
     // TODO: is only the one doing `submitWithData` or `fill`. Think about naming
-    function submit(
-        Order calldata order,
-        Path calldata selectedPath,
-        bytes32[] calldata pathProof,
-        TypedData calldata orderFunding
-    ) external payable nonReentrant {
-        revert("not implemented");
+    function submit(Order calldata order, TypedData calldata orderFunding) external nonReentrant {
+        (bytes32 orderId, address token, uint256 amount) = _pullOrderFundingAndComputeOrderId(
+            order,
+            orderFunding,
+            address(this)
+        );
+        if (pendingOrders[orderId].exists) revert OrderAlreadyStored();
+        pendingOrders[orderId] = PendingOrder({
+            orderIn: TokenAmount({ token: token, amount: amount }),
+            order: order,
+            exists: true
+        });
     }
 
     function submitWithData(
@@ -72,8 +90,44 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
         );
     }
 
-    function fill(bytes32 orderId, SubmitterData calldata submitterData) external payable {
-        revert("not implemented");
+    function fill(
+        bytes32 orderId,
+        Path calldata selectedPath,
+        bytes32[] calldata pathProof,
+        SubmitterData calldata submitterData
+    ) external payable nonReentrant {
+        PendingOrder storage pending = pendingOrders[orderId];
+        if (!pending.exists) revert UnknownOrderId();
+
+        address executor = selectedPath.cur.executor;
+        if (executor == address(0)) revert InvalidExecutor();
+        if (!MerkleProof.verify(pathProof, pending.order.root, keccak256(abi.encode(selectedPath))))
+            revert InvalidSubOrder();
+
+        TokenAmount memory orderIn = pending.orderIn;
+        delete pendingOrders[orderId];
+
+        IERC20(orderIn.token).safeTransfer(executor, orderIn.amount);
+        _pullExtraFundingToExecutor(executor, submitterData.extraFunding);
+        IExecutor(executor).execute{ value: msg.value }(
+            orderId,
+            orderIn,
+            selectedPath,
+            msg.sender,
+            submitterData.executorMessage
+        );
+    }
+
+    function refund(bytes32 orderId) external nonReentrant {
+        PendingOrder storage pending = pendingOrders[orderId];
+        if (!pending.exists) revert UnknownOrderId();
+        if (block.timestamp < pending.order.refundReverseDeadline) revert RefundNotReady();
+        if (pending.order.refundRecipient == address(0)) revert InvalidRefundRecipient();
+
+        TokenAmount memory orderIn = pending.orderIn;
+        address refundRecipient = pending.order.refundRecipient;
+        delete pendingOrders[orderId];
+        IERC20(orderIn.token).safeTransfer(refundRecipient, orderIn.amount);
     }
 
     function _pullOrderFundingAndComputeOrderId(
@@ -81,17 +135,18 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
+        bytes32 orderHash = _orderHash(order);
         OrderFundingType typ = OrderFundingType(orderFunding.typ);
-        if (typ == OrderFundingType.Approval) return _pullFundsApproval(order, orderFunding, fundsRecipient);
-        if (typ == OrderFundingType.Permit2) return _pullFundsPermit2(order, orderFunding, fundsRecipient);
+        if (typ == OrderFundingType.Approval) return _pullFundsApproval(orderHash, orderFunding, fundsRecipient);
+        if (typ == OrderFundingType.Permit2) return _pullFundsPermit2(orderHash, orderFunding, fundsRecipient);
         if (typ == OrderFundingType.TransferWithAuthorization)
-            return _pullFundsTWA(order, orderFunding, fundsRecipient);
+            return _pullFundsTWA(orderHash, orderFunding, fundsRecipient);
 
         revert UnknownOrderFundingType();
     }
 
     function _pullFundsApproval(
-        Order calldata order,
+        bytes32 orderHash,
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
@@ -100,14 +155,14 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
         usedApprovalSalts[msg.sender][f.salt] = true;
         IERC20(f.tokenAmount.token).safeTransferFrom(msg.sender, fundsRecipient, f.tokenAmount.amount);
         return (
-            OrderIdLib.orderId(domainHash, uint8(OrderFundingType.Approval), msg.sender, order.root, f.salt),
+            OrderIdLib.orderId(domainHash, uint8(OrderFundingType.Approval), msg.sender, orderHash, f.salt),
             f.tokenAmount.token,
             f.tokenAmount.amount
         );
     }
 
     function _pullFundsPermit2(
-        Order calldata order,
+        bytes32 orderHash,
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
@@ -116,7 +171,7 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
             domainHash,
             uint8(OrderFundingType.Permit2),
             f.signer,
-            order.root,
+            orderHash,
             bytes32(f.nonce)
         );
         bytes32 witness = keccak256(abi.encode(ORDER_ID_WITNESS_TYPEHASH, orderId));
@@ -136,7 +191,7 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
     }
 
     function _pullFundsTWA(
-        Order calldata order,
+        bytes32 orderHash,
         TypedData calldata orderFunding,
         address fundsRecipient
     ) internal returns (bytes32 orderId, address token, uint256 amount) {
@@ -145,7 +200,7 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
             domainHash,
             uint8(OrderFundingType.TransferWithAuthorization),
             f.signer,
-            order.root,
+            orderHash,
             f.salt
         );
         (bytes32 r, bytes32 s, uint8 v) = _deserializeSignature(f.signature);
@@ -176,5 +231,9 @@ contract OrderGateway is IOrderGateway, ReentrancyGuard {
             s := mload(add(signature, 0x40))
             v := byte(0, mload(add(signature, 0x60)))
         }
+    }
+
+    function _orderHash(Order calldata order) internal pure returns (bytes32) {
+        return keccak256(abi.encode(order));
     }
 }

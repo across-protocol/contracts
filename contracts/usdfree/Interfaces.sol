@@ -11,9 +11,11 @@ struct Path {
     bytes next;
 }
 
-// Note: Order is a Merkle tree of Paths
+// Note: Order is a Merkle tree of Paths + refund settings
 struct Order {
     bytes32 root;
+    address refundRecipient;
+    uint256 refundReverseDeadline;
 }
 
 struct TokenAmount {
@@ -60,13 +62,8 @@ struct AuthorizationFunding {
 }
 
 interface IOrderGateway {
-    // Note: submit `Order`. If submitterData is a requirement, the `Order` will be stored instead and wait for a submitter
-    function submit(
-        Order calldata order,
-        Path calldata selectedPath,
-        bytes32[] calldata pathProof,
-        TypedData calldata orderFunding
-    ) external payable; // nonReentrant
+    // Note: submit stores funded Order and waits for a later fill or refund.
+    function submit(Order calldata order, TypedData calldata orderFunding) external; // nonReentrant
 
     // Note: this entrypoint has `submitterData` and therefore should always be able to atomically execute a `Step`
     function submitWithData(
@@ -77,7 +74,15 @@ interface IOrderGateway {
         SubmitterData calldata submitterData
     ) external payable; // nonReentrant
 
-    function fill(bytes32 orderId, SubmitterData calldata submitterData) external payable;
+    function fill(
+        bytes32 orderId,
+        Path calldata selectedPath,
+        bytes32[] calldata pathProof,
+        SubmitterData calldata submitterData
+    ) external payable;
+
+    // Permissionless after order.refundReverseDeadline, transfers funds to order.refundRecipient.
+    function refund(bytes32 orderId) external;
 }
 
 interface IExecutor {

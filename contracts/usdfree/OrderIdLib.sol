@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 library OrderIdLib {
     bytes32 internal constant ORDER_DOMAIN_TYPEHASH = keccak256("OrderDomain(uint256 chainId,address orderGateway)");
     bytes32 internal constant ORDER_ID_TYPEHASH =
-        keccak256("OrderId(bytes32 domainHash,uint8 fundingType,address funder,bytes32 merkleRoot,bytes32 salt)");
+        keccak256("OrderId(bytes32 domainHash,uint8 fundingType,address funder,bytes32 orderHash,bytes32 salt)");
 
     function domainHash(uint256 chainId, address orderGateway) internal pure returns (bytes32) {
         return keccak256(abi.encode(ORDER_DOMAIN_TYPEHASH, chainId, orderGateway));
@@ -14,10 +14,10 @@ library OrderIdLib {
         bytes32 _domainHash,
         uint8 fundingType,
         address funder,
-        bytes32 merkleRoot,
+        bytes32 orderHash,
         // Note: `saltOrNonce` can be used to produce a unique orderId. It can also be used to make some cryptographic commitments
         bytes32 saltOrNonce
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(ORDER_ID_TYPEHASH, _domainHash, fundingType, funder, merkleRoot, saltOrNonce));
+        return keccak256(abi.encode(ORDER_ID_TYPEHASH, _domainHash, fundingType, funder, orderHash, saltOrNonce));
     }
 }
