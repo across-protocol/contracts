@@ -59,5 +59,9 @@ src/svm/clients/*
 script/universal/genesis-binary
 script/universal/genesis.json
 
+# Tron solc binary and flattened sources
+bin/solc-tron
+flattened/
+
 # claude
 CLAUDE.local.md

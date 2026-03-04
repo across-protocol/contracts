@@ -1,0 +1,76 @@
+{
+  "contractName": "WithdrawImplementation",
+  "address": "0xe26c875a224d6b1107d2c2046c916c42ff728b2f",
+  "tronAddress": "TWcRj7vrX7PHYwQYzcHR8wrdc1Nen79hj9",
+  "transactionHash": "3e3cc02384ffdf66d57c2c6102a256115c3d3780fd6325f42ae356ad1b3a3281",
+  "constructorArgs": null,
+  "abi": [
+    {
+      "type": "function",
+      "name": "execute",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "submitterData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "event",
+      "name": "Withdraw",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "to",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "NativeTransferFailed",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    },
+    {
+      "type": "error",
+      "name": "Unauthorized",
+      "inputs": []
+    }
+  ],
+  "deployedAt": "2026-02-27T23:09:11.132Z",
+  "network": "https://nile.trongrid.io",
+  "solcVersion": "0.8.25"
+}

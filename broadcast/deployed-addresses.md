@@ -409,6 +409,16 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.blastscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0x5545092553Cf5Bf786e87a87192E902D50D8f022](https://sepolia.blastscan.io/address/0x5545092553Cf5Bf786e87a87192E902D50D8f022) |
 
+## Chain 3448148188 (3448148188)
+
+| Contract Name                    | Address                            |
+| -------------------------------- | ---------------------------------- |
+| CounterfactualDepositCCTP        | TJaMZPrrbU8CfikSfmCWCJhyk5BBp8WHHb |
+| CounterfactualDepositFactoryTron | TYBSVXEmXkrQp2TjUdURNEoAGYthSbBsmC |
+| CounterfactualDepositOFT         | TYfr7TRPsMXgSe1YaheRQ6UWUf9hP81Wn7 |
+| CounterfactualDepositSpokePool   | TTqh3vcDpSdpEVX69kKgDH1xReSrytZXgJ |
+| WithdrawImplementation           | TSmjwgJEyDE9bu9ryRggLgsHv3dyY1AY71 |
+
 ## Solana Devnet (133268194659241)
 
 | Contract Name             | Address                                                                                                                                          |

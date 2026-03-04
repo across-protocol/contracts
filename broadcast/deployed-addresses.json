@@ -1046,6 +1046,36 @@
         }
       }
     },
+    "3448148188": {
+      "chain_name": "Chain 3448148188",
+      "contracts": {
+        "CounterfactualDepositCCTP": {
+          "address": "TJaMZPrrbU8CfikSfmCWCJhyk5BBp8WHHb",
+          "block_number": 65398483,
+          "transaction_hash": "4585bd29ec9ded10048b9a41f7bbb9dcfc6e895fe0d24e7f616b30ba22e29368"
+        },
+        "CounterfactualDepositFactoryTron": {
+          "address": "TYBSVXEmXkrQp2TjUdURNEoAGYthSbBsmC",
+          "block_number": 65398568,
+          "transaction_hash": "f5fca762cae0a89aaf9aa1f081225fc58b4db7dc81b75062ef9c7c247efaa165"
+        },
+        "CounterfactualDepositOFT": {
+          "address": "TYfr7TRPsMXgSe1YaheRQ6UWUf9hP81Wn7",
+          "block_number": 65398521,
+          "transaction_hash": "9cf8fa3f696bae29c639398eac6948a6a64f7fd618b884748dcd1faeda2299bd"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "TTqh3vcDpSdpEVX69kKgDH1xReSrytZXgJ",
+          "block_number": 65398544,
+          "transaction_hash": "4cde3bc20b8006639915a7b2008eb314107784776fdeba619b9f2c8bb22c28ab"
+        },
+        "WithdrawImplementation": {
+          "address": "TSmjwgJEyDE9bu9ryRggLgsHv3dyY1AY71",
+          "block_number": 65398597,
+          "transaction_hash": "41a96dd93cb053a5b856d8202b570e202a7f2837eccd34b9f4f5fdfeaaeb470a"
+        }
+      }
+    },
     "133268194659241": {
       "chain_name": "Solana Devnet",
       "contracts": {
