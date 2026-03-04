@@ -166,9 +166,9 @@
           "transaction_hash": "0x5ed6c6bd719ccf0fdb96f823daad67c3b567b93c453f5e1c9dc186a86a8f0d22"
         },
         "DonationBox": {
-          "address": "0x3e73eAE5c264c89B1Ff429fae58f9639E96E6068",
-          "block_number": 24021559,
-          "transaction_hash": "0xca421a9307ff1c8eeea37952260c7d34fe5d34f5a5189fe501f4bf91984f7fa1"
+          "address": "0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168",
+          "block_number": 24445781,
+          "transaction_hash": "0x1a11ebe652ccb6ba833b38454b56f75e250a84ea7a5ec01c896a9d4361314dac"
         },
         "OP_Adapter_57073": {
           "address": "0x545E43B6eC2f9a44CAa531298699Ff05958670B5",
