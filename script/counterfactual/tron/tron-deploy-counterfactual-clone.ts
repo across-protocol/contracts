@@ -8,7 +8,7 @@
  * Usage:
  *   npx ts-node deploy-clone.ts <chain-id> <factory-address> <implementation-address> <params-hash> <salt>
  *
- * All addresses in 0x hex format. paramsHash and salt are 0x-prefixed 32-byte hex values.
+ * Addresses in Tron Base58Check format (T...). paramsHash and salt are 0x-prefixed 32-byte hex values.
  *
  * Env vars:
  *   MNEMONIC              — BIP-39 mnemonic (derives account 0 private key)
@@ -19,8 +19,8 @@
  */
 
 import "dotenv/config";
-import { Wallet } from "ethers";
 import { TronWeb } from "tronweb";
+import { tronToEvmAddress } from "./deploy";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes
@@ -30,19 +30,18 @@ const TRONSCAN_URLS: Record<string, string> = {
   "3448148188": "https://nile.tronscan.org",
 };
 
-// Matches a 0x-prefixed 20-byte hex address (40 hex chars after 0x).
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
-
 // Matches a 0x-prefixed 32-byte hex value (64 hex chars after 0x).
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
 function validateArgs(factoryAddress: string, implementationAddress: string, paramsHash: string, salt: string): void {
-  if (!ADDRESS_RE.test(factoryAddress)) {
-    console.log(`Error: invalid factory address "${factoryAddress}". Expected 0x-prefixed 20-byte hex.`);
+  if (!TronWeb.isAddress(factoryAddress)) {
+    console.log(`Error: invalid factory address "${factoryAddress}". Expected Tron Base58Check address (T...).`);
     process.exit(1);
   }
-  if (!ADDRESS_RE.test(implementationAddress)) {
-    console.log(`Error: invalid implementation address "${implementationAddress}". Expected 0x-prefixed 20-byte hex.`);
+  if (!TronWeb.isAddress(implementationAddress)) {
+    console.log(
+      `Error: invalid implementation address "${implementationAddress}". Expected Tron Base58Check address (T...).`
+    );
     process.exit(1);
   }
   if (!BYTES32_RE.test(paramsHash)) {
@@ -69,7 +68,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Validate that addresses are 0x-prefixed 20-byte hex and bytes32 values are 0x-prefixed 32-byte hex.
+  // Validate that addresses are Tron Base58Check and bytes32 values are 0x-prefixed 32-byte hex.
   validateArgs(factoryAddress, implementationAddress, paramsHash, salt);
 
   const mnemonic = process.env.MNEMONIC;
@@ -83,21 +82,29 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Derive account 0 private key from mnemonic (same derivation as Foundry's vm.deriveKey(mnemonic, 0)).
-  // TronWeb expects a raw hex key without the 0x prefix.
-  const wallet = Wallet.fromMnemonic(mnemonic);
-  const privateKey = wallet.privateKey.slice(2);
   const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
 
-  const tronWeb = new TronWeb({ fullHost: fullNode, privateKey });
+  // Create a TronWeb instance (private key set below after mnemonic derivation).
+  const tronWeb = new TronWeb({ fullHost: fullNode });
 
-  // Tron uses 41-prefixed hex addresses internally (instead of 0x).
-  const factoryTronHex = "41" + factoryAddress.slice(2).toLowerCase();
+  // Derive account 0 private key from mnemonic (same derivation as Foundry's vm.deriveKey(mnemonic, 0)).
+  // We use Ethereum's HD path (m/44'/60'/0'/0/0) — NOT Tron's default (m/44'/195'/0'/0/0) — because
+  // the deployer key must match the one Foundry derives. TronWeb.fromMnemonic() enforces Tron's path,
+  // so we use the bundled ethers HDNodeWallet directly to derive with the Ethereum path.
+  const { ethersHDNodeWallet, Mnemonic } = tronWeb.utils.ethersUtils;
+  const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
+  const wallet = ethersHDNodeWallet.fromMnemonic(mnemonicObj, "m/44'/60'/0'/0/0");
+  const privateKey = wallet.privateKey.slice(2);
+  tronWeb.setPrivateKey(privateKey);
+
+  // Convert Tron Base58Check addresses to the formats needed for TronWeb calls.
+  const factoryTronHex = TronWeb.address.toHex(factoryAddress);
+  const implementationEvmAddress = tronToEvmAddress(implementationAddress);
   const tronscanBase = TRONSCAN_URLS[chainId] || "https://tronscan.org";
 
   // These are the parameters for both predictDepositAddress and deploy — same signature.
   const fnParams = [
-    { type: "address", value: implementationAddress },
+    { type: "address", value: implementationEvmAddress },
     { type: "bytes32", value: paramsHash },
     { type: "bytes32", value: salt },
   ];

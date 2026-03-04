@@ -3,9 +3,9 @@
  * Deploys CounterfactualDepositSpokePool to Tron.
  *
  * Constructor args:
- *   spokePool          — Across SpokePool contract address (0x hex)
- *   signer             — EIP-712 signer address (0x hex)
- *   wrappedNativeToken — WETH address on this chain (0x hex)
+ *   spokePool          — Across SpokePool contract address (Tron Base58Check, T...)
+ *   signer             — EIP-712 signer address (Tron Base58Check, T...)
+ *   wrappedNativeToken — WETH address on this chain (Tron Base58Check, T...)
  *
  * Usage:
  *   yarn tron-deploy-counterfactual-deposit-spokepool <chain-id> <spokePool> <signer> <wrappedNativeToken>
@@ -13,14 +13,12 @@
 
 import "dotenv/config";
 import * as path from "path";
-import { utils } from "ethers";
-import { deployContract } from "./deploy";
-
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+import { TronWeb } from "tronweb";
+import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
 
 function validateAddress(value: string, name: string): void {
-  if (!ADDRESS_RE.test(value)) {
-    console.log(`Error: invalid ${name} "${value}". Expected 0x-prefixed 20-byte hex.`);
+  if (!TronWeb.isAddress(value)) {
+    console.log(`Error: invalid ${name} "${value}". Expected Tron Base58Check address (T...).`);
     process.exit(1);
   }
 }
@@ -44,9 +42,9 @@ async function main(): Promise<void> {
   validateAddress(wrappedNativeToken, "wrappedNativeToken");
 
   // ABI-encode constructor args: (address spokePool, address signer, address wrappedNativeToken).
-  const encodedArgs = utils.defaultAbiCoder.encode(
+  const encodedArgs = encodeArgs(
     ["address", "address", "address"],
-    [spokePool, signer, wrappedNativeToken]
+    [tronToEvmAddress(spokePool), tronToEvmAddress(signer), tronToEvmAddress(wrappedNativeToken)]
   );
 
   const artifactPath = path.resolve(

@@ -19,8 +19,6 @@
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
-import { execSync } from "child_process";
-import { Wallet, utils } from "ethers";
 import { TronWeb } from "tronweb";
 
 const POLL_INTERVAL_MS = 3000;
@@ -37,16 +35,32 @@ export interface DeployResult {
   txID: string;
 }
 
+/** ABI-encode constructor args. Wrapper around TronWeb's ABI encoder for use by deploy scripts. */
+export function encodeArgs(types: string[], values: any[]): string {
+  // Lightweight TronWeb instance for ABI encoding only (no network calls).
+  const tw = new TronWeb({ fullHost: "http://localhost" });
+  return tw.utils.abi.encodeParams(types, values);
+}
+
+/** Convert a Tron Base58Check address (T...) to a 0x-prefixed 20-byte EVM hex address. */
+export function tronToEvmAddress(base58: string): string {
+  return "0x" + TronWeb.address.toHex(base58).slice(2);
+}
+
 /** Decode ABI-encoded constructor args into human-readable strings for the broadcast `arguments` field. */
-function decodeConstructorArgs(abi: any[], parameterHex: string): string[] | null {
+function decodeConstructorArgs(tronWeb: TronWeb, abi: any[], parameterHex: string): string[] | null {
   const ctor = abi.find((e: any) => e.type === "constructor");
   if (!ctor || !ctor.inputs?.length || !parameterHex) return null;
   try {
     const types = ctor.inputs.map((i: any) => i.type);
-    const decoded = utils.defaultAbiCoder.decode(types, "0x" + parameterHex);
-    return ctor.inputs.map((input: any, i: number) => {
-      const val = decoded[i];
-      if (input.type === "address") return utils.getAddress(val);
+    const names = ctor.inputs.map((i: any) => i.name);
+    const decoded = tronWeb.utils.abi.decodeParams(names, types, "0x" + parameterHex, false);
+    return ctor.inputs.map((input: any) => {
+      const val = decoded[input.name];
+      // TronWeb returns addresses as 41-prefixed hex; convert to 0x-prefixed for display.
+      if (input.type === "address" && typeof val === "string" && val.startsWith("41") && val.length === 42) {
+        return "0x" + val.slice(2);
+      }
       return val.toString();
     });
   } catch {
@@ -54,16 +68,9 @@ function decodeConstructorArgs(abi: any[], parameterHex: string): string[] | nul
   }
 }
 
-function getGitCommit(): string {
-  try {
-    return execSync("git rev-parse --short HEAD", { encoding: "utf-8" }).trim();
-  } catch {
-    return "";
-  }
-}
-
 /** Write a Foundry-compatible broadcast artifact to broadcast/<ContractName>/<chainId>/. */
 function writeBroadcastArtifact(opts: {
+  tronWeb: TronWeb;
   contractName: string;
   contractAddress: string;
   txID: string;
@@ -93,7 +100,7 @@ function writeBroadcastArtifact(opts: {
         contractName: opts.contractName,
         contractAddress: opts.contractAddress,
         function: null,
-        arguments: decodeConstructorArgs(opts.abi, opts.parameter || ""),
+        arguments: decodeConstructorArgs(opts.tronWeb, opts.abi, opts.parameter || ""),
         transaction: {
           from: opts.deployerAddress,
           gas: "0x" + opts.feeLimit.toString(16),
@@ -129,7 +136,6 @@ function writeBroadcastArtifact(opts: {
     returns: {},
     timestamp: now,
     chain: chainIdNum,
-    commit: getGitCommit(),
   };
 
   const broadcastDir = path.resolve(__dirname, "../../../broadcast", scriptName, opts.chainId);
@@ -170,13 +176,21 @@ export async function deployContract(opts: {
     process.exit(1);
   }
 
+  const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
+
+  // Create a TronWeb instance (private key set below after mnemonic derivation).
+  const tronWeb = new TronWeb({ fullHost: fullNode });
+
   // Derive account 0 private key from mnemonic (same derivation as Foundry's vm.deriveKey(mnemonic, 0)).
-  // TronWeb expects a raw hex key without the 0x prefix.
-  const wallet = Wallet.fromMnemonic(mnemonic);
+  // We use Ethereum's HD path (m/44'/60'/0'/0/0) — NOT Tron's default (m/44'/195'/0'/0/0) — because
+  // the deployer key must match the one Foundry derives. TronWeb.fromMnemonic() enforces Tron's path,
+  // so we use the bundled ethers HDNodeWallet directly to derive with the Ethereum path.
+  const { ethersHDNodeWallet, Mnemonic } = tronWeb.utils.ethersUtils;
+  const mnemonicObj = Mnemonic.fromPhrase(mnemonic);
+  const wallet = ethersHDNodeWallet.fromMnemonic(mnemonicObj, "m/44'/60'/0'/0/0");
   const privateKey = wallet.privateKey.slice(2);
   const deployerAddress = wallet.address.toLowerCase();
-
-  const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
+  tronWeb.setPrivateKey(privateKey);
 
   // Read the Foundry-compiled artifact to get the ABI and bytecode.
   if (!fs.existsSync(artifactPath)) {
@@ -202,8 +216,6 @@ export async function deployContract(opts: {
   if (encodedArgs) {
     parameter = encodedArgs.startsWith("0x") ? encodedArgs.slice(2) : encodedArgs;
   }
-
-  const tronWeb = new TronWeb({ fullHost: fullNode, privateKey });
 
   console.log(`Deploying ${contractName} to ${fullNode}...`);
   if (parameter) console.log(`  Constructor args: 0x${parameter}`);
@@ -300,6 +312,7 @@ export async function deployContract(opts: {
 
   // Write Foundry-compatible broadcast artifact to broadcast/.
   writeBroadcastArtifact({
+    tronWeb,
     contractName,
     contractAddress: `0x${evmAddress}`,
     txID,

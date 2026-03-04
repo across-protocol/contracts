@@ -3,7 +3,7 @@
  * Deploys CounterfactualDepositCCTP to Tron.
  *
  * Constructor args:
- *   srcPeriphery  — SponsoredCCTPSrcPeriphery contract address (0x hex)
+ *   srcPeriphery  — SponsoredCCTPSrcPeriphery contract address (Tron Base58Check, T...)
  *   sourceDomain  — CCTP source domain ID (uint32)
  *
  * Usage:
@@ -12,10 +12,8 @@
 
 import "dotenv/config";
 import * as path from "path";
-import { utils } from "ethers";
-import { deployContract } from "./deploy";
-
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+import { TronWeb } from "tronweb";
+import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
 
 async function main(): Promise<void> {
   const chainId = process.argv[2];
@@ -27,9 +25,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Validate address format.
-  if (!ADDRESS_RE.test(srcPeriphery)) {
-    console.log(`Error: invalid srcPeriphery "${srcPeriphery}". Expected 0x-prefixed 20-byte hex.`);
+  // Validate Tron Base58Check address format.
+  if (!TronWeb.isAddress(srcPeriphery)) {
+    console.log(`Error: invalid srcPeriphery "${srcPeriphery}". Expected Tron Base58Check address (T...).`);
     process.exit(1);
   }
 
@@ -41,7 +39,7 @@ async function main(): Promise<void> {
   }
 
   // ABI-encode constructor args: (address srcPeriphery, uint32 sourceDomain).
-  const encodedArgs = utils.defaultAbiCoder.encode(["address", "uint32"], [srcPeriphery, domainNum]);
+  const encodedArgs = encodeArgs(["address", "uint32"], [tronToEvmAddress(srcPeriphery), domainNum]);
 
   const artifactPath = path.resolve(
     __dirname,

@@ -3,7 +3,7 @@
  * Deploys CounterfactualDepositOFT to Tron.
  *
  * Constructor args:
- *   oftSrcPeriphery — SponsoredOFTSrcPeriphery contract address (0x hex)
+ *   oftSrcPeriphery — SponsoredOFTSrcPeriphery contract address (Tron Base58Check, T...)
  *   srcEid          — OFT source endpoint ID (uint32)
  *
  * Usage:
@@ -12,10 +12,8 @@
 
 import "dotenv/config";
 import * as path from "path";
-import { utils } from "ethers";
-import { deployContract } from "./deploy";
-
-const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
+import { TronWeb } from "tronweb";
+import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
 
 async function main(): Promise<void> {
   const chainId = process.argv[2];
@@ -27,9 +25,9 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  // Validate address format.
-  if (!ADDRESS_RE.test(oftSrcPeriphery)) {
-    console.log(`Error: invalid oftSrcPeriphery "${oftSrcPeriphery}". Expected 0x-prefixed 20-byte hex.`);
+  // Validate Tron Base58Check address format.
+  if (!TronWeb.isAddress(oftSrcPeriphery)) {
+    console.log(`Error: invalid oftSrcPeriphery "${oftSrcPeriphery}". Expected Tron Base58Check address (T...).`);
     process.exit(1);
   }
 
@@ -41,7 +39,7 @@ async function main(): Promise<void> {
   }
 
   // ABI-encode constructor args: (address oftSrcPeriphery, uint32 srcEid).
-  const encodedArgs = utils.defaultAbiCoder.encode(["address", "uint32"], [oftSrcPeriphery, eidNum]);
+  const encodedArgs = encodeArgs(["address", "uint32"], [tronToEvmAddress(oftSrcPeriphery), eidNum]);
 
   const artifactPath = path.resolve(
     __dirname,

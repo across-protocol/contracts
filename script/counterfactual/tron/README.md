@@ -47,7 +47,7 @@ Foundry cannot broadcast transactions to Tron directly — Tron uses protobuf-en
 
 ## Deploy Commands
 
-Every script takes `chainId` as its first argument (`728126428` for mainnet, `3448148188` for Nile testnet).
+Every script takes `chainId` as its first argument (`728126428` for mainnet, `3448148188` for Nile testnet). **All address arguments use Tron Base58Check format** (`T...`), not `0x`-prefixed EVM hex.
 
 ### CounterfactualDepositFactoryTron (no constructor args)
 
@@ -59,6 +59,7 @@ yarn tron-deploy-counterfactual-factory <chainId>
 
 ```bash
 yarn tron-deploy-counterfactual-deposit-cctp <chainId> <srcPeriphery> <sourceDomain>
+# e.g. yarn tron-deploy-counterfactual-deposit-cctp 3448148188 TXYZabc123... 6
 ```
 
 ### CounterfactualDepositOFT
@@ -85,6 +86,7 @@ Deploys a clone from the factory and verifies the predicted address matches the 
 
 ```bash
 yarn tron-deploy-counterfactual-clone <chainId> <factory> <implementation> <paramsHash> <salt>
+# Addresses are Tron Base58Check (T...), paramsHash and salt are 0x-prefixed 32-byte hex.
 ```
 
 ## File Overview
