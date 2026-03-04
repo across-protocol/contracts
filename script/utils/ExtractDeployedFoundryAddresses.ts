@@ -430,11 +430,17 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     content.push(`## ${chainNameFormatted}`);
     content.push("");
 
-    // Collect all contracts for this chain into a single array
-    const allChainContracts: Contract[] = [];
+    // Collect all contracts for this chain, deduplicating by name (keep latest by block number)
+    const contractMap = new Map<string, Contract>();
     for (const contracts of Object.values(chainInfo.scripts)) {
-      allChainContracts.push(...contracts);
+      for (const contract of contracts) {
+        const existing = contractMap.get(contract.contractName);
+        if (!existing || (contract.blockNumber ?? 0) > (existing.blockNumber ?? 0)) {
+          contractMap.set(contract.contractName, contract);
+        }
+      }
     }
+    const allChainContracts = Array.from(contractMap.values());
 
     // Sort contracts by name for consistent ordering
     allChainContracts.sort((a, b) => a.contractName.localeCompare(b.contractName));
