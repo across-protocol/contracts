@@ -6,9 +6,9 @@
  * factory.deploy (state-changing) to actually deploy it, and compares the two.
  *
  * Usage:
- *   npx ts-node deploy-clone.ts <chain-id> <factory-address> <implementation-address> <params-hash> <salt>
+ *   yarn tron-deploy-counterfactual-clone <chain-id> <factory-address> <implementation-address> <merkle-root> <salt>
  *
- * Addresses in Tron Base58Check format (T...). paramsHash and salt are 0x-prefixed 32-byte hex values.
+ * Addresses in Tron Base58Check format (T...). merkleRoot and salt are 0x-prefixed 32-byte hex values.
  *
  * Env vars:
  *   MNEMONIC              — BIP-39 mnemonic (derives account 0 private key)
@@ -33,7 +33,7 @@ const TRONSCAN_URLS: Record<string, string> = {
 // Matches a 0x-prefixed 32-byte hex value (64 hex chars after 0x).
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
-function validateArgs(factoryAddress: string, implementationAddress: string, paramsHash: string, salt: string): void {
+function validateArgs(factoryAddress: string, implementationAddress: string, merkleRoot: string, salt: string): void {
   if (!TronWeb.isAddress(factoryAddress)) {
     console.log(`Error: invalid factory address "${factoryAddress}". Expected Tron Base58Check address (T...).`);
     process.exit(1);
@@ -44,8 +44,8 @@ function validateArgs(factoryAddress: string, implementationAddress: string, par
     );
     process.exit(1);
   }
-  if (!BYTES32_RE.test(paramsHash)) {
-    console.log(`Error: invalid paramsHash "${paramsHash}". Expected 0x-prefixed 32-byte hex.`);
+  if (!BYTES32_RE.test(merkleRoot)) {
+    console.log(`Error: invalid merkleRoot "${merkleRoot}". Expected 0x-prefixed 32-byte hex.`);
     process.exit(1);
   }
   if (!BYTES32_RE.test(salt)) {
@@ -58,18 +58,24 @@ async function main(): Promise<void> {
   const chainId = process.argv[2];
   const factoryAddress = process.argv[3];
   const implementationAddress = process.argv[4];
-  const paramsHash = process.argv[5];
+  const merkleRoot = process.argv[5];
   const salt = process.argv[6];
 
-  if (!chainId || !factoryAddress || !implementationAddress || !paramsHash || !salt) {
+  if (!chainId || !factoryAddress || !implementationAddress || !merkleRoot || !salt) {
     console.log(
-      "Usage: npx ts-node deploy-clone.ts <chain-id> <factory-address> <implementation-address> <params-hash> <salt>"
+      "Usage: yarn tron-deploy-counterfactual-clone <chain-id> <factory-address> <implementation-address> <merkle-root> <salt>"
     );
     process.exit(1);
   }
 
+  const TRON_CHAIN_IDS = ["728126428", "3448148188"];
+  if (!TRON_CHAIN_IDS.includes(chainId)) {
+    console.log(`Error: invalid chain ID "${chainId}". Use 728126428 (Tron mainnet) or 3448148188 (Nile testnet).`);
+    process.exit(1);
+  }
+
   // Validate that addresses are Tron Base58Check and bytes32 values are 0x-prefixed 32-byte hex.
-  validateArgs(factoryAddress, implementationAddress, paramsHash, salt);
+  validateArgs(factoryAddress, implementationAddress, merkleRoot, salt);
 
   const mnemonic = process.env.MNEMONIC;
   const fullNode = process.env[`NODE_URL_${chainId}`];
@@ -105,7 +111,7 @@ async function main(): Promise<void> {
   // These are the parameters for both predictDepositAddress and deploy — same signature.
   const fnParams = [
     { type: "address", value: implementationEvmAddress },
-    { type: "bytes32", value: paramsHash },
+    { type: "bytes32", value: merkleRoot },
     { type: "bytes32", value: salt },
   ];
 
@@ -134,7 +140,7 @@ async function main(): Promise<void> {
   console.log(`\nCalling factory.deploy on ${fullNode}...`);
   console.log(`  Factory:        ${factoryAddress}`);
   console.log(`  Implementation: ${implementationAddress}`);
-  console.log(`  Params hash:    ${paramsHash}`);
+  console.log(`  Merkle root:    ${merkleRoot}`);
   console.log(`  Salt:           ${salt}`);
   console.log(`  Fee limit:      ${feeLimit} sun (${feeLimit / 1e6} TRX)`);
 
@@ -185,7 +191,7 @@ async function main(): Promise<void> {
   }
 
   // --- Step 4: Extract deployed address from the DepositAddressCreated event ---
-  // Event signature: DepositAddressCreated(address indexed depositAddress, address indexed implementation, bytes32 indexed paramsHash, bytes32 salt)
+  // Event signature: DepositAddressCreated(address indexed depositAddress, address indexed implementation, bytes32 indexed merkleRoot, bytes32 salt)
   // topics[0] = event signature hash, topics[1] = depositAddress (32-byte padded, no 0x prefix in TronWeb)
   const log = txInfo.log?.[0];
   if (!log?.topics?.[1]) {

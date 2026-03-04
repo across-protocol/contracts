@@ -40,7 +40,12 @@ export function encodeArgs(types: string[], values: any[]): string {
 
 /** Convert a Tron Base58Check address (T...) to a 0x-prefixed 20-byte EVM hex address. */
 export function tronToEvmAddress(base58: string): string {
-  return "0x" + TronWeb.address.toHex(base58).slice(2);
+  const hex = TronWeb.address.toHex(base58);
+  // TronWeb returns 41-prefixed hex (e.g. "41abc..."). Strip the 41 prefix to get the 20-byte address.
+  // Guard against alternate formats: if it starts with "0x41", strip 4 chars; if "41", strip 2.
+  if (hex.startsWith("0x41") && hex.length === 44) return "0x" + hex.slice(4);
+  if (hex.startsWith("41") && hex.length === 42) return "0x" + hex.slice(2);
+  throw new Error(`Unexpected TronWeb hex address format: ${hex}`);
 }
 
 /** Decode ABI-encoded constructor args into human-readable strings for the broadcast `arguments` field. */
@@ -82,7 +87,7 @@ function writeBroadcastArtifact(opts: {
   const scriptName = `TronDeploy${opts.contractName}.s.sol`;
   const chainIdNum = parseInt(opts.chainId, 10);
   const now = Date.now();
-  const txHash = `0x${opts.txID}`;
+  const txHash = opts.txID;
   const initcode = `0x${opts.bytecode}${opts.parameter || ""}`;
   const blockNum = opts.txInfo.blockNumber ? "0x" + opts.txInfo.blockNumber.toString(16) : "0x0";
   const energyUsed = opts.txInfo.receipt?.energy_usage_total;

@@ -59,7 +59,6 @@ yarn tron-deploy-counterfactual-factory <chainId>
 
 ```bash
 yarn tron-deploy-counterfactual-deposit-cctp <chainId> <srcPeriphery> <sourceDomain>
-# e.g. yarn tron-deploy-counterfactual-deposit-cctp 3448148188 TXYZabc123... 6
 ```
 
 ### CounterfactualDepositOFT
@@ -85,8 +84,7 @@ yarn tron-deploy-withdraw-implementation <chainId>
 Deploys a clone from the factory and verifies the predicted address matches the actual deployed address.
 
 ```bash
-yarn tron-deploy-counterfactual-clone <chainId> <factory> <implementation> <paramsHash> <salt>
-# Addresses are Tron Base58Check (T...), paramsHash and salt are 0x-prefixed 32-byte hex.
+yarn tron-deploy-counterfactual-clone <chainId> <factory> <implementation> <merkleRoot> <salt>
 ```
 
 ## File Overview
@@ -130,14 +128,10 @@ To verify a contract on TronScan:
 
 2. Go to the contract's page on [TronScan](https://tronscan.org/) (or [Nile TronScan](https://nile.tronscan.org/) for testnet) and click **Verify & Publish**.
 
-3. Upload the flattened `.sol` file with these settings:
-   - **Compiler version**: `tron_v0.8.25`
-   - **Optimization**: `Yes`, `800` runs
-   - **License**: `BUSL-1.1`
+3. Upload the flattened `.sol` file with the compiler version, optimization settings, and software license.
 
 ## Notes
 
 - The contract **artifacts** are compiled with `FOUNDRY_PROFILE=tron` (using Tron's solc 0.8.25 fork for TronScan-verifiable bytecode) and read from `out-tron/` at deploy time.
 - All scripts load `.env` automatically via dotenv — no need to run `source .env` first.
-- `deploy.ts` can also be used directly for any contract: `npx ts-node deploy.ts <chainId> <artifactPath> [encodedArgs]`.
 - On failure (rejected tx, timeout, on-chain revert), scripts exit non-zero.
