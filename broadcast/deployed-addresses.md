@@ -249,7 +249,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositCCTP      | [0xd35EF02824E7Cd644b351be913e77b384BEfB0Ad](https://arbiscan.io/address/0xd35EF02824E7Cd644b351be913e77b384BEfB0Ad) |
 | CounterfactualDepositFactory   | [0xA157CB19a8C3061D9bbce11Ad08129bEe70988FE](https://arbiscan.io/address/0xA157CB19a8C3061D9bbce11Ad08129bEe70988FE) |
 | CounterfactualDepositOFT       | [0x2124980dCADD6c2dad71032B5E422085bCd62Ce3](https://arbiscan.io/address/0x2124980dCADD6c2dad71032B5E422085bCd62Ce3) |
-| CounterfactualDepositSpokePool | [0xB4dF3686Ae3133CD8Da52B575ff490E5e09Ba65d](https://arbiscan.io/address/0xB4dF3686Ae3133CD8Da52B575ff490E5e09Ba65d) |
+| CounterfactualDepositSpokePool | [0x92611297ed01833ac5D4Ac517d8EBFCCB1Ab5E45](https://arbiscan.io/address/0x92611297ed01833ac5D4Ac517d8EBFCCB1Ab5E45) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
 | SpokePoolPeriphery             | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://arbiscan.io/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |

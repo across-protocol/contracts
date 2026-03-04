@@ -784,9 +784,9 @@
           "transaction_hash": "0xdc96522dc6432d0262db4815c8e8d6e8c1ea540e0f01b71db41cbafc589756d0"
         },
         "CounterfactualDepositSpokePool": {
-          "address": "0xb4df3686ae3133cd8da52b575ff490e5e09ba65d",
-          "block_number": 435610849,
-          "transaction_hash": "0x7afdf6c9305a11a027aacb437ff479938aa8944609c07038457aa68837798c5a"
+          "address": "0x92611297ed01833ac5d4ac517d8ebfccb1ab5e45",
+          "block_number": 438331138,
+          "transaction_hash": "0xad88fb57dfb084e158495a8fbc06061aacce7cd17131f941db01b1d956c55ba5"
         },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xce1ffe01ebb4f8521c12e74363a396ee3d337e1b",
