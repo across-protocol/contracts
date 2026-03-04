@@ -103,11 +103,7 @@ yarn tron-deploy-counterfactual-clone <chainId> <factory> <implementation> <para
 
 ## Deployment Artifacts
 
-Each successful deployment writes two artifacts:
-
-### 1. Foundry broadcast (`broadcast/`)
-
-Written to `broadcast/TronDeploy<ContractName>.s.sol/<chainId>/run-<timestamp>.json` (plus a `run-latest.json` copy), matching the exact schema Foundry uses for `forge script --broadcast`. This means existing tooling that reads the `broadcast/` folder (e.g. `extract_foundry_addresses.sh`, deployment tracking) picks up TRON deployments automatically.
+Each successful deployment writes a Foundry-compatible broadcast artifact to `broadcast/TronDeploy<ContractName>.s.sol/<chainId>/run-<timestamp>.json` (plus a `run-latest.json` copy). This means existing tooling that reads the `broadcast/` folder (e.g. `ExtractDeployedFoundryAddresses.ts`, deployment tracking) picks up TRON deployments automatically.
 
 ```
 broadcast/
@@ -117,25 +113,7 @@ broadcast/
       run-latest.json
 ```
 
-### 2. TRON deployment (`deployments/tron/`)
-
-Written to `deployments/tron/<ContractName>.json` with TRON-specific fields (Base58Check address, node URL):
-
-```json
-{
-  "contractName": "CounterfactualDepositFactoryTron",
-  "address": "0x...",
-  "tronAddress": "T...",
-  "transactionHash": "abc123...",
-  "constructorArgs": "0x...",
-  "abi": [...],
-  "deployedAt": "2026-02-25T12:00:00.000Z",
-  "network": "https://nile.trongrid.io",
-  "solcVersion": "0.8.25"
-}
-```
-
-Re-deploying the same contract overwrites this artifact (broadcast artifacts are never overwritten — each run gets a new timestamped file).
+Each run gets a new timestamped file; `run-latest.json` is always overwritten.
 
 ## TronScan Verification
 

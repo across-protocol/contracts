@@ -1050,29 +1050,29 @@
       "chain_name": "Chain 3448148188",
       "contracts": {
         "CounterfactualDepositCCTP": {
-          "address": "0x30c4bdd3fa4d158900220167408dfffda0d8c837",
-          "block_number": 65256067,
-          "transaction_hash": "0xeedb28f85bb5c01b477476e79fa575a952943bff2e5867254ad23be853a371d2"
+          "address": "TX7emT6fHnjjMPhgv1Tn3efmQfEjEzwwMd",
+          "block_number": 65376242,
+          "transaction_hash": "0xb269ca79b48bffe07de3c7482b510fec7882a3499055b589755913dbb5ab706f"
         },
         "CounterfactualDepositFactoryTron": {
-          "address": "0x550ee30d4516f1161e58131ad2ad46d83dbedc9a",
-          "block_number": 65256032,
-          "transaction_hash": "0x84d69ef379674570f124e5d0ed42b59f943a14cc8b943e686c29def7c54f2b5a"
+          "address": "TMKqRtKDURMiRSZH2KKmFYTDwHj8aANdej",
+          "block_number": 65376433,
+          "transaction_hash": "0xa4450cac56c7ed8a0379733a939468af71a93039a861038ced6148f5aa00984b"
         },
         "CounterfactualDepositOFT": {
-          "address": "0x79f641fadd8e6dd031ff26f63c0ba0b85cbf0719",
-          "block_number": 65256094,
-          "transaction_hash": "0x396be083d630b849c3125ce907e55b449b4efda99c88f393d9a9e410ef93080e"
+          "address": "TCnNvgwnW5d5MLAhkkbfG2denAN2a5zpGC",
+          "block_number": 65376324,
+          "transaction_hash": "0x1790e94c1688246148ce6475b937609e8ff81c902c52bc2435d10f1199bbf6fc"
         },
         "CounterfactualDepositSpokePool": {
-          "address": "0x6f7c7ade7ca678540176373eaa65f74e2f3c3056",
-          "block_number": 65256164,
-          "transaction_hash": "0x1637cf62198bb15c8e40d5f96dd75fb97d0e51397d4f1cbed88d99145808ec9e"
+          "address": "TMBr8uj7i4rLpNXTz8JuSSqhv28xj74qdu",
+          "block_number": 65376407,
+          "transaction_hash": "0xc7d7f3abf906771b9c2ac5a9719ada2aa8d84b24d44f5acd48b52d1de3f106ab"
         },
         "WithdrawImplementation": {
-          "address": "0xe26c875a224d6b1107d2c2046c916c42ff728b2f",
-          "block_number": 65256215,
-          "transaction_hash": "0x3e3cc02384ffdf66d57c2c6102a256115c3d3780fd6325f42ae356ad1b3a3281"
+          "address": "TAZRuDE7KcKtBWqGrjFja3C7nmwLoFhQsn",
+          "block_number": 65376458,
+          "transaction_hash": "0x7ecc8952206146cf6928230197fb5f03be171b15f2eff0e90ac555d7dcf804c1"
         }
       }
     },
