@@ -349,6 +349,26 @@ function sanitizeContractName(name: string): string {
   return sanitized.toUpperCase();
 }
 
+function deduplicateContracts(scripts: { [scriptName: string]: Contract[] }): Map<string, Contract> {
+  const contractMap = new Map<string, Contract>();
+  for (const contracts of Object.values(scripts)) {
+    for (const contract of contracts as Contract[]) {
+      const existing = contractMap.get(contract.contractName);
+      if (!existing) {
+        contractMap.set(contract.contractName, contract);
+      } else {
+        const existingBlock = existing.blockNumber ?? 0;
+        const newBlock = contract.blockNumber ?? 0;
+        const hasMoreMetadata = contract.transactionHash !== "Unknown" && existing.transactionHash === "Unknown";
+        if (newBlock > existingBlock || (newBlock === existingBlock && hasMoreMetadata)) {
+          contractMap.set(contract.contractName, contract);
+        }
+      }
+    }
+  }
+  return contractMap;
+}
+
 function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: string): void {
   const allContracts: AllContracts = {};
 
@@ -431,16 +451,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     content.push("");
 
     // Collect all contracts for this chain, deduplicating by name (keep latest by block number)
-    const contractMap = new Map<string, Contract>();
-    for (const contracts of Object.values(chainInfo.scripts)) {
-      for (const contract of contracts) {
-        const existing = contractMap.get(contract.contractName);
-        if (!existing || (contract.blockNumber ?? 0) > (existing.blockNumber ?? 0)) {
-          contractMap.set(contract.contractName, contract);
-        }
-      }
-    }
-    const allChainContracts = Array.from(contractMap.values());
+    const allChainContracts = Array.from(deduplicateContracts(chainInfo.scripts).values());
 
     // Sort contracts by name for consistent ordering
     allChainContracts.sort((a, b) => a.contractName.localeCompare(b.contractName));
@@ -468,16 +479,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   };
 
   for (const [chainId, chainInfo] of Object.entries(allContracts)) {
-    // Deduplicate by contract name, keeping the latest by block number
-    const contractMap = new Map<string, Contract>();
-    for (const contracts of Object.values(chainInfo.scripts)) {
-      for (const contract of contracts as Contract[]) {
-        const existing = contractMap.get(contract.contractName);
-        if (!existing || (contract.blockNumber ?? 0) > (existing.blockNumber ?? 0)) {
-          contractMap.set(contract.contractName, contract);
-        }
-      }
-    }
+    const contractMap = deduplicateContracts(chainInfo.scripts);
 
     jsonOutput.chains[chainId] = {
       chain_name: chainInfo.chainName,
