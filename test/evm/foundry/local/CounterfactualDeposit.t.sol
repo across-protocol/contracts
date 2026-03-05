@@ -9,6 +9,7 @@ import { CounterfactualDepositFactory } from "../../../../contracts/periphery/co
 import { WithdrawImplementation, WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../../../contracts/interfaces/ICounterfactualImplementation.sol";
+import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 /**
@@ -45,6 +46,8 @@ contract CounterfactualDepositTest is Test {
     address public user;
     address public admin;
     address public relayer;
+    uint256 public signerPrivateKey;
+    address public signerAddr;
 
     function setUp() public {
         merkle = new Merkle();
@@ -58,6 +61,8 @@ contract CounterfactualDepositTest is Test {
         user = makeAddr("user");
         admin = makeAddr("admin");
         relayer = makeAddr("relayer");
+        signerPrivateKey = 0xA11CE;
+        signerAddr = vm.addr(signerPrivateKey);
     }
 
     function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
@@ -286,5 +291,56 @@ contract CounterfactualDepositTest is Test {
         vm.deal(relayer, 1 ether);
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute{ value: 0.1 ether }(address(mockImpl), params, "submitter", proof);
+    }
+
+    // --- EIP-1271 isValidSignature tests ---
+
+    function testIsValidSignatureWithCorrectSigner() public {
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _computeLeaf(address(mockImpl), abi.encode(uint256(1)));
+        leaves[1] = keccak256("dummy");
+        bytes32 root = merkle.getRoot(leaves);
+
+        address clone = factory.deploy(address(dispatcher), root, signerAddr, keccak256("eip1271-test"));
+
+        bytes32 hash = keccak256("test message");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        bytes4 result = IERC1271(clone).isValidSignature(hash, signature);
+        assertEq(result, IERC1271.isValidSignature.selector, "Should return magic value for correct signer");
+    }
+
+    function testIsValidSignatureWithWrongSigner() public {
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _computeLeaf(address(mockImpl), abi.encode(uint256(1)));
+        leaves[1] = keccak256("dummy");
+        bytes32 root = merkle.getRoot(leaves);
+
+        address clone = factory.deploy(address(dispatcher), root, signerAddr, keccak256("eip1271-wrong"));
+
+        bytes32 hash = keccak256("test message");
+        uint256 wrongKey = 0xDEAD;
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, hash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        bytes4 result = IERC1271(clone).isValidSignature(hash, signature);
+        assertEq(result, bytes4(0xffffffff), "Should return failure value for wrong signer");
+    }
+
+    function testIsValidSignatureWithZeroSigner() public {
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _computeLeaf(address(mockImpl), abi.encode(uint256(1)));
+        leaves[1] = keccak256("dummy");
+        bytes32 root = merkle.getRoot(leaves);
+
+        address clone = _deployClone(root, keccak256("zero-signer"));
+
+        bytes32 hash = keccak256("test message");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        bytes4 result = IERC1271(clone).isValidSignature(hash, signature);
+        assertEq(result, bytes4(0xffffffff), "Should reject when signer is address(0)");
     }
 }
