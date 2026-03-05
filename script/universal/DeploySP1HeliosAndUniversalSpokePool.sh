@@ -120,6 +120,21 @@ ensure_run_latest() {
   fi
 }
 
+# When not broadcasting, Foundry writes to chain_id/dry-run/run-latest.json.
+# Use that path so we can still parse addresses and run Step 2 (simulation).
+HELIOS_RUN_DIR="broadcast/DeploySP1Helios.s.sol/$CHAIN_ID"
+SPOKE_RUN_DIR="broadcast/DeployUniversalSpokePool.s.sol/$CHAIN_ID"
+if [[ -z "$BROADCAST" ]]; then
+  HELIOS_RUN_DIR="$HELIOS_RUN_DIR/dry-run"
+  SPOKE_RUN_DIR="$SPOKE_RUN_DIR/dry-run"
+fi
+
+# Full build so Step 2's OpenZeppelin upgrades-core validation succeeds (it requires
+# build-info from a full compilation; incremental builds can make it revert).
+echo ""
+echo "=== Ensuring full build (required for Universal_SpokePool proxy validation) ==="
+forge clean && forge build
+
 # ===========================================================================
 # Step 1: Deploy SP1Helios
 # Runs DeploySP1Helios.s.sol which downloads a genesis binary via FFI,
@@ -131,7 +146,7 @@ echo "=== Step 1: Deploying SP1Helios ==="
 forge script script/universal/DeploySP1Helios.s.sol \
   --rpc-url "$RPC_URL" \
   $BROADCAST --slow --ffi -vvvv $EXTRA_ARGS
-ensure_run_latest "broadcast/DeploySP1Helios.s.sol/$CHAIN_ID"
+ensure_run_latest "$HELIOS_RUN_DIR"
 
 # Wait for in-flight transactions to confirm before the next deployment,
 # so the RPC node has an up-to-date nonce for the deployer.
@@ -147,7 +162,7 @@ fi
 # The SpokePool is deployed behind an ERC1967 proxy via DeploymentUtils.
 # ===========================================================================
 SP1_HELIOS=$(jq -r '.transactions[] | select(.contractName == "SP1Helios") | .contractAddress' \
-  "broadcast/DeploySP1Helios.s.sol/$CHAIN_ID/run-latest.json")
+  "$HELIOS_RUN_DIR/run-latest.json")
 if [[ -z "$SP1_HELIOS" || "$SP1_HELIOS" == "null" ]]; then
   echo "Error: Could not find SP1Helios address in broadcast output"
   exit 1
@@ -161,12 +176,12 @@ forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpok
   --sig "run(address,uint256)" "$SP1_HELIOS" "$OFT_FEE_CAP" \
   --rpc-url "$RPC_URL" \
   $BROADCAST --slow -vvvv $EXTRA_ARGS
-ensure_run_latest "broadcast/DeployUniversalSpokePool.s.sol/$CHAIN_ID"
+ensure_run_latest "$SPOKE_RUN_DIR"
 
 # The SpokePool is deployed behind an ERC1967Proxy, so we look for that
 # contract name in the broadcast output to get the proxy address.
 SPOKE_POOL=$(jq -r '.transactions[] | select(.contractName == "ERC1967Proxy") | .contractAddress' \
-  "broadcast/DeployUniversalSpokePool.s.sol/$CHAIN_ID/run-latest.json")
+  "$SPOKE_RUN_DIR/run-latest.json")
 if [[ -z "$SPOKE_POOL" || "$SPOKE_POOL" == "null" ]]; then
   echo "Error: Could not find SpokePool address in broadcast output"
   exit 1
