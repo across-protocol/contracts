@@ -47,7 +47,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Solana_Adapter               | [0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3](https://etherscan.io/address/0x9F788694934fD2Ed34D5340B9a76EB34f2bFD7B3) |
 | SpokePool                    | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | SpokePoolPeriphery           | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://etherscan.io/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
-| SpokePoolPeriphery           | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://etherscan.io/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
+| SpokePoolPeriphery           | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://etherscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery    | [0x5616194d65638086a3191B1fEF436f503ff329eC](https://etherscan.io/address/0x5616194d65638086a3191B1fEF436f503ff329eC) |
 | SponsoredCCTPSrcPeriphery    | [0x89004EA51Bac007FEc55976967135b2Aa6e838d4](https://etherscan.io/address/0x89004EA51Bac007FEc55976967135b2Aa6e838d4) |
@@ -256,10 +256,10 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://arbiscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                 | [0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A](https://arbiscan.io/address/0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A) |
 | SpokePoolPeriphery        | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://arbiscan.io/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
-| SpokePoolPeriphery        | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://arbiscan.io/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
+| SpokePoolPeriphery        | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://arbiscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://arbiscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery | [0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B](https://arbiscan.io/address/0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B) |
-| SponsoredOFTSrcPeriphery  | [0x2ac5Ee3796E027dA274fbDe84c82173a65868940](https://arbiscan.io/address/0x2ac5Ee3796E027dA274fbDe84c82173a65868940) |
+| SponsoredOFTSrcPeriphery  | [0xEd929bEcb5c99a68f1682561b75B37489d09CF58](https://arbiscan.io/address/0xEd929bEcb5c99a68f1682561b75B37489d09CF58) |
 | UniswapV3_SwapAndBridge   | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 
 ## Ink (57073)
