@@ -63,7 +63,7 @@ contract AdminWithdrawManagerTest is Test {
         bytes32 root = merkle.getRoot(leaves);
         withdrawProof = merkle.getProof(leaves, 0);
 
-        depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
+        depositAddress = factory.deploy(address(dispatcher), root, address(0), keccak256("test-salt"));
 
         // Fund the clone
         token.mint(depositAddress, 100e6);

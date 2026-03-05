@@ -6,8 +6,8 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 
 **Generic factory + merkle-dispatched proxy + bridge-specific implementations:**
 
-- `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones of `CounterfactualDeposit` deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones.
-- `CounterfactualDeposit` — Merkle-dispatched proxy. All clones are instances of this contract. The clone's sole immutable arg is a merkle root. Each leaf is `keccak256(abi.encode(implementation, keccak256(params)))`. Callers prove leaf inclusion, then the proxy delegatecalls the implementation via `ICounterfactualImplementation.execute(params, submitterData)`.
+- `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones of `CounterfactualDeposit` deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones. Accepts an optional `signer` address stored in the clone's immutable args.
+- `CounterfactualDeposit` — Merkle-dispatched proxy. All clones are instances of this contract. The clone's immutable args are `(merkleRoot, signer)`. Each leaf is `keccak256(abi.encode(implementation, keccak256(params)))`. Callers prove leaf inclusion, then the proxy delegatecalls the implementation via `ICounterfactualImplementation.execute(params, submitterData)`. Also implements EIP-1271 `isValidSignature` — validates that signatures were produced by the clone's authorized `signer`, enabling SpokePool speed-up deposits where the clone is the depositor.
 - `CounterfactualDepositSpokePool` — Deposit implementation for Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
 - `CounterfactualDepositCCTP` — Deposit implementation for SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
 - `CounterfactualDepositOFT` — Deposit implementation for SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
@@ -17,7 +17,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 
 ```
                     CounterfactualDepositFactory (generic)
-                    - deploy(implementation, merkleRoot, salt)
+                    - deploy(implementation, merkleRoot, signer, salt)
                     - execute(depositAddress, executeCalldata)
                     - deployAndExecute(...)
                     - deployIfNeededAndExecute(...)
@@ -26,6 +26,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
                               v
                     CounterfactualDeposit (merkle-dispatched proxy)
                     - execute(implementation, params, submitterData, proof)
+                    - isValidSignature(hash, signature) [EIP-1271]
                               |
              +----------------+----------------+----------------+
              |                |                |                |
@@ -173,9 +174,11 @@ The two-component cap (`maxFeeFixed + maxFeeBps`) handles deposits of varying si
 
 **Assumption:** The `stableExchangeRate` route param is fixed at address-generation time, so this fee check assumes `inputToken` and `outputToken` are not volatile relative to each other (e.g. stablecoin pairs, or the same token on different chains). If the real market rate drifts significantly from the committed `stableExchangeRate`, the fee check may be too lenient or too strict.
 
-### Depositor Field
+### Depositor Field & EIP-1271 Speed-Up
 
 The `depositor` parameter passed to `SpokePool.deposit()` is `address(this)` (the clone address). SpokePool refunds for expired deposits go back to the clone, where they can be re-executed or withdrawn.
+
+The clone implements EIP-1271 `isValidSignature`, enabling `SpokePool.speedUpDeposit()` to be called with the clone as the depositor. When the SpokePool calls `isValidSignature` on the clone, the dispatcher decodes the `signer` from the clone's immutable args and verifies the signature via ECDSA recovery. This allows the authorized signer to speed up deposits without requiring any on-chain state changes on the clone.
 
 ### Native ETH Deposits
 
@@ -244,11 +247,11 @@ Why: These values are identical across all deposit addresses on a chain. Storing
 
 ### 6. OZ Clones with Hash-Only Immutable Args
 
-**Each clone stores only a merkle root (32 bytes), not the full params.**
+**Each clone stores a merkle root (32 bytes) and a signer address (32 bytes ABI-encoded), not the full params.**
 
 [EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a minimal proxy contract — 45 bytes of bytecode that forwards every call to a fixed implementation via `delegatecall`. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` extends this by appending arbitrary bytes after the proxy bytecode.
 
-The factory stores a 32-byte merkle root as the clone's sole immutable arg — 77 bytes total (45-byte EIP-1167 proxy + 32-byte root). Storing full params as immutable args would cost ~595+ bytes of deployed code, saving ~103k gas on deployment. The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash per proof verification), but since each deposit address is deployed once and potentially reused many times, the net savings are significant.
+The factory stores `abi.encode(merkleRoot, signer)` (64 bytes) as the clone's immutable args — 109 bytes total (45-byte EIP-1167 proxy + 64-byte args). The `signer` enables EIP-1271 signature validation for SpokePool speed-up deposits. For clones that don't need signature validation, `address(0)` is used as the signer. Storing full params as immutable args would cost ~595+ bytes of deployed code. The tradeoff is ~6k gas more per execution (calldata for full params + one keccak256 hash per proof verification), but since each deposit address is deployed once and potentially reused many times, the net savings are significant.
 
 ### 7. Signature Verification: SpokePool vs CCTP/OFT
 
@@ -283,7 +286,7 @@ For subsequent deposits, callers can call the clone directly or use `factory.exe
 ## Security Model
 
 - **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.
-- **SpokePool Signer**: Signs `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline, signatureDeadline)` for SpokePool executions. Compromise allows bad `outputAmount` values but bounded by `maxFeeFixed + maxFeeBps`.
+- **SpokePool Signer**: Signs `(inputAmount, outputAmount, exclusiveRelayer, exclusivityDeadline, quoteTimestamp, fillDeadline, signatureDeadline)` for SpokePool executions. Also stored in clone immutable args for EIP-1271 validation (speed-up deposits). Compromise allows bad `outputAmount` values but bounded by `maxFeeFixed + maxFeeBps`.
 - **Admin** (withdraw leaf): Address authorized to withdraw from the clone. Typically `AdminWithdrawManager`, which restricts access via `directWithdrawer` and `signer`. Can be a multisig or TimelockController for trust-minimized setups.
 - **User** (withdraw leaf): Address authorized to withdraw from the clone (escape hatch before execution). Can be the depositor's EOA or multisig.
 - **Execution Fee**: Fixed `executionFee` (deposit param, in token units) paid to relayer. User commits to this fee at address-generation time.

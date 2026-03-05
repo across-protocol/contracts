@@ -155,8 +155,8 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes32 merkleRoot = _defaultMerkleRoot();
 
-        address predicted = factory.predictDepositAddress(address(dispatcher), merkleRoot, salt);
-        address deployed = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address predicted = factory.predictDepositAddress(address(dispatcher), merkleRoot, address(0), salt);
+        address deployed = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
@@ -167,30 +167,30 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectEmit(true, true, true, true);
         emit ICounterfactualDepositFactory.DepositAddressCreated(
-            factory.predictDepositAddress(address(dispatcher), merkleRoot, salt),
+            factory.predictDepositAddress(address(dispatcher), merkleRoot, address(0), salt),
             address(dispatcher),
             merkleRoot,
             salt
         );
 
-        factory.deploy(address(dispatcher), merkleRoot, salt);
+        factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
     }
 
     function testCannotDeployTwice() public {
         bytes32 salt = keccak256("test-salt");
         bytes32 merkleRoot = _defaultMerkleRoot();
 
-        factory.deploy(address(dispatcher), merkleRoot, salt);
+        factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.expectRevert();
-        factory.deploy(address(dispatcher), merkleRoot, salt);
+        factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
     }
 
     function testDeployedContractStoresCorrectHash() public {
         bytes32 salt = keccak256("test-salt");
         bytes32 merkleRoot = _defaultMerkleRoot();
 
-        address deployed = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address deployed = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         bytes memory args = Clones.fetchCloneArgs(deployed);
         bytes32 storedHash = abi.decode(args, (bytes32));
@@ -206,7 +206,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory depositParams = _encodedDepositParams();
         (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
-        address depositAddress = factory.predictDepositAddress(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.predictDepositAddress(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -225,7 +225,7 @@ contract CounterfactualDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(dispatcher), merkleRoot, salt, execCalldata);
+        address deployed = factory.deployAndExecute(address(dispatcher), merkleRoot, address(0), salt, execCalldata);
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
@@ -246,7 +246,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory depositParams = _encodedDepositParams();
         (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -265,7 +265,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory depositParams = _encodedDepositParams();
         (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         // First deposit
         vm.prank(user);
@@ -303,7 +303,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory depositParams = _encodedDepositParams();
         (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -338,7 +338,7 @@ contract CounterfactualDepositTest is Test {
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
         wrongToken.mint(depositAddress, 100e18);
@@ -367,7 +367,7 @@ contract CounterfactualDepositTest is Test {
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         bytes memory submitterData = abi.encode(address(burnToken), relayer, uint256(100e6));
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
@@ -388,7 +388,7 @@ contract CounterfactualDepositTest is Test {
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, 100e6);
@@ -417,7 +417,7 @@ contract CounterfactualDepositTest is Test {
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         bytes memory submitterData = abi.encode(address(burnToken), relayer, uint256(100e6));
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
@@ -448,7 +448,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory depositParams = _encodedDepositParams();
         (bytes32 merkleRoot, ) = _depositOnlyTree(depositParams);
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         // Modify deposit params to create mismatched proof
         CCTPDepositParams memory wrongParams = defaultDepositParams;
@@ -477,7 +477,7 @@ contract CounterfactualDepositTest is Test {
 
         (bytes32 merkleRoot, , bytes32[] memory withdrawProof) = _depositAndWithdrawTree(depositParams, withdrawParams);
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         // Use wrong withdraw params but correct proof
         bytes memory wrongWithdrawParams = abi.encode(WithdrawParams({ admin: relayer, user: user }));
@@ -502,7 +502,7 @@ contract CounterfactualDepositTest is Test {
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 amount = 100e6;
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -536,7 +536,7 @@ contract CounterfactualDepositTest is Test {
 
         vm.expectRevert();
         vm.prank(relayer);
-        factory.deployAndExecute(address(dispatcher), merkleRoot, salt, execCalldata);
+        factory.deployAndExecute(address(dispatcher), merkleRoot, address(0), salt, execCalldata);
     }
 
     function testDeployWithActionData() public {
@@ -549,7 +549,7 @@ contract CounterfactualDepositTest is Test {
 
         (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
 
-        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
 
         bytes memory args = Clones.fetchCloneArgs(depositAddress);
         bytes32 storedHash = abi.decode(args, (bytes32));
@@ -575,7 +575,7 @@ contract CounterfactualDepositTest is Test {
 
         bytes memory depositParams = _encodedDepositParams();
         (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
-        address depositAddress = factory.predictDepositAddress(address(dispatcher), merkleRoot, salt);
+        address depositAddress = factory.predictDepositAddress(address(dispatcher), merkleRoot, address(0), salt);
 
         vm.prank(user);
         burnToken.transfer(depositAddress, amount);
@@ -592,7 +592,13 @@ contract CounterfactualDepositTest is Test {
 
         // First call deploys and executes
         vm.prank(relayer);
-        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), merkleRoot, salt, execCalldata);
+        address deployed = factory.deployIfNeededAndExecute(
+            address(dispatcher),
+            merkleRoot,
+            address(0),
+            salt,
+            execCalldata
+        );
         assertEq(deployed, depositAddress, "Should return predicted address");
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "First deposit should execute");
 
@@ -611,7 +617,13 @@ contract CounterfactualDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), merkleRoot, salt, execCalldata2);
+        address deployed2 = factory.deployIfNeededAndExecute(
+            address(dispatcher),
+            merkleRoot,
+            address(0),
+            salt,
+            execCalldata2
+        );
         assertEq(deployed2, depositAddress, "Should return same address");
         assertEq(srcPeriphery.callCount(), 2, "Both deposits should execute");
     }

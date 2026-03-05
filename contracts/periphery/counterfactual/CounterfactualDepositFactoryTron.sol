@@ -18,18 +18,20 @@ contract CounterfactualDepositFactoryTron is CounterfactualDepositFactory {
      * @dev Uses TronClones with the 0x41 prefix instead of OZ's 0xff to match TVM behavior.
      * @param counterfactualDepositImplementation Implementation contract address.
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters.
+     * @param signer Address authorized to sign on behalf of the clone (EIP-1271).
      * @param salt Unique salt for address generation.
      * @return Predicted address of the clone on Tron.
      */
     function predictDepositAddress(
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
+        address signer,
         bytes32 salt
     ) public view override returns (address) {
         return
             TronClones.predictDeterministicAddressWithImmutableArgs(
                 counterfactualDepositImplementation,
-                abi.encode(paramsHash),
+                abi.encode(paramsHash, signer),
                 salt
             );
     }

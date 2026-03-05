@@ -162,8 +162,8 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes32 root = _merkleRoot();
 
-        address predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
-        address deployed = factory.deploy(address(dispatcher), root, salt);
+        address predicted = factory.predictDepositAddress(address(dispatcher), root, address(0), salt);
+        address deployed = factory.deploy(address(dispatcher), root, address(0), salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
@@ -175,7 +175,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
         bytes32 root = _merkleRoot();
-        address depositAddress = factory.predictDepositAddress(address(dispatcher), root, salt);
+        address depositAddress = factory.predictDepositAddress(address(dispatcher), root, address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -198,6 +198,7 @@ contract CounterfactualOFTDepositTest is Test {
         address deployed = factory.deployAndExecute{ value: 0.1 ether }(
             address(dispatcher),
             root,
+            address(0),
             salt,
             executeCalldata
         );
@@ -214,7 +215,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 lzFee = 0.05 ether;
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -236,7 +237,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -267,7 +268,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testExecuteOnExistingClone() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
 
         // First deposit
         vm.prank(user);
@@ -307,7 +308,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -335,7 +336,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 amount = 100e6;
         uint256 lzFee = 0.05 ether;
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -360,7 +361,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testUserWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
         bytes32[] memory proof = _withdrawProof();
 
         vm.prank(user);
@@ -383,7 +384,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testUserWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
         bytes32[] memory proof = _withdrawProof();
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
@@ -399,7 +400,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testAdminWithdraw() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
         bytes32[] memory proof = _withdrawProof();
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
@@ -422,7 +423,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testAdminWithdrawUnauthorized() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
         bytes32[] memory proof = _withdrawProof();
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
@@ -451,7 +452,7 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 amount = 100e6;
 
-        address depositAddress = factory.deploy(address(dispatcher), root, salt);
+        address depositAddress = factory.deploy(address(dispatcher), root, address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -471,7 +472,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testInvalidProofReverts() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
         bytes32[] memory proof = _depositProof();
 
         vm.prank(user);
@@ -494,7 +495,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testInvalidProofWrongImplementation() public {
         bytes32 salt = keccak256("test-salt");
 
-        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), address(0), salt);
         bytes32[] memory proof = _withdrawProof();
 
         // Use the withdraw proof but with the OFT implementation address -- proof won't match.
@@ -514,7 +515,7 @@ contract CounterfactualOFTDepositTest is Test {
         uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
 
         bytes32 root = _merkleRoot();
-        address depositAddress = factory.predictDepositAddress(address(dispatcher), root, salt);
+        address depositAddress = factory.predictDepositAddress(address(dispatcher), root, address(0), salt);
 
         vm.prank(user);
         token.transfer(depositAddress, amount);
@@ -531,7 +532,13 @@ contract CounterfactualOFTDepositTest is Test {
 
         // First call deploys and executes
         vm.prank(relayer);
-        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
+        address deployed = factory.deployIfNeededAndExecute(
+            address(dispatcher),
+            root,
+            address(0),
+            salt,
+            executeCalldata
+        );
         assertEq(deployed, depositAddress, "Should return predicted address");
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "First deposit should execute");
 
@@ -550,7 +557,13 @@ contract CounterfactualOFTDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata2);
+        address deployed2 = factory.deployIfNeededAndExecute(
+            address(dispatcher),
+            root,
+            address(0),
+            salt,
+            executeCalldata2
+        );
         assertEq(deployed2, depositAddress, "Should return same address");
         assertEq(srcPeriphery.callCount(), 2, "Both deposits should execute");
     }

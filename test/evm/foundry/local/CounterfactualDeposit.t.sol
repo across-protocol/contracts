@@ -65,7 +65,7 @@ contract CounterfactualDepositTest is Test {
     }
 
     function _deployClone(bytes32 merkleRoot, bytes32 salt) internal returns (address) {
-        return factory.deploy(address(dispatcher), merkleRoot, salt);
+        return factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
     }
 
     // --- Single-leaf tree tests ---
@@ -231,18 +231,24 @@ contract CounterfactualDepositTest is Test {
         bytes32[] memory proof = merkle.getProof(leaves, 0);
 
         bytes32 salt = keccak256("factory-test");
-        address predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
+        address predicted = factory.predictDepositAddress(address(dispatcher), root, address(0), salt);
 
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDeposit.execute,
             (address(mockImpl), params, "submitter", proof)
         );
 
-        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
+        address deployed = factory.deployIfNeededAndExecute(
+            address(dispatcher),
+            root,
+            address(0),
+            salt,
+            executeCalldata
+        );
         assertEq(deployed, predicted);
 
         // Second call should not revert (clone already exists)
-        deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
+        deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, address(0), salt, executeCalldata);
         assertEq(deployed, predicted);
     }
 
