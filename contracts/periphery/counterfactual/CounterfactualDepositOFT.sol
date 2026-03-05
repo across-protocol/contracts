@@ -55,6 +55,13 @@ struct OFTSubmitterData {
 contract CounterfactualDepositOFT is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
 
+    /**
+     * @notice Emitted after an OFT deposit is successfully executed.
+     * @param amount Total input amount (including execution fee).
+     * @param executionFeeRecipient Address that received the execution fee.
+     * @param nonce OFT nonce used for the deposit.
+     * @param oftDeadline Deadline timestamp for the OFT quote.
+     */
     event OFTDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
 
     /// @notice SponsoredOFTSrcPeriphery contract
@@ -84,6 +91,12 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline);
     }
 
+    /**
+     * @notice Calls deposit on the SponsoredOFTSrcPeriphery with the constructed quote.
+     * @param dp Route parameters from the merkle leaf.
+     * @param sd Submitter-provided execution data.
+     * @param depositAmount Amount to deposit after deducting the execution fee.
+     */
     function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) internal {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
