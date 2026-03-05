@@ -289,7 +289,7 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpV2TokenMessenger: "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
     cctpV2MessageTransmitter: "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
     lineaTokenBridge: "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
-    permit2: "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768", // PancakeSwap Permit2
+    permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
   },
   [CHAIN_IDs.SCROLL_SEPOLIA]: {
     scrollERC20GatewayRouter: "0x9aD3c5617eCAa556d6E166787A97081907171230",
