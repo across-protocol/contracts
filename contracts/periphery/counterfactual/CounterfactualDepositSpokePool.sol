@@ -54,9 +54,9 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
         uint256 outputAmount,
-        bytes32 exclusiveRelayer,
+        bytes32 indexed exclusiveRelayer,
         uint32 exclusivityDeadline,
-        address executionFeeRecipient,
+        address indexed executionFeeRecipient,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 signatureDeadline

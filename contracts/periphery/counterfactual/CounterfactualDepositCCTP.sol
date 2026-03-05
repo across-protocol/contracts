@@ -54,7 +54,12 @@ struct CCTPSubmitterData {
 contract CounterfactualDepositCCTP is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
 
-    event CCTPDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 cctpDeadline);
+    event CCTPDepositExecuted(
+        uint256 amount,
+        address indexed executionFeeRecipient,
+        bytes32 nonce,
+        uint256 cctpDeadline
+    );
 
     /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
     address public immutable srcPeriphery;
