@@ -8,6 +8,7 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
+ * @custom:security-contact bugs@across.to
  */
 interface ISponsoredOFTSrcPeriphery {
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
@@ -51,6 +52,7 @@ struct OFTSubmitterData {
  * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
  *      msg.value covers LayerZero native messaging fees.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositOFT is ICounterfactualImplementation {
     using SafeERC20 for IERC20;

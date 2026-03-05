@@ -9,6 +9,7 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
  * @notice Generic factory for deploying counterfactual deposit addresses via CREATE2
  * @dev Bridge-agnostic: takes a pre-computed paramsHash and stores it in the clone's immutable args.
  *      Each implementation defines its own immutables struct. The caller hashes the params off-chain.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
