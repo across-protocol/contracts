@@ -91,7 +91,13 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         wrappedNativeToken = _wrappedNativeToken;
     }
 
-    /// @inheritdoc ICounterfactualImplementation
+    /**
+     * @inheritdoc ICounterfactualImplementation
+     * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
+     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
+     *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
+     *      `NativeTransferFailed`.
+     */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
