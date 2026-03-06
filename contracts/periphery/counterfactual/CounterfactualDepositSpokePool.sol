@@ -156,7 +156,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 depositAmount
-    ) internal pure {
+    ) private pure {
         uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
         uint256 totalFee = relayerFee + dp.executionFee;
@@ -164,7 +164,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(SpokePoolSubmitterData memory sd) internal view {
+    function _verifySignature(SpokePoolSubmitterData memory sd) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,

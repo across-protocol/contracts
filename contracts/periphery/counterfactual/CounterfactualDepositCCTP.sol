@@ -90,7 +90,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
     }
 
-    function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) internal {
+    function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,

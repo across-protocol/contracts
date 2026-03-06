@@ -89,7 +89,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline);
     }
 
-    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) internal {
+    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) private {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({

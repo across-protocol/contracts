@@ -36,7 +36,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param depositAddress Address of the deployed clone
      * @param executeCalldata Calldata to forward (e.g. abi.encodeCall of executeDeposit)
      */
-    function execute(address depositAddress, bytes calldata executeCalldata) public payable {
+    function execute(address depositAddress, bytes calldata executeCalldata) external payable {
         _execute(depositAddress, executeCalldata);
     }
 
@@ -104,7 +104,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param depositAddress Address of the deployed clone.
      * @param executeCalldata Calldata to forward.
      */
-    function _execute(address depositAddress, bytes calldata executeCalldata) internal {
+    function _execute(address depositAddress, bytes calldata executeCalldata) private {
         (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
         if (!success) {
             assembly {
