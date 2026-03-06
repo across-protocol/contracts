@@ -9,7 +9,7 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
 /**
  * @title CounterfactualDeposit
  * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are instances of this contract.
- * @dev The clone's immutable arg is a merkle root. Each leaf is `keccak256(abi.encode(implementation, keccak256(params)))`.
+ * @dev The clone's immutable arg is a merkle root. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))))`.
  *      Callers prove leaf inclusion, then the dispatcher delegatecalls the implementation.
  *
  *      Call chain: Caller → CALL → Clone (EIP-1167 proxy) → DELEGATECALL → Dispatcher → DELEGATECALL → Implementation
@@ -36,7 +36,8 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
     ) external payable {
         bytes32 merkleRoot = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
 
-        bytes32 leaf = keccak256(abi.encode(implementation, keccak256(params)));
+        // Double-hash to prevent leaf/internal-node ambiguity (OpenZeppelin standard).
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
 
         if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert InvalidProof();
 

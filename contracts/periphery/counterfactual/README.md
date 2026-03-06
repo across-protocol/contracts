@@ -7,7 +7,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 **Generic factory + merkle-dispatched proxy + bridge-specific implementations:**
 
 - `CounterfactualDepositFactory` — Bridge-agnostic factory. Deploys clones of `CounterfactualDeposit` deterministically via `Clones.cloneDeterministicWithImmutableArgs`, predicts addresses, and forwards raw calldata to clones.
-- `CounterfactualDeposit` — Merkle-dispatched proxy. All clones are instances of this contract. The clone's sole immutable arg is a merkle root. Each leaf is `keccak256(abi.encode(implementation, keccak256(params)))`. Callers prove leaf inclusion, then the proxy delegatecalls the implementation via `ICounterfactualImplementation.execute(params, submitterData)`.
+- `CounterfactualDeposit` — Merkle-dispatched proxy. All clones are instances of this contract. The clone's sole immutable arg is a merkle root. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))))`. Callers prove leaf inclusion, then the proxy delegatecalls the implementation via `ICounterfactualImplementation.execute(params, submitterData)`.
 - `CounterfactualDepositSpokePool` — Deposit implementation for Across SpokePool. Verifies EIP-712 signatures itself (since it calls `SpokePool.deposit()` directly) and enforces relayer fee bounds.
 - `CounterfactualDepositCCTP` — Deposit implementation for SponsoredCCTP. Builds a `SponsoredCCTPQuote` and calls `SponsoredCCTPSrcPeriphery.depositForBurn()`.
 - `CounterfactualDepositOFT` — Deposit implementation for SponsoredOFT (LayerZero). Builds a `Quote` and calls `SponsoredOFTSrcPeriphery.deposit()`. Supports `msg.value` forwarding for LZ native messaging fees.
@@ -222,7 +222,7 @@ Why: The factory stores only a 32-byte immutable arg (interpreted as a merkle ro
 
 Why: A single clone can support multiple actions (deposit + withdraw) without the implementation needing to know about other implementations. The merkle root committed at deployment time defines the full set of authorized `(implementation, params)` pairs. New implementation types can be added to a clone's merkle tree without changing any contracts.
 
-The leaf format `keccak256(abi.encode(implementation, keccak256(params)))` commits to both the code and the configuration, preventing implementation substitution attacks.
+The leaf format `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))))` commits to both the code and the configuration, preventing implementation substitution attacks.
 
 ### 3. Separate Withdraw Leaf
 
