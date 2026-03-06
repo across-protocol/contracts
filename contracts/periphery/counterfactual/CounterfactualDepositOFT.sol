@@ -55,7 +55,7 @@ struct OFTSubmitterData {
 contract CounterfactualDepositOFT is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
 
-    event OFTDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
+    event OFTDepositExecuted(uint256 amount, address indexed executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
 
     /// @notice SponsoredOFTSrcPeriphery contract
     address public immutable oftSrcPeriphery;
