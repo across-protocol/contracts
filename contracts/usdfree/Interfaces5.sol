@@ -28,6 +28,7 @@ struct MerklePaths {
 
 struct Order {
     TypedData path; // interpreted by OrderGateway as Path / MerklePaths. Path passed to Executor
+    TypedData refundSettings; // interpreted by OrderGateway (recipient, reverseDeadline)
     TypedData funding; // interpreted by OrderGateway (e.g. can be of type SingleApproval, SinglePermit2, SingleTWA, MultipleFundings)
 }
 
