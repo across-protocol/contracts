@@ -11,10 +11,10 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
 /**
  * @title CounterfactualDeposit
  * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are instances of this contract.
- * @dev The clone's immutable args are (merkleRoot, signer). Each merkle leaf is
+ * @dev The clone's immutable arg is (merkleRoot). Each merkle leaf is
  *      `keccak256(abi.encode(implementation, keccak256(params)))`. Callers prove leaf inclusion, then the
- *      dispatcher delegatecalls the implementation. The signer enables EIP-1271 signature validation
- *      for SpokePool speed-up deposits where the clone is the depositor.
+ *      dispatcher delegatecalls the implementation. The signer is an immutable on the implementation,
+ *      enabling EIP-1271 signature validation for SpokePool speed-up deposits where the clone is the depositor.
  *
  *      Call chain: Caller → CALL → Clone (EIP-1167 proxy) → DELEGATECALL → Dispatcher → DELEGATECALL → Implementation
  *      - address(this) = clone address throughout (correct for EIP-712, token balances)
@@ -22,6 +22,13 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
  *      - msg.value = original value throughout
  */
 contract CounterfactualDeposit is ICounterfactualDeposit, IERC1271 {
+    /// @notice Address authorized to sign on behalf of clones (EIP-1271). Set to address(0) if not needed.
+    address public immutable signer;
+
+    constructor(address _signer) {
+        signer = _signer;
+    }
+
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).
     receive() external payable {}
 
@@ -38,7 +45,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit, IERC1271 {
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable {
-        (bytes32 merkleRoot, ) = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32, address));
+        bytes32 merkleRoot = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
 
         bytes32 leaf = keccak256(abi.encode(implementation, keccak256(params)));
 
@@ -55,14 +62,13 @@ contract CounterfactualDeposit is ICounterfactualDeposit, IERC1271 {
     }
 
     /**
-     * @notice EIP-1271 signature validation. Validates that the signature was produced by the clone's
+     * @notice EIP-1271 signature validation. Validates that the signature was produced by the
      *         authorized signer, enabling SpokePool speed-up deposits where the clone is the depositor.
      * @param hash The hash that was signed.
-     * @param signature The signature to validate against the clone's signer.
+     * @param signature The signature to validate against the signer.
      * @return magicValue `IERC1271.isValidSignature.selector` if valid, `0xffffffff` otherwise.
      */
     function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4 magicValue) {
-        (, address signer) = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32, address));
         return ECDSA.recover(hash, signature) == signer ? this.isValidSignature.selector : bytes4(0xffffffff);
     }
 }

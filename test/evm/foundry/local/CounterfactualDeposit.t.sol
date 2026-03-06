@@ -51,7 +51,6 @@ contract CounterfactualDepositTest is Test {
 
     function setUp() public {
         merkle = new Merkle();
-        dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
         mockImpl = new MockImplementation();
         revertImpl = new RevertingImplementation();
@@ -63,6 +62,7 @@ contract CounterfactualDepositTest is Test {
         relayer = makeAddr("relayer");
         signerPrivateKey = 0xA11CE;
         signerAddr = vm.addr(signerPrivateKey);
+        dispatcher = new CounterfactualDeposit(signerAddr);
     }
 
     function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
@@ -70,7 +70,7 @@ contract CounterfactualDepositTest is Test {
     }
 
     function _deployClone(bytes32 merkleRoot, bytes32 salt) internal returns (address) {
-        return factory.deploy(address(dispatcher), merkleRoot, address(0), salt);
+        return factory.deploy(address(dispatcher), merkleRoot, salt);
     }
 
     // --- Single-leaf tree tests ---
@@ -236,24 +236,18 @@ contract CounterfactualDepositTest is Test {
         bytes32[] memory proof = merkle.getProof(leaves, 0);
 
         bytes32 salt = keccak256("factory-test");
-        address predicted = factory.predictDepositAddress(address(dispatcher), root, address(0), salt);
+        address predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
 
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDeposit.execute,
             (address(mockImpl), params, "submitter", proof)
         );
 
-        address deployed = factory.deployIfNeededAndExecute(
-            address(dispatcher),
-            root,
-            address(0),
-            salt,
-            executeCalldata
-        );
+        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
         assertEq(deployed, predicted);
 
         // Second call should not revert (clone already exists)
-        deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, address(0), salt, executeCalldata);
+        deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata);
         assertEq(deployed, predicted);
     }
 
@@ -301,7 +295,7 @@ contract CounterfactualDepositTest is Test {
         leaves[1] = keccak256("dummy");
         bytes32 root = merkle.getRoot(leaves);
 
-        address clone = factory.deploy(address(dispatcher), root, signerAddr, keccak256("eip1271-test"));
+        address clone = factory.deploy(address(dispatcher), root, keccak256("eip1271-test"));
 
         bytes32 hash = keccak256("test message");
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
@@ -317,7 +311,7 @@ contract CounterfactualDepositTest is Test {
         leaves[1] = keccak256("dummy");
         bytes32 root = merkle.getRoot(leaves);
 
-        address clone = factory.deploy(address(dispatcher), root, signerAddr, keccak256("eip1271-wrong"));
+        address clone = factory.deploy(address(dispatcher), root, keccak256("eip1271-wrong"));
 
         bytes32 hash = keccak256("test message");
         uint256 wrongKey = 0xDEAD;
@@ -329,12 +323,14 @@ contract CounterfactualDepositTest is Test {
     }
 
     function testIsValidSignatureWithZeroSigner() public {
+        CounterfactualDeposit zeroSignerDispatcher = new CounterfactualDeposit(address(0));
+
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = _computeLeaf(address(mockImpl), abi.encode(uint256(1)));
         leaves[1] = keccak256("dummy");
         bytes32 root = merkle.getRoot(leaves);
 
-        address clone = _deployClone(root, keccak256("zero-signer"));
+        address clone = factory.deploy(address(zeroSignerDispatcher), root, keccak256("zero-signer"));
 
         bytes32 hash = keccak256("test message");
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);

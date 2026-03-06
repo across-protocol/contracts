@@ -24,7 +24,7 @@ contract WithdrawImplementationTest is Test {
 
     function setUp() public {
         merkle = new Merkle();
-        dispatcher = new CounterfactualDeposit();
+        dispatcher = new CounterfactualDeposit(address(0));
         factory = new CounterfactualDepositFactory();
         withdrawImpl = new WithdrawImplementation();
         token = new MintableERC20("USDC", "USDC", 6);
@@ -46,7 +46,7 @@ contract WithdrawImplementationTest is Test {
         leaves[1] = keccak256("padding");
         bytes32 root = merkle.getRoot(leaves);
         proof = merkle.getProof(leaves, 0);
-        clone = factory.deploy(address(dispatcher), root, address(0), keccak256("salt"));
+        clone = factory.deploy(address(dispatcher), root, keccak256("salt"));
     }
 
     // --- ERC20 withdraw tests ---

@@ -15,19 +15,17 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @notice Deploys a counterfactual deposit contract
      * @param counterfactualDepositImplementation Implementation contract address
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param signer Address authorized to sign on behalf of the clone (EIP-1271). Use address(0) if not needed.
      * @param salt Unique salt for address generation
      * @return depositAddress Address of deployed contract
      */
     function deploy(
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
-        address signer,
         bytes32 salt
     ) public returns (address depositAddress) {
         depositAddress = Clones.cloneDeterministicWithImmutableArgs(
             counterfactualDepositImplementation,
-            abi.encode(paramsHash, signer),
+            abi.encode(paramsHash),
             salt
         );
         emit DepositAddressCreated(depositAddress, counterfactualDepositImplementation, paramsHash, salt);
@@ -47,7 +45,6 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @dev Reverts if the clone is already deployed. Use deployIfNeededAndExecute for idempotent behavior.
      * @param counterfactualDepositImplementation Implementation contract address
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param signer Address authorized to sign on behalf of the clone (EIP-1271). Use address(0) if not needed.
      * @param salt Unique salt for address generation
      * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
      * @return depositAddress Address of deposit contract
@@ -55,11 +52,10 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     function deployAndExecute(
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
-        address signer,
         bytes32 salt,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
-        depositAddress = deploy(counterfactualDepositImplementation, paramsHash, signer, salt);
+        depositAddress = deploy(counterfactualDepositImplementation, paramsHash, salt);
         _execute(depositAddress, executeCalldata);
     }
 
@@ -68,7 +64,6 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @dev Unlike deployAndExecute, this does not revert if the clone already exists.
      * @param counterfactualDepositImplementation Implementation contract address
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param signer Address authorized to sign on behalf of the clone (EIP-1271). Use address(0) if not needed.
      * @param salt Unique salt for address generation
      * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
      * @return depositAddress Address of deposit contract
@@ -76,12 +71,11 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     function deployIfNeededAndExecute(
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
-        address signer,
         bytes32 salt,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
-        depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, signer, salt);
-        if (depositAddress.code.length == 0) deploy(counterfactualDepositImplementation, paramsHash, signer, salt);
+        depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, salt);
+        if (depositAddress.code.length == 0) deploy(counterfactualDepositImplementation, paramsHash, salt);
         _execute(depositAddress, executeCalldata);
     }
 
@@ -89,20 +83,18 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @notice Predicts the address of a counterfactual deposit contract
      * @param counterfactualDepositImplementation Implementation contract address
      * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param signer Address authorized to sign on behalf of the clone (EIP-1271). Use address(0) if not needed.
      * @param salt Unique salt for address generation
      * @return Predicted address
      */
     function predictDepositAddress(
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
-        address signer,
         bytes32 salt
     ) public view virtual returns (address) {
         return
             Clones.predictDeterministicAddressWithImmutableArgs(
                 counterfactualDepositImplementation,
-                abi.encode(paramsHash, signer),
+                abi.encode(paramsHash),
                 salt
             );
     }

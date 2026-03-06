@@ -115,7 +115,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         merkle = new Merkle();
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
-        dispatcher = new CounterfactualDeposit();
+        dispatcher = new CounterfactualDeposit(signerAddr);
         spokePoolImpl = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
         withdrawImpl = new WithdrawImplementation();
 
@@ -164,7 +164,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes32 root = merkle.getRoot(leaves);
         depositProof = merkle.getProof(leaves, 0);
-        clone = factory.deploy(address(dispatcher), root, signerAddr, salt);
+        clone = factory.deploy(address(dispatcher), root, salt);
     }
 
     function _buildTreeAndPredict(
@@ -181,7 +181,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         root = merkle.getRoot(leaves);
         depositProof = merkle.getProof(leaves, 0);
-        predicted = factory.predictDepositAddress(address(dispatcher), root, signerAddr, salt);
+        predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
     }
 
     function _domainSeparator(address clone) internal view returns (bytes32) {
@@ -264,8 +264,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 root = merkle.getRoot(leaves);
         bytes32 salt = keccak256("test-salt");
 
-        address predicted = factory.predictDepositAddress(address(dispatcher), root, signerAddr, salt);
-        address deployed = factory.deploy(address(dispatcher), root, signerAddr, salt);
+        address predicted = factory.predictDepositAddress(address(dispatcher), root, salt);
+        address deployed = factory.deploy(address(dispatcher), root, salt);
 
         assertEq(predicted, deployed, "Predicted address should match deployed");
     }
@@ -312,7 +312,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(dispatcher), root, signerAddr, salt, executeCalldata);
+        address deployed = factory.deployAndExecute(address(dispatcher), root, salt, executeCalldata);
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
@@ -600,7 +600,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes32 root = merkle.getRoot(leaves);
         bytes32 salt = keccak256("test-salt");
-        address depositAddress = factory.deploy(address(dispatcher), root, signerAddr, salt);
+        address depositAddress = factory.deploy(address(dispatcher), root, salt);
         bytes32[] memory userProof = merkle.getProof(leaves, 1);
 
         vm.prank(user);
@@ -631,7 +631,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, signerAddr, keccak256("test-salt"));
+        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
         bytes32[] memory userProof = merkle.getProof(leaves, 1);
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
@@ -655,7 +655,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, signerAddr, keccak256("test-salt"));
+        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
         bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
 
         MintableERC20 wrongToken = new MintableERC20("Wrong", "WRONG", 18);
@@ -686,7 +686,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, signerAddr, keccak256("test-salt"));
+        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
         bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
 
         vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
@@ -903,7 +903,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployAndExecute(address(dispatcher), root, signerAddr, salt, executeCalldata);
+        address deployed = factory.deployAndExecute(address(dispatcher), root, salt, executeCalldata);
 
         assertEq(deployed, depositAddress);
         assertEq(depositAddress.balance, 0);
@@ -983,12 +983,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(
-            address(dispatcher),
-            root,
-            signerAddr,
-            keccak256("native-user-withdraw")
-        );
+        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-user-withdraw"));
         bytes32[] memory userProof = merkle.getProof(leaves, 1);
 
         vm.deal(depositAddress, 1 ether);
@@ -1021,12 +1016,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         leaves[3] = keccak256("padding-b");
 
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(
-            address(dispatcher),
-            root,
-            signerAddr,
-            keccak256("native-admin-withdraw")
-        );
+        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-admin-withdraw"));
         bytes32[] memory withdrawProof = merkle.getProof(leaves, 1);
 
         vm.deal(depositAddress, 1 ether);
@@ -1056,7 +1046,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         leaves[1] = _computeLeaf(address(withdrawImpl), wp);
 
         bytes32 root = merkle.getRoot(leaves);
-        address depositAddress = factory.deploy(address(dispatcher), root, signerAddr, keccak256("native-receive"));
+        address depositAddress = factory.deploy(address(dispatcher), root, keccak256("native-receive"));
 
         vm.deal(user, 2 ether);
         vm.prank(user);
@@ -1095,13 +1085,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed = factory.deployIfNeededAndExecute(
-            address(dispatcher),
-            root,
-            signerAddr,
-            salt,
-            executeCalldata1
-        );
+        address deployed = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata1);
         assertEq(deployed, depositAddress);
         assertEq(spokePool.lastInputAmount(), expectedDeposit);
 
@@ -1127,13 +1111,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         );
 
         vm.prank(relayer);
-        address deployed2 = factory.deployIfNeededAndExecute(
-            address(dispatcher),
-            root,
-            signerAddr,
-            salt,
-            executeCalldata2
-        );
+        address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata2);
         assertEq(deployed2, depositAddress);
         assertEq(spokePool.callCount(), 2);
     }

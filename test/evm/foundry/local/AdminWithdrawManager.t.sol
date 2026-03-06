@@ -49,7 +49,7 @@ contract AdminWithdrawManagerTest is Test {
         merkle = new Merkle();
         token = new MintableERC20("USDC", "USDC", 6);
         factory = new CounterfactualDepositFactory();
-        dispatcher = new CounterfactualDeposit();
+        dispatcher = new CounterfactualDeposit(address(0));
         withdrawImpl = new WithdrawImplementation();
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
 
@@ -63,7 +63,7 @@ contract AdminWithdrawManagerTest is Test {
         bytes32 root = merkle.getRoot(leaves);
         withdrawProof = merkle.getProof(leaves, 0);
 
-        depositAddress = factory.deploy(address(dispatcher), root, address(0), keccak256("test-salt"));
+        depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
 
         // Fund the clone
         token.mint(depositAddress, 100e6);
