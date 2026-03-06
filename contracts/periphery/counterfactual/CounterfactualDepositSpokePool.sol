@@ -45,6 +45,7 @@ struct SpokePoolSubmitterData {
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. EIP-712 domain separator uses
  *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
  *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712 {
     using SafeERC20 for IERC20;
@@ -65,9 +66,9 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
         uint256 outputAmount,
-        bytes32 exclusiveRelayer,
+        bytes32 indexed exclusiveRelayer,
         uint32 exclusivityDeadline,
-        address executionFeeRecipient,
+        address indexed executionFeeRecipient,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
         uint32 signatureDeadline
@@ -103,7 +104,13 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         wrappedNativeToken = _wrappedNativeToken;
     }
 
-    /// @inheritdoc ICounterfactualImplementation
+    /**
+     * @inheritdoc ICounterfactualImplementation
+     * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
+     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
+     *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
+     *      `NativeTransferFailed`.
+     */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
@@ -162,7 +169,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 depositAmount
-    ) internal pure {
+    ) private pure {
         uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
         uint256 totalFee = relayerFee + dp.executionFee;
@@ -170,7 +177,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(SpokePoolSubmitterData memory sd) internal view {
+    function _verifySignature(SpokePoolSubmitterData memory sd) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,

@@ -9,6 +9,7 @@ import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
  * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
+ * @custom:security-contact bugs@across.to
  */
 interface ISponsoredCCTPSrcPeriphery {
     function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory signature) external;
@@ -50,6 +51,7 @@ struct CCTPSubmitterData {
  * @title CounterfactualDepositCCTP
  * @notice Implementation contract for counterfactual deposits via SponsoredCCTP.
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositCCTP is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
@@ -61,7 +63,12 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
      * @param nonce CCTP nonce used for the deposit.
      * @param cctpDeadline Deadline timestamp for the CCTP quote.
      */
-    event CCTPDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 cctpDeadline);
+    event CCTPDepositExecuted(
+        uint256 amount,
+        address indexed executionFeeRecipient,
+        bytes32 nonce,
+        uint256 cctpDeadline
+    );
 
     /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
     address public immutable srcPeriphery;
@@ -74,7 +81,12 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         sourceDomain = _sourceDomain;
     }
 
-    /// @inheritdoc ICounterfactualImplementation
+    /**
+     * @inheritdoc ICounterfactualImplementation
+     * @dev Bridges tokens via SponsoredCCTP. `params` is ABI-encoded as `CCTPDepositParams`;
+     *      `submitterData` as `CCTPSubmitterData` (includes a signature forwarded to the CCTP periphery).
+     *      ERC-20 only (no native tokens). No local signature verification — delegated to `srcPeriphery`.
+     */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
@@ -98,7 +110,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
      * @param sd Submitter-provided execution data.
      * @param depositAmount Amount to deposit after deducting the execution fee.
      */
-    function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) internal {
+    function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,

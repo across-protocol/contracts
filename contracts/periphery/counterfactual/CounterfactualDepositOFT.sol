@@ -8,6 +8,7 @@ import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualI
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
+ * @custom:security-contact bugs@across.to
  */
 interface ISponsoredOFTSrcPeriphery {
     function deposit(SponsoredOFTInterface.Quote calldata quote, bytes calldata signature) external payable;
@@ -51,6 +52,7 @@ struct OFTSubmitterData {
  * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
  *      msg.value covers LayerZero native messaging fees.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositOFT is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
@@ -62,7 +64,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
      * @param nonce OFT nonce used for the deposit.
      * @param oftDeadline Deadline timestamp for the OFT quote.
      */
-    event OFTDepositExecuted(uint256 amount, address executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
+    event OFTDepositExecuted(uint256 amount, address indexed executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
 
     /// @notice SponsoredOFTSrcPeriphery contract
     address public immutable oftSrcPeriphery;
@@ -75,7 +77,12 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
         srcEid = _srcEid;
     }
 
-    /// @inheritdoc ICounterfactualImplementation
+    /**
+     * @inheritdoc ICounterfactualImplementation
+     * @dev Bridges tokens via SponsoredOFT (LayerZero). `params` is ABI-encoded as `OFTDepositParams`;
+     *      `submitterData` as `OFTSubmitterData` (includes a signature forwarded to the OFT periphery).
+     *      ERC-20 only. Forwards `msg.value` for LayerZero messaging fees. No local signature verification.
+     */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
@@ -97,7 +104,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
      * @param sd Submitter-provided execution data.
      * @param depositAmount Amount to deposit after deducting the execution fee.
      */
-    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) internal {
+    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) private {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({

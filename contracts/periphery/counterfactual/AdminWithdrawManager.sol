@@ -13,6 +13,7 @@ import { WithdrawParams } from "./WithdrawImplementation.sol";
  *         1. Direct withdraw — trusted `directWithdrawer` calls clone.execute() with arbitrary submitterData
  *         2. Signed withdraw — anyone can trigger with a `signer` signature; recipient is forced to the user
  * @dev Set this contract's address as `admin` in withdrawal merkle leaves.
+ * @custom:security-contact bugs@across.to
  */
 contract AdminWithdrawManager is Ownable, EIP712 {
     /// @notice Emitted when the direct withdrawer address is updated.
