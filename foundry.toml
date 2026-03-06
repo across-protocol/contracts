@@ -20,6 +20,7 @@ evm_version = "prague"
 
 [profile.zksync]
 src = "contracts/Lens_SpokePool.sol"
+bytecode_hash = "none"
 
 [profile.zksync.zksync]
 compile = true
