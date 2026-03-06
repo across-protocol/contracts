@@ -54,8 +54,8 @@ if [[ "$1" == "--broadcast" ]]; then
     fi
     [[ -f "$RUN_JSON" ]] || { echo "run json not found: $RUN_JSON"; exit 1; }
 
-    TX_ENTRY=$(jq -c --arg name "$CONTRACT_NAME" '[.transactions[] | select(.transactionType=="CREATE" and .contractName==$name)][-1]' "$RUN_JSON")
-    [[ "$TX_ENTRY" != "null" ]] || { echo "no CREATE tx found for $CONTRACT_NAME in $RUN_JSON"; exit 1; }
+    TX_ENTRY=$(jq -c --arg name "$CONTRACT_NAME" '[.transactions[] | select(.transactionType==("CREATE","CREATE2") and .contractName==$name)][-1]' "$RUN_JSON")
+    [[ "$TX_ENTRY" != "null" ]] || { echo "no CREATE/CREATE2 tx found for $CONTRACT_NAME in $RUN_JSON"; exit 1; }
     TX=$(jq -r '.hash' <<< "$TX_ENTRY")
 else
     TX="$1"
@@ -71,7 +71,7 @@ else
     fi
     [[ -f "$RUN_JSON" ]] || { echo "run json not found: $RUN_JSON"; exit 1; }
 
-    TX_ENTRY=$(jq -c --arg tx "$TX" --arg name "$CONTRACT_NAME" '[.transactions[]? | select((((.hash // "") | tostring | ascii_downcase) == ($tx | ascii_downcase)) and .transactionType=="CREATE" and .contractName==$name)][0]' "$RUN_JSON")
+    TX_ENTRY=$(jq -c --arg tx "$TX" --arg name "$CONTRACT_NAME" '[.transactions[]? | select((((.hash // "") | tostring | ascii_downcase) == ($tx | ascii_downcase)) and .transactionType==("CREATE","CREATE2") and .contractName==$name)][0]' "$RUN_JSON")
     [[ "$TX_ENTRY" != "null" ]] || {
         echo "tx $TX for CREATE $CONTRACT_NAME not found in $RUN_JSON"
         echo "Hint: run-latest.json may have an incorrect/stale CREATE tx hash. You can try to FIX MANUALLY."
@@ -81,6 +81,12 @@ else
 fi
 
 ONCHAIN=$(cast tx "$TX" --rpc-url "$RPC" --json | jq -r '.input' | sed 's/^0x//')
+
+TX_TYPE=$(jq -r '.transactionType' <<< "$TX_ENTRY")
+if [[ "$TX_TYPE" == "CREATE2" ]]; then
+    # CREATE2 deployer tx input = salt (32 bytes) || initCode
+    ONCHAIN="${ONCHAIN:64}"
+fi
 
 ART=out/$CONTRACT_NAME.sol/$CONTRACT_NAME.json
 [[ -f "$ART" ]] || { echo "artifact not found: $ART"; exit 1; }
