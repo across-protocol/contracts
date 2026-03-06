@@ -68,7 +68,12 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
         srcEid = _srcEid;
     }
 
-    /// @inheritdoc ICounterfactualImplementation
+    /**
+     * @inheritdoc ICounterfactualImplementation
+     * @dev Bridges tokens via SponsoredOFT (LayerZero). `params` is ABI-encoded as `OFTDepositParams`;
+     *      `submitterData` as `OFTSubmitterData` (includes a signature forwarded to the OFT periphery).
+     *      ERC-20 only. Forwards `msg.value` for LayerZero messaging fees. No local signature verification.
+     */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));

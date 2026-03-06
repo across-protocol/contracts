@@ -67,7 +67,12 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         sourceDomain = _sourceDomain;
     }
 
-    /// @inheritdoc ICounterfactualImplementation
+    /**
+     * @inheritdoc ICounterfactualImplementation
+     * @dev Bridges tokens via SponsoredCCTP. `params` is ABI-encoded as `CCTPDepositParams`;
+     *      `submitterData` as `CCTPSubmitterData` (includes a signature forwarded to the CCTP periphery).
+     *      ERC-20 only (no native tokens). No local signature verification — delegated to `srcPeriphery`.
+     */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
