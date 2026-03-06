@@ -56,6 +56,13 @@ struct CCTPSubmitterData {
 contract CounterfactualDepositCCTP is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
 
+    /**
+     * @notice Emitted after a CCTP deposit is successfully executed.
+     * @param amount Total input amount (including execution fee).
+     * @param executionFeeRecipient Address that received the execution fee.
+     * @param nonce CCTP nonce used for the deposit.
+     * @param cctpDeadline Deadline timestamp for the CCTP quote.
+     */
     event CCTPDepositExecuted(
         uint256 amount,
         address indexed executionFeeRecipient,
@@ -97,6 +104,12 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
     }
 
+    /**
+     * @notice Calls depositForBurn on the SponsoredCCTPSrcPeriphery with the constructed quote.
+     * @param dp Route parameters from the merkle leaf.
+     * @param sd Submitter-provided execution data.
+     * @param depositAmount Amount to deposit after deducting the execution fee.
+     */
     function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({

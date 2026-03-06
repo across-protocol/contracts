@@ -52,6 +52,17 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
 
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
 
+    /**
+     * @notice Emitted after a SpokePool deposit is successfully executed.
+     * @param inputAmount Total input amount (including execution fee).
+     * @param outputAmount Output amount on the destination chain.
+     * @param exclusiveRelayer Address of the exclusive relayer (bytes32-encoded).
+     * @param exclusivityDeadline Timestamp until which the exclusive relayer has priority.
+     * @param executionFeeRecipient Address that received the execution fee.
+     * @param quoteTimestamp Timestamp of the deposit quote.
+     * @param fillDeadline Deadline by which the deposit must be filled.
+     * @param signatureDeadline Deadline after which the authorizing signature expires.
+     */
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
         uint256 outputAmount,
@@ -68,6 +79,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     error SignatureExpired();
     error NativeTransferFailed();
 
+    /// @notice EIP-712 typehash for execute deposit signature verification.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
             "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
