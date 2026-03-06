@@ -31,7 +31,25 @@ Create a `.env` file with the following variables:
 
 ---
 
-## Step 1: Deploy SP1Helios
+## Combined Deployment (Recommended)
+
+This script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Omit `--broadcast` for a dry run.
+
+```bash
+./script/universal/DeploySP1HeliosAndUniversalSpokePool.sh \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --oft-fee-cap <OFT_FEE_CAP> \
+  --etherscan-api-key <API_KEY> \
+  --broadcast
+```
+
+---
+
+## Manual Deployment (Step-by-Step)
+
+If you need more control over individual steps, you can run each deployment separately.
+
+### Step 1: Deploy SP1Helios
 
 Deploy the SP1Helios light client contract:
 
@@ -51,23 +69,13 @@ Note the deployed **SP1Helios address** from the output.
 
 ---
 
-## Step 2: Update Deployed Addresses
+### Step 2: Deploy Universal SpokePool
 
-After the forge script completes, update `deployed-addresses.json` so the SpokePool deployment can find the SP1Helios address:
-
-```bash
-yarn extract-addresses
-```
-
----
-
-## Step 3: Deploy Universal SpokePool
-
-The script reads the SP1Helios address from `broadcast/deployed-addresses.json`.
+Pass the SP1Helios address from Step 1 as the first argument:
 
 ```bash
 forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
-  --sig "run(uint256)" <OFT_FEE_CAP> \
+  --sig "run(address,uint256)" <SP1_HELIOS_ADDRESS> <OFT_FEE_CAP> \
   --rpc-url <NEW_CHAIN_RPC_URL> \
   --broadcast \
   --verify \
@@ -75,13 +83,13 @@ forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpok
   -vvvv
 ```
 
-Replace `<OFT_FEE_CAP>` with the maximum fee for OFT (LayerZero) transfers (e.g., `78000`).
+Replace `<SP1_HELIOS_ADDRESS>` with the address from Step 1 and `<OFT_FEE_CAP>` with the maximum fee for OFT (LayerZero) transfers (e.g., `78000`).
 
 Note the deployed **Universal_SpokePool proxy address** from the output.
 
 ---
 
-## Step 4: Transfer SP1Helios Admin Role to SpokePool
+### Step 3: Transfer SP1Helios Admin Role to SpokePool
 
 The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds the `DEFAULT_ADMIN_ROLE`. This role must be transferred to the Universal_SpokePool so that admin functions can be called through the cross-chain admin flow.
 
