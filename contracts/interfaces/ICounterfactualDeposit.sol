@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICounterfactualDeposit
  * @notice Interface for the merkle-dispatched counterfactual deposit clone.
+ * @custom:security-contact bugs@across.to
  */
 interface ICounterfactualDeposit {
     /// @dev Merkle proof verification failed.

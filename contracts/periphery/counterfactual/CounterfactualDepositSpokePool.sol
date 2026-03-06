@@ -45,6 +45,7 @@ struct SpokePoolSubmitterData {
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. EIP-712 domain separator uses
  *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
  *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712 {
     using SafeERC20 for IERC20;

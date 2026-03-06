@@ -9,6 +9,7 @@ import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
  * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
+ * @custom:security-contact bugs@across.to
  */
 interface ISponsoredCCTPSrcPeriphery {
     function depositForBurn(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, bytes memory signature) external;
@@ -50,6 +51,7 @@ struct CCTPSubmitterData {
  * @title CounterfactualDepositCCTP
  * @notice Implementation contract for counterfactual deposits via SponsoredCCTP.
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositCCTP is ICounterfactualImplementation {
     using SafeERC20 for IERC20;
