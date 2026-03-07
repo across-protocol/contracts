@@ -6,6 +6,11 @@ import { console } from "forge-std/console.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
+import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredCCTPSrcPeriphery } from "../../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPSrcPeriphery.sol";
+import { PermissionedMulticallHandler } from "../../../../contracts/handlers/PermissionedMulticallHandler.sol";
+import { MulticallHandler } from "../../../../contracts/handlers/MulticallHandler.sol";
+import { ITokenMessengerV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
@@ -13,6 +18,55 @@ import { MockEndpoint } from "../../../../contracts/test/MockEndpoint.sol";
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { DebugQuoteSignLib } from "../../../../script/mintburn/oft/CreateSponsoredDeposit.s.sol";
+
+contract MockDirectAcrossHandler {
+    address public lastToken;
+    uint256 public lastAmount;
+    address public lastRelayer;
+    bytes public lastMessage;
+
+    function handleV3AcrossMessage(address token, uint256 amount, address relayer, bytes memory message) external {
+        lastToken = token;
+        lastAmount = amount;
+        lastRelayer = relayer;
+        lastMessage = message;
+    }
+}
+
+contract MockTokenMessengerV2WithHook is ITokenMessengerV2 {
+    uint256 public depositForBurnWithHookCallCount;
+    uint256 public lastAmount;
+    uint32 public lastDestinationDomain;
+    bytes32 public lastMintRecipient;
+    address public lastBurnToken;
+    bytes32 public lastDestinationCaller;
+    uint256 public lastMaxFee;
+    uint32 public lastMinFinalityThreshold;
+    bytes public lastHookData;
+
+    function depositForBurn(uint256, uint32, bytes32, address, bytes32, uint256, uint32) external pure {}
+
+    function depositForBurnWithHook(
+        uint256 amount,
+        uint32 destinationDomain,
+        bytes32 mintRecipient,
+        address burnToken,
+        bytes32 destinationCaller,
+        uint256 maxFee,
+        uint32 minFinalityThreshold,
+        bytes calldata hookData
+    ) external {
+        depositForBurnWithHookCallCount++;
+        lastAmount = amount;
+        lastDestinationDomain = destinationDomain;
+        lastMintRecipient = mintRecipient;
+        lastBurnToken = burnToken;
+        lastDestinationCaller = destinationCaller;
+        lastMaxFee = maxFee;
+        lastMinFinalityThreshold = minFinalityThreshold;
+        lastHookData = hookData;
+    }
+}
 
 contract SponsoredOFTSrcPeripheryTest is Test {
     using AddressToBytes32 for address;
@@ -29,16 +83,27 @@ contract SponsoredOFTSrcPeripheryTest is Test {
     MockEndpoint internal endpoint;
     MockOFTMessenger internal oft;
     SponsoredOFTSrcPeriphery internal periphery;
+    MockDirectAcrossHandler internal directHandler;
+    PermissionedMulticallHandler internal permissionedMulticall;
+    MockTokenMessengerV2WithHook internal cctpMessenger;
+    SponsoredCCTPSrcPeriphery internal cctpSrcPeriphery;
 
     uint256 internal constant USER_INITIAL_BAL = 1_000_000 ether;
     uint256 internal constant SEND_AMOUNT = 1_000 ether;
     uint256 internal constant QUOTED_NATIVE_FEE = 0.01 ether;
+    uint32 internal constant CCTP_SOURCE_DOMAIN = 0;
+    uint32 internal constant CCTP_DESTINATION_DOMAIN = 10;
+    uint32 internal constant CCTP_MIN_FINALITY = 1000;
+    uint256 internal cctpSignerPk;
+    address internal cctpSigner;
 
     function setUp() public {
         owner = address(this);
         user = vm.addr(111);
         signerPk = 0xA11CE;
         signer = vm.addr(signerPk);
+        cctpSignerPk = 0xC0FFEE;
+        cctpSigner = vm.addr(cctpSignerPk);
         refundRecipient = vm.addr(222);
 
         token = new MockERC20();
@@ -46,8 +111,14 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         oft = new MockOFTMessenger(address(token));
         oft.setEndpoint(address(endpoint));
         oft.setFeesToReturn(QUOTED_NATIVE_FEE, 0);
+        directHandler = new MockDirectAcrossHandler();
+        permissionedMulticall = new PermissionedMulticallHandler(address(this));
+        cctpMessenger = new MockTokenMessengerV2WithHook();
+        cctpSrcPeriphery = new SponsoredCCTPSrcPeriphery(address(cctpMessenger), CCTP_SOURCE_DOMAIN, cctpSigner);
 
         periphery = new SponsoredOFTSrcPeriphery(address(token), address(oft), SRC_EID, signer);
+
+        permissionedMulticall.grantRole(permissionedMulticall.WHITELISTED_CALLER_ROLE(), address(periphery));
 
         // Fund user with tokens and ETH
         deal(address(token), user, USER_INITIAL_BAL, true);
@@ -194,6 +265,157 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         // assertTrue(periphery.getMainStorage().usedNonces[nonce], "nonce should be marked used");
     }
 
+    function testDepositDirectEndToEndWithPermissionedMulticallAndCCTP() public {
+        bytes32 oftNonce = keccak256("oft-direct-e2e");
+        bytes32 cctpNonce = keccak256("cctp-e2e");
+        uint256 deadline = block.timestamp + 1 days;
+        uint256 cctpAmount = 900 ether;
+        uint256 leftover = SEND_AMOUNT - cctpAmount;
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory cctpQuote = SponsoredCCTPInterface.SponsoredCCTPQuote({
+            sourceDomain: CCTP_SOURCE_DOMAIN,
+            destinationDomain: CCTP_DESTINATION_DOMAIN,
+            mintRecipient: address(0xBEEF).toBytes32(),
+            amount: cctpAmount,
+            burnToken: address(token).toBytes32(),
+            destinationCaller: bytes32(0),
+            maxFee: 10 ether,
+            minFinalityThreshold: CCTP_MIN_FINALITY,
+            nonce: cctpNonce,
+            deadline: deadline,
+            maxBpsToSponsor: 500,
+            maxUserSlippageBps: 300,
+            finalRecipient: address(0xCAFE).toBytes32(),
+            finalToken: address(token).toBytes32(),
+            destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
+            accountCreationMode: uint8(0),
+            executionMode: uint8(0),
+            actionData: bytes("")
+        });
+        bytes memory cctpSig = _signCCTPQuote(cctpQuote, cctpSignerPk);
+
+        MulticallHandler.Call[] memory calls = new MulticallHandler.Call[](2);
+        calls[0] = MulticallHandler.Call({
+            target: address(token),
+            callData: abi.encodeWithSelector(IERC20.approve.selector, address(cctpSrcPeriphery), cctpAmount),
+            value: 0
+        });
+        calls[1] = MulticallHandler.Call({
+            target: address(cctpSrcPeriphery),
+            callData: abi.encodeCall(SponsoredCCTPSrcPeriphery.depositForBurn, (cctpQuote, cctpSig)),
+            value: 0
+        });
+        MulticallHandler.Instructions memory instructions = MulticallHandler.Instructions({
+            calls: calls,
+            fallbackRecipient: user
+        });
+
+        SponsoredOFTInterface.Quote memory oftQuote = createDefaultQuote(
+            oftNonce,
+            deadline,
+            address(permissionedMulticall),
+            address(0x1111),
+            address(token)
+        );
+        oftQuote.signedParams.dstEid = SRC_EID;
+        oftQuote.signedParams.amountLD = SEND_AMOUNT;
+        oftQuote.signedParams.actionData = abi.encode(instructions);
+
+        bytes memory oftSig = signQuote(signerPk, oftQuote);
+
+        uint256 userBalBefore = IERC20(address(token)).balanceOf(user);
+        vm.prank(user);
+        periphery.depositDirect(oftQuote, oftSig);
+
+        assertTrue(periphery.usedNonces(oftNonce), "OFT nonce not used");
+        assertTrue(cctpSrcPeriphery.usedNonces(cctpNonce), "CCTP nonce not used");
+        assertEq(cctpMessenger.depositForBurnWithHookCallCount(), 1, "CCTP call count mismatch");
+        assertEq(cctpMessenger.lastAmount(), cctpAmount, "CCTP burn amount mismatch");
+        assertEq(cctpMessenger.lastDestinationDomain(), CCTP_DESTINATION_DOMAIN, "CCTP dst domain mismatch");
+        assertEq(cctpMessenger.lastBurnToken(), address(token), "CCTP burn token mismatch");
+        assertEq(IERC20(address(token)).balanceOf(user), userBalBefore - cctpAmount, "user net spend mismatch");
+        assertEq(leftover, IERC20(address(token)).balanceOf(user) - (userBalBefore - SEND_AMOUNT), "leftover mismatch");
+        assertEq(IERC20(address(token)).balanceOf(address(permissionedMulticall)), 0, "handler retained funds");
+    }
+
+    function testDepositDirectHappyPath() public {
+        bytes32 nonce = keccak256("q-direct-1");
+        uint256 deadline = block.timestamp + 1 days;
+        address finalRecipientAddr = address(0xBEEF);
+        address finalTokenAddr = address(0xCAFE);
+
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            address(directHandler),
+            finalRecipientAddr,
+            finalTokenAddr
+        );
+        quote.signedParams.dstEid = SRC_EID;
+        quote.signedParams.executionMode = uint8(2); // ArbitraryActionsToEVM
+        quote.signedParams.actionData = abi.encode(bytes32("direct-message"));
+        bytes memory signature = signQuote(signerPk, quote);
+
+        vm.prank(user);
+        vm.expectEmit(address(periphery));
+        emit SponsoredOFTInterface.SponsoredOFTDirectExecution(
+            nonce,
+            user,
+            address(directHandler).toBytes32(),
+            SEND_AMOUNT,
+            signature
+        );
+        periphery.depositDirect(quote, signature);
+
+        assertEq(
+            IERC20(address(token)).balanceOf(address(directHandler)),
+            SEND_AMOUNT,
+            "handler token balance mismatch"
+        );
+        assertEq(directHandler.lastToken(), address(token), "token mismatch");
+        assertEq(directHandler.lastAmount(), SEND_AMOUNT, "amount mismatch");
+        assertEq(directHandler.lastRelayer(), user, "relayer mismatch");
+        assertEq(keccak256(directHandler.lastMessage()), keccak256(quote.signedParams.actionData), "message mismatch");
+        assertTrue(periphery.usedNonces(nonce), "nonce should be marked used");
+    }
+
+    function testDepositDirectRevertsOnInvalidDirectDstEid() public {
+        bytes32 nonce = keccak256("q-direct-2");
+        uint256 deadline = block.timestamp + 1 days;
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            address(directHandler),
+            address(0xBEEF),
+            address(0xCAFE)
+        );
+        // keep cross-chain eid from default quote
+        bytes memory signature = signQuote(signerPk, quote);
+
+        vm.prank(user);
+        vm.expectRevert(SponsoredOFTInterface.InvalidDirectDstEid.selector);
+        periphery.depositDirect(quote, signature);
+    }
+
+    function testDepositDirectRevertsOnInvalidDirectHandler() public {
+        bytes32 nonce = keccak256("q-direct-3");
+        uint256 deadline = block.timestamp + 1 days;
+        address eoaHandler = vm.addr(999);
+        SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
+            nonce,
+            deadline,
+            eoaHandler,
+            address(0xBEEF),
+            address(0xCAFE)
+        );
+        quote.signedParams.dstEid = SRC_EID;
+        bytes memory signature = signQuote(signerPk, quote);
+
+        vm.prank(user);
+        vm.expectRevert(SponsoredOFTInterface.InvalidDirectHandler.selector);
+        periphery.depositDirect(quote, signature);
+    }
+
     function testDepositRevertsOnInsufficientNativeFee() public {
         bytes32 nonce = keccak256("q-2");
         uint256 deadline = block.timestamp + 1 days;
@@ -292,5 +514,40 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         vm.prank(user);
         vm.expectRevert(SponsoredOFTInterface.NonceAlreadyUsed.selector);
         periphery.deposit{ value: QUOTED_NATIVE_FEE }(quote, signature);
+    }
+
+    function _signCCTPQuote(
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
+        uint256 privateKey
+    ) internal pure returns (bytes memory) {
+        bytes32 hash1 = keccak256(
+            abi.encode(
+                quote.sourceDomain,
+                quote.destinationDomain,
+                quote.mintRecipient,
+                quote.amount,
+                quote.burnToken,
+                quote.destinationCaller,
+                quote.maxFee,
+                quote.minFinalityThreshold
+            )
+        );
+        bytes32 hash2 = keccak256(
+            abi.encode(
+                quote.nonce,
+                quote.deadline,
+                quote.maxBpsToSponsor,
+                quote.maxUserSlippageBps,
+                quote.finalRecipient,
+                quote.finalToken,
+                quote.destinationDex,
+                quote.accountCreationMode,
+                quote.executionMode,
+                keccak256(quote.actionData)
+            )
+        );
+        bytes32 digest = keccak256(abi.encode(hash1, hash2));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, digest);
+        return abi.encodePacked(r, s, v);
     }
 }

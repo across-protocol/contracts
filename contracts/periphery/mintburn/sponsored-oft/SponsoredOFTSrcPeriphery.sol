@@ -9,11 +9,13 @@ import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IO
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
 import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
+import { AcrossMessageHandler } from "../../../interfaces/SpokePoolMessageHandler.sol";
 
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts-v4/utils/Address.sol";
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Across-supported flows on destination chain. Uses LayerZero's OFT as an underlying bridge
@@ -21,6 +23,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
+    using Address for address;
 
     bytes public constant EMPTY_OFT_COMMAND = new bytes(0);
 
@@ -124,6 +127,40 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
             quote.signedParams.maxBpsToSponsor,
             quote.signedParams.maxUserSlippageBps,
             quote.signedParams.finalToken,
+            signature
+        );
+    }
+
+    /**
+     * @notice Executes quote locally without OFT bridge by calling destinationHandler directly.
+     * @dev Reuses quote signature and nonce checks from the bridged flow.
+     */
+    function depositDirect(Quote calldata quote, bytes calldata signature) external {
+        _validateQuote(quote, signature);
+        if (quote.signedParams.dstEid != SRC_EID) {
+            revert InvalidDirectDstEid();
+        }
+
+        address destinationHandler = address(uint160(uint256(quote.signedParams.destinationHandler)));
+        if (!destinationHandler.isContract()) {
+            revert InvalidDirectHandler();
+        }
+
+        _getMainStorage().quoteNonces[quote.signedParams.nonce] = true;
+
+        IERC20(TOKEN).safeTransferFrom(msg.sender, destinationHandler, quote.signedParams.amountLD);
+        AcrossMessageHandler(destinationHandler).handleV3AcrossMessage(
+            TOKEN,
+            quote.signedParams.amountLD,
+            msg.sender,
+            quote.signedParams.actionData
+        );
+
+        emit SponsoredOFTDirectExecution(
+            quote.signedParams.nonce,
+            msg.sender,
+            quote.signedParams.destinationHandler,
+            quote.signedParams.amountLD,
             signature
         );
     }
