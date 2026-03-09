@@ -7,8 +7,7 @@ import { toBN, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../utils/
 import { MerkleTree } from "../utils/MerkleTree";
 import { V3SlowFill, PoolRebalanceLeaf, RelayerRefundLeaf } from "../utils/MerkleLib.types";
 import MerkleLibTestArtifact from "../out/MerkleLibTest.sol/MerkleLibTest.json";
-
-const zeroAddress = "0x0000000000000000000000000000000000000000";
+import { ZERO_ADDRESS } from "../src/consts";
 
 // Extract ABI types from the MerkleLibTest Foundry artifact so they stay in sync with the Solidity structs.
 function getStructType(functionName: string): ethers.utils.ParamType {
@@ -137,7 +136,7 @@ async function main() {
         relayData: {
           depositor: SLOW_RELAY_RECIPIENT_ADDRESS,
           recipient: SLOW_RELAY_RECIPIENT_ADDRESS,
-          exclusiveRelayer: zeroAddress,
+          exclusiveRelayer: ZERO_ADDRESS,
           inputToken: L1_TOKEN,
           outputToken: L2_TOKEN,
           inputAmount: toBNWeiWithDecimals(SLOW_RELAY_AMOUNT, DECIMALS),
