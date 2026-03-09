@@ -168,6 +168,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | PermissionedMulticallHandler | [0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC](https://hyperevmscan.io//address/0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC) |
 | SP1Helios                    | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
+| SpokePool                    | [0xb4ca4312311fb2902cd27870C9Dfc499d142342F](https://hyperevmscan.io//address/0xb4ca4312311fb2902cd27870C9Dfc499d142342F) |
 | SpokePoolPeriphery           | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery    | [0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f](https://hyperevmscan.io//address/0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f) |

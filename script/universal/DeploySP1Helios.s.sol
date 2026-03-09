@@ -63,14 +63,6 @@ contract DeploySP1Helios is Script {
             console.log("SP1MockVerifier deployed to:", params.verifier);
         }
 
-        string memory confirmation = vm.prompt(
-            "Once Sp1Helios is deployed, you will have 7 days to deploy the UniversalSpokePool and activate it in-protocol. If 7 days passes with no update on this deployment, it will be impossible to make any updates to this contract. Press y/Y to confirm."
-        );
-        if (!strEq(confirmation, "y") && !strEq(confirmation, "Y")) {
-            console.log("Prompt not confirmed. Aborting deployment.");
-            return address(0);
-        }
-
         // Deploy the SP1 Helios contract
         console.log("Deploying SP1Helios...");
         SP1Helios helios = new SP1Helios(params);
@@ -270,9 +262,5 @@ contract DeploySP1Helios is Script {
         }
 
         console.log("Checksum verified successfully");
-    }
-
-    function strEq(string memory a, string memory b) private pure returns (bool) {
-        return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }
