@@ -10,10 +10,10 @@ import { IPermit2 } from "../contracts/external/interfaces/IPermit2.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/010DeploySpokePoolPeriphery.s.sol:DeploySpokePoolPeriphery --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/DeploySpokePoolPeriphery.s.sol:DeploySpokePoolPeriphery --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/010DeploySpokePoolPeriphery.s.sol:DeploySpokePoolPeriphery --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/DeploySpokePoolPeriphery.s.sol:DeploySpokePoolPeriphery --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 contract DeploySpokePoolPeriphery is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
