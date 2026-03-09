@@ -480,9 +480,9 @@
       "chain_name": "HyperEVM",
       "contracts": {
         "SpokePool": {
-          "address": "0xb4ca4312311fb2902cd27870c9dfc499d142342f",
-          "block_number": 29307312,
-          "transaction_hash": "0x850a2f9fbd8dc461aa8d642a1efb2152ba8bdcd23ba7ebd3f2edbc2152895250"
+          "address": "0xf633b72a4c2fb73b77a379bf72864a825ad35b6d",
+          "block_number": 29311460,
+          "transaction_hash": "0x016f70fbd6d212f7a99ccf8b2a1dad16aa2bd862c5e92b594ce82687b4720cfd"
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",

@@ -139,13 +139,12 @@ forge clean && forge build
 # Step 1: Deploy SP1Helios
 # Runs DeploySP1Helios.s.sol which downloads a genesis binary via FFI,
 # generates genesis parameters, and deploys the SP1Helios light client.
-# --slow sends transactions one at a time (safer for new/unstable RPCs).
 # ===========================================================================
 echo ""
 echo "=== Step 1: Deploying SP1Helios ==="
 forge script script/universal/DeploySP1Helios.s.sol \
   --rpc-url "$RPC_URL" \
-  $BROADCAST --slow --ffi -vvvv $EXTRA_ARGS
+  $BROADCAST --ffi -vvvv $EXTRA_ARGS
 ensure_run_latest "$HELIOS_RUN_DIR"
 
 # Wait for in-flight transactions to confirm before the next deployment,
@@ -188,7 +187,7 @@ forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpok
   --sig "run(address,uint256)" "$SP1_HELIOS" "$OFT_FEE_CAP" \
   --rpc-url "$RPC_URL" \
   $FORK_BLOCK_ARGS \
-  $BROADCAST --slow -vvvv $EXTRA_ARGS
+  $BROADCAST -vvvv $EXTRA_ARGS
 ensure_run_latest "$SPOKE_RUN_DIR"
 
 # The SpokePool is deployed behind an ERC1967Proxy, so we look for that
