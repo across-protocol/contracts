@@ -44,9 +44,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ARTIFACTS_PATHS: |
-        artifacts
-        cache
-        typechain
         out
         cache-foundry
     steps:
@@ -114,34 +111,6 @@ jobs:
             echo "Please run 'yarn generate-constants-json' and 'yarn extract-addresses' (or ensure the pre-commit hook runs) and commit the results."
             exit 1
           fi
-  test-evm:
-    name: Test EVM
-    # Mixed leaf tests also require SVM types from assets that have been uploaded in the artifacts.
-    needs:
-      - upload-svm-artifacts
-      - upload-evm-artifacts
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-      - name: "Use Node ${{ env.NODE_VERSION }}"
-        uses: actions/setup-node@v3
-        with:
-          node-version: "${{ env.NODE_VERSION }}"
-          cache: yarn
-      - name: Install packages
-        run: yarn install --frozen-lockfile --ignore-optional
-      - name: Download SVM artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
-      - name: Download EVM artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
-      - name: Test evm-hardhat
-        shell: bash
-        run: yarn test-evm-hardhat
   test-svm-verified:
     name: Test verified SVM build
     needs: upload-svm-artifacts
@@ -220,8 +189,8 @@ jobs:
           name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
       - name: Build TypeScript
         run: yarn build-ts
-  forge:
-    name: Forge
+  test-evm:
+    name: EVM Tests
     needs: upload-evm-artifacts
     runs-on: ubuntu-latest
     steps:

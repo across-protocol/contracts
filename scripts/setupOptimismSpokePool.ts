@@ -1,7 +1,10 @@
 // @notice Logs ABI-encoded function data that can be relayed from HubPool to OptimismSpokePool to set it up.
 
-import { getContractFactory, ethers } from "../utils/utils";
+import { ethers } from "ethers";
 import { CHAIN_IDs } from "../utils/constants";
+import { findArtifactFromPath } from "../utils/utils";
+
+const ARTIFACTS_PATH = "out";
 
 const customOptimismTokenBridges: Record<string, string> = {
   // DAI
@@ -9,10 +12,11 @@ const customOptimismTokenBridges: Record<string, string> = {
 };
 
 async function main() {
-  const [signer] = await ethers.getSigners();
+  const spokePoolArtifact = findArtifactFromPath("Ovm_SpokePool", ARTIFACTS_PATH);
+  const hubPoolArtifact = findArtifactFromPath("HubPool", ARTIFACTS_PATH);
 
-  const spokePool = await getContractFactory("Ovm_SpokePool", { signer });
-  const hubPool = await getContractFactory("HubPool", { signer });
+  const spokePoolInterface = new ethers.utils.Interface(spokePoolArtifact.abi);
+  const hubPoolInterface = new ethers.utils.Interface(hubPoolArtifact.abi);
 
   // We need to whitelist all L2 --> L1 token mappings
   // We'll use this to store all the call data we need to pass to HubPool#multicall.
@@ -22,16 +26,16 @@ async function main() {
     // Setup Optimism: We need to call setTokenBridge on Optimism SpokePool so that SpokePool
     // is aware of L2 custom bridge mappings.
     const bridge = customOptimismTokenBridges[l2Token];
-    const _callData = spokePool.interface.encodeFunctionData("setTokenBridge", [l2Token, bridge]);
+    const _callData = spokePoolInterface.encodeFunctionData("setTokenBridge", [l2Token, bridge]);
     console.log(`Setting token bridge for ${l2Token} on Optimism SpokePool: ${_callData}`);
-    const relayRootCallData = hubPool.interface.encodeFunctionData("relaySpokePoolAdminFunction", [
+    const relayRootCallData = hubPoolInterface.encodeFunctionData("relaySpokePoolAdminFunction", [
       CHAIN_IDs.OPTIMISM,
       _callData,
     ]);
     callData.push(relayRootCallData);
   }
 
-  const multicallData = hubPool.interface.encodeFunctionData("multicall", [callData]);
+  const multicallData = hubPoolInterface.encodeFunctionData("multicall", [callData]);
   console.log("Data to pass to HubPool#multicall()", multicallData);
 }
 

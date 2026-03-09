@@ -4,6 +4,16 @@ import { MerkleTree } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
 import { relayerRefundHashFn } from "../../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";
+import HubPoolArtifact from "../../../out/HubPool.sol/HubPool.json";
+import WETH9Artifact from "../../../out/WETH9.sol/WETH9.json";
+
+export function getHubPoolContract(address: string, signerOrProvider: ethers.Signer | ethers.providers.Provider) {
+  return new ethers.Contract(address, HubPoolArtifact.abi, signerOrProvider);
+}
+
+export function getBondTokenContract(address: string, signerOrProvider: ethers.Signer | ethers.providers.Provider) {
+  return new ethers.Contract(address, WETH9Artifact.abi, signerOrProvider);
+}
 
 export const requireEnv = (name: string): string => {
   if (!process.env[name]) throw new Error(`Environment variable ${name} is not set`);

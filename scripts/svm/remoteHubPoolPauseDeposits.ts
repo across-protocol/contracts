@@ -19,9 +19,8 @@ import {
   getSpokePoolProgram,
   isSolanaDevnet,
 } from "../../src/svm/web3-v1";
-import { HubPool__factory } from "../../typechain";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
-import { requireEnv } from "./utils/helpers";
+import { getHubPoolContract, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -76,7 +75,7 @@ async function remoteHubPoolPauseDeposit(): Promise<void> {
 
   const irisApiUrl = isDevnet ? CIRCLE_IRIS_API_URL_DEVNET : CIRCLE_IRIS_API_URL_MAINNET;
 
-  const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
+  const hubPool = getHubPoolContract(hubPoolAddress, ethersProvider);
   const spokePoolIface = new ethers.utils.Interface(["function pauseDeposits(bool pause)"]);
 
   console.log("Remotely pausing deposits...");
