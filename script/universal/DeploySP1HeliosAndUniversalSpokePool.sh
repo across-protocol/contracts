@@ -5,8 +5,8 @@
 #   1. Deploy the SP1Helios light client contract (via DeploySP1Helios.s.sol)
 #   2. Deploy the Universal_SpokePool proxy (via DeployUniversalSpokePool.s.sol),
 #      passing in the SP1Helios address from step 1
-#   3. Transfer the SP1Helios DEFAULT_ADMIN_ROLE from the deployer to the SpokePool,
-#      so that admin functions can be called through the cross-chain admin flow
+#   3. Transfer SP1Helios VKEY_UPDATER_ROLE and DEFAULT_ADMIN_ROLE from the deployer
+#      to the SpokePool, so that admin functions can be called through the cross-chain admin flow
 #   4. Verify both contracts on Etherscan (if --etherscan-api-key is provided)
 #
 # Assumes a fresh deployment — no existing SpokePool on the target chain.
@@ -190,21 +190,35 @@ if [[ -z "$SPOKE_POOL" || "$SPOKE_POOL" == "null" ]]; then
 fi
 
 # ===========================================================================
-# Step 3: Transfer SP1Helios admin role to the SpokePool
+# Step 3: Transfer SP1Helios roles to the SpokePool
 # The SP1Helios contract uses OpenZeppelin AccessControl. After deployment,
-# the deployer holds DEFAULT_ADMIN_ROLE. We grant that role to the SpokePool
-# (so cross-chain admin calls can manage SP1Helios), then renounce it from
-# the deployer so the deployer no longer has admin access.
+# the deployer holds DEFAULT_ADMIN_ROLE. We grant VKEY_UPDATER_ROLE and
+# DEFAULT_ADMIN_ROLE to the SpokePool (so cross-chain admin calls can manage
+# SP1Helios), then renounce DEFAULT_ADMIN_ROLE from the deployer.
+# VKEY_UPDATER_ROLE must be granted before DEFAULT_ADMIN_ROLE is renounced.
 # Skipped in simulation mode (no --broadcast).
 # ===========================================================================
 echo ""
-echo "=== Step 3: Transferring SP1Helios admin role ==="
+echo "=== Step 3: Transferring SP1Helios roles ==="
 echo "SP1Helios: $SP1_HELIOS"
 echo "SpokePool: $SPOKE_POOL"
 
 DEFAULT_ADMIN_ROLE="0x0000000000000000000000000000000000000000000000000000000000000000"
+VKEY_UPDATER_ROLE=$(cast keccak "VKEY_UPDATER_ROLE")
 
 if [[ -n "$BROADCAST" ]]; then
+  # Grant VKEY_UPDATER_ROLE to the SpokePool (must happen before DEFAULT_ADMIN_ROLE transfer)
+  cast send "$SP1_HELIOS" \
+    "grantRole(bytes32,address)" "$VKEY_UPDATER_ROLE" "$SPOKE_POOL" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$DEPLOYER_PRIVATE_KEY"
+
+  # Renounce VKEY_UPDATER_ROLE from the deployer
+  cast send "$SP1_HELIOS" \
+    "renounceRole(bytes32,address)" "$VKEY_UPDATER_ROLE" "$DEPLOYER_ADDRESS" \
+    --rpc-url "$RPC_URL" \
+    --private-key "$DEPLOYER_PRIVATE_KEY"
+
   # Grant DEFAULT_ADMIN_ROLE to the SpokePool
   cast send "$SP1_HELIOS" \
     "grantRole(bytes32,address)" "$DEFAULT_ADMIN_ROLE" "$SPOKE_POOL" \
@@ -217,7 +231,7 @@ if [[ -n "$BROADCAST" ]]; then
     --rpc-url "$RPC_URL" \
     --private-key "$DEPLOYER_PRIVATE_KEY"
 
-  echo "Admin role transferred successfully."
+  echo "Admin roles transferred successfully."
 else
   echo "(Skipping admin role transfer in simulation mode — add --broadcast to execute)"
 fi

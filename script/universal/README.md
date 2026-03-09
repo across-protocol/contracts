@@ -33,7 +33,7 @@ Create a `.env` file with the following variables:
 
 ## Combined Deployment (Recommended)
 
-This script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Omit `--broadcast` for a dry run.
+This script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Omit `--broadcast` for a dry run.
 
 ```bash
 ./script/universal/DeploySP1HeliosAndUniversalSpokePool.sh \
@@ -89,15 +89,36 @@ Note the deployed **Universal_SpokePool proxy address** from the output.
 
 ---
 
-### Step 3: Transfer SP1Helios Admin Role to SpokePool
+### Step 3: Transfer SP1Helios Roles to SpokePool
 
-The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds the `DEFAULT_ADMIN_ROLE`. This role must be transferred to the Universal_SpokePool so that admin functions can be called through the cross-chain admin flow.
+The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds the `DEFAULT_ADMIN_ROLE` and `VKEY_UPDATER_ROLE`. Both roles must be transferred to the Universal_SpokePool so that admin functions (including verification key updates) can be called through the cross-chain admin flow.
+
+The `VKEY_UPDATER_ROLE` must be granted and renounced **before** the `DEFAULT_ADMIN_ROLE` is transferred, since the deployer needs admin privileges to grant roles.
 
 ```bash
+VKEY_UPDATER_ROLE=$(cast keccak "VKEY_UPDATER_ROLE")
+DEFAULT_ADMIN_ROLE=0x0000000000000000000000000000000000000000000000000000000000000000
+
+# Grant VKEY_UPDATER_ROLE to the SpokePool
+cast send <SP1_HELIOS_ADDRESS> \
+  "grantRole(bytes32,address)" \
+  $VKEY_UPDATER_ROLE \
+  <SPOKE_POOL_ADDRESS> \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --private-key <DEPLOYER_PRIVATE_KEY>
+
+# Renounce VKEY_UPDATER_ROLE from the deployer
+cast send <SP1_HELIOS_ADDRESS> \
+  "renounceRole(bytes32,address)" \
+  $VKEY_UPDATER_ROLE \
+  <DEPLOYER_ADDRESS> \
+  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --private-key <DEPLOYER_PRIVATE_KEY>
+
 # Grant DEFAULT_ADMIN_ROLE to the SpokePool
 cast send <SP1_HELIOS_ADDRESS> \
   "grantRole(bytes32,address)" \
-  0x0000000000000000000000000000000000000000000000000000000000000000 \
+  $DEFAULT_ADMIN_ROLE \
   <SPOKE_POOL_ADDRESS> \
   --rpc-url <NEW_CHAIN_RPC_URL> \
   --private-key <DEPLOYER_PRIVATE_KEY>
@@ -105,10 +126,10 @@ cast send <SP1_HELIOS_ADDRESS> \
 # Renounce DEFAULT_ADMIN_ROLE from the deployer
 cast send <SP1_HELIOS_ADDRESS> \
   "renounceRole(bytes32,address)" \
-  0x0000000000000000000000000000000000000000000000000000000000000000 \
+  $DEFAULT_ADMIN_ROLE \
   <DEPLOYER_ADDRESS> \
   --rpc-url <NEW_CHAIN_RPC_URL> \
   --private-key <DEPLOYER_PRIVATE_KEY>
 ```
 
-> **Note**: `0x00...00` (32 zero bytes) is the `DEFAULT_ADMIN_ROLE` constant defined in OpenZeppelin's AccessControl.
+> **Note**: `DEFAULT_ADMIN_ROLE` (`0x00...00`) is defined in OpenZeppelin's AccessControl. `VKEY_UPDATER_ROLE` is `keccak256("VKEY_UPDATER_ROLE")`.

@@ -118,7 +118,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler          | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
 | SP1Helios                 | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadvision.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePool                 | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadvision.com/address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
-| SpokePool                 | [0x026ed73A36b37B871Be7bfd25D1C62B9bfB358b5](https://monadvision.com/address/0x026ed73A36b37B871Be7bfd25D1C62B9bfB358b5) |
 | SpokePoolPeriphery        | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadvision.com/address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
 | SponsoredCCTPSrcPeriphery | [0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5](https://monadvision.com/address/0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5) |
 | SponsoredOFTSrcPeriphery  | [0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1](https://monadvision.com/address/0xa3dE5F042EFD4C732498883100A2d319BbB3c1A1) |
@@ -169,7 +168,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | PermissionedMulticallHandler | [0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC](https://hyperevmscan.io//address/0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC) |
 | SP1Helios                    | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | SpokePool                    | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
-| SpokePool                    | [0xC63e56fDe7383442993b86B77D432ad350e13E9b](https://hyperevmscan.io//address/0xC63e56fDe7383442993b86B77D432ad350e13E9b) |
 | SpokePoolPeriphery           | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolVerifier            | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery    | [0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f](https://hyperevmscan.io//address/0x1c709Fd0Db6A6B877Ddb19ae3D485B7b4ADD879f) |
