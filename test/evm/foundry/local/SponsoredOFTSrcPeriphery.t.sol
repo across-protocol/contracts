@@ -11,6 +11,7 @@ import { SponsoredCCTPSrcPeriphery } from "../../../../contracts/periphery/mintb
 import { PermissionedMulticallHandler } from "../../../../contracts/handlers/PermissionedMulticallHandler.sol";
 import { MulticallHandler } from "../../../../contracts/handlers/MulticallHandler.sol";
 import { ITokenMessengerV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { ComposeMsgCodec } from "../../../../contracts/periphery/mintburn/sponsored-oft/ComposeMsgCodec.sol";
 
 import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
@@ -20,16 +21,33 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { DebugQuoteSignLib } from "../../../../script/mintburn/oft/CreateSponsoredDeposit.s.sol";
 
 contract MockDirectAcrossHandler {
+    using ComposeMsgCodec for bytes;
+
     address public lastToken;
     uint256 public lastAmount;
-    address public lastRelayer;
-    bytes public lastMessage;
+    bytes public lastComposeMsg;
+    uint256 public callCount;
 
-    function handleV3AcrossMessage(address token, uint256 amount, address relayer, bytes memory message) external {
-        lastToken = token;
-        lastAmount = amount;
-        lastRelayer = relayer;
-        lastMessage = message;
+    function executeDirect(address tokenSent, uint256 amountLD, bytes calldata composeMsg) external {
+        callCount++;
+        lastToken = tokenSent;
+        lastAmount = amountLD;
+        lastComposeMsg = composeMsg;
+    }
+}
+
+contract MockDirectMulticallShim {
+    using ComposeMsgCodec for bytes;
+    PermissionedMulticallHandler public immutable handler;
+
+    constructor(address _handler) {
+        handler = PermissionedMulticallHandler(payable(_handler));
+    }
+
+    function executeDirect(address tokenSent, uint256 amountLD, bytes calldata composeMsg) external {
+        bytes memory actionData = composeMsg._getActionData();
+        IERC20(tokenSent).transfer(address(handler), amountLD);
+        handler.handleV3AcrossMessage(tokenSent, amountLD, msg.sender, actionData);
     }
 }
 
@@ -70,6 +88,7 @@ contract MockTokenMessengerV2WithHook is ITokenMessengerV2 {
 
 contract SponsoredOFTSrcPeripheryTest is Test {
     using AddressToBytes32 for address;
+    using ComposeMsgCodec for bytes;
 
     uint32 internal constant SRC_EID = 101;
 
@@ -84,6 +103,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
     MockOFTMessenger internal oft;
     SponsoredOFTSrcPeriphery internal periphery;
     MockDirectAcrossHandler internal directHandler;
+    MockDirectMulticallShim internal directMulticallShim;
     PermissionedMulticallHandler internal permissionedMulticall;
     MockTokenMessengerV2WithHook internal cctpMessenger;
     SponsoredCCTPSrcPeriphery internal cctpSrcPeriphery;
@@ -113,12 +133,13 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         oft.setFeesToReturn(QUOTED_NATIVE_FEE, 0);
         directHandler = new MockDirectAcrossHandler();
         permissionedMulticall = new PermissionedMulticallHandler(address(this));
+        directMulticallShim = new MockDirectMulticallShim(address(permissionedMulticall));
         cctpMessenger = new MockTokenMessengerV2WithHook();
         cctpSrcPeriphery = new SponsoredCCTPSrcPeriphery(address(cctpMessenger), CCTP_SOURCE_DOMAIN, cctpSigner);
 
         periphery = new SponsoredOFTSrcPeriphery(address(token), address(oft), SRC_EID, signer);
 
-        permissionedMulticall.grantRole(permissionedMulticall.WHITELISTED_CALLER_ROLE(), address(periphery));
+        permissionedMulticall.grantRole(permissionedMulticall.WHITELISTED_CALLER_ROLE(), address(directMulticallShim));
 
         // Fund user with tokens and ETH
         deal(address(token), user, USER_INITIAL_BAL, true);
@@ -229,32 +250,16 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         assertEq(spOftCmd.length, 0, "oftCmd must be empty");
 
         // Validate composeMsg encoding (layout from ComposeMsgCodec._encode)
-        (
-            bytes32 gotNonce,
-            uint256 gotAmountSD,
-            uint256 gotMaxBpsToSponsor,
-            uint256 gotMaxUserSlippageBps,
-            bytes32 gotFinalRecipient,
-            bytes32 gotFinalToken,
-            uint32 gotDestinationDex,
-            uint8 gotAccountCreationMode,
-            uint8 gotExecutionMode,
-            bytes memory gotActionData
-        ) = abi.decode(
-                spComposeMsg,
-                (bytes32, uint256, uint256, uint256, bytes32, bytes32, uint32, uint8, uint8, bytes)
-            );
-
-        assertEq(gotNonce, nonce, "nonce mismatch");
-        assertEq(gotAmountSD, SEND_AMOUNT / 1e12, "amountSD mismatch");
-        assertEq(gotMaxBpsToSponsor, 500, "maxBpsToSponsor mismatch");
-        assertEq(gotMaxUserSlippageBps, 300, "maxUserSlippageBps mismatch");
-        assertEq(gotFinalRecipient, finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
-        assertEq(gotFinalToken, finalTokenAddr.toBytes32(), "finalToken mismatch");
-        assertEq(gotDestinationDex, HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
-        assertEq(gotAccountCreationMode, 0, "accountCreationMode mismatch");
-        assertEq(gotExecutionMode, 0, "executionMode mismatch");
-        assertEq(keccak256(gotActionData), keccak256(""), "actionData mismatch");
+        assertEq(spComposeMsg._getNonce(), nonce, "nonce mismatch");
+        assertEq(spComposeMsg._getAmountSD(), SEND_AMOUNT / 1e12, "amountSD mismatch");
+        assertEq(spComposeMsg._getMaxBpsToSponsor(), 500, "maxBpsToSponsor mismatch");
+        assertEq(spComposeMsg._getMaxUserSlippageBps(), 300, "maxUserSlippageBps mismatch");
+        assertEq(spComposeMsg._getFinalRecipient(), finalRecipientAddr.toBytes32(), "finalRecipient mismatch");
+        assertEq(spComposeMsg._getFinalToken(), finalTokenAddr.toBytes32(), "finalToken mismatch");
+        assertEq(spComposeMsg._getDestinationDex(), HyperCoreLib.CORE_SPOT_DEX_ID, "destinationDex mismatch");
+        assertEq(spComposeMsg._getAccountCreationMode(), 0, "accountCreationMode mismatch");
+        assertEq(spComposeMsg._getExecutionMode(), 0, "executionMode mismatch");
+        assertEq(keccak256(spComposeMsg._getActionData()), keccak256(""), "actionData mismatch");
 
         // ERC20 was pulled and approved
         assertEq(IERC20(address(token)).balanceOf(user), USER_INITIAL_BAL - SEND_AMOUNT, "user balance mismatch");
@@ -313,7 +318,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         SponsoredOFTInterface.Quote memory oftQuote = createDefaultQuote(
             oftNonce,
             deadline,
-            address(permissionedMulticall),
+            address(directMulticallShim),
             address(0x1111),
             address(token)
         );
@@ -374,8 +379,16 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         );
         assertEq(directHandler.lastToken(), address(token), "token mismatch");
         assertEq(directHandler.lastAmount(), SEND_AMOUNT, "amount mismatch");
-        assertEq(directHandler.lastRelayer(), user, "relayer mismatch");
-        assertEq(keccak256(directHandler.lastMessage()), keccak256(quote.signedParams.actionData), "message mismatch");
+        assertEq(directHandler.callCount(), 1, "executeDirect not called");
+        bytes memory composeMsg = directHandler.lastComposeMsg();
+        assertEq(composeMsg._getNonce(), nonce, "compose nonce mismatch");
+        assertEq(composeMsg._getFinalRecipient(), finalRecipientAddr.toBytes32(), "compose final recipient mismatch");
+        assertEq(composeMsg._getFinalToken(), finalTokenAddr.toBytes32(), "compose final token mismatch");
+        assertEq(
+            keccak256(composeMsg._getActionData()),
+            keccak256(quote.signedParams.actionData),
+            "compose action mismatch"
+        );
         assertTrue(periphery.usedNonces(nonce), "nonce should be marked used");
     }
 
