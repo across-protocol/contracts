@@ -170,11 +170,24 @@ fi
 echo ""
 echo "SP1Helios deployed at: $SP1_HELIOS"
 
+# When broadcasting, pin Step 2 simulation to the block where Step 1 confirmed (--fork-block-number
+# is a forge script CLI flag; it is not passed into the Solidity run()).
+# Some RPCs (e.g. Hyperliquid) return "invalid block height" when Forge forks at "latest".
+FORK_BLOCK_ARGS=""
+if [[ -n "$BROADCAST" ]]; then
+  FORK_BLOCK_HEX=$(jq -r '.receipts[0].blockNumber // empty' "$HELIOS_RUN_DIR/run-latest.json")
+  if [[ -n "$FORK_BLOCK_HEX" && "$FORK_BLOCK_HEX" != "null" ]]; then
+    FORK_BLOCK_ARGS="--fork-block-number $((FORK_BLOCK_HEX))"
+    echo "Using fork block from Step 1 for simulation: $((FORK_BLOCK_HEX))"
+  fi
+fi
+
 echo ""
 echo "=== Step 2: Deploying Universal_SpokePool ==="
 forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
   --sig "run(address,uint256)" "$SP1_HELIOS" "$OFT_FEE_CAP" \
   --rpc-url "$RPC_URL" \
+  $FORK_BLOCK_ARGS \
   $BROADCAST --slow -vvvv $EXTRA_ARGS
 ensure_run_latest "$SPOKE_RUN_DIR"
 
