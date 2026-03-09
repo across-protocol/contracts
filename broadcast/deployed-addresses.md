@@ -110,7 +110,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery               | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://polygonscan.com/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
 | SpokePoolVerifier                | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://polygonscan.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery        | [0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5](https://polygonscan.com/address/0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5) |
-| SponsoredOFTSrcPeriphery         | [0xC6A21E6A57777F2183312c19e614DD6054b1A54F](https://polygonscan.com/address/0xC6A21E6A57777F2183312c19e614DD6054b1A54F) |
+| SponsoredOFTSrcPeriphery         | [0xCC1caAE18CEe2A61C307B3E36a3D4f0dcf06Ee30](https://polygonscan.com/address/0xCC1caAE18CEe2A61C307B3E36a3D4f0dcf06Ee30) |
 | UniswapV3_SwapAndBridge          | [0x9220Fa27ae680E4e8D9733932128FA73362E0393](https://polygonscan.com/address/0x9220Fa27ae680E4e8D9733932128FA73362E0393) |
 | UniswapV3_UniversalSwapAndBridge | [0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2](https://polygonscan.com/address/0xC2dCB88873E00c9d401De2CBBa4C6A28f8A6e2c2) |
 
@@ -259,7 +259,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery        | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://arbiscan.io/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://arbiscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPSrcPeriphery | [0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B](https://arbiscan.io/address/0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B) |
-| SponsoredOFTSrcPeriphery  | [0x2ac5Ee3796E027dA274fbDe84c82173a65868940](https://arbiscan.io/address/0x2ac5Ee3796E027dA274fbDe84c82173a65868940) |
+| SponsoredOFTSrcPeriphery  | [0x95fDa24299299F2C4E0de38C58FA9C17408411d8](https://arbiscan.io/address/0x95fDa24299299F2C4E0de38C58FA9C17408411d8) |
 | UniswapV3_SwapAndBridge   | [0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D](https://arbiscan.io/address/0xF633b72A4C2Fb73b77A379bf72864A825aD35b6D) |
 
 ## Ink (57073)

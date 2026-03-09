@@ -30,6 +30,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
     using AddressToBytes32 for address;
     using SafeERC20 for IERC20;
 
+    bytes32 public constant DIRECT_CALLER_ROLE = keccak256("DIRECT_CALLER_ROLE");
+
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
 
@@ -78,6 +80,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
     error UnauthorizedEndpoint();
     /// @notice Thrown when supplied _composeMsg format is unexpected
     error InvalidComposeMsgFormat();
+    /// @notice Thrown when direct execution is attempted with unsupported token.
+    error InvalidDirectToken();
 
     constructor(
         address _oftEndpoint,
@@ -166,9 +170,33 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
 
         // Amount received from `lzReceive` on destination. May be different from the amount the user originally sent (if the OFT takes a fee in the bridged token)
         uint256 amountLD = OFTComposeMsgCodec.amountLD(_message);
+        _executeFromComposeMsg(composeMsg, amountLD);
+    }
 
-        // We trust src periphery to encode the correct amountSD. It pulls amountLD from the user, using IOFT's sharedDecimals()
-        // for further conversion to SD. The DEFAULT_ADMIN is responsible for keeping a correct mapping of authorized src peripheries.
+    /**
+     * @notice Direct execution entrypoint for same-chain flows that bypass OFT transport.
+     * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
+     */
+    function executeDirect(
+        address tokenSent,
+        uint256 amountLD,
+        bytes calldata composeMsg
+    ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
+        if (tokenSent != baseToken) revert InvalidDirectToken();
+        if (!composeMsg._isValidComposeMsgBytelength()) revert InvalidComposeMsgFormat();
+
+        bytes32 quoteNonce = composeMsg._getNonce();
+        MainStorage storage $ = _getMainStorage();
+        if ($.usedNonces[quoteNonce]) revert NonceAlreadyUsed();
+        $.usedNonces[quoteNonce] = true;
+
+        _executeFromComposeMsg(composeMsg, amountLD);
+    }
+
+    function _executeFromComposeMsg(bytes memory composeMsg, uint256 amountLD) internal {
+        bytes32 quoteNonce = composeMsg._getNonce();
+        // We trust src side to encode the correct amountSD. It pulls amountLD from the user, using IOFT's sharedDecimals()
+        // for conversion to SD. For direct path, amountLD is supplied by trusted direct caller.
         uint256 amountSentSD = composeMsg._getAmountSD();
         uint256 amountSentLD = _toLD(uint64(amountSentSD));
 

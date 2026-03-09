@@ -9,13 +9,16 @@ import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IO
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
 import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
-import { AcrossMessageHandler } from "../../../interfaces/SpokePoolMessageHandler.sol";
 
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts-v4/utils/Address.sol";
+
+interface IDirectDstOFTHandler {
+    function executeDirect(address tokenSent, uint256 amountLD, bytes calldata composeMsg) external;
+}
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Across-supported flows on destination chain. Uses LayerZero's OFT as an underlying bridge
@@ -34,6 +37,8 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
 
     /// @notice Source endpoint id
     uint32 public immutable SRC_EID;
+    /// @notice OFT shared decimals used by this deployment.
+    uint8 public immutable SHARED_DECIMALS;
 
     /// @custom:storage-location erc7201:SponsoredOFTSrcPeriphery.main
     struct MainStorage {
@@ -148,13 +153,21 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
 
         _getMainStorage().quoteNonces[quote.signedParams.nonce] = true;
 
-        IERC20(TOKEN).safeTransferFrom(msg.sender, destinationHandler, quote.signedParams.amountLD);
-        AcrossMessageHandler(destinationHandler).handleV3AcrossMessage(
-            TOKEN,
-            quote.signedParams.amountLD,
-            msg.sender,
+        bytes memory composeMsg = ComposeMsgCodec._encode(
+            quote.signedParams.nonce,
+            uint256(_toSD(quote.signedParams.amountLD)),
+            quote.signedParams.maxBpsToSponsor,
+            quote.signedParams.maxUserSlippageBps,
+            quote.signedParams.finalRecipient,
+            quote.signedParams.finalToken,
+            quote.signedParams.destinationDex,
+            quote.signedParams.accountCreationMode,
+            quote.signedParams.executionMode,
             quote.signedParams.actionData
         );
+
+        IERC20(TOKEN).safeTransferFrom(msg.sender, destinationHandler, quote.signedParams.amountLD);
+        IDirectDstOFTHandler(destinationHandler).executeDirect(TOKEN, quote.signedParams.amountLD, composeMsg);
 
         emit SponsoredOFTDirectExecution(
             quote.signedParams.nonce,
