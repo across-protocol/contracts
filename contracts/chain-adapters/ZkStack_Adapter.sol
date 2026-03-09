@@ -182,7 +182,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
                 _transferUsdc(to, amount);
             } else {
                 IERC20(l1Token).forceApprove(USDC_SHARED_BRIDGE, amount);
-                txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
+                txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: txBaseCost }(
                     BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                         chainId: CHAIN_ID,
                         mintValue: txBaseCost,
