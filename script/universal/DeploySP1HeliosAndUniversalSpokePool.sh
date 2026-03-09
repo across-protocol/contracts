@@ -103,22 +103,6 @@ if [[ -f "$DEPLOYED_ADDRESSES" ]]; then
   fi
 fi
 
-# ---------------------------------------------------------------------------
-# Helper: ensure run-latest.json symlink exists in a broadcast directory.
-# Some Forge nightly builds don't create this symlink automatically, but we
-# need it to reliably read the most recent broadcast output with jq.
-# ---------------------------------------------------------------------------
-ensure_run_latest() {
-  local dir="$1"
-  if [[ -d "$dir" && ! -e "$dir/run-latest.json" ]]; then
-    local latest
-    latest=$(ls -t "$dir"/run-*.json 2>/dev/null | head -1)
-    if [[ -n "$latest" ]]; then
-      ln -sf "$(basename "$latest")" "$dir/run-latest.json"
-      echo "Created run-latest.json symlink -> $(basename "$latest")"
-    fi
-  fi
-}
 
 # When not broadcasting, Foundry writes to chain_id/dry-run/run-latest.json.
 # Use that path so we can still parse addresses and run Step 2 (simulation).
