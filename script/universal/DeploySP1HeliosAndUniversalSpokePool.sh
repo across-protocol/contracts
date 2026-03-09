@@ -147,13 +147,6 @@ SP1_HELIOS=$(forge script script/universal/DeploySP1Helios.s.sol \
   $BROADCAST --ffi -vvvv $EXTRA_ARGS 2>&1 | tee /dev/stderr | grep -A1 "== Return ==" | tail -1 | grep -oE '0x[0-9a-fA-F]{40}')
 ensure_run_latest "$HELIOS_RUN_DIR"
 
-# Wait for in-flight transactions to confirm before the next deployment,
-# so the RPC node has an up-to-date nonce for the deployer.
-if [[ -n "$BROADCAST" ]]; then
-  echo "Waiting for transactions to confirm..."
-  sleep 10
-fi
-
 # ===========================================================================
 # Step 2: Deploy Universal_SpokePool
 # SP1_HELIOS was parsed from Step 1 stdout (== Return == section) above.
@@ -217,9 +210,6 @@ if [[ -n "$BROADCAST" ]]; then
     "grantRole(bytes32,address)" "$DEFAULT_ADMIN_ROLE" "$SPOKE_POOL" \
     --rpc-url "$RPC_URL" \
     --private-key "$DEPLOYER_PRIVATE_KEY"
-
-  # Brief pause so the RPC node's nonce tracking catches up after the previous tx.
-  sleep 5
 
   # Renounce DEFAULT_ADMIN_ROLE from the deployer
   cast send "$SP1_HELIOS" \
