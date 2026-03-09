@@ -213,6 +213,25 @@ if [[ -n "$BROADCAST" ]]; then
     --rpc-url "$RPC_URL" \
     --private-key "$DEPLOYER_PRIVATE_KEY"
 
+  # Verify role transfers
+  echo ""
+  echo "Verifying role transfers..."
+
+  SPOKE_HAS_VKEY=$(cast call "$SP1_HELIOS" "hasRole(bytes32,address)(bool)" "$VKEY_UPDATER_ROLE" "$SPOKE_POOL" --rpc-url "$RPC_URL")
+  DEPLOYER_HAS_VKEY=$(cast call "$SP1_HELIOS" "hasRole(bytes32,address)(bool)" "$VKEY_UPDATER_ROLE" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
+  SPOKE_HAS_ADMIN=$(cast call "$SP1_HELIOS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$SPOKE_POOL" --rpc-url "$RPC_URL")
+  DEPLOYER_HAS_ADMIN=$(cast call "$SP1_HELIOS" "hasRole(bytes32,address)(bool)" "$DEFAULT_ADMIN_ROLE" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
+
+  echo "SpokePool has VKEY_UPDATER_ROLE: $SPOKE_HAS_VKEY (expected: true)"
+  echo "Deployer has VKEY_UPDATER_ROLE:  $DEPLOYER_HAS_VKEY (expected: false)"
+  echo "SpokePool has DEFAULT_ADMIN_ROLE: $SPOKE_HAS_ADMIN (expected: true)"
+  echo "Deployer has DEFAULT_ADMIN_ROLE:  $DEPLOYER_HAS_ADMIN (expected: false)"
+
+  if [[ "$SPOKE_HAS_VKEY" != "true" || "$DEPLOYER_HAS_VKEY" != "false" || "$SPOKE_HAS_ADMIN" != "true" || "$DEPLOYER_HAS_ADMIN" != "false" ]]; then
+    echo "Error: Role verification failed!"
+    exit 1
+  fi
+
   echo "Admin roles transferred successfully."
 else
   echo "(Skipping admin role transfer in simulation mode — add --broadcast to execute)"
