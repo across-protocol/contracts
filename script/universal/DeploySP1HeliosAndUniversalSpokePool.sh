@@ -145,7 +145,6 @@ echo "=== Step 1: Deploying SP1Helios ==="
 SP1_HELIOS=$(forge script script/universal/DeploySP1Helios.s.sol \
   --rpc-url "$RPC_URL" \
   $BROADCAST --ffi -vvvv $EXTRA_ARGS 2>&1 | tee /dev/stderr | grep -A1 "== Return ==" | tail -1 | grep -oE '0x[0-9a-fA-F]{40}')
-ensure_run_latest "$HELIOS_RUN_DIR"
 
 # ===========================================================================
 # Step 2: Deploy Universal_SpokePool
@@ -178,7 +177,6 @@ forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpok
   --rpc-url "$RPC_URL" \
   $FORK_BLOCK_ARGS \
   $BROADCAST -vvvv $EXTRA_ARGS
-ensure_run_latest "$SPOKE_RUN_DIR"
 
 # The SpokePool is deployed behind an ERC1967Proxy, so we look for that
 # contract name in the broadcast output to get the proxy address.
