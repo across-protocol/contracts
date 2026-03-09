@@ -371,8 +371,9 @@
           "block_number": 37957403
         },
         "SpokePool": {
-          "address": "0xd2ecb3afe598b746F8123CaE365a598DA831A449",
-          "block_number": 36437473
+          "address": "0x026ed73a36b37b871be7bfd25d1c62b9bfb358b5",
+          "block_number": 60373748,
+          "transaction_hash": "0xca29bcca9d517d7cd72f78d017b0f33ab34edbf8d269f894c473a998a5e3a331"
         },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xcbf361ee59cc74b9d6e7af947fe4136828faf2c5",
@@ -480,9 +481,9 @@
       "chain_name": "HyperEVM",
       "contracts": {
         "SpokePool": {
-          "address": "0xf633b72a4c2fb73b77a379bf72864a825ad35b6d",
-          "block_number": 29311460,
-          "transaction_hash": "0x016f70fbd6d212f7a99ccf8b2a1dad16aa2bd862c5e92b594ce82687b4720cfd"
+          "address": "0xc63e56fde7383442993b86b77d432ad350e13e9b",
+          "block_number": 29313534,
+          "transaction_hash": "0x405537a54cd0f2a7c15d49e3348df5cf1dde2d159d672243a6f9396f3d28a3fc"
         },
         "SpokePoolVerifier": {
           "address": "0x3Fb9cED51E968594C87963a371Ed90c39519f65A",

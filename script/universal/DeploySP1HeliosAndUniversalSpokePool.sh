@@ -142,9 +142,9 @@ forge clean && forge build
 # ===========================================================================
 echo ""
 echo "=== Step 1: Deploying SP1Helios ==="
-forge script script/universal/DeploySP1Helios.s.sol \
+SP1_HELIOS=$(forge script script/universal/DeploySP1Helios.s.sol \
   --rpc-url "$RPC_URL" \
-  $BROADCAST --ffi -vvvv $EXTRA_ARGS
+  $BROADCAST --ffi -vvvv $EXTRA_ARGS 2>&1 | tee /dev/stderr | grep -A1 "== Return ==" | tail -1 | grep -oE '0x[0-9a-fA-F]{40}')
 ensure_run_latest "$HELIOS_RUN_DIR"
 
 # Wait for in-flight transactions to confirm before the next deployment,
@@ -156,14 +156,11 @@ fi
 
 # ===========================================================================
 # Step 2: Deploy Universal_SpokePool
-# Parse the SP1Helios address from the Step 1 broadcast output, then pass it
-# as a constructor argument to the SpokePool deployment script.
+# SP1_HELIOS was parsed from Step 1 stdout (== Return == section) above.
 # The SpokePool is deployed behind an ERC1967 proxy via DeploymentUtils.
 # ===========================================================================
-SP1_HELIOS=$(jq -r '.transactions[] | select(.contractName == "SP1Helios") | .contractAddress' \
-  "$HELIOS_RUN_DIR/run-latest.json")
-if [[ -z "$SP1_HELIOS" || "$SP1_HELIOS" == "null" ]]; then
-  echo "Error: Could not find SP1Helios address in broadcast output"
+if [[ -z "$SP1_HELIOS" ]]; then
+  echo "Error: Could not find SP1Helios address in script return (== Return == section)"
   exit 1
 fi
 echo ""
