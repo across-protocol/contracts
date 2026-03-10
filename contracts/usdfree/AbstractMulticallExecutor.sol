@@ -37,6 +37,7 @@ abstract contract AbstractMulticallExecutor {
         if (!success) emit CallsFailed(instructions.calls, instructions.fallbackRecipient);
 
         _drainRemainingTokens(tokenForDrain, payable(instructions.fallbackRecipient));
+        if (tokenForDrain != address(0)) _drainRemainingTokens(address(0), payable(instructions.fallbackRecipient));
     }
 
     function attemptCalls(MulticallCall[] memory calls) external onlySelf {
@@ -73,9 +74,7 @@ abstract contract AbstractMulticallExecutor {
 
             assembly ("memory-safe") {
                 let ptr := add(callData, offset)
-                let current := mload(ptr)
-                let val := or(bal, current)
-                mstore(ptr, val)
+                mstore(ptr, bal)
             }
         }
 
