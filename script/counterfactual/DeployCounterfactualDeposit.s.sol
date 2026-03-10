@@ -15,7 +15,7 @@ import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/
 contract DeployCounterfactualDeposit is Script, Test {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envUint("DEPLOYER_INDEX")));
 
         console.log("Deploying CounterfactualDeposit...");
         console.log("Chain ID:", block.chainid);

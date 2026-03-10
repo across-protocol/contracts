@@ -17,7 +17,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 contract DeployAdminWithdrawManager is Script, Test {
     function run(address owner, address directWithdrawer, address signer) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envUint("DEPLOYER_INDEX")));
 
         require(owner != address(0), "Owner cannot be zero address");
         require(directWithdrawer != address(0), "Direct withdrawer cannot be zero address");

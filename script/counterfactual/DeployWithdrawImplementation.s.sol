@@ -15,7 +15,7 @@ import { WithdrawImplementation } from "../../contracts/periphery/counterfactual
 contract DeployWithdrawImplementation is Script, Test {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envUint("DEPLOYER_INDEX")));
 
         console.log("Deploying WithdrawImplementation...");
         console.log("Chain ID:", block.chainid);

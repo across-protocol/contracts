@@ -280,6 +280,87 @@ Why: Enables persistent "deposit addresses" that users can save, share, and reus
 
 For subsequent deposits, callers can call the clone directly or use `factory.execute()`. `deployAndExecute()` reverts if the clone already exists; `deployIfNeededAndExecute()` skips deployment if the clone is already deployed (checked via `code.length`), making it safe to call regardless of deployment state.
 
+## Deployment
+
+All 7 counterfactual contracts are deployed from a single EOA in a fixed order to achieve **the same contract addresses on every chain**. Since `CREATE` addresses depend only on `(sender, nonce)`, deploying the same contracts in the same order from the same address (starting at nonce 0) produces identical addresses everywhere.
+
+### Deployment Order
+
+| Nonce | Contract                         |
+| ----- | -------------------------------- |
+| 0     | `CounterfactualDeposit`          |
+| 1     | `CounterfactualDepositFactory`   |
+| 2     | `WithdrawImplementation`         |
+| 3     | `CounterfactualDepositSpokePool` |
+| 4     | `CounterfactualDepositCCTP`      |
+| 5     | `CounterfactualDepositOFT`       |
+| 6     | `AdminWithdrawManager`           |
+
+| Skip Name   | Nonce | Contract                         |
+| ----------- | ----- | -------------------------------- |
+| `deposit`   | 0     | `CounterfactualDeposit`          |
+| `factory`   | 1     | `CounterfactualDepositFactory`   |
+| `withdraw`  | 2     | `WithdrawImplementation`         |
+| `spokepool` | 3     | `CounterfactualDepositSpokePool` |
+| `cctp`      | 4     | `CounterfactualDepositCCTP`      |
+| `oft`       | 5     | `CounterfactualDepositOFT`       |
+| `admin`     | 6     | `AdminWithdrawManager`           |
+
+### How to Deploy
+
+1. **Choose a fresh derivation index** — pick an index from your mnemonic that has never sent a transaction on the target chain (nonce must be 0).
+
+2. **Get the deployer address** to know which address to fund:
+
+   ```bash
+   ./script/counterfactual/get-deployer-address.sh <derivation-index>
+   ```
+
+3. **Fund the deployer** on the target chain with enough ETH for gas.
+
+4. **Deploy all contracts**:
+
+   ```bash
+   ./script/counterfactual/deploy-all.sh \
+     --index <derivation-index> \
+     --rpc-url $NODE_URL \
+     --spoke-pool <SPOKE_POOL_ADDR> \
+     --signer <SIGNER_ADDR> \
+     --wrapped-native-token <WETH_ADDR> \
+     --cctp-periphery <CCTP_PERIPHERY_ADDR> \
+     --cctp-domain <CCTP_DOMAIN_ID> \
+     --oft-periphery <OFT_PERIPHERY_ADDR> \
+     --oft-eid <OFT_ENDPOINT_ID> \
+     --owner <OWNER_ADDR> \
+     --direct-withdrawer <WITHDRAWER_ADDR> \
+     --broadcast \
+     --verify
+   ```
+
+   Omit `--broadcast` to simulate first.
+
+### Skipping Contracts
+
+If a chain doesn't need certain implementations (e.g., no CCTP or OFT support), use `--skip` with a comma-separated list of names from the table above:
+
+```bash
+./script/counterfactual/deploy-all.sh \
+  --skip cctp,oft \
+  ...
+```
+
+Skipped contracts are not deployed, but a dummy transaction (0-value self-transfer) is sent to burn the nonce so that subsequent contracts still land at the correct addresses. Arguments for skipped contracts (e.g., `--cctp-periphery`, `--cctp-domain`) can be omitted.
+
+### Resuming a Partial Deployment
+
+If a deployment is interrupted partway through, re-running the script will automatically skip contracts whose nonces have already been consumed and continue from where it left off.
+
+### Important
+
+- **Never send any other transactions** from the deployer address before all 7 deploys complete — this would consume a nonce and break the address mapping.
+- **Use the same derivation index** across all chains to get the same deployer address and thus the same contract addresses.
+- Individual scripts can still be run standalone, but `DEPLOYER_INDEX` env var must be set.
+
 ## Security Model
 
 - **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.
