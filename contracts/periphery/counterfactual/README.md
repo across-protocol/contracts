@@ -59,6 +59,8 @@ Each clone's merkle tree typically contains:
 
 Deposit params and withdraw params are committed independently, so the same withdraw configuration (admin + user addresses) can be paired with any combination of deposit types.
 
+**Important: No duplicate implementation types.** A clone must not contain multiple leaves with the same implementation contract. The `execute(params, submitterData)` signature dispatched via delegatecall is not bound to leaf-specific route params — the implementation receives whichever `params` the caller proves via merkle proof, but the `submitterData` (amounts, signatures, etc.) is freely chosen by the caller. If two leaves share the same implementation (e.g. two different SpokePool routes), a caller could prove leaf A's params but supply submitter data (signature, amounts) intended for leaf B's route, since the signature does not commit to the route params. Each implementation type should appear at most once per clone.
+
 ## CCTP Implementation (`CounterfactualDepositCCTP`)
 
 | Variable                | Source                | Description                                                             |
@@ -176,6 +178,8 @@ The two-component cap (`maxFeeFixed + maxFeeBps`) handles deposits of varying si
 ### Depositor Field
 
 The `depositor` parameter passed to `SpokePool.deposit()` is `address(this)` (the clone address). SpokePool refunds for expired deposits go back to the clone, where they can be re-executed or withdrawn.
+
+**No depositor-driven speed-ups:** Because the depositor is the clone address (a contract with no private key), depositor-initiated `speedUpV3Deposit` calls are not possible through the SpokePool flow. The depositor cannot produce the required signature to authorize speed-ups.
 
 ### Native ETH Deposits
 

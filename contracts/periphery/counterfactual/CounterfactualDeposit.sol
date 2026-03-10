@@ -16,6 +16,12 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
  *      - address(this) = clone address throughout (correct for EIP-712, token balances)
  *      - msg.sender = original caller throughout
  *      - msg.value = original value throughout
+ *
+ *      Note: A clone's merkle tree must not contain multiple leaves with the same implementation contract.
+ *      The execution signature `execute(params, submitterData)` is not bound to leaf-specific route params —
+ *      `submitterData` is freely chosen by the caller. If two leaves share the same implementation, a caller
+ *      could prove one leaf's params while supplying submitter data (e.g. signature, amounts) intended for
+ *      the other leaf's route, since the signature does not commit to route params.
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).
