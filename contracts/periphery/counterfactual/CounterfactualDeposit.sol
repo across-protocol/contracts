@@ -16,6 +16,14 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
  *      - address(this) = clone address throughout (correct for EIP-712, token balances)
  *      - msg.sender = original caller throughout
  *      - msg.value = original value throughout
+ *
+ *      Note: Some implementations — such as CounterfactualDepositSpokePool — use authorization signatures
+ *      that cover execution-time parameters (amounts, deadlines, etc.) but do not commit to the leaf's
+ *      route-specific `params` (destination chain, tokens, recipient, etc.). If two leaves share the same
+ *      implementation address, a caller could prove leaf A's route params while submitting an authorization
+ *      signature intended for leaf B's route, since the signature is valid for either leaf. The system is
+ *      intended to be used such that a clone's merkle tree never contains multiple leaves with the same
+ *      implementation address.
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).
