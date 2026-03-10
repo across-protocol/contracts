@@ -296,16 +296,6 @@ All 7 counterfactual contracts are deployed from a single EOA in a fixed order t
 | 5     | `CounterfactualDepositOFT`       |
 | 6     | `AdminWithdrawManager`           |
 
-| Skip Name   | Nonce | Contract                         |
-| ----------- | ----- | -------------------------------- |
-| `deposit`   | 0     | `CounterfactualDeposit`          |
-| `factory`   | 1     | `CounterfactualDepositFactory`   |
-| `withdraw`  | 2     | `WithdrawImplementation`         |
-| `spokepool` | 3     | `CounterfactualDepositSpokePool` |
-| `cctp`      | 4     | `CounterfactualDepositCCTP`      |
-| `oft`       | 5     | `CounterfactualDepositOFT`       |
-| `admin`     | 6     | `AdminWithdrawManager`           |
-
 ### How to Deploy
 
 1. **Choose a fresh derivation index** — pick an index from your mnemonic that has never sent a transaction on the target chain (nonce must be 0).
@@ -341,15 +331,15 @@ All 7 counterfactual contracts are deployed from a single EOA in a fixed order t
 
 ### Skipping Contracts
 
-If a chain doesn't need certain implementations (e.g., no CCTP or OFT support), use `--skip` with a comma-separated list of names from the table above:
+If a chain doesn't need certain implementations (e.g., no CCTP or OFT support), use `--skip` with a comma-separated list of deployment indices from the table above:
 
 ```bash
 ./script/counterfactual/deploy-all.sh \
-  --skip cctp,oft \
+  --skip 4,5 \
   ...
 ```
 
-Skipped contracts are not deployed, but a dummy transaction (0-value self-transfer) is sent to burn the nonce so that subsequent contracts still land at the correct addresses. Arguments for skipped contracts (e.g., `--cctp-periphery`, `--cctp-domain`) can be omitted.
+Skipped deployments are not deployed, but a dummy transaction (0-value self-transfer) is sent to burn the nonce so that subsequent contracts still land at the correct addresses. Arguments for skipped contracts (e.g., `--cctp-periphery`, `--cctp-domain`) can be omitted.
 
 ### Resuming a Partial Deployment
 
