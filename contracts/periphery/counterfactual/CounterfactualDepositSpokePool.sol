@@ -47,8 +47,8 @@ struct SpokePoolSubmitterData {
  *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
  *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
- *      `address(this)` (the clone), which has no private key and therefore cannot sign `speedUpV3Deposit`
- *      messages.
+ *      `address(this)` (the clone), which has no private key and does not implement EIP-1271, and therefore
+ *      cannot sign `speedUpV3Deposit` messages.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712 {
