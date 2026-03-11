@@ -282,25 +282,69 @@ For subsequent deposits, callers can call the clone directly or use `factory.exe
 
 ## Deployment
 
-All 7 counterfactual contracts are deployed from a single EOA in a fixed order to achieve **the same contract addresses on every chain**. Since `CREATE` addresses depend only on `(sender, nonce)`, deploying the same contracts in the same order from the same address (starting at nonce 0) produces identical addresses everywhere.
+Two deployment strategies are available: **CREATE2** (recommended) and **CREATE** (legacy, nonce-based).
 
-### Deployment Order
+### Contracts
 
-| Nonce | Contract                         |
-| ----- | -------------------------------- |
-| 0     | `CounterfactualDeposit`          |
-| 1     | `CounterfactualDepositFactory`   |
-| 2     | `WithdrawImplementation`         |
-| 3     | `CounterfactualDepositSpokePool` |
-| 4     | `CounterfactualDepositCCTP`      |
-| 5     | `CounterfactualDepositOFT`       |
-| 6     | `AdminWithdrawManager`           |
+| Index | Contract                         | Same address across chains?                                 |
+| ----- | -------------------------------- | ----------------------------------------------------------- |
+| 0     | `CounterfactualDeposit`          | Yes (no constructor args)                                   |
+| 1     | `CounterfactualDepositFactory`   | Yes (no constructor args)                                   |
+| 2     | `WithdrawImplementation`         | Yes (no constructor args)                                   |
+| 3     | `CounterfactualDepositSpokePool` | CREATE2: No (chain-specific constructor args) / CREATE: Yes |
+| 4     | `CounterfactualDepositCCTP`      | CREATE2: No (chain-specific constructor args) / CREATE: Yes |
+| 5     | `CounterfactualDepositOFT`       | CREATE2: No (chain-specific constructor args) / CREATE: Yes |
+| 6     | `AdminWithdrawManager`           | Yes (same constructor args)                                 |
 
-### How to Deploy
+### CREATE2 Deployment (Recommended)
+
+Deploys via the [deterministic deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy) (`0x4e59b44847b379578588920cA78FbF26c0B4956C`), available on all EVM chains. CREATE2 addresses depend on `(factory, salt, initCode)` — contracts with identical initCode get the same address everywhere. No fresh EOA, nonce ordering, or nonce burning required. Already-deployed contracts are auto-skipped.
+
+1. **Get the deployer address** (omit `--mnemonic-index` to use index 0):
+
+   ```bash
+   source .env
+   cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index <DERIVATION_INDEX>
+   ```
+
+2. **Fund the deployer** on the target chain with enough ETH for gas.
+
+3. **Simulate**:
+
+   ```bash
+   source .env
+   forge script \
+     script/counterfactual/DeployAllCounterfactualCreate2.s.sol:DeployAllCounterfactualCreate2 \
+     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+     $RPC_URL \
+     <spokePool> <signer> <wrappedNativeToken> \
+     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
+     <owner> <directWithdrawer> \
+     false \
+     --rpc-url $RPC_URL -vvvv
+   ```
+
+4. **Deploy** (set `broadcast` to `true` and add `--ffi`):
+
+   ```bash
+   forge script \
+     script/counterfactual/DeployAllCounterfactualCreate2.s.sol:DeployAllCounterfactualCreate2 \
+     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+     $RPC_URL \
+     <spokePool> <signer> <wrappedNativeToken> \
+     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
+     <owner> <directWithdrawer> \
+     true \
+     --rpc-url $RPC_URL --ffi -vvvv
+   ```
+
+### CREATE Deployment (Legacy, Nonce-Based)
+
+Deploys via plain `CREATE` from a fresh EOA starting at nonce 0. Since `CREATE` addresses depend only on `(sender, nonce)`, deploying in the same order from the same address produces identical addresses everywhere — regardless of constructor args. Requires a fresh EOA (nonce 0) and strict deployment ordering.
 
 1. **Choose a fresh derivation index** — pick an index from your mnemonic that has never sent a transaction on the target chain (nonce must be 0).
 
-2. **Get the deployer address** to know which address to fund (omit `--mnemonic-index` to use index 0):
+2. **Get the deployer address**:
 
    ```bash
    source .env
@@ -309,7 +353,7 @@ All 7 counterfactual contracts are deployed from a single EOA in a fixed order t
 
 3. **Fund the deployer** on the target chain with enough ETH for gas.
 
-4. **Simulate** (omit `--ffi` to dry-run without broadcasting):
+4. **Simulate**:
 
    ```bash
    source .env
@@ -340,23 +384,20 @@ All 7 counterfactual contracts are deployed from a single EOA in a fixed order t
 
 ### Skipping Contracts
 
-If a chain doesn't need certain implementations (e.g., no CCTP or OFT support), set the `SKIP` env var with a comma-separated list of deployment indices from the table above:
+Set the `SKIP` env var with a comma-separated list of deployment indices:
 
 ```bash
-DEPLOYER_INDEX=<DERIVATION_INDEX> SKIP=4,5 forge script \
-  script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-  --sig "run(...)" \
-  ... \
-  true \
-  --rpc-url $NODE_URL --ffi -vvvv
+SKIP=4,5 forge script \
+  script/counterfactual/DeployAllCounterfactualCreate2.s.sol:DeployAllCounterfactualCreate2 \
+  --sig "run(...)" ... true --rpc-url $NODE_URL --ffi -vvvv
 ```
 
-Skipped deployments burn the nonce with a 0-value self-transfer so that subsequent contracts still land at the correct addresses.
+With CREATE2, skipped contracts are simply not deployed. With CREATE, skipped deployments burn the nonce with a 0-value self-transfer so subsequent contracts still land at the correct addresses.
 
 ### Important
 
-- **Never send any other transactions** from the deployer address before all 7 deploys complete — this would consume a nonce and break the address mapping.
-- **Use the same derivation index** across all chains to get the same deployer address and thus the same contract addresses.
+- **CREATE deployment**: Never send any other transactions from the deployer address before all 7 deploys complete — this would consume a nonce and break the address mapping. Use the same derivation index across all chains.
+- **CREATE2 deployment**: Any funded address can deploy. No ordering constraints. Already-deployed contracts are auto-skipped.
 - Individual deploy scripts can still be run standalone. `DEPLOYER_INDEX` defaults to 0 if not set.
 
 ## Security Model
