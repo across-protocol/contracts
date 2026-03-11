@@ -303,53 +303,61 @@ All 7 counterfactual contracts are deployed from a single EOA in a fixed order t
 2. **Get the deployer address** to know which address to fund:
 
    ```bash
-   ./script/counterfactual/get-deployer-address.sh <derivation-index>
+   source .env
+   cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index <DERIVATION_INDEX>
    ```
 
 3. **Fund the deployer** on the target chain with enough ETH for gas.
 
-4. **Deploy all contracts**:
+4. **Simulate** (omit `--ffi` to dry-run without broadcasting):
 
    ```bash
-   ./script/counterfactual/deploy-all.sh \
-     --index <derivation-index> \
-     --rpc-url $NODE_URL \
-     --spoke-pool <SPOKE_POOL_ADDR> \
-     --signer <SIGNER_ADDR> \
-     --wrapped-native-token <WETH_ADDR> \
-     --cctp-periphery <CCTP_PERIPHERY_ADDR> \
-     --cctp-domain <CCTP_DOMAIN_ID> \
-     --oft-periphery <OFT_PERIPHERY_ADDR> \
-     --oft-eid <OFT_ENDPOINT_ID> \
-     --owner <OWNER_ADDR> \
-     --direct-withdrawer <WITHDRAWER_ADDR> \
-     --broadcast \
-     --verify
+   source .env
+   DEPLOYER_INDEX=<DERIVATION_INDEX> forge script \
+     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+     $NODE_URL \
+     <spokePool> <signer> <wrappedNativeToken> \
+     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
+     <owner> <directWithdrawer> \
+     false \
+     --rpc-url $NODE_URL -vvvv
    ```
 
-   Omit `--broadcast` to simulate first.
+5. **Deploy** (set `broadcast` to `true` and add `--ffi`):
+
+   ```bash
+   DEPLOYER_INDEX=<DERIVATION_INDEX> forge script \
+     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+     $NODE_URL \
+     <spokePool> <signer> <wrappedNativeToken> \
+     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
+     <owner> <directWithdrawer> \
+     true \
+     --rpc-url $NODE_URL --ffi -vvvv
+   ```
 
 ### Skipping Contracts
 
-If a chain doesn't need certain implementations (e.g., no CCTP or OFT support), use `--skip` with a comma-separated list of deployment indices from the table above:
+If a chain doesn't need certain implementations (e.g., no CCTP or OFT support), set the `SKIP` env var with a comma-separated list of deployment indices from the table above:
 
 ```bash
-./script/counterfactual/deploy-all.sh \
-  --skip 4,5 \
-  ...
+DEPLOYER_INDEX=<DERIVATION_INDEX> SKIP=4,5 forge script \
+  script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+  --sig "run(...)" \
+  ... \
+  true \
+  --rpc-url $NODE_URL --ffi -vvvv
 ```
 
-Skipped deployments are not deployed, but a dummy transaction (0-value self-transfer) is sent to burn the nonce so that subsequent contracts still land at the correct addresses. Arguments for skipped contracts (e.g., `--cctp-periphery`, `--cctp-domain`) can be omitted.
-
-### Resuming a Partial Deployment
-
-If a deployment is interrupted partway through, re-running the script will automatically skip contracts whose nonces have already been consumed and continue from where it left off.
+Skipped deployments burn the nonce with a 0-value self-transfer so that subsequent contracts still land at the correct addresses.
 
 ### Important
 
 - **Never send any other transactions** from the deployer address before all 7 deploys complete — this would consume a nonce and break the address mapping.
 - **Use the same derivation index** across all chains to get the same deployer address and thus the same contract addresses.
-- Individual scripts can still be run standalone, but `DEPLOYER_INDEX` env var must be set.
+- Individual deploy scripts can still be run standalone, but the `DEPLOYER_INDEX` env var must be set.
 
 ## Security Model
 

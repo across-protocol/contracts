@@ -85,7 +85,7 @@ contract DeployAllCounterfactual is Script, Test {
         console.log("============================================");
 
         // Build the common forge flags used for every deploy script invocation.
-        string memory broadcastFlag = broadcast ? " --broadcast --verify" : "";
+        string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
 
         // --- Nonce 0: CounterfactualDeposit ---
         // Base implementation that all clones proxy to.
