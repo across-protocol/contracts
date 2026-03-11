@@ -4,16 +4,42 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
+import { StdConstants } from "forge-std/StdConstants.sol";
 
-// Deploys all 7 counterfactual contracts by invoking each individual deploy script via ffi.
-// Each `forge script` invocation is separate, so broadcast artifacts are recorded in each
-// deploy script's own folder (e.g. broadcast/DeployCounterfactualDeposit/<chainId>/).
+import { CounterfactualDeposit } from "../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
+import { CounterfactualDepositFactory } from "../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
+import { WithdrawImplementation } from "../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
+import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
+
+// Deploys all 7 counterfactual contracts via CREATE2 using the deterministic deployment proxy
+// (0x4e59b44847b379578588920cA78FbF26c0B4956C). Each individual deploy script is invoked via ffi
+// so broadcast artifacts are recorded in each script's own folder.
 //
-// CREATE addresses are determined by (sender, nonce). By deploying from the same address
-// starting at nonce 0 on every chain, each contract lands at the same address across all
-// chains regardless of constructor arguments.
+// CREATE2 addresses are determined by (factory, salt, initCode). Contracts with identical initCode
+// across chains (no constructor args, or same constructor args) get the same address everywhere.
+// Contracts with chain-specific constructor args get chain-specific addresses.
 //
-// Deployment order (nonce -> contract):
+// Same address across all chains:
+//   - CounterfactualDeposit (no constructor args)
+//   - CounterfactualDepositFactory (no constructor args)
+//   - WithdrawImplementation (no constructor args)
+//   - AdminWithdrawManager (same constructor args on all chains)
+//
+// Chain-specific addresses (different constructor args per chain):
+//   - CounterfactualDepositSpokePool
+//   - CounterfactualDepositCCTP
+//   - CounterfactualDepositOFT
+//
+// Advantages over nonce-based (CREATE) deployment:
+//   - No fresh EOA required — any funded address can deploy
+//   - No nonce burning for skipped contracts
+//   - No ordering dependency — deploy in any order
+//   - Idempotent — already-deployed contracts are auto-skipped
+//
+// Deployment index -> contract (for SKIP env var):
 //   0 = CounterfactualDeposit
 //   1 = CounterfactualDepositFactory
 //   2 = WithdrawImplementation
@@ -24,30 +50,24 @@ import { console } from "forge-std/console.sol";
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
-//   DEPLOYER_INDEX    - Optional. BIP-44 derivation index (m/44'/60'/0'/0/<index>). Defaults to 0.
 //   SKIP              - Optional. Comma-separated deployment indices to skip (e.g. "4,5").
-//                       Skipped deployments burn the nonce with a 0-value self-transfer
-//                       so subsequent contracts still get the correct addresses.
 //
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
-// 2. DEPLOYER_INDEX=5 forge script \
+// 2. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
 //      --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
-//      $NODE_URL <spokePool> <signer> <wrappedNativeToken> \
+//      <rpcUrl> <spokePool> <signer> <wrappedNativeToken> \
 //      <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
 //      <owner> <directWithdrawer> true \
-//      --rpc-url $NODE_URL -vvvv
-// 3. Verify the logged forge commands look correct
-// 4. Deploy: set the last arg (broadcast) to true and add --ffi to the command
+//      --rpc-url <rpcUrl> --ffi -vvvv
+// 3. Verify the logged predicted addresses and forge commands look correct
 //
 // To skip deployments (e.g. CCTP and OFT):
-//   DEPLOYER_INDEX=5 SKIP=4,5 forge script ... --ffi
+//   SKIP=4,5 forge script ... --ffi
 contract DeployAllCounterfactual is Script, Test {
-    // Total number of counterfactual contracts to deploy.
     uint256 constant TOTAL_DEPLOYMENTS = 7;
 
-    // Individual deploy script paths, relative to the repo root.
     string constant SCRIPT_DIR = "script/counterfactual/";
 
     function run(
@@ -63,83 +83,117 @@ contract DeployAllCounterfactual is Script, Test {
         address directWithdrawer,
         bool broadcast
     ) external {
-        // Derive the deployer's address from the mnemonic to check its nonce.
         string memory mnemonic = vm.envString("MNEMONIC");
-        uint256 deployerIndex = vm.envOr("DEPLOYER_INDEX", uint256(0));
-        uint256 deployerPrivateKey = vm.deriveKey(mnemonic, uint32(deployerIndex));
+        uint256 deployerPrivateKey = vm.deriveKey(mnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
-        // Parse the SKIP env var into a boolean array. Each index (0-6) maps to a contract.
         bool[TOTAL_DEPLOYMENTS] memory skip = _parseSkipList();
 
-        // Log the deployer's current nonce on-chain.
-        uint64 nonce = vm.getNonce(deployer);
+        // Log predicted addresses upfront so they can be verified before deploying.
+        console.log("============================================");
+        console.log("Counterfactual Contracts CREATE2 Deployment");
+        console.log("============================================");
+        console.log("Deployer:  ", deployer);
+        console.log("Chain ID:  ", block.chainid);
+        console.log("Broadcast: ", broadcast);
+        console.log("--------------------------------------------");
+        console.log("Predicted addresses:");
 
-        console.log("============================================");
-        console.log("Counterfactual Contracts Deployment");
-        console.log("============================================");
-        console.log("Deployer: ", deployer);
-        console.log("Nonce:    ", uint256(nonce));
-        console.log("Chain ID: ", block.chainid);
-        console.log("Broadcast:", broadcast);
+        address[TOTAL_DEPLOYMENTS] memory predicted;
+        predicted[0] = _predictCreate2(bytes32(0), type(CounterfactualDeposit).creationCode);
+        predicted[1] = _predictCreate2(bytes32(0), type(CounterfactualDepositFactory).creationCode);
+        predicted[2] = _predictCreate2(bytes32(0), type(WithdrawImplementation).creationCode);
+        predicted[3] = _predictCreate2(
+            bytes32(0),
+            abi.encodePacked(
+                type(CounterfactualDepositSpokePool).creationCode,
+                abi.encode(spokePool, signer, wrappedNativeToken)
+            )
+        );
+        predicted[4] = _predictCreate2(
+            bytes32(0),
+            abi.encodePacked(type(CounterfactualDepositCCTP).creationCode, abi.encode(cctpPeriphery, cctpDomain))
+        );
+        predicted[5] = _predictCreate2(
+            bytes32(0),
+            abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid))
+        );
+        predicted[6] = _predictCreate2(
+            bytes32(0),
+            abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(owner, directWithdrawer, signer))
+        );
+
+        string[TOTAL_DEPLOYMENTS] memory names = [
+            "CounterfactualDeposit",
+            "CounterfactualDepositFactory",
+            "WithdrawImplementation",
+            "CounterfactualDepositSpokePool",
+            "CounterfactualDepositCCTP",
+            "CounterfactualDepositOFT",
+            "AdminWithdrawManager"
+        ];
+
+        // Auto-skip contracts that are already deployed at the predicted address.
+        for (uint256 i = 0; i < TOTAL_DEPLOYMENTS; i++) {
+            if (predicted[i].code.length > 0) skip[i] = true;
+            string memory status = skip[i] ? " [SKIP]" : "";
+            if (predicted[i].code.length > 0) status = " [ALREADY DEPLOYED]";
+            console.log("  [%d] %s: %s", i, string.concat(names[i], status), predicted[i]);
+        }
         console.log("============================================");
 
-        // Build the common forge flags used for every deploy script invocation.
         string memory broadcastFlag = broadcast ? " --broadcast --verify --retries 5 --delay 10" : "";
 
-        // --- Nonce 0: CounterfactualDeposit ---
-        // Base implementation that all clones proxy to.
+        // --- 0: CounterfactualDeposit (base implementation that all clones proxy to) ---
         if (skip[0]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 0, "CounterfactualDeposit", broadcast);
+            console.log("[0] CounterfactualDeposit: SKIPPED");
         } else {
+            console.log("[0] Deploying CounterfactualDeposit...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployCounterfactualDeposit.s.sol"),
                 "DeployCounterfactualDeposit",
-                "", // no --sig needed, uses default run()
-                0,
-                "CounterfactualDeposit"
+                "",
+                0
             );
         }
 
-        // --- Nonce 1: CounterfactualDepositFactory ---
-        // Factory that deploys deterministic clones via CREATE2.
+        // --- 1: CounterfactualDepositFactory (factory that deploys deterministic clones via CREATE2) ---
         if (skip[1]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 1, "CounterfactualDepositFactory", broadcast);
+            console.log("[1] CounterfactualDepositFactory: SKIPPED");
         } else {
+            console.log("[1] Deploying CounterfactualDepositFactory...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployCounterfactualDepositFactory.s.sol"),
                 "DeployCounterfactualDepositFactory",
                 "",
-                1,
-                "CounterfactualDepositFactory"
+                1
             );
         }
 
-        // --- Nonce 2: WithdrawImplementation ---
-        // Withdraw implementation, included as a merkle leaf in each clone.
+        // --- 2: WithdrawImplementation (withdraw logic, included as a merkle leaf in each clone) ---
         if (skip[2]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 2, "WithdrawImplementation", broadcast);
+            console.log("[2] WithdrawImplementation: SKIPPED");
         } else {
+            console.log("[2] Deploying WithdrawImplementation...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployWithdrawImplementation.s.sol"),
                 "DeployWithdrawImplementation",
                 "",
-                2,
-                "WithdrawImplementation"
+                2
             );
         }
 
-        // --- Nonce 3: CounterfactualDepositSpokePool ---
-        // Deposit implementation for Across SpokePool bridge type.
+        // --- 3: CounterfactualDepositSpokePool (deposit implementation for Across SpokePool) ---
         if (skip[3]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 3, "CounterfactualDepositSpokePool", broadcast);
+            console.log("[3] CounterfactualDepositSpokePool: SKIPPED");
         } else {
+            console.log("[3] Deploying CounterfactualDepositSpokePool...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
@@ -153,16 +207,15 @@ contract DeployAllCounterfactual is Script, Test {
                     " ",
                     vm.toString(wrappedNativeToken)
                 ),
-                3,
-                "CounterfactualDepositSpokePool"
+                3
             );
         }
 
-        // --- Nonce 4: CounterfactualDepositCCTP ---
-        // Deposit implementation for Circle CCTP bridge type.
+        // --- 4: CounterfactualDepositCCTP (deposit implementation for Circle CCTP) ---
         if (skip[4]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 4, "CounterfactualDepositCCTP", broadcast);
+            console.log("[4] CounterfactualDepositCCTP: SKIPPED");
         } else {
+            console.log("[4] Deploying CounterfactualDepositCCTP...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
@@ -174,16 +227,15 @@ contract DeployAllCounterfactual is Script, Test {
                     " ",
                     vm.toString(uint256(cctpDomain))
                 ),
-                4,
-                "CounterfactualDepositCCTP"
+                4
             );
         }
 
-        // --- Nonce 5: CounterfactualDepositOFT ---
-        // Deposit implementation for LayerZero OFT bridge type.
+        // --- 5: CounterfactualDepositOFT (deposit implementation for LayerZero OFT) ---
         if (skip[5]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 5, "CounterfactualDepositOFT", broadcast);
+            console.log("[5] CounterfactualDepositOFT: SKIPPED");
         } else {
+            console.log("[5] Deploying CounterfactualDepositOFT...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
@@ -195,16 +247,15 @@ contract DeployAllCounterfactual is Script, Test {
                     " ",
                     vm.toString(uint256(oftEid))
                 ),
-                5,
-                "CounterfactualDepositOFT"
+                5
             );
         }
 
-        // --- Nonce 6: AdminWithdrawManager ---
-        // Admin contract for managing withdrawals from clones.
+        // --- 6: AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
         if (skip[6]) {
-            _burnNonce(deployer, deployerPrivateKey, rpcUrl, 6, "AdminWithdrawManager", broadcast);
+            console.log("[6] AdminWithdrawManager: SKIPPED");
         } else {
+            console.log("[6] Deploying AdminWithdrawManager...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
@@ -218,8 +269,7 @@ contract DeployAllCounterfactual is Script, Test {
                     " ",
                     vm.toString(signer)
                 ),
-                6,
-                "AdminWithdrawManager"
+                6
             );
         }
 
@@ -229,21 +279,14 @@ contract DeployAllCounterfactual is Script, Test {
     }
 
     /// @dev Invokes a single deploy script via `forge script` using vm.ffi().
-    /// Each invocation is a separate forge process, so broadcast artifacts are written
-    /// to the individual script's broadcast folder.
     function _runForgeScript(
         string memory rpcUrl,
         string memory broadcastFlag,
         string memory scriptPath,
         string memory contractName,
         string memory sigArgs,
-        uint256 index,
-        string memory description
+        uint256 index
     ) internal {
-        console.log("[%d] Deploying %s...", index, description);
-
-        // Build the full forge command. The DEPLOYER_INDEX env var is inherited by the
-        // child process since it was set in the parent's environment.
         // Append `|| true` so that non-fatal failures (e.g. etherscan verification
         // timing out) don't cause ffi to revert and halt subsequent deployments.
         string memory cmd = string.concat(
@@ -260,54 +303,34 @@ contract DeployAllCounterfactual is Script, Test {
 
         console.log("  cmd: %s", cmd);
 
-        // Execute via bash so that the full command string is parsed correctly
-        // (handles --sig with quotes, multiple args, etc).
         string[] memory args = new string[](3);
         args[0] = "bash";
         args[1] = "-c";
         args[2] = cmd;
         vm.ffi(args);
 
-        console.log("[%d] %s deployed.", index, description);
+        console.log("[%d] Done.", index);
     }
 
-    /// @dev Burns a nonce by sending a 0-value self-transfer via `cast send`.
-    /// Uses ffi when broadcasting, otherwise logs a skip message.
-    function _burnNonce(
-        address deployer,
-        uint256 deployerPrivateKey,
-        string memory rpcUrl,
-        uint256 index,
-        string memory name,
-        bool broadcast
-    ) internal {
-        console.log("[%d] %s: SKIPPED (burning nonce)", index, name);
-
-        if (broadcast) {
-            // Use cast send to burn the nonce with a 0-value self-transfer.
-            string[] memory args = new string[](3);
-            args[0] = "bash";
-            args[1] = "-c";
-            args[2] = string.concat(
-                "cast send ",
-                vm.toString(deployer),
-                " --value 0 --private-key ",
-                vm.toString(bytes32(deployerPrivateKey)),
-                " --rpc-url ",
-                rpcUrl
+    /// @dev Predicts the CREATE2 address for a given salt and initCode.
+    function _predictCreate2(bytes32 salt, bytes memory initCode) internal pure returns (address) {
+        return
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(bytes1(0xff), StdConstants.CREATE2_FACTORY, salt, keccak256(initCode))
+                        )
+                    )
+                )
             );
-            vm.ffi(args);
-        }
     }
 
     /// @dev Parses the SKIP env var (comma-separated indices like "4,5") into a boolean array.
-    /// Returns a fixed-size array where skip[i] == true means deployment i should be skipped.
     function _parseSkipList() internal view returns (bool[TOTAL_DEPLOYMENTS] memory skip) {
-        // If SKIP is not set, return all false (deploy everything).
         string memory skipEnv = vm.envOr("SKIP", string(""));
         if (bytes(skipEnv).length == 0) return skip;
 
-        // Parse comma-separated indices. Each character is either a digit (0-6) or a comma.
         bytes memory raw = bytes(skipEnv);
         for (uint256 i = 0; i < raw.length; i++) {
             if (raw[i] == ",") continue;
