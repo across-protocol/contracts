@@ -55,6 +55,7 @@ struct SubmitterInputs {
 interface IOrderGateway {
     function submit(
         Order calldata order,
+        // Note: Gateway has to check that `orderOwnerFunding` confirms order.orderOwner to prevent DOS-attacks
         Funding calldata orderOwnerFunding,
         SubmitterInputs calldata submitterInputs
     ) external payable;
