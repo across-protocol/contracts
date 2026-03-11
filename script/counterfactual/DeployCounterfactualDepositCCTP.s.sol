@@ -17,7 +17,7 @@ import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfact
 contract DeployCounterfactualDepositCCTP is Script, Test {
     function run(address srcPeriphery, uint32 sourceDomain) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envUint("DEPLOYER_INDEX")));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
 
         require(srcPeriphery != address(0), "SrcPeriphery cannot be zero address");
 

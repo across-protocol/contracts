@@ -24,7 +24,7 @@ import { console } from "forge-std/console.sol";
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
-//   DEPLOYER_INDEX    - Required. BIP-44 derivation index (m/44'/60'/0'/0/<index>).
+//   DEPLOYER_INDEX    - Optional. BIP-44 derivation index (m/44'/60'/0'/0/<index>). Defaults to 0.
 //   SKIP              - Optional. Comma-separated deployment indices to skip (e.g. "4,5").
 //                       Skipped deployments burn the nonce with a 0-value self-transfer
 //                       so subsequent contracts still get the correct addresses.
@@ -65,7 +65,7 @@ contract DeployAllCounterfactual is Script, Test {
     ) external {
         // Derive the deployer's address from the mnemonic to check its nonce.
         string memory mnemonic = vm.envString("MNEMONIC");
-        uint256 deployerIndex = vm.envUint("DEPLOYER_INDEX");
+        uint256 deployerIndex = vm.envOr("DEPLOYER_INDEX", uint256(0));
         uint256 deployerPrivateKey = vm.deriveKey(mnemonic, uint32(deployerIndex));
         address deployer = vm.addr(deployerPrivateKey);
 

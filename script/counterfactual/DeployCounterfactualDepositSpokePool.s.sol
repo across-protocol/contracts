@@ -17,7 +17,7 @@ import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counte
 contract DeployCounterfactualDepositSpokePool is Script, Test {
     function run(address spokePool, address signer, address wrappedNativeToken) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envUint("DEPLOYER_INDEX")));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
 
         require(spokePool != address(0), "SpokePool cannot be zero address");
         require(signer != address(0), "Signer cannot be zero address");
