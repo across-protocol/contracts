@@ -179,7 +179,7 @@ The script recognizes these chains:
 ## How It Works
 
 1. The script scans the `broadcast/` directory for `run-latest.json` files
-2. It also reads from `deployments/deployments.json` for additional contract addresses
+2. It also reads from `deployments/legacy-addresses.json` for additional contract addresses
 3. It extracts contract addresses from each file's transaction data
 4. It organizes the data by chain ID and contract name
 5. It generates the three output files with the extracted information

@@ -77,11 +77,7 @@ contract WETH9 {
     /**
      * @dev Local change: marked virtual to allow overriding.
      */
-    function transferFrom(
-        address src,
-        address dst,
-        uint256 wad
-    ) public virtual returns (bool) {
+    function transferFrom(address src, address dst, uint256 wad) public virtual returns (bool) {
         require(balanceOf[src] >= wad);
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
