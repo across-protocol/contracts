@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 
+import { Create2DeployUtils } from "./Create2DeployUtils.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // How to run:
@@ -14,7 +14,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //      --rpc-url $NODE_URL -vvvv
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployAdminWithdrawManager is Script, Test {
+contract DeployAdminWithdrawManager is Create2DeployUtils, Test {
     function run(address owner, address directWithdrawer, address signer) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
@@ -23,18 +23,23 @@ contract DeployAdminWithdrawManager is Script, Test {
         require(directWithdrawer != address(0), "Direct withdrawer cannot be zero address");
         require(signer != address(0), "Signer cannot be zero address");
 
-        console.log("Deploying AdminWithdrawManager...");
+        bytes memory initCode = abi.encodePacked(
+            type(AdminWithdrawManager).creationCode,
+            abi.encode(owner, directWithdrawer, signer)
+        );
+        address predicted = _predictCreate2(bytes32(0), initCode);
+
+        console.log("Deploying AdminWithdrawManager via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("Owner:", owner);
         console.log("Direct withdrawer:", directWithdrawer);
         console.log("Signer:", signer);
+        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
-
-        AdminWithdrawManager manager = new AdminWithdrawManager(owner, directWithdrawer, signer);
-
-        console.log("AdminWithdrawManager deployed to:", address(manager));
-
+        address deployed = _deployCreate2(bytes32(0), initCode);
         vm.stopBroadcast();
+
+        console.log("AdminWithdrawManager deployed to:", deployed);
     }
 }

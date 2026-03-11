@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 
+import { Create2DeployUtils } from "./Create2DeployUtils.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 
 // How to run:
@@ -14,24 +14,29 @@ import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactu
 //      --rpc-url $NODE_URL -vvvv
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployCounterfactualDepositOFT is Script, Test {
+contract DeployCounterfactualDepositOFT is Create2DeployUtils, Test {
     function run(address oftSrcPeriphery, uint32 srcEid) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
 
         require(oftSrcPeriphery != address(0), "OFT SrcPeriphery cannot be zero address");
 
-        console.log("Deploying CounterfactualDepositOFT...");
+        bytes memory initCode = abi.encodePacked(
+            type(CounterfactualDepositOFT).creationCode,
+            abi.encode(oftSrcPeriphery, srcEid)
+        );
+        address predicted = _predictCreate2(bytes32(0), initCode);
+
+        console.log("Deploying CounterfactualDepositOFT via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("OFT SrcPeriphery:", oftSrcPeriphery);
         console.log("Source EID:", uint256(srcEid));
+        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
-
-        CounterfactualDepositOFT impl = new CounterfactualDepositOFT(oftSrcPeriphery, srcEid);
-
-        console.log("CounterfactualDepositOFT deployed to:", address(impl));
-
+        address deployed = _deployCreate2(bytes32(0), initCode);
         vm.stopBroadcast();
+
+        console.log("CounterfactualDepositOFT deployed to:", deployed);
     }
 }

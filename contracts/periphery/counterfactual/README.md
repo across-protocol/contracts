@@ -282,39 +282,28 @@ For subsequent deposits, callers can call the clone directly or use `factory.exe
 
 ## Deployment
 
-Two deployment strategies are available: **CREATE2** (recommended) and **CREATE** (legacy, nonce-based).
+Deploys all 7 contracts via the [deterministic deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy) (`0x4e59b44847b379578588920cA78FbF26c0B4956C`), available on all EVM chains. CREATE2 addresses depend on `(factory, salt, initCode)` — contracts with identical initCode get the same address everywhere. No fresh EOA, nonce ordering, or nonce burning required. Already-deployed contracts are auto-skipped.
 
 ### Contracts
 
-| Index | Contract                         | Same address across chains?                                 |
-| ----- | -------------------------------- | ----------------------------------------------------------- |
-| 0     | `CounterfactualDeposit`          | Yes (no constructor args)                                   |
-| 1     | `CounterfactualDepositFactory`   | Yes (no constructor args)                                   |
-| 2     | `WithdrawImplementation`         | Yes (no constructor args)                                   |
-| 3     | `CounterfactualDepositSpokePool` | CREATE2: No (chain-specific constructor args) / CREATE: Yes |
-| 4     | `CounterfactualDepositCCTP`      | CREATE2: No (chain-specific constructor args) / CREATE: Yes |
-| 5     | `CounterfactualDepositOFT`       | CREATE2: No (chain-specific constructor args) / CREATE: Yes |
-| 6     | `AdminWithdrawManager`           | Yes (same constructor args)                                 |
+| Index | Contract                         | Same address across chains?               |
+| ----- | -------------------------------- | ----------------------------------------- |
+| 0     | `CounterfactualDeposit`          | Yes (no constructor args)                 |
+| 1     | `CounterfactualDepositFactory`   | Yes (no constructor args)                 |
+| 2     | `WithdrawImplementation`         | Yes (no constructor args)                 |
+| 3     | `CounterfactualDepositSpokePool` | No (chain-specific constructor args)      |
+| 4     | `CounterfactualDepositCCTP`      | No (chain-specific constructor args)      |
+| 5     | `CounterfactualDepositOFT`       | No (chain-specific constructor args)      |
+| 6     | `AdminWithdrawManager`           | Yes (same constructor args on all chains) |
 
-### CREATE2 Deployment (Recommended)
+1. **Fund the deployer** on the target chain with enough ETH for gas.
 
-Deploys via the [deterministic deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy) (`0x4e59b44847b379578588920cA78FbF26c0B4956C`), available on all EVM chains. CREATE2 addresses depend on `(factory, salt, initCode)` — contracts with identical initCode get the same address everywhere. No fresh EOA, nonce ordering, or nonce burning required. Already-deployed contracts are auto-skipped.
-
-1. **Get the deployer address** (omit `--mnemonic-index` to use index 0):
-
-   ```bash
-   source .env
-   cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index <DERIVATION_INDEX>
-   ```
-
-2. **Fund the deployer** on the target chain with enough ETH for gas.
-
-3. **Simulate**:
+2. **Simulate**:
 
    ```bash
    source .env
    forge script \
-     script/counterfactual/DeployAllCounterfactualCreate2.s.sol:DeployAllCounterfactualCreate2 \
+     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
      --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
      $RPC_URL \
      <spokePool> <signer> <wrappedNativeToken> \
@@ -324,11 +313,11 @@ Deploys via the [deterministic deployment proxy](https://github.com/Arachnid/det
      --rpc-url $RPC_URL -vvvv
    ```
 
-4. **Deploy** (set `broadcast` to `true` and add `--ffi`):
+3. **Deploy** (set `broadcast` to `true` and add `--ffi`):
 
    ```bash
    forge script \
-     script/counterfactual/DeployAllCounterfactualCreate2.s.sol:DeployAllCounterfactualCreate2 \
+     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
      --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
      $RPC_URL \
      <spokePool> <signer> <wrappedNativeToken> \
@@ -338,67 +327,20 @@ Deploys via the [deterministic deployment proxy](https://github.com/Arachnid/det
      --rpc-url $RPC_URL --ffi -vvvv
    ```
 
-### CREATE Deployment (Legacy, Nonce-Based)
-
-Deploys via plain `CREATE` from a fresh EOA starting at nonce 0. Since `CREATE` addresses depend only on `(sender, nonce)`, deploying in the same order from the same address produces identical addresses everywhere — regardless of constructor args. Requires a fresh EOA (nonce 0) and strict deployment ordering.
-
-1. **Choose a fresh derivation index** — pick an index from your mnemonic that has never sent a transaction on the target chain (nonce must be 0).
-
-2. **Get the deployer address**:
-
-   ```bash
-   source .env
-   cast wallet address --mnemonic "$MNEMONIC" --mnemonic-index <DERIVATION_INDEX>
-   ```
-
-3. **Fund the deployer** on the target chain with enough ETH for gas.
-
-4. **Simulate**:
-
-   ```bash
-   source .env
-   DEPLOYER_INDEX=<DERIVATION_INDEX> forge script \
-     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
-     $NODE_URL \
-     <spokePool> <signer> <wrappedNativeToken> \
-     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
-     <owner> <directWithdrawer> \
-     false \
-     --rpc-url $NODE_URL -vvvv
-   ```
-
-5. **Deploy** (set `broadcast` to `true` and add `--ffi`):
-
-   ```bash
-   DEPLOYER_INDEX=<DERIVATION_INDEX> forge script \
-     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
-     $NODE_URL \
-     <spokePool> <signer> <wrappedNativeToken> \
-     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
-     <owner> <directWithdrawer> \
-     true \
-     --rpc-url $NODE_URL --ffi -vvvv
-   ```
-
 ### Skipping Contracts
 
 Set the `SKIP` env var with a comma-separated list of deployment indices:
 
 ```bash
 SKIP=4,5 forge script \
-  script/counterfactual/DeployAllCounterfactualCreate2.s.sol:DeployAllCounterfactualCreate2 \
-  --sig "run(...)" ... true --rpc-url $NODE_URL --ffi -vvvv
+  script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+  --sig "run(...)" ... true --rpc-url $RPC_URL --ffi -vvvv
 ```
-
-With CREATE2, skipped contracts are simply not deployed. With CREATE, skipped deployments burn the nonce with a 0-value self-transfer so subsequent contracts still land at the correct addresses.
 
 ### Important
 
-- **CREATE deployment**: Never send any other transactions from the deployer address before all 7 deploys complete — this would consume a nonce and break the address mapping. Use the same derivation index across all chains.
-- **CREATE2 deployment**: Any funded address can deploy. No ordering constraints. Already-deployed contracts are auto-skipped.
-- Individual deploy scripts can still be run standalone. `DEPLOYER_INDEX` defaults to 0 if not set.
+- Any funded address can deploy. No ordering constraints. Already-deployed contracts are auto-skipped.
+- Individual deploy scripts can still be run standalone.
 
 ## Security Model
 
