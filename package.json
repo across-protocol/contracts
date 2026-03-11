@@ -44,6 +44,7 @@
     "tron-deploy-counterfactual-deposit-spokepool": "ts-node script/counterfactual/tron/tron-deploy-counterfactual-deposit-spokepool.ts",
     "tron-deploy-withdraw-implementation": "ts-node script/counterfactual/tron/tron-deploy-withdraw-implementation.ts",
     "tron-deploy-counterfactual-clone": "ts-node script/counterfactual/tron/tron-deploy-counterfactual-clone.ts",
+    "tron-deploy-sp1-helios": "ts-node script/universal/tron-deploy-sp1-helios.ts",
     "test-evm": "yarn test-evm-hardhat && yarn test-evm-foundry",
     "test-evm-hardhat": "IS_TEST=true hardhat test",
     "test-evm-foundry": "FOUNDRY_PROFILE=local-test forge test",

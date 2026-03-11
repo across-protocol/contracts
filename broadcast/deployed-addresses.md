@@ -417,6 +417,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactoryTron | TYBSVXEmXkrQp2TjUdURNEoAGYthSbBsmC |
 | CounterfactualDepositOFT         | TYfr7TRPsMXgSe1YaheRQ6UWUf9hP81Wn7 |
 | CounterfactualDepositSpokePool   | TTqh3vcDpSdpEVX69kKgDH1xReSrytZXgJ |
+| SP1HeliosTron                    | TQoCAvG5ebTJte3hYoT9NtgtPSmbR1Mr84 |
 | WithdrawImplementation           | TSmjwgJEyDE9bu9ryRggLgsHv3dyY1AY71 |
 
 ## Solana Devnet (133268194659241)

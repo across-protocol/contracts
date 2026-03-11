@@ -75,4 +75,24 @@ script = "script/counterfactual"
 cache_path = "cache-foundry-tron"
 out = "out-tron"
 
+[profile.tron-universal]
+solc = "bin/solc-tron"
+evm_version = "cancun"
+src = "contracts/sp1-helios/tron"
+test = "test/evm/foundry/tron"
+script = "script/universal/tron"
+cache_path = "cache-foundry-tron-universal"
+out = "out-tron-universal"
+
+[profile.tron-spokepool]
+solc = "bin/solc-tron"
+evm_version = "cancun"
+src = "contracts"
+test = "test/evm/foundry/tron"
+script = "script/universal/tron"
+cache_path = "cache-foundry-tron-spokepool"
+out = "out-tron-spokepool"
+ignored_error_codes = ["license"]
+deny_warnings = false
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
