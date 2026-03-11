@@ -9,7 +9,10 @@ import { Arbitrum_Adapter } from "../contracts/chain-adapters/Arbitrum_Adapter.s
 import { Constants } from "./utils/Constants.sol";
 
 import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
-import { ArbitrumInboxLike as ArbitrumL1InboxLike, ArbitrumL1ERC20GatewayLike } from "../contracts/interfaces/ArbitrumBridge.sol";
+import {
+    ArbitrumInboxLike as ArbitrumL1InboxLike,
+    ArbitrumL1ERC20GatewayLike
+} from "../contracts/interfaces/ArbitrumBridge.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
