@@ -123,6 +123,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler          | [0xeC41F75c686e376Ab2a4F18bde263ab5822c4511](https://monadvision.com/address/0xeC41F75c686e376Ab2a4F18bde263ab5822c4511) |
 | SP1Helios                 | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://monadvision.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePool                 | [0xd2ecb3afe598b746F8123CaE365a598DA831A449](https://monadvision.com/address/0xd2ecb3afe598b746F8123CaE365a598DA831A449) |
+| SpokePoolPeriphery        | [0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7](https://monadvision.com/address/0xe9b0666DFfC176Df6686726CB9aaC78fD83D20d7) |
 | SpokePoolPeriphery        | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://monadvision.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SponsoredCCTPSrcPeriphery | [0xc49226858478DE8757E425661b1B5297102330d7](https://monadvision.com/address/0xc49226858478DE8757E425661b1B5297102330d7) |
 | SponsoredOFTSrcPeriphery  | [0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0](https://monadvision.com/address/0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0) |
@@ -175,6 +176,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | MulticallHandler          | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
 | SP1Helios                 | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | SpokePool                 | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
+| SpokePoolPeriphery        | [0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb](https://hyperevmscan.io//address/0xF1BF00D947267Da5cC63f8c8A60568c59FA31bCb) |
 | SpokePoolPeriphery        | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://hyperevmscan.io//address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery | [0x478D451e101bE484880a14cf3cCC293CD48E6140](https://hyperevmscan.io//address/0x478D451e101bE484880a14cf3cCC293CD48E6140) |
@@ -204,6 +206,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 | Contract Name      | Address                                                                                                                            |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| MulticallHandler   | [0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90](https://explore.mainnet.tempo.xyz/address/0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90) |
 | MulticallHandler   | [0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90](https://explore.mainnet.tempo.xyz/address/0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90) |
 | SP1Helios          | [0x2BC84A3777469f67e040DAb9d00512a5D5258f39](https://explore.mainnet.tempo.xyz/address/0x2BC84A3777469f67e040DAb9d00512a5D5258f39) |
 | SpokePool          | [0x2d4710F04Da90184255782d3715224A6C776955D](https://explore.mainnet.tempo.xyz/address/0x2d4710F04Da90184255782d3715224A6C776955D) |
