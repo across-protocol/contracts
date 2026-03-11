@@ -21,14 +21,14 @@ struct Uniqueness {
     bytes32 nonce; // if !enforce, nonce is ignored for id generation and uniqueness checks
 }
 
-struct FundingPlan {
-    bytes fundingCommands; // restricted funding-only commands
-    TypedData fundingInputs; // command inputs excluding signatures / permits / auth payloads
-}
-
-struct FundingExecution {
-    FundingPlan plan;
-    TypedData authorizationData; // signatures / permits / auth payloads consumed by funding commands
+// TODO: should this just be an array of TypedData? E.g. funding type enum + whatever data is needed to pull that funding
+// TODO: user is not signing over any of these (e.g. if doing gasless, so decoupling doesn't matter here)
+// Note: for TWA funding, a user submitting an order should make sure to select `Uniqueness` param that would enforce orderId
+// uniqueness, since witness == TWA nonce
+struct Funding {
+    bytes fundingCommands; // restricted funding-only commands; gasless orderOwner auth also proves namespace auth
+    TypedData fundingInputs; // hashable command inputs, excluding signatures / permits / auth payloads
+    TypedData authorizationData; // signatures / permits / auth payloads, excluded from ids and witnesses
 }
 
 struct Order {
@@ -38,105 +38,141 @@ struct Order {
     Uniqueness uniqueness;
 }
 
+struct PathResolution {
+    // TODO: how to represent the two below more compactly when a plaintext Path is selected by the user?
+    Path path;
+    bytes32[] pathProof; // empty when pathOrMerkleRoot directly specifies a single raw Path
+    // Note: sometimes, a submitter wants this emitted to Prove their right to e.g. get sponsorship repayment
+    bool emitPathId;
+}
+
 struct SubmitterInputs {
-    TypedData pathResolution; // resolves pathOrMerkleRoot into a concrete path when a Merkle root was supplied
-    FundingExecution funding;
+    PathResolution pathResolution;
+    Funding funding;
+    bytes executorData; // submitter-authored blob handed to Executor with the resolved path
 }
 
 interface IOrderGateway {
     function submit(
         Order calldata order,
-        FundingExecution calldata orderOwnerFunding,
+        Funding calldata orderOwnerFunding,
         SubmitterInputs calldata submitterInputs
     ) external payable;
 }
 
-library USDFreeHashes {
-    function stepHash(Step calldata step) internal pure returns (bytes32) {
-        return keccak256(abi.encode(step.executor, keccak256(step.message)));
+library USDFreeIdLib {
+    // TODO: this will come from a EIP-712 lib
+    function domainHash(uint32 chainId, address contractAddr) internal pure returns (bytes32) {
+        return keccak256(abi.encode("USDFree.Domain.V1", chainId, contractAddr));
     }
 
-    function typedDataHash(TypedData calldata typedData) internal pure returns (bytes32) {
-        return keccak256(abi.encode(typedData.typ, keccak256(typedData.data)));
-    }
-
-    function pathHash(Path calldata path) internal pure returns (bytes32) {
-        return keccak256(abi.encode(stepHash(path.step), keccak256(path.next)));
-    }
-
-    function uniquenessHash(Uniqueness calldata uniqueness) internal pure returns (bytes32) {
-        return keccak256(abi.encode("USDFree.Uniqueness.V1", uniqueness.enforce, uniqueness.nonce));
-    }
-
-    function fundingPlanHash(FundingPlan calldata fundingPlan) internal pure returns (bytes32) {
+    function orderId(bytes32 domainH, Order calldata order) internal pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    "USDFree.FundingPlan.V1",
-                    keccak256(fundingPlan.fundingCommands),
-                    typedDataHash(fundingPlan.fundingInputs)
+                    // TODO: not V5 lol
+                    "USDFreeIds.OrderId.V5",
+                    domainH,
+                    // TODO: lol what. `_orderHash` already includes both orderOwner and order.uniqueness
+                    // TODO: I think here we have two options:
+                    // TODO: 1. just have _orderHash() and that's it
+                    // TODO: 2. have explicit commitments like: `orderPlanHash (pathOrMerkleRoot), orderOwner, refundSettings, uniqueness`
+                    _orderHash(order),
+                    order.orderOwner,
+                    _nonceForId(order.uniqueness)
                 )
             );
     }
 
-    function nonceForId(Uniqueness calldata uniqueness) internal pure returns (bytes32) {
-        return uniqueness.enforce ? uniqueness.nonce : bytes32(0);
+    function executionId(
+        bytes32 orderId_,
+        SubmitterInputs calldata submitterInputs,
+        address submitter
+    ) internal pure returns (bytes32) {
+        return
+            keccak256(
+                // TODO: above, we call that `_orderHash`. Why here it's a `_submitterPlanHash`? Be consistent.
+                // TODO: also, why no nonce here? We might want a nonce that submitter provides too (e.g. for TWA-like
+                // TODO: submitter uniqueness). This might be overkill
+                abi.encode("USDFreeIds.ExecutionId.V3", orderId_, _submitterPlanHash(submitterInputs), submitter)
+            );
     }
 
-    function orderHash(Order calldata order) internal pure returns (bytes32) {
+    // TODO: this is extremely expensive to calculate. Take pathLeaf as a 2nd argument here, this will only be used at
+    // TODO: the time of Merkle root resolution
+    function pathId(bytes32 orderId_, Path calldata path) internal pure returns (bytes32) {
+        return keccak256(abi.encode("USDFreeIds.PathId.V1", orderId_, _pathHash(path)));
+    }
+
+    // TODO: lol, do we need this extra stuff? Can this just be orderId?
+    function orderOwnerFundingWitness(bytes32 orderId_) internal pure returns (bytes32) {
+        return keccak256(abi.encode("GWWitnessLib.OrderOwnerFunding.V1", orderId_));
+    }
+
+    // TODO: same as above
+    function submitterFundingWitness(bytes32 executionId_) internal pure returns (bytes32) {
+        return keccak256(abi.encode("GWWitnessLib.SubmitterFunding.V1", executionId_));
+    }
+
+    function _orderHash(Order calldata order) private pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
                     "USDFree.Order.V1",
                     order.orderOwner,
-                    typedDataHash(order.pathOrMerkleRoot),
-                    typedDataHash(order.refundSettings),
-                    uniquenessHash(order.uniqueness)
+                    _typedDataHash(order.pathOrMerkleRoot),
+                    _typedDataHash(order.refundSettings),
+                    _uniquenessHash(order.uniqueness)
                 )
             );
     }
 
-    function submitterPlanHash(
-        bytes32 orderH,
-        SubmitterInputs calldata submitterInputs
-    ) internal pure returns (bytes32) {
+    function _submitterPlanHash(SubmitterInputs calldata submitterInputs) private pure returns (bytes32) {
         return
             keccak256(
                 abi.encode(
-                    "USDFree.SubmitterPlan.V1",
-                    orderH,
-                    typedDataHash(submitterInputs.pathResolution),
-                    fundingPlanHash(submitterInputs.funding.plan)
+                    "USDFree.SubmitterPlan.V3",
+                    _pathHash(submitterInputs.pathResolution.path),
+                    submitterInputs.pathResolution.emitPathId,
+                    // TODO: interesting: submitter is committing to the fundingPlan. This is different from `orderOwner`,
+                    // TODO: We should decide on a common way to do this for both: either both commit to some plan and then
+                    // TODO: supply sigs separately, or both just supply sigs that tie to the order commands itself, without
+                    // TODO: commiting to other funding types and sources (that are parallel to this current funding. E.g.
+                    // TODO: a submitter can still commit to user's funding, even with sigs)
+                    _fundingPlanHash(submitterInputs.funding),
+                    keccak256(submitterInputs.executorData)
                 )
             );
     }
 
-    function domainHash(uint32 chainId, address contractAddr) internal pure returns (bytes32) {
-        return keccak256(abi.encode("USDFree.Domain.V1", chainId, contractAddr));
-    }
-}
-
-library USDFreeIds {
-    function orderId(
-        bytes32 domainH,
-        bytes32 orderH,
-        address orderOwner,
-        bytes32 nonceOrZero
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encode("USDFreeIds.OrderId.V4", domainH, orderH, orderOwner, nonceOrZero));
+    function _fundingPlanHash(Funding calldata funding) private pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    "USDFree.FundingPlan.V2",
+                    keccak256(funding.fundingCommands),
+                    _typedDataHash(funding.fundingInputs)
+                )
+            );
     }
 
-    function executionId(bytes32 orderId_, bytes32 submitterPlanH, address submitter) internal pure returns (bytes32) {
-        return keccak256(abi.encode("USDFreeIds.ExecutionId.V1", orderId_, submitterPlanH, submitter));
-    }
-}
-
-library GWWitnessLib {
-    function orderOwnerFundingWitness(bytes32 orderId_) internal pure returns (bytes32) {
-        return keccak256(abi.encode("GWWitnessLib.OrderOwnerFunding.V1", orderId_));
+    function _pathHash(Path calldata path) private pure returns (bytes32) {
+        return keccak256(abi.encode(_stepHash(path.step), keccak256(path.next)));
     }
 
-    function submitterFundingWitness(bytes32 executionId_) internal pure returns (bytes32) {
-        return keccak256(abi.encode("GWWitnessLib.SubmitterFunding.V1", executionId_));
+    function _stepHash(Step calldata step) private pure returns (bytes32) {
+        return keccak256(abi.encode(step.executor, keccak256(step.message)));
+    }
+
+    function _typedDataHash(TypedData calldata typedData) private pure returns (bytes32) {
+        return keccak256(abi.encode(typedData.typ, keccak256(typedData.data)));
+    }
+
+    function _uniquenessHash(Uniqueness calldata uniqueness) private pure returns (bytes32) {
+        return keccak256(abi.encode("USDFree.Uniqueness.V1", uniqueness.enforce, uniqueness.nonce));
+    }
+
+    function _nonceForId(Uniqueness calldata uniqueness) private pure returns (bytes32) {
+        return uniqueness.enforce ? uniqueness.nonce : bytes32(0);
     }
 }
