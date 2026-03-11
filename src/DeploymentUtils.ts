@@ -21,7 +21,7 @@ export function getDeployedAddress(
 ): string | undefined {
   const address = DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.address;
   if (!address && throwOnError) {
-    throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
+    throw new Error(`Contract ${contractName} not found on ${networkId} in deployed-addresses.json`);
   }
 
   return address;
@@ -51,7 +51,7 @@ export function getDeployedBlockNumber(contractName: string, networkId: number):
   try {
     return DEPLOYMENTS[networkId.toString()]?.contracts[contractName]?.block_number;
   } catch (_) {
-    throw new Error(`Contract ${contractName} not found on ${networkId} in deployments.json`);
+    throw new Error(`Contract ${contractName} not found on ${networkId} in deployed-addresses.json`);
   }
 }
 
@@ -67,7 +67,7 @@ export function getContractInfoFromAddress(contractAddress: string): { chainId: 
         returnValue.push({ chainId: Number(_chainId), contractName: _contractName });
     })
   );
-  if (returnValue.length === 0) throw new Error(`Contract ${contractAddress} not found in deployments.json`);
+  if (returnValue.length === 0) throw new Error(`Contract ${contractAddress} not found in deployed-addresses.json`);
   if (returnValue.length > 1) throw new Error(`Multiple deployments found for ${contractAddress}`);
   return returnValue[0];
 }

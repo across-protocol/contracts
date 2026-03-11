@@ -1461,7 +1461,7 @@ abstract contract SpokePool is
         // executing the leaf.
     }
 
-    // Should be overriden by implementing contract depending on how L2 handles sending tokens to L1.
+    // Should be overridden by implementing contract depending on how L2 handles sending tokens to L1.
     function _bridgeTokensToHubPool(uint256 amountToReturn, address l2TokenAddress) internal virtual;
 
     function _setClaimedLeaf(uint32 rootBundleId, uint32 leafId) internal {

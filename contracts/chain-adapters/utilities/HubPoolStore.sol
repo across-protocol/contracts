@@ -52,11 +52,7 @@ contract HubPoolStore {
      * @param data Data to send to Universal SpokePool.
      * @param isAdminSender True if the data is an admin function call, false otherwise.
      */
-    function storeRelayMessageCalldata(
-        address target,
-        bytes calldata data,
-        bool isAdminSender
-    ) external onlyHubPool {
+    function storeRelayMessageCalldata(address target, bytes calldata data, bool isAdminSender) external onlyHubPool {
         if (isAdminSender) {
             _storeData(target, dataUuid++, data);
         } else {
@@ -73,11 +69,7 @@ contract HubPoolStore {
         _storeData(address(0), IHubPool(hubPool).rootBundleProposal().challengePeriodEndTimestamp, data);
     }
 
-    function _storeData(
-        address target,
-        uint256 nonce,
-        bytes calldata data
-    ) internal {
+    function _storeData(address target, uint256 nonce, bytes calldata data) internal {
         if (relayMessageCallData[nonce] != bytes32(0)) {
             // Data is already stored, do nothing.
             return;

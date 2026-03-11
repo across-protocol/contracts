@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import * as existingDeployments from "../deployments/deployments.json";
+import * as existingDeployments from "../deployments/legacy-addresses.json";
 
 export type Deployments = Record<string, Record<string, { address: string; blockNumber: number }>>;
 // Prunes the hardhat export file sent to the cache directory to only contain the deployment addresses of each contract
@@ -19,7 +19,7 @@ export async function run(): Promise<void> {
           const blockNumber = findDeploymentBlockNumber(castExport[chainId][0].name, contractName);
           const existingBlockNumber = (existingDeployments as Deployments)[chainId][contractName].blockNumber;
           console.log(
-            `Not updating ${contractName} as it has a later block number set in deployments.json than the one in deployments/${contractName}.json`
+            `Not updating ${contractName} as it has a later block number set in legacy-addresses.json than the one in deployments/${contractName}.json`
           );
           const hasLaterBlockNumber = existingBlockNumber > blockNumber;
           if (hasLaterBlockNumber) return; // If we have already found a later block number for this contract, then ignore this one.
@@ -30,7 +30,10 @@ export async function run(): Promise<void> {
     });
     console.log("Constructed the following address export for release:\n", processedOutput);
 
-    fs.writeFileSync(`${path.resolve(__dirname)}/../deployments/deployments.json`, JSON.stringify(processedOutput));
+    fs.writeFileSync(
+      `${path.resolve(__dirname)}/../deployments/legacy-addresses.json`,
+      JSON.stringify(processedOutput)
+    );
   } catch (error) {}
 }
 

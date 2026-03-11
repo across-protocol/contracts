@@ -59,12 +59,7 @@ contract MockHubPool {
     /// @param l2Token The address of the L2 token to receive.
     /// @param amount The amount of tokens to relay.
     /// @param to The address on L2 to receive the tokens.
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external {
         (bool success, ) = adapter.delegatecall(
             abi.encodeWithSignature(
                 "relayTokens(address,address,uint256,address)",

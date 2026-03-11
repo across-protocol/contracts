@@ -190,6 +190,16 @@
       "oftEid": 30340,
       "hypDomainId": -1
     },
+    "2337": {
+      "name": "Lighter",
+      "family": "NONE",
+      "nativeToken": "LIT",
+      "publicRPC": "https://mainnet.zklighter.elliot.ai",
+      "blockExplorer": "https://app.lighter.xyz/explorer",
+      "cctpDomain": -1,
+      "oftEid": -1,
+      "hypDomainId": -1
+    },
     "4202": {
       "name": "Lisk Sepolia",
       "family": "OP_STACK",
@@ -483,6 +493,7 @@
     "HYPERCORE": 1337,
     "INK": 57073,
     "LENS": 232,
+    "LIGHTER": 2337,
     "LINEA": 59144,
     "LISK": 1135,
     "MAINNET": 1,
@@ -610,6 +621,9 @@
     "133268194659241": "So11111111111111111111111111111111111111112"
   },
   "L2_ADDRESS_MAP": {
+    "1": {
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
+    },
     "10": {
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
@@ -720,7 +734,7 @@
       "cctpV2TokenMessenger": "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d",
       "cctpV2MessageTransmitter": "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64",
       "lineaTokenBridge": "0x353012dc4a9A6cF55c941bADC267f82004A8ceB9",
-      "permit2": "0x31c2F6fcFf4F8759b3Bd5Bf0e1084A055615c768"
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "60808": {
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000"
@@ -728,7 +742,10 @@
     "80002": {
       "fxChild": "0xE5930336866d0388f0f745A2d9207C7781047C0f",
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
-      "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD"
+      "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "81457": {
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
@@ -736,12 +753,18 @@
     "84532": {
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
       "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
-      "uniswapV3SwapRouter": "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648"
+      "uniswapV3SwapRouter": "0x7945814de23d76dfff0cfc6ecb76456b9f7ac648",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
     },
     "421614": {
       "l2GatewayRouter": "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
-      "cctpMessageTransmitter": "0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872"
+      "cctpMessageTransmitter": "0xaCF1ceeF35caAc005e15888dDb8A3515C41B4872",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
     "534351": {
       "scrollERC20GatewayRouter": "0x9aD3c5617eCAa556d6E166787A97081907171230",
@@ -761,10 +784,18 @@
       "cctpV2TokenMessenger": "0x0000000000000000000000000000000000000000",
       "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3"
     },
+    "11155111": {
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
+    },
     "11155420": {
       "cctpTokenMessenger": "0x9f3B8679c73C2Fef8b59B4f3444d4e156fb70AA5",
       "cctpMessageTransmitter": "0x7865fAfC2db2093669d92c0F33AeEF291086BEFD",
-      "uniswapV3SwapRouter": "0xd8866E76441df243fc98B892362Fc6264dC3ca80"
+      "uniswapV3SwapRouter": "0xd8866E76441df243fc98B892362Fc6264dC3ca80",
+      "permit2": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "cctpV2TokenMessenger": "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA",
+      "cctpV2MessageTransmitter": "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
     }
   },
   "L1_ADDRESS_MAP": {
