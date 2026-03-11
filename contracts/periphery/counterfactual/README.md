@@ -300,7 +300,7 @@ All 7 counterfactual contracts are deployed from a single EOA in a fixed order t
 
 1. **Choose a fresh derivation index** — pick an index from your mnemonic that has never sent a transaction on the target chain (nonce must be 0).
 
-2. **Get the deployer address** to know which address to fund:
+2. **Get the deployer address** to know which address to fund (omit `--mnemonic-index` to use index 0):
 
    ```bash
    source .env
@@ -357,7 +357,7 @@ Skipped deployments burn the nonce with a 0-value self-transfer so that subseque
 
 - **Never send any other transactions** from the deployer address before all 7 deploys complete — this would consume a nonce and break the address mapping.
 - **Use the same derivation index** across all chains to get the same deployer address and thus the same contract addresses.
-- Individual deploy scripts can still be run standalone, but the `DEPLOYER_INDEX` env var must be set.
+- Individual deploy scripts can still be run standalone. `DEPLOYER_INDEX` defaults to 0 if not set.
 
 ## Security Model
 
