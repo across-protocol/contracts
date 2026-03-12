@@ -30,11 +30,14 @@ artifacts-zk
 out
 out-local
 out-tron
+out-tron-universal
+out-tron-spokepool
 zkout
 cache-foundry
 cache-foundry-local
 cache-foundry-tron
-
+cache-foundry-tron-universal
+cache-foundry-tron-spokepool
 
 # Upgradeability files
 .openzeppelin
