@@ -131,27 +131,6 @@ contract DeploySP1HeliosAndUniversalSpokePool is Script {
         console.log("SP1Helios deployed at:", sp1Helios);
 
         // =====================================================================
-        // Fork block pinning for Step 2
-        // Some RPCs return "invalid block height" when Forge forks at "latest"
-        // after a recent deployment. Pin to the block where Step 1 confirmed.
-        // =====================================================================
-        string memory forkBlockArgs = "";
-        if (doBroadcast) {
-            string memory forkBlockDec = _ffiText(
-                string.concat(
-                    "val=$(jq -r '.receipts[0].blockNumber // empty' ",
-                    heliosRunDir,
-                    "/run-latest.json); ",
-                    '[ -n "$val" ] && printf \'%d\' "$val"'
-                )
-            );
-            if (bytes(forkBlockDec).length > 0) {
-                forkBlockArgs = string.concat("--fork-block-number ", forkBlockDec);
-                console.log("Using fork block from Step 1 for simulation:", forkBlockDec);
-            }
-        }
-
-        // =====================================================================
         // Step 2: Deploy Universal_SpokePool
         // =====================================================================
         console.log("");
@@ -165,8 +144,6 @@ contract DeploySP1HeliosAndUniversalSpokePool is Script {
                 vm.toString(oftFeeCap),
                 " --rpc-url ",
                 rpcUrl,
-                " ",
-                forkBlockArgs,
                 " ",
                 broadcastFlag,
                 " -vvvv 1>&2"
