@@ -67,14 +67,21 @@ out = "out-local"
 # Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
 # Run with `FOUNDRY_PROFILE=tron forge build`
 [profile.tron]
-solc_version = "0.8.25"
-solc = "0.8.25"
+solc = "bin/solc-tron"
 evm_version = "cancun"
 src = "contracts/periphery/counterfactual"
 test = "test/evm/foundry/tron"
 script = "script/counterfactual"
 cache_path = "cache-foundry-tron"
 out = "out-tron"
-skip = ["sp1-helios"]
+
+[profile.tron-universal]
+solc = "bin/solc-tron"
+evm_version = "cancun"
+src = "contracts/tron-universal"
+test = "test/evm/foundry/tron"
+script = "script/universal/tron"
+cache_path = "cache-foundry-tron-universal"
+out = "out-tron-universal"
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

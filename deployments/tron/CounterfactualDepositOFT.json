@@ -1,0 +1,114 @@
+{
+  "contractName": "CounterfactualDepositOFT",
+  "address": "0x79f641fadd8e6dd031ff26f63c0ba0b85cbf0719",
+  "tronAddress": "TM65mZJjbVuFZwLpEqztP4HkzKaTuuwQC1",
+  "transactionHash": "396be083d630b849c3125ce907e55b449b4efda99c88f393d9a9e410ef93080e",
+  "constructorArgs": "0x0000000000000000000000001234567890abcdef1234567890abcdef123456780000000000000000000000000000000000000000000000000000000000007595",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_oftSrcPeriphery",
+          "type": "address",
+          "internalType": "address"
+        },
+        {
+          "name": "_srcEid",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "execute",
+      "inputs": [
+        {
+          "name": "params",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "submitterData",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "payable"
+    },
+    {
+      "type": "function",
+      "name": "oftSrcPeriphery",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "srcEid",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint32",
+          "internalType": "uint32"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "event",
+      "name": "OFTDepositExecuted",
+      "inputs": [
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "executionFeeRecipient",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "nonce",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        },
+        {
+          "name": "oftDeadline",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "error",
+      "name": "SafeERC20FailedOperation",
+      "inputs": [
+        {
+          "name": "token",
+          "type": "address",
+          "internalType": "address"
+        }
+      ]
+    }
+  ],
+  "deployedAt": "2026-02-27T23:03:08.371Z",
+  "network": "https://nile.trongrid.io",
+  "solcVersion": "0.8.25"
+}
