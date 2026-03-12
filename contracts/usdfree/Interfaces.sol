@@ -28,6 +28,35 @@ struct SubmitterData {
     bytes executorMessage;
 }
 
+// Commits destination-side execution semantics (e.g. swap route/action payload).
+struct DestinationAction {
+    // Hash of the destination execution payload (for example path.next or step-specific executor message).
+    bytes32 actionHash;
+    // User protection on the destination leg after executing `actionHash`.
+    TokenAmount minOut;
+}
+
+// Terms for submitter pre-funding on destination prior to bridge message arrival.
+struct PrefundTerms {
+    // Asset and amount the submitter fronts to the user before bridge arrival.
+    TokenAmount prefund;
+    // Asset and minimum amount submitter must be reimbursed with during settlement.
+    TokenAmount minReimbursement;
+    // Expiry for pre-fund validity; after this, pre-fund can be unwound/refunded by policy.
+    uint256 expiry;
+    // Hash of deterministic reimbursement route constraints to avoid route ambiguity.
+    bytes32 reimbursementPathHash;
+}
+
+// Deterministic cross-chain order key used by pre-funders and destination settlement.
+// This is intentionally separate from funding-specific orderId generation.
+struct IntentKey {
+    uint256 srcChainId;
+    address srcGateway;
+    address user;
+    bytes32 userSalt;
+}
+
 struct TypedData {
     uint8 typ;
     bytes data;
@@ -36,7 +65,13 @@ struct TypedData {
 enum OrderFundingType {
     Approval,
     Permit2,
-    TransferWithAuthorization
+    TransferWithAuthorization,
+    DirectTransfer
+}
+
+enum BridgeType {
+    OFT,
+    CCTP
 }
 
 struct ApprovalFunding {
@@ -58,6 +93,11 @@ struct AuthorizationFunding {
     uint256 validAfter;
     uint256 validBefore;
     bytes signature;
+    bytes32 salt;
+}
+
+struct DirectTransferFunding {
+    TokenAmount tokenAmount;
     bytes32 salt;
 }
 

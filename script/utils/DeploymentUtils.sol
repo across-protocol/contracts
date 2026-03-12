@@ -159,7 +159,7 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
     }
 
     /**
-     * @notice Get deployed address from deployments.json
+     * @notice Get deployed address from deployed-addresses.json
      * @param contractName Name of the contract
      * @param chainId Chain ID
      * @param throwOnError Whether to throw error if not found

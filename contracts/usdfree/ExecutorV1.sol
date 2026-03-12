@@ -45,7 +45,7 @@ contract ExecutorV1 is IExecutor, ReentrancyGuard, AbstractMulticallExecutor {
     ) external payable onlyAuthorizedCaller nonReentrant {
         ExecutorV1SubmitterData memory s = _decodeSubmitterData(submitterData);
         ExecutorStep memory step = abi.decode(path.cur.message, (ExecutorStep));
-        _applyAlter(orderId, step, s.alterData);
+        step = _applyAlter(orderId, step, s.alterData);
         _executeMulticall(s.multicallData, orderIn.token);
 
         uint256 amountToPropagate = _checkRequirements(step, submitter);
@@ -107,10 +107,14 @@ contract ExecutorV1 is IExecutor, ReentrancyGuard, AbstractMulticallExecutor {
         amount = step.balanceReq.useFullBalance ? bal : step.balanceReq.minAmount;
     }
 
-    function _applyAlter(bytes32 orderId, ExecutorStep memory step, bytes memory alterData) internal pure {
+    function _applyAlter(
+        bytes32 orderId,
+        ExecutorStep memory step,
+        bytes memory alterData
+    ) internal pure returns (ExecutorStep memory) {
         if (step.alterConfig.typ == AlterType.None) {
             require(alterData.length == 0, "ALTER_NOT_ALLOWED");
-            return;
+            return step;
         }
         require(alterData.length != 0, "ALTER_MISSING");
 
@@ -118,7 +122,7 @@ contract ExecutorV1 is IExecutor, ReentrancyGuard, AbstractMulticallExecutor {
             uint256 newMin = abi.decode(alterData, (uint256));
             require(newMin >= step.balanceReq.minAmount, "ALTER_WEAKER_BAL");
             step.balanceReq.minAmount = newMin;
-            return;
+            return step;
         }
 
         if (step.alterConfig.typ == AlterType.OffchainAuction) {
@@ -134,7 +138,7 @@ contract ExecutorV1 is IExecutor, ReentrancyGuard, AbstractMulticallExecutor {
 
             step.balanceReq.minAmount = a.newMinAmount;
             step.submitterReq.submitter = a.newSubmitter;
-            return;
+            return step;
         }
 
         revert("BAD_ALTER_TYPE");

@@ -134,7 +134,7 @@ contract DeployMyContract is Script, Test, Constants {
 
     vm.startBroadcast(deployerPrivateKey);
 
-    MyContract myContract = new MyContract /* constructor args */();
+    MyContract myContract = new MyContract/* constructor args */ ();
 
     console.log("Chain ID:", chainId);
     console.log("MyContract deployed to:", address(myContract));

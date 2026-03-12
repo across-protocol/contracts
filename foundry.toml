@@ -30,6 +30,7 @@ zksolc = "1.5.15"
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"
 base = "${NODE_URL_8453}"
+blast = "${NODE_URL_81457}"
 bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
 ink = "${NODE_URL_57073}"
@@ -43,15 +44,21 @@ plasma = "${NODE_URL_9745}"
 polygon = "${NODE_URL_137}"
 scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
+tempo = "${NODE_URL_4217}"
 unichain = "${NODE_URL_130}"
 world-chain = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"
+zora = "${NODE_URL_7777777}"
 
 # testnet
 arbitrum_sepolia = "${NODE_URL_421614}"
+base_sepolia = "${NODE_URL_84532}"
+optimism_sepolia = "${NODE_URL_11155420}"
+sepolia = "${NODE_URL_11155111}"
 hyperevm_testnet = "${NODE_URL_998}"
+polygon_amoy = "${NODE_URL_80002}"
 
 
 [etherscan]

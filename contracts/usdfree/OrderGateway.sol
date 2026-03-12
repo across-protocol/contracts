@@ -1,7 +1,20 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.30;
 
-import { Order, Path, IExecutor, TokenAmount, TypedData, SubmitterData, IOrderGateway, OrderFundingType, Permit2Funding, AuthorizationFunding, ApprovalFunding } from "./Interfaces.sol";
+import {
+    Order,
+    Path,
+    IExecutor,
+    TokenAmount,
+    TypedData,
+    SubmitterData,
+    IOrderGateway,
+    OrderFundingType,
+    Permit2Funding,
+    AuthorizationFunding,
+    ApprovalFunding,
+    DirectTransferFunding
+} from "./Interfaces.sol";
 import { OrderIdLib } from "./OrderIdLib.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -43,6 +56,7 @@ contract OrderGateway is
     error DuplicateApprovalSalt();
     error InvalidAddress();
     error InvalidExecutor();
+    error InvalidSignatureLength();
     error InvalidSubOrder();
     error InvalidPermit2Salt();
     error OrderAlreadyStored();
@@ -166,6 +180,9 @@ contract OrderGateway is
         if (typ == OrderFundingType.TransferWithAuthorization) {
             return _pullFundsTWA(_domainHash, orderHash, orderFunding, fundsRecipient);
         }
+        if (typ == OrderFundingType.DirectTransfer) {
+            return _pullFundsDirectTransfer(_domainHash, orderHash, orderFunding, fundsRecipient);
+        }
 
         revert UnknownOrderFundingType();
     }
@@ -246,6 +263,23 @@ contract OrderGateway is
         return (orderId, f.tokenAmount.token, f.tokenAmount.amount);
     }
 
+    function _pullFundsDirectTransfer(
+        bytes32 _domainHash,
+        bytes32 orderHash,
+        TypedData calldata orderFunding,
+        address fundsRecipient
+    ) internal returns (bytes32 orderId, address token, uint256 amount) {
+        DirectTransferFunding memory f = abi.decode(orderFunding.data, (DirectTransferFunding));
+        if (usedApprovalSalts[msg.sender][f.salt]) revert DuplicateApprovalSalt();
+        usedApprovalSalts[msg.sender][f.salt] = true;
+        IERC20(f.tokenAmount.token).safeTransferFrom(msg.sender, fundsRecipient, f.tokenAmount.amount);
+        return (
+            OrderIdLib.orderId(_domainHash, uint8(OrderFundingType.DirectTransfer), msg.sender, orderHash, f.salt),
+            f.tokenAmount.token,
+            f.tokenAmount.amount
+        );
+    }
+
     function _pullExtraFundingToExecutor(address executor, TokenAmount[] calldata extraFunding) internal {
         for (uint256 i; i < extraFunding.length; ++i) {
             IERC20(extraFunding[i].token).safeTransferFrom(msg.sender, executor, extraFunding[i].amount);
@@ -253,7 +287,7 @@ contract OrderGateway is
     }
 
     function _deserializeSignature(bytes memory signature) internal pure returns (bytes32 r, bytes32 s, uint8 v) {
-        require(signature.length == 65, "invalid sig length");
+        if (signature.length != 65) revert InvalidSignatureLength();
         assembly {
             r := mload(add(signature, 0x20))
             s := mload(add(signature, 0x40))
