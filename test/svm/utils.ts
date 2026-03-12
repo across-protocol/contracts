@@ -104,7 +104,7 @@ export function buildRelayerRefundMerkleTree({
       l2TokenAddress: evmTokenAddress ?? randomAddress(),
       refundAddresses: evmRelayers || [randomAddress(), randomAddress()],
       refundAmounts: evmRefundAmounts || [BigNumber.from(randomBigInt()), BigNumber.from(randomBigInt())],
-    }) as RelayerRefundLeaf;
+    } as RelayerRefundLeaf);
 
   if (mixLeaves) {
     let solanaIndex = 0;

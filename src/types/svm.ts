@@ -84,7 +84,7 @@ export type DepositDataValues = [
   number,
   number,
   number,
-  Buffer,
+  Buffer
 ];
 
 /**
