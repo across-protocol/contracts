@@ -65,7 +65,8 @@ struct TypedData {
 enum OrderFundingType {
     Approval,
     Permit2,
-    TransferWithAuthorization
+    TransferWithAuthorization,
+    DirectTransfer
 }
 
 enum BridgeType {
@@ -95,6 +96,11 @@ struct AuthorizationFunding {
     bytes32 salt;
 }
 
+struct DirectTransferFunding {
+    TokenAmount tokenAmount;
+    bytes32 salt;
+}
+
 interface IOrderGateway {
     // Note: submit stores funded Order and waits for a later fill or refund.
     function submit(Order calldata order, TypedData calldata orderFunding) external; // nonReentrant
@@ -117,64 +123,6 @@ interface IOrderGateway {
 
     // Permissionless after order.refundReverseDeadline, transfers funds to order.refundRecipient.
     function refund(bytes32 orderId) external;
-}
-
-interface IOrderGatewayPrefund {
-    struct ExpectedBridge {
-        BridgeType bridgeType;
-        bytes32 bridgeId;
-        uint32 srcDomain;
-        bytes32 srcSender;
-    }
-
-    struct BridgeArrival {
-        BridgeType bridgeType;
-        bytes32 bridgeId;
-        uint32 srcDomain;
-        bytes32 srcSender;
-        TokenAmount bridgedAmount;
-    }
-
-    event Prefunded(
-        bytes32 indexed subOrderId,
-        address indexed sponsor,
-        address indexed token,
-        uint256 amount,
-        bytes32 orderRoot
-    );
-
-    event BridgeMessageArrived(
-        bytes32 indexed subOrderId,
-        bytes32 indexed bridgeId,
-        uint8 bridgeType,
-        uint32 srcDomain,
-        bytes32 srcSender,
-        address token,
-        uint256 amount
-    );
-
-    event PrefundedOrderSettled(bytes32 indexed subOrderId, address reimbursementToken, uint256 reimbursementAmount);
-
-    // Called by a submitter/sponsor before or after bridge arrival on destination.
-    // If the bridge already arrived, this call finalizes immediately.
-    function prefund(
-        bytes32 subOrderId,
-        bytes32 orderRoot,
-        ExpectedBridge calldata expectedBridge,
-        Path calldata selectedPath,
-        bytes32[] calldata pathProof,
-        SubmitterData calldata submitterData,
-        PrefundTerms calldata prefundTerms,
-        address refundTo
-    ) external payable;
-
-    // Called by bridge receiver path (for example OFT/LZ or CCTP) when funds land on destination.
-    // If the intent is already prefunded, this call finalizes immediately (including executor call).
-    function onBridgeArrival(
-        bytes32 subOrderId,
-        BridgeArrival calldata arrival,
-        PrefundTerms calldata prefundTerms
-    ) external;
 }
 
 interface IExecutor {
