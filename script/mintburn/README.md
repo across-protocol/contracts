@@ -1,8 +1,8 @@
 # Mintburn Prod Readiness Checks
 
-`checkSponsoredPeripheryProdReadiness.sh` checks the latest canonical sponsored mintburn periphery deployments from [`broadcast/deployed-addresses.json`](/Users/dev/dev/contracts2/broadcast/deployed-addresses.json).
+`checkSponsoredPeripheryProdReadiness.sh` checks the latest canonical sponsored mintburn periphery deployments from [`broadcast/deployed-addresses.json`](../../broadcast/deployed-addresses.json).
 
-[`hypercore-tokens.json`](/Users/dev/dev/contracts2/script/mintburn/hypercore-tokens.json) lives alongside these scripts and is read by [`ReadHCoreTokenInfoUtil.s.sol`](/Users/dev/dev/contracts2/script/mintburn/ReadHCoreTokenInfoUtil.s.sol) for HyperCore token setup.
+[`hypercore-tokens.json`](./hypercore-tokens.json) lives alongside these scripts and is read by [`ReadHCoreTokenInfoUtil.s.sol`](./ReadHCoreTokenInfoUtil.s.sol) for HyperCore token setup.
 
 Run it with:
 
@@ -14,7 +14,7 @@ Run it with:
 
 The script reads RPC URLs from exported `NODE_URL_<chainId>` env vars. If a `.env` file exists at the repository root, it is loaded automatically.
 
-Per-chain multisigs come from [`prod-readiness-multisigs.json`](/Users/dev/dev/contracts2/script/mintburn/prod-readiness-multisigs.json), which is intended to be committed because the values are not secret. The file is a flat JSON object keyed by chain id.
+Per-chain multisigs come from [`prod-readiness-multisigs.json`](./prod-readiness-multisigs.json), which is intended to be committed because the values are not secret. The file is a flat JSON object keyed by chain id.
 
 Example shape:
 
