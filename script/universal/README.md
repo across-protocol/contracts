@@ -33,15 +33,25 @@ Create a `.env` file with the following variables:
 
 ## Combined Deployment (Recommended)
 
-This script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Omit `--broadcast` for a dry run.
+This Foundry script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Set the last argument to `false` for a dry run.
 
 ```bash
-./script/universal/DeploySP1HeliosAndUniversalSpokePool.sh \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
-  --oft-fee-cap <OFT_FEE_CAP> \
-  --etherscan-api-key <API_KEY> \
-  --broadcast
+forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
+  --sig "run(uint256,string,string,bool)" \
+  <OFT_FEE_CAP> <NEW_CHAIN_RPC_URL> <ETHERSCAN_API_KEY> true \
+  --ffi
 ```
+
+For a dry run (simulation only, no on-chain transactions):
+
+```bash
+forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
+  --sig "run(uint256,string,string,bool)" \
+  <OFT_FEE_CAP> <NEW_CHAIN_RPC_URL> "" false \
+  --ffi
+```
+
+> **Note**: The `--ffi` flag is required. The script invokes sub-scripts and CLI tools (forge, cast, jq) via FFI. Each sub-script gets its own broadcast directory, preserving the expected folder structure for `extract-addresses` tooling.
 
 ---
 
