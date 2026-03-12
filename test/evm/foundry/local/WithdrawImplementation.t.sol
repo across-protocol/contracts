@@ -35,7 +35,7 @@ contract WithdrawImplementationTest is Test {
     }
 
     function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(abi.encode(implementation, keccak256(params)));
+        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
     }
 
     function _deployCloneWithWithdrawLeaf(

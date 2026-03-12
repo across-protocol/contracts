@@ -9,6 +9,7 @@ import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualD
  * @notice Generic factory for deploying counterfactual deposit addresses via CREATE2
  * @dev Bridge-agnostic: takes a pre-computed paramsHash and stores it in the clone's immutable args.
  *      Each implementation defines its own immutables struct. The caller hashes the params off-chain.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /**
@@ -36,7 +37,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param depositAddress Address of the deployed clone
      * @param executeCalldata Calldata to forward (e.g. abi.encodeCall of executeDeposit)
      */
-    function execute(address depositAddress, bytes calldata executeCalldata) public payable {
+    function execute(address depositAddress, bytes calldata executeCalldata) external payable {
         _execute(depositAddress, executeCalldata);
     }
 
@@ -90,7 +91,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
         address counterfactualDepositImplementation,
         bytes32 paramsHash,
         bytes32 salt
-    ) public view returns (address) {
+    ) public view virtual returns (address) {
         return
             Clones.predictDeterministicAddressWithImmutableArgs(
                 counterfactualDepositImplementation,
@@ -104,7 +105,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
      * @param depositAddress Address of the deployed clone.
      * @param executeCalldata Calldata to forward.
      */
-    function _execute(address depositAddress, bytes calldata executeCalldata) internal {
+    function _execute(address depositAddress, bytes calldata executeCalldata) private {
         (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);
         if (!success) {
             assembly {

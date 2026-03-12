@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
  * @notice Interface for the generic counterfactual deposit factory
  * @dev This factory creates reusable deposit addresses via CREATE2. It is bridge-agnostic:
  *      each implementation defines its own immutables struct, and the factory stores only the hash.
+ * @custom:security-contact bugs@across.to
  */
 interface ICounterfactualDepositFactory {
     /// @notice Emitted when a new clone is deployed.

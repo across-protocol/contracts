@@ -13,19 +13,29 @@ import { WithdrawParams } from "./WithdrawImplementation.sol";
  *         1. Direct withdraw — trusted `directWithdrawer` calls clone.execute() with arbitrary submitterData
  *         2. Signed withdraw — anyone can trigger with a `signer` signature; recipient is forced to the user
  * @dev Set this contract's address as `admin` in withdrawal merkle leaves.
+ * @custom:security-contact bugs@across.to
  */
 contract AdminWithdrawManager is Ownable, EIP712 {
+    /// @notice Emitted when the direct withdrawer address is updated.
+    /// @param directWithdrawer The new direct withdrawer address.
     event DirectWithdrawerUpdated(address indexed directWithdrawer);
+
+    /// @notice Emitted when the signer address is updated.
+    /// @param signer The new signer address.
     event SignerUpdated(address indexed signer);
 
     error Unauthorized();
     error InvalidSignature();
     error SignatureExpired();
 
+    /// @notice EIP-712 typehash for signed withdraw messages.
     bytes32 public constant SIGNED_WITHDRAW_TYPEHASH =
         keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
 
+    /// @notice Address authorized to call `directWithdraw` without a signature.
     address public directWithdrawer;
+
+    /// @notice Address whose EIP-712 signature authorizes `signedWithdrawToUser` calls.
     address public signer;
 
     constructor(
@@ -88,11 +98,15 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         ICounterfactualDeposit(depositAddress).execute(implementation, params, abi.encode(token, to, amount), proof);
     }
 
+    /// @notice Updates the direct withdrawer address.
+    /// @param _directWithdrawer The new direct withdrawer address.
     function setDirectWithdrawer(address _directWithdrawer) external onlyOwner {
         directWithdrawer = _directWithdrawer;
         emit DirectWithdrawerUpdated(_directWithdrawer);
     }
 
+    /// @notice Updates the signer address used for signed withdrawals.
+    /// @param _signer The new signer address.
     function setSigner(address _signer) external onlyOwner {
         signer = _signer;
         emit SignerUpdated(_signer);

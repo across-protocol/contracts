@@ -114,7 +114,7 @@ contract CounterfactualOFTDepositTest is Test {
     // --- Merkle helpers ---
 
     function _leaf(address impl, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(abi.encode(impl, keccak256(params)));
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(params)))));
     }
 
     /// @dev Build a 4-leaf merkle tree: [OFT deposit, withdraw, padding-a, padding-b].
