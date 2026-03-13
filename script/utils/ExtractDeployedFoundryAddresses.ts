@@ -212,7 +212,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       }
 
       for (const tx of transactions) {
-        if (tx.transactionType === "CREATE" && tx.contractAddress) {
+        if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
 
