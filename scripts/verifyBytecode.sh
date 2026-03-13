@@ -102,8 +102,10 @@ if [[ -n "${TX_ENTRY:-}" && "$TX_ENTRY" != "null" ]]; then
     while IFS= read -r arg; do
         CONSTRUCTOR_ARGS+=("$arg")
     done < <(jq -cr '.arguments[]?' <<< "$TX_ENTRY")
-    ENCODED_ARGS=$(cast abi-encode "$CONSTRUCTOR_SIG" "${CONSTRUCTOR_ARGS[@]}" | sed 's/^0x//')
-    LOCAL_INIT="${CREATION}${ENCODED_ARGS}"
+    if [ -n "$CONSTRUCTOR_TYPES" ]; then
+        ENCODED_ARGS=$(cast abi-encode "$CONSTRUCTOR_SIG" "${CONSTRUCTOR_ARGS[@]}" | sed 's/^0x//')
+        LOCAL_INIT="${CREATION}${ENCODED_ARGS}"
+    fi
     [[ -n "${RUN_JSON:-}" ]] && echo "Using constructor args from: $RUN_JSON"
 fi
 
