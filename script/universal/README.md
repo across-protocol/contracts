@@ -5,6 +5,7 @@ This guide covers deploying the **Universal SpokePool** infrastructure to a new 
 ## Prerequisites
 
 - **Foundry** installed with FFI enabled
+- **jq** installed (used by the combined deployment script to parse broadcast JSON)
 - **curl** and **sha256sum** available in PATH
 - Access to Ethereum consensus layer RPC endpoints (beacon nodes)
 - A funded deployer wallet (via mnemonic)
@@ -31,79 +32,94 @@ Create a `.env` file with the following variables:
 
 ---
 
-## Combined Deployment (Recommended)
+## Deployment Scripts
 
-This Foundry script deploys SP1Helios, deploys the Universal_SpokePool (passing the SP1Helios address directly), and transfers the SP1Helios `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from the deployer to the SpokePool. It assumes a fresh deployment with no existing SpokePool on the target chain. Set the last argument to `false` for a dry run.
+There are three scripts in this directory:
 
-```bash
-forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-  --sig "run(uint256,string,string,bool)" \
-  <OFT_FEE_CAP> <NEW_CHAIN_RPC_URL> <ETHERSCAN_API_KEY> true \
-  --ffi
-```
-
-For a dry run (simulation only, no on-chain transactions):
-
-```bash
-forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
-  --sig "run(uint256,string,string,bool)" \
-  <OFT_FEE_CAP> <NEW_CHAIN_RPC_URL> "" false \
-  --ffi
-```
-
-> **Note**: The `--ffi` flag is required. The script invokes sub-scripts and CLI tools (forge, cast, jq) via FFI. Each sub-script gets its own broadcast directory, preserving the expected folder structure for `extract-addresses` tooling.
+| Script                                       | Purpose                                                                                                    |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `DeploySP1HeliosAndUniversalSpokePool.s.sol` | **Combined orchestrator** — runs Steps 1–3 below in sequence via FFI, plus optional Etherscan verification |
+| `DeploySP1Helios.s.sol`                      | Deploys the SP1Helios light client (downloads genesis binary via FFI, verifies checksum, deploys contract) |
+| `DeployUniversalSpokePool.s.sol`             | Deploys the Universal_SpokePool behind an ERC1967 proxy using DeploymentUtils                              |
 
 ---
 
-## Manual Deployment (Step-by-Step)
+## Combined Deployment (Recommended)
 
-If you need more control over individual steps, you can run each deployment separately.
+`DeploySP1HeliosAndUniversalSpokePool.s.sol` orchestrates the full deployment flow:
 
-### Step 1: Deploy SP1Helios
+1. Runs `forge clean && forge build` to ensure a fresh build for OZ proxy validation
+2. Invokes `DeploySP1Helios.s.sol` via FFI to deploy the light client
+3. Invokes `DeployUniversalSpokePool.s.sol` via FFI to deploy the SpokePool proxy
+4. Transfers `VKEY_UPDATER_ROLE` and `DEFAULT_ADMIN_ROLE` from deployer to SpokePool via `cast send`
+5. Verifies role transfers via `cast call`
+6. Optionally verifies contracts on Etherscan via `forge script --resume --verify`
 
-Deploy the SP1Helios light client contract:
+Each sub-script runs as its own `forge script` process, so broadcast artifacts land in the expected directories (`broadcast/DeploySP1Helios.s.sol/...` and `broadcast/DeployUniversalSpokePool.s.sol/...`).
+
+**Broadcast + verify:**
+
+```bash
+forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
+  --sig "run(uint256,string,string,bool)" \
+  <OFT_FEE_CAP> <RPC_URL> <ETHERSCAN_API_KEY> true \
+  --ffi
+```
+
+**Dry run** (simulation only, no on-chain transactions):
+
+```bash
+forge script script/universal/DeploySP1HeliosAndUniversalSpokePool.s.sol \
+  --sig "run(uint256,string,string,bool)" \
+  <OFT_FEE_CAP> <RPC_URL> "" false \
+  --ffi
+```
+
+The script aborts if a SpokePool is already registered for the target chain in `broadcast/deployed-addresses.json`. Remove the chain entry from that file if you need to redeploy.
+
+> **Note**: The `--ffi` flag is required. Do **not** pass `--broadcast` or `--rpc-url` to the outer script — deployments and role transfers are handled internally via FFI sub-processes and `cast send`.
+
+---
+
+## Individual Script Usage
+
+If you need more control over individual steps (e.g., deploying SP1Helios on one chain while reusing an existing SpokePool, or debugging a single step), you can run each script separately.
+
+### DeploySP1Helios.s.sol
+
+Deploys the SP1Helios light client contract. Downloads a genesis binary from GitHub releases (verified against `checksums.json`), runs it to generate genesis parameters, and deploys the contract. If `SP1_VERIFIER_ADDRESS` is `0x0`, a mock verifier is deployed automatically.
 
 ```bash
 forge script script/universal/DeploySP1Helios.s.sol \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --rpc-url <RPC_URL> \
   --broadcast \
-  --verify \
-  --etherscan-api-key <API_KEY> \
+  --verify --etherscan-api-key <API_KEY> \
   --ffi \
   -vvvv
 ```
 
-> **Note**: The `--ffi` flag is required. The script downloads a genesis binary, verifies its checksum, and runs it to generate genesis parameters.
+The `--ffi` flag is required for the genesis binary download and execution. The script returns the deployed SP1Helios address.
 
-Note the deployed **SP1Helios address** from the output.
+### DeployUniversalSpokePool.s.sol
 
----
-
-### Step 2: Deploy Universal SpokePool
-
-Pass the SP1Helios address from Step 1 as the first argument:
+Deploys the Universal_SpokePool behind an ERC1967 proxy. Requires the SP1Helios address from the step above. Reads chain-specific configuration (WETH, USDC, CCTP, OFT) from `generated/constants.json` and `broadcast/deployed-addresses.json`.
 
 ```bash
 forge script script/universal/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool \
   --sig "run(address,uint256)" <SP1_HELIOS_ADDRESS> <OFT_FEE_CAP> \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
+  --rpc-url <RPC_URL> \
   --broadcast \
-  --verify \
-  --etherscan-api-key <API_KEY> \
+  --verify --etherscan-api-key <API_KEY> \
   -vvvv
 ```
 
-Replace `<SP1_HELIOS_ADDRESS>` with the address from Step 1 and `<OFT_FEE_CAP>` with the maximum fee for OFT (LayerZero) transfers (e.g., `78000`).
+After deployment, you must transfer SP1Helios roles to the SpokePool (see below).
 
-Note the deployed **Universal_SpokePool proxy address** from the output.
+### Transferring SP1Helios Roles to SpokePool
 
----
+The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds `DEFAULT_ADMIN_ROLE` and `VKEY_UPDATER_ROLE`. Both must be transferred to the Universal_SpokePool so that admin functions (including verification key updates) can be called through the cross-chain admin flow.
 
-### Step 3: Transfer SP1Helios Roles to SpokePool
-
-The SP1Helios contract uses OpenZeppelin's AccessControl. After deployment, the deployer holds the `DEFAULT_ADMIN_ROLE` and `VKEY_UPDATER_ROLE`. Both roles must be transferred to the Universal_SpokePool so that admin functions (including verification key updates) can be called through the cross-chain admin flow.
-
-The `VKEY_UPDATER_ROLE` must be granted and renounced **before** the `DEFAULT_ADMIN_ROLE` is transferred, since the deployer needs admin privileges to grant roles.
+The `VKEY_UPDATER_ROLE` must be granted and renounced **before** `DEFAULT_ADMIN_ROLE` is transferred, since the deployer needs admin privileges to grant roles.
 
 ```bash
 VKEY_UPDATER_ROLE=$(cast keccak "VKEY_UPDATER_ROLE")
@@ -111,35 +127,21 @@ DEFAULT_ADMIN_ROLE=0x00000000000000000000000000000000000000000000000000000000000
 
 # Grant VKEY_UPDATER_ROLE to the SpokePool
 cast send <SP1_HELIOS_ADDRESS> \
-  "grantRole(bytes32,address)" \
-  $VKEY_UPDATER_ROLE \
-  <SPOKE_POOL_ADDRESS> \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
-  --private-key <DEPLOYER_PRIVATE_KEY>
+  "grantRole(bytes32,address)" $VKEY_UPDATER_ROLE <SPOKE_POOL_ADDRESS> \
+  --rpc-url <RPC_URL> --private-key <DEPLOYER_PRIVATE_KEY>
 
 # Renounce VKEY_UPDATER_ROLE from the deployer
 cast send <SP1_HELIOS_ADDRESS> \
-  "renounceRole(bytes32,address)" \
-  $VKEY_UPDATER_ROLE \
-  <DEPLOYER_ADDRESS> \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
-  --private-key <DEPLOYER_PRIVATE_KEY>
+  "renounceRole(bytes32,address)" $VKEY_UPDATER_ROLE <DEPLOYER_ADDRESS> \
+  --rpc-url <RPC_URL> --private-key <DEPLOYER_PRIVATE_KEY>
 
 # Grant DEFAULT_ADMIN_ROLE to the SpokePool
 cast send <SP1_HELIOS_ADDRESS> \
-  "grantRole(bytes32,address)" \
-  $DEFAULT_ADMIN_ROLE \
-  <SPOKE_POOL_ADDRESS> \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
-  --private-key <DEPLOYER_PRIVATE_KEY>
+  "grantRole(bytes32,address)" $DEFAULT_ADMIN_ROLE <SPOKE_POOL_ADDRESS> \
+  --rpc-url <RPC_URL> --private-key <DEPLOYER_PRIVATE_KEY>
 
 # Renounce DEFAULT_ADMIN_ROLE from the deployer
 cast send <SP1_HELIOS_ADDRESS> \
-  "renounceRole(bytes32,address)" \
-  $DEFAULT_ADMIN_ROLE \
-  <DEPLOYER_ADDRESS> \
-  --rpc-url <NEW_CHAIN_RPC_URL> \
-  --private-key <DEPLOYER_PRIVATE_KEY>
+  "renounceRole(bytes32,address)" $DEFAULT_ADMIN_ROLE <DEPLOYER_ADDRESS> \
+  --rpc-url <RPC_URL> --private-key <DEPLOYER_PRIVATE_KEY>
 ```
-
-> **Note**: `DEFAULT_ADMIN_ROLE` (`0x00...00`) is defined in OpenZeppelin's AccessControl. `VKEY_UPDATER_ROLE` is `keccak256("VKEY_UPDATER_ROLE")`.

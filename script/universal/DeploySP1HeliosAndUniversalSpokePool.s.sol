@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
+import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
 
 /// @title DeploySP1HeliosAndUniversalSpokePool
 /// @notice Combined Foundry script that orchestrates the full deployment of SP1Helios + Universal_SpokePool.
@@ -32,7 +33,7 @@ import { console } from "forge-std/console.sol";
 /// Required env vars (loaded from .env, passed through to sub-scripts):
 ///   MNEMONIC, SP1_RELEASE, SP1_PROVER_MODE, SP1_VERIFIER_ADDRESS,
 ///   SP1_STATE_UPDATERS, SP1_VKEY_UPDATER, SP1_CONSENSUS_RPCS_LIST
-contract DeploySP1HeliosAndUniversalSpokePool is Script {
+contract DeploySP1HeliosAndUniversalSpokePool is Script, DeployedAddresses {
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 internal constant VKEY_UPDATER_ROLE = keccak256("VKEY_UPDATER_ROLE");
 
@@ -54,22 +55,13 @@ contract DeploySP1HeliosAndUniversalSpokePool is Script {
         // =====================================================================
         // Safety check: abort if a SpokePool already exists on this chain
         // =====================================================================
-        string memory deployedAddressesPath = string.concat(vm.projectRoot(), "/broadcast/deployed-addresses.json");
-        if (vm.isFile(deployedAddressesPath)) {
-            string memory existing = _ffiText(
-                string.concat(
-                    "jq -r '.chains[\"",
-                    chainId,
-                    '"].contracts["SpokePool"].address // empty\' ',
-                    deployedAddressesPath
-                )
-            );
-            if (bytes(existing).length > 0) {
-                console.log("Error: SpokePool already deployed on chain", chainId, "at", existing);
-                console.log("This script is intended for fresh deployments only.");
-                console.log("Remove the chain entry from", deployedAddressesPath, "if you want to redeploy.");
-                revert("SpokePool already exists on target chain");
-            }
+        uint256 targetChainId = vm.parseUint(chainId);
+        address existingSpokePool = getAddress(targetChainId, "SpokePool");
+        if (existingSpokePool != address(0)) {
+            console.log("Error: SpokePool already deployed on chain", chainId, "at", existingSpokePool);
+            console.log("This script is intended for fresh deployments only.");
+            console.log("Remove the chain entry from broadcast/deployed-addresses.json if you want to redeploy.");
+            revert("SpokePool already exists on target chain");
         }
 
         // =====================================================================
