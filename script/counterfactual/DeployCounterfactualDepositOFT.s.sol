@@ -25,13 +25,10 @@ contract DeployCounterfactualDepositOFT is Create2DeployUtils, Test {
             type(CounterfactualDepositOFT).creationCode,
             abi.encode(oftSrcPeriphery, srcEid)
         );
-        address predicted = _predictCreate2(bytes32(0), initCode);
-
         console.log("Deploying CounterfactualDepositOFT via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("OFT SrcPeriphery:", oftSrcPeriphery);
         console.log("Source EID:", uint256(srcEid));
-        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);

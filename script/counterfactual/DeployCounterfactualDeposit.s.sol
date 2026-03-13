@@ -18,11 +18,9 @@ contract DeployCounterfactualDeposit is Create2DeployUtils, Test {
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
 
         bytes memory initCode = type(CounterfactualDeposit).creationCode;
-        address predicted = _predictCreate2(bytes32(0), initCode);
 
         console.log("Deploying CounterfactualDeposit via CREATE2...");
         console.log("Chain ID:", block.chainid);
-        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);
