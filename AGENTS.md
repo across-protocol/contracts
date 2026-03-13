@@ -1,12 +1,12 @@
 # Across Protocol Smart Contracts
 
-This repository contains production smart contracts for the Across Protocol cross-chain bridge.
+This repository contains production smart contracts for the Across Protocol cross-chain bridge, including EVM (Solidity) and SVM (Rust/Anchor) programs.
 
 ## How to use docs in this repo
 
 Start with this file. If extra clarity is needed, read nearby local `.md` files, especially the closest `README.md`.
 
-For deployment work, the main references are `deployments/README.md`, `script/utils/CONSTANTS_README.md`, `script/utils/EXTRACT_ADDRESSES.md`, and `script/universal/README.md`.
+Read local READMEs when you need more detail. Useful examples can be found throughout the repo, including `script/utils/README.md`, `script/universal/README.md`, and `deployments/README.md`.
 
 ## Documentation maintenance
 
@@ -57,7 +57,7 @@ Located in `contracts/periphery/mintburn/`. A modular framework for executing cr
 
 ### Deployments
 
-Canonical deployed addresses are generated into `broadcast/deployed-addresses.json`, with `broadcast/deployed-addresses.md` as the readable companion. In Foundry scripts, use `script/utils/DeploymentUtils.sol` lookup helpers such as `getDeployedAddress()` and `getSpokePoolDeploymentInfo()`. For deployment context, read `deployments/README.md`, `script/utils/CONSTANTS_README.md`, `script/utils/EXTRACT_ADDRESSES.md`, and `script/universal/README.md` as needed.
+Canonical deployed addresses are generated into `broadcast/deployed-addresses.json`, with `broadcast/deployed-addresses.md` as the readable companion. `deployments/legacy-addresses.json` is still included for legacy Hardhat deployments. In Foundry scripts, use `script/utils/DeploymentUtils.sol` lookup helpers such as `getDeployedAddress()` and `getSpokePoolDeploymentInfo()`.
 
 ## Development Frameworks
 
@@ -154,10 +154,13 @@ See `foundry.toml` for Foundry configuration. **Do not modify `foundry.toml` wit
 
 ## Code Style
 
+Prioritize security, succinctness, and DRY code.
+
 **Prioritize succinctness.** Express features in the least lines possible. This often leads to the most elegant solution:
 
 - Consolidate duplicate code paths (e.g., one function call with different parameters instead of multiple branches with similar calls)
 - Compute values before branching, then use them in a single code path
+- Reuse existing helpers and patterns instead of re-implementing similar logic
 - Avoid redundant intermediate variables when the expression is clear (although consider gas cost implications, especially for mainnet contracts)
 - Prefer early returns to reduce nesting
 
