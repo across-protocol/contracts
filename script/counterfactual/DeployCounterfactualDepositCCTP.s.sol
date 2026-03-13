@@ -25,13 +25,10 @@ contract DeployCounterfactualDepositCCTP is Create2DeployUtils, Test {
             type(CounterfactualDepositCCTP).creationCode,
             abi.encode(srcPeriphery, sourceDomain)
         );
-        address predicted = _predictCreate2(bytes32(0), initCode);
-
         console.log("Deploying CounterfactualDepositCCTP via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("SrcPeriphery:", srcPeriphery);
         console.log("Source domain:", uint256(sourceDomain));
-        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);

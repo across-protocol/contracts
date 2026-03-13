@@ -27,14 +27,11 @@ contract DeployCounterfactualDepositSpokePool is Create2DeployUtils, Test {
             type(CounterfactualDepositSpokePool).creationCode,
             abi.encode(spokePool, signer, wrappedNativeToken)
         );
-        address predicted = _predictCreate2(bytes32(0), initCode);
-
         console.log("Deploying CounterfactualDepositSpokePool via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("SpokePool:", spokePool);
         console.log("Signer:", signer);
         console.log("Wrapped native token:", wrappedNativeToken);
-        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);

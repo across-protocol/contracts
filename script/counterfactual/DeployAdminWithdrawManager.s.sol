@@ -27,14 +27,11 @@ contract DeployAdminWithdrawManager is Create2DeployUtils, Test {
             type(AdminWithdrawManager).creationCode,
             abi.encode(owner, directWithdrawer, signer)
         );
-        address predicted = _predictCreate2(bytes32(0), initCode);
-
         console.log("Deploying AdminWithdrawManager via CREATE2...");
         console.log("Chain ID:", block.chainid);
         console.log("Owner:", owner);
         console.log("Direct withdrawer:", directWithdrawer);
         console.log("Signer:", signer);
-        console.log("Predicted address:", predicted);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);
