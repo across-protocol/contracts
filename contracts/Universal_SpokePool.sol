@@ -18,18 +18,21 @@ import "./SpokePool.sol";
 contract Universal_SpokePool is OwnableUpgradeable, SpokePool, CircleCCTPAdapter {
     /// @notice The data store contract that only the HubPool can write to. This spoke pool can only act on
     /// data that has been written to this store.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     address public immutable hubPoolStore;
 
     /// @notice Slot index of the HubPoolStore's relayMessageCallData mapping.
     uint256 public constant HUB_POOL_STORE_CALLDATA_MAPPING_SLOT_INDEX = 0;
 
     /// @notice The address of the Helios L1 light client contract.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     address public immutable helios;
 
     /// @notice The owner of this contract must wait until this amount of seconds have passed since the latest
     /// helios light client update to emergency execute a message. This prevents the owner from executing a message
     /// in the happy case where the light client is being regularly updated. Therefore, this value should be
     /// set to a very high value, like 24 hours.
+    /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
     uint256 public immutable ADMIN_UPDATE_BUFFER;
 
     /// @notice Stores nonces of calldata stored in HubPoolStore that gets executed via executeMessage()
