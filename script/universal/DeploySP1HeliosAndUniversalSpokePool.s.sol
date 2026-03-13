@@ -36,12 +36,6 @@ contract DeploySP1HeliosAndUniversalSpokePool is Script {
     bytes32 internal constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 internal constant VKEY_UPDATER_ROLE = keccak256("VKEY_UPDATER_ROLE");
 
-    function run() external pure {
-        revert(
-            "Usage: forge script ... --sig 'run(uint256,string,string,bool)' <OFT_FEE_CAP> <RPC_URL> <ETHERSCAN_API_KEY> <BROADCAST> --ffi"
-        );
-    }
-
     function run(
         uint256 oftFeeCap,
         string calldata rpcUrl,
