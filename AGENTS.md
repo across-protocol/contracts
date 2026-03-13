@@ -2,6 +2,19 @@
 
 This repository contains production smart contracts for the Across Protocol cross-chain bridge.
 
+## How to use docs in this repo
+
+Start with this file. If extra clarity is needed, read nearby local `.md` files, especially the closest `README.md`.
+
+For deployment work, the main references are `deployments/README.md`, `script/utils/CONSTANTS_README.md`, `script/utils/EXTRACT_ADDRESSES.md`, and `script/universal/README.md`.
+
+## Documentation maintenance
+
+Keep docs updated in the same change whenever behavior, configuration, interfaces, or contract structure changes.
+
+- Before writing implementation plans, surface material ambiguities first and resolve them with the user.
+- For each new task, propose 0-3 targeted doc updates, or explicitly state why none are needed.
+
 ## Architecture
 
 ### Intents System (Hub-and-Spoke)
@@ -44,7 +57,7 @@ Located in `contracts/periphery/mintburn/`. A modular framework for executing cr
 
 ### Deployments
 
-Canonical deployed addresses for production contracts are stored in `broadcast/deployed-addresses.json`. From Foundry scripts, `script/utils/DeploymentUtils.sol` provides convenient lookup helpers (see `getDeployedAddress()`, `getSpokePoolDeploymentInfo()`). For chain-specific SpokePool variants, search for contracts with `SpokePool` in the name.
+Canonical deployed addresses are generated into `broadcast/deployed-addresses.json`, with `broadcast/deployed-addresses.md` as the readable companion. In Foundry scripts, use `script/utils/DeploymentUtils.sol` lookup helpers such as `getDeployedAddress()` and `getSpokePoolDeploymentInfo()`. For deployment context, read `deployments/README.md`, `script/utils/CONSTANTS_README.md`, `script/utils/EXTRACT_ADDRESSES.md`, and `script/universal/README.md` as needed.
 
 ## Development Frameworks
 
@@ -56,39 +69,40 @@ Canonical deployed addresses for production contracts are stored in `broadcast/d
 ```
 contracts/           # Smart contract source files
   chain-adapters/    # L1 chain adapters (intents system)
+  test/              # Mock contracts for testing
   periphery/         # Periphery contracts
     mintburn/        # Mint-burn system (sponsored CCTP, OFT flows)
   interfaces/        # Interface definitions
   libraries/         # Shared libraries
-test/evm/
-  foundry/           # Foundry tests (.t.sol)
+test/
+  evm/foundry/       # Foundry tests (.t.sol)
     local/           # Local unit tests
     fork/            # Fork tests
-  hardhat/           # Legacy Hardhat tests (.ts)
+    utils/           # Test base classes
+  evm/hardhat/       # Legacy Hardhat tests (.ts)
+  svm/               # Solana program tests
+programs/            # Solana/Anchor programs
+idls/                # Anchor IDL files
 script/              # Foundry deployment scripts (.s.sol)
-  utils/             # Script utilities (Constants.sol, DeploymentUtils.sol)
+  utils/             # Script utilities and deployment docs
+  universal/         # Universal SpokePool deployment
+broadcast/           # Foundry deployment receipts and generated address artifacts
+deployments/         # Legacy Hardhat addresses and deployment notes
 lib/                 # External dependencies (git submodules)
 ```
 
 ## Build & Test Commands
 
 ```bash
-# Build contracts
-forge build                           # Foundry
-yarn build-evm                        # Hardhat
-
-# Run tests
-yarn test-evm-foundry                 # Foundry local tests (recommended; uses FOUNDRY_PROFILE=local-test)
-FOUNDRY_PROFILE=local-test forge test # Required for local Foundry tests in this repo
+yarn build-evm-foundry                # Foundry build
+yarn test-evm-foundry                 # Foundry local tests (recommended)
+yarn test-evm-foundry -- --match-test testDeposit
+yarn test-evm-foundry -- --match-contract Router_Adapter
+yarn test-evm-foundry -- -vvv         # Verbose output
 yarn test-evm-hardhat                 # Hardhat tests (legacy)
-
-# Run specific Foundry tests
-FOUNDRY_PROFILE=local-test forge test --match-test testDeposit
-FOUNDRY_PROFILE=local-test forge test --match-contract Router_Adapter
-FOUNDRY_PROFILE=local-test forge test -vvv # Verbose output
 ```
 
-Use `FOUNDRY_PROFILE=local-test` (or `yarn test-evm-foundry`) for local Foundry test runs; do not use plain `forge test`.
+Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=local-test`. `yarn build-evm-foundry` can take up to 5 minutes.
 
 ## Naming Conventions
 
