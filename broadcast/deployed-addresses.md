@@ -230,9 +230,9 @@ This file contains the latest deployed smart contract addresses from the broadca
 | 1inch_SwapAndBridge            | [0x7CFaBF2eA327009B39f40078011B0Fb714b65926](https://basescan.org/address/0x7CFaBF2eA327009B39f40078011B0Fb714b65926) |
 | AdminWithdrawManager           | [0xff054046BEABDef60Aa310A32218Cb22c8243d87](https://basescan.org/address/0xff054046BEABDef60Aa310A32218Cb22c8243d87) |
 | CounterfactualDeposit          | [0xfb090c119c838CeD214F962F931d5fa38b111E46](https://basescan.org/address/0xfb090c119c838CeD214F962F931d5fa38b111E46) |
-| CounterfactualDepositCCTP      | [0xB4C4165BE625D689B6bA34D3491e9a784330b6B1](https://basescan.org/address/0xB4C4165BE625D689B6bA34D3491e9a784330b6B1) |
+| CounterfactualDepositCCTP      | [0x56245F07a5e03558142D95c9Eb1Af9a5AA174550](https://basescan.org/address/0x56245F07a5e03558142D95c9Eb1Af9a5AA174550) |
 | CounterfactualDepositFactory   | [0x20e67fBE0150B498048709306cc7729d382F1fB1](https://basescan.org/address/0x20e67fBE0150B498048709306cc7729d382F1fB1) |
-| CounterfactualDepositSpokePool | [0x93269dC508e23Dc7EB33e498419889B69DDB2376](https://basescan.org/address/0x93269dC508e23Dc7EB33e498419889B69DDB2376) |
+| CounterfactualDepositSpokePool | [0x8e77B3E3A6849f47f43f52B0A854Cc61441366E3](https://basescan.org/address/0x8e77B3E3A6849f47f43f52B0A854Cc61441366E3) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x767e4c20F521a829dE4Ffc40C25176676878147f](https://basescan.org/address/0x767e4c20F521a829dE4Ffc40C25176676878147f) |
