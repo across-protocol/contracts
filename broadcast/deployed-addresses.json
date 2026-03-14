@@ -733,9 +733,9 @@
           "transaction_hash": "0xb06c9cc63e32bf0e1448fb7e8ec2fb57366ae535f08528236694f30cde5f9c30"
         },
         "CounterfactualDepositCCTP": {
-          "address": "0xB4C4165BE625D689B6bA34D3491e9a784330b6B1",
-          "block_number": 43270852,
-          "transaction_hash": "0x7c2af29fa8b4679cabef002bd935af87c55c205c2c9821f5bd634af609ff7945"
+          "address": "0x56245F07a5e03558142D95c9Eb1Af9a5AA174550",
+          "block_number": 43357394,
+          "transaction_hash": "0x8e7b7118076a62aa6ff537692f44ea7eb75ed1ce6ded7d43bd483337f1577135"
         },
         "CounterfactualDepositFactory": {
           "address": "0x20e67fBE0150B498048709306cc7729d382F1fB1",
@@ -743,9 +743,9 @@
           "transaction_hash": "0x70905de92983f12125056484d92de52bfff8846ada99aa5ebaadd4b82119e5a0"
         },
         "CounterfactualDepositSpokePool": {
-          "address": "0x93269dC508e23Dc7EB33e498419889B69DDB2376",
-          "block_number": 43270835,
-          "transaction_hash": "0x80ab4a5e7793d48c512b4b52b1743f61041f51df3c695edcb3778c94c4c99c19"
+          "address": "0x8e77B3E3A6849f47f43f52B0A854Cc61441366E3",
+          "block_number": 43357822,
+          "transaction_hash": "0x37ba0c1cb2e7127e8c798132c9a510c66cc6252cd6492f551cf6f9a0bae98cfa"
         },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xa30968D3468316D957B9115EAad3C1c8E450116d",
