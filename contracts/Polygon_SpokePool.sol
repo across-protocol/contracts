@@ -190,7 +190,10 @@ contract Polygon_SpokePool is IFxMessageProcessor, SpokePool, CircleCCTPAdapter 
         bool hasExecutedLeafCall = false;
         for (uint256 i = 0; i < data.length; i++) {
             bytes4 selector = bytes4(data[i][:4]);
-            if (selector == MultiCallerUpgradeable.multicall.selector) {
+            if (
+                selector == MultiCallerUpgradeable.multicall.selector ||
+                selector == MultiCallerUpgradeable.tryMulticall.selector
+            ) {
                 revert MulticallExecuteLeaf();
             } else if (selector == SpokePoolInterface.executeRelayerRefundLeaf.selector) {
                 if (hasOtherPublicFunctionCall) revert MulticallExecuteLeaf();
