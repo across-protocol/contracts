@@ -53,7 +53,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
             baseToken,
             address(multicallHandler)
         );
-        donationBox.transferOwnership(address(dstOFTHandler));
+        donationBox.grantRole(address(dstOFTHandler), donationBox.WITHDRAWER_ROLE());
 
         PermissionedMulticallHandler handler = PermissionedMulticallHandler(payable(multicallHandler));
         if (handler.hasRole(handler.DEFAULT_ADMIN_ROLE(), deployer)) {
