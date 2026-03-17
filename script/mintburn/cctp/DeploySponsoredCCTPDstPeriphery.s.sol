@@ -58,6 +58,6 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
         assertEq(address(sponsoredCCTPDstPeriphery.cctpMessageTransmitter()), cctpMessageTransmitter);
         assertEq(sponsoredCCTPDstPeriphery.baseToken(), baseToken);
         assertEq(sponsoredCCTPDstPeriphery.signer(), deployer);
-        assertEq(donationBox.owner(), address(sponsoredCCTPDstPeriphery));
+        assertTrue(donationBox.hasRole(donationBox.WITHDRAWER_ROLE(), address(sponsoredCCTPDstPeriphery)));
     }
 }
