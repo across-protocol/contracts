@@ -25,8 +25,9 @@ contract PrintHeliosVkey is Script, DeployedAddresses {
         string memory rpcUrl = vm.envString(string.concat("NODE_URL_", vm.toString(chainId)));
         vm.createSelectFork(rpcUrl);
 
-        // Read Helios address from SpokePool.
-        address helios = IUniversalSpokePool(spokePool).helios();
+        // Prefer the deployed Helios address when present, otherwise fall back to the SpokePool pointer.
+        address helios = getAddress(chainId, "SP1Helios");
+        if (helios == address(0)) helios = IUniversalSpokePool(spokePool).helios();
         require(helios != address(0), "Helios address is zero");
 
         // Read vkey.
