@@ -1046,6 +1046,16 @@
         }
       }
     },
+    "728126428": {
+      "chain_name": "Chain 728126428",
+      "contracts": {
+        "SP1HeliosTron": {
+          "address": "TDYFqavHzEkQJMzTiUnXVFHEWLUXnyc9dy",
+          "block_number": 81034069,
+          "transaction_hash": "831618738ff28a75d1ec9d9a4c0fc402cc75ed9cc529e8b3801549182039440e"
+        }
+      }
+    },
     "3448148188": {
       "chain_name": "Chain 3448148188",
       "contracts": {
