@@ -53,7 +53,7 @@ export async function deployNewProxy(
     unsafeAllowArgs.push("state-variable-immutable");
   }
 
-  // If a SpokePool can be found in deployments/deployments.json, then only deploy an implementation contract.
+  // If a SpokePool can be found in deployments/legacy-addresses.json, then only deploy an implementation contract.
   let proxyAddress = getDeployedAddress("SpokePool", chainId, false);
   implementationOnly ??= proxyAddress !== undefined;
   let implementationAddress: string;

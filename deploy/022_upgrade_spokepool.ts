@@ -1,6 +1,6 @@
 import { DeployFunction } from "hardhat-deploy/types";
 import { getContractFactory } from "../utils";
-import * as deployments from "../deployments/deployments.json";
+import * as deployments from "../deployments/legacy-addresses.json";
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { FILL_DEADLINE_BUFFER, QUOTE_TIME_BUFFER, WETH } from "./consts";
 
