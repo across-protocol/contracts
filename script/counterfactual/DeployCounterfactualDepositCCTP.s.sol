@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-
-import { Create2DeployUtils } from "./Create2DeployUtils.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 
 // How to run:
@@ -14,7 +12,7 @@ import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfact
 //      --rpc-url $NODE_URL -vvvv
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployCounterfactualDepositCCTP is Create2DeployUtils, Test {
+contract DeployCounterfactualDepositCCTP is DeploymentUtils {
     function run(address srcPeriphery, uint32 sourceDomain) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));

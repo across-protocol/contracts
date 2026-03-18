@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-
-import { Create2DeployUtils } from "./Create2DeployUtils.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 
 // How to run:
@@ -14,7 +12,7 @@ import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counte
 //      --rpc-url $NODE_URL -vvvv
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployCounterfactualDepositSpokePool is Create2DeployUtils, Test {
+contract DeployCounterfactualDepositSpokePool is DeploymentUtils {
     function run(address spokePool, address signer, address wrappedNativeToken) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));

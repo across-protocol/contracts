@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-
-import { Create2DeployUtils } from "./Create2DeployUtils.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // How to run:
@@ -14,7 +12,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //      --rpc-url $NODE_URL -vvvv
 // 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployAdminWithdrawManager is Create2DeployUtils, Test {
+contract DeployAdminWithdrawManager is DeploymentUtils {
     function run(address owner, address directWithdrawer, address signer) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
