@@ -10,9 +10,9 @@ import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/011DeployPolygonSpokePool.s.sol:DeployPolygonSpokePool --rpc-url $NODE_URL_137 -vvvv
+// 2. forge script script/DeployPolygonSpokePool.s.sol:DeployPolygonSpokePool --rpc-url $NODE_URL_137 -vvvv
 // 3. Verify the above works in simulation mode.
-// 4. Deploy with: forge script script/011DeployPolygonSpokePool.s.sol:DeployPolygonSpokePool --rpc-url $NODE_URL_137 --broadcast --verify
+// 4. Deploy with: forge script script/DeployPolygonSpokePool.s.sol:DeployPolygonSpokePool --rpc-url $NODE_URL_137 --broadcast --verify
 
 contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
     function run() external {
@@ -28,8 +28,8 @@ contract DeployPolygonSpokePool is Script, Test, DeploymentUtils {
         // Get L2 addresses for Polygon
         address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpV2TokenMessenger");
 
-        // Fee cap of 22K POL is roughly equivalent to $5K at current POL price of ~0.23
-        uint256 oftFeeCap = 22000 ether;
+        // Fee cap of 51658 POL is roughly equivalent to $5K at current POL price of ~0.09679
+        uint256 oftFeeCap = 51658 ether;
 
         vm.startBroadcast(deployerPrivateKey);
 
