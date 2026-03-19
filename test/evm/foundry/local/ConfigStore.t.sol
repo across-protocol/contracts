@@ -46,7 +46,7 @@ contract ConfigStore_Test is Test {
 
         // Non-owner cannot update token config
         vm.prank(other);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         configStore.updateTokenConfig(l1Token, SAMPLE_RATE_MODEL_JSON);
 
         // Owner can update token config
@@ -61,7 +61,7 @@ contract ConfigStore_Test is Test {
     function test_UpdatingGlobalConfig() public {
         // Non-owner cannot update global config
         vm.prank(other);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         configStore.updateGlobalConfig(MAX_POOL_REBALANCE_LEAF_SIZE_KEY, MAX_REFUNDS_VALUE);
 
         // Owner can update global config

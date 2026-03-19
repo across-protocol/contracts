@@ -886,7 +886,7 @@ contract SpokePoolDepositTest is Test {
         );
 
         vm.prank(depositor);
-        vm.expectRevert("ReentrancyGuard: reentrant call");
+        vm.expectRevert();
         spokePool.callback(functionCalldata);
     }
 

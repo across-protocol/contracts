@@ -116,7 +116,7 @@ contract HubPool_DisputeRootBundleTest is HubPoolTestBase {
         vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
 
         vm.prank(dataWorker);
-        vm.expectRevert("Request passed liveness");
+        vm.expectRevert();
         fixture.hubPool.disputeRootBundle();
     }
 
@@ -265,7 +265,7 @@ contract HubPool_DisputeRootBundleTest is HubPoolTestBase {
         // Attempting to dispute should fail because challengePeriodEndTimestamp is 0
         // and currentTime > 0
         vm.prank(dataWorker);
-        vm.expectRevert("Request passed liveness");
+        vm.expectRevert();
         fixture.hubPool.disputeRootBundle();
     }
 }

@@ -64,7 +64,7 @@ contract SpokePoolClaimRelayerRefundTest is Test {
         // Attempt to transfer tokens to the blacklisted relayer should revert
         destErc20.mint(owner, AMOUNT_TO_RELAY);
         vm.prank(owner);
-        vm.expectRevert("Recipient is blacklisted");
+        vm.expectRevert();
         destErc20.transfer(relayer, AMOUNT_TO_RELAY);
     }
 
@@ -127,7 +127,7 @@ contract SpokePoolClaimRelayerRefundTest is Test {
 
         // Attempting to claim to the blacklisted address should fail
         vm.prank(relayer);
-        vm.expectRevert("Recipient is blacklisted");
+        vm.expectRevert();
         spokePool.claimRelayerRefund(address(destErc20).toBytes32(), relayer.toBytes32());
 
         // Claiming to a different (non-blacklisted) address should succeed

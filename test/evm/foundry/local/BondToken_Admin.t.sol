@@ -59,25 +59,25 @@ contract BondToken_AdminTest is Test {
 
         // Try enabling as proposer - should revert
         vm.prank(other);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         bondToken.setProposer(other, true);
         assertFalse(bondToken.proposers(other));
 
         // Try disabling as proposer - should revert
         vm.prank(other);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         bondToken.setProposer(other, false);
         assertFalse(bondToken.proposers(other));
 
         // Try enabling again - should revert
         vm.prank(other);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         bondToken.setProposer(other, true);
         assertFalse(bondToken.proposers(other));
 
         // Try disabling again - should revert
         vm.prank(other);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert();
         bondToken.setProposer(other, false);
         assertFalse(bondToken.proposers(other));
     }

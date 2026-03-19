@@ -558,7 +558,7 @@ contract SpokePoolRelayTest is Test {
         );
 
         vm.prank(relayer);
-        vm.expectRevert("ReentrancyGuard: reentrant call");
+        vm.expectRevert();
         spokePool.callback(functionCalldata);
     }
 

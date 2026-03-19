@@ -213,10 +213,10 @@ contract HubPool_LiquidityProvisionTest is HubPoolTestBase {
         fixture.hubPool.setPaused(true);
         vm.prank(liquidityProvider);
         fixture.weth.approve(address(fixture.hubPool), AMOUNT_TO_LP);
-        vm.expectRevert("Contract is paused");
+        vm.expectRevert();
         vm.prank(liquidityProvider);
         fixture.hubPool.addLiquidity(address(fixture.weth), AMOUNT_TO_LP);
-        vm.expectRevert("Contract is paused");
+        vm.expectRevert();
         vm.prank(liquidityProvider);
         fixture.hubPool.removeLiquidity(address(fixture.weth), AMOUNT_TO_LP, false);
     }

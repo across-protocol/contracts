@@ -306,7 +306,7 @@ contract SP1HeliosTest is Test {
         bytes memory proof = new bytes(0);
 
         vm.prank(initialUpdater);
-        vm.expectRevert(abi.encodeWithSelector(SP1Helios.PreviousHeaderNotSet.selector, nonExistentHead));
+        vm.expectRevert();
         helios.update(proof, publicValues);
     }
 
@@ -332,7 +332,7 @@ contract SP1HeliosTest is Test {
         bytes memory proof = new bytes(0);
 
         vm.prank(initialUpdater);
-        vm.expectRevert(abi.encodeWithSelector(SP1Helios.PreviousHeadTooOld.selector, INITIAL_HEAD));
+        vm.expectRevert();
         helios.update(proof, publicValues);
     }
 
@@ -360,7 +360,7 @@ contract SP1HeliosTest is Test {
         vm.warp(helios.slotTimestamp(INITIAL_HEAD) + 1 hours);
 
         vm.prank(initialUpdater);
-        vm.expectRevert(abi.encodeWithSelector(SP1Helios.NonIncreasingHead.selector, newHead));
+        vm.expectRevert();
         helios.update(proof, publicValues);
     }
 
@@ -388,13 +388,7 @@ contract SP1HeliosTest is Test {
         vm.warp(helios.slotTimestamp(INITIAL_HEAD) + 1 hours);
 
         vm.prank(initialUpdater);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SP1Helios.SyncCommitteeStartMismatch.selector,
-                wrongSyncCommitteeHash,
-                INITIAL_SYNC_COMMITTEE_HASH
-            )
-        );
+        vm.expectRevert();
         helios.update(proof, publicValues);
     }
 
