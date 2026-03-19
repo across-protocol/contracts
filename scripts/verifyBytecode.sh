@@ -1,7 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-# This script verifies the bytecode of a contract onchain matches the bytecode in the artifact
+# This legacy script verifies the bytecode of a contract onchain matches the bytecode in the local Foundry artifact.
+# Clean and rebuild first to avoid comparing against stale out/ artifacts:
+#   forge clean && forge cache clean && yarn build-evm-foundry
+#
+# If you already have an existing Foundry dry-run receipt and the deployment script is deterministic,
+# prefer ./scripts/verifyBytecodeDryRun.sh instead.
+#
 # It takes the following arguments:
 # 1. The transaction hash of the contract deployment
 # 2. The RPC URL to use
