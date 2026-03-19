@@ -84,8 +84,14 @@ test/
 programs/            # Solana/Anchor programs
 idls/                # Anchor IDL files
 script/              # Foundry deployment scripts (.s.sol)
-  utils/             # Script utilities and deployment docs
+  chain-adapters/    # Chain adapter deploy scripts
+  spoke-pools/       # SpokePool deploy scripts
+  hub-pool/          # HubPool deploy scripts
+  periphery/         # Periphery & handler deploy scripts
+  mintburn/          # Mint-burn system deploy scripts
   universal/         # Universal SpokePool deployment
+  tasks/             # Operational task scripts
+  utils/             # Script utilities and deployment docs
 broadcast/           # Foundry deployment receipts and generated address artifacts
 deployments/         # Legacy Hardhat addresses and deployment notes
 lib/                 # External dependencies (git submodules)
@@ -120,7 +126,7 @@ Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=loc
 
 ### Deployment Scripts
 
-- `.s.sol` suffix, see `script/` for examples (e.g. `script/DeployArbitrumAdapter.s.sol`)
+- `.s.sol` suffix, organized into subfolders by context (e.g. `script/chain-adapters/DeployArbitrumAdapter.s.sol`)
 - Script contracts: `contract Deploy<ContractName> is Script, Test, Constants`
 
 ## Writing Tests

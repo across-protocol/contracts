@@ -4,18 +4,18 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { HubPool } from "../contracts/hub-pool/HubPool.sol";
-import { LpTokenFactory } from "../contracts/hub-pool/LpTokenFactory.sol";
+import { HubPool } from "../../contracts/hub-pool/HubPool.sol";
+import { LpTokenFactory } from "../../contracts/hub-pool/LpTokenFactory.sol";
 import { FinderInterface } from "contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
-import { Constants } from "./utils/Constants.sol";
+import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
+import { Constants } from "../utils/Constants.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/hub-pool/DeployHubPool.s.sol:DeployHubPool --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/001DeployHubPool.s.sol:DeployHubPool --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/hub-pool/DeployHubPool.s.sol:DeployHubPool --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
 contract DeployHubPool is Script, Test, Constants {
     function run() external {

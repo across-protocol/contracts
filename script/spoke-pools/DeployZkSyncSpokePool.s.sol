@@ -4,20 +4,18 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Lens_SpokePool } from "../contracts/spoke-pools/Lens_SpokePool.sol";
-import { ZkSync_SpokePool } from "../contracts/spoke-pools/ZkSync_SpokePool.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
+import { ZkSync_SpokePool } from "../../contracts/spoke-pools/ZkSync_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. yarn forge-script-zksync script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens -vvvv
+// 2. yarn forge-script-zksync script/spoke-pools/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        yarn forge-script-zksync script/059DeployLensSpokePool.s.sol:DeployLensSpokePool --rpc-url lens \
-//        --broadcast --verify --verifier blockscout --verifier-url https://verify.lens.xyz/contract_verification
+//        yarn forge-script-zksync script/spoke-pools/DeployZkSyncSpokePool.s.sol:DeployZkSyncSpokePool --rpc-url zksync \
+//        --broadcast --verify --verifier blockscout --verifier-url https://explorer.zksync.io/contract_verification
 
-contract DeployLensSpokePool is Script, Test, DeploymentUtils {
+contract DeployZkSyncSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
@@ -26,14 +24,14 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         DeploymentInfo memory info = getSpokePoolDeploymentInfo(address(0));
 
         // Get the appropriate addresses for this chain
-        address wgho = getWghoAddress(info.spokeChainId);
+        address wrappedNativeToken = getWrappedNativeToken(info.spokeChainId);
 
-        // Get L2 addresses for Lens
+        // Get L2 addresses for ZkSync
         address zkErc20Bridge = getL2Address(info.spokeChainId, "zkErc20Bridge");
-        address zkUSDCBridge = getL2Address(info.spokeChainId, "zkUSDCBridge");
-        address cctpTokenMessenger = getL2Address(info.spokeChainId, "cctpTokenMessenger");
+        address zkUSDCBridge = address(0);
+        address cctpTokenMessenger = address(0);
 
-        // Get USDC address - similar logic to the original script
+        // Get USDC address - similar logic to the Lens script
         address usdcAddress = address(0);
         if (zkUSDCBridge != address(0) || cctpTokenMessenger != address(0)) {
             // Only one should be set, not both
@@ -46,9 +44,9 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Prepare constructor arguments for Lens_SpokePool
+        // Prepare constructor arguments for ZkSync_SpokePool
         bytes memory constructorArgs = abi.encode(
-            wgho, // _wrappedNativeTokenAddress
+            wrappedNativeToken, // _wrappedNativeTokenAddress
             usdcAddress, // _circleUSDC
             zkUSDCBridge, // _zkUSDCBridge
             cctpTokenMessenger, // _cctpTokenMessenger
@@ -59,7 +57,6 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         // Initialize deposit counter to 0 as per original script
         // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
         bytes memory initArgs = abi.encodeWithSelector(
-            // For some reason, the ZkSync_SpokePool.initialize selector is not working.
             ZkSync_SpokePool.initialize.selector,
             0, // _initialDepositId
             zkErc20Bridge, // _zkErc20Bridge
@@ -69,7 +66,7 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
 
         // Deploy the proxy
         DeploymentResult memory result = deployNewProxy(
-            "Lens_SpokePool",
+            "ZkSync_SpokePool",
             constructorArgs,
             initArgs,
             true // implementationOnly
@@ -79,13 +76,13 @@ contract DeployLensSpokePool is Script, Test, DeploymentUtils {
         console.log("Chain ID:", info.spokeChainId);
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
-        console.log("WGHO address:", address(wgho));
+        console.log("Wrapped Native Token address:", wrappedNativeToken);
         console.log("USDC address:", usdcAddress);
         console.log("zkErc20Bridge:", zkErc20Bridge);
         console.log("zkUSDCBridge:", zkUSDCBridge);
         console.log("cctpTokenMessenger:", cctpTokenMessenger);
-        console.log("Lens_SpokePool proxy deployed to:", result.proxy);
-        console.log("Lens_SpokePool implementation deployed to:", result.implementation);
+        console.log("ZkSync_SpokePool proxy deployed to:", result.proxy);
+        console.log("ZkSync_SpokePool implementation deployed to:", result.implementation);
 
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());

@@ -4,14 +4,14 @@ pragma solidity ^0.8.19;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Linea_SpokePool } from "../contracts/spoke-pools/Linea_SpokePool.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
+import { Linea_SpokePool } from "../../contracts/spoke-pools/Linea_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/DeployLineaSpokePool.s.sol:DeployLineaSpokePool --rpc-url $NODE_URL_59144 -vvvv
+// 2. forge script script/spoke-pools/DeployLineaSpokePool.s.sol:DeployLineaSpokePool --rpc-url $NODE_URL_59144 -vvvv
 // 3. Verify the above works in simulation mode.
-// 4. Deploy with: forge script script/DeployLineaSpokePool.s.sol:DeployLineaSpokePool --rpc-url $NODE_URL_59144 --broadcast --verify
+// 4. Deploy with: forge script script/spoke-pools/DeployLineaSpokePool.s.sol:DeployLineaSpokePool --rpc-url $NODE_URL_59144 --broadcast --verify
 
 contract DeployLineaSpokePool is Script, Test, DeploymentUtils {
     function run() external {

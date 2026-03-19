@@ -4,14 +4,14 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Blast_SpokePool } from "../contracts/spoke-pools/Blast_SpokePool.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
+import { Blast_SpokePool } from "../../contracts/spoke-pools/Blast_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/036DeployBlastSpokePool.s.sol:DeployBlastSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/spoke-pools/DeployBlastSpokePool.s.sol:DeployBlastSpokePool --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
-// 4. Deploy with: forge script script/036DeployBlastSpokePool.s.sol:DeployBlastSpokePool --rpc-url $NODE_URL_1 --broadcast --verify
+// 4. Deploy with: forge script script/spoke-pools/DeployBlastSpokePool.s.sol:DeployBlastSpokePool --rpc-url $NODE_URL_1 --broadcast --verify
 
 contract DeployBlastSpokePool is Script, Test, DeploymentUtils {
     // USDB addresses for Blast chains

@@ -5,23 +5,20 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { Arbitrum_Adapter } from "../contracts/chain-adapters/Arbitrum_Adapter.sol";
-import { Constants } from "./utils/Constants.sol";
-
-import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
-import {
-    ArbitrumInboxLike as ArbitrumL1InboxLike,
-    ArbitrumL1ERC20GatewayLike
-} from "../contracts/interfaces/ArbitrumBridge.sol";
+import { Polygon_Adapter } from "../../contracts/chain-adapters/Polygon_Adapter.sol";
+import { Constants } from "../utils/Constants.sol";
+import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
+import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { IRootChainManager, IFxStateSender, DepositManager } from "../../contracts/chain-adapters/Polygon_Adapter.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/004DeployArbitrumAdapter.s.sol:DeployArbitrumAdapter --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/chain-adapters/DeployPolygonAdapter.s.sol:DeployPolygonAdapter --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/004DeployArbitrumAdapter.s.sol:DeployArbitrumAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/chain-adapters/DeployPolygonAdapter.s.sol:DeployPolygonAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
-contract DeployArbitrumAdapter is Script, Test, Constants {
+contract DeployPolygonAdapter is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
@@ -32,19 +29,15 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
         // Verify this is being deployed on Ethereum mainnet or Sepolia
         require(
             chainId == getChainId("MAINNET") || chainId == getChainId("SEPOLIA"),
-            "Arbitrum_Adapter should only be deployed on Ethereum mainnet or Sepolia"
+            "Polygon_Adapter should only be deployed on Ethereum mainnet or Sepolia"
         );
 
-        // This address receives gas refunds on the L2 after messages are relayed. Currently
-        // set to the Risk Labs relayer address. The deployer should change this if necessary.
-        address l2RefundAddress = 0x07aE8551Be970cB1cCa11Dd7a11F47Ae82e70E67;
-
-        // Determine the spoke chain ID (Arbitrum mainnet or testnet)
+        // Determine the spoke chain ID (Polygon mainnet or testnet)
         uint256 spokeChainId;
         if (chainId == getChainId("MAINNET")) {
-            spokeChainId = getChainId("ARBITRUM");
+            spokeChainId = getChainId("POLYGON");
         } else {
-            spokeChainId = getChainId("ARBITRUM_SEPOLIA");
+            spokeChainId = getChainId("POLYGON_AMOY");
         }
 
         // Get OFT destination endpoint ID and fee cap
@@ -56,11 +49,14 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy Arbitrum_Adapter with constructor parameters
-        Arbitrum_Adapter arbitrumAdapter = new Arbitrum_Adapter(
-            ArbitrumL1InboxLike(l1Addresses.l1ArbitrumInbox),
-            ArbitrumL1ERC20GatewayLike(l1Addresses.l1ERC20GatewayRouter),
-            l2RefundAddress,
+        // Deploy Polygon_Adapter with constructor parameters
+        Polygon_Adapter polygonAdapter = new Polygon_Adapter(
+            IRootChainManager(l1Addresses.polygonRootChainManager),
+            IFxStateSender(l1Addresses.polygonFxRoot),
+            DepositManager(l1Addresses.polygonDepositManager),
+            l1Addresses.polygonERC20Predicate,
+            getWmaticAddress(chainId),
+            WETH9Interface(getWETHAddress(chainId)),
             IERC20(getUSDCAddress(chainId)),
             ITokenMessenger(l1Addresses.cctpV2TokenMessenger),
             l1Addresses.adapterStore, // This might need to be deployed first or set to address(0)
@@ -70,10 +66,13 @@ contract DeployArbitrumAdapter is Script, Test, Constants {
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
-        console.log("Arbitrum_Adapter deployed to:", address(arbitrumAdapter));
-        console.log("L1 Arbitrum Inbox:", l1Addresses.l1ArbitrumInbox);
-        console.log("L1 ERC20 Gateway Router:", l1Addresses.l1ERC20GatewayRouter);
-        console.log("L2 Refund Address:", l2RefundAddress);
+        console.log("Polygon_Adapter deployed to:", address(polygonAdapter));
+        console.log("L1 Polygon Root Chain Manager:", l1Addresses.polygonRootChainManager);
+        console.log("L1 Polygon Fx Root:", l1Addresses.polygonFxRoot);
+        console.log("L1 Polygon Deposit Manager:", l1Addresses.polygonDepositManager);
+        console.log("L1 Polygon ERC20 Predicate:", l1Addresses.polygonERC20Predicate);
+        console.log("MATIC Address:", getWmaticAddress(chainId));
+        console.log("WETH Address:", getWETHAddress(chainId));
         console.log("USDC Address:", getUSDCAddress(chainId));
         console.log("CCTP Token Messenger:", l1Addresses.cctpV2TokenMessenger);
         console.log("Adapter Store:", l1Addresses.adapterStore);

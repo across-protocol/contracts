@@ -4,15 +4,15 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { OP_SpokePool } from "../contracts/spoke-pools/OP_SpokePool.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
+import { OP_SpokePool } from "../../contracts/spoke-pools/OP_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/025DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/spoke-pools/DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        forge script script/025DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url \
+//        forge script script/spoke-pools/DeployOPSpokePool.s.sol:DeployOPSpokePool --rpc-url \
 //        $NODE_URL_1 --broadcast --verify --verifier blockscout --verifier-url https://explorer.mode.network/api
 
 contract DeployOPSpokePool is Script, Test, DeploymentUtils {

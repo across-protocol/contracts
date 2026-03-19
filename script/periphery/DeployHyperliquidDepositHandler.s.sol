@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { HyperliquidDepositHandler } from "../contracts/handlers/HyperliquidDepositHandler.sol";
-import { HyperCoreLib } from "../contracts/libraries/HyperCoreLib.sol";
+import { HyperliquidDepositHandler } from "../../contracts/handlers/HyperliquidDepositHandler.sol";
+import { HyperCoreLib } from "../../contracts/libraries/HyperCoreLib.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 // How to run:
-// forge script script/DeployHyperliquidDepositHandler.s.sol:DeployHyperliquidDepositHandler --rpc-url hyperevm -vvvv
+// forge script script/periphery/DeployHyperliquidDepositHandler.s.sol:DeployHyperliquidDepositHandler --rpc-url hyperevm -vvvv
 
 contract DeployHyperliquidDepositHandler is Script, Test {
     function run() external {

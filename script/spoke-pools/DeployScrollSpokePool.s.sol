@@ -4,16 +4,16 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Ink_SpokePool } from "../contracts/spoke-pools/Ink_SpokePool.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
+import { Scroll_SpokePool } from "../../contracts/spoke-pools/Scroll_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/057DeployInkSpokePool.s.sol:DeployInkSpokePool --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/spoke-pools/DeployScrollSpokePool.s.sol:DeployScrollSpokePool --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
-// 4. Deploy with: forge script script/057DeployInkSpokePool.s.sol:DeployInkSpokePool --rpc-url $NODE_URL_1 --broadcast --verify
+// 4. Deploy with: forge script script/spoke-pools/DeployScrollSpokePool.s.sol:DeployScrollSpokePool --rpc-url $NODE_URL_1 --broadcast --verify
 
-contract DeployInkSpokePool is Script, Test, DeploymentUtils {
+contract DeployScrollSpokePool is Script, Test, DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
@@ -26,29 +26,34 @@ contract DeployInkSpokePool is Script, Test, DeploymentUtils {
         // Get the appropriate addresses for this chain
         address weth = getWrappedNativeToken(info.spokeChainId);
 
+        // Get L2 addresses for Scroll
+        address l2GatewayRouter = getL2Address(info.spokeChainId, "scrollERC20GatewayRouter");
+        address l2ScrollMessenger = getL2Address(info.spokeChainId, "scrollMessenger");
+
         vm.startBroadcast(deployerPrivateKey);
 
-        // Prepare constructor arguments for Ink_SpokePool
+        // Prepare constructor arguments for Scroll_SpokePool
         bytes memory constructorArgs = abi.encode(
             weth, // _wrappedNativeTokenAddress
             QUOTE_TIME_BUFFER(), // _depositQuoteTimeBuffer
-            FILL_DEADLINE_BUFFER(), // _fillDeadlineBuffer
-            address(0), // _l2Usdc
-            address(0) // _cctpTokenMessenger
+            FILL_DEADLINE_BUFFER() // _fillDeadlineBuffer
         );
 
-        // Initialize deposit counter to 1
+        // Initialize deposit counter to very high number of deposits to avoid duplicate deposit ID's
+        // with deprecated spoke pool.
         // Set hub pool as cross domain admin since it delegatecalls the Adapter logic.
         bytes memory initArgs = abi.encodeWithSelector(
-            Ink_SpokePool.initialize.selector,
-            1, // _initialDepositId
+            Scroll_SpokePool.initialize.selector,
+            l2GatewayRouter, // _l2GatewayRouter
+            l2ScrollMessenger, // _l2ScrollMessenger
+            1_000_000, // _initialDepositId
             info.hubPool, // _crossDomainAdmin
             info.hubPool // _withdrawalRecipient
         );
 
         // Deploy the proxy
         DeploymentResult memory result = deployNewProxy(
-            "Ink_SpokePool",
+            "Scroll_SpokePool",
             constructorArgs,
             initArgs,
             true // implementationOnly
@@ -59,8 +64,10 @@ contract DeployInkSpokePool is Script, Test, DeploymentUtils {
         console.log("Hub Chain ID:", info.hubChainId);
         console.log("HubPool address:", info.hubPool);
         console.log("WETH address:", weth);
-        console.log("Ink_SpokePool proxy deployed to:", result.proxy);
-        console.log("Ink_SpokePool implementation deployed to:", result.implementation);
+        console.log("L2 Gateway Router:", l2GatewayRouter);
+        console.log("L2 Scroll Messenger:", l2ScrollMessenger);
+        console.log("Scroll_SpokePool proxy deployed to:", result.proxy);
+        console.log("Scroll_SpokePool implementation deployed to:", result.implementation);
 
         console.log("QUOTE_TIME_BUFFER()", QUOTE_TIME_BUFFER());
         console.log("FILL_DEADLINE_BUFFER()", FILL_DEADLINE_BUFFER());

@@ -4,19 +4,19 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Universal_Adapter } from "../contracts/chain-adapters/Universal_Adapter.sol";
-import { HubPoolStore } from "../contracts/chain-adapters/utilities/HubPoolStore.sol";
-import { Constants } from "./utils/Constants.sol";
+import { Universal_Adapter } from "../../contracts/chain-adapters/Universal_Adapter.sol";
+import { HubPoolStore } from "../../contracts/chain-adapters/utilities/HubPoolStore.sol";
+import { Constants } from "../utils/Constants.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
+import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(string)" <DEST_CHAIN_NAME e.g. MONAD> --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/chain-adapters/DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(string)" <DEST_CHAIN_NAME e.g. MONAD> --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(string)" MONAD --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/chain-adapters/DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(string)" MONAD --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
 contract DeployUniversalAdapter is Script, Test, Constants {
     function run() external pure {

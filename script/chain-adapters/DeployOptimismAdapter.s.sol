@@ -4,21 +4,21 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Base_Adapter } from "../contracts/chain-adapters/Base_Adapter.sol";
-import { Constants } from "./utils/Constants.sol";
+import { Optimism_Adapter } from "../../contracts/chain-adapters/Optimism_Adapter.sol";
+import { Constants } from "../utils/Constants.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
+import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
+import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/024DeployBaseAdapter.s.sol:DeployBaseAdapter --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/chain-adapters/DeployOptimismAdapter.s.sol:DeployOptimismAdapter --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/024DeployBaseAdapter.s.sol:DeployBaseAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/chain-adapters/DeployOptimismAdapter.s.sol:DeployOptimismAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 
-contract DeployBaseAdapter is Script, Test, Constants {
+contract DeployOptimismAdapter is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
@@ -29,19 +29,19 @@ contract DeployBaseAdapter is Script, Test, Constants {
         // Verify this is being deployed on Ethereum mainnet or Sepolia
         require(
             chainId == getChainId("MAINNET") || chainId == getChainId("SEPOLIA"),
-            "Base_Adapter should only be deployed on Ethereum mainnet or Sepolia"
+            "Optimism_Adapter should only be deployed on Ethereum mainnet or Sepolia"
         );
 
         address weth = getWrappedNativeToken(chainId);
 
-        // Get OP Stack addresses for this chain and Base
-        uint256 baseChainId = getChainId("BASE");
-        Constants.OpStackAddresses memory opStack = getOpStackAddresses(chainId, baseChainId);
+        // Get OP Stack addresses for this chain and Optimism
+        uint256 optimismChainId = getChainId("OPTIMISM");
+        Constants.OpStackAddresses memory opStack = getOpStackAddresses(chainId, optimismChainId);
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // Deploy Base_Adapter with constructor parameters
-        Base_Adapter baseAdapter = new Base_Adapter(
+        // Deploy Optimism_Adapter with constructor parameters
+        Optimism_Adapter optimismAdapter = new Optimism_Adapter(
             WETH9Interface(weth), // L1 WETH
             opStack.L1CrossDomainMessenger, // L1 Cross Domain Messenger
             IL1StandardBridge(opStack.L1StandardBridge), // L1 Standard Bridge
@@ -51,7 +51,7 @@ contract DeployBaseAdapter is Script, Test, Constants {
 
         // Log the deployed addresses
         console.log("Chain ID:", chainId);
-        console.log("Base_Adapter deployed to:", address(baseAdapter));
+        console.log("Optimism_Adapter deployed to:", address(optimismAdapter));
         console.log("L1 WETH:", weth);
         console.log("L1 Cross Domain Messenger:", opStack.L1CrossDomainMessenger);
         console.log("L1 Standard Bridge:", opStack.L1StandardBridge);

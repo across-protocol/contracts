@@ -4,16 +4,16 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { Universal_SpokePool } from "../contracts/spoke-pools/Universal_SpokePool.sol";
-import { DeploymentUtils } from "./utils/DeploymentUtils.sol";
-import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
+import { Universal_SpokePool } from "../../contracts/spoke-pools/Universal_SpokePool.sol";
+import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
+import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x"
-// 2. forge script script/111DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool --sig "run(uint256)" <OFT_FEE_CAP> --rpc-url $NODE_URL_143 -vvvv
+// 2. forge script script/spoke-pools/DeployUniversalSpokePool.s.sol:DeployUniversalSpokePool --sig "run(uint256)" <OFT_FEE_CAP> --rpc-url $NODE_URL_143 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy with:
-//        forge script script/110DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(uint256)" <OFT_FEE_CAP e.g. 78000> --rpc-url \
+//        forge script script/chain-adapters/DeployUniversalAdapter.s.sol:DeployUniversalAdapter --sig "run(uint256)" <OFT_FEE_CAP e.g. 78000> --rpc-url \
 //        $NODE_URL_143 --broadcast --verifier @todo --verifier-url @todo
 
 contract DeployUniversalSpokePool is Script, Test, DeploymentUtils {

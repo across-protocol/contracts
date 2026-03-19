@@ -4,21 +4,21 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { OP_Adapter } from "../contracts/chain-adapters/OP_Adapter.sol";
-import { Constants } from "./utils/Constants.sol";
-import { CircleDomainIds } from "../contracts/libraries/CircleCCTPAdapter.sol";
+import { OP_Adapter } from "../../contracts/chain-adapters/OP_Adapter.sol";
+import { Constants } from "../utils/Constants.sol";
+import { CircleDomainIds } from "../../contracts/libraries/CircleCCTPAdapter.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { ITokenMessenger } from "../contracts/external/interfaces/CCTPInterfaces.sol";
-import { IOpUSDCBridgeAdapter } from "../contracts/external/interfaces/IOpUSDCBridgeAdapter.sol";
+import { ITokenMessenger } from "../../contracts/external/interfaces/CCTPInterfaces.sol";
+import { IOpUSDCBridgeAdapter } from "../../contracts/external/interfaces/IOpUSDCBridgeAdapter.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
-import { WETH9Interface } from "../contracts/external/interfaces/WETH9Interface.sol";
+import { WETH9Interface } from "../../contracts/external/interfaces/WETH9Interface.sol";
 
 // How to run:
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x" entries
-// 2. forge script script/DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 -vvvv
+// 2. forge script script/chain-adapters/DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 -vvvv
 // 3. Verify the above works in simulation mode.
 // 4. Deploy on mainnet by adding --broadcast --verify flags.
-// 5. forge script script/DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
+// 5. forge script script/chain-adapters/DeployOPAdapter.s.sol:DeployOPAdapter --rpc-url $NODE_URL_1 --broadcast --verify -vvvv
 contract DeployOPAdapter is Script, Test, Constants {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
