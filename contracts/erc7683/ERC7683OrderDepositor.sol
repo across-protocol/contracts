@@ -7,8 +7,20 @@ import "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
-import { Output, GaslessCrossChainOrder, OnchainCrossChainOrder, ResolvedCrossChainOrder, IOriginSettler, FillInstruction } from "./ERC7683.sol";
-import { AcrossOrderData, AcrossOriginFillerData, ERC7683Permit2Lib, ACROSS_ORDER_DATA_TYPE_HASH } from "./ERC7683Permit2Lib.sol";
+import {
+    Output,
+    GaslessCrossChainOrder,
+    OnchainCrossChainOrder,
+    ResolvedCrossChainOrder,
+    IOriginSettler,
+    FillInstruction
+} from "./ERC7683.sol";
+import {
+    AcrossOrderData,
+    AcrossOriginFillerData,
+    ERC7683Permit2Lib,
+    ACROSS_ORDER_DATA_TYPE_HASH
+} from "./ERC7683Permit2Lib.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../libraries/AddressConverters.sol";
 
 /**

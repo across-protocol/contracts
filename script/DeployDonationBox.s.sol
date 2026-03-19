@@ -26,7 +26,6 @@ contract DeployDonationBox is Script, Test {
         // Log the deployed addresses
         console.log("Chain ID:", block.chainid);
         console.log("DonationBox deployed to:", address(donationBox));
-        console.log("DonationBox owner:", donationBox.owner());
 
         vm.stopBroadcast();
     }

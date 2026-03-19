@@ -22,8 +22,8 @@ interface IL2ETH {
 }
 
 /**
- * @notice ZkSync specific SpokePool, intended to be compiled with `@matterlabs/hardhat-zksync-solc`.
- * @dev Resources for compiling and deploying contracts with hardhat: https://era.zksync.io/docs/tools/hardhat/hardhat-zksync-solc.html
+ * @notice ZkSync specific SpokePool.
+ * @dev Resources for compiling and deploying ZkSync contracts: https://docs.zksync.io/build/tooling/foundry/overview
  * @custom:security-contact bugs@across.to
  */
 contract ZkSync_SpokePool is SpokePool, CircleCCTPAdapter {

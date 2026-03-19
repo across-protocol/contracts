@@ -143,7 +143,7 @@ function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
   const trackedFiles = getTrackedFiles(deploymentsDir);
 
   try {
-    const deploymentsPath = path.join(deploymentsDir, "deployments.json");
+    const deploymentsPath = path.join(deploymentsDir, "legacy-addresses.json");
     const resolvedPath = path.resolve(deploymentsPath);
 
     // Only include if file exists AND is tracked by git (committed or staged)
@@ -152,7 +152,7 @@ function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
 
       for (const [chainId, contracts] of Object.entries(data)) {
         if (typeof contracts === "object" && contracts !== null) {
-          // Create a virtual broadcast file for deployments.json
+          // Create a virtual broadcast file for legacy-addresses.json
           deploymentsFiles.push({
             scriptName: "DeploymentsJson",
             chainId: parseInt(chainId),
@@ -164,7 +164,7 @@ function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
       }
     }
   } catch (error) {
-    console.error(`Error reading deployments.json: ${error}`);
+    console.error(`Error reading legacy-addresses.json: ${error}`);
   }
 
   return deploymentsFiles;
@@ -172,7 +172,7 @@ function readDeploymentsFile(deploymentsDir: string): BroadcastFile[] {
 
 function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
   if (broadcastFile.isDeploymentsJson && broadcastFile.deploymentsData) {
-    // Handle deployments.json format
+    // Handle legacy-addresses.json format
     const contracts: Contract[] = [];
     const deploymentsData = broadcastFile.deploymentsData;
 
@@ -212,7 +212,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
       }
 
       for (const tx of transactions) {
-        if (tx.transactionType === "CREATE" && tx.contractAddress) {
+        if ((tx.transactionType === "CREATE" || tx.transactionType === "CREATE2") && tx.contractAddress) {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
 
@@ -349,6 +349,26 @@ function sanitizeContractName(name: string): string {
   return sanitized.toUpperCase();
 }
 
+function deduplicateContracts(scripts: { [scriptName: string]: Contract[] }): Map<string, Contract> {
+  const contractMap = new Map<string, Contract>();
+  for (const contracts of Object.values(scripts)) {
+    for (const contract of contracts as Contract[]) {
+      const existing = contractMap.get(contract.contractName);
+      if (!existing) {
+        contractMap.set(contract.contractName, contract);
+      } else {
+        const existingBlock = existing.blockNumber ?? 0;
+        const newBlock = contract.blockNumber ?? 0;
+        const hasMoreMetadata = contract.transactionHash !== "Unknown" && existing.transactionHash === "Unknown";
+        if (newBlock > existingBlock || (newBlock === existingBlock && hasMoreMetadata)) {
+          contractMap.set(contract.contractName, contract);
+        }
+      }
+    }
+  }
+  return contractMap;
+}
+
 function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: string): void {
   const allContracts: AllContracts = {};
 
@@ -359,7 +379,7 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     if (contracts.length > 0) {
       const chainId = broadcastFile.chainId;
       const chainName = getChainName(chainId);
-      // For deployments.json, use contract name as scriptName for each contract
+      // For legacy-addresses.json, use contract name as scriptName for each contract
       if (broadcastFile.isDeploymentsJson) {
         for (const contract of contracts) {
           const scriptName = contract.contractName;
@@ -430,11 +450,8 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     content.push(`## ${chainNameFormatted}`);
     content.push("");
 
-    // Collect all contracts for this chain into a single array
-    const allChainContracts: Contract[] = [];
-    for (const contracts of Object.values(chainInfo.scripts)) {
-      allChainContracts.push(...contracts);
-    }
+    // Collect all contracts for this chain, deduplicating by name (keep latest by block number)
+    const allChainContracts = Array.from(deduplicateContracts(chainInfo.scripts).values());
 
     // Sort contracts by name for consistent ordering
     allChainContracts.sort((a, b) => a.contractName.localeCompare(b.contractName));
@@ -462,20 +479,19 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   };
 
   for (const [chainId, chainInfo] of Object.entries(allContracts)) {
+    const contractMap = deduplicateContracts(chainInfo.scripts);
+
     jsonOutput.chains[chainId] = {
       chain_name: chainInfo.chainName,
       contracts: {},
     };
 
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      for (const contract of contracts as Contract[]) {
-        const contractName = contract.contractName;
-        jsonOutput.chains[chainId].contracts[contractName] = {
-          address: contract.contractAddress,
-          ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
-          ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
-        };
-      }
+    for (const [contractName, contract] of contractMap) {
+      jsonOutput.chains[chainId].contracts[contractName] = {
+        address: toChecksumAddress(contract.contractAddress),
+        ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
+        ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
+      };
     }
   }
 
@@ -507,17 +523,17 @@ function main(): void {
   console.log(`Scanning broadcast directory: ${broadcastDir}`);
   console.log(`Scanning deployments directory: ${deploymentsDir}`);
 
-  // Read deployments.json
+  // Read legacy-addresses.json
   const deploymentsFiles = readDeploymentsFile(deploymentsDir);
 
   // Find all broadcast files
   const broadcastFiles = findBroadcastFiles(broadcastDir);
 
-  // Combine both sources (order is important, deployments.json should be first)
+  // Combine both sources (order is important, legacy-addresses.json should be first)
   const allFiles = [...deploymentsFiles, ...broadcastFiles];
 
   if (allFiles.length === 0) {
-    console.error("No run-latest.json files found in broadcast directory and no deployments.json found");
+    console.error("No run-latest.json files found in broadcast directory and no legacy-addresses.json found");
     process.exit(1);
   }
 

@@ -46,9 +46,8 @@ import {
   getSpokePoolProgram,
   getTokenMessengerMinterProgram,
 } from "../../src/svm/web3-v1";
-import { BondToken__factory } from "../../typechain";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
-import { formatUsdc, requireEnv } from "./utils/helpers";
+import { formatUsdc, getBondTokenContract, requireEnv } from "./utils/helpers";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();
@@ -137,7 +136,7 @@ async function bridgeLiabilityToHubPool(): Promise<void> {
 
   const evmChainId = (await ethersProvider.getNetwork()).chainId;
   const usdcAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
-  const usdc = BondToken__factory.connect(usdcAddress, ethersProvider);
+  const usdc = getBondTokenContract(usdcAddress, ethersProvider);
   const usdcBalanceBefore = await usdc.balanceOf(hubPoolAddress);
 
   console.log("Receiving liability from Solana Spoke Pool to Ethereum Hub Pool...");

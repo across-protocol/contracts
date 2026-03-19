@@ -1,9 +1,11 @@
-import { getContractFactory, ethers } from "../utils/utils";
-import { hre } from "../utils/utils.hre";
+import { ethers } from "../utils/utils";
+import { getProvider, getSigner } from "./utils";
 import { readFileSync } from "fs";
 import path from "path";
 import { CID } from "multiformats/cid";
 import PinataSDK from "@pinata/sdk";
+
+const mintableERC1155Abi = ["function setTokenURI(uint256 tokenId, string memory uri) external"];
 
 /**
  * Script to upload metadata JSON file to IPFS via Pinata and set token uri. Make sure to set the env var
@@ -11,7 +13,10 @@ import PinataSDK from "@pinata/sdk";
  * ```
  * TOKEN_ID=<TOKEN_ID> \
  * METADATA=<PATH> \
- * yarn hardhat run ./scripts/setERC1155Metadata.ts --network polygon-mumbai
+ * ERC1155_ADDRESS=<ADDRESS> \
+ * NODE_URL=<rpc> \
+ * MNEMONIC="..." \
+ * npx ts-node ./scripts/setERC1155Metadata.ts
  * ```
  */
 async function main() {
@@ -24,9 +29,11 @@ async function main() {
   const metadataIpfsLink = `ipfs://${pinResult.IpfsHash}`;
   console.log(`Successfully uploaded metadata to IPFS:`, metadataIpfsLink);
 
-  const [signer] = await ethers.getSigners();
-  const erc1155Deployment = await hre.deployments.get("MintableERC1155");
-  const erc1155 = (await getContractFactory("MintableERC1155", { signer })).attach(erc1155Deployment.address);
+  const provider = getProvider();
+  const signer = getSigner(provider);
+  const erc1155Address = process.env.ERC1155_ADDRESS;
+  if (!erc1155Address) throw new Error("ERC1155_ADDRESS env var required");
+  const erc1155 = new ethers.Contract(erc1155Address, mintableERC1155Abi, signer);
   const setTokenUriTx = await erc1155.setTokenURI(tokenId, metadataIpfsLink);
   console.log(`Setting token uri...`);
   console.log("Tx hash:", setTokenUriTx.hash);
@@ -53,12 +60,10 @@ function parseAndValidateMetadata() {
 }
 
 function requireIpfsLink(ipfsLink: string, key: string) {
-  // Make sure the image is an IPFS link
   if (!ipfsLink.startsWith("ipfs://")) {
     throw new Error(`Invalid metadata: '${key}' must be an IPFS link ipfs://<CID>`);
   }
   const cid = ipfsLink.split("ipfs://")[1];
-
   CID.parse(cid); // throws if invalid
 }
 

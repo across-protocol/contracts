@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @notice This adapter is built to to retrieve Blast USDB from the USDBYieldManager contract on Ethereum that was
+ * @notice This adapter is built to retrieve Blast USDB from the USDBYieldManager contract on Ethereum that was
  * sent to the HubPool as the `recipient`. These funds should ideally be sent to the BlastRetriever address on
  * Ethereum. This contract can be used to retrieve these funds.
  */
@@ -31,7 +31,7 @@ contract Blast_RescueAdapter is AdapterInterface {
 
     /**
      * @notice Rescues the tokens from the calling contract.
-     * @param message The encoded address of the ERC20 to send to the rescue addres.
+     * @param message The encoded address of the ERC20 to send to the rescue address.
      */
     function relayMessage(address, bytes memory message) external payable override {
         (uint256 requestId, uint256 hintId) = abi.decode(message, (uint256, uint256));

@@ -10,6 +10,8 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 /// @notice Deploy script for the SP1Helios contract.
 /// @dev This script downloads the genesis binary from the SP1Helios GitHub releases,
 ///      runs it to generate the genesis.json, then deploys the SP1Helios contract.
+/// @dev Be familiar with the README in this directory before deploying, as there are time
+/// considerations and follow-up transactions to execute after deployments.
 ///
 /// How to run:
 /// 1. Set environment variables in .env:

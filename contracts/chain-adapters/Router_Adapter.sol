@@ -93,12 +93,7 @@ contract Router_Adapter is AdapterInterface {
      * @dev When sending tokens, we follow-up with a message describing the amount of tokens we wish to continue bridging.
      * This allows forwarders to know how much of some token to allocate to a certain target.
      */
-    function relayTokens(
-        address l1Token,
-        address l3Token,
-        uint256 amount,
-        address target
-    ) external payable override {
+    function relayTokens(address l1Token, address l3Token, uint256 amount, address target) external payable override {
         // Fetch the address of the L2 token, as defined in the Hub Pool. This is to complete a proper token bridge from L1 to L2.
         address l2Token = HUB_POOL.poolRebalanceRoute(L2_CHAIN_ID, l1Token);
         // If l2Token is the zero address, then this means that the L2 token is not enabled as a pool rebalance route. This is similar

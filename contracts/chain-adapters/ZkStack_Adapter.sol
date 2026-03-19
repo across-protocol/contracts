@@ -73,7 +73,7 @@ contract ZkStack_Adapter is AdapterInterface, CircleCCTPAdapter {
      * @param _cctpTokenMessenger address of the CCTP token messenger contract for the configured network.
      * @param _recipientCircleDomainId Circle domain ID for the destination network.
      * @param _l1Weth WETH address on L1.
-     * @param _l2RefundAddress address that recieves excess gas refunds on L2.
+     * @param _l2RefundAddress address that receives excess gas refunds on L2.
      * @param _l2GasLimit The maximum amount of gas this contract is willing to pay to execute a transaction on L2.
      * @param _l1GasToL2GasPerPubDataLimit The exchange rate of l1 gas to l2 gas.
      * @param _maxTxGasprice The maximum effective gas price any transaction sent to this adapter may have.

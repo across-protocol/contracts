@@ -23,6 +23,8 @@ contract DeployHyperliquidDepositHandler is Script, Test {
         // Get the current chain ID
         uint256 chainId = block.chainid;
 
+        address donationBox = 0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168;
+
         // Set up USDH as a supported token for this handler.
         IERC20 usdh = IERC20(0x111111a1a0667d36bD57c0A9f569b98057111111);
         uint32 usdhTokenIndex = 360;
@@ -31,7 +33,11 @@ contract DeployHyperliquidDepositHandler is Script, Test {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        HyperliquidDepositHandler hyperliquidDepositHandler = new HyperliquidDepositHandler(signer, spokePool);
+        HyperliquidDepositHandler hyperliquidDepositHandler = new HyperliquidDepositHandler(
+            donationBox,
+            signer,
+            spokePool
+        );
 
         // Activate Handler account so it can write to CoreWriter by sending 1 core wei.
         HyperCoreLib.transferERC20CoreToCore(

@@ -171,8 +171,7 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Apply the bps to sponsor to the final amount to get the amount to sponsor, ceiling division.
         uint256 bpsToSponsorAdjusted = BPS_PRECISION_SCALAR - bpsToSponsor;
         extraFeesToSponsorFinalToken =
-            (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) -
-            finalAmount;
+            (((finalAmount * BPS_PRECISION_SCALAR) + bpsToSponsorAdjusted - 1) / bpsToSponsorAdjusted) - finalAmount;
     }
 
     /// @notice Allow contract to receive native tokens for arbitrary action execution

@@ -31,10 +31,5 @@ interface AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable;
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable;
 }

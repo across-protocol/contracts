@@ -13,11 +13,7 @@ interface IMessageService {
      * @param _fee The message service fee on the origin chain.
      * @param _calldata The calldata used by the destination message service to call the destination contract.
      */
-    function sendMessage(
-        address _to,
-        uint256 _fee,
-        bytes calldata _calldata
-    ) external payable;
+    function sendMessage(address _to, uint256 _fee, bytes calldata _calldata) external payable;
 
     /**
      * @notice Returns the original sender of the message on the origin layer.
@@ -54,11 +50,7 @@ interface ITokenBridge {
      * @param _amount The amount of the token to be bridged.
      * @param _recipient The address that will receive the tokens on the other chain.
      */
-    function bridgeToken(
-        address _token,
-        uint256 _amount,
-        address _recipient
-    ) external payable;
+    function bridgeToken(address _token, uint256 _amount, address _recipient) external payable;
 }
 
 interface IUSDCBridge {
