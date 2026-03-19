@@ -56,6 +56,20 @@ elif [ -f .env ]; then
     source .env
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "Verifying deployments in PR #$PR ($REPO)"
+echo "============================================="
+echo ""
+
+# Find broadcast run-latest.json files changed in the PR.
+BROADCAST_FILES=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files[].path' | grep 'broadcast/.*run-latest\.json$' || true)
+
+if [ -z "$BROADCAST_FILES" ]; then
+    echo "No broadcast files found in PR #$PR"
+    exit 0
+fi
+
 if [ "$YES_CLEAN_BUILD" != "true" ]; then
     if [ ! -t 0 ]; then
         echo "Refusing to run forge clean/cache clean/build without confirmation."
@@ -78,20 +92,6 @@ echo "Cleaning Foundry artifacts and rebuilding..."
 forge clean
 forge cache clean
 yarn build-evm-foundry
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-
-echo "Verifying deployments in PR #$PR ($REPO)"
-echo "============================================="
-echo ""
-
-# Find broadcast run-latest.json files changed in the PR.
-BROADCAST_FILES=$(gh pr view "$PR" --repo "$REPO" --json files --jq '.files[].path' | grep 'broadcast/.*run-latest\.json$' || true)
-
-if [ -z "$BROADCAST_FILES" ]; then
-    echo "No broadcast files found in PR #$PR"
-    exit 0
-fi
 
 FILE_COUNT=$(echo "$BROADCAST_FILES" | wc -l | tr -d ' ')
 echo "Found $FILE_COUNT broadcast file(s)"

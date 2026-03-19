@@ -10,7 +10,8 @@ set -euo pipefail
 #   forge script script/DeployBaseAdapter.s.sol:DeployBaseAdapter --rpc-url "$NODE_URL_1"
 #   ./scripts/verifyBytecodeDryRun.sh 0xf9845ddc7ebcf5e00b6ee2073dfb8cf50a774161e1f4562cd5c11a5016f4bb64 "$NODE_URL_1" Base_Adapter script/DeployBaseAdapter.s.sol
 #
-# You can also pass the dry-run json path directly instead of a script path:
+# You can also pass the dry-run json path directly instead of a script path.
+# If you pass a json path here, it should be the dry-run receipt, not the broadcast receipt:
 #   ./scripts/verifyBytecodeDryRun.sh <tx_hash> "$NODE_URL_1" <contract_name> broadcast/<Script>.s.sol/<chain_id>/dry-run/run-latest.json
 #
 # For artifact-based verification against out/, use ./scripts/verifyBytecode.sh instead.
@@ -46,6 +47,8 @@ print_first_diff() {
 if (( $# != 4 )); then
     echo "Usage:"
     echo "  $0 <tx_hash> <rpc_url> <contract_name> <script_path|dry_run_json_path>"
+    echo ""
+    echo "Note: if passing a json path directly, it should be broadcast/<Script>.s.sol/<chain_id>/dry-run/run-latest.json"
     exit 1
 fi
 
