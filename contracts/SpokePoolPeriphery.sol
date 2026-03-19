@@ -178,7 +178,6 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      ****************************************/
     error MinimumExpectedInputAmount();
     error InvalidMsgValue();
-    error InvalidSignature();
     error InvalidMinExpectedInputAmount();
     error InvalidNonce();
 
@@ -625,7 +624,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
      */
     function _validateSignature(address signatureOwner, bytes32 typedDataHash, bytes calldata signature) private view {
         if (!SignatureChecker.isValidSignatureNow(signatureOwner, _hashTypedDataV4(typedDataHash), signature)) {
-            revert InvalidSignature();
+            revert PeripherySigningLib.InvalidSignature();
         }
     }
 
