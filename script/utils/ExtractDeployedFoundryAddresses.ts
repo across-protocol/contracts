@@ -349,6 +349,26 @@ function sanitizeContractName(name: string): string {
   return sanitized.toUpperCase();
 }
 
+function deduplicateContracts(scripts: { [scriptName: string]: Contract[] }): Map<string, Contract> {
+  const contractMap = new Map<string, Contract>();
+  for (const contracts of Object.values(scripts)) {
+    for (const contract of contracts as Contract[]) {
+      const existing = contractMap.get(contract.contractName);
+      if (!existing) {
+        contractMap.set(contract.contractName, contract);
+      } else {
+        const existingBlock = existing.blockNumber ?? 0;
+        const newBlock = contract.blockNumber ?? 0;
+        const hasMoreMetadata = contract.transactionHash !== "Unknown" && existing.transactionHash === "Unknown";
+        if (newBlock > existingBlock || (newBlock === existingBlock && hasMoreMetadata)) {
+          contractMap.set(contract.contractName, contract);
+        }
+      }
+    }
+  }
+  return contractMap;
+}
+
 function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: string): void {
   const allContracts: AllContracts = {};
 
@@ -430,11 +450,8 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
     content.push(`## ${chainNameFormatted}`);
     content.push("");
 
-    // Collect all contracts for this chain into a single array
-    const allChainContracts: Contract[] = [];
-    for (const contracts of Object.values(chainInfo.scripts)) {
-      allChainContracts.push(...contracts);
-    }
+    // Collect all contracts for this chain, deduplicating by name (keep latest by block number)
+    const allChainContracts = Array.from(deduplicateContracts(chainInfo.scripts).values());
 
     // Sort contracts by name for consistent ordering
     allChainContracts.sort((a, b) => a.contractName.localeCompare(b.contractName));
@@ -462,20 +479,19 @@ function generateAddressesFile(broadcastFiles: BroadcastFile[], outputFile: stri
   };
 
   for (const [chainId, chainInfo] of Object.entries(allContracts)) {
+    const contractMap = deduplicateContracts(chainInfo.scripts);
+
     jsonOutput.chains[chainId] = {
       chain_name: chainInfo.chainName,
       contracts: {},
     };
 
-    for (const [scriptName, contracts] of Object.entries(chainInfo.scripts)) {
-      for (const contract of contracts as Contract[]) {
-        const contractName = contract.contractName;
-        jsonOutput.chains[chainId].contracts[contractName] = {
-          address: toChecksumAddress(contract.contractAddress),
-          ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
-          ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
-        };
-      }
+    for (const [contractName, contract] of contractMap) {
+      jsonOutput.chains[chainId].contracts[contractName] = {
+        address: toChecksumAddress(contract.contractAddress),
+        ...(contract.blockNumber !== null && { block_number: contract.blockNumber }),
+        ...(contract.transactionHash !== "Unknown" && { transaction_hash: contract.transactionHash }),
+      };
     }
   }
 
