@@ -5,9 +5,9 @@ build_info = true
 extra_output = ["storageLayout"]
 src = "contracts"
 out = "out"
-test = "test/evm/foundry"
+test = "test/evm/foundry/local"
 libs = ["node_modules", "lib"]
-cache_path = "cache-foundry"
+cache_path = "cache"
 via_ir = true
 optimizer_runs = 800
 solc_version = "0.8.30"
@@ -69,8 +69,8 @@ polygon_amoy = "${NODE_URL_80002}"
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
 
 # A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
-[profile.local-test]
-test = "test/evm/foundry"
+[profile.fork-test]
+test = "test/evm/foundry/fork"
 
 # Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
 # Run with `FOUNDRY_PROFILE=tron forge build`
