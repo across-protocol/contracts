@@ -70,7 +70,7 @@ ethereum = { key = "${ETHERSCAN_API_KEY}" }
 
 # A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
 [profile.local-test]
-test = "test/evm/foundry/local"
+test = "test/evm/foundry"
 
 # Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
 # Run with `FOUNDRY_PROFILE=tron forge build`
