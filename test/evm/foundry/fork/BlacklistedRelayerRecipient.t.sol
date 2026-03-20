@@ -30,6 +30,8 @@ interface IUSDC {
     function blacklist(address _account) external;
 
     function isBlacklisted(address _account) external view returns (bool);
+
+    function blacklister() external view returns (address);
 }
 
 contract MockSpokePoolTest is Test {
@@ -46,6 +48,7 @@ contract MockSpokePoolTest is Test {
     address recipient2 = address(0x6969692222222420);
 
     function setUp() public {
+        vm.createSelectFork(vm.envString("NODE_URL_1"));
         spokePool = new MockSpokePool(address(0x123));
         // Create an instance of USDT & USDCusing its mainnet address
         usdt = IUSDT(address(0xdAC17F958D2ee523a2206206994597C13D831ec7));
@@ -121,7 +124,7 @@ contract MockSpokePoolTest is Test {
         // USDC blacklist blocks both the sender and recipient. Therefore if we a recipient within a bundle is
         // blacklisted, they should be credited for the refund amount that can be claimed later to a new address.
         assertEq(usdc.isBlacklisted(recipient1), false, "Recipient1 should not be blacklisted");
-        vm.prank(0x10DF6B6fe66dd319B1f82BaB2d054cbb61cdAD2e); // USDC blacklister
+        vm.prank(usdc.blacklister());
         usdc.blacklist(recipient1);
         assertEq(usdc.isBlacklisted(recipient1), true, "Recipient1 should be blacklisted");
 

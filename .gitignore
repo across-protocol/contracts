@@ -31,8 +31,8 @@ out
 out-local
 out-tron
 zkout
-cache-foundry
-cache-foundry-local
+cache
+cache-foundry-fork
 cache-foundry-tron
 
 

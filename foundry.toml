@@ -68,7 +68,7 @@ polygon_amoy = "${NODE_URL_80002}"
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
 
-# A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
+# A profile to only run foundry fork tests, skipping local tests. These tests are NOT run in CI. Run with `FOUNDRY_PROFILE=fork-test forge test`
 [profile.fork-test]
 test = "test/evm/foundry/fork"
 
