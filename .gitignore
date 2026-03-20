@@ -30,11 +30,14 @@ artifacts-zk
 out
 out-local
 out-tron
+out-tron-universal
+out-tron-spokepool
 zkout
 cache-foundry
 cache-foundry-local
 cache-foundry-tron
-
+cache-foundry-tron-universal
+cache-foundry-tron-spokepool
 
 # Upgradeability files
 .openzeppelin
@@ -58,6 +61,10 @@ src/svm/clients/*
 # SP1Helios deploy artifacts
 script/universal/genesis-binary
 script/universal/genesis.json
+
+# Tron solc binary and flattened sources
+bin/solc-tron
+flattened/
 
 # claude
 CLAUDE.local.md
