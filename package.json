@@ -46,7 +46,11 @@
     "evm-contract-sizes": "forge build --sizes",
     "pre-commit-hook": "sh scripts/preCommitHook.sh",
     "extract-addresses": "./script/utils/extract_foundry_addresses.sh",
-    "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts"
+    "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts",
+    "build-tron-universal": "FOUNDRY_PROFILE=tron-universal forge build",
+    "tron-deploy-sp1-auto-verifier": "ts-node script/universal/tron/tron-deploy-sp1-auto-verifier.ts",
+    "tron-deploy-sp1-helios": "ts-node script/universal/tron/tron-deploy-sp1-helios.ts",
+    "tron-deploy-universal-spokepool": "ts-node script/universal/tron/tron-deploy-universal-spokepool.ts"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.100",
@@ -69,6 +73,7 @@
     "@uma/common": "^2.37.3",
     "@uma/contracts-node": "^0.4.17",
     "bs58": "^6.0.0",
+    "tronweb": "^6.2.0",
     "yargs": "^17.7.2",
     "zksync-web3": "^0.14.3"
   },
@@ -85,6 +90,7 @@
     "@types/node": "^24.3.0",
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
+    "chai": "^4.3.6",
     "codama": "^1.3.0",
     "dotenv": "^10.0.0",
     "eslint": "^7.29.0",
@@ -94,17 +100,16 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-promise": "^5.1.0",
-    "chai": "^4.3.6",
     "ethereumjs-util": "^7.1.4",
     "ethers": "5.7.2",
     "husky": "^4.2.3",
+    "mocha": "^10.0.0",
     "multiformats": "9.9.0",
     "prettier": "^3.8.1",
     "prettier-plugin-rust": "^0.1.9",
     "prettier-plugin-solidity": "^2.2.1",
     "pretty-quick": "^4.2.2",
     "solhint": "^3.6.2",
-    "mocha": "^10.0.0",
     "ts-mocha": "^10.0.0",
     "ts-node": "^10.1.0",
     "typescript": "^5.6.2"

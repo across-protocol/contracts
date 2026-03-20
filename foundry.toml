@@ -88,4 +88,15 @@ cache_path = "cache-foundry-tron"
 out = "out-tron"
 skip = ["sp1-helios"]
 
+# Tron-compatible profile for Universal SpokePool and SP1Helios.
+# Run with `FOUNDRY_PROFILE=tron-universal forge build`
+[profile.tron-universal]
+solc = "bin/solc-tron"
+evm_version = "cancun"
+src = "contracts/tron-universal"
+test = "test/evm/foundry/tron"
+script = "script/universal/tron"
+cache_path = "cache-foundry-tron-universal"
+out = "out-tron-universal"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

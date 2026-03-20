@@ -61,6 +61,8 @@ src/svm/clients/*
 # SP1Helios deploy artifacts
 script/universal/genesis-binary
 script/universal/genesis.json
+script/universal/tron/genesis-binary
+script/universal/tron/genesis.json
 
 # Tron solc binary and flattened sources
 bin/solc-tron
