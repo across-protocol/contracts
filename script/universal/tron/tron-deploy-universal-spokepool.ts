@@ -87,10 +87,7 @@ async function main(): Promise<void> {
     ]
   );
 
-  const artifactPath = path.resolve(
-    __dirname,
-    "../../../out-tron-universal/Universal_SpokePool.sol/Universal_SpokePool.json"
-  );
+  const artifactPath = path.resolve(__dirname, "../../../out-tron/Universal_SpokePool.sol/Universal_SpokePool.json");
 
   await deployContract({ chainId, artifactPath, encodedArgs });
 }

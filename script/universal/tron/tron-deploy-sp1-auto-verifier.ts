@@ -27,7 +27,7 @@ async function main(): Promise<void> {
   console.log("=== SP1AutoVerifier Tron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
-  const artifactPath = path.resolve(__dirname, "../../../out-tron-universal/SP1AutoVerifier.sol/SP1AutoVerifier.json");
+  const artifactPath = path.resolve(__dirname, "../../../out-tron/SP1AutoVerifier.sol/SP1AutoVerifier.json");
 
   await deployContract({ chainId, artifactPath });
 }

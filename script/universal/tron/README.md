@@ -9,12 +9,14 @@ TypeScript scripts for deploying contracts to Tron via TronWeb. Tron uses a prot
 Download Tron's custom solc 0.8.25 from [tronprotocol/solidity releases](https://github.com/tronprotocol/solidity/releases) and place it at `bin/solc-tron`:
 
 ```bash
+mkdir -p bin
+
 # macOS (Apple Silicon)
-curl -L -o bin/solc-tron https://github.com/nicetip/solidity/releases/download/tv0.8.25/solc_macos
+curl -L -o bin/solc-tron https://github.com/tronprotocol/solidity/releases/download/tv_0.8.25/solc-macos
 chmod +x bin/solc-tron
 
 # Linux (amd64)
-curl -L -o bin/solc-tron https://github.com/nicetip/solidity/releases/download/tv0.8.25/solc_linux
+curl -L -o bin/solc-tron https://github.com/tronprotocol/solidity/releases/download/tv_0.8.25/solc-static-linux
 chmod +x bin/solc-tron
 ```
 
@@ -29,10 +31,10 @@ bin/solc-tron --version
 ### 2. Build contracts
 
 ```bash
-yarn build-tron-universal
+yarn build-tron
 ```
 
-This runs `FOUNDRY_PROFILE=tron-universal forge build`, which compiles using Tron's solc (`bin/solc-tron`) and outputs Foundry artifacts to `out-tron-universal/`.
+This runs `FOUNDRY_PROFILE=tron forge build`, which compiles using Tron's solc (`bin/solc-tron`) and outputs Foundry artifacts to `out-tron/`.
 
 ### 3. Environment variables
 

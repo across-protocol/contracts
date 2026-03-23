@@ -225,7 +225,7 @@ async function main(): Promise<void> {
   console.log("immutable and cannot be updated.");
   console.log("================\n");
 
-  const artifactPath = path.resolve(__dirname, "../../../out-tron-universal/SP1Helios.sol/SP1Helios.json");
+  const artifactPath = path.resolve(__dirname, "../../../out-tron/SP1Helios.sol/SP1Helios.json");
 
   await deployContract({ chainId, artifactPath, encodedArgs });
 }

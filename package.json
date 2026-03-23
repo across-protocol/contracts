@@ -47,7 +47,7 @@
     "pre-commit-hook": "sh scripts/preCommitHook.sh",
     "extract-addresses": "./script/utils/extract_foundry_addresses.sh",
     "generate-constants-json": "ts-node ./script/utils/GenerateConstantsJson.ts",
-    "build-tron-universal": "FOUNDRY_PROFILE=tron-universal forge build",
+    "build-tron": "FOUNDRY_PROFILE=tron forge build",
     "tron-deploy-sp1-auto-verifier": "ts-node script/universal/tron/tron-deploy-sp1-auto-verifier.ts",
     "tron-deploy-sp1-helios": "ts-node script/universal/tron/tron-deploy-sp1-helios.ts",
     "tron-deploy-universal-spokepool": "ts-node script/universal/tron/tron-deploy-universal-spokepool.ts"
