@@ -16,8 +16,6 @@
  *   USP_WRAPPED_NATIVE_TOKEN_ADDRESS  — Wrapped native token (WTRX) address (Tron Base58Check, T...)
  *   USP_DEPOSIT_QUOTE_TIME_BUFFER     — Deposit quote time buffer in seconds
  *   USP_FILL_DEADLINE_BUFFER          — Fill deadline buffer in seconds
- *   USP_L2_USDC_ADDRESS               — USDC token address on Tron (Tron Base58Check, T...)
- *   USP_CCTP_TOKEN_MESSENGER_ADDRESS  — CCTP TokenMessenger address (Tron Base58Check, T...), or zero address to disable
  *   USP_OFT_DST_EID                   — LayerZero OFT destination endpoint ID (0 to disable)
  *   USP_OFT_FEE_CAP                   — LayerZero OFT fee cap in wei (0 to disable)
  *
@@ -54,8 +52,9 @@ async function main(): Promise<void> {
   const wrappedNativeToken = tronToEvmAddress(requireEnv("USP_WRAPPED_NATIVE_TOKEN_ADDRESS"));
   const depositQuoteTimeBuffer = requireEnv("USP_DEPOSIT_QUOTE_TIME_BUFFER");
   const fillDeadlineBuffer = requireEnv("USP_FILL_DEADLINE_BUFFER");
-  const l2Usdc = tronToEvmAddress(requireEnv("USP_L2_USDC_ADDRESS"));
-  const cctpTokenMessenger = tronToEvmAddress(requireEnv("USP_CCTP_TOKEN_MESSENGER_ADDRESS"));
+  // USDC / CCTP is not supported on Tron.
+  const l2Usdc = "0x0000000000000000000000000000000000000000";
+  const cctpTokenMessenger = "0x0000000000000000000000000000000000000000";
   const oftDstEid = requireEnv("USP_OFT_DST_EID");
   const oftFeeCap = requireEnv("USP_OFT_FEE_CAP");
 
@@ -65,8 +64,8 @@ async function main(): Promise<void> {
   console.log(`  Wrapped native token: ${wrappedNativeToken}`);
   console.log(`  Deposit quote buffer: ${depositQuoteTimeBuffer}s`);
   console.log(`  Fill deadline buffer: ${fillDeadlineBuffer}s`);
-  console.log(`  L2 USDC:              ${l2Usdc}`);
-  console.log(`  CCTP TokenMessenger:  ${cctpTokenMessenger}`);
+  console.log(`  L2 USDC:              ${l2Usdc} (disabled — CCTP not supported on Tron)`);
+  console.log(`  CCTP TokenMessenger:  ${cctpTokenMessenger} (disabled)`);
   console.log(`  OFT dst EID:          ${oftDstEid}`);
   console.log(`  OFT fee cap:          ${oftFeeCap}`);
 
