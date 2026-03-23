@@ -16,8 +16,6 @@
  *   USP_WRAPPED_NATIVE_TOKEN_ADDRESS  — Wrapped native token (WTRX) address (Tron Base58Check, T...)
  *   USP_DEPOSIT_QUOTE_TIME_BUFFER     — Deposit quote time buffer in seconds
  *   USP_FILL_DEADLINE_BUFFER          — Fill deadline buffer in seconds
- *   USP_OFT_DST_EID                   — LayerZero OFT destination endpoint ID (0 to disable)
- *   USP_OFT_FEE_CAP                   — LayerZero OFT fee cap in wei (0 to disable)
  *
  * Usage:
  *   yarn tron-deploy-universal-spokepool <chain-id>
@@ -55,8 +53,9 @@ async function main(): Promise<void> {
   // USDC / CCTP is not supported on Tron.
   const l2Usdc = "0x0000000000000000000000000000000000000000";
   const cctpTokenMessenger = "0x0000000000000000000000000000000000000000";
-  const oftDstEid = requireEnv("USP_OFT_DST_EID");
-  const oftFeeCap = requireEnv("USP_OFT_FEE_CAP");
+  // OFT is not supported on Tron.
+  const oftDstEid = "0";
+  const oftFeeCap = "0";
 
   console.log(`  Admin update buffer:  ${adminUpdateBuffer}s`);
   console.log(`  Helios:               ${heliosAddress}`);
@@ -66,8 +65,8 @@ async function main(): Promise<void> {
   console.log(`  Fill deadline buffer: ${fillDeadlineBuffer}s`);
   console.log(`  L2 USDC:              ${l2Usdc} (disabled — CCTP not supported on Tron)`);
   console.log(`  CCTP TokenMessenger:  ${cctpTokenMessenger} (disabled)`);
-  console.log(`  OFT dst EID:          ${oftDstEid}`);
-  console.log(`  OFT fee cap:          ${oftFeeCap}`);
+  console.log(`  OFT dst EID:          ${oftDstEid} (disabled — OFT not supported on Tron)`);
+  console.log(`  OFT fee cap:          ${oftFeeCap} (disabled)`);
 
   // Constructor: (uint256, address, address, address, uint32, uint32, IERC20, ITokenMessenger, uint32, uint256)
   const encodedArgs = encodeArgs(
