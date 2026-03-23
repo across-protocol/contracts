@@ -65,9 +65,9 @@ import {
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "../../src/svm/web3-v1";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { SvmSpokeAnchor } from "../../src/svm";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { SvmSpokeAnchor } from "@across-protocol/sdk/dist/cjs/src/svm";
 
 // Set up Solana provider.
 const provider = AnchorProvider.env();

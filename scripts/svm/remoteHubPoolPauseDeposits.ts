@@ -18,7 +18,7 @@ import {
   getMessageTransmitterProgram,
   getSpokePoolProgram,
   isSolanaDevnet,
-} from "../../src/svm/web3-v1";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import { getHubPoolContract, requireEnv } from "./utils/helpers";
 

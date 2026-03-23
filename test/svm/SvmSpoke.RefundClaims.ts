@@ -12,8 +12,12 @@ import {
   setAuthority,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
-import { loadExecuteRelayerRefundLeafParams, readEventsUntilFound, relayerRefundHashFn } from "../../src/svm/web3-v1";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/dist/cjs/src/svm";
+import {
+  loadExecuteRelayerRefundLeafParams,
+  readEventsUntilFound,
+  relayerRefundHashFn,
+} from "@across-protocol/sdk/dist/cjs/src/svm";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 

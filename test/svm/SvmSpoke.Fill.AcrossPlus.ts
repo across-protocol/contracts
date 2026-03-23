@@ -32,8 +32,12 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { createDefaultTransaction, signAndSendTransaction, SvmSpokeClient } from "../../src/svm";
-import { FillRelayAsyncInput } from "../../src/svm/clients/SvmSpoke";
+import {
+  createDefaultTransaction,
+  signAndSendTransaction,
+  SvmSpokeClient,
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { FillRelayAsyncInput } from "@across-protocol/sdk/dist/cjs/src/svm/clients/SvmSpoke";
 import {
   AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
@@ -42,8 +46,8 @@ import {
   loadFillRelayParams,
   MulticallHandlerCoder,
   sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
-} from "../../src/svm/web3-v1";
-import { FillDataParams, FillDataValues } from "../../src/types/svm";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { FillDataParams, FillDataValues } from "@across-protocol/sdk/dist/cjs/src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient } from "./utils";

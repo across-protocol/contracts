@@ -2,8 +2,8 @@ import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { MerkleTree } from "@uma/common";
 import { BigNumber, ethers } from "ethers";
-import { relayerRefundHashFn } from "../../../src/svm/web3-v1";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";
+import { relayerRefundHashFn } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/dist/cjs/src/svm";
 import HubPoolArtifact from "../../../out/HubPool.sol/HubPool.json";
 import WETH9Artifact from "../../../out/WETH9.sol/WETH9.json";
 

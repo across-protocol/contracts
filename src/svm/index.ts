@@ -1,10 +1,4 @@
-export {
-  AcrossPlusMessageCoder,
-  calculateRelayHashUint8Array,
-  findProgramAddress,
-  MulticallHandlerCoder,
-  relayerRefundHashFn,
-} from "./web3-v1";
-export * from "./web3-v2";
+// Auto-generated assets and clients kept for Codama generation pipeline.
+// Production SVM utils have moved to @across-protocol/sdk/svm (ACP-56).
 export * from "./assets";
 export * from "./clients";

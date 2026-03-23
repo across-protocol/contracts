@@ -8,7 +8,7 @@ import {
   createTransferCheckedInstruction,
 } from "@solana/spl-token";
 import { MulticallHandler } from "../../target/types/multicall_handler";
-import { MulticallHandlerCoder } from "../../src/svm/web3-v1";
+import { MulticallHandlerCoder } from "@across-protocol/sdk/dist/cjs/src/svm";
 import { common } from "./SvmSpoke.common";
 
 const { provider, owner, connection, assertSE } = common;

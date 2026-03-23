@@ -6,12 +6,13 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSponsoredCctpSrcPeripheryProgram } from "../../../src/svm/web3-v1";
+import { getSponsoredCctpSrcPeripheryProgram } from "@across-protocol/sdk/dist/cjs/src/svm";
 
 // Set up the provider and program
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = getSponsoredCctpSrcPeripheryProgram(provider);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const program = getSponsoredCctpSrcPeripheryProgram(provider as any);
 const programId = program.programId;
 
 // Parse arguments

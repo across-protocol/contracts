@@ -10,7 +10,7 @@ import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { CHAIN_IDs, getNodeUrl, TOKEN_SYMBOLS_MAP } from "../../utils";
-import { getSolanaChainId } from "../../src/svm/web3-v1";
+import { getSolanaChainId } from "@across-protocol/sdk/dist/cjs/src/svm";
 import { getBondTokenContract, getHubPoolContract, requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 

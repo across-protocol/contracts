@@ -11,7 +11,7 @@ import {
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram } from "../../src/svm/web3-v1";
+import { getSpokePoolProgram } from "@across-protocol/sdk/dist/cjs/src/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

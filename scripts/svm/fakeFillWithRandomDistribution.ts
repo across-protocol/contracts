@@ -23,8 +23,8 @@ import {
   intToU8Array32,
   loadFillRelayParams,
   sendTransactionWithLookupTable,
-} from "../../src/svm/web3-v1";
-import { FillDataParams, FillDataValues } from "../../src/types/svm";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { FillDataParams, FillDataValues } from "@across-protocol/sdk/dist/cjs/src/svm";
 
 // Set up the provider and signer.
 const provider = AnchorProvider.env();

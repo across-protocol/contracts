@@ -35,8 +35,8 @@ import {
   sendTransactionWithLookupTable,
   signAndSendTransaction,
   SvmSpokeClient,
-} from "../../src/svm";
-import { FillRelayAsyncInput } from "../../src/svm/clients/SvmSpoke";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { FillRelayAsyncInput } from "@across-protocol/sdk/dist/cjs/src/svm/clients/SvmSpoke";
 import {
   calculateRelayHashUint8Array,
   hashNonEmptyMessage,
@@ -44,8 +44,8 @@ import {
   getFillRelayDelegatePda,
   readEventsUntilFound,
   sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
-} from "../../src/svm/web3-v1";
-import { FillDataValues, RelayData } from "../../src/types/svm";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { FillDataValues, RelayData } from "@across-protocol/sdk/dist/cjs/src/svm";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, testAcrossPlusMessage } from "./utils";
 const {

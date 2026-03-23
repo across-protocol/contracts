@@ -20,14 +20,17 @@ import {
   isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "../../../src/svm/web3-v1";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
 
 // Set up the provider and programs
 const provider = AnchorProvider.env();
 anchor.setProvider(provider);
-const program = getSponsoredCctpSrcPeripheryProgram(provider);
-const tokenMessengerMinterV2Program = getTokenMessengerMinterV2Program(provider);
-const messageTransmitterV2Program = getMessageTransmitterV2Program(provider);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const program = getSponsoredCctpSrcPeripheryProgram(provider as any);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const tokenMessengerMinterV2Program = getTokenMessengerMinterV2Program(provider as any);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const messageTransmitterV2Program = getMessageTransmitterV2Program(provider as any);
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv)).option("burnToken", {

@@ -32,8 +32,12 @@ import {
 } from "@solana/spl-token";
 import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
-import { SvmSpokeClient, createDefaultTransaction, signAndSendTransaction } from "../../src/svm";
-import { DepositInput } from "../../src/svm/clients/SvmSpoke";
+import {
+  SvmSpokeClient,
+  createDefaultTransaction,
+  signAndSendTransaction,
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { DepositInput } from "@across-protocol/sdk/dist/cjs/src/svm/clients/SvmSpoke";
 import {
   getDepositNowPda,
   getDepositNowSeedHash,
@@ -43,8 +47,8 @@ import {
   readEventsUntilFound,
   u8Array32ToBigNumber,
   u8Array32ToInt,
-} from "../../src/svm/web3-v1";
-import { DepositData, DepositDataValues } from "../../src/types/svm";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { DepositData, DepositDataValues } from "@across-protocol/sdk/dist/cjs/src/svm";
 const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365;
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient } from "./utils";

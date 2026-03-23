@@ -12,7 +12,7 @@ import {
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
 import { MerkleTree } from "@uma/common/dist/MerkleTree";
-import { SlowFillLeaf } from "../../src/types/svm";
+import { SlowFillLeaf } from "@across-protocol/sdk/dist/cjs/src/svm";
 import {
   calculateRelayHashUint8Array,
   getFillRelayDelegatePda,
@@ -20,7 +20,7 @@ import {
   intToU8Array32,
   readEventsUntilFound,
   slowFillHashFn,
-} from "../../src/svm/web3-v1";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
 import { testAcrossPlusMessage } from "./utils";
 
 const {

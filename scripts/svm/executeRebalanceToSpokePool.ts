@@ -23,7 +23,7 @@ import {
   isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "../../src/svm/web3-v1";
+} from "@across-protocol/sdk/dist/cjs/src/svm";
 import { CHAIN_IDs, getNodeUrl, TOKEN_SYMBOLS_MAP } from "../../utils";
 import { getHubPoolContract, requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";

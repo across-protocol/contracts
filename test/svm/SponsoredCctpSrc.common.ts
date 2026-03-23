@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { BN, Program } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
 import { ethers } from "ethers";
-import { evmAddressToPublicKey } from "../../src/svm/web3-v1";
+import { evmAddressToPublicKey } from "@across-protocol/sdk/dist/cjs/src/svm";
 import { SponsoredCctpSrcPeriphery } from "../../target/types/sponsored_cctp_src_periphery";
 
 export const provider = anchor.AnchorProvider.env();
