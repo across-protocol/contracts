@@ -17,6 +17,7 @@ import { MockERC20 } from "../../../../contracts/test/MockERC20.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC1271 } from "@openzeppelin/contracts-v4/interfaces/IERC1271.sol";
+import { ECDSA } from "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";
 
 contract Exchange {
@@ -85,6 +86,22 @@ contract HashUtils {
         SpokePoolPeriphery.SwapAndDepositData calldata swapAndDepositData
     ) external pure returns (bytes32) {
         return PeripherySigningLib.hashSwapAndDepositData(swapAndDepositData);
+    }
+}
+
+// Mock smart contract wallet that mimics Coinbase Smart Wallet signature wrapping.
+// Signature format: abi.encode(uint256 ownerIndex, bytes innerEOASignature)
+contract MockSmartWallet is IERC1271 {
+    address public owner;
+
+    constructor(address _owner) {
+        owner = _owner;
+    }
+
+    function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4) {
+        (, bytes memory innerSignature) = abi.decode(signature, (uint256, bytes));
+        (address recovered, ) = ECDSA.tryRecover(hash, innerSignature);
+        return recovered == owner ? bytes4(0x1626ba7e) : bytes4(0xffffffff);
     }
 }
 
@@ -510,7 +527,8 @@ contract SpokePoolPeripheryTest is Test {
 
         vm.startPrank(depositor);
         vm.expectRevert(V3SpokePoolInterface.MsgValueDoesNotMatchInputAmount.selector);
-        spokePoolPeriphery.depositNative{ value: 1 }( // Send 1 wei but expecting mintAmount
+        spokePoolPeriphery.depositNative{ value: 1 }(
+            // Send 1 wei but expecting mintAmount
             address(ethereumSpokePool), // spokePool address
             depositor, // depositor
             depositorBytes32, // recipient
@@ -1866,6 +1884,172 @@ contract SpokePoolPeripheryTest is Test {
             signature,
             swapAndDepositDataSignature
         );
+    }
+
+    /**
+     * Smart contract wallet (ERC-1271) signature tests
+     */
+    function testDepositWithAuthorizationSmartWalletSignature() public {
+        // Deploy a smart contract wallet (ERC-1271) owned by the depositor's private key.
+        MockSmartWallet smartWallet = new MockSmartWallet(depositor);
+
+        // Fund the smart wallet with tokens.
+        deal(address(mockERC20), address(smartWallet), mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            address(smartWallet)
+        );
+
+        // Compute the witness.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                address(smartWallet),
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                block.timestamp,
+                block.timestamp,
+                witness
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        // Sign with the EOA key that owns the smart wallet. The smart wallet's isValidSignature
+        // will verify via ecrecover that the EOA owner signed the hash.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        // This is a 65-byte EOA signature, but it will be validated via ERC-1271 on the smart wallet.
+        // To test the bytes-signature path (>65 bytes), we ABI-encode a wrapper around it,
+        // simulating how Coinbase smart wallet signatures are structured.
+        bytes memory innerSignature = bytes.concat(r, s, bytes1(v));
+        // Wrap it to make it >65 bytes, simulating a smart wallet signature format.
+        bytes memory smartWalletSignature = abi.encode(uint256(0), innerSignature);
+
+        // Calculate the expected depositId.
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            address(smartWallet),
+            address(smartWallet),
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        // Should emit expected deposit event.
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            address(smartWallet).toBytes32(),
+            address(smartWallet).toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithAuthorization(
+            address(smartWallet),
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            smartWalletSignature
+        );
+
+        // Check that fee recipient receives expected amount.
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testSwapAndBridgeWithAuthorizationSmartWalletSignature() public {
+        // Deploy a smart contract wallet (ERC-1271) owned by the depositor's private key.
+        MockSmartWallet smartWallet = new MockSmartWallet(depositor);
+
+        // Fund the smart wallet with tokens and set up the exchange.
+        deal(address(mockERC20), address(smartWallet), mintAmountWithSubmissionFee, true);
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            address(smartWallet),
+            true,
+            0
+        );
+
+        // Compute the witness.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                address(smartWallet),
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                block.timestamp,
+                block.timestamp,
+                witness
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory innerSignature = bytes.concat(r, s, bytes1(v));
+        bytes memory smartWalletSignature = abi.encode(uint256(0), innerSignature);
+
+        // Calculate expected depositId.
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            address(smartWallet),
+            address(smartWallet),
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        // Should emit expected deposit event.
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockWETH).toBytes32(),
+            address(mockWETH).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            address(smartWallet).toBytes32(),
+            address(smartWallet).toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithAuthorization(
+            address(smartWallet),
+            swapAndDepositData,
+            block.timestamp,
+            block.timestamp,
+            smartWalletSignature
+        );
+
+        // Check that fee recipient receives expected amount.
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
     function _defaultSwapAndDepositData(

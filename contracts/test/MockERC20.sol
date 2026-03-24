@@ -81,6 +81,27 @@ contract MockERC20 is IERC20Auth, ERC20Permit {
         _transfer(from, to, value);
     }
 
+    // Bytes signature overload (like USDC v2.2) — supports both EOA and ERC-1271 smart contract signatures.
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) external {
+        require(validAfter <= block.timestamp && validBefore >= block.timestamp, "Invalid time bounds");
+        require(msg.sender == to, "Receiver not caller");
+
+        bytes32 structHash = keccak256(
+            abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)
+        );
+        bytes32 sigHash = _hashTypedDataV4(structHash);
+        require(SignatureChecker.isValidSignatureNow(from, sigHash, signature), "Invalid signature");
+        _transfer(from, to, value);
+    }
+
     function hashTypedData(bytes32 typedData) external view returns (bytes32) {
         return _hashTypedDataV4(typedData);
     }

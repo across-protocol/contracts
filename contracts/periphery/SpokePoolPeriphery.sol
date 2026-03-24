@@ -361,21 +361,18 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
-        (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
-        IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
+        _receiveWithAuthorization(
+            swapAndDepositData.swapToken,
             signatureOwner,
-            address(this),
             swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
             witness,
-            v,
-            r,
-            s
+            receiveWithAuthSignature
         );
         _paySubmissionFees(
             swapAndDepositData.swapToken,
@@ -509,17 +506,14 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 _submissionFeeAmount = depositData.submissionFees.amount;
 
         // Redeem the receiveWithAuthSignature.
-        (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
-        IERC20Auth(depositData.baseDepositData.inputToken).receiveWithAuthorization(
+        _receiveWithAuthorization(
+            depositData.baseDepositData.inputToken,
             signatureOwner,
-            address(this),
             _inputAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
             witness,
-            v,
-            r,
-            s
+            receiveWithAuthSignature
         );
         _paySubmissionFees(
             depositData.baseDepositData.inputToken,
@@ -811,6 +805,52 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             nonceIdentifier,
             signatureOwner
         );
+    }
+
+    /**
+     * @notice Calls `receiveWithAuthorization` on the token, using the v,r,s overload for 65-byte EOA signatures
+     * and the bytes overload for smart contract wallet signatures (ERC-1271).
+     * @param token The ERC-3009 token to call.
+     * @param from The payer's address.
+     * @param value The amount to transfer.
+     * @param validAfter The time after which the authorization is valid.
+     * @param validBefore The time before which the authorization is valid.
+     * @param nonce The authorization nonce.
+     * @param signature The signature bytes (65 bytes for EOA, variable length for smart contract wallets).
+     */
+    function _receiveWithAuthorization(
+        address token,
+        address from,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata signature
+    ) private {
+        if (signature.length == 65) {
+            (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(signature);
+            IERC20Auth(token).receiveWithAuthorization(
+                from,
+                address(this),
+                value,
+                validAfter,
+                validBefore,
+                nonce,
+                v,
+                r,
+                s
+            );
+        } else {
+            IERC20Auth(token).receiveWithAuthorization(
+                from,
+                address(this),
+                value,
+                validAfter,
+                validBefore,
+                nonce,
+                signature
+            );
+        }
     }
 
     function _paySubmissionFees(address feeToken, address recipient, uint256 amount) private {
