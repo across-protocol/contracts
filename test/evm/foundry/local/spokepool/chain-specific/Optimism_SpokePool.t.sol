@@ -9,9 +9,9 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/crosschain/errors.sol";
 
 // Contracts under test
-import { Optimism_SpokePool } from "../../../../../../contracts/Optimism_SpokePool.sol";
-import { Ovm_SpokePool } from "../../../../../../contracts/Ovm_SpokePool.sol";
-import { SpokePool } from "../../../../../../contracts/SpokePool.sol";
+import { Optimism_SpokePool } from "../../../../../../contracts/spoke-pools/Optimism_SpokePool.sol";
+import { Ovm_SpokePool } from "../../../../../../contracts/spoke-pools/Ovm_SpokePool.sol";
+import { SpokePool } from "../../../../../../contracts/spoke-pools/SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Mocks

@@ -15,9 +15,9 @@ import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
-import { HubPool } from "../../../../contracts/HubPool.sol";
+import { HubPool } from "../../../../contracts/hub-pool/HubPool.sol";
 import { LpTokenFactoryInterface } from "../../../../contracts/interfaces/LpTokenFactoryInterface.sol";
-import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
+import { AdapterStore } from "../../../../contracts/hub-pool/AdapterStore.sol";
 
 // We normally delegatecall these from the hub pool, which has receive(). In this test, we call the adapter
 // directly, so in order to withdraw Weth, we need to have receive().

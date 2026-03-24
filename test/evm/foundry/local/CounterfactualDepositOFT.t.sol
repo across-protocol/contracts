@@ -7,8 +7,15 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { Merkle } from "murky/Merkle.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
-import { CounterfactualDepositOFT, OFTDepositParams, OFTSubmitterData } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
-import { WithdrawImplementation, WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import {
+    CounterfactualDepositOFT,
+    OFTDepositParams,
+    OFTSubmitterData
+} from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import {
+    WithdrawImplementation,
+    WithdrawParams
+} from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";

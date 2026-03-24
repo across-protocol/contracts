@@ -5,7 +5,10 @@ import { Test } from "forge-std/Test.sol";
 import { Merkle } from "murky/Merkle.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
-import { WithdrawImplementation, WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import {
+    WithdrawImplementation,
+    WithdrawParams
+} from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 

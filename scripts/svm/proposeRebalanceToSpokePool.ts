@@ -6,15 +6,12 @@
 // - NODE_URL_1: Ethereum RPC URL for mainnet (ignored if TESTNET=true).
 // - NODE_URL_11155111: Ethereum RPC URL for Sepolia (ignored if TESTNET=false).
 
-// eslint-disable-next-line camelcase
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { CHAIN_IDs, getNodeUrl, TOKEN_SYMBOLS_MAP } from "../../utils";
-// eslint-disable-next-line camelcase
 import { getSolanaChainId } from "../../src/svm/web3-v1";
-import { BondToken__factory, HubPool__factory } from "../../typechain";
-import { requireEnv } from "./utils/helpers";
+import { getBondTokenContract, getHubPoolContract, requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 
 // Set up Ethereum provider.
@@ -24,7 +21,7 @@ const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(
 
 // Get the HubPool contract instance.
 const hubPoolAddress = ethers.utils.getAddress(requireEnv("HUB_POOL_ADDRESS"));
-const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
+const hubPool = getHubPoolContract(hubPoolAddress, ethersProvider);
 
 // Parse arguments
 const argv = yargs(hideBin(process.argv)).option("netSendAmount", {
@@ -64,7 +61,7 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
   // Ensure bond token balance and approval is sufficient
   const bondTokenAddress = await hubPool.callStatic.bondToken();
   const bondAmount = await hubPool.callStatic.bondAmount();
-  const bondToken = BondToken__factory.connect(bondTokenAddress, ethersProvider);
+  const bondToken = getBondTokenContract(bondTokenAddress, ethersProvider);
   const bondBalance = await bondToken.callStatic.balanceOf(ethersSigner.address);
   if (bondBalance.lt(bondAmount)) {
     const ethDeposit = bondAmount.sub(bondBalance);

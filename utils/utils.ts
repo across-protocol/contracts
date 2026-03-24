@@ -1,62 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { expect } from "chai";
-import * as chai from "chai";
-import { getBytecode, getAbi } from "@uma/contracts-node";
-import * as optimismContracts from "@eth-optimism/contracts";
-import { smock, FakeContract } from "@defi-wonderland/smock";
-import { FactoryOptions } from "hardhat/types";
-import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory, BaseContract } from "ethers";
-import { EXPECTED_SAFE_OWNERS, OFT_EIDs } from "../deploy/consts";
-export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { ethers } from "ethers";
+import { BigNumber, Signer, Contract } from "ethers";
+import { EXPECTED_SAFE_OWNERS, OFT_EIDs } from "../src/consts";
 import { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
-
-chai.use(smock.matchers);
-
-function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
-  return "signer" in signerOrFactoryOptions || "libraries" in signerOrFactoryOptions;
-}
-
-export async function getContractFactory(
-  name: string,
-  signerOrFactoryOptions: Signer | FactoryOptions
-): Promise<ContractFactory> {
-  try {
-    // First, try get the artifact from this repo.
-    return await ethers.getContractFactory(name, signerOrFactoryOptions);
-  } catch (_) {
-    try {
-      // If it does not exist then try find the contract in the UMA core package.
-      if (isFactoryOptions(signerOrFactoryOptions))
-        throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
-      return new ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
-    } catch (_) {
-      // If that also fails, try fetching it from Optimism package.
-      try {
-        return await optimismContracts.getContractFactory(name, signerOrFactoryOptions as Signer);
-      } catch (_) {
-        try {
-          const localArtifact = getLocalArtifact(name);
-          return new ContractFactory(localArtifact.abi, localArtifact.bytecode, signerOrFactoryOptions as Signer);
-        } catch (_) {
-          throw new Error(`Could not find the artifact for ${name}!`);
-        }
-      }
-    }
-  }
-}
-
-// Fetch the artifact from the publish package's artifacts directory.
-function getLocalArtifact(contractName: string) {
-  const artifactsPath = path.join(__dirname, "../../artifacts/contracts");
-  return findArtifactFromPath(contractName, artifactsPath);
-}
-
-function findPathToRootOfPackage(packageName: string) {
-  const packagePath = require.resolve(`${packageName}/package.json`);
-  return packagePath.slice(0, packagePath.indexOf("package.json"));
-}
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {
   const allArtifactsPaths = getAllFilesInPath(artifactsPath);
@@ -153,32 +100,6 @@ export function randomBytes32() {
   return ethers.utils.hexlify(ethers.utils.randomBytes(32));
 }
 
-export async function getParamType(contractName: string, functionName: string, paramName: string) {
-  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
-  return fragment!.inputs.find((input) => input.name === paramName) || "";
-}
-
-export async function createFake(contractName: string, targetAddress: string = "") {
-  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  return smock.fake(contractFactory.interface.fragments, {
-    address: targetAddress === "" ? undefined : targetAddress,
-    provider: contractFactory.signer.provider,
-  });
-}
-
-export async function createFakeFromABI(abi: any[], targetAddress: string = "") {
-  return createTypedFakeFromABI(abi, targetAddress);
-}
-
-export async function createTypedFakeFromABI<T extends BaseContract>(abi: any[], targetAddress: string = "") {
-  const signer = new ethers.VoidSigner(ethers.constants.AddressZero);
-  return smock.fake<T>(abi, {
-    address: !targetAddress ? undefined : targetAddress,
-    provider: signer.provider,
-  });
-}
-
 function avmL1ToL2Alias(l1Address: string) {
   const offset = toBN("0x1111000000000000000000000000000000001111");
   const l1AddressAsNumber = toBN(l1Address);
@@ -210,7 +131,7 @@ export function hashNonEmptyMessage(message: string) {
 
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
-export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
+export { avmL1ToL2Alias, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, Signer };
 
 export function getOftEid(chainId: number): number {
   const value = OFT_EIDs.get(chainId);

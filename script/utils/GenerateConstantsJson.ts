@@ -22,7 +22,7 @@ import {
   L1_ADDRESS_MAP,
   OP_STACK_ADDRESS_MAP,
   L2_ADDRESS_MAP,
-} from "../../deploy/consts";
+} from "../../src/consts";
 
 const convertChainFamiliesEnumString = () => {
   const publicNetworksWithEnum = Object.fromEntries(

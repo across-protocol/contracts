@@ -8,7 +8,7 @@ import { WETH9Interface } from "../../external/interfaces/WETH9Interface.sol";
 import { ITokenMessenger } from "../../external/interfaces/CCTPInterfaces.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 import { LibOptimismUpgradeable } from "@openzeppelin/contracts-upgradeable-v4/crosschain/optimism/LibOptimismUpgradeable.sol";
-import { IL2ERC20Bridge } from "../../Ovm_SpokePool.sol";
+import { IL2ERC20Bridge } from "../../spoke-pools/Ovm_SpokePool.sol";
 
 /**
  * @notice Minimal interface for the Ovm_SpokePool contract. This interface is called to pull state from the network's

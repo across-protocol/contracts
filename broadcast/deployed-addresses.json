@@ -230,6 +230,11 @@
           "block_number": 24451418,
           "transaction_hash": "0x66bd97f0c253470cc4c39266d58a623b1d97d934e308d7e738890c30f1ac4ab5"
         },
+        "TransferProxy": {
+          "address": "0x03743372098Aa51E1fCe537D51025F08b55C4144",
+          "block_number": 24690994,
+          "transaction_hash": "0x869926fddcfc39456d4479bda50e644dac93aea0f731e1313ac7d5b80134db6c"
+        },
         "Universal_Adapter_4217": {
           "address": "0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c",
           "block_number": 24421479,
@@ -278,6 +283,11 @@
           "address": "0x4d11A23E4408eF08Ae1216B3917560e0001CD000",
           "block_number": 147713295,
           "transaction_hash": "0x8c34d7508b8348857cbbfa2065efdbdab61eb9b39f2df9e817761cccdbd94e95"
+        },
+        "TransferProxy": {
+          "address": "0x03743372098Aa51E1fCe537D51025F08b55C4144",
+          "block_number": 149159192,
+          "transaction_hash": "0xd9576b2fffbc2a032bec276d1a62bed6b50210027d848791e62f45fe922ad15b"
         }
       }
     },
@@ -392,6 +402,11 @@
           "address": "0x43e15Fb40DaDdA50E1d2BA300416811f6c28540c",
           "block_number": 82954450,
           "transaction_hash": "0x15dac1b43d6758b8aeeffcbf99239b61e7ac0381694079e5084e5e789c9255b0"
+        },
+        "TransferProxy": {
+          "address": "0x03743372098Aa51E1fCe537D51025F08b55C4144",
+          "block_number": 84398607,
+          "transaction_hash": "0x1eaa7b029710d02e3b2d72fb5f59bd89b3effa88605fe3ba7f695374627a9b58"
         }
       }
     },
@@ -756,6 +771,10 @@
           "address": "0xbCc541C5AeD10843C75336c2d32D363Db6eCF351",
           "block_number": 43270816,
           "transaction_hash": "0xb6a2c2430e15c6dd51fb9a227dbcaac7845af76177f5d3ea386f842b86aaa42e"
+        "TransferProxy": {
+          "address": "0x03743372098Aa51E1fCe537D51025F08b55C4144",
+          "block_number": 43563976,
+          "transaction_hash": "0x352688caf5f983b644fd9002250c74312e033e160c599d5c59b785d3d18256ef"
         }
       }
     },
@@ -892,6 +911,10 @@
           "address": "0xbCc541C5AeD10843C75336c2d32D363Db6eCF351",
           "block_number": 441056369,
           "transaction_hash": "0x7da21bbdf005f51cc373dd36a412172247425cff77ffe1147c87e80310b6670d"
+        "TransferProxy": {
+          "address": "0x03743372098Aa51E1fCe537D51025F08b55C4144",
+          "block_number": 443402146,
+          "transaction_hash": "0xbc0a5a4643313b2dbd4706f46cef3e04f82034acf7aae3b473c9f5b2ad6d7508"
         }
       }
     },

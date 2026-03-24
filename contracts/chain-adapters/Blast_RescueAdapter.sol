@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
-import { USDYieldManager } from "../Blast_DaiRetriever.sol";
+import { USDYieldManager } from "../hub-pool/Blast_DaiRetriever.sol";
 
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";

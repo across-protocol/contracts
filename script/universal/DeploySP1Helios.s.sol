@@ -25,7 +25,7 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 
 ///
 /// 2. Run the script:
-///    forge script script/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
+///    forge script script/universal/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
 ///
 /// Binary naming convention:
 ///    - macOS (arm64): genesis_{version}_arm64_darwin
