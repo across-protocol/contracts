@@ -58,6 +58,11 @@ CONTRACT_NAME="$3"
 BROADCAST_REF="$4"
 
 if [[ "$BROADCAST_REF" == *.json ]]; then
+    [[ "$BROADCAST_REF" == */dry-run/* ]] || {
+        echo "Error: JSON path must be a dry-run receipt (path should contain /dry-run/)."
+        echo "Got: $BROADCAST_REF"
+        exit 1
+    }
     RUN_JSON="$BROADCAST_REF"
 else
     SCRIPT_FILE="${BROADCAST_REF%%:*}"
