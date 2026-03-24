@@ -10,11 +10,7 @@
  *   NODE_URL_728126428                — Tron mainnet full node URL
  *   NODE_URL_3448148188               — Tron Nile testnet full node URL
  *   TRON_FEE_LIMIT                    — optional, in sun (default: 1500000000 = 1500 TRX)
- *   USP_ADMIN_UPDATE_BUFFER           — Admin update buffer in seconds (e.g. 86400 = 24h)
  *   USP_HELIOS_ADDRESS                — SP1Helios contract address (Tron Base58Check, T...)
- *   USP_WRAPPED_NATIVE_TOKEN_ADDRESS  — Wrapped native token (WTRX) address (Tron Base58Check, T...)
- *   USP_DEPOSIT_QUOTE_TIME_BUFFER     — Deposit quote time buffer in seconds
- *   USP_FILL_DEADLINE_BUFFER          — Fill deadline buffer in seconds
  *
  * Usage:
  *   yarn tron-deploy-universal-spokepool <chain-id>
@@ -27,11 +23,18 @@ import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
 
 const TRON_TESTNET_CHAIN_IDS = ["3448148188"];
 
-/** Read the HubPoolStore address from generated/constants.json */
-function getHubPoolStoreAddress(spokeChainId: string): string {
-  const hubChainId = TRON_TESTNET_CHAIN_IDS.includes(spokeChainId) ? "11155111" : "1";
+// WTRX (Wrapped TRX) contract address
+const WTRX_ADDRESS = "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR";
+
+/** Read and cache generated/constants.json. */
+function readConstants(): any {
   const constantsPath = path.resolve(__dirname, "../../../generated/constants.json");
-  const constants = JSON.parse(fs.readFileSync(constantsPath, "utf-8"));
+  return JSON.parse(fs.readFileSync(constantsPath, "utf-8"));
+}
+
+/** Read the HubPoolStore address from generated/constants.json, matching the Solidity deploy script logic. */
+function getHubPoolStoreAddress(constants: any, spokeChainId: string): string {
+  const hubChainId = TRON_TESTNET_CHAIN_IDS.includes(spokeChainId) ? "11155111" : "1";
   const address = constants.L1_ADDRESS_MAP?.[hubChainId]?.hubPoolStore;
   if (!address) {
     console.log(`Error: hubPoolStore not found in constants.json for hub chain ${hubChainId}`);
@@ -59,12 +62,14 @@ async function main(): Promise<void> {
   console.log("=== Universal_SpokePool Tron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
-  const adminUpdateBuffer = requireEnv("USP_ADMIN_UPDATE_BUFFER");
+  const constants = readConstants();
+
+  const adminUpdateBuffer = 86400; // 1 day, matching DeployUniversalSpokePool.s.sol
   const heliosAddress = tronToEvmAddress(requireEnv("USP_HELIOS_ADDRESS"));
-  const hubPoolStoreAddress = getHubPoolStoreAddress(chainId);
-  const wrappedNativeToken = tronToEvmAddress(requireEnv("USP_WRAPPED_NATIVE_TOKEN_ADDRESS"));
-  const depositQuoteTimeBuffer = requireEnv("USP_DEPOSIT_QUOTE_TIME_BUFFER");
-  const fillDeadlineBuffer = requireEnv("USP_FILL_DEADLINE_BUFFER");
+  const hubPoolStoreAddress = getHubPoolStoreAddress(constants, chainId);
+  const wrappedNativeToken = tronToEvmAddress(WTRX_ADDRESS);
+  const depositQuoteTimeBuffer = constants.TIME_CONSTANTS.QUOTE_TIME_BUFFER;
+  const fillDeadlineBuffer = constants.TIME_CONSTANTS.FILL_DEADLINE_BUFFER;
   // USDC / CCTP is not supported on Tron.
   const l2Usdc = "0x0000000000000000000000000000000000000000";
   const cctpTokenMessenger = "0x0000000000000000000000000000000000000000";
