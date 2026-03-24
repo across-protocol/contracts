@@ -68,12 +68,16 @@ Canonical deployed addresses are generated into `broadcast/deployed-addresses.js
 
 ```
 contracts/           # Smart contract source files
+  spoke-pools/       # SpokePool contracts (base + all chain-specific variants, PolygonTokenBridger)
+  hub-pool/          # HubPool, BondToken, LpTokenFactory, AcrossConfigStore, PermissionSplitterProxy, AdapterStore
   chain-adapters/    # L1 chain adapters (intents system)
-  test/              # Mock contracts for testing
-  periphery/         # Periphery contracts
+  periphery/         # Periphery contracts (SpokePoolPeriphery, SpokePoolVerifier, AcrossEventEmitter)
     mintburn/        # Mint-burn system (sponsored CCTP, OFT flows)
+  libraries/         # Shared libraries (MerkleLib, Lockable)
   interfaces/        # Interface definitions
-  libraries/         # Shared libraries
+  erc7683/           # ERC-7683 cross-chain intents (AcrossOriginSettler, AcrossDestinationSettler)
+  handlers/          # Destination handler contracts (multicall, HyperCore, etc.)
+  test/              # Mock contracts for testing
 test/
   evm/foundry/       # Foundry tests (.t.sol)
     local/           # Local unit tests
