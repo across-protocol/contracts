@@ -21,10 +21,18 @@ import { TronWeb } from "tronweb";
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes
 
+export const TRON_MAINNET_CHAIN_ID = "728126428";
+export const TRON_TESTNET_CHAIN_ID = "3448148188";
+
 const TRONSCAN_URLS: Record<string, string> = {
-  "728126428": "https://tronscan.org",
-  "3448148188": "https://nile.tronscan.org",
+  [TRON_MAINNET_CHAIN_ID]: "https://tronscan.org",
+  [TRON_TESTNET_CHAIN_ID]: "https://nile.tronscan.org",
 };
+
+/** Resolve chain ID from argv. Returns mainnet by default, testnet if --testnet flag is present. */
+export function resolveChainId(): string {
+  return process.argv.includes("--testnet") ? TRON_TESTNET_CHAIN_ID : TRON_MAINNET_CHAIN_ID;
+}
 
 export interface DeployResult {
   address: string; // Tron Base58 (T...)

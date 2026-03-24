@@ -12,16 +12,17 @@
  *   TRON_FEE_LIMIT                    — optional, in sun (default: 1500000000 = 1500 TRX)
  *   USP_HELIOS_ADDRESS                — SP1Helios contract address (Tron Base58Check, T...)
  *
+ * Options:
+ *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
+ *
  * Usage:
- *   yarn tron-deploy-universal-spokepool <chain-id>
+ *   yarn tron-deploy-universal-spokepool [--testnet]
  */
 
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
-import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
-
-const TRON_TESTNET_CHAIN_IDS = ["3448148188"];
+import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId, TRON_TESTNET_CHAIN_ID } from "./deploy";
 
 // WTRX (Wrapped TRX) contract address
 const WTRX_ADDRESS = "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR";
@@ -34,7 +35,7 @@ function readConstants(): any {
 
 /** Read the HubPoolStore address from generated/constants.json, matching the Solidity deploy script logic. */
 function getHubPoolStoreAddress(constants: any, spokeChainId: string): string {
-  const hubChainId = TRON_TESTNET_CHAIN_IDS.includes(spokeChainId) ? "11155111" : "1";
+  const hubChainId = spokeChainId === TRON_TESTNET_CHAIN_ID ? "11155111" : "1";
   const address = constants.L1_ADDRESS_MAP?.[hubChainId]?.hubPoolStore;
   if (!address) {
     console.log(`Error: hubPoolStore not found in constants.json for hub chain ${hubChainId}`);
@@ -53,11 +54,7 @@ function requireEnv(name: string): string {
 }
 
 async function main(): Promise<void> {
-  const chainId = process.argv[2];
-  if (!chainId) {
-    console.log("Usage: yarn tron-deploy-universal-spokepool <chain-id>");
-    process.exit(1);
-  }
+  const chainId = resolveChainId();
 
   console.log("=== Universal_SpokePool Tron Deployment ===");
   console.log(`Chain ID: ${chainId}`);

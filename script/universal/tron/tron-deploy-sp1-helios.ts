@@ -21,8 +21,12 @@
  *   SP1_VKEY_UPDATER_TRON        — VKey updater address (Tron Base58Check, T...)
  *   SP1_CONSENSUS_RPCS_LIST_TRON — Comma-separated list of consensus RPC URLs
  *
+ * Options:
+ *   --testnet          — deploy to Tron Nile testnet (default: mainnet)
+ *   --fee-limit <sun>  — fee limit in sun (default: 1500000000 = 1500 TRX)
+ *
  * Usage:
- *   yarn tron-deploy-sp1-helios <chain-id>
+ *   yarn tron-deploy-sp1-helios [--testnet] [--fee-limit <sun>]
  */
 
 import "dotenv/config";
@@ -31,7 +35,7 @@ import * as path from "path";
 import * as os from "os";
 import { execSync } from "child_process";
 import { createHash } from "crypto";
-import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
+import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId } from "./deploy";
 import { TronWeb as TronWebImport } from "tronweb";
 
 const GITHUB_RELEASE_URL = "https://github.com/across-protocol/sp1-helios/releases";
@@ -186,12 +190,16 @@ function readGenesisAndEncode(): string {
   );
 }
 
+function parseFlag(flag: string): string | undefined {
+  const idx = process.argv.indexOf(flag);
+  return idx !== -1 && idx + 1 < process.argv.length ? process.argv[idx + 1] : undefined;
+}
+
 async function main(): Promise<void> {
-  const chainId = process.argv[2];
-  if (!chainId) {
-    console.log("Usage: yarn tron-deploy-sp1-helios <chain-id>");
-    process.exit(1);
-  }
+  const chainId = resolveChainId();
+
+  const feeLimitRaw = parseFlag("--fee-limit");
+  const feeLimit = feeLimitRaw ? parseInt(feeLimitRaw, 10) : undefined;
 
   const version = requireEnv("SP1_RELEASE_TRON");
   const sp1Prover = requireEnv("SP1_PROVER_MODE_TRON");
@@ -227,7 +235,7 @@ async function main(): Promise<void> {
 
   const artifactPath = path.resolve(__dirname, "../../../out-tron/SP1Helios.sol/SP1Helios.json");
 
-  await deployContract({ chainId, artifactPath, encodedArgs });
+  await deployContract({ chainId, artifactPath, encodedArgs, feeLimit });
 }
 
 main().catch((err) => {

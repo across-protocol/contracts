@@ -10,19 +10,18 @@
  *   NODE_URL_3448148188   — Tron Nile testnet full node URL
  *   TRON_FEE_LIMIT        — optional, in sun (default: 1500000000 = 1500 TRX)
  *
+ * Options:
+ *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
+ *
  * Usage:
- *   yarn tron-deploy-sp1-auto-verifier <chain-id>
+ *   yarn tron-deploy-sp1-auto-verifier [--testnet]
  */
 
 import * as path from "path";
-import { deployContract } from "./deploy";
+import { deployContract, resolveChainId } from "./deploy";
 
 async function main(): Promise<void> {
-  const chainId = process.argv[2];
-  if (!chainId) {
-    console.log("Usage: yarn tron-deploy-sp1-auto-verifier <chain-id>");
-    process.exit(1);
-  }
+  const chainId = resolveChainId();
 
   console.log("=== SP1AutoVerifier Tron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
