@@ -11,7 +11,10 @@ import { Arbitrum_WithdrawalHelper } from "../../../../contracts/chain-adapters/
 import { Ovm_WithdrawalHelper, IOvm_SpokePool } from "../../../../contracts/chain-adapters/l2/Ovm_WithdrawalHelper.sol";
 import { CircleDomainIds } from "../../../../contracts/libraries/CircleCCTPAdapter.sol";
 import { L2GatewayRouter } from "../../../../contracts/test/ArbitrumMocks.sol";
-import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
+import {
+    MockBedrockL2StandardBridge,
+    MockBedrockCrossDomainMessenger
+} from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { OP_SpokePool } from "../../../../contracts/spoke-pools/OP_SpokePool.sol";
 import { Ovm_SpokePool } from "../../../../contracts/spoke-pools/Ovm_SpokePool.sol";
 import { WithdrawalHelperBase } from "../../../../contracts/chain-adapters/l2/WithdrawalHelperBase.sol";

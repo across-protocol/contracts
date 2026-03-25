@@ -12,7 +12,10 @@ import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
-import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
+import {
+    MockBedrockL1StandardBridge,
+    MockBedrockCrossDomainMessenger
+} from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitrum_Forwarder.sol";
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";

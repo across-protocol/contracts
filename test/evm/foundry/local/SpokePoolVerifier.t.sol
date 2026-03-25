@@ -141,7 +141,8 @@ contract SpokePoolVerifierTest is Test {
         vm.expectCall(
             address(ethereumSpokePool), // callee
             depositAmount, // value
-            abi.encodeCall( // data
+            abi.encodeCall(
+                // data
                 EthereumSpokePoolOnlyAddressInterface.deposit,
                 (
                     depositor.toBytes32(),

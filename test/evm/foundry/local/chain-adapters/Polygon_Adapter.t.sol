@@ -7,7 +7,11 @@ import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Contract under test
 import { Polygon_Adapter } from "../../../../../contracts/chain-adapters/Polygon_Adapter.sol";
-import { IRootChainManager, IFxStateSender, DepositManager } from "../../../../../contracts/chain-adapters/Polygon_Adapter.sol";
+import {
+    IRootChainManager,
+    IFxStateSender,
+    DepositManager
+} from "../../../../../contracts/chain-adapters/Polygon_Adapter.sol";
 import { AdapterInterface } from "../../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
 import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
 import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAdapter.sol";
@@ -18,7 +22,11 @@ import { MessengerTypes } from "../../../../../contracts/hub-pool/AdapterStore.s
 import { MockCCTPMinter, MockCCTPMessenger } from "../../../../../contracts/test/MockCCTP.sol";
 import { MockOFTMessenger } from "../../../../../contracts/test/MockOFTMessenger.sol";
 import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
-import { RootChainManagerMock, FxStateSenderMock, DepositManagerMock } from "../../../../../contracts/test/PolygonMocks.sol";
+import {
+    RootChainManagerMock,
+    FxStateSenderMock,
+    DepositManagerMock
+} from "../../../../../contracts/test/PolygonMocks.sol";
 import { AdapterStore } from "../../../../../contracts/hub-pool/AdapterStore.sol";
 import { MintableERC20 } from "../../../../../contracts/test/MockERC20.sol";
 import { ITokenMessenger, ITokenMinter } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";

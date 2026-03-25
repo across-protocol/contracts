@@ -130,8 +130,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
         uint256 inboxBalanceAfter = address(inbox).balance;
 
         uint256 expectedEth = adapter.L2_MAX_SUBMISSION_COST() +
-            adapter.L2_GAS_PRICE() *
-            adapter.RELAY_MESSAGE_L2_GAS_LIMIT();
+            adapter.L2_GAS_PRICE() * adapter.RELAY_MESSAGE_L2_GAS_LIMIT();
         assertEq(inboxBalanceAfter - inboxBalanceBefore, expectedEth, "Inbox balance change mismatch");
 
         // Verify createRetryableTicket was called exactly once
@@ -218,8 +217,7 @@ contract Arbitrum_AdapterTest is HubPoolTestBase {
 
         uint256 gatewayBalanceAfter = address(gatewayRouter).balance;
         uint256 expectedEth = adapter.L2_MAX_SUBMISSION_COST() +
-            adapter.L2_GAS_PRICE() *
-            adapter.RELAY_TOKENS_L2_GAS_LIMIT();
+            adapter.L2_GAS_PRICE() * adapter.RELAY_TOKENS_L2_GAS_LIMIT();
         assertEq(gatewayBalanceAfter - gatewayBalanceBefore, expectedEth, "GatewayRouter balance change mismatch");
 
         // Verify outboundTransferCustomRefund was called exactly once

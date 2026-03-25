@@ -570,9 +570,9 @@
           "transaction_hash": "0x11abc3566704b51ee63255b70eddb4e3f127c7e6c9dad6bdfbf547b684bcaf2c"
         },
         "HyperliquidDepositHandler": {
-          "address": "0x861E127036B28D32f3777B4676F6bbb9e007d195",
-          "block_number": 20301679,
-          "transaction_hash": "0x187b45f39be413aff2ff526946c64f76ed98763129e7e2ffb7d2d4c5bd997519"
+          "address": "0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5",
+          "block_number": 27144816,
+          "transaction_hash": "0xf7f1b77559935ec04f3a3a89601b621f21d4cf38c2701e8df18e10f333b24c7c"
         },
         "SponsoredCCTPDstPeriphery": {
           "address": "0x478D451e101bE484880a14cf3cCC293CD48E6140",

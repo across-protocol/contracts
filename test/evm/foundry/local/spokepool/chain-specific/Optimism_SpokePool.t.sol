@@ -15,7 +15,10 @@ import { SpokePool } from "../../../../../../contracts/spoke-pools/SpokePool.sol
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Mocks
-import { MockBedrockL2StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../../../contracts/test/MockBedrockStandardBridge.sol";
+import {
+    MockBedrockL2StandardBridge,
+    MockBedrockCrossDomainMessenger
+} from "../../../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { MockCCTPMessenger, MockCCTPMinter } from "../../../../../../contracts/test/MockCCTP.sol";
 import { MintableERC20 } from "../../../../../../contracts/test/MockERC20.sol";
 import { WETH9 } from "../../../../../../contracts/external/WETH9.sol";
