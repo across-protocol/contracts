@@ -3,9 +3,9 @@ pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 import { console } from "forge-std/console.sol";
-import { HyperliquidDepositHandler } from "../contracts/handlers/HyperliquidDepositHandler.sol";
-import { ReadHCoreTokenInfoUtil } from "./mintburn/ReadHCoreTokenInfoUtil.s.sol";
-import { DeployedAddresses } from "./utils/DeployedAddresses.sol";
+import { HyperliquidDepositHandler } from "../../contracts/handlers/HyperliquidDepositHandler.sol";
+import { ReadHCoreTokenInfoUtil } from "../mintburn/ReadHCoreTokenInfoUtil.s.sol";
+import { DeployedAddresses } from "../utils/DeployedAddresses.sol";
 import { SafeCast } from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
 
 /*
@@ -62,6 +62,7 @@ contract DeployHyperliquidDepositHandler is Script, DeployedAddresses {
         uint256 chainId = block.chainid;
         address spokePool = getAddress(chainId, SPOKE_POOL_NAME);
         require(spokePool != address(0), "SpokePool missing in broadcast/deployed-addresses.json");
+        address donationBox = 0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168;
 
         ReadHCoreTokenInfoUtil reader = new ReadHCoreTokenInfoUtil();
         TokenConfig[] memory tokenConfigs = new TokenConfig[](tokenSymbols.length);
@@ -85,7 +86,11 @@ contract DeployHyperliquidDepositHandler is Script, DeployedAddresses {
         console.log("Signer required to sign payloads for handleV3AcrossMessage:", signer);
 
         vm.startBroadcast(deployerPrivateKey);
-        HyperliquidDepositHandler hyperliquidDepositHandler = new HyperliquidDepositHandler(signer, spokePool);
+        HyperliquidDepositHandler hyperliquidDepositHandler = new HyperliquidDepositHandler(
+            donationBox,
+            signer,
+            spokePool
+        );
         vm.stopBroadcast();
 
         address deployedHandler = address(hyperliquidDepositHandler);
