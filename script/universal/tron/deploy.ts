@@ -164,6 +164,9 @@ export async function deployContract(opts: {
   chainId: string;
   artifactPath: string;
   encodedArgs?: string;
+  feeLimit?: number;
+  /** Override the contract name used in the broadcast artifact (default: derived from artifact filename). */
+  contractNameOverride?: string;
 }): Promise<DeployResult> {
   const { chainId, artifactPath, encodedArgs } = opts;
 
@@ -184,7 +187,7 @@ export async function deployContract(opts: {
     process.exit(1);
   }
 
-  const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
+  const feeLimit = opts.feeLimit ?? parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
 
   // Create a TronWeb instance (private key set below after mnemonic derivation).
   const tronWeb = new TronWeb({ fullHost: fullNode });
@@ -221,8 +224,9 @@ export async function deployContract(opts: {
     process.exit(1);
   }
 
-  // Extract contract name from artifact filename (e.g. "SP1Helios" from ".../SP1Helios.json").
-  const contractName = path.basename(artifactPath, ".json");
+  // Extract contract name from artifact filename (e.g. "SP1Helios" from ".../SP1Helios.json"),
+  // unless overridden by the caller.
+  const contractName = opts.contractNameOverride ?? path.basename(artifactPath, ".json");
 
   // Strip 0x prefix from encoded args if provided (TronWeb expects raw hex).
   let parameter: string | undefined;

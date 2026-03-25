@@ -2,21 +2,20 @@
 /**
  * Deploys Universal_SpokePool to Tron via TronWeb.
  *
- * This deploys the implementation contract only — it must be wrapped in a UUPS proxy
- * and initialized separately.
+ * Deploys the implementation contract and wraps it in a UUPS ERC1967Proxy,
+ * matching the behavior of DeployUniversalSpokePool.s.sol.
  *
  * Env vars:
  *   MNEMONIC                          — BIP-39 mnemonic (derives account 0 private key)
  *   NODE_URL_728126428                — Tron mainnet full node URL
  *   NODE_URL_3448148188               — Tron Nile testnet full node URL
  *   TRON_FEE_LIMIT                    — optional, in sun (default: 1500000000 = 1500 TRX)
- *   USP_HELIOS_ADDRESS                — SP1Helios contract address (Tron Base58Check, T...)
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
  *
  * Usage:
- *   yarn tron-deploy-universal-spokepool [--testnet]
+ *   yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]
  */
 
 import "dotenv/config";
@@ -33,9 +32,20 @@ function readConstants(): any {
   return JSON.parse(fs.readFileSync(constantsPath, "utf-8"));
 }
 
+/** Read deployed-addresses.json and return the HubPool address for the hub chain. */
+function getHubPoolAddress(hubChainId: string): string {
+  const jsonPath = path.resolve(__dirname, "../../../broadcast/deployed-addresses.json");
+  const data = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+  const address = data.chains?.[hubChainId]?.contracts?.HubPool?.address;
+  if (!address) {
+    console.log(`Error: HubPool not found in deployed-addresses.json for chain ${hubChainId}`);
+    process.exit(1);
+  }
+  return address;
+}
+
 /** Read the HubPoolStore address from generated/constants.json, matching the Solidity deploy script logic. */
-function getHubPoolStoreAddress(constants: any, spokeChainId: string): string {
-  const hubChainId = spokeChainId === TRON_TESTNET_CHAIN_ID ? "11155111" : "1";
+function getHubPoolStoreAddress(constants: any, hubChainId: string): string {
   const address = constants.L1_ADDRESS_MAP?.[hubChainId]?.hubPoolStore;
   if (!address) {
     console.log(`Error: hubPoolStore not found in constants.json for hub chain ${hubChainId}`);
@@ -44,26 +54,27 @@ function getHubPoolStoreAddress(constants: any, spokeChainId: string): string {
   return address;
 }
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    console.log(`Error: ${name} env var is required.`);
+async function main(): Promise<void> {
+  // First positional arg (skip flags like --testnet)
+  const sp1HeliosAddress = process.argv.slice(2).find((a) => !a.startsWith("-"));
+  if (!sp1HeliosAddress) {
+    console.log("Usage: yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]");
     process.exit(1);
   }
-  return value;
-}
 
-async function main(): Promise<void> {
   const chainId = resolveChainId();
+  const hubChainId = chainId === TRON_TESTNET_CHAIN_ID ? "11155111" : "1";
 
   console.log("=== Universal_SpokePool Tron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
+  console.log(`Hub Chain ID: ${hubChainId}`);
 
   const constants = readConstants();
 
   const adminUpdateBuffer = 86400; // 1 day, matching DeployUniversalSpokePool.s.sol
-  const heliosAddress = tronToEvmAddress(requireEnv("USP_HELIOS_ADDRESS"));
-  const hubPoolStoreAddress = getHubPoolStoreAddress(constants, chainId);
+  const heliosAddress = tronToEvmAddress(sp1HeliosAddress);
+  const hubPoolStoreAddress = getHubPoolStoreAddress(constants, hubChainId);
+  const hubPoolAddress = getHubPoolAddress(hubChainId);
   const wrappedNativeToken = tronToEvmAddress(WTRX_ADDRESS);
   const depositQuoteTimeBuffer = constants.TIME_CONSTANTS.QUOTE_TIME_BUFFER;
   const fillDeadlineBuffer = constants.TIME_CONSTANTS.FILL_DEADLINE_BUFFER;
@@ -77,6 +88,7 @@ async function main(): Promise<void> {
   console.log(`  Admin update buffer:  ${adminUpdateBuffer}s`);
   console.log(`  Helios:               ${heliosAddress}`);
   console.log(`  HubPoolStore:         ${hubPoolStoreAddress}`);
+  console.log(`  HubPool:              ${hubPoolAddress}`);
   console.log(`  Wrapped native token: ${wrappedNativeToken}`);
   console.log(`  Deposit quote buffer: ${depositQuoteTimeBuffer}s`);
   console.log(`  Fill deadline buffer: ${fillDeadlineBuffer}s`);
@@ -85,8 +97,9 @@ async function main(): Promise<void> {
   console.log(`  OFT dst EID:          ${oftDstEid} (disabled — OFT not supported on Tron)`);
   console.log(`  OFT fee cap:          ${oftFeeCap} (disabled)`);
 
-  // Constructor: (uint256, address, address, address, uint32, uint32, IERC20, ITokenMessenger, uint32, uint256)
-  const encodedArgs = encodeArgs(
+  // Step 1: Deploy implementation contract
+  console.log("\n--- Deploying implementation ---");
+  const implEncodedArgs = encodeArgs(
     ["uint256", "address", "address", "address", "uint32", "uint32", "address", "address", "uint32", "uint256"],
     [
       adminUpdateBuffer,
@@ -102,9 +115,52 @@ async function main(): Promise<void> {
     ]
   );
 
-  const artifactPath = path.resolve(__dirname, "../../../out-tron/Universal_SpokePool.sol/Universal_SpokePool.json");
+  const implArtifactPath = path.resolve(
+    __dirname,
+    "../../../out-tron/Universal_SpokePool.sol/Universal_SpokePool.json"
+  );
 
-  await deployContract({ chainId, artifactPath, encodedArgs });
+  const implResult = await deployContract({
+    chainId,
+    artifactPath: implArtifactPath,
+    encodedArgs: implEncodedArgs,
+  });
+
+  console.log(`\nImplementation deployed: ${implResult.address}`);
+
+  // Step 2: Deploy ERC1967Proxy pointing to the implementation, with initialize calldata.
+  // Matches DeployUniversalSpokePool.s.sol: initialize(1, hubPool, hubPool)
+  console.log("\n--- Deploying ERC1967Proxy ---");
+
+  // Universal_SpokePool.initialize(uint32 _initialDepositId, address _crossDomainAdmin, address _withdrawalRecipient)
+  // selector: initialize(uint32,address,address)
+  const initCalldata = encodeArgs(["uint32", "address", "address"], [1, hubPoolAddress, hubPoolAddress]);
+
+  // Compute the full initialize calldata with function selector.
+  // initialize(uint32,address,address) selector = 0x1794bb3c — but let's compute it properly.
+  // We need abi.encodeWithSelector, which is selector + args.
+  // The initialize function signature from Universal_SpokePool:
+  //   function initialize(uint32 _initialDepositId, address _crossDomainAdmin, address _withdrawalRecipient)
+  const { TronWeb } = await import("tronweb");
+  const twUtil = new TronWeb({ fullHost: "http://localhost" });
+  const initSelector = twUtil.sha3("initialize(uint32,address,address)").slice(0, 10); // 0x + 8 hex chars
+  // initCalldata from encodeArgs starts with 0x, strip it to concat with selector
+  const initData = initSelector + initCalldata.slice(2);
+
+  // ERC1967Proxy constructor: (address _logic, bytes memory _data)
+  const proxyEncodedArgs = encodeArgs(["address", "bytes"], [tronToEvmAddress(implResult.address), initData]);
+
+  const proxyArtifactPath = path.resolve(__dirname, "../../../out-tron/ERC1967Proxy.sol/ERC1967Proxy.json");
+
+  const proxyResult = await deployContract({
+    chainId,
+    artifactPath: proxyArtifactPath,
+    encodedArgs: proxyEncodedArgs,
+    contractNameOverride: "SpokePool",
+  });
+
+  console.log(`\nProxy deployed: ${proxyResult.address}`);
+  console.log(`Implementation: ${implResult.address}`);
 }
 
 main().catch((err) => {

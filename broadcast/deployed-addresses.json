@@ -1097,6 +1097,26 @@
         }
       }
     },
+    "728126428": {
+      "chain_name": "Chain 728126428",
+      "contracts": {
+        "SP1AutoVerifier": {
+          "address": "TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84",
+          "block_number": 81235137,
+          "transaction_hash": "6bb786350fb65c85df414085b65caa22e5de47d59a241ec4b213aae2b41a9738"
+        },
+        "SP1Helios": {
+          "address": "TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx",
+          "block_number": 81266543,
+          "transaction_hash": "2a282124875b409051659cb86e82d2e6ae7eaa16df3d1a801b0936a2ffae81e9"
+        },
+        "SpokePool": {
+          "address": "TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8",
+          "block_number": 81267900,
+          "transaction_hash": "916d12109b908916a5180dbaf032c577b758615e975ce909cdee696f066f5ac9"
+        }
+      }
+    },
     "133268194659241": {
       "chain_name": "Solana Devnet",
       "contracts": {

@@ -6,3 +6,4 @@ pragma solidity ^0.8.0;
 import "../sp1-helios/SP1Helios.sol";
 import "../sp1-helios/SP1AutoVerifier.sol";
 import "../Universal_SpokePool.sol";
+import "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
