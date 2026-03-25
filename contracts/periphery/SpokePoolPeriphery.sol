@@ -827,7 +827,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes32 nonce,
         bytes calldata signature
     ) private {
-        if (signature.length == 65) {
+        if (!_isContract(from)) {
             (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(signature);
             IERC20Auth(token).receiveWithAuthorization(
                 from,
