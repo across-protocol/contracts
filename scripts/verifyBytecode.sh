@@ -164,6 +164,13 @@ elif [[ -n "${ENCODED_ARGS:-}" ]]; then
     fi
     exit 1
 else
+    # No constructor args — try metadata-only comparison.
+    STRIPPED_ONCHAIN=$(strip_cbor_metadata "$ONCHAIN")
+    STRIPPED_LOCAL=$(strip_cbor_metadata "$LOCAL_INIT")
+    if [[ "$STRIPPED_ONCHAIN" == "$STRIPPED_LOCAL" ]]; then
+        echo "✅ Code match (metadata hash differs)"
+        exit 0
+    fi
     echo "❌ Code mismatch"
     echo "Onchain bytes : ${#ONCHAIN}"
     echo "Local bytes   : ${#LOCAL_INIT}"
