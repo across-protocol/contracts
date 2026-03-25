@@ -1,0 +1,22 @@
+[package]
+name = "multicall-handler"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "multicall_handler"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build"]
+test = []
+
+[dependencies]
+anchor-lang = "0.31.1"
+solana-security-txt = "1.1.1"

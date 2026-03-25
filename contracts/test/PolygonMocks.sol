@@ -1,29 +1,66 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/ERC20.sol";
 
 contract RootChainManagerMock {
-    function depositEtherFor(address user) external payable {} // solhint-disable-line no-empty-blocks
+    // Call tracking for depositEtherFor
+    uint256 public depositEtherForCallCount;
+    struct DepositEtherForCall {
+        address user;
+        uint256 value;
+    }
+    DepositEtherForCall public lastDepositEtherForCall;
 
-    function depositFor(
-        address user,
-        address rootToken,
-        bytes calldata depositData
-    ) external {} // solhint-disable-line no-empty-blocks
+    // Call tracking for depositFor
+    uint256 public depositForCallCount;
+    struct DepositForCall {
+        address user;
+        address rootToken;
+        bytes depositData;
+    }
+    DepositForCall public lastDepositForCall;
+
+    function depositEtherFor(address user) external payable {
+        depositEtherForCallCount++;
+        lastDepositEtherForCall = DepositEtherForCall(user, msg.value);
+    }
+
+    function depositFor(address user, address rootToken, bytes calldata depositData) external {
+        depositForCallCount++;
+        lastDepositForCall = DepositForCall(user, rootToken, depositData);
+    }
 }
 
 contract FxStateSenderMock {
-    // solhint-disable-next-line no-empty-blocks
-    function sendMessageToChild(address _receiver, bytes calldata _data) external {}
+    // Call tracking for sendMessageToChild
+    uint256 public sendMessageToChildCallCount;
+    struct SendMessageToChildCall {
+        address receiver;
+        bytes data;
+    }
+    SendMessageToChildCall public lastSendMessageToChildCall;
+
+    function sendMessageToChild(address _receiver, bytes calldata _data) external {
+        sendMessageToChildCallCount++;
+        lastSendMessageToChildCall = SendMessageToChildCall(_receiver, _data);
+    }
 }
 
 contract DepositManagerMock {
-    function depositERC20ForUser(
-        address token,
-        address user,
-        uint256 amount // solhint-disable-next-line no-empty-blocks
-    ) external {} // solhint-disable-line no-empty-blocks
+    // Call tracking for depositERC20ForUser
+    uint256 public depositERC20ForUserCallCount;
+    struct DepositERC20ForUserCall {
+        address token;
+        address user;
+        uint256 amount;
+    }
+    DepositERC20ForUserCall public lastDepositERC20ForUserCall;
+
+    function depositERC20ForUser(address token, address user, uint256 amount) external {
+        depositERC20ForUserCallCount++;
+        lastDepositERC20ForUserCall = DepositERC20ForUserCall(token, user, amount);
+    }
 }
 
 contract PolygonRegistryMock {

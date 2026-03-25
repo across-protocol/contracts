@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts-v4/interfaces/IERC1271.sol";
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-v4/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-v4/access/Ownable.sol";
 
 /**
  * @title MockERC1271

@@ -93,10 +93,10 @@ library Permit2OrderLib {
         return keccak256(abi.encodePacked(part1, part2));
     }
 
-    function _processPermit2Order(IPermit2 permit2, SignedOrder calldata signedOrder)
-        internal
-        returns (CrossChainLimitOrder memory)
-    {
+    function _processPermit2Order(
+        IPermit2 permit2,
+        SignedOrder calldata signedOrder
+    ) internal returns (CrossChainLimitOrder memory) {
         CrossChainLimitOrder memory limitOrder = abi.decode(signedOrder.order, (CrossChainLimitOrder));
 
         if (address(this) != limitOrder.info.settlerContract) revert WrongSettlerContract();

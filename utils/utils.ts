@@ -1,82 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { expect } from "chai";
-import * as chai from "chai";
-import { getBytecode, getAbi } from "@uma/contracts-node";
-import * as optimismContracts from "@eth-optimism/contracts";
-import { smock, FakeContract } from "@defi-wonderland/smock";
-import { FactoryOptions } from "hardhat/types";
-import { ethers } from "hardhat";
-import { BigNumber, Signer, Contract, ContractFactory } from "ethers";
-export { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-
-chai.use(smock.matchers);
-
-function isFactoryOptions(signerOrFactoryOptions: Signer | FactoryOptions): signerOrFactoryOptions is FactoryOptions {
-  return "signer" in signerOrFactoryOptions || "libraries" in signerOrFactoryOptions;
-}
-
-export async function getContractFactory(
-  name: string,
-  signerOrFactoryOptions: Signer | FactoryOptions
-): Promise<ContractFactory> {
-  try {
-    // First, try get the artifact from this repo.
-    return await ethers.getContractFactory(name, signerOrFactoryOptions);
-  } catch (_) {
-    try {
-      // If it does not exist then try find the contract in the UMA core package.
-      if (isFactoryOptions(signerOrFactoryOptions))
-        throw new Error("Cannot pass FactoryOptions to a contract imported from UMA");
-      return new ContractFactory(getAbi(name as any), getBytecode(name as any), signerOrFactoryOptions as Signer);
-    } catch (_) {
-      // If that also fails, try fetching it from Optimism package.
-      try {
-        return await optimismContracts.getContractFactory(name, signerOrFactoryOptions as Signer);
-      } catch (_) {
-        // If that also fails, then try getting it from the Arbitrum package.
-        try {
-          const arbitrumArtifact = getArbitrumArtifact(name);
-          return new ContractFactory(arbitrumArtifact.abi, arbitrumArtifact.bytecode, signerOrFactoryOptions as Signer);
-        } catch (_) {
-          // Finally, try importing the package from the local path. This would be the case when running these utils
-          // from node modules which breaks using the hardhat getContractFactory function.
-          try {
-            const localArtifact = getLocalArtifact(name);
-            return new ContractFactory(localArtifact.abi, localArtifact.bytecode, signerOrFactoryOptions as Signer);
-          } catch (_) {
-            throw new Error(`Could not find the artifact for ${name}!`);
-          }
-        }
-      }
-    }
-  }
-}
-
-// Arbitrum does not export any of their artifacts nicely, so we have to do this manually. The methods that follow can
-// be re-used if we end up requiring to import contract artifacts from other projects that dont export cleanly.
-function getArbitrumArtifact(contractName: string) {
-  try {
-    // First, try find the contract from their main package.
-    const artifactsPath = `${findPathToRootOfPackage("arb-bridge-eth")}build/contracts/contracts`;
-    return findArtifactFromPath(contractName, artifactsPath);
-  } catch (error) {
-    // If that fails then try from the peripheral package.
-    const artifactsPath = `${findPathToRootOfPackage("arb-bridge-peripherals")}build/contracts/contracts`;
-    return findArtifactFromPath(contractName, artifactsPath);
-  }
-}
-
-// Fetch the artifact from the publish package's artifacts directory.
-function getLocalArtifact(contractName: string) {
-  const artifactsPath = path.join(__dirname, "../../artifacts/contracts");
-  return findArtifactFromPath(contractName, artifactsPath);
-}
-
-function findPathToRootOfPackage(packageName: string) {
-  const packagePath = require.resolve(`${packageName}/package.json`);
-  return packagePath.slice(0, packagePath.indexOf("package.json"));
-}
+import { ethers } from "ethers";
+import { BigNumber, Signer, Contract } from "ethers";
+import { EXPECTED_SAFE_OWNERS, OFT_EIDs } from "../src/consts";
+import { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {
   const allArtifactsPaths = getAllFilesInPath(artifactsPath);
@@ -123,6 +50,19 @@ export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
 
 export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
 
+export const hexZeroPad = (input: string, length: number) => ethers.utils.hexZeroPad(input, length);
+
+export const addressToBytes = (input: string) => hexZeroPad(input.toLowerCase(), 32);
+
+export const bytes32ToAddress = (input: string) => {
+  if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
+    throw new Error("Invalid bytes32 input");
+  }
+  return ethers.utils.getAddress("0x" + input.slice(26));
+};
+
+export const isBytes32 = (input: string) => /^0x[0-9a-fA-F]{64}$/.test(input);
+
 export async function seedWallet(
   walletToFund: Signer,
   tokens: Contract[],
@@ -156,26 +96,8 @@ export function randomAddress() {
   return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
 }
 
-export async function getParamType(contractName: string, functionName: string, paramName: string) {
-  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  const fragment = contractFactory.interface.fragments.find((fragment) => fragment.name === functionName);
-  return fragment!.inputs.find((input) => input.name === paramName) || "";
-}
-
-export async function createFake(contractName: string, targetAddress: string = "") {
-  const contractFactory = await getContractFactory(contractName, new ethers.VoidSigner(ethers.constants.AddressZero));
-  return smock.fake(contractFactory.interface.fragments, {
-    address: targetAddress === "" ? undefined : targetAddress,
-    provider: contractFactory.signer.provider,
-  });
-}
-
-export async function createFakeFromABI(abi: any[], targetAddress: string = "") {
-  const signer = new ethers.VoidSigner(ethers.constants.AddressZero);
-  return smock.fake(abi, {
-    address: !targetAddress ? undefined : targetAddress,
-    provider: signer.provider,
-  });
+export function randomBytes32() {
+  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
 }
 
 function avmL1ToL2Alias(l1Address: string) {
@@ -188,6 +110,46 @@ function avmL1ToL2Alias(l1Address: string) {
   return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
 }
 
+export function trimSolanaAddress(bytes32Address: string): string {
+  if (!ethers.utils.isHexString(bytes32Address, 32)) {
+    throw new Error("Invalid bytes32 address");
+  }
+
+  const uint160Address = ethers.BigNumber.from(bytes32Address).mask(160);
+  return ethers.utils.hexZeroPad(ethers.utils.hexlify(uint160Address), 20);
+}
+
+export function hashNonEmptyMessage(message: string) {
+  if (!ethers.utils.isHexString(message) || message.length % 2 !== 0) throw new Error("Invalid hex message bytes");
+
+  // account for 0x prefix when checking length
+  if (message.length > 2) {
+    return ethers.utils.keccak256(message);
+  }
+  return ethers.utils.hexlify(new Uint8Array(32));
+}
+
 const { defaultAbiCoder, keccak256 } = ethers.utils;
 
-export { avmL1ToL2Alias, expect, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, FakeContract, Signer };
+export { avmL1ToL2Alias, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, Signer };
+
+export function getOftEid(chainId: number): number {
+  const value = OFT_EIDs.get(chainId);
+  if (value === undefined) {
+    throw new Error(`Chain id ${chainId} not present in OFT_EIDs`);
+  }
+  return value;
+}
+
+export const safeAccountConfig: SafeAccountConfig = {
+  owners: EXPECTED_SAFE_OWNERS,
+  threshold: 2,
+};
+
+export const predictedSafe: PredictedSafeProps = {
+  safeAccountConfig,
+  safeDeploymentConfig: {
+    // Safe addresses are deterministic based on owners and salt nonce.
+    saltNonce: "0x1234",
+  },
+};

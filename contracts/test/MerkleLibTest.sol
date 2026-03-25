@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "../MerkleLib.sol";
+import "../libraries/MerkleLib.sol";
 import "../interfaces/HubPoolInterface.sol";
 import "../interfaces/SpokePoolInterface.sol";
 import "./interfaces/MockV2SpokePoolInterface.sol";

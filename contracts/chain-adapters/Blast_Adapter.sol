@@ -9,8 +9,8 @@ import "../external/interfaces/WETH9Interface.sol";
 import "./CrossDomainEnabled.sol";
 import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1StandardBridge.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 import "../libraries/CircleCCTPAdapter.sol";
 import "../external/interfaces/CCTPInterfaces.sol";
@@ -42,6 +42,7 @@ interface IL1ERC20Bridge {
  * @notice Contract containing logic to send messages from L1 to Blast. This is a modified version of the Optimism adapter
  * that excludes the custom bridging logic. It differs from the Base Adapter in that it uses a special
  * Blast contract to bridge WETH and DAI, which are yielding rebasing tokens on L2, WETH and USDB.
+ * @custom:security-contact bugs@across.to
  */
 
 // solhint-disable-next-line contract-name-camelcase
@@ -75,7 +76,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
     )
         CrossDomainEnabled(_crossDomainMessenger)
         // Hardcode cctp messenger to 0x0 to disable CCTP bridging.
-        CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINTIALIZED)
+        CircleCCTPAdapter(_l1Usdc, ITokenMessenger(address(0)), CircleDomainIds.UNINITIALIZED)
     {
         L1_WETH = _l1Weth;
         L1_STANDARD_BRIDGE = _l1StandardBridge;
@@ -101,12 +102,7 @@ contract Blast_Adapter is CrossDomainEnabled, AdapterInterface, CircleCCTPAdapte
      * @param amount Amount of L1 tokens to deposit and L2 tokens to receive.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         // If token can be bridged into yield-ing version of ERC20 on L2 side, then use Blast Bridge, otherwise
         // use standard bridge.
 

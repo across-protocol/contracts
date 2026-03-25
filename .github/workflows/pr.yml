@@ -1,83 +1,217 @@
 name: Checks
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches:
+      - "master"
+env:
+  NODE_VERSION: 22.18
 jobs:
-  lint:
-    name: Lint
+  # Multiple jobs depend on having EVM and SVM artifacts available, so we upload them first in separate jobs.
+  upload-svm-artifacts:
+    name: Upload SVM artifacts
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [16]
+    env:
+      ARTIFACTS_PATHS: |
+        target/idl
+        target/types
+        src/svm/assets
+        src/svm/clients
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+      - name: Cache SVM artifacts
+        id: svm-artifacts-cache
+        uses: ./.github/actions/cache-svm-artifacts
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
-      - name: Install packages
-        run: yarn install --frozen-lockfile
-      - name: Lint
-        run: yarn lint
-  test:
-    name: Test
+          type: artifacts
+          node_version: ${{ env.NODE_VERSION }}
+      - name: Generate SVM artifacts
+        if: steps.svm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-svm-artifacts
+        with:
+          type: artifacts
+          path: ${{ env.ARTIFACTS_PATHS }}
+          node_version: ${{ env.NODE_VERSION }}
+      - name: Upload SVM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+          path: ${{ env.ARTIFACTS_PATHS }}
+          if-no-files-found: error
+  upload-evm-artifacts:
+    name: Upload EVM artifacts
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [16]
+    env:
+      ARTIFACTS_PATHS: |
+        out
+        cache-foundry
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+      - name: Cache EVM artifacts
+        id: evm-artifacts-cache
+        uses: ./.github/actions/cache-evm-artifacts
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
-      - name: Install packages
-        run: yarn install --frozen-lockfile
-      - name: Build
-        run: yarn build
-      - name: Test
-        run: yarn test
-  forge:
-    name: Forge
+          node_version: ${{ env.NODE_VERSION }}
+      - name: Generate EVM artifacts
+        if: steps.evm-artifacts-cache.outputs.cache-hit != 'true'
+        uses: ./.github/actions/generate-evm-artifacts
+        with:
+          path: ${{ env.ARTIFACTS_PATHS }}
+          node_version: ${{ env.NODE_VERSION }}
+      - name: Upload EVM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+          path: ${{ env.ARTIFACTS_PATHS }}
+          if-no-files-found: error
+  lint-and-check-generated:
+    name: Lint and Check Generated Files
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [16]
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
+      - name: "Use Node ${{ env.NODE_VERSION }}"
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
+          node-version: "${{ env.NODE_VERSION }}"
+          cache: yarn
+      - name: Install Cargo toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          components: rustc, rustfmt
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
       - name: Install packages
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Lint js
+        shell: bash
+        run: yarn lint-js
+      - name: Lint solidity
+        shell: bash
+        run: yarn lint-solidity
+      - name: Check Solidity formatting
+        shell: bash
+        run: yarn check-format-contracts
+      - name: Lint rust
+        shell: bash
+        run: yarn lint-rust
+      - name: Regenerate constants.json
+        run: yarn generate-constants-json && yarn prettier --write generated/constants.json
+      - name: Regenerate deployed-addresses
+        run: yarn extract-addresses && yarn prettier --write broadcast/deployed-addresses.json && yarn prettier --write broadcast/deployed-addresses.md
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code generated/constants.json broadcast/deployed-addresses.json broadcast/deployed-addresses.md; then
+            echo ""
+            echo "ERROR: Generated files are out of date."
+            echo "Please run 'yarn generate-constants-json' and 'yarn extract-addresses' (or ensure the pre-commit hook runs) and commit the results."
+            exit 1
+          fi
+  test-svm-verified:
+    name: Test verified SVM build
+    needs: upload-svm-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Setup Anchor & Solana
+        uses: ./.github/actions/setup-solana-anchor
+        with:
+          verify_version: 0.4.3
+          node_version: ${{ env.NODE_VERSION }}
+      - name: Check which paths changed
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            svm:
+              - 'programs/**'
+              - 'scripts/svm/**'
+              - 'src/svm/**'
+              - 'test/svm/**'
+      - name: Download SVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+      # Cargo cache would only apply to dependencies that are not reused in the verified docker build, hence we need to
+      # manually cache the verified build binaries if the program source code has not changed.
+      - name: Cache verified test build binaries
+        id: verified-test-build-cache
+        uses: ./.github/actions/cache-svm-artifacts
+        with:
+          type: verified-test-binaries
+          node_version: ${{ env.NODE_VERSION }}
+      - name: Create verified build
+        if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
+        env:
+          IS_TEST: true
+        run: yarn build-svm-solana-verify
+      - name: Archive verified test build (for caching)
+        if: steps.verified-test-build-cache.outputs.cache-hit != 'true'
+        run: tar -cf svm-verified-test-binaries.tar target/deploy
+      - name: Test verified SVM build
+        if: steps.filter.outputs.svm == 'true'
+        run: anchor test --skip-build
+  build-ts:
+    name: Build TypeScript
+    needs:
+      - upload-svm-artifacts
+      - upload-evm-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-optional
+      - name: Download SVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: svm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+      - name: Build TypeScript
+        run: yarn build-ts
+  test-evm:
+    name: EVM Tests
+    needs: upload-evm-artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+      - name: "Use Node ${{ env.NODE_VERSION }}"
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+          cache: yarn
+      - name: Install packages
+        run: yarn install --frozen-lockfile --ignore-optional
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
       - name: Install forge dependencies
         run: forge install
       - name: Inspect storage layouts
         run: ./scripts/checkStorageLayout.sh
-      - name: Run forge test
-        run: forge test --match-path test/foundry/local/**/*.t.sol
-  solhint:
-    name: Solhint
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node: [16]
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-      - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+      - name: Download EVM artifacts
+        uses: actions/download-artifact@v4
         with:
-          node-version: ${{ matrix.node }}
-          cache: "yarn"
-      - name: Install packages
-        run: yarn install --frozen-lockfile
-      - name: Solhint
-        run: yarn lint-contracts
+          name: evm-artifacts-${{ runner.os }}-node-${{ env.NODE_VERSION }}
+      - name: Test evm-foundry
+        run: yarn test-evm-foundry

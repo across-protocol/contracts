@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+import "@openzeppelin/contracts-v4/access/Ownable.sol";
+import "@openzeppelin/contracts-v4/token/ERC1155/ERC1155.sol";
 
 /**
  * @title MintableERC1155
@@ -26,11 +26,7 @@ contract MintableERC1155 is ERC1155, Ownable {
      * @param tokenId Token type to airdrop.
      * @param amount Amount of token types to airdrop.
      */
-    function airdrop(
-        uint256 tokenId,
-        address[] memory recipients,
-        uint256 amount
-    ) public onlyOwner {
+    function airdrop(uint256 tokenId, address[] memory recipients, uint256 amount) public onlyOwner {
         for (uint256 i = 0; i < recipients.length; i++) {
             _mint(recipients[i], tokenId, amount, "");
         }

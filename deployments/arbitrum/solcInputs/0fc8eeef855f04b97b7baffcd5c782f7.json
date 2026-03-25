@@ -1,0 +1,37 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/AcrossEventEmitter.sol": {
+      "content": "// SPDX-License-Identifier: BUSL-1.1\npragma solidity ^0.8.0;\n\n/**\n * @title AcrossEventEmitter\n * @notice A simple contract that emits events with bytes encoded metadata\n */\ncontract AcrossEventEmitter {\n    /**\n     * @notice Emitted when metadata is stored\n     * @param data The metadata bytes emitted\n     */\n    event MetadataEmitted(bytes data);\n\n    /**\n     * @notice Emits metadata as an event\n     * @param data The bytes data to emit\n     */\n    function emitData(bytes calldata data) external {\n        require(data.length > 0, \"Data cannot be empty\");\n        emit MetadataEmitted(data);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 1000000
+    },
+    "viaIR": true,
+    "debug": {
+      "revertStrings": "strip"
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": ["ast"]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}

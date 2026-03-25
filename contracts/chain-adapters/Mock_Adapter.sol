@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 /**
  * @notice Contract used for testing communication between HubPool and Adapter.
@@ -25,12 +25,7 @@ contract Mock_Adapter is AdapterInterface {
         emit RelayMessageCalled(target, message, msg.sender);
     }
 
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable override {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable override {
         IERC20(l1Token).approve(address(bridge), amount);
         bridge.bridgeTokens(l1Token, amount);
         emit RelayTokensCalled(l1Token, l2Token, amount, to, msg.sender);

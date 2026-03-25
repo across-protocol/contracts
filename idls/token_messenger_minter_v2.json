@@ -1,0 +1,4441 @@
+{
+  "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe",
+  "metadata": {
+    "name": "token_messenger_minter_v2",
+    "version": "0.2.0",
+    "spec": "0.1.0",
+    "description": "Token Messenger and Minter for Cross-Chain Transfer Protocol V2",
+    "repository": "https://github.com/circlefin/solana-cctp-contracts"
+  },
+  "instructions": [
+    {
+      "name": "accept_ownership",
+      "discriminator": [
+        172,
+        23,
+        43,
+        13,
+        238,
+        213,
+        85,
+        150
+      ],
+      "accounts": [
+        {
+          "name": "pending_owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "AcceptOwnershipParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "add_local_token",
+      "discriminator": [
+        213,
+        199,
+        205,
+        18,
+        98,
+        124,
+        73,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  100,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "local_token_mint"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "AddLocalTokenParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "add_remote_token_messenger",
+      "discriminator": [
+        12,
+        149,
+        172,
+        165,
+        111,
+        202,
+        24,
+        33
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  109,
+                  111,
+                  116,
+                  101,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  101,
+                  115,
+                  115,
+                  101,
+                  110,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.domain"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "AddRemoteTokenMessengerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "burn_token_custody",
+      "discriminator": [
+        233,
+        136,
+        180,
+        175,
+        112,
+        41,
+        62,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  100,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "custody_token_mint",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "BurnTokenCustodyParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "denylist_account",
+      "discriminator": [
+        101,
+        116,
+        197,
+        112,
+        81,
+        249,
+        75,
+        194
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "denylister",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "denylist_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121,
+                  108,
+                  105,
+                  115,
+                  116,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.account"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "DenylistParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_for_burn",
+      "discriminator": [
+        215,
+        60,
+        61,
+        46,
+        114,
+        55,
+        128,
+        176
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "burn_token_account"
+          ]
+        },
+        {
+          "name": "event_rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender_authority_pda",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  110,
+                  100,
+                  101,
+                  114,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "burn_token_account",
+          "writable": true
+        },
+        {
+          "name": "denylist_account",
+          "docs": [
+            "Account is denylisted if the account exists at the expected PDA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121,
+                  108,
+                  105,
+                  115,
+                  116,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "message_transmitter",
+          "writable": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "burn_token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "burn_token_mint",
+          "writable": true
+        },
+        {
+          "name": "message_sent_event_data",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "message_transmitter_program",
+          "address": "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC"
+        },
+        {
+          "name": "token_messenger_minter_program",
+          "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "DepositForBurnParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit_for_burn_with_hook",
+      "discriminator": [
+        111,
+        245,
+        62,
+        131,
+        204,
+        108,
+        223,
+        155
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "burn_token_account"
+          ]
+        },
+        {
+          "name": "event_rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender_authority_pda",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  110,
+                  100,
+                  101,
+                  114,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "burn_token_account",
+          "writable": true
+        },
+        {
+          "name": "denylist_account",
+          "docs": [
+            "Account is denylisted if the account exists at the expected PDA."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121,
+                  108,
+                  105,
+                  115,
+                  116,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "message_transmitter",
+          "writable": true
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "burn_token_mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "burn_token_mint",
+          "writable": true
+        },
+        {
+          "name": "message_sent_event_data",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "message_transmitter_program",
+          "address": "CCTPV2Sm4AdWt5296sk4P66VBZ7bEhcARwFaaS9YPbeC"
+        },
+        {
+          "name": "token_messenger_minter_program",
+          "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "DepositForBurnWithHookParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "handle_receive_finalized_message",
+      "discriminator": [
+        186,
+        252,
+        239,
+        70,
+        86,
+        180,
+        110,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "authority_pda",
+          "signer": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  115,
+                  115,
+                  97,
+                  103,
+                  101,
+                  95,
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  109,
+                  105,
+                  116,
+                  116,
+                  101,
+                  114,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  166,
+                  95,
+                  200,
+                  29,
+                  15,
+                  239,
+                  168,
+                  134,
+                  12,
+                  179,
+                  184,
+                  63,
+                  8,
+                  155,
+                  2,
+                  36,
+                  190,
+                  138,
+                  102,
+                  135,
+                  183,
+                  174,
+                  73,
+                  245,
+                  148,
+                  192,
+                  185,
+                  180,
+                  215,
+                  233,
+                  56,
+                  147
+                ]
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                166,
+                95,
+                200,
+                28,
+                225,
+                158,
+                220,
+                210,
+                210,
+                195,
+                64,
+                176,
+                47,
+                166,
+                27,
+                225,
+                213,
+                186,
+                221,
+                225,
+                89,
+                40,
+                51,
+                221,
+                249,
+                32,
+                9,
+                216,
+                207,
+                104,
+                84,
+                85
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_pair"
+        },
+        {
+          "name": "fee_recipient_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "token_messenger.fee_recipient",
+                "account": "TokenMessenger"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  100,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "HandleReceiveMessageParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "handle_receive_unfinalized_message",
+      "discriminator": [
+        200,
+        169,
+        175,
+        20,
+        200,
+        58,
+        182,
+        61
+      ],
+      "accounts": [
+        {
+          "name": "authority_pda",
+          "signer": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  115,
+                  115,
+                  97,
+                  103,
+                  101,
+                  95,
+                  116,
+                  114,
+                  97,
+                  110,
+                  115,
+                  109,
+                  105,
+                  116,
+                  116,
+                  101,
+                  114,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  166,
+                  95,
+                  200,
+                  29,
+                  15,
+                  239,
+                  168,
+                  134,
+                  12,
+                  179,
+                  184,
+                  63,
+                  8,
+                  155,
+                  2,
+                  36,
+                  190,
+                  138,
+                  102,
+                  135,
+                  183,
+                  174,
+                  73,
+                  245,
+                  148,
+                  192,
+                  185,
+                  180,
+                  215,
+                  233,
+                  56,
+                  147
+                ]
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                166,
+                95,
+                200,
+                28,
+                225,
+                158,
+                220,
+                210,
+                210,
+                195,
+                64,
+                176,
+                47,
+                166,
+                27,
+                225,
+                213,
+                186,
+                221,
+                225,
+                89,
+                40,
+                51,
+                221,
+                249,
+                32,
+                9,
+                216,
+                207,
+                104,
+                84,
+                85
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger"
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_pair"
+        },
+        {
+          "name": "fee_recipient_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "token_messenger.fee_recipient",
+                "account": "TokenMessenger"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "recipient_token_account",
+          "writable": true
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  100,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "HandleReceiveMessageParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "upgrade_authority",
+          "signer": true
+        },
+        {
+          "name": "authority_pda",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  101,
+                  110,
+                  100,
+                  101,
+                  114,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_messenger",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  101,
+                  115,
+                  115,
+                  101,
+                  110,
+                  103,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_minter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_messenger_minter_program_data"
+        },
+        {
+          "name": "token_messenger_minter_program",
+          "address": "CCTPV2vPZJS2u2BBsUoscuikbYjnpFmbFsvVuJdgUMQe"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "InitializeParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "link_token_pair",
+      "discriminator": [
+        68,
+        162,
+        24,
+        104,
+        125,
+        46,
+        130,
+        12
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "token_pair",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  112,
+                  97,
+                  105,
+                  114
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.remote_domain"
+              },
+              {
+                "kind": "arg",
+                "path": "params.remote_token"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "LinkTokenPairParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "pause",
+      "discriminator": [
+        211,
+        22,
+        221,
+        251,
+        74,
+        121,
+        193,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "pauser",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "PauseParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "remove_local_token",
+      "discriminator": [
+        27,
+        43,
+        66,
+        170,
+        188,
+        44,
+        109,
+        97
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "custody_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  117,
+                  115,
+                  116,
+                  111,
+                  100,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "custody_token_mint",
+          "writable": true
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RemoveLocalTokenParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "remove_remote_token_messenger",
+      "discriminator": [
+        65,
+        114,
+        66,
+        85,
+        169,
+        98,
+        177,
+        146
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "remote_token_messenger",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  109,
+                  111,
+                  116,
+                  101,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  109,
+                  101,
+                  115,
+                  115,
+                  101,
+                  110,
+                  103,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "remote_token_messenger.domain",
+                "account": "RemoteTokenMessenger"
+              }
+            ]
+          }
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "RemoveRemoteTokenMessengerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_fee_recipient",
+      "discriminator": [
+        227,
+        18,
+        215,
+        42,
+        237,
+        246,
+        151,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetFeeRecipientParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_max_burn_amount_per_message",
+      "discriminator": [
+        30,
+        128,
+        145,
+        240,
+        70,
+        237,
+        109,
+        207
+      ],
+      "accounts": [
+        {
+          "name": "token_controller",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "local_token",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  108,
+                  111,
+                  99,
+                  97,
+                  108,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "local_token.mint",
+                "account": "LocalToken"
+              }
+            ]
+          }
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetMaxBurnAmountPerMessageParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_min_fee",
+      "discriminator": [
+        114,
+        198,
+        35,
+        3,
+        41,
+        196,
+        194,
+        246
+      ],
+      "accounts": [
+        {
+          "name": "min_fee_controller",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetMinFeeParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_min_fee_controller",
+      "discriminator": [
+        195,
+        142,
+        74,
+        84,
+        234,
+        94,
+        180,
+        113
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetMinFeeControllerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "set_token_controller",
+      "discriminator": [
+        88,
+        6,
+        98,
+        10,
+        79,
+        59,
+        15,
+        24
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "SetTokenControllerParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transfer_ownership",
+      "discriminator": [
+        65,
+        177,
+        215,
+        73,
+        53,
+        45,
+        99,
+        47
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "TransferOwnershipParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "undenylist_account",
+      "discriminator": [
+        57,
+        36,
+        43,
+        168,
+        62,
+        172,
+        33,
+        39
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "denylister",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "denylist_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  101,
+                  110,
+                  121,
+                  108,
+                  105,
+                  115,
+                  116,
+                  95,
+                  97,
+                  99,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "params.account"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UndenylistParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unlink_token_pair",
+      "discriminator": [
+        52,
+        198,
+        100,
+        114,
+        104,
+        174,
+        85,
+        58
+      ],
+      "accounts": [
+        {
+          "name": "payee",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_controller",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter"
+        },
+        {
+          "name": "token_pair",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  116,
+                  111,
+                  107,
+                  101,
+                  110,
+                  95,
+                  112,
+                  97,
+                  105,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_pair.remote_domain",
+                "account": "TokenPair"
+              },
+              {
+                "kind": "account",
+                "path": "token_pair.remote_token",
+                "account": "TokenPair"
+              }
+            ]
+          }
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UninkTokenPairParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "unpause",
+      "discriminator": [
+        169,
+        144,
+        4,
+        38,
+        10,
+        141,
+        188,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "pauser",
+          "signer": true,
+          "relations": [
+            "token_minter"
+          ]
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UnpauseParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_denylister",
+      "discriminator": [
+        193,
+        66,
+        198,
+        201,
+        84,
+        57,
+        14,
+        222
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UpdateDenylisterParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "update_pauser",
+      "discriminator": [
+        140,
+        171,
+        211,
+        132,
+        57,
+        201,
+        16,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "token_messenger"
+          ]
+        },
+        {
+          "name": "token_messenger"
+        },
+        {
+          "name": "token_minter",
+          "writable": true
+        },
+        {
+          "name": "event_authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "UpdatePauserParams"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DenylistedAccount",
+      "discriminator": [
+        186,
+        58,
+        212,
+        239,
+        102,
+        131,
+        157,
+        146
+      ]
+    },
+    {
+      "name": "LocalToken",
+      "discriminator": [
+        159,
+        131,
+        58,
+        170,
+        193,
+        84,
+        128,
+        182
+      ]
+    },
+    {
+      "name": "MessageTransmitter",
+      "discriminator": [
+        71,
+        40,
+        180,
+        142,
+        19,
+        203,
+        35,
+        252
+      ]
+    },
+    {
+      "name": "RemoteTokenMessenger",
+      "discriminator": [
+        105,
+        115,
+        174,
+        34,
+        95,
+        233,
+        138,
+        252
+      ]
+    },
+    {
+      "name": "TokenMessenger",
+      "discriminator": [
+        162,
+        4,
+        242,
+        52,
+        147,
+        243,
+        221,
+        96
+      ]
+    },
+    {
+      "name": "TokenMinter",
+      "discriminator": [
+        122,
+        133,
+        84,
+        63,
+        57,
+        159,
+        171,
+        206
+      ]
+    },
+    {
+      "name": "TokenPair",
+      "discriminator": [
+        17,
+        214,
+        45,
+        176,
+        229,
+        149,
+        197,
+        71
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "Denylisted",
+      "discriminator": [
+        20,
+        145,
+        173,
+        200,
+        182,
+        17,
+        234,
+        154
+      ]
+    },
+    {
+      "name": "DenylisterChanged",
+      "discriminator": [
+        249,
+        170,
+        81,
+        180,
+        185,
+        175,
+        138,
+        72
+      ]
+    },
+    {
+      "name": "DepositForBurn",
+      "discriminator": [
+        144,
+        252,
+        145,
+        146,
+        6,
+        74,
+        167,
+        235
+      ]
+    },
+    {
+      "name": "FeeRecipientSet",
+      "discriminator": [
+        99,
+        140,
+        80,
+        35,
+        245,
+        176,
+        179,
+        110
+      ]
+    },
+    {
+      "name": "LocalTokenAdded",
+      "discriminator": [
+        146,
+        8,
+        224,
+        150,
+        122,
+        173,
+        23,
+        39
+      ]
+    },
+    {
+      "name": "LocalTokenRemoved",
+      "discriminator": [
+        181,
+        204,
+        1,
+        95,
+        2,
+        50,
+        66,
+        210
+      ]
+    },
+    {
+      "name": "MinFeeControllerSet",
+      "discriminator": [
+        239,
+        12,
+        122,
+        105,
+        231,
+        114,
+        13,
+        196
+      ]
+    },
+    {
+      "name": "MinFeeSet",
+      "discriminator": [
+        60,
+        127,
+        101,
+        230,
+        216,
+        129,
+        188,
+        98
+      ]
+    },
+    {
+      "name": "MintAndWithdraw",
+      "discriminator": [
+        75,
+        67,
+        229,
+        70,
+        162,
+        126,
+        0,
+        71
+      ]
+    },
+    {
+      "name": "OwnershipTransferStarted",
+      "discriminator": [
+        183,
+        253,
+        239,
+        246,
+        140,
+        179,
+        133,
+        105
+      ]
+    },
+    {
+      "name": "OwnershipTransferred",
+      "discriminator": [
+        172,
+        61,
+        205,
+        183,
+        250,
+        50,
+        38,
+        98
+      ]
+    },
+    {
+      "name": "Pause",
+      "discriminator": [
+        194,
+        251,
+        232,
+        196,
+        118,
+        95,
+        111,
+        219
+      ]
+    },
+    {
+      "name": "PauserChanged",
+      "discriminator": [
+        142,
+        157,
+        158,
+        87,
+        127,
+        8,
+        119,
+        55
+      ]
+    },
+    {
+      "name": "RemoteTokenMessengerAdded",
+      "discriminator": [
+        251,
+        29,
+        63,
+        244,
+        48,
+        114,
+        210,
+        175
+      ]
+    },
+    {
+      "name": "RemoteTokenMessengerRemoved",
+      "discriminator": [
+        255,
+        121,
+        137,
+        39,
+        230,
+        125,
+        11,
+        30
+      ]
+    },
+    {
+      "name": "SetBurnLimitPerMessage",
+      "discriminator": [
+        98,
+        152,
+        88,
+        191,
+        245,
+        30,
+        27,
+        209
+      ]
+    },
+    {
+      "name": "SetTokenController",
+      "discriminator": [
+        193,
+        44,
+        243,
+        83,
+        230,
+        72,
+        120,
+        216
+      ]
+    },
+    {
+      "name": "TokenCustodyBurned",
+      "discriminator": [
+        219,
+        143,
+        107,
+        226,
+        67,
+        75,
+        178,
+        46
+      ]
+    },
+    {
+      "name": "TokenPairLinked",
+      "discriminator": [
+        2,
+        14,
+        177,
+        64,
+        155,
+        93,
+        196,
+        141
+      ]
+    },
+    {
+      "name": "TokenPairUnlinked",
+      "discriminator": [
+        78,
+        232,
+        230,
+        208,
+        180,
+        212,
+        246,
+        72
+      ]
+    },
+    {
+      "name": "UnDenylisted",
+      "discriminator": [
+        150,
+        39,
+        227,
+        20,
+        162,
+        180,
+        5,
+        242
+      ]
+    },
+    {
+      "name": "Unpause",
+      "discriminator": [
+        241,
+        149,
+        104,
+        90,
+        199,
+        136,
+        219,
+        146
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAuthority",
+      "msg": "Invalid authority"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidTokenMinterState",
+      "msg": "Invalid token minter state"
+    },
+    {
+      "code": 6002,
+      "name": "ProgramPaused",
+      "msg": "Instruction is not allowed at this time"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidTokenPairState",
+      "msg": "Invalid token pair state"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidLocalTokenState",
+      "msg": "Invalid local token state"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidPauser",
+      "msg": "Invalid pauser"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidTokenController",
+      "msg": "Invalid token controller"
+    },
+    {
+      "code": 6007,
+      "name": "BurnAmountExceeded",
+      "msg": "Burn amount exceeded"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidAmount",
+      "msg": "Invalid amount"
+    }
+  ],
+  "types": [
+    {
+      "name": "AcceptOwnershipParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "AddLocalTokenParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "AddRemoteTokenMessengerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BurnTokenCustodyParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DenylistParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Denylisted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DenylistedAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DenylisterChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "old_denylister",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_denylister",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositForBurn",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burn_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "depositor",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_domain",
+            "type": "u32"
+          },
+          {
+            "name": "destination_token_messenger",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_fee",
+            "type": "u64"
+          },
+          {
+            "name": "min_finality_threshold",
+            "type": "u32"
+          },
+          {
+            "name": "hook_data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositForBurnParams",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination_domain",
+            "type": "u32"
+          },
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_fee",
+            "type": "u64"
+          },
+          {
+            "name": "min_finality_threshold",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DepositForBurnWithHookParams",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "destination_domain",
+            "type": "u32"
+          },
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "destination_caller",
+            "type": "pubkey"
+          },
+          {
+            "name": "max_fee",
+            "type": "u64"
+          },
+          {
+            "name": "min_finality_threshold",
+            "type": "u32"
+          },
+          {
+            "name": "hook_data",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FeeRecipientSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_fee_recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "HandleReceiveMessageParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "finality_threshold_executed",
+            "type": "u32"
+          },
+          {
+            "name": "message_body",
+            "type": "bytes"
+          },
+          {
+            "name": "authority_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InitializeParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          },
+          {
+            "name": "denylister",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_fee_controller",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_fee",
+            "type": "u32"
+          },
+          {
+            "name": "message_body_version",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LinkTokenPairParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LocalToken",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "burn_limit_per_message",
+            "type": "u64"
+          },
+          {
+            "name": "messages_sent",
+            "type": "u64"
+          },
+          {
+            "name": "messages_received",
+            "type": "u64"
+          },
+          {
+            "name": "amount_sent",
+            "type": "u128"
+          },
+          {
+            "name": "amount_received",
+            "type": "u128"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "custody_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LocalTokenAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LocalTokenRemoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody",
+            "type": "pubkey"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MessageTransmitter",
+      "docs": [
+        "Main state of the MessageTransmitter program"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester_manager",
+            "type": "pubkey"
+          },
+          {
+            "name": "pauser",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "local_domain",
+            "type": "u32"
+          },
+          {
+            "name": "version",
+            "type": "u32"
+          },
+          {
+            "name": "signature_threshold",
+            "type": "u32"
+          },
+          {
+            "name": "enabled_attesters",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "max_message_body_size",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MinFeeControllerSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_min_fee_controller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MinFeeSet",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_min_fee",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "MintAndWithdraw",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "mint_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "fee_collected",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OwnershipTransferStarted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OwnershipTransferred",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "previous_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Pause",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "PauseParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "PauserChanged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_address",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoteTokenMessenger",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoteTokenMessengerAdded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoteTokenMessengerRemoved",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "domain",
+            "type": "u32"
+          },
+          {
+            "name": "token_messenger",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoveLocalTokenParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "RemoveRemoteTokenMessengerParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "SetBurnLimitPerMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token",
+            "type": "pubkey"
+          },
+          {
+            "name": "burn_limit_per_message",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetFeeRecipientParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_fee_recipient",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetMaxBurnAmountPerMessageParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "burn_limit_per_message",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetMinFeeControllerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_min_fee_controller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetMinFeeParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_min_fee",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetTokenController",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SetTokenControllerParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenCustodyBurned",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "custody_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMessenger",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "denylister",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "pending_owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "message_body_version",
+            "type": "u32"
+          },
+          {
+            "name": "authority_bump",
+            "type": "u8"
+          },
+          {
+            "name": "fee_recipient",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_fee_controller",
+            "type": "pubkey"
+          },
+          {
+            "name": "min_fee",
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMinter",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "token_controller",
+            "type": "pubkey"
+          },
+          {
+            "name": "pauser",
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPair",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPairLinked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenPairUnlinked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "local_token",
+            "type": "pubkey"
+          },
+          {
+            "name": "remote_domain",
+            "type": "u32"
+          },
+          {
+            "name": "remote_token",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransferOwnershipParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_owner",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UnDenylisted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UndenylistParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UninkTokenPairParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "Unpause",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "UnpauseParams",
+      "type": {
+        "kind": "struct",
+        "fields": []
+      }
+    },
+    {
+      "name": "UpdateDenylisterParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_denylister",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UpdatePauserParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "new_pauser",
+            "type": "pubkey"
+          }
+        ]
+      }
+    }
+  ]
+}

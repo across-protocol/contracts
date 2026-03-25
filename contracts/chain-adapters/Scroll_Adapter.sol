@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import "@scroll-tech/contracts/L1/gateways/IL1GatewayRouter.sol";
 import "@scroll-tech/contracts/L1/rollup/IL2GasPriceOracle.sol";
 import "@scroll-tech/contracts/L1/IL1ScrollMessenger.sol";
@@ -12,6 +12,7 @@ import "./interfaces/AdapterInterface.sol";
  * @title Scroll_Adapter
  * @notice Adapter contract deployed on L1 alongside the HubPool to facilitate token transfers
  * and arbitrary message relaying from L1 to L2.
+ * @custom:security-contact bugs@across.to
  */
 contract Scroll_Adapter is AdapterInterface {
     using SafeERC20 for IERC20;
@@ -102,12 +103,7 @@ contract Scroll_Adapter is AdapterInterface {
      * @param amount Amount of `l1Token` to bridge.
      * @param to Bridge recipient.
      */
-    function relayTokens(
-        address l1Token,
-        address l2Token,
-        uint256 amount,
-        address to
-    ) external payable {
+    function relayTokens(address l1Token, address l2Token, uint256 amount, address to) external payable {
         IL1GatewayRouter _l1GatewayRouter = L1_GATEWAY_ROUTER;
 
         // Confirm that the l2Token that we're trying to send is the correct counterpart

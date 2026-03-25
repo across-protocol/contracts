@@ -6,12 +6,13 @@ import { ICrossDomainMessenger } from "@eth-optimism/contracts/libraries/bridge/
 
 /**
  * @title CrossDomainEnabled
+ * @custom:security-contact bugs@across.to
  * @dev Helper contract for contracts performing cross-domain communications between L1 and Optimism.
  * @dev This modifies the eth-optimism/CrossDomainEnabled contract only by changing state variables to be
  * immutable for use in contracts like the Optimism_Adapter which use delegateCall().
  */
 contract CrossDomainEnabled {
-    // Messenger contract used to send and recieve messages from the other domain.
+    // Messenger contract used to send and receive messages from the other domain.
     address public immutable MESSENGER;
 
     /**
@@ -37,11 +38,7 @@ contract CrossDomainEnabled {
      * @param _message The data to send to the target (usually calldata to a function with
      *  onlyFromCrossDomainAccount())
      */
-    function sendCrossDomainMessage(
-        address _crossDomainTarget,
-        uint32 _gasLimit,
-        bytes calldata _message
-    ) internal {
+    function sendCrossDomainMessage(address _crossDomainTarget, uint32 _gasLimit, bytes calldata _message) internal {
         // slither-disable-next-line reentrancy-events, reentrancy-benign
         getCrossDomainMessenger().sendMessage(_crossDomainTarget, _message, _gasLimit);
     }

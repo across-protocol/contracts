@@ -3,10 +3,11 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
+ * @custom:security-contact bugs@across.to
  * @notice Contract containing logic to send messages from L1 to Ethereum SpokePool.
  * @notice This contract should always be deployed on the same chain as the HubPool, as it acts as a pass-through
  * contract between HubPool and SpokePool on the same chain. Its named "Ethereum_Adapter" because a core assumption

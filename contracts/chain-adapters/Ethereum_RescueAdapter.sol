@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/AdapterInterface.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice This adapter is built for emergencies to rescue funds from a Hub in the event of a misconfiguration or
@@ -26,7 +26,7 @@ contract Ethereum_RescueAdapter is AdapterInterface {
 
     /**
      * @notice Rescues the tokens from the calling contract.
-     * @param message The encoded address of the ERC20 to send to the rescue addres.
+     * @param message The encoded address of the ERC20 to send to the rescue address.
      */
     function relayMessage(address, bytes memory message) external payable override {
         IERC20 tokenAddress = IERC20(abi.decode(message, (address)));
@@ -38,12 +38,7 @@ contract Ethereum_RescueAdapter is AdapterInterface {
     /**
      * @notice Should never be called.
      */
-    function relayTokens(
-        address,
-        address,
-        uint256,
-        address
-    ) external payable override {
+    function relayTokens(address, address, uint256, address) external payable override {
         revert("relayTokens disabled");
     }
 }

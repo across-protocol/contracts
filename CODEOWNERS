@@ -1,0 +1,17 @@
+
+# This is a comment.
+# Each line is a file pattern followed by one or more owners.
+# Note: CODEOWNERS are automatically requested for review on relevant PRs.
+# Order is important; the last matching pattern takes the most
+# precedence.
+
+# These owners will be the default owners for everything in
+# the repo unless a later match takes precedence.
+*       @mrice32 @nicholaspai @pxrl @bmzig
+
+# Solana
+/programs/ @mrice32 @nicholaspai @chrismaree @Reinis-FRP @md0x
+/scripts/svm/ @mrice32 @nicholaspai @chrismaree @Reinis-FRP @md0x
+/src/svm/ @mrice32 @nicholaspai @chrismaree @Reinis-FRP @md0x
+/test/svm/ @mrice32 @nicholaspai @chrismaree @Reinis-FRP @md0x
+

@@ -1,39 +1,91 @@
 [profile.default]
+ffi = true
+ast = true
+build_info = true
+extra_output = ["storageLayout"]
 src = "contracts"
-out = "artifacts"
-test = "test/foundry"
+out = "out"
+test = "test/evm/foundry"
 libs = ["node_modules", "lib"]
-remappings = [
-    "@across-protocol/=node_modules/@across-protocol/",
-    "@ensdomains/=node_modules/@ensdomains/",
-    "@eth-optimism/=node_modules/@eth-optimism/",
-    "@gnosis.pm/=node_modules/@gnosis.pm/",
-    "@maticnetwork/=node_modules/@maticnetwork/",
-    "@matterlabs/=node_modules/@matterlabs/",
-    "@openzeppelin/=node_modules/@openzeppelin/",
-    "@scroll-tech/=node_modules/@scroll-tech/",
-    "@uma/=node_modules/@uma/",
-    "@uniswap/=node_modules/@uniswap/",
-    "arb-bridge-eth/=node_modules/arb-bridge-eth/",
-    "arb-bridge-peripherals/=node_modules/arb-bridge-peripherals/",
-    "arbos-precompiles/=node_modules/arbos-precompiles/",
-    "base64-sol/=node_modules/base64-sol/",
-    "eth-gas-reporter/=node_modules/eth-gas-reporter/",
-    "hardhat-deploy/=node_modules/hardhat-deploy/",
-    "hardhat/=node_modules/hardhat/",
-]
+cache_path = "cache-foundry"
 via_ir = true
-optimizer_runs = 1_000_000
-solc_version = "0.8.25"
+optimizer_runs = 800
+solc_version = "0.8.30"
 revert_strings = "strip"
+fs_permissions = [{ access = "read-write", path = "./" }]
+use_literal_content = true
 
-solc = "0.8.25"
-evm_version = "shanghai"
+solc = "0.8.30"
+evm_version = "prague"
+
+[profile.zksync]
+src = "contracts/spoke-pools/Lens_SpokePool.sol"
+
+[profile.zksync.zksync]
+compile = true
+fallback_oz = true
+mode = '3'
+zksolc = "1.5.15"
+
+[profile.mintburn]
+# Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
+optimizer_runs = 300
 
 [rpc_endpoints]
+arbitrum = "${NODE_URL_42161}"
+base = "${NODE_URL_8453}"
+blast = "${NODE_URL_81457}"
+bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
+ink = "${NODE_URL_57073}"
+lens = "${NODE_URL_232}"
+linea = "${NODE_URL_59144}"
+lisk = "${NODE_URL_1135}"
+mode = "${NODE_URL_34443}"
+monad = "${NODE_URL_143}"
+optimism = "${NODE_URL_10}"
+plasma = "${NODE_URL_9745}"
+polygon = "${NODE_URL_137}"
+scroll = "${NODE_URL_534352}"
+soneium = "${NODE_URL_1868}"
+tempo = "${NODE_URL_4217}"
+unichain = "${NODE_URL_130}"
+world = "${NODE_URL_480}"
+zksync = "${NODE_URL_324}"
+hyperevm = "${NODE_URL_999}"
+megaeth = "${NODE_URL_4326}"
+zora = "${NODE_URL_7777777}"
+
+# testnet
+arbitrum_sepolia = "${NODE_URL_421614}"
+base_sepolia = "${NODE_URL_84532}"
+optimism_sepolia = "${NODE_URL_11155420}"
+sepolia = "${NODE_URL_11155111}"
+hyperevm_testnet = "${NODE_URL_998}"
+polygon_amoy = "${NODE_URL_80002}"
+
 
 [etherscan]
 ethereum = { key = "${ETHERSCAN_API_KEY}" }
+
+# A profile to only run foundry local tests, skipping fork tests. These tests are run in CI. Run with `FOUNDRY_PROFILE=local-test forge test`
+[profile.local-test]
+test = "test/evm/foundry/local"
+revert_strings = "default"
+cache_path = "cache-foundry-local"
+out = "out-local"
+
+# Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
+# Run with `FOUNDRY_PROFILE=tron forge build`
+[profile.tron]
+solc_version = "0.8.25"
+solc = "0.8.25"
+evm_version = "cancun"
+src = "contracts/periphery/counterfactual"
+test = "test/evm/foundry/tron"
+script = "script/counterfactual"
+cache_path = "cache-foundry-tron"
+out = "out-tron"
+skip = ["sp1-helios"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

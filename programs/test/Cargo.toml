@@ -1,0 +1,24 @@
+[package]
+name = "test"
+version = "0.1.0"
+description = "Created with Anchor"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "test"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+test = []
+
+[dependencies]
+anchor-lang = { version = "0.31.1", features = ["init-if-needed","event-cpi"]}
+anchor-spl = "0.31.1"
+svm-spoke = { path = "../svm-spoke", features = ["no-entrypoint"] }

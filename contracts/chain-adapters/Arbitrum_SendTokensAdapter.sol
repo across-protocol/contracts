@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import "./interfaces/AdapterInterface.sol";
 import { ArbitrumL1ERC20GatewayLike } from "./Arbitrum_Adapter.sol";
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @notice This adapter is built for emergencies to send funds from the Hub to a Spoke in the event that a spoke pool
@@ -70,12 +70,7 @@ contract Arbitrum_SendTokensAdapter is AdapterInterface {
     /**
      * @notice Should never be called.
      */
-    function relayTokens(
-        address,
-        address,
-        uint256,
-        address
-    ) external payable override {
+    function relayTokens(address, address, uint256, address) external payable override {
         revert("relayTokens disabled");
     }
 

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/external/uma/core/contracts/merkle-distributor/implementation/MerkleDistributor.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 /**
  * @title  Extended MerkleDistributor contract.
  * @notice Adds additional constraints governing who can claim leaves from merkle windows.
+ * @custom:security-contact bugs@across.to
  */
 contract AcrossMerkleDistributor is MerkleDistributor {
     using SafeERC20 for IERC20;

@@ -1,0 +1,184 @@
+{
+  "address": "0x64a898c51F9A073f932bb40c95D5ac80f5139A3E",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "underlyingAdapter",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "DelegateCallFailed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "RelayTokensNotSupported",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "TargetSpokeMismatch",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "message",
+          "type": "bytes"
+        }
+      ],
+      "name": "MessageRelayed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "l1Token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "l2Token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        }
+      ],
+      "name": "TokensRelayed",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "UNDERLYING_ADAPTER",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "target",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes",
+          "name": "message",
+          "type": "bytes"
+        }
+      ],
+      "name": "relayMessage",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "relayTokens",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xf30630634ead4c7d50eb04d4fd53c101affede5c8a5446a01a3333593506315b",
+  "receipt": {
+    "to": null,
+    "from": "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    "contractAddress": "0x64a898c51F9A073f932bb40c95D5ac80f5139A3E",
+    "transactionIndex": 186,
+    "gasUsed": "281672",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xb3711890b11bfef6ec33be76972ba2b9616406af6e8de5ee7c455b554d4a2432",
+    "transactionHash": "0xf30630634ead4c7d50eb04d4fd53c101affede5c8a5446a01a3333593506315b",
+    "logs": [],
+    "blockNumber": 23322110,
+    "cumulativeGasUsed": "13268872",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": ["0x5eC9844936875E27eBF22172f4d92E107D35B57C"],
+  "numDeployments": 1,
+  "solcInputHash": "a4982dcb12b0123a537e778e4a5eff15",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.23+commit.f704f362\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"underlyingAdapter\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"DelegateCallFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"RelayTokensNotSupported\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"TargetSpokeMismatch\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"message\",\"type\":\"bytes\"}],\"name\":\"MessageRelayed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"l1Token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"l2Token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"}],\"name\":\"TokensRelayed\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"UNDERLYING_ADAPTER\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"message\",\"type\":\"bytes\"}],\"name\":\"relayMessage\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"relayTokens\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"A custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool\",\"kind\":\"dev\",\"methods\":{\"relayMessage(address,bytes)\":{\"params\":{\"message\":\"Abi-encoded arguments params for the `relayTokens` function call: (address l1Token, address l2Token, uint256 amount, address spokePool)\",\"target\":\"Receiver of tokens on the destination chain. SpokePool address passed in by the HubPool\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/chain-adapters/AdminRelayTokensAdapter.sol\":\"AdminRelayTokensAdapter\"},\"debug\":{\"revertStrings\":\"strip\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"contracts/chain-adapters/AdminRelayTokensAdapter.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\nimport { AdapterInterface } from \\\"./interfaces/AdapterInterface.sol\\\";\\n\\n/**\\n * @dev A custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool\\n */\\ncontract AdminRelayTokensAdapter is AdapterInterface {\\n    error TargetSpokeMismatch();\\n    error DelegateCallFailed();\\n    error RelayTokensNotSupported();\\n\\n    // @dev Underlying adapter whose `relayTokens` logic will be executed via delegatecall. Must be trusted\\n    address public immutable UNDERLYING_ADAPTER;\\n\\n    constructor(address underlyingAdapter) {\\n        UNDERLYING_ADAPTER = underlyingAdapter;\\n    }\\n\\n    /**\\n     * @param target Receiver of tokens on the destination chain. SpokePool address passed in by the HubPool\\n     * @param message Abi-encoded arguments params for the `relayTokens` function call: (address l1Token,\\n     * address l2Token, uint256 amount, address spokePool)\\n     */\\n    function relayMessage(address target, bytes calldata message) external payable {\\n        (address l1Token, address l2Token, uint256 amount, address spokePool) = abi.decode(\\n            message,\\n            (address, address, uint256, address)\\n        );\\n        if (target != spokePool) {\\n            revert TargetSpokeMismatch();\\n        }\\n\\n        // We are ok with this low-level call since the adapter address is set by the admin and we've\\n        // already checked that its not the zero address.\\n        // solhint-disable-next-line avoid-low-level-calls\\n        (bool success, ) = UNDERLYING_ADAPTER.delegatecall(\\n            abi.encodeWithSelector(\\n                AdapterInterface.relayTokens.selector,\\n                l1Token, // l1Token.\\n                l2Token, // l2Token.\\n                amount, // amount.\\n                spokePool // to. This should be the spokePool.\\n            )\\n        );\\n        if (!success) {\\n            revert DelegateCallFailed();\\n        }\\n    }\\n\\n    function relayTokens(address, address, uint256, address) external payable {\\n        revert RelayTokensNotSupported();\\n    }\\n}\\n\",\"keccak256\":\"0x3989bc4d2c4d967378d7b5e0c360897e785f958f3b384cdbd47da4aab48137e1\",\"license\":\"BUSL-1.1\"},\"contracts/chain-adapters/interfaces/AdapterInterface.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/**\\n * @notice Sends cross chain messages and tokens to contracts on a specific L2 network.\\n * This interface is implemented by an adapter contract that is deployed on L1.\\n */\\n\\ninterface AdapterInterface {\\n    event MessageRelayed(address target, bytes message);\\n\\n    event TokensRelayed(address l1Token, address l2Token, uint256 amount, address to);\\n\\n    /**\\n     * @notice Send message to `target` on L2.\\n     * @dev This method is marked payable because relaying the message might require a fee\\n     * to be paid by the sender to forward the message to L2. However, it will not send msg.value\\n     * to the target contract on L2.\\n     * @param target L2 address to send message to.\\n     * @param message Message to send to `target`.\\n     */\\n    function relayMessage(address target, bytes calldata message) external payable;\\n\\n    /**\\n     * @notice Send `amount` of `l1Token` to `to` on L2. `l2Token` is the L2 address equivalent of `l1Token`.\\n     * @dev This method is marked payable because relaying the message might require a fee\\n     * to be paid by the sender to forward the message to L2. However, it will not send msg.value\\n     * to the target contract on L2.\\n     * @param l1Token L1 token to bridge.\\n     * @param l2Token L2 token to receive.\\n     * @param amount Amount of `l1Token` to bridge.\\n     * @param to Bridge recipient.\\n     */\\n    function relayTokens(\\n        address l1Token,\\n        address l2Token,\\n        uint256 amount,\\n        address to\\n    ) external payable;\\n}\\n\",\"keccak256\":\"0x1d52fcb8b10dc7f260345918c1a90d496a4c9f774402cbd5ebde881b8fed6d50\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x60a03461007057601f6104ad38819003918201601f19168301916001600160401b038311848410176100745780849260209460405283398101031261007057516001600160a01b03811681036100705760805260405161042490816100898239608051818181608a01526101d10152f35b5f80fd5b634e487b7160e01b5f52604160045260245ffdfe6080604090808252600480361015610015575f80fd5b5f3560e01c91826352c8c75c1461032757508163e6eb8ade146100b2575063ecf6986314610041575f80fd5b346100ae575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100ae576020905173ffffffffffffffffffffffffffffffffffffffff7f0000000000000000000000000000000000000000000000000000000000000000168152f35b5f80fd5b82807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100ae576100e46103aa565b602480359167ffffffffffffffff928381116100ae57366023820112156100ae57808601358481116100ae57810136848201116100ae578160809103126100ae576101308382016103cd565b9161013d604483016103cd565b9161014a608482016103cd565b9073ffffffffffffffffffffffffffffffffffffffff928380931693849116036102ff576064918851948160208701977f52c8c75c00000000000000000000000000000000000000000000000000000000895216888701521660448501520135606483015260848201526084815260c08101818110858211176102d4578552515f918291907f00000000000000000000000000000000000000000000000000000000000000005af4913d156102cd573d908082116102a257845192601f83017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0908116603f01168401918211848310176102785750845281525f60203d92013e5b1561025257005b517f18cecad5000000000000000000000000000000000000000000000000000000008152fd5b6041877f4e487b71000000000000000000000000000000000000000000000000000000005f52525ffd5b826041877f4e487b71000000000000000000000000000000000000000000000000000000005f52525ffd5b505061024b565b836041887f4e487b71000000000000000000000000000000000000000000000000000000005f52525ffd5b8888517fd9050a27000000000000000000000000000000000000000000000000000000008152fd5b60807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100ae576103596103aa565b5073ffffffffffffffffffffffffffffffffffffffff602435818116036100ae57606435908116036100ae577f4df03728000000000000000000000000000000000000000000000000000000008152fd5b6004359073ffffffffffffffffffffffffffffffffffffffff821682036100ae57565b359073ffffffffffffffffffffffffffffffffffffffff821682036100ae5756fea2646970667358221220a279947e6715ad27f32a77a9c543a5ecc0c54e6fc29589d0d09c4a5fbed422cf64736f6c63430008170033",
+  "deployedBytecode": "0x6080604090808252600480361015610015575f80fd5b5f3560e01c91826352c8c75c1461032757508163e6eb8ade146100b2575063ecf6986314610041575f80fd5b346100ae575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100ae576020905173ffffffffffffffffffffffffffffffffffffffff7f0000000000000000000000000000000000000000000000000000000000000000168152f35b5f80fd5b82807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100ae576100e46103aa565b602480359167ffffffffffffffff928381116100ae57366023820112156100ae57808601358481116100ae57810136848201116100ae578160809103126100ae576101308382016103cd565b9161013d604483016103cd565b9161014a608482016103cd565b9073ffffffffffffffffffffffffffffffffffffffff928380931693849116036102ff576064918851948160208701977f52c8c75c00000000000000000000000000000000000000000000000000000000895216888701521660448501520135606483015260848201526084815260c08101818110858211176102d4578552515f918291907f00000000000000000000000000000000000000000000000000000000000000005af4913d156102cd573d908082116102a257845192601f83017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0908116603f01168401918211848310176102785750845281525f60203d92013e5b1561025257005b517f18cecad5000000000000000000000000000000000000000000000000000000008152fd5b6041877f4e487b71000000000000000000000000000000000000000000000000000000005f52525ffd5b826041877f4e487b71000000000000000000000000000000000000000000000000000000005f52525ffd5b505061024b565b836041887f4e487b71000000000000000000000000000000000000000000000000000000005f52525ffd5b8888517fd9050a27000000000000000000000000000000000000000000000000000000008152fd5b60807ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100ae576103596103aa565b5073ffffffffffffffffffffffffffffffffffffffff602435818116036100ae57606435908116036100ae577f4df03728000000000000000000000000000000000000000000000000000000008152fd5b6004359073ffffffffffffffffffffffffffffffffffffffff821682036100ae57565b359073ffffffffffffffffffffffffffffffffffffffff821682036100ae5756fea2646970667358221220a279947e6715ad27f32a77a9c543a5ecc0c54e6fc29589d0d09c4a5fbed422cf64736f6c63430008170033",
+  "devdoc": {
+    "details": "A custom adapter that allows admin to delegatecall `relayTokens` on other adapters by calling `relaySpokePoolAdminFunction` on the HubPool",
+    "kind": "dev",
+    "methods": {
+      "relayMessage(address,bytes)": {
+        "params": {
+          "message": "Abi-encoded arguments params for the `relayTokens` function call: (address l1Token, address l2Token, uint256 amount, address spokePool)",
+          "target": "Receiver of tokens on the destination chain. SpokePool address passed in by the HubPool"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}

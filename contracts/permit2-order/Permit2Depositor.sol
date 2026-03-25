@@ -5,15 +5,17 @@ import "./Permit2OrderLib.sol";
 import "../external/interfaces/IPermit2.sol";
 import "../interfaces/V3SpokePoolInterface.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
+import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
 
 /**
  * @notice Permit2Depositor processes an external order type and translates it into an AcrossV3 deposit.
  */
 contract Permit2Depositor {
     using SafeERC20 for IERC20;
+    using AddressToBytes32 for address;
 
     // SpokePool that this contract can deposit to.
     V3SpokePoolInterface public immutable SPOKE_POOL;
@@ -31,11 +33,7 @@ contract Permit2Depositor {
      * @param _permit2 Permit2 contract
      * @param _quoteBeforeDeadline quoteBeforeDeadline is subtracted from the deadline to get the quote timestamp.
      */
-    constructor(
-        V3SpokePoolInterface _spokePool,
-        IPermit2 _permit2,
-        uint256 _quoteBeforeDeadline
-    ) {
+    constructor(V3SpokePoolInterface _spokePool, IPermit2 _permit2, uint256 _quoteBeforeDeadline) {
         SPOKE_POOL = _spokePool;
         PERMIT2 = _permit2;
         QUOTE_BEFORE_DEADLINE = _quoteBeforeDeadline;
@@ -57,16 +55,16 @@ contract Permit2Depositor {
         uint256 amountToDeposit = order.input.amount + order.fillerCollateral.amount;
 
         IERC20(order.input.token).safeIncreaseAllowance(address(SPOKE_POOL), amountToDeposit);
-        SPOKE_POOL.depositV3(
-            order.info.offerer,
+        SPOKE_POOL.deposit(
+            order.info.offerer.toBytes32(),
             // Note: Permit2OrderLib checks that order only has a single output.
-            order.outputs[0].recipient,
-            order.input.token,
-            order.outputs[0].token,
+            order.outputs[0].recipient.toBytes32(),
+            order.input.token.toBytes32(),
+            order.outputs[0].token.toBytes32(),
             amountToDeposit,
             order.outputs[0].amount,
             order.outputs[0].chainId,
-            destinationChainFillerAddress,
+            destinationChainFillerAddress.toBytes32(),
             SafeCast.toUint32(order.info.initiateDeadline - QUOTE_BEFORE_DEADLINE),
             fillDeadline,
             // The entire fill period is exclusive.

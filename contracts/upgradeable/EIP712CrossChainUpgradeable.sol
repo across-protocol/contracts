@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable-v4/proxy/utils/Initializable.sol";
 
 /**
  * @dev https://eips.ethereum.org/EIPS/eip-712[EIP 712] is a standard for hashing and signing of typed structured data.
@@ -14,6 +14,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * contract is deployed to. An example use case we want to support is:
  * - User A signs a message on chain with id = 1
  * - User B executes a method by verifying user A's EIP-712 compliant signature on a chain with id != 1
+ * @custom:security-contact bugs@across.to
  */
 abstract contract EIP712CrossChainUpgradeable is Initializable {
     /* solhint-disable var-name-mixedcase */
@@ -80,6 +81,8 @@ abstract contract EIP712CrossChainUpgradeable is Initializable {
 
     // Reserve storage slots for future versions of this base contract to add state variables without
     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
-    // are added. This is at bottom of contract to make sure it's always at the end of storage.
+    // are added, so that the total number of slots taken by this contract remains constant. Per-contract
+    // storage layout information  can be found in storage-layouts/
+    // This is at bottom of contract to make sure it's always at the end of storage.
     uint256[1000] private __gap;
 }
