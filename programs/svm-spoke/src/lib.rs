@@ -479,7 +479,7 @@ pub mod svm_spoke {
     /// refund. In the happy path, (a) should be used. (b) should only be used if there is a relayer within the bundle
     /// who can't receive the transfer for some reason, such as failed token transfers due to blacklisting. Executing
     /// relayer refunds requires the caller to create a LUT and load the execution params into it. This is needed to
-    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Accross
+    /// fit the data in a single instruction. The exact structure and validation of the leaf is defined in the Across
     /// UMIP: https://github.com/UMAprotocol/UMIPs/blob/master/UMIPs/umip-179.md
     ///
     /// instruction_params Parameters:

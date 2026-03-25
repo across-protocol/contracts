@@ -10,6 +10,8 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 /// @notice Deploy script for the SP1Helios contract.
 /// @dev This script downloads the genesis binary from the SP1Helios GitHub releases,
 ///      runs it to generate the genesis.json, then deploys the SP1Helios contract.
+/// @dev Be familiar with the README in this directory before deploying, as there are time
+/// considerations and follow-up transactions to execute after deployments.
 ///
 /// How to run:
 /// 1. Set environment variables in .env:
@@ -23,7 +25,7 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 
 ///
 /// 2. Run the script:
-///    forge script script/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
+///    forge script script/universal/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
 ///
 /// Binary naming convention:
 ///    - macOS (arm64): genesis_{version}_arm64_darwin

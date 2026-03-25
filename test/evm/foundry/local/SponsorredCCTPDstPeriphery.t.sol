@@ -7,6 +7,7 @@ import { SponsoredCCTPDstPeriphery } from "../../../../contracts/periphery/mintb
 import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IHyperCoreFlowExecutor.sol";
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredExecutionModeInterface } from "../../../../contracts/interfaces/SponsoredExecutionModeInterface.sol";
 import { IMessageTransmitterV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -238,7 +239,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
                 finalToken: address(usdc).toBytes32(),
                 destinationDex: HyperCoreLib.CORE_SPOT_DEX_ID,
                 accountCreationMode: uint8(AccountCreationMode.Standard),
-                executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore),
+                executionMode: uint8(SponsoredExecutionModeInterface.ExecutionMode.DirectToCore),
                 actionData: bytes("")
             });
     }
@@ -436,7 +437,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     function test_ReceiveMessage_DirectToCore_Success() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
-        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore);
+        quote.executionMode = uint8(SponsoredExecutionModeInterface.ExecutionMode.DirectToCore);
 
         bytes memory signature = signQuote(quote, signerPrivateKey);
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
@@ -573,7 +574,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     function test_SignatureValidation_ModifiedActionData_Reverts() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
-        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToCore);
+        quote.executionMode = uint8(SponsoredExecutionModeInterface.ExecutionMode.ArbitraryActionsToCore);
 
         // Original action data
         address[] memory targets = new address[](1);
@@ -611,7 +612,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
     function test_GriefingAttack_InvalidSignature_RevertsProtectingUser() public {
         // Setup: User wants to do a sponsored transfer with custom actions
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
-        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToCore);
+        quote.executionMode = uint8(SponsoredExecutionModeInterface.ExecutionMode.ArbitraryActionsToCore);
         quote.maxBpsToSponsor = 500; // 5% sponsorship
 
         // Create the CCTP message (this is publicly visible on-chain)
@@ -636,7 +637,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
     function test_GriefingAttack_LegitimateCallerSucceedsAfterBlockedAttack() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         // Use DirectToCore mode for simpler execution
-        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore);
+        quote.executionMode = uint8(SponsoredExecutionModeInterface.ExecutionMode.DirectToCore);
         quote.maxBpsToSponsor = 500; // 5% sponsorship
 
         bytes memory validSignature = signQuote(quote, signerPrivateKey);
@@ -710,7 +711,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     function test_ReceiveMessage_EmptyActionData_DirectToCore() public {
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
-        quote.executionMode = uint8(SponsoredCCTPInterface.ExecutionMode.DirectToCore);
+        quote.executionMode = uint8(SponsoredExecutionModeInterface.ExecutionMode.DirectToCore);
         quote.actionData = bytes("");
 
         bytes memory signature = signQuote(quote, signerPrivateKey);

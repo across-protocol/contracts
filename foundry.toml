@@ -19,7 +19,7 @@ solc = "0.8.30"
 evm_version = "prague"
 
 [profile.zksync]
-src = "contracts/Lens_SpokePool.sol"
+src = "contracts/spoke-pools/Lens_SpokePool.sol"
 
 [profile.zksync.zksync]
 compile = true
@@ -27,9 +27,14 @@ fallback_oz = true
 mode = '3'
 zksolc = "1.5.15"
 
+[profile.mintburn]
+# Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
+optimizer_runs = 300
+
 [rpc_endpoints]
 arbitrum = "${NODE_URL_42161}"
 base = "${NODE_URL_8453}"
+blast = "${NODE_URL_81457}"
 bsc = "${NODE_URL_56}"
 ethereum = "${NODE_URL_1}"
 ink = "${NODE_URL_57073}"
@@ -43,15 +48,21 @@ plasma = "${NODE_URL_9745}"
 polygon = "${NODE_URL_137}"
 scroll = "${NODE_URL_534352}"
 soneium = "${NODE_URL_1868}"
+tempo = "${NODE_URL_4217}"
 unichain = "${NODE_URL_130}"
-world-chain = "${NODE_URL_480}"
+world = "${NODE_URL_480}"
 zksync = "${NODE_URL_324}"
 hyperevm = "${NODE_URL_999}"
 megaeth = "${NODE_URL_4326}"
+zora = "${NODE_URL_7777777}"
 
 # testnet
 arbitrum_sepolia = "${NODE_URL_421614}"
+base_sepolia = "${NODE_URL_84532}"
+optimism_sepolia = "${NODE_URL_11155420}"
+sepolia = "${NODE_URL_11155111}"
 hyperevm_testnet = "${NODE_URL_998}"
+polygon_amoy = "${NODE_URL_80002}"
 
 
 [etherscan]
@@ -63,5 +74,18 @@ test = "test/evm/foundry/local"
 revert_strings = "default"
 cache_path = "cache-foundry-local"
 out = "out-local"
+
+# Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
+# Run with `FOUNDRY_PROFILE=tron forge build`
+[profile.tron]
+solc_version = "0.8.25"
+solc = "0.8.25"
+evm_version = "cancun"
+src = "contracts/periphery/counterfactual"
+test = "test/evm/foundry/tron"
+script = "script/counterfactual"
+cache_path = "cache-foundry-tron"
+out = "out-tron"
+skip = ["sp1-helios"]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

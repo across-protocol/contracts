@@ -180,6 +180,8 @@ pub fn deposit_for_burn(mut ctx: Context<DepositForBurn>, params: &DepositForBur
         max_bps_to_sponsor: quote.max_bps_to_sponsor,
         max_user_slippage_bps: quote.max_user_slippage_bps,
         final_token: quote.final_token,
+        destination_dex: quote.destination_dex,
+        account_creation_mode: quote.account_creation_mode,
         signature: params.signature.to_vec(),
     });
 

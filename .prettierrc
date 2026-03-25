@@ -1,7 +1,7 @@
 {
   "printWidth": 120,
   "bracketSpacing": true,
-  "explicitTypes": "preserve",
+  "trailingComma": "es5",
   "tabWidth": 2,
   "overrides": [
     {
@@ -9,8 +9,7 @@
       "options": {
         "tabWidth": 4,
         "useTabs": false,
-        "singleQuote": false,
-        "explicitTypes": "always"
+        "singleQuote": false
       }
     },
     {
@@ -29,8 +28,5 @@
       }
     }
   ],
-  "plugins": [
-    "prettier-plugin-rust",
-    "prettier-plugin-solidity"
-  ]
+  "plugins": ["prettier-plugin-rust", "prettier-plugin-solidity"]
 }

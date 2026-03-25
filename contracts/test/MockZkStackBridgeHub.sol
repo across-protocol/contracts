@@ -16,19 +16,15 @@ contract MockBridgeHub is BridgeHubInterface {
         baseTokens[_chainId] = _baseToken;
     }
 
-    function requestL2TransactionDirect(L2TransactionRequestDirect calldata _request)
-        external
-        payable
-        returns (bytes32 canonicalTxHash)
-    {
+    function requestL2TransactionDirect(
+        L2TransactionRequestDirect calldata _request
+    ) external payable returns (bytes32 canonicalTxHash) {
         canonicalTxHash = keccak256(abi.encode(_request));
     }
 
-    function requestL2TransactionTwoBridges(L2TransactionRequestTwoBridgesOuter calldata _request)
-        external
-        payable
-        returns (bytes32 canonicalTxHash)
-    {
+    function requestL2TransactionTwoBridges(
+        L2TransactionRequestTwoBridgesOuter calldata _request
+    ) external payable returns (bytes32 canonicalTxHash) {
         canonicalTxHash = keccak256(abi.encode(_request));
     }
 

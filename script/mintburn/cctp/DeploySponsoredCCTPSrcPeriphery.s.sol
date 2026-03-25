@@ -6,7 +6,10 @@ import { DeploymentUtils } from "../../utils/DeploymentUtils.sol";
 
 import { SponsoredCCTPSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPSrcPeriphery.sol";
 
-// Deploy: forge script script/mintburn/cctp/113DeploySponsoredCCTPSrcPeriphery.sol:DeploySponsoredCCTPSrcPeriphery --rpc-url <network> -vvvv
+// How to run:
+// 1. source .env (needs MNEMONIC="x x x ... x")
+// 2. Simulate: forge script script/mintburn/cctp/DeploySponsoredCCTPSrcPeriphery.s.sol:DeploySponsoredCCTPSrcPeriphery --rpc-url <network> -vvvv
+// 3. Deploy:   forge script script/mintburn/cctp/DeploySponsoredCCTPSrcPeriphery.s.sol:DeploySponsoredCCTPSrcPeriphery --rpc-url <network> --broadcast --verify -vvvv
 contract DeploySponsoredCCTPSrcPeriphery is DeploymentUtils {
     function run() external {
         console.log("Deploying SponsoredCCTPSrcPeriphery...");
@@ -15,6 +18,7 @@ contract DeploySponsoredCCTPSrcPeriphery is DeploymentUtils {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
+        console.log("Deployer:", deployer);
 
         _loadConfig("./script/mintburn/cctp/config.toml", true);
 
@@ -30,5 +34,15 @@ contract DeploySponsoredCCTPSrcPeriphery is DeploymentUtils {
         );
 
         console.log("SponsoredCCTPSrcPeriphery deployed to:", address(sponsoredCCTPSrcPeriphery));
+
+        vm.stopBroadcast();
+
+        config.set("sponsoredCCTPSrcPeriphery", address(sponsoredCCTPSrcPeriphery));
+
+        // Post-deployment verification.
+        assertEq(address(sponsoredCCTPSrcPeriphery.cctpTokenMessenger()), cctpTokenMessenger);
+        assertEq(sponsoredCCTPSrcPeriphery.sourceDomain(), sourceDomain);
+        assertEq(sponsoredCCTPSrcPeriphery.signer(), deployer);
+        assertEq(sponsoredCCTPSrcPeriphery.owner(), deployer);
     }
 }

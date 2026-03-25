@@ -30,12 +30,13 @@ import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import { getSolanaChainId, SOLANA_USDC_DEVNET, SOLANA_USDC_MAINNET } from "../../src/svm/web3-v1";
-import { BondToken__factory, HubPool__factory } from "../../typechain";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import {
   constructEmptyPoolRebalanceTree,
   constructSimpleRebalanceTreeToHubPool,
   formatUsdc,
+  getBondTokenContract,
+  getHubPoolContract,
   requireEnv,
 } from "./utils/helpers";
 
@@ -46,7 +47,7 @@ const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(
 
 // Get the HubPool contract instance.
 const hubPoolAddress = ethers.utils.getAddress(requireEnv("HUB_POOL_ADDRESS"));
-const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
+const hubPool = getHubPoolContract(hubPoolAddress, ethersProvider);
 
 // Parse arguments.
 const argv = yargs(hideBin(process.argv)).option("netSendAmount", {
@@ -79,7 +80,7 @@ async function proposeRebalanceToHubPool(): Promise<void> {
   // Ensure bond token balance and approval is sufficient.
   const bondTokenAddress = await hubPool.callStatic.bondToken();
   const bondAmount = await hubPool.callStatic.bondAmount();
-  const bondToken = BondToken__factory.connect(bondTokenAddress, ethersProvider);
+  const bondToken = getBondTokenContract(bondTokenAddress, ethersProvider);
   const bondBalance = await bondToken.callStatic.balanceOf(ethersSigner.address);
   if (bondBalance.lt(bondAmount)) {
     const ethDeposit = bondAmount.sub(bondBalance);

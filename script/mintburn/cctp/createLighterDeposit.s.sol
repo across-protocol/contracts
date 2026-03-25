@@ -9,6 +9,7 @@ import { SponsoredCCTPSrcPeriphery } from "../../../contracts/periphery/mintburn
 import { SponsoredCCTPDstPeriphery } from "../../../contracts/periphery/mintburn/sponsored-cctp/SponsoredCCTPDstPeriphery.sol";
 import { ArbitraryEVMFlowExecutor } from "../../../contracts/periphery/mintburn/ArbitraryEVMFlowExecutor.sol";
 import { SponsoredCCTPInterface } from "../../../contracts/interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredExecutionModeInterface } from "../../../contracts/interfaces/SponsoredExecutionModeInterface.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
 import { MulticallHandler } from "../../../contracts/handlers/MulticallHandler.sol";
 
@@ -112,7 +113,7 @@ contract CreateLighterDeposit is Script, Config {
             finalToken: env.dstUsdc.toBytes32(),
             destinationDex: 0, // Not used for ArbitraryActionsToEVM
             accountCreationMode: 0, // Not used for ArbitraryActionsToEVM
-            executionMode: uint8(SponsoredCCTPInterface.ExecutionMode.ArbitraryActionsToEVM),
+            executionMode: uint8(SponsoredExecutionModeInterface.ExecutionMode.ArbitraryActionsToEVM),
             actionData: actionData
         });
 

@@ -17,6 +17,8 @@ export interface SponsoredCCTPQuote {
   maxUserSlippageBps: ethers.BigNumberish; // uint256
   finalRecipient: string; // bytes32
   finalToken: string; // bytes32
+  destinationDex: number; // uint32
+  accountCreationMode: number; // uint8
   executionMode: number; // uint8
   actionData: ethers.BytesLike; // bytes
 }
@@ -36,6 +38,8 @@ export interface SponsoredCCTPQuoteSVM {
   maxUserSlippageBps: BN; // u64
   finalRecipient: PublicKey; // Pubkey
   finalToken: PublicKey; // Pubkey
+  destinationDex: number; // u32
+  accountCreationMode: number; // u8
   executionMode: number; // u8
   actionData: Buffer; // Vec<u8>
 }
@@ -47,6 +51,8 @@ export interface HookData {
   maxUserSlippageBps: ethers.BigNumber; // uint256
   finalRecipient: string; // bytes32
   finalToken: string; // bytes32
+  destinationDex: number; // uint32
+  accountCreationMode: number; // uint8
   executionMode: number; // uint8
   actionData: string; // bytes
 }
