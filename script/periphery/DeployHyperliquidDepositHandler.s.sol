@@ -11,17 +11,14 @@ import { SafeCast } from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
 /*
 How to run:
 
-TOKENS_JSON='["usdt0","usdc","usdh"]'
-TOKENS_ENCODED=$(cast abi-encode "f(string[])" "$TOKENS_JSON")
-
 # signer defaults to deployer
 forge script script/DeployHyperliquidDepositHandler.s.sol:DeployHyperliquidDepositHandler \
-  --sig "run(string)" "$TOKENS_ENCODED" --rpc-url hyperevm -vvvv --broadcast --verify
+  --sig "run(string[])" '["usdt0","usdc","usdh"]' --rpc-url hyperevm -vvvv --broadcast --verify
 
 # explicit signer override (pass zero address to use deployer)
 SIGNER=0x1111111111111111111111111111111111111111
 forge script script/DeployHyperliquidDepositHandler.s.sol:DeployHyperliquidDepositHandler \
-  --sig "run(string,address)" "$TOKENS_ENCODED" $SIGNER --rpc-url hyperevm -vvvv --broadcast --verify
+  --sig "run(string[],address)" '["usdt0","usdc","usdh"]' $SIGNER --rpc-url hyperevm -vvvv --broadcast --verify
 */
 
 contract DeployHyperliquidDepositHandler is Script, DeployedAddresses {
@@ -40,19 +37,18 @@ contract DeployHyperliquidDepositHandler is Script, DeployedAddresses {
     }
 
     function run() external pure {
-        revert("Missing args. Use run(string encodedTokenSymbols[, address signer])");
+        revert("Missing args. Use run(string[] tokenSymbols[, address signer])");
     }
 
-    function run(string memory encodedTokenSymbols) external {
-        _run(vm.parseBytes(encodedTokenSymbols), address(0));
+    function run(string[] memory tokenSymbols) external {
+        _run(tokenSymbols, address(0));
     }
 
-    function run(string memory encodedTokenSymbols, address signerOverride) external {
-        _run(vm.parseBytes(encodedTokenSymbols), signerOverride);
+    function run(string[] memory tokenSymbols, address signerOverride) external {
+        _run(tokenSymbols, signerOverride);
     }
 
-    function _run(bytes memory encodedTokenSymbols, address signerOverride) internal {
-        string[] memory tokenSymbols = abi.decode(encodedTokenSymbols, (string[]));
+    function _run(string[] memory tokenSymbols, address signerOverride) internal {
         require(tokenSymbols.length != 0, "token symbols required");
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
