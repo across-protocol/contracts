@@ -1100,6 +1100,21 @@
     "728126428": {
       "chain_name": "Chain 728126428",
       "contracts": {
+        "CounterfactualDeposit": {
+          "address": "TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy",
+          "block_number": 81270966,
+          "transaction_hash": "715d4b3c1dfdd0d7bd754c928ad812da1de4663502923d8bed79164ce047717e"
+        },
+        "CounterfactualDepositFactoryTron": {
+          "address": "TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob",
+          "block_number": 81269910,
+          "transaction_hash": "ac7736e4912d3bd8e02b9dc26bd0ba6c0486b488b091141a8dde7f0c96be13f5"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75",
+          "block_number": 81271437,
+          "transaction_hash": "d3a41d6aaf79a3a482c3824050ecd44457957b920893d92da222a2335eefdd09"
+        },
         "SP1AutoVerifier": {
           "address": "TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84",
           "block_number": 81235137,
@@ -1114,6 +1129,11 @@
           "address": "TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8",
           "block_number": 81267900,
           "transaction_hash": "916d12109b908916a5180dbaf032c577b758615e975ce909cdee696f066f5ac9"
+        },
+        "WithdrawImplementation": {
+          "address": "TJkwUDFPKXABkeu38v42sdwQS2VxgRweow",
+          "block_number": 81269861,
+          "transaction_hash": "226499b9a0e735991922ca744364017aa882df1b33ea23e44c80695181ed12d4"
         }
       }
     },

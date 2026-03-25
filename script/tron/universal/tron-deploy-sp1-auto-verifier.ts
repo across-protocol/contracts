@@ -18,7 +18,7 @@
  */
 
 import * as path from "path";
-import { deployContract, resolveChainId } from "./deploy";
+import { deployContract, resolveChainId } from "../deploy";
 
 async function main(): Promise<void> {
   const chainId = resolveChainId();

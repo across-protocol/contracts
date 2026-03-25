@@ -409,11 +409,15 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Chain 728126428 (728126428)
 
-| Contract Name   | Address                            |
-| --------------- | ---------------------------------- |
-| SP1AutoVerifier | TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84 |
-| SP1Helios       | TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx |
-| SpokePool       | TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8 |
+| Contract Name                    | Address                            |
+| -------------------------------- | ---------------------------------- |
+| CounterfactualDeposit            | TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy |
+| CounterfactualDepositFactoryTron | TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob |
+| CounterfactualDepositSpokePool   | TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75 |
+| SP1AutoVerifier                  | TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84 |
+| SP1Helios                        | TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx |
+| SpokePool                        | TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8 |
+| WithdrawImplementation           | TJkwUDFPKXABkeu38v42sdwQS2VxgRweow |
 
 ## Solana Devnet (133268194659241)
 

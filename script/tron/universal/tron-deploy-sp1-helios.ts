@@ -35,7 +35,7 @@ import * as path from "path";
 import * as os from "os";
 import { execSync } from "child_process";
 import { createHash } from "crypto";
-import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId } from "./deploy";
+import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId } from "../deploy";
 import { TronWeb as TronWebImport } from "tronweb";
 
 const GITHUB_RELEASE_URL = "https://github.com/across-protocol/sp1-helios/releases";
@@ -86,7 +86,7 @@ function downloadGenesisBinary(version: string): string {
 function verifyBinaryChecksum(binaryName: string, binaryPath: string): void {
   console.log("Verifying binary checksum...");
 
-  const checksumsPath = path.resolve(SCRIPT_DIR, "../checksums.json");
+  const checksumsPath = path.resolve(SCRIPT_DIR, "../../universal/checksums.json");
   const checksums: Record<string, string> = JSON.parse(fs.readFileSync(checksumsPath, "utf-8"));
 
   const expectedChecksum = checksums[binaryName];

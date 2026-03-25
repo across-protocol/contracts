@@ -21,7 +21,7 @@
 import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
-import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId, TRON_TESTNET_CHAIN_ID } from "./deploy";
+import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId, TRON_TESTNET_CHAIN_ID } from "../deploy";
 
 // WTRX (Wrapped TRX) contract address
 const WTRX_ADDRESS = "TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR";

@@ -140,7 +140,7 @@ function writeBroadcastArtifact(opts: {
     chain: chainIdNum,
   };
 
-  const broadcastDir = path.resolve(__dirname, "../../../broadcast", scriptName, opts.chainId);
+  const broadcastDir = path.resolve(__dirname, "../../broadcast", scriptName, opts.chainId);
   fs.mkdirSync(broadcastDir, { recursive: true });
 
   const json = JSON.stringify(broadcast, null, 2) + "\n";
