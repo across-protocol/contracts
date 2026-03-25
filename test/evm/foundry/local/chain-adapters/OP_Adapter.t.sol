@@ -18,10 +18,7 @@ import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
 import { MerkleTreeUtils } from "../../utils/MerkleTreeUtils.sol";
 
 // Mocks
-import {
-    MockBedrockL1StandardBridge,
-    MockBedrockCrossDomainMessenger
-} from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
+import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";
 import { HubPoolInterface } from "../../../../../contracts/interfaces/HubPoolInterface.sol";
 

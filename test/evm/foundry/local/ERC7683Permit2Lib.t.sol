@@ -3,11 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 
-import {
-    ERC7683Permit2Lib,
-    AcrossOrderData,
-    ACROSS_ORDER_DATA_TYPE_HASH
-} from "../../../../contracts/erc7683/ERC7683Permit2Lib.sol";
+import { ERC7683Permit2Lib, AcrossOrderData, ACROSS_ORDER_DATA_TYPE_HASH } from "../../../../contracts/erc7683/ERC7683Permit2Lib.sol";
 import { GaslessCrossChainOrder } from "../../../../contracts/erc7683/ERC7683.sol";
 
 contract ERC7683Permit2LibTest is Test {

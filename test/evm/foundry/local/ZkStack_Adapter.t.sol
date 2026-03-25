@@ -9,10 +9,7 @@ import { IL1StandardBridge } from "@eth-optimism/contracts/L1/messaging/IL1Stand
 import { FinderInterface } from "../../../../contracts/external/uma/core/contracts/data-verification-mechanism/interfaces/FinderInterface.sol";
 
 import { ZkStack_Adapter } from "../../../../contracts/chain-adapters/ZkStack_Adapter.sol";
-import {
-    ZkStack_CustomGasToken_Adapter,
-    FunderInterface
-} from "../../../../contracts/chain-adapters/ZkStack_CustomGasToken_Adapter.sol";
+import { ZkStack_CustomGasToken_Adapter, FunderInterface } from "../../../../contracts/chain-adapters/ZkStack_CustomGasToken_Adapter.sol";
 import { AdapterInterface } from "../../../../contracts/chain-adapters/interfaces/AdapterInterface.sol";
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";

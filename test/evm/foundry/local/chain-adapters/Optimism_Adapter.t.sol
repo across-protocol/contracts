@@ -13,10 +13,7 @@ import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAd
 import { WETH9Interface } from "../../../../../contracts/external/interfaces/WETH9Interface.sol";
 
 // Mocks
-import {
-    MockBedrockL1StandardBridge,
-    MockBedrockCrossDomainMessenger
-} from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
+import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { MockCCTPMinter, MockCCTPMessenger } from "../../../../../contracts/test/MockCCTP.sol";
 import { ITokenMessenger } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { MockSpokePool } from "../../../../../contracts/test/MockSpokePool.sol";

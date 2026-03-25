@@ -13,11 +13,7 @@ import { CircleDomainIds } from "../../../../../contracts/libraries/CircleCCTPAd
 import { Bytes32ToAddress } from "../../../../../contracts/libraries/AddressConverters.sol";
 
 // CCTP mocks
-import {
-    MockCCTPMinter,
-    MockCCTPMessenger,
-    MockCCTPMessageTransmitter
-} from "../../../../../contracts/test/MockCCTP.sol";
+import { MockCCTPMinter, MockCCTPMessenger, MockCCTPMessageTransmitter } from "../../../../../contracts/test/MockCCTP.sol";
 import { ITokenMessenger, IMessageTransmitter } from "../../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 
 /**

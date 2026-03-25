@@ -5,10 +5,7 @@ pragma solidity ^0.8.0;
 import { HubPoolTestBase } from "../../utils/HubPoolTestBase.sol";
 
 // Contract under test
-import {
-    Arbitrum_SendTokensAdapter,
-    ArbitrumL1ERC20GatewayLike
-} from "../../../../../contracts/chain-adapters/Arbitrum_SendTokensAdapter.sol";
+import { Arbitrum_SendTokensAdapter, ArbitrumL1ERC20GatewayLike } from "../../../../../contracts/chain-adapters/Arbitrum_SendTokensAdapter.sol";
 
 // Existing mocks
 import { ArbitrumMockErc20GatewayRouter } from "../../../../../contracts/test/ArbitrumMocks.sol";
@@ -82,7 +79,8 @@ contract Arbitrum_SendTokensAdapterTest is HubPoolTestBase {
 
         // Expected ETH value sent to gateway
         uint256 expectedEthValue = adapter.l2MaxSubmissionCost() +
-            adapter.l2GasPrice() * adapter.RELAY_TOKENS_L2_GAS_LIMIT();
+            adapter.l2GasPrice() *
+            adapter.RELAY_TOKENS_L2_GAS_LIMIT();
 
         // Expect OutboundTransferCustomRefundCalled event
         vm.expectEmit(true, true, true, true, address(gatewayRouter));
