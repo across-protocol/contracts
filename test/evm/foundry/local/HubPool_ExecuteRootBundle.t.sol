@@ -7,7 +7,7 @@ import { HubPoolTestBase } from "../utils/HubPoolTestBase.sol";
 import { MerkleTreeUtils } from "../utils/MerkleTreeUtils.sol";
 
 import { Mock_Adapter, Mock_Bridge } from "../../../../contracts/chain-adapters/Mock_Adapter.sol";
-import { HubPool } from "../../../../contracts/HubPool.sol";
+import { HubPool } from "../../../../contracts/hub-pool/HubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 

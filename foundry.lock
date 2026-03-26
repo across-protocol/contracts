@@ -6,10 +6,7 @@
     }
   },
   "lib/murky": {
-    "tag": {
-      "name": "v0.1.0",
-      "rev": "5feccd1253d7da820f7cccccdedf64471025455d"
-    }
+    "rev": "991e371eb1dfa9f86701869eb08ec4e98c3cc0b0"
   },
   "lib/sp1-contracts": {
     "rev": "512b5e029abc27f6e46a3c7eba220dac83ecc306"

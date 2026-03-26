@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import { Universal_Adapter } from "../../../../contracts/chain-adapters/Universal_Adapter.sol";
-import { AdapterStore, MessengerTypes } from "../../../../contracts/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../../../../contracts/hub-pool/AdapterStore.sol";
 import { HubPoolStore } from "../../../../contracts/chain-adapters/utilities/HubPoolStore.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
 import "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
