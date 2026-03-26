@@ -2052,6 +2052,166 @@ contract SpokePoolPeripheryTest is Test {
         assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
     }
 
+    /**
+     * EIP-7702 delegated EOA signature tests.
+     * 7702 wallets have code at their address (0xef0100 || delegate), but sign with ECDSA like EOAs.
+     * The periphery should route them through the (v,r,s) path, not the ERC-1271 bytes path.
+     */
+    function testDepositWithAuthorizationEIP7702Wallet() public {
+        // Simulate an EIP-7702 delegated EOA by etching the delegation designator at the depositor's address.
+        // The designator is 0xef0100 || 20-byte delegate address (23 bytes total).
+        address delegate = address(0xBEEF);
+        bytes memory designator = abi.encodePacked(bytes3(0xef0100), delegate);
+        vm.etch(depositor, designator);
+
+        // Fund the 7702 wallet.
+        deal(address(mockERC20), depositor, mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+
+        // Compute the witness that will be used as the ERC-3009 nonce.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                block.timestamp,
+                block.timestamp,
+                witness
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        // Sign with the EOA key — 7702 wallets still use ECDSA.
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor,
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        // This should succeed using the EOA (v,r,s) path despite the depositor having code.
+        spokePoolPeriphery.depositWithAuthorization(
+            depositor,
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            signature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testSwapAndBridgeWithAuthorizationEIP7702Wallet() public {
+        // Simulate an EIP-7702 delegated EOA.
+        address delegate = address(0xBEEF);
+        bytes memory designator = abi.encodePacked(bytes3(0xef0100), delegate);
+        vm.etch(depositor, designator);
+
+        // Fund the 7702 wallet and exchange.
+        deal(address(mockERC20), depositor, mintAmountWithSubmissionFee, true);
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+
+        // Compute the witness.
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                depositor,
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                block.timestamp,
+                block.timestamp,
+                witness
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, msgHash);
+        bytes memory signature = bytes.concat(r, s, bytes1(v));
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor,
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockWETH).toBytes32(),
+            address(mockWETH).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithAuthorization(
+            depositor,
+            swapAndDepositData,
+            block.timestamp,
+            block.timestamp,
+            signature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
     function _defaultSwapAndDepositData(
         address _swapToken,
         uint256 _swapAmount,

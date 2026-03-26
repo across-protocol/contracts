@@ -862,16 +862,31 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     }
 
     /**
-     * @notice Internal function to check if an address is a contract
-     * @dev This is a replacement for OpenZeppelin's isContract function which is deprecated
-     * @param addr The address to check
-     * @return True if the address is a contract, false otherwise
+     * @notice Internal function to check if an address is a smart contract wallet (not an EOA).
+     * @dev Returns false for EOAs, including EIP-7702 delegated EOAs whose code starts with the
+     * delegation designator (0xef0100). This ensures 7702 wallets use the EOA (v,r,s) signature
+     * path for EIP-3009 authorization.
+     * @param addr The address to check.
+     * @return True if the address is a smart contract wallet, false otherwise.
      */
     function _isContract(address addr) private view returns (bool) {
         uint256 size;
         assembly {
             size := extcodesize(addr)
         }
-        return size > 0;
+        if (size == 0) return false;
+        // EIP-7702 delegated EOAs have code set to 0xef0100 || address (23 bytes).
+        // These are EOAs that delegate to an implementation but still sign with ECDSA.
+        if (size == 23) {
+            bool is7702;
+            assembly {
+                let ptr := mload(0x40)
+                extcodecopy(addr, ptr, 0, 3)
+                // Check if the first 3 bytes match the EIP-7702 delegation designator 0xef0100.
+                is7702 := eq(shr(232, mload(ptr)), 0xef0100)
+            }
+            if (is7702) return false;
+        }
+        return true;
     }
 }
