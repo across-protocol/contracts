@@ -88,14 +88,21 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Unichain (130)
 
-| Contract Name             | Address                                                                                                              |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool                 | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| SpokePoolPeriphery        | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://uniscan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPSrcPeriphery | [0xce9Cf0C8f8121b573f6212344F53BC7746846e71](https://uniscan.xyz/address/0xce9Cf0C8f8121b573f6212344F53BC7746846e71) |
-| SponsoredOFTSrcPeriphery  | [0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A](https://uniscan.xyz/address/0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A) |
+| Contract Name                  | Address                                                                                                              |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xff054046BEABDef60Aa310A32218Cb22c8243d87](https://uniscan.xyz/address/0xff054046BEABDef60Aa310A32218Cb22c8243d87) |
+| CounterfactualDeposit          | [0x4DB1Cd541630867435ad1302EA050c38bbF82c98](https://uniscan.xyz/address/0x4DB1Cd541630867435ad1302EA050c38bbF82c98) |
+| CounterfactualDepositCCTP      | [0x647Cf96A8ca44C3e5949Be39CB5C42EAA8Cca73B](https://uniscan.xyz/address/0x647Cf96A8ca44C3e5949Be39CB5C42EAA8Cca73B) |
+| CounterfactualDepositFactory   | [0x20e67fBE0150B498048709306cc7729d382F1fB1](https://uniscan.xyz/address/0x20e67fBE0150B498048709306cc7729d382F1fB1) |
+| CounterfactualDepositOFT       | [0x7DCefefF2ddC57D2f3e1de26c9120648CCbEb810](https://uniscan.xyz/address/0x7DCefefF2ddC57D2f3e1de26c9120648CCbEb810) |
+| CounterfactualDepositSpokePool | [0x8ad111bf8247Bbcd9caB63B14742474DB9f4fC7E](https://uniscan.xyz/address/0x8ad111bf8247Bbcd9caB63B14742474DB9f4fC7E) |
+| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://uniscan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://uniscan.xyz/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://uniscan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://uniscan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery      | [0xce9Cf0C8f8121b573f6212344F53BC7746846e71](https://uniscan.xyz/address/0xce9Cf0C8f8121b573f6212344F53BC7746846e71) |
+| SponsoredOFTSrcPeriphery       | [0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A](https://uniscan.xyz/address/0xC920dAbe5f40d0785Be9b4aCf5B4B8D662a5955A) |
+| WithdrawImplementation         | [0xbCc541C5AeD10843C75336c2d32D363Db6eCF351](https://uniscan.xyz/address/0xbCc541C5AeD10843C75336c2d32D363Db6eCF351) |
 
 ## Polygon (137)
 
