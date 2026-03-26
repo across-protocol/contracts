@@ -1,25 +1,26 @@
 # USDFree
 
-A mechanism-agnostic cross-chain order system that unifies CCTP, OFT, and Across bridge flows into a single architecture.
+A cross-chain order system that unifies CCTP, OFT, and Across bridge flows into a single architecture and allows for expanding to new underlying bridge types easily, as well as performing same-chain TXs with no cross-chain execution.
 
 ## Goals
 
 - Bridge tokens cross-chain regardless of underlying mechanism
+- Use auction systems for token swaps when needed
+- Support same-chain actions with no briding, as well as action chaining
 - Single upgradeable entry point (no re-approvals needed)
-- Support gasless flows and sponsorship
-- Enable chained cross-chain operations (src → A → B → dst)
+- Support gasless flows and sponsorship with deferred sponsorship rebates for sponsoring submitters
 - Execute arbitrary user actions after token delivery
 
 ## Architecture
 
 ```
 Source Chain:
-User → OrderGateway → Executor → IUserActionExecutor
-                                        ↓
-                            [Bridge Message with nextSteps]
-                                        ↓
-                                Destination Chain:
-BridgeHandler → OrderStore → Executor → IUserActionExecutor
+User AND/OR Submitter → OrderGateway → Executor -custom-call-> OFT/CCTP/SpokePool/CustomAdapterIfNeeded
+                                          ↓
+                                  [Bridge Message]
+                                          ↓
+                                  Destination Chain:
+BridgeCapitalProvider/CustomHandlerIfNeeded → OrderGateway → Executor -custom-call-> OFT/CCTP/SpokePool/CustomAdapterIfNeeded
 ```
 
 ### Components
@@ -27,75 +28,37 @@ BridgeHandler → OrderStore → Executor → IUserActionExecutor
 **OrderGateway** - Entry point for all order submissions
 
 - `submit()` calculates `orderId` and pulls tokens from user and submitter (gasless- or approval-based)
-- Pushes all of token amounts to `Executor`. Pushes tokens one by one starting from the orderFunding token. If submitter
-  provided extraFunding and the first token in that array is the same as the orderFunding token, the amounts get pushed
-  via a single Transfer to reduce gas costs.
+- Pushes all of token amounts to `Executor` upon receiving, without leaving tokens to self.
+  // TODO: consider if we even need to support this at the Gateway level. Should underlying protocols take care of this instead? I guess this feels like an optimization, where a DstPeriphery contract may not be required, where it otherwise could have been required.
+- can store prefunded orders waiting for execution (e.g. if submitter was not available yet on DST chain, for example the case with OFT leg completion, where endpoint automatically pushes funds somewhere).
 
-**Executor** - Executes a single step (a series of atomic substeps)
+**Executor** - Executes a single Step
 
-- Runs a series of substeps
+It's biggest feature is being able to perform untrusted
 
-_AlterSubmitterUser_ variant
+A few big features:
 
-- Run alter substep (produces `Changes` to modify user requirements in the later step):
-  alter user requirements may take many different forms. For example, an offchain auction authority can sign
-  over some payload to bump up the user's balanceReq. Or a user can trust a submitter (e.g. RL submitter) to bump
-  up balanceReq (effectively, this is the same as having auction authority == RL submitter). Alternatively, imagine
-  an Alter substep that: takes token amount in (from mint on dst chain), takes onchain oracle price, takes user
-  BPS discount / premium required, alters balanceReq: balanceReq = tokenIn _ price _ (1 + bps_disc_or_premium)
-- Run submitter substep (e.g. DEX swaps, or taking a fee as long as it meets user balance requirement in the next step)
-- Run user substep: check requirements and execute transfer or action (based on `UserSubstepType`). Action variant calls
-  `IUserActionExecutor`. Transfer is push-based, action is approve-tranferFrom-based.
+- command-based: there's a growing list of commands that can be performed (Dispatcher pattern by Uniswap). Command is like an enum, there's some user data and some submitter data that can go into each command. Command definition defines what data gets pulled.
+- can perform external calls to untrusted external contracts from its own context (One of commands). Each call can include balance of some token, or a partial balance. A command like `makeCallWithBalance` can e.g. substitute some static part of user-defined calldata for current balance (useful for e.g. final user action)
+- commands are defined by user order, but a command can use executorMessage from submitterData when relevant (e.g. a user allows submitter to perform arbitrary calls at a certain command. The submitter can even transfer all of the tokens out of the contract if they so wish. It will later get checked by a user-defined requirement, e.g. a token balance requirement)
 
-_SubmitterUser_
+Some common functions/commands:
 
-- only submitter and user substeps from above
-
-_User_
-
-- only user substep
-
-**IUserActionExecutor** - Final action interface
-
-- Pull tokens from Executor using the provided tokenAmount
-- Execute user-specified action. For example, talk to IOFT to bridge tokens over to the next chain. It's the responsibility
-  of the user action executor to propagate next steps correctly to the next execution leg (e.g. in `composeMsg` for OFT).
-  Other bridge options can include CCTP, SpokePool and others.
-
-**OrderStore** - Destination-side order management
-
-- `handle()` - Receive tokens from bridge, store for filling
-- `handleAtomic()` - Receive and fill in one transaction
-- `fill()` - Fill a stored order
+- requirement checks (provided by the user: token, submitter, deadline)
+- auction-based requirement augmentation (auction settings provided by user, auction data for offchain auctions by submitter). Auctions can be off-chain and on-chain(e.g. dutch OR X-percent-over-oracle requirement, which is not really an auction, but more of a dynamic requirement).
+- DEX swaps (command defined by user, data by submitter). Or submitter contract interaction; user let's a submitter free rein at a certain point of execution
+- final user action: can be just a transfer or can be a call to the bridge (with e.g. some part of calldata dynamically substituted like in makeCallWithBalance). We may need to support more complicated substitutions for parts of user-provided static calldata to the bridge. We can have something like makeCallWithStorageData, which will read some data that submitter stored into storage e.g. during custom actions step and place at a certain byte offstet into the user calldata. This is advanced functionality.
 
 ## Design Decisions
 
-**Order ID Scope**: Computed once at OrderGateway with domain separation (srcChainId). Propagated cross-chain, but can be
-spoofed on destination chains. Crosschain tracking is done as described below.
+**Order ID**: used as witness in orderOwner gasless funding; can be forced unique if nonce != 0; can be used for (orderId => sponsorship) mapping with a uniqueness guarantee. Order ID is effectively a hash over the "suffix" of the order. Each new execution Step gets its own orderId. When tracking sponsorship execution, offchain actor can demand that an array of orderIds was emitted to guarantee sponsorship rebate.
 
-**Cross-Chain Tracking**: Uses bridge-native identifiers (OFT guid, CCTP nonce, etc.). API/indexer correlates the full chain.
+**Execution ID**: used as witness for submitter gasless funding.
 
-**Multi-Chain Orders**: `nextSteps` are passed with bridge messages, enabling multi-hop orders.
+**Step ID**: when an order contains merkle root, sometimes we want to sponsor a specific Path through that tree only. Step ID helps disambiguate which execution really happened.
 
-**Token Custody**: Tokens sit in OrderStore until fill. During step execution, temporarily in Executor. Executor should never have approvals.
+**Obfuscation**: If an order contains a merkle tree root, each leaf gets a salt, which can be selectively disclosed by the API.
 
-**Refunds**: Permissionless after reverse deadline - anyone can trigger, tokens go to `refundSettings.refundRecipient`.
+## Underlying bridge support
 
-**Obfuscation**: Trust-based. If user needs to hide their action, they specify a trusted submitter via `submitterReq`.
-
-## Dst chain paths
-
-**CCTP/OFT flows**: Oft/CctpHandler → OrderStore.handle() → fill()
-\*Cctp finalizer can call CctpHandler.handleAtomic → OrderStore.handleAtomic()
-
-**SpokePool**: Uses `handleV3AcrossMessage` wrapper that routes to IUserActionExecutor directly (skips OrderStore since SpokePool already checks requirements).
-
-## Sponsorship
-
-Two models supported:
-
-1. **Phase0-compatible**: Uses an Order with a single user action, which conatins all of the Phase0 parameters (including
-   the API signature). Essentially hands over execution to the Phase0 system after src chain's submitterActions-reqChecks-
-   -userAction sequence is done.
-2. **Off-chain**: API reimburses relayers post-execution based on orderId and execution chain tracking by the Indexer. API
-   only sponsors orders it can track completion of.
+Current focus is CCTP/SpokePool/OFT.
