@@ -61,4 +61,22 @@ Some common functions/commands:
 
 ## Underlying bridge support
 
-Current focus is CCTP/SpokePool/OFT.
+Current focus is CCTP/SpokePool/OFT. Two interaction modes:
+
+### Hand-off mode
+
+Executor performs a single source-chain leg (e.g. approve + call bridge) and hands off to the existing bridge system. The bridge delivers tokens to whatever destination recipient/handler is already in place. No custom destination periphery is needed from USDFree's side.
+
+- **OFT**: Executor calls into `SponsoredOFTSrcPeriphery`, which handles quote validation, token pull, and `IOFT.send()` with compose. LayerZero endpoint delivers funds + compose to an existing `DstOFTHandler` on destination.
+- **CCTP**: Executor calls into `SponsoredCCTPSrcPeriphery`, which handles quote validation, token pull, and `ITokenMessengerV2.depositForBurnWithHook()`. Circle attestation delivers funds to an existing `SponsoredCCTPDstPeriphery` on destination.
+- **SpokePool**: Executor calls `V3SpokePoolInterface.depositV3()` (`V3SpokePoolInterface.sol`). Across relayer fills on destination; if a message is included, fill calls `AcrossMessageHandler.handleV3AcrossMessage()` (`SpokePoolMessageHandler.sol`) on the recipient.
+
+In all cases the source Executor just needs the right command to build the bridge call (with balance substitution via `makeCallWithBalance` if needed).
+
+### Integration mode
+
+Tokens are delivered into `OrderGateway` on the destination chain, enabling the full USDFree feature set on dst: custom action execution, sponsorship rebates, and submitter-provided auction data. The goal is **atomic dst execution** wherever the bridge allows it.
+
+- **OFT**: Atomic execution is not possible — LayerZero compose auto-delivers funds before a submitter can act. `OrderGateway` stores a prefunded order; a submitter calls `OrderGateway.submit()` in a separate tx to continue execution through a new Step.
+- **CCTP**: Atomic execution is possible. A new dst contract (e.g. `CCTPOrderReceiver`) accepts the Circle attestation + `submitterInputs` in a single call. It calls `IMessageTransmitterV2.receiveMessage()` to mint tokens, then atomically calls `OrderGateway.submit()` with the order + submitter data — full dst execution in one tx.
+- **SpokePool**: Atomic execution is possible via a `SpokePoolWrapper`. The relayer calls `SpokePoolWrapper.fillV3Relay(...)` providing `submitterData` alongside the fill. The wrapper calls into `SpokePool` to perform the fill; SpokePool calls back into the wrapper via `AcrossMessageHandler.handleV3AcrossMessage()` (the user's message encodes the order); the wrapper then calls `OrderGateway.submit()` with the relayer-provided submitter data. Technicality: `exclusiveRelayer` must be set to the wrapper (or handled via delegation) so the relayer can fill through it.
