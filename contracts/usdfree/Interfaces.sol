@@ -14,6 +14,11 @@ struct Step {
     bytes message;
 }
 
+struct RefundSettings {
+    address recipient;
+    uint256 deadline; // claim is possible _after_ deadline
+}
+
 struct Funding {
     TypedData[] funding; // type + data. Data includes amounts, per-type structs and signatures if needed for gasless
 }
@@ -24,13 +29,15 @@ struct Order {
     bytes32 nonce;
     // Note: used for orderId namespacing. Can let orderOwner use nonces for certain commitments
     address orderOwner;
-    TypedData stepOrMerkleRoot;
-    TypedData refundSettings; // version + data. It's not used in the hot path, so we leave room for more expressivity here
+    // Note: Merkle root that has Steps and RefundSettings as leaves
+    bytes32 root;
 }
 
 struct SubmitterInputs {
-    // Note: used to provide a Step + Merkle proof if `order.stepOrMerkleRoot` is a Merkle root. Otherwise empty
-    bytes optionalStepAndProof;
+    Step step;
+    // Note: proof that step is a part of order.root Merkle tree
+    bytes32[] proof;
+    // Note: submitter funding, that commits to a different (more broad) witness
     Funding funding;
     // Note: when interpreting step.message provided by the user, step.executor will sometimes reach into executorMessage
     // provided here for submitter-provided data. User defines commands + static values, this lets submitter augment
@@ -54,24 +61,21 @@ library USDFreeIdLib {
     }
 
     function orderId(bytes32 domainH, Order calldata order) internal pure returns (bytes32) {
+        return keccak256(abi.encode("USDFreeIdLib.OrderId.V1", domainH, order.nonce, order.orderOwner, order.root));
+    }
+
+    // Note: called only when there's a merkle tree proof is presented. Otherwise, orderId is enough for the purposese of emitting a unique order execution path
+    function stepId(bytes32 orderId_, Step calldata step) internal pure returns (bytes32) {
         return
             keccak256(
-                abi.encode(
-                    "USDFreeIdLib.OrderId.V1",
-                    domainH,
-                    order.nonce,
-                    order.orderOwner,
-                    order.refundSettings,
-                    // Note: order.stepOrMerkleRoot can be long, so we include its hash here
-                    _typedDataHash(order.stepOrMerkleRoot)
-                )
+                abi.encode("USDFreeIdLib.StepId.V1", orderId_, step.salt, step.executor, keccak256(step.message))
             );
     }
 
     // Note: used as witness for submitter gasless funding, if any
     function executionId(
         bytes32 orderId_,
-        address submitter,
+        bytes32 stepId_,
         SubmitterInputs calldata submitterInputs
     ) internal pure returns (bytes32) {
         return
@@ -79,24 +83,10 @@ library USDFreeIdLib {
                 // TODO: submitterSalt might be useful for varying submitter witness(==TWA nonce), similar to order.nonce?
                 abi.encode(
                     "USDFreeIdLib.ExecutionId.V1",
-                    orderId_,
-                    submitter,
-                    submitterInputs.optionalStepAndProof,
-                    keccak256(submitterInputs.executorMessage)
+                    orderId_, // commit to user order
+                    stepId_, // commit to a specific step being executed
+                    keccak256(submitterInputs.executorMessage) // commit to own instructions provided
                 )
             );
-    }
-
-    // Note: called only when there's a merkle tree proof is presented. Otherwise, orderId is enough for the purposese of emitting a unique order execution path
-    function stepId(bytes32 orderId_, Step calldata step) internal pure returns (bytes32) {
-        return keccak256(abi.encode("USDFreeIdLib.StepId.V1", orderId_, _stepHash(step)));
-    }
-
-    function _stepHash(Step calldata step) private pure returns (bytes32) {
-        return keccak256(abi.encode(step.executor, keccak256(step.message)));
-    }
-
-    function _typedDataHash(TypedData calldata typedData) private pure returns (bytes32) {
-        return keccak256(abi.encodePacked(typedData.typ, keccak256(typedData.data)));
     }
 }
