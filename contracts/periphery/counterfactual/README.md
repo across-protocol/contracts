@@ -300,21 +300,22 @@ Deploys all 7 contracts via the [deterministic deployment proxy](https://github.
 | 5     | `CounterfactualDepositOFT`       | No (chain-specific constructor args)                         |
 | 6     | `AdminWithdrawManager`           | Yes (deployer as owner/directWithdrawer, signer from config) |
 
-1. **Configure** `script/counterfactual/config.json` with operational params:
+1. **Configure** `script/counterfactual/config.toml` with operational params (per chain):
 
-   ```json
-   {
-     "signer": "0x...",
-     "ownerAndDirectWithdrawer": {
-       "1": "0x...",
-       "10": "0x...",
-       "42161": "0x..."
-     }
-   }
+   ```toml
+   [1]
+   [1.address]
+   signer = "0x..."
+   ownerAndDirectWithdrawer = "0x..."
+
+   [42161]
+   [42161.address]
+   signer = "0x..."
+   ownerAndDirectWithdrawer = "0x..."
    ```
 
-   - `signer` — global signer address for AdminWithdrawManager and CounterfactualDepositSpokePool (transferred post-deploy)
-   - `ownerAndDirectWithdrawer` — per-chain address that receives both owner and directWithdrawer roles on AdminWithdrawManager (keyed by chain ID, reverts if missing for the target chain)
+   - `signer` — signer address for AdminWithdrawManager and CounterfactualDepositSpokePool (used in constructor / transferred post-deploy)
+   - `ownerAndDirectWithdrawer` — address that receives both owner and directWithdrawer roles on AdminWithdrawManager (reverts if missing for the target chain)
    - Chain-specific params (`spokePool`, `wrappedNativeToken`, `cctpPeriphery`, `cctpDomain`, `oftPeriphery`, `oftEid`) are auto-resolved from `generated/constants.json` and `broadcast/deployed-addresses.json`
    - SpokePool, CCTP, and OFT deployments are controlled by bool arguments; the script reverts if a requested deployment lacks chain support
 
@@ -324,7 +325,7 @@ Deploys all 7 contracts via the [deterministic deployment proxy](https://github.
 
    ```bash
    source .env
-   forge script \
+   FOUNDRY_PROFILE=counterfactual forge script \
      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
      --sig "run(string,bool,bool,bool,bool,bool)" $RPC_URL true true true true false \
      --rpc-url $RPC_URL -vvvv
@@ -335,7 +336,7 @@ Deploys all 7 contracts via the [deterministic deployment proxy](https://github.
 4. **Deploy** (set `broadcast` to `true` and add `--ffi`):
 
    ```bash
-   forge script \
+   FOUNDRY_PROFILE=counterfactual forge script \
      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
      --sig "run(string,bool,bool,bool,bool,bool)" $RPC_URL true true true true true \
      --rpc-url $RPC_URL --ffi -vvvv
@@ -343,7 +344,7 @@ Deploys all 7 contracts via the [deterministic deployment proxy](https://github.
 
 ### AdminWithdrawManager Role Transfer
 
-The `AdminWithdrawManager` is deployed with the deployer as owner and directWithdrawer, and the signer from `config.json` (all global, ensuring the same CREATE2 address on every chain). After deployment, if `transferRoles` is `true`, owner and directWithdrawer are transferred to the chain-specific `ownerAndDirectWithdrawer` address from `config.json` (reverts if no entry exists for the chain). If `false`, the deployer retains owner and directWithdrawer.
+The `AdminWithdrawManager` is deployed with the deployer as owner and directWithdrawer, and the signer from `config.toml` (all global, ensuring the same CREATE2 address on every chain). After all deployments complete, if `transferRoles` is `true`, `DeployAllCounterfactual` transfers directWithdrawer first, verifies it succeeded, then transfers ownership to the chain-specific `ownerAndDirectWithdrawer` address from `config.toml`. If the directWithdrawer transfer fails, ownership transfer is skipped to avoid losing access.
 
 ### Important
 

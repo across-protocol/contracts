@@ -5,16 +5,17 @@ import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 
-// How to run (zero-arg, reads from config.json + constants):
-// 1. Edit script/counterfactual/config.json with signer address
+// How to run (zero-arg, reads from config.toml + constants):
+// 1. Edit script/counterfactual/config.toml with signer address
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script script/counterfactual/DeployCounterfactualDepositSpokePool.s.sol:DeployCounterfactualDepositSpokePool \
 //      --rpc-url $NODE_URL -vvvv
 // 4. Deploy: append --broadcast --verify to the command above
 contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
-    /// @notice Zero-arg entry point: resolves all params from config.json and on-chain constants.
+    /// @notice Zero-arg entry point: resolves all params from config.toml and on-chain constants.
     function run() external {
-        this.run(_resolveSpokePool(), _loadSigner(), _resolveWrappedNativeToken());
+        address signer = _loadSigner();
+        this.run(_resolveSpokePool(), signer, _resolveWrappedNativeToken());
     }
 
     function run(address spokePool, address signer, address wrappedNativeToken) external {

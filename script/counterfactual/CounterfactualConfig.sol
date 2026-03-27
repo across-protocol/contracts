@@ -4,51 +4,37 @@ pragma solidity ^0.8.0;
 import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
 
 /// @notice Shared config loader and resolver for counterfactual deploy scripts.
-/// Reads operational params from config.json and resolves chain-specific values
+/// Reads operational params from config.toml and resolves chain-specific values
 /// from Constants and DeployedAddresses.
 abstract contract CounterfactualConfig is DeploymentUtils {
-    string constant CONFIG_PATH = "script/counterfactual/config.json";
-    string constant MULTISIGS_PATH = "script/mintburn/prod-readiness-multisigs.json";
+    string constant CONFIG_PATH = "./script/counterfactual/config.toml";
 
     struct OperationalConfig {
         address signer;
         address ownerAndDirectWithdrawer;
     }
 
-    function _loadOperationalConfig() internal view returns (OperationalConfig memory cfg) {
-        string memory json = vm.readFile(CONFIG_PATH);
-        cfg.signer = vm.parseJsonAddress(json, ".signer");
+    function _loadCounterfactualConfig() internal {
+        _loadConfig(CONFIG_PATH, false);
+    }
+
+    function _loadOperationalConfig() internal returns (OperationalConfig memory cfg) {
+        _loadCounterfactualConfig();
+        cfg.signer = config.get("signer").toAddress();
         require(cfg.signer != address(0), "config: signer is zero");
-        string memory chainKey = string.concat(".ownerAndDirectWithdrawer.", vm.toString(block.chainid));
-        cfg.ownerAndDirectWithdrawer = vm.parseJsonAddress(json, chainKey);
+        cfg.ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
         require(
             cfg.ownerAndDirectWithdrawer != address(0),
             "config: ownerAndDirectWithdrawer is zero or missing for chain"
         );
     }
 
-    /// @dev Reads the signer address from config.json (global across all chains).
-    function _loadSigner() internal view returns (address) {
-        string memory json = vm.readFile(CONFIG_PATH);
-        address s = vm.parseJsonAddress(json, ".signer");
+    /// @dev Reads the signer address from config.toml for the current chain.
+    function _loadSigner() internal returns (address) {
+        _loadCounterfactualConfig();
+        address s = config.get("signer").toAddress();
         require(s != address(0), "config: signer is zero");
         return s;
-    }
-
-    /// @dev Reads the multisig address for the current chain from prod-readiness-multisigs.json.
-    /// Falls back to the fallbackEOA if no chain-specific entry exists.
-    function _resolveMultisig() internal view returns (address) {
-        string memory json = vm.readFile(MULTISIGS_PATH);
-        string memory chainKey = string.concat(".", vm.toString(block.chainid));
-        // Try chain-specific key first, fall back to fallbackEOA.
-        try vm.parseJsonAddress(json, chainKey) returns (address addr) {
-            require(addr != address(0), "multisig: zero address for chain");
-            return addr;
-        } catch {
-            address fallbackAddr = vm.parseJsonAddress(json, ".fallbackEOA");
-            require(fallbackAddr != address(0), "multisig: fallbackEOA is zero");
-            return fallbackAddr;
-        }
     }
 
     function _resolveSpokePool() internal view returns (address) {

@@ -39,11 +39,13 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   - Idempotent — already-deployed contracts are auto-skipped
 //
 // Configuration:
-//   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.json
+//   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
 //   - Chain-specific params (spokePool, wrappedNativeToken, cctpPeriphery, cctpDomain,
 //     oftPeriphery, oftEid): auto-resolved from constants.json and deployed-addresses.json
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from
-//     config.json, then owner/directWithdrawer are optionally transferred to config.json addresses
+//     config.toml. Role transfers (owner/directWithdrawer) are done directly by this script after
+//     all ffi deployments complete, with a safety check that directWithdrawer transferred
+//     successfully before transferring ownership
 //
 // Always deployed:
 //   - CounterfactualDeposit, CounterfactualDepositFactory, WithdrawImplementation, AdminWithdrawManager
@@ -57,7 +59,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
 //
 // How to run:
-// 1. Edit script/counterfactual/config.json with signer and ownerAndDirectWithdrawer
+// 1. Edit script/counterfactual/config.toml with signer and ownerAndDirectWithdrawer per chain
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
@@ -71,7 +73,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     /// @param deploySpokePool If true, deploy CounterfactualDepositSpokePool.
     /// @param deployCctp If true, deploy CounterfactualDepositCCTP.
     /// @param deployOft If true, deploy CounterfactualDepositOFT.
-    /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.json addresses.
+    /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.toml addresses.
     /// @param broadcast If true, broadcast transactions on-chain.
     function run(
         string calldata rpcUrl,
@@ -306,8 +308,41 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployAdminWithdrawManager.s.sol"),
                 "DeployAdminWithdrawManager",
-                string.concat(' --sig "run(bool)" ', transferRoles ? "true" : "false")
+                ""
             );
+        }
+
+        // --- Transfer AdminWithdrawManager roles ---
+        if (transferRoles) {
+            address ownerAndDirectWithdrawer = config.get("ownerAndDirectWithdrawer").toAddress();
+            require(ownerAndDirectWithdrawer != address(0), "config: ownerAndDirectWithdrawer is zero or missing");
+            AdminWithdrawManager manager = AdminWithdrawManager(predictedAdmin);
+
+            console.log("--------------------------------------------");
+            console.log("Transferring AdminWithdrawManager roles to:", ownerAndDirectWithdrawer);
+
+            vm.startBroadcast(deployerPrivateKey);
+
+            // Transfer directWithdrawer first, then verify before transferring ownership.
+            if (ownerAndDirectWithdrawer != manager.directWithdrawer()) {
+                manager.setDirectWithdrawer(ownerAndDirectWithdrawer);
+
+                if (manager.directWithdrawer() != ownerAndDirectWithdrawer) {
+                    console.log("ERROR: directWithdrawer transfer failed. Skipping ownership transfer.");
+                    vm.stopBroadcast();
+                } else {
+                    if (ownerAndDirectWithdrawer != manager.owner()) {
+                        manager.transferOwnership(ownerAndDirectWithdrawer);
+                    }
+                    vm.stopBroadcast();
+                }
+            } else {
+                // directWithdrawer already correct, just transfer ownership if needed.
+                if (ownerAndDirectWithdrawer != manager.owner()) {
+                    manager.transferOwnership(ownerAndDirectWithdrawer);
+                }
+                vm.stopBroadcast();
+            }
         }
 
         console.log("============================================");
