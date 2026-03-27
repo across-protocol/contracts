@@ -331,7 +331,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         // Append `|| true` so that non-fatal failures (e.g. etherscan verification
         // timing out) don't cause ffi to revert and halt subsequent deployments.
         string memory cmd = string.concat(
-            "forge script ",
+            "FOUNDRY_PROFILE=counterfactual forge script ",
             scriptPath,
             ":",
             contractName,
