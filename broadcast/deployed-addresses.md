@@ -184,13 +184,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## World Chain (480)
 
-| Contract Name             | Address                                                                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://worldchain-mainnet-explorer.alchemy.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool                 | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet-explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
-| SpokePoolPeriphery        | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://worldchain-mainnet-explorer.alchemy.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier         | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://worldchain-mainnet-explorer.alchemy.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPSrcPeriphery | [0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923](https://worldchain-mainnet-explorer.alchemy.com/address/0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923) |
+| Contract Name                  | Address                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://worldchain-mainnet-explorer.alchemy.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://worldchain-mainnet-explorer.alchemy.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositCCTP      | [0x24e9b525154Df0229D9035E7e927C21e08D2B0Cb](https://worldchain-mainnet-explorer.alchemy.com/address/0x24e9b525154Df0229D9035E7e927C21e08D2B0Cb) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://worldchain-mainnet-explorer.alchemy.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositSpokePool | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://worldchain-mainnet-explorer.alchemy.com/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
+| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://worldchain-mainnet-explorer.alchemy.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://worldchain-mainnet-explorer.alchemy.com/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://worldchain-mainnet-explorer.alchemy.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://worldchain-mainnet-explorer.alchemy.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPSrcPeriphery      | [0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923](https://worldchain-mainnet-explorer.alchemy.com/address/0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://worldchain-mainnet-explorer.alchemy.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## HyperEVM (999)
 
