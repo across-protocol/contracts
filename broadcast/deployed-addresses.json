@@ -1097,6 +1097,31 @@
         "MulticallHandler": {
           "address": "0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba",
           "block_number": 1619956
+        },
+        "AdminWithdrawManager": {
+          "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",
+          "block_number": 17887323,
+          "transaction_hash": "0xb446e06779765a9df4fd71fdc769ff62537f4a9467ed64cf21d8dbfc63c21f72"
+        },
+        "CounterfactualDeposit": {
+          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
+          "block_number": 17887147,
+          "transaction_hash": "0xc3174fcfc6fa68e4a90bf42203cc54ab63406ec4db42f93c68bd3bcda81ed724"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772",
+          "block_number": 17887191,
+          "transaction_hash": "0x4884daede2c8e06bd751861e8284d03f192b52a12e24f2ce0c1d4b131627e0b4"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "0x25a40716980c5676902337234DfbB9feCFc38288",
+          "block_number": 17887279,
+          "transaction_hash": "0x3de7142b7379571a946f37f404089c54812c6b0926faf71f056c85b61002941a"
+        },
+        "WithdrawImplementation": {
+          "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
+          "block_number": 17887235,
+          "transaction_hash": "0x17fe5cafd2e40491ffd562cafecd2052063818c9f8e8b3de7f629719ef9b787b"
         }
       }
     },
