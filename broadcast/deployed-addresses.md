@@ -221,12 +221,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Lisk (1135)
 
-| Contract Name      | Address                                                                                                                      |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
-| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://blockscout.lisk.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://blockscout.lisk.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name                  | Address                                                                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://blockscout.lisk.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://blockscout.lisk.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://blockscout.lisk.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositSpokePool | [0xB7E314ded7a5567ab060e33975C29C9509F36222](https://blockscout.lisk.com/address/0xB7E314ded7a5567ab060e33975C29C9509F36222) |
+| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://blockscout.lisk.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                      | [0x9552a0a6624A23B848060AE5901659CDDa1f83f8](https://blockscout.lisk.com/address/0x9552a0a6624A23B848060AE5901659CDDa1f83f8) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://blockscout.lisk.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://blockscout.lisk.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://blockscout.lisk.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## Soneium (1868)
 
