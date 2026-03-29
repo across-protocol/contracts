@@ -858,10 +858,40 @@
           "block_number": 5456541,
           "transaction_hash": "0x4a0cf4927445b932c1fe8bd3f45c9a0d923817e7350a8f027eab3d745d3ca386"
         },
+        "AdminWithdrawManager": {
+          "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",
+          "block_number": 12012780,
+          "transaction_hash": "0xe12c5a366688c87759bc3fddcfcb73f51a3426f9fadbfb4e7e58280487dec1bd"
+        },
+        "CounterfactualDeposit": {
+          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
+          "block_number": 12010941,
+          "transaction_hash": "0xe8fe0a20f927ad9f803c8de454d4f4831163cff6f5c24acfc169680ec0aa801e"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772",
+          "block_number": 12011826,
+          "transaction_hash": "0x6b8090f81611f521266ee0aef96d0c220aaebba6a1e4bbfb9b979a471dbb7fa2"
+        },
+        "CounterfactualDepositOFT": {
+          "address": "0x82F50AD2ed98980128CAe8C8dD16592d34946994",
+          "block_number": 12012680,
+          "transaction_hash": "0xb54a4d681d962d18e0212c7a66265dc5138d2f428a52b16bfda124f56afcab82"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "0xbD9088069032fd8EE9b4630e558Fd222Ae75e8D0",
+          "block_number": 12012601,
+          "transaction_hash": "0x24e5a21ee467e4b39435f8bfc5591237aab4ac8dac096777502411837511de70"
+        },
         "SponsoredOFTSrcPeriphery": {
           "address": "0x02D65fb01d3d88127dF19838902ba42c6239c0Fd",
           "block_number": 8234177,
           "transaction_hash": "0xd31511962fafb1baa7d03fac9adc513236c5187a142bb8df82c6bfa6a58f0206"
+        },
+        "WithdrawImplementation": {
+          "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
+          "block_number": 12011854,
+          "transaction_hash": "0xbe2cc41a1810895f39fb18657b6ed92f26e8b1a51b52e0fd6d9f867eb5973718"
         }
       }
     },

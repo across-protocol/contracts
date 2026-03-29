@@ -236,13 +236,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## MegaETH (4326)
 
-| Contract Name            | Address                                                                                                                         |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| AcrossEventEmitter       | [0xe51da9300b4e5B7a412d58e8290914207dAF7fcD](https://megaeth.blockscout.com/address/0xe51da9300b4e5B7a412d58e8290914207dAF7fcD) |
-| MulticallHandler         | [0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4](https://megaeth.blockscout.com/address/0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4) |
-| SpokePool                | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
-| SpokePoolPeriphery       | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://megaeth.blockscout.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SponsoredOFTSrcPeriphery | [0x02D65fb01d3d88127dF19838902ba42c6239c0Fd](https://megaeth.blockscout.com/address/0x02D65fb01d3d88127dF19838902ba42c6239c0Fd) |
+| Contract Name                  | Address                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| AcrossEventEmitter             | [0xe51da9300b4e5B7a412d58e8290914207dAF7fcD](https://megaeth.blockscout.com/address/0xe51da9300b4e5B7a412d58e8290914207dAF7fcD) |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://megaeth.blockscout.com/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://megaeth.blockscout.com/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://megaeth.blockscout.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositOFT       | [0x82F50AD2ed98980128CAe8C8dD16592d34946994](https://megaeth.blockscout.com/address/0x82F50AD2ed98980128CAe8C8dD16592d34946994) |
+| CounterfactualDepositSpokePool | [0xbD9088069032fd8EE9b4630e558Fd222Ae75e8D0](https://megaeth.blockscout.com/address/0xbD9088069032fd8EE9b4630e558Fd222Ae75e8D0) |
+| MulticallHandler               | [0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4](https://megaeth.blockscout.com/address/0xFfc1285082deAB9bf0ECA5699e4930bb310aFbE4) |
+| SpokePool                      | [0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E](https://megaeth.blockscout.com/address/0x3Db06DA8F0a24A525f314eeC954fC5c6a973d40E) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://megaeth.blockscout.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SponsoredOFTSrcPeriphery       | [0x02D65fb01d3d88127dF19838902ba42c6239c0Fd](https://megaeth.blockscout.com/address/0x02D65fb01d3d88127dF19838902ba42c6239c0Fd) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://megaeth.blockscout.com/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## Base (8453)
 
