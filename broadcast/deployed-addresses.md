@@ -400,12 +400,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Zora (7777777)
 
-| Contract Name      | Address                                                                                                               |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://zorascan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
-| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://zorascan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://zorascan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name                  | Address                                                                                                               |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://zorascan.xyz/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://zorascan.xyz/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://zorascan.xyz/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositSpokePool | [0x27732b8765863D241336C34454B5Cdc215B2CE02](https://zorascan.xyz/address/0x27732b8765863D241336C34454B5Cdc215B2CE02) |
+| MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://zorascan.xyz/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                      | [0x13fDac9F9b4777705db45291bbFF3c972c6d1d97](https://zorascan.xyz/address/0x13fDac9F9b4777705db45291bbFF3c972c6d1d97) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://zorascan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://zorascan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://zorascan.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## Solana (34268394551451)
 
