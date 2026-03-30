@@ -19,9 +19,9 @@ interface BridgeHubInterface {
     }
 
     /**
-     * @notice the mailbox is called directly after the sharedBridge received the deposit.
+     * @notice the mailbox is called directly after the asset router received the deposit.
      * This assumes that either ether is the base token or the msg.sender has approved mintValue allowance for the
-     * sharedBridge. This means this is not ideal for contract calls, as the contract would have to handle token
+     * asset router. This means this is not ideal for contract calls, as the contract would have to handle token
      * allowance of the base Token.
      * @param _request the direct request.
      */
@@ -42,9 +42,9 @@ interface BridgeHubInterface {
     }
 
     /**
-     * @notice After depositing funds to the sharedBridge, the secondBridge is called to return the actual L2 message
+     * @notice After depositing funds to the asset router, the secondBridge is called to return the actual L2 message
      * which is sent to the Mailbox. This assumes that either ether is the base token or the msg.sender has approved
-     * the sharedBridge with the mintValue, and also the necessary approvals are given for the second bridge. The logic
+     * the asset router with the mintValue, and also the necessary approvals are given for the second bridge. The logic
      * of this bridge is to allow easy depositing for bridges. Each contract that handles the users ERC20 tokens needs
      * approvals from the user, this contract allows the user to approve for each token only its respective bridge.
      * This function is great for contract calls to L2, the secondBridge can be any contract.
@@ -55,10 +55,10 @@ interface BridgeHubInterface {
     ) external payable returns (bytes32 canonicalTxHash);
 
     /**
-     * @notice Gets the shared bridge.
-     * @dev The shared bridge manages ERC20 tokens.
+     * @notice Gets the asset router.
+     * @dev The asset router manages ERC20 tokens.
      */
-    function sharedBridge() external view returns (address);
+    function assetRouter() external view returns (address);
 
     /**
      * @notice Gets the base token for a chain.

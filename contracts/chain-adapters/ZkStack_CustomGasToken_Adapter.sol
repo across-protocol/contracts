@@ -146,7 +146,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
      */
     function relayMessage(address target, bytes memory message) external payable override {
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
-        IERC20(CUSTOM_GAS_TOKEN).forceApprove(BRIDGE_HUB.sharedBridge(), txBaseCost);
+        IERC20(CUSTOM_GAS_TOKEN).forceApprove(BRIDGE_HUB.assetRouter(), txBaseCost);
 
         BRIDGE_HUB.requestL2TransactionDirect(
             BridgeHubInterface.L2TransactionRequestDirect({
@@ -180,7 +180,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         address to
     ) external payable override {
         // The Hub Pool will always bridge via CCTP to a ZkStack network if CCTP is enabled for that network. Therefore, we can short-circuit ZkStack-specific logic
-        // like pulling custom gas or getting the shared bridge address if CCTP is enabled and we are bridging USDC.
+        // like pulling custom gas or getting the asset router address if CCTP is enabled and we are bridging USDC.
         if (l1Token == address(usdcToken) && _isCCTPEnabled()) {
             _transferUsdc(to, amount);
             emit TokensRelayed(l1Token, l2Token, amount, to);
@@ -189,16 +189,16 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
         // A bypass proxy seems to no longer be needed to avoid deposit limits. The tracking of these limits seems to be deprecated.
         // See: https://github.com/matter-labs/era-contracts/blob/bce4b2d0f34bd87f1aaadd291772935afb1c3bd6/l1-contracts/contracts/bridge/L1ERC20Bridge.sol#L54-L55
         uint256 txBaseCost = _pullCustomGas(L2_GAS_LIMIT);
-        address sharedBridge = BRIDGE_HUB.sharedBridge();
+        address assetRouter = BRIDGE_HUB.assetRouter();
 
         bytes32 txHash;
         if (l1Token == address(L1_WETH)) {
             // If the l1Token is WETH then unwrap it to ETH then send the ETH to the standard bridge along with the base
             // cost of custom gas tokens.
             L1_WETH.withdraw(amount);
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
-            // Note: When bridging ETH with `L2TransactionRequestTwoBridgesOuter`, the second bridge must be 0 for the shared bridge call to not revert.
-            // https://github.com/matter-labs/era-contracts/blob/aafee035db892689df3f7afe4b89fd6467a39313/l1-contracts/contracts/bridge/L1SharedBridge.sol#L328
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(assetRouter, txBaseCost);
+            // Note: When bridging ETH with `L2TransactionRequestTwoBridgesOuter`, the second bridge must be 0 for the asset router call to not revert.
+            // https://github.com/matter-labs/era-contracts/blob/aafee035db892689df3f7afe4b89fd6467a39313/l1-contracts/contracts/bridge/L1AssetRouter.sol#L328
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges{ value: amount }(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -207,14 +207,14 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: sharedBridge,
+                    secondBridgeAddress: assetRouter,
                     secondBridgeValue: amount,
                     secondBridgeCalldata: _secondBridgeCalldata(to, ETH_TOKEN_ADDRESS, 0)
                 })
             );
         } else if (l1Token == CUSTOM_GAS_TOKEN) {
             // The chain's custom gas token.
-            IERC20(l1Token).forceApprove(sharedBridge, txBaseCost + amount);
+            IERC20(l1Token).forceApprove(assetRouter, txBaseCost + amount);
             txHash = BRIDGE_HUB.requestL2TransactionDirect(
                 BridgeHubInterface.L2TransactionRequestDirect({
                     chainId: CHAIN_ID,
@@ -230,7 +230,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
             );
         } else if (l1Token == address(usdcToken)) {
             // Since we already checked if we are bridging USDC via CCTP, if this conditional is hit, then we must be bridging USDC via the `USDC_SHARED_BRIDGE`.
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(assetRouter, txBaseCost);
             IERC20(l1Token).forceApprove(USDC_SHARED_BRIDGE, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
@@ -247,8 +247,8 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
             );
         } else {
             // An standard bridged ERC20, separate from WETH and Circle Bridged/Native USDC.
-            IERC20(CUSTOM_GAS_TOKEN).forceApprove(sharedBridge, txBaseCost);
-            IERC20(l1Token).forceApprove(sharedBridge, amount);
+            IERC20(CUSTOM_GAS_TOKEN).forceApprove(assetRouter, txBaseCost);
+            IERC20(l1Token).forceApprove(assetRouter, amount);
             txHash = BRIDGE_HUB.requestL2TransactionTwoBridges(
                 BridgeHubInterface.L2TransactionRequestTwoBridgesOuter({
                     chainId: CHAIN_ID,
@@ -257,7 +257,7 @@ contract ZkStack_CustomGasToken_Adapter is AdapterInterface, CircleCCTPAdapter {
                     l2GasLimit: L2_GAS_LIMIT,
                     l2GasPerPubdataByteLimit: L1_GAS_TO_L2_GAS_PER_PUB_DATA_LIMIT,
                     refundRecipient: L2_REFUND_ADDRESS,
-                    secondBridgeAddress: sharedBridge,
+                    secondBridgeAddress: assetRouter,
                     secondBridgeValue: 0,
                     secondBridgeCalldata: _secondBridgeCalldata(to, l1Token, amount)
                 })

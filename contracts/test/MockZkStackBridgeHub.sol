@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import { BridgeHubInterface } from "../interfaces/ZkStackBridgeHub.sol";
 
 contract MockBridgeHub is BridgeHubInterface {
-    address public immutable sharedBridge;
+    address public immutable assetRouter;
 
-    constructor(address _sharedBridge) {
-        sharedBridge = _sharedBridge;
+    constructor(address _assetRouter) {
+        assetRouter = _assetRouter;
     }
 
     mapping(uint256 => address) baseTokens;
