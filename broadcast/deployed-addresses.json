@@ -939,10 +939,35 @@
           "block_number": 7883076,
           "transaction_hash": "0x6e3c236c3989936b325dc5482cc41e2bc7466c4245f704616e3ce461fb91edb8"
         },
+        "AdminWithdrawManager": {
+          "address": "0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E",
+          "block_number": 12128486,
+          "transaction_hash": "0x3e8b7d68ff801351be74def9682b669379293c5d61ea4941b35ff3a6008c462f"
+        },
+        "CounterfactualDeposit": {
+          "address": "0x116e1f29138B0a6417189fFdf4a17de223Ae27C7",
+          "block_number": 12127678,
+          "transaction_hash": "0x1d0532543cc02aa234b1d3371f66002ac3446aedcdd4eebe19c5f6208338fb31"
+        },
+        "CounterfactualDepositFactory": {
+          "address": "0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772",
+          "block_number": 12127873,
+          "transaction_hash": "0x3492309d6f3e89b9701e631a25b61ff9f158d7d43676007a3140fd3dd37a2c5d"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "0x38e34093eA39d8a9174F8bB7b107de45ab8bf658",
+          "block_number": 12128352,
+          "transaction_hash": "0x62527e5a3a63886124a08ae2efd9765d91e88ce23b017fa4b0f0ee0bf13f4521"
+        },
         "SP1Helios": {
           "address": "0x2BC84A3777469f67e040DAb9d00512a5D5258f39",
           "block_number": 5673252,
           "transaction_hash": "0xb499f362e8b95a9ea011aa984a94e46394bf9c23e51643198e9b3c280b805f81"
+        },
+        "WithdrawImplementation": {
+          "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
+          "block_number": 12128162,
+          "transaction_hash": "0xd9daa273f515d921c5ea2cdeb20cfc3fe38f2d81ce74efb6a14148e6c36ed10f"
         }
       }
     },

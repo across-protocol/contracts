@@ -249,12 +249,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Tempo (4217)
 
-| Contract Name      | Address                                                                                                                            |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90](https://explore.mainnet.tempo.xyz/address/0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90) |
-| SP1Helios          | [0x2BC84A3777469f67e040DAb9d00512a5D5258f39](https://explore.mainnet.tempo.xyz/address/0x2BC84A3777469f67e040DAb9d00512a5D5258f39) |
-| SpokePool          | [0x2d4710F04Da90184255782d3715224A6C776955D](https://explore.mainnet.tempo.xyz/address/0x2d4710F04Da90184255782d3715224A6C776955D) |
-| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://explore.mainnet.tempo.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| Contract Name                  | Address                                                                                                                            |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://explore.mainnet.tempo.xyz/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://explore.mainnet.tempo.xyz/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://explore.mainnet.tempo.xyz/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositSpokePool | [0x38e34093eA39d8a9174F8bB7b107de45ab8bf658](https://explore.mainnet.tempo.xyz/address/0x38e34093eA39d8a9174F8bB7b107de45ab8bf658) |
+| MulticallHandler               | [0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90](https://explore.mainnet.tempo.xyz/address/0x7D6ADCbB51Ea70C134d7B0B96aA9AF50FE504D90) |
+| SP1Helios                      | [0x2BC84A3777469f67e040DAb9d00512a5D5258f39](https://explore.mainnet.tempo.xyz/address/0x2BC84A3777469f67e040DAb9d00512a5D5258f39) |
+| SpokePool                      | [0x2d4710F04Da90184255782d3715224A6C776955D](https://explore.mainnet.tempo.xyz/address/0x2d4710F04Da90184255782d3715224A6C776955D) |
+| SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://explore.mainnet.tempo.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://explore.mainnet.tempo.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## MegaETH (4326)
 
