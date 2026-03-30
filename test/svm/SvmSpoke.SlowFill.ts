@@ -11,7 +11,7 @@ import {
 } from "@solana/spl-token";
 import { PublicKey, Keypair, Transaction, sendAndConfirmTransaction, ComputeBudgetProgram } from "@solana/web3.js";
 import { common } from "./SvmSpoke.common";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { MerkleTree } from "../../utils/MerkleTree";
 import { SlowFillLeaf } from "../../src/types/svm";
 import {
   calculateRelayHashUint8Array,

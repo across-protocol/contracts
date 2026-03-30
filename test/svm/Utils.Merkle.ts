@@ -2,7 +2,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Test } from "../../target/types/test";
 import { assert } from "chai";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { MerkleTree } from "../../utils/MerkleTree";
 import { ethers } from "ethers";
 import { BigNumberish } from "ethers";
 import { common } from "./SvmSpoke.common";
