@@ -53,6 +53,8 @@
     "@coral-xyz/anchor": "^0.31.1",
     "@eth-optimism/contracts": "^0.5.40",
     "@ethersproject/bignumber": "5.7.0",
+    "@ethersproject/bytes": "5.7.0",
+    "@ethersproject/keccak256": "5.7.0",
     "@openzeppelin/contracts": "5.5.0",
     "@openzeppelin/contracts-upgradeable": "5.5.0",
     "@openzeppelin/contracts-upgradeable-v4": "npm:@openzeppelin/contracts-upgradeable@4.9.6",
