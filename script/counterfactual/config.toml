@@ -40,6 +40,12 @@ endpoint_url = "${NODE_URL_232}"
 signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
 ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
 
+[324]
+endpoint_url = "${NODE_URL_324}"
+[324.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
 [480]
 endpoint_url = "${NODE_URL_480}"
 [480.address]

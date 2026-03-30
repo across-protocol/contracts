@@ -31,11 +31,13 @@ out
 out-local
 out-tron
 out-counterfactual
+out-counterfactual-zksync
 zkout
 cache-foundry
 cache-foundry-local
 cache-foundry-tron
 cache-foundry-counterfactual
+cache-foundry-counterfactual-zksync
 
 
 # Upgradeability files

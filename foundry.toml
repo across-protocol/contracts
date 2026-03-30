@@ -27,6 +27,22 @@ fallback_oz = true
 mode = '3'
 zksolc = "1.5.15"
 
+# Counterfactual + ZkSync profile. For deploying counterfactual contracts to ZkStack chains (e.g. Lens).
+# Combines zksolc compiler with bytecode_hash = "none" for deterministic CREATE2 addresses.
+# Run with `FOUNDRY_PROFILE=counterfactual-zksync yarn forge-script-zksync ...`
+[profile.counterfactual-zksync]
+src = "contracts/periphery/counterfactual"
+script = "script/counterfactual"
+cache_path = "cache-foundry-counterfactual-zksync"
+out = "out-counterfactual-zksync"
+bytecode_hash = "none"
+
+[profile.counterfactual-zksync.zksync]
+compile = true
+fallback_oz = true
+mode = '3'
+zksolc = "1.5.15"
+
 [profile.mintburn]
 # Mint/burn contracts need to be compiled with 300 runs to avoide going over contract size limit
 optimizer_runs = 300

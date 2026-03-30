@@ -160,12 +160,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Lens (232)
 
-| Contract Name      | Address                                                                                                                    |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x1Ed0D59019a52870337b51DEe8190486a8663037](https://explorer.lens.xyz/address/0x1Ed0D59019a52870337b51DEe8190486a8663037) |
-| SpokePool          | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
-| SpokePoolPeriphery | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.lens.xyz/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.lens.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name                  | Address                                                                                                                    |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://explorer.lens.xyz/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://explorer.lens.xyz/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://explorer.lens.xyz/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositSpokePool | [0xA8193CD0B7d0e9266A764df44A757DA120ef6A36](https://explorer.lens.xyz/address/0xA8193CD0B7d0e9266A764df44A757DA120ef6A36) |
+| MulticallHandler               | [0x1Ed0D59019a52870337b51DEe8190486a8663037](https://explorer.lens.xyz/address/0x1Ed0D59019a52870337b51DEe8190486a8663037) |
+| SpokePool                      | [0xb234cA484866c811d0e6D3318866F583781ED045](https://explorer.lens.xyz/address/0xb234cA484866c811d0e6D3318866F583781ED045) |
+| SpokePoolPeriphery             | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.lens.xyz/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.lens.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://explorer.lens.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## Boba (288)
 
@@ -175,12 +180,17 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## zkSync (324)
 
-| Contract Name      | Address                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x68d3806E57148D6c6793C78EbDDbc272fE605dbf](https://explorer.zksync.io/address/0x68d3806E57148D6c6793C78EbDDbc272fE605dbf) |
-| SpokePool          | [0xE0B015E54d54fc84a6cB9B666099c46adE9335FF](https://explorer.zksync.io/address/0xE0B015E54d54fc84a6cB9B666099c46adE9335FF) |
-| SpokePoolPeriphery | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.zksync.io/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
-| SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.zksync.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| Contract Name                  | Address                                                                                                                     |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager           | [0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E](https://explorer.zksync.io/address/0xe7de86ECD99918384FcbA79EaeF23eFAAF10e43E) |
+| CounterfactualDeposit          | [0x116e1f29138B0a6417189fFdf4a17de223Ae27C7](https://explorer.zksync.io/address/0x116e1f29138B0a6417189fFdf4a17de223Ae27C7) |
+| CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://explorer.zksync.io/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
+| CounterfactualDepositSpokePool | [0x54D7e8C1dD6DC5875841559574fD9348a9E761d0](https://explorer.zksync.io/address/0x54D7e8C1dD6DC5875841559574fD9348a9E761d0) |
+| MulticallHandler               | [0x68d3806E57148D6c6793C78EbDDbc272fE605dbf](https://explorer.zksync.io/address/0x68d3806E57148D6c6793C78EbDDbc272fE605dbf) |
+| SpokePool                      | [0xE0B015E54d54fc84a6cB9B666099c46adE9335FF](https://explorer.zksync.io/address/0xE0B015E54d54fc84a6cB9B666099c46adE9335FF) |
+| SpokePoolPeriphery             | [0x5a148a9260c1f670429361c34d40b477280F01a9](https://explorer.zksync.io/address/0x5a148a9260c1f670429361c34d40b477280F01a9) |
+| SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://explorer.zksync.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://explorer.zksync.io/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## World Chain (480)
 
