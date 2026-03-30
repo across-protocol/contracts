@@ -1,8 +1,11 @@
 // Inlined from @uma/common MerkleTree. Based on the Uniswap merkle-distributor implementation:
 // https://github.com/Uniswap/merkle-distributor/blob/master/src/merkle-tree.ts
-import { bufferToHex, keccak256 } from "ethereumjs-util";
+import { ethers } from "ethers";
 
 export const EMPTY_MERKLE_ROOT = "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+const bufferToHex = (buf: Buffer): string => ethers.utils.hexlify(buf);
+const keccak256 = (buf: Buffer): Buffer => Buffer.from(ethers.utils.keccak256(buf).slice(2), "hex");
 
 export class MerkleTree<T> {
   private readonly elements: Buffer[];
