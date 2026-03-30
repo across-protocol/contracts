@@ -5,4 +5,4 @@ pragma solidity ^0.8.0;
 // and must be in a separate file from counterfactual contracts (OZ v4) to avoid name collisions.
 import "../sp1-helios/SP1Helios.sol";
 import "../sp1-helios/SP1AutoVerifier.sol";
-import "../Universal_SpokePool.sol";
+import "../spoke-pools/Universal_SpokePool.sol";
