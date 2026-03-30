@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
-import "../Ovm_SpokePool.sol";
+import "../spoke-pools/Ovm_SpokePool.sol";
 
 /**
  * @notice Mock Optimism Spoke pool allowing deployer to override constructor params.

@@ -213,7 +213,7 @@ describe("sponsored_cctp_src_periphery.deposit", () => {
       number,
       number,
       number,
-      string
+      string,
     ];
 
     return {
