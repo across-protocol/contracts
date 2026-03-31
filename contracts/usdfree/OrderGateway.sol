@@ -41,50 +41,46 @@ interface IExecutor {
     function execute(address orderOwner, bytes calldata stepMessage, bytes calldata executorMessage) external payable;
 }
 
-// ── Order authorization ──────────────────────────────────────────────────────
-
-struct SpendingCap {
-    address token;
-    uint256 maxAmount;
-}
-
-struct Requirement {
-    uint8 typ;
-    bytes data;
-}
-
-struct OrderAuth {
-    SpendingCap[] caps;
-    Requirement[] requirements;
-    uint256 deadline;
-}
-
-// ── Requirement types ────────────────────────────────────────────────────────
-
-uint8 constant REQ_MIN_BALANCE = 0;
-uint8 constant REQ_MIN_RECEIVED = 1;
-uint8 constant REQ_MAX_OWNER_SPENT = 2;
-
 // ── Commands ─────────────────────────────────────────────────────────────────
-// Encoded in submitterInputs.step.message as abi.encode(bytes commands, bytes[] inputs).
-// The orderOwner commits to the command sequence by signing over the step (via order.root).
+// Command byte layout:
+//   Bit 7 (0x80): FLAG_ALLOW_REVERT — failure doesn't revert the tx
+//   Bit 6 (0x40): FLAG_SUBMITTER_INPUT — input comes from submitter (executorMessage), not owner (step.message)
+//   Bits 0-5:     command type (0x00–0x3f)
+//
+// step.message encodes the owner's plan:
+//   abi.encode(bytes executorStepMessage, bytes commands, bytes[] ownerInputs)
+//
+// executorMessage encodes the submitter's contributions:
+//   abi.encode(bytes executorDynamicMessage, bytes[] submitterInputs)
+//
+// The owner defines the full command sequence and marks which inputs the submitter provides.
+// This is the owner's auth — committed to via the Merkle root they sign over.
 
 library Commands {
     bytes1 constant FLAG_ALLOW_REVERT = 0x80;
-    bytes1 constant COMMAND_TYPE_MASK = 0x7f;
+    bytes1 constant FLAG_SUBMITTER_INPUT = 0x40;
+    bytes1 constant COMMAND_TYPE_MASK = 0x3f;
 
     uint8 constant PULL_ERC20 = 0x00;
     uint8 constant PULL_3009 = 0x01;
     uint8 constant PULL_PERMIT2_WITNESS = 0x02;
     uint8 constant CLAIM_NATIVE = 0x03;
 
-    // EXECUTE input: (uint256 value, bytes executorStepMessage)
-    // Calls step.executor.execute(orderOwner, executorStepMessage, submitterInputs.executorMessage)
+    // EXECUTE input: (uint256 value)
+    // Calls step.executor.execute(orderOwner, executorStepMessage, executorDynamicMessage)
+    // Input: (uint256 value)
     uint8 constant EXECUTE = 0x10;
+
+    // Delegatecalls into an adapter contract (runs adapter code in gateway context).
+    // Input: (address adapter, bytes data)
+    // The adapter can directly approve/transfer tokens from the gateway's balance.
+    // Adding a new bridge = deploying a new adapter. No gateway changes needed.
+    uint8 constant CALL_ADAPTER = 0x11;
 
     uint8 constant TRANSFER = 0x20;
     uint8 constant SWEEP = 0x21;
 
+    // Non-reverting balance assertion (use without FLAG_ALLOW_REVERT for hard requirements)
     uint8 constant BALANCE_CHECK = 0x30;
 }
 
@@ -102,13 +98,8 @@ contract OrderGateway {
     error InvalidStepProof();
     error InvalidWitness();
     error OrderAuthRequired();
-    error OrderAuthExpired();
     error AlreadyExecuted();
-    error SpendingCapExceeded(address token);
-    error NoCapForToken(address token);
     error NotActiveExecutor();
-    error RequirementFailed(uint256 index);
-    error InvalidRequirementType(uint8 typ);
     error InvalidFundingType(uint8 typ);
 
     // ── Events ──
@@ -133,7 +124,6 @@ contract OrderGateway {
     address private _activeExecutor;
     address private _orderOwner;
     bytes32 private _orderId;
-    bytes32 private _authWitness;
     mapping(bytes32 orderId => bool) public usedNonces;
 
     modifier nonReentrant() {
@@ -149,21 +139,14 @@ contract OrderGateway {
     }
 
     // ── Entry point ─────────────────────────────────────────────────────────
-    // Commands and inputs are encoded in submitterInputs.step.message:
-    //   step.message = abi.encode(bytes commands, bytes[] inputs)
-    // The orderOwner commits to the full command sequence via the Merkle root.
 
     function submit(
         Order calldata order,
-        OrderAuth calldata auth,
         Funding calldata orderOwnerFunding,
         SubmitterInputs calldata submitterInputs
     ) external payable nonReentrant {
-        if (block.timestamp > auth.deadline) revert OrderAuthExpired();
-
         _orderId = USDFreeIdLib.orderId(DOMAIN_HASH, order);
         _orderOwner = order.orderOwner;
-        _authWitness = _computeAuthWitness(_orderId, auth);
 
         if (order.nonce != bytes32(0)) {
             if (usedNonces[_orderId]) revert NonceAlreadyUsed();
@@ -176,25 +159,12 @@ contract OrderGateway {
         if (!_verifyProof(submitterInputs.proof, order.root, _stepLeaf(submitterInputs.step)))
             revert InvalidStepProof();
 
-        // ── Process funding ──
-        uint256[] memory spent = new uint256[](auth.caps.length);
-        if (orderOwnerFunding.funding.length > 0) {
-            _processFunding(orderOwnerFunding, true, auth.caps, spent, selfSubmit);
-        }
-        if (submitterInputs.funding.funding.length > 0) {
-            _processFunding(submitterInputs.funding, false, auth.caps, spent, selfSubmit);
-        }
+        // ── Process pre-authorized funding ──
+        _processFunding(orderOwnerFunding, true);
+        _processFunding(submitterInputs.funding, false);
 
-        uint256[] memory snapshots = _snapshotForRequirements(auth.requirements, order.orderOwner);
-
-        // ── Decode and execute commands from step.message ──
-        (bytes memory commands, bytes[] memory inputs) = abi.decode(submitterInputs.step.message, (bytes, bytes[]));
-        if (inputs.length != commands.length) revert LengthMismatch();
-        _executeCommands(submitterInputs, auth.caps, selfSubmit, spent, commands, inputs);
-
-        if (auth.requirements.length > 0) {
-            _enforceRequirements(auth.requirements, snapshots, order.orderOwner);
-        }
+        // ── Decode and execute commands ──
+        _executeFromStep(submitterInputs);
 
         bytes32 stepId_ = USDFreeIdLib.stepId(_orderId, submitterInputs.step);
         emit OrderSubmitted(
@@ -208,30 +178,51 @@ contract OrderGateway {
         _nativeUsed = 0;
         _orderId = bytes32(0);
         _orderOwner = address(0);
-        _authWitness = bytes32(0);
     }
 
-    // ── Auth witness ────────────────────────────────────────────────────────
+    // ── Command execution ───────────────────────────────────────────────────
+    // Decodes the owner's plan from step.message and the submitter's contributions from executorMessage.
+    // Each command pulls its input from ownerInputs or submitterInputs based on FLAG_SUBMITTER_INPUT.
 
-    function _computeAuthWitness(bytes32 orderId_, OrderAuth calldata auth) internal pure returns (bytes32) {
-        return
-            keccak256(abi.encode(orderId_, _hashCaps(auth.caps), _hashRequirements(auth.requirements), auth.deadline));
-    }
+    function _executeFromStep(SubmitterInputs calldata si) internal {
+        // Owner's plan: executor static message + command sequence + owner-provided inputs
+        (bytes memory executorStepMsg, bytes memory commands, bytes[] memory ownerInputs) = abi.decode(
+            si.step.message,
+            (bytes, bytes, bytes[])
+        );
 
-    function _hashCaps(SpendingCap[] calldata caps) internal pure returns (bytes32) {
-        bytes32[] memory h = new bytes32[](caps.length);
-        for (uint256 i; i < caps.length; ++i) {
-            h[i] = keccak256(abi.encode(caps[i].token, caps[i].maxAmount));
+        // Submitter's contributions: executor dynamic message + submitter-provided inputs
+        (bytes memory executorDynMsg, bytes[] memory subInputs) = abi.decode(si.executorMessage, (bytes, bytes[]));
+
+        uint256 ownerIdx;
+        uint256 subIdx;
+        bool executed;
+
+        for (uint256 i; i < commands.length; ++i) {
+            bytes1 cmd = commands[i];
+            uint8 op = uint8(cmd & Commands.COMMAND_TYPE_MASK);
+
+            // Select input source based on FLAG_SUBMITTER_INPUT
+            bytes memory input;
+            if (cmd & Commands.FLAG_SUBMITTER_INPUT != 0) {
+                input = subInputs[subIdx++];
+            } else {
+                input = ownerInputs[ownerIdx++];
+            }
+
+            bool ok;
+            bytes memory out;
+
+            if (op == Commands.EXECUTE) {
+                if (executed) revert AlreadyExecuted();
+                (ok, out) = _executeStep(si.step, executorStepMsg, executorDynMsg, input);
+                executed = true;
+            } else {
+                (ok, out) = _dispatch(op, input);
+            }
+
+            if (!ok && cmd & Commands.FLAG_ALLOW_REVERT == 0) revert CommandFailed(i, out);
         }
-        return keccak256(abi.encodePacked(h));
-    }
-
-    function _hashRequirements(Requirement[] calldata reqs) internal pure returns (bytes32) {
-        bytes32[] memory h = new bytes32[](reqs.length);
-        for (uint256 i; i < reqs.length; ++i) {
-            h[i] = keccak256(abi.encode(reqs[i].typ, keccak256(reqs[i].data)));
-        }
-        return keccak256(abi.encodePacked(h));
     }
 
     // ── Executor callbacks ──────────────────────────────────────────────────
@@ -243,54 +234,6 @@ contract OrderGateway {
 
     function availableBalance(address token) external view returns (uint256) {
         return _balanceOf(token, address(this));
-    }
-
-    // ── Requirements ────────────────────────────────────────────────────────
-
-    function _snapshotForRequirements(
-        Requirement[] calldata reqs,
-        address orderOwner
-    ) internal view returns (uint256[] memory snapshots) {
-        snapshots = new uint256[](reqs.length);
-        for (uint256 i; i < reqs.length; ++i) {
-            uint8 typ = reqs[i].typ;
-            if (typ == REQ_MIN_RECEIVED) {
-                (address token, address account, ) = abi.decode(reqs[i].data, (address, address, uint256));
-                snapshots[i] = _balanceOf(token, account);
-            } else if (typ == REQ_MAX_OWNER_SPENT) {
-                (address token, ) = abi.decode(reqs[i].data, (address, uint256));
-                snapshots[i] = _balanceOf(token, orderOwner);
-            }
-        }
-    }
-
-    function _enforceRequirements(
-        Requirement[] calldata reqs,
-        uint256[] memory snapshots,
-        address orderOwner
-    ) internal view {
-        for (uint256 i; i < reqs.length; ++i) {
-            uint8 typ = reqs[i].typ;
-            if (typ == REQ_MIN_BALANCE) {
-                (address token, address account, uint256 minAmount) = abi.decode(
-                    reqs[i].data,
-                    (address, address, uint256)
-                );
-                if (_balanceOf(token, account) < minAmount) revert RequirementFailed(i);
-            } else if (typ == REQ_MIN_RECEIVED) {
-                (address token, address account, uint256 minAmount) = abi.decode(
-                    reqs[i].data,
-                    (address, address, uint256)
-                );
-                if (_balanceOf(token, account) < snapshots[i] + minAmount) revert RequirementFailed(i);
-            } else if (typ == REQ_MAX_OWNER_SPENT) {
-                (address token, uint256 maxAmount) = abi.decode(reqs[i].data, (address, uint256));
-                uint256 currentBal = _balanceOf(token, orderOwner);
-                if (snapshots[i] > currentBal && snapshots[i] - currentBal > maxAmount) revert RequirementFailed(i);
-            } else {
-                revert InvalidRequirementType(typ);
-            }
-        }
     }
 
     // ── Step verification ───────────────────────────────────────────────────
@@ -309,19 +252,14 @@ contract OrderGateway {
     }
 
     // ── Funding processing ──────────────────────────────────────────────────
+    //   typ 0 (ERC20):           data = (address token, uint256 amount)
+    //   typ 1 (3009):            data = (address token, uint256 amount, uint256 validAfter, uint256 validBefore, uint8 v, bytes32 r, bytes32 s)
+    //   typ 2 (PERMIT2_WITNESS): data = (address token, uint256 amount, uint256 nonce, uint256 deadline, string witnessType, bytes sig)
 
-    function _processFunding(
-        Funding calldata funding,
-        bool isOwner,
-        SpendingCap[] calldata caps,
-        uint256[] memory spent,
-        bool selfSubmit
-    ) internal {
+    function _processFunding(Funding calldata funding, bool isOwner) internal {
         address from = isOwner ? _orderOwner : msg.sender;
         for (uint256 i; i < funding.funding.length; ++i) {
-            TypedData calldata item = funding.funding[i];
-            _processFundingItem(item, from);
-            if (isOwner && !selfSubmit) _trackFundingSpend(caps, spent, item);
+            _processFundingItem(funding.funding[i], from);
         }
     }
 
@@ -347,7 +285,7 @@ contract OrderGateway {
             amt,
             validAfter,
             validBefore,
-            _authWitness,
+            _orderId,
             v,
             r,
             s
@@ -361,89 +299,24 @@ contract OrderGateway {
             IPermit2.PermitTransferFrom(IPermit2.TokenPermissions(token, amt), nonce, deadline),
             IPermit2.SignatureTransferDetails(address(this), amt),
             from,
-            _authWitness,
+            _orderId,
             witnessType,
             sig
         );
-    }
-
-    function _trackFundingSpend(
-        SpendingCap[] calldata caps,
-        uint256[] memory spent,
-        TypedData calldata item
-    ) internal pure {
-        (address token, uint256 amt) = abi.decode(item.data, (address, uint256));
-        for (uint256 i; i < caps.length; ++i) {
-            if (caps[i].token == token) {
-                spent[i] += amt;
-                if (spent[i] > caps[i].maxAmount) revert SpendingCapExceeded(token);
-                return;
-            }
-        }
-        revert NoCapForToken(token);
-    }
-
-    // ── Command loop ────────────────────────────────────────────────────────
-
-    function _executeCommands(
-        SubmitterInputs calldata si,
-        SpendingCap[] calldata caps,
-        bool selfSubmit,
-        uint256[] memory spent,
-        bytes memory commands,
-        bytes[] memory inputs
-    ) internal {
-        bool executed;
-
-        for (uint256 i; i < commands.length; ++i) {
-            bytes1 cmd = commands[i];
-            uint8 op = uint8(cmd & Commands.COMMAND_TYPE_MASK);
-            bool ok;
-            bytes memory out;
-
-            if (op == Commands.EXECUTE) {
-                if (executed) revert AlreadyExecuted();
-                (ok, out) = _executeStep(si.step, si.executorMessage, inputs[i]);
-                executed = true;
-            } else {
-                (ok, out) = _dispatch(op, inputs[i]);
-                if (ok && !selfSubmit && op <= Commands.PULL_PERMIT2_WITNESS) {
-                    _trackOwnerSpend(caps, spent, inputs[i]);
-                }
-            }
-
-            if (!ok && cmd & Commands.FLAG_ALLOW_REVERT == 0) revert CommandFailed(i, out);
-        }
-    }
-
-    function _trackOwnerSpend(SpendingCap[] calldata caps, uint256[] memory spent, bytes memory input) internal pure {
-        (uint8 src, address token, uint256 amt) = abi.decode(input, (uint8, address, uint256));
-        if (src != 0) return;
-
-        for (uint256 i; i < caps.length; ++i) {
-            if (caps[i].token == token) {
-                spent[i] += amt;
-                if (spent[i] > caps[i].maxAmount) revert SpendingCapExceeded(token);
-                return;
-            }
-        }
-        revert NoCapForToken(token);
     }
 
     // ── Executor dispatch ───────────────────────────────────────────────────
 
     function _executeStep(
         Step calldata step,
-        bytes calldata executorMessage,
+        bytes memory executorStepMsg,
+        bytes memory executorDynMsg,
         bytes memory input
     ) internal returns (bool ok, bytes memory out) {
-        // input: (uint256 value, bytes executorStepMessage)
-        // executorStepMessage = static instructions from orderOwner for the executor
-        // executorMessage = dynamic data from submitter
-        (uint256 value, bytes memory executorStepMessage) = abi.decode(input, (uint256, bytes));
+        uint256 value = abi.decode(input, (uint256));
         _activeExecutor = step.executor;
         (ok, out) = step.executor.call{ value: value }(
-            abi.encodeCall(IExecutor.execute, (_orderOwner, executorStepMessage, executorMessage))
+            abi.encodeCall(IExecutor.execute, (_orderOwner, executorStepMsg, executorDynMsg))
         );
         _activeExecutor = address(0);
     }
@@ -469,7 +342,12 @@ contract OrderGateway {
                 revert InvalidCommand(op);
             }
         } else if (op < 0x20) {
-            revert InvalidCommand(op);
+            if (op == Commands.CALL_ADAPTER) {
+                (address adapter, bytes memory data) = abi.decode(input, (address, bytes));
+                (ok, out) = adapter.delegatecall(data);
+            } else {
+                revert InvalidCommand(op);
+            }
         } else if (op < 0x30) {
             if (op == Commands.TRANSFER) {
                 (address token, address to, uint256 amt) = abi.decode(input, (address, address, uint256));
@@ -512,7 +390,7 @@ contract OrderGateway {
             amt,
             validAfter,
             validBefore,
-            _authWitness,
+            _orderId,
             v,
             r,
             s
@@ -530,12 +408,12 @@ contract OrderGateway {
             string memory witnessType,
             bytes memory sig
         ) = abi.decode(input, (uint8, address, uint256, uint256, uint256, bytes32, string, bytes));
-        if (inputWitness != _authWitness) revert InvalidWitness();
+        if (inputWitness != _orderId) revert InvalidWitness();
         PERMIT2.permitWitnessTransferFrom(
             IPermit2.PermitTransferFrom(IPermit2.TokenPermissions(token, amt), nonce, deadline),
             IPermit2.SignatureTransferDetails(address(this), amt),
             _source(src),
-            _authWitness,
+            _orderId,
             witnessType,
             sig
         );
