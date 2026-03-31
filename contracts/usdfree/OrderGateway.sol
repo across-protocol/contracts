@@ -82,6 +82,11 @@ library Commands {
 
     // Non-reverting balance assertion (use without FLAG_ALLOW_REVERT for hard requirements)
     uint8 constant BALANCE_CHECK = 0x30;
+    // Record a balance for later delta comparison. Input: (uint8 slotId, address token, address account)
+    uint8 constant SNAPSHOT_BALANCE = 0x31;
+    // Check balance change since snapshot. Input: (uint8 slotId, address token, address account, int256 minDelta)
+    // Reverts-style like BALANCE_CHECK (non-reverting, use without FLAG_ALLOW_REVERT for hard requirements)
+    uint8 constant CHECK_DELTA = 0x32;
 }
 
 // ── OrderGateway ─────────────────────────────────────────────────────────────
@@ -125,6 +130,9 @@ contract OrderGateway {
     address private _orderOwner;
     bytes32 private _orderId;
     mapping(bytes32 orderId => bool) public usedNonces;
+    // Snapshots for delta-based requirements. slotId => balance at snapshot time.
+    // Cleared at end of submit. slotId lets owners track multiple tokens independently.
+    mapping(uint8 slotId => uint256) private _snapshots;
 
     modifier nonReentrant() {
         require(_locked == 1);
@@ -364,6 +372,17 @@ contract OrderGateway {
             if (op == Commands.BALANCE_CHECK) {
                 (address token, address account, uint256 minBal) = abi.decode(input, (address, address, uint256));
                 ok = _balanceOf(token, account) >= minBal;
+                if (!ok) out = abi.encodePacked(BalanceTooLow.selector);
+            } else if (op == Commands.SNAPSHOT_BALANCE) {
+                (uint8 slotId, address token, address account) = abi.decode(input, (uint8, address, address));
+                _snapshots[slotId] = _balanceOf(token, account);
+            } else if (op == Commands.CHECK_DELTA) {
+                (uint8 slotId, address token, address account, int256 minDelta) = abi.decode(
+                    input,
+                    (uint8, address, address, int256)
+                );
+                int256 delta = int256(_balanceOf(token, account)) - int256(_snapshots[slotId]);
+                ok = delta >= minDelta;
                 if (!ok) out = abi.encodePacked(BalanceTooLow.selector);
             } else {
                 revert InvalidCommand(op);
