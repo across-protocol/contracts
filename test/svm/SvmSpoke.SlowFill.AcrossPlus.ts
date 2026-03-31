@@ -18,7 +18,7 @@ import {
   Transaction,
   ComputeBudgetProgram,
 } from "@solana/web3.js";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { MerkleTree } from "../../utils/MerkleTree";
 import {
   calculateRelayHashUint8Array,
   MulticallHandlerCoder,
