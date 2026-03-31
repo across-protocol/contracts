@@ -7,7 +7,7 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { HubPoolTestBase, MockIdentifierWhitelist } from "../utils/HubPoolTestBase.sol";
 import { Mock_Adapter } from "../../../../contracts/chain-adapters/Mock_Adapter.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
-import { HubPool } from "../../../../contracts/HubPool.sol";
+import { HubPool } from "../../../../contracts/hub-pool/HubPool.sol";
 
 /**
  * @title HubPool_AdminTest

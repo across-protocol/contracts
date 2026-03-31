@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { AcrossConfigStore } from "../../../../contracts/AcrossConfigStore.sol";
+import { AcrossConfigStore } from "../../../../contracts/hub-pool/AcrossConfigStore.sol";
 
 /**
  * @title ConfigStore_Test

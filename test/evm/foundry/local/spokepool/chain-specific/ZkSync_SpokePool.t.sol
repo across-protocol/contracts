@@ -11,7 +11,11 @@ import {
     ZkBridgeLike,
     IL2ETH,
     IL2AssetRouter
+<<<<<<< HEAD
 } from "../../../../../../contracts/ZkSync_SpokePool.sol";
+=======
+} from "../../../../../../contracts/spoke-pools/ZkSync_SpokePool.sol";
+>>>>>>> f589c365c4bf4edf73ba5c57b15d0cc72d998d31
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Libraries

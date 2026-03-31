@@ -284,6 +284,68 @@ Why: Enables persistent "deposit addresses" that users can save, share, and reus
 
 For subsequent deposits, callers can call the clone directly or use `factory.execute()`. `deployAndExecute()` reverts if the clone already exists; `deployIfNeededAndExecute()` skips deployment if the clone is already deployed (checked via `code.length`), making it safe to call regardless of deployment state.
 
+## Deployment
+
+Deploys all 7 contracts via the [deterministic deployment proxy](https://github.com/Arachnid/deterministic-deployment-proxy) (`0x4e59b44847b379578588920cA78FbF26c0B4956C`), available on all EVM chains. CREATE2 addresses depend on `(factory, salt, initCode)` — contracts with identical initCode get the same address everywhere. No fresh EOA, nonce ordering, or nonce burning required. Already-deployed contracts are auto-skipped.
+
+### Contracts
+
+| Index | Contract                         | Same address across chains?               |
+| ----- | -------------------------------- | ----------------------------------------- |
+| 0     | `CounterfactualDeposit`          | Yes (no constructor args)                 |
+| 1     | `CounterfactualDepositFactory`   | Yes (no constructor args)                 |
+| 2     | `WithdrawImplementation`         | Yes (no constructor args)                 |
+| 3     | `CounterfactualDepositSpokePool` | No (chain-specific constructor args)      |
+| 4     | `CounterfactualDepositCCTP`      | No (chain-specific constructor args)      |
+| 5     | `CounterfactualDepositOFT`       | No (chain-specific constructor args)      |
+| 6     | `AdminWithdrawManager`           | Yes (same constructor args on all chains) |
+
+1. **Fund the deployer** on the target chain with enough ETH for gas.
+
+2. **Simulate**:
+
+   ```bash
+   source .env
+   forge script \
+     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+     $RPC_URL \
+     <spokePool> <signer> <wrappedNativeToken> \
+     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
+     <owner> <directWithdrawer> \
+     false \
+     --rpc-url $RPC_URL -vvvv
+   ```
+
+3. **Deploy** (set `broadcast` to `true` and add `--ffi`):
+
+   ```bash
+   forge script \
+     script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+     $RPC_URL \
+     <spokePool> <signer> <wrappedNativeToken> \
+     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
+     <owner> <directWithdrawer> \
+     true \
+     --rpc-url $RPC_URL --ffi -vvvv
+   ```
+
+### Skipping Contracts
+
+Set the `SKIP` env var with a comma-separated list of deployment indices:
+
+```bash
+SKIP=4,5 forge script \
+  script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
+  --sig "run(...)" ... true --rpc-url $RPC_URL --ffi -vvvv
+```
+
+### Important
+
+- Any funded address can deploy. No ordering constraints. Already-deployed contracts are auto-skipped.
+- Individual deploy scripts can still be run standalone.
+
 ## Security Model
 
 - **SponsoredCCTP/OFT Signer**: Trusted address that signs bridge quotes. Compromise allows bad quotes but fees are bounded by user-set `cctpMaxFeeBps`/`maxOftFeeBps`.

@@ -8,7 +8,7 @@ import { Universal_Adapter, HubPoolStore } from "../../../../contracts/chain-ada
 import { MockHubPool } from "../../../../contracts/test/MockHubPool.sol";
 import { HubPoolInterface } from "../../../../contracts/interfaces/HubPoolInterface.sol";
 import "../../../../contracts/test/MockCCTP.sol";
-import { AdapterStore, MessengerTypes } from "../../../../contracts/AdapterStore.sol";
+import { AdapterStore, MessengerTypes } from "../../../../contracts/hub-pool/AdapterStore.sol";
 import { IOFT, SendParam, MessagingFee } from "../../../../contracts/interfaces/IOFT.sol";
 import { MockOFTMessenger } from "../../../../contracts/test/MockOFTMessenger.sol";
 import { AddressToBytes32 } from "../../../../contracts/libraries/AddressConverters.sol";

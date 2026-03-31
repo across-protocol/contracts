@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 // Contracts under test
-import { Ethereum_SpokePool } from "../../../../../../contracts/Ethereum_SpokePool.sol";
+import { Ethereum_SpokePool } from "../../../../../../contracts/spoke-pools/Ethereum_SpokePool.sol";
 import { SpokePoolInterface } from "../../../../../../contracts/interfaces/SpokePoolInterface.sol";
 
 // Mocks
