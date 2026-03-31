@@ -21,20 +21,18 @@
  */
 
 import "dotenv/config";
-import * as fs from "fs";
 import * as path from "path";
+import { CHAIN_IDs } from "../../../utils";
+import { L1_ADDRESS_MAP } from "../../../src/consts";
 import { deployContract, encodeArgs, tronToEvmAddress } from "./deploy";
 
 const TRON_TESTNET_CHAIN_IDS = ["3448148188"];
 
-/** Read the HubPoolStore address from generated/constants.json */
 function getHubPoolStoreAddress(spokeChainId: string): string {
-  const hubChainId = TRON_TESTNET_CHAIN_IDS.includes(spokeChainId) ? "11155111" : "1";
-  const constantsPath = path.resolve(__dirname, "../../../generated/constants.json");
-  const constants = JSON.parse(fs.readFileSync(constantsPath, "utf-8"));
-  const address = constants.L1_ADDRESS_MAP?.[hubChainId]?.hubPoolStore;
+  const hubChainId = TRON_TESTNET_CHAIN_IDS.includes(spokeChainId) ? CHAIN_IDs.SEPOLIA : CHAIN_IDs.MAINNET;
+  const address = L1_ADDRESS_MAP[hubChainId]?.hubPoolStore;
   if (!address) {
-    console.log(`Error: hubPoolStore not found in constants.json for hub chain ${hubChainId}`);
+    console.log(`Error: hubPoolStore not found in L1_ADDRESS_MAP for hub chain ${hubChainId}`);
     process.exit(1);
   }
   return address;
