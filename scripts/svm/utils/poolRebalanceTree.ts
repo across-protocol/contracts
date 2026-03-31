@@ -1,4 +1,4 @@
-import { MerkleTree } from "@uma/common";
+import { MerkleTree } from "../../../utils/MerkleTree";
 import { BigNumber, ethers } from "ethers";
 
 export function constructSimpleRebalanceTree(l1TokenAddress: string, netSendAmount: BigNumber, chainId: BigNumber) {
