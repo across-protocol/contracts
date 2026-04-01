@@ -5,11 +5,7 @@ import { AnchorProvider, BN } from "@coral-xyz/anchor";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import {
-  calculateRelayEventHashUint8Array,
-  getSpokePoolProgram,
-  readProgramEvents,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+import { calculateRelayEventHashUint8Array, getSpokePoolProgram, readProgramEvents } from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

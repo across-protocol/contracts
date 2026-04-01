@@ -8,7 +8,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, getOrCreateAssociatedTok
 import { PublicKey } from "@solana/web3.js";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSpokePoolProgram, SOLANA_SPOKE_STATE_SEED } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { getSpokePoolProgram, SOLANA_SPOKE_STATE_SEED } from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

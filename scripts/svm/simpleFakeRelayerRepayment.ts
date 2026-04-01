@@ -31,8 +31,8 @@ import {
   intToU8Array32,
   loadExecuteRelayerRefundLeafParams,
   relayerRefundHashFn,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

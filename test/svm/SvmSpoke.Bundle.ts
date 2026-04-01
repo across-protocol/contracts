@@ -16,8 +16,8 @@ import {
   readEventsUntilFound,
   relayerRefundHashFn,
   sendTransactionWithLookupTable,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/svm";
 import { MerkleTree } from "../../utils";
 import { common } from "./SvmSpoke.common";
 import { buildRelayerRefundMerkleTree, randomBigInt, readEvents, readProgramEvents } from "./utils";

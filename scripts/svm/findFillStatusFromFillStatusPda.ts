@@ -4,9 +4,7 @@ import { AnchorProvider, BN, Program } from "@coral-xyz/anchor";
 import { address, createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { SvmSpokeIdl } from "@across-protocol/sdk/dist/cjs/src/svm";
-
-import { readFillEventFromFillStatusPda } from "@across-protocol/sdk/dist/cjs/src/svm/web3-v2/solanaProgramUtils";
+import { SvmSpokeIdl, readFillEventFromFillStatusPda } from "@across-protocol/sdk/svm";
 import { program } from "@coral-xyz/anchor/dist/cjs/native/system";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 

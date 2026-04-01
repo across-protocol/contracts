@@ -15,7 +15,7 @@ import { assert } from "chai";
 import * as crypto from "crypto";
 import { ethers } from "ethers";
 import { TokenMessengerMinterV2 } from "../../target/types/token_messenger_minter_v2";
-import { MessageTransmitterV2 } from "@across-protocol/sdk/dist/cjs/src/svm/assets/message_transmitter_v2";
+import { MessageTransmitterV2Anchor as MessageTransmitterV2 } from "@across-protocol/sdk/svm";
 import { program, provider, connection, initializeState, owner, createQuoteSigner } from "./SponsoredCctpSrc.common";
 import { SponsoredCCTPQuote, HookData, SponsoredCCTPQuoteSVM } from "./SponsoredCctpSrc.types";
 import {
@@ -23,7 +23,7 @@ import {
   sendTransactionWithExistingLookupTable,
   readEventsUntilFound,
   decodeMessageSentDataV2,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 import { requestAndConfirmAirdrop } from "./utils";
 
 describe("sponsored_cctp_src_periphery.deposit", () => {

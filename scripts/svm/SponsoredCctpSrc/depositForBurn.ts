@@ -18,7 +18,7 @@ import {
   sendTransactionWithExistingLookupTable,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 import { requireEnv } from "../utils/helpers";
 
 // Set up the provider and programs

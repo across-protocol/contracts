@@ -3,7 +3,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider, Program } from "@coral-xyz/anchor";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEvents, stringifyCpiEvent } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { readProgramEvents, stringifyCpiEvent } from "@across-protocol/sdk/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
 // Set up the provider

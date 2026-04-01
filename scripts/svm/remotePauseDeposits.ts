@@ -19,7 +19,7 @@ import {
   isSolanaDevnet,
   MAINNET_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
   SEPOLIA_CCTP_MESSAGE_TRANSMITTER_ADDRESS,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import { requireEnv } from "./utils/helpers";
 

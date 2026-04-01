@@ -12,12 +12,12 @@ import {
   setAuthority,
   TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/svm";
 import {
   loadExecuteRelayerRefundLeafParams,
   readEventsUntilFound,
   relayerRefundHashFn,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 
 const { provider, program, owner, initializeState, connection, chainId, assertSE } = common;
 

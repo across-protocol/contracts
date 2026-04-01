@@ -1,4 +1,4 @@
-import { evmAddressToPublicKey } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { evmAddressToPublicKey } from "@across-protocol/sdk/svm";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 const argv = yargs(hideBin(process.argv)).option("address", {

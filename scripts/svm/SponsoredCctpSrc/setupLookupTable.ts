@@ -20,7 +20,7 @@ import {
   isSolanaDevnet,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 
 // Set up the provider and programs
 const provider = AnchorProvider.env();

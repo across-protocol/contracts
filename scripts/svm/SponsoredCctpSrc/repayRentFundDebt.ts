@@ -4,7 +4,7 @@ import * as anchor from "@coral-xyz/anchor";
 import { AnchorProvider } from "@coral-xyz/anchor";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSponsoredCctpSrcPeripheryProgram, readProgramEvents } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { getSponsoredCctpSrcPeripheryProgram, readProgramEvents } from "@across-protocol/sdk/svm";
 import { PublicKey, Transaction } from "@solana/web3.js";
 
 // Set up the provider

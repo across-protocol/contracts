@@ -32,12 +32,7 @@ import {
   Transaction,
   TransactionInstruction,
 } from "@solana/web3.js";
-import {
-  createDefaultTransaction,
-  signAndSendTransaction,
-  SvmSpokeClient,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { FillRelayAsyncInput } from "@across-protocol/sdk/dist/cjs/src/svm/clients/SvmSpoke";
+import { createDefaultTransaction, signAndSendTransaction, SvmSpokeClient } from "@across-protocol/sdk/svm";
 import {
   AcrossPlusMessageCoder,
   calculateRelayHashUint8Array,
@@ -46,8 +41,8 @@ import {
   loadFillRelayParams,
   MulticallHandlerCoder,
   sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { FillDataParams, FillDataValues } from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
+import { FillDataParams, FillDataValues } from "@across-protocol/sdk/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient } from "./utils";
@@ -493,7 +488,7 @@ describe("svm_spoke.fill.across_plus", () => {
         decimals: mintDecimals,
       });
 
-      const fillRelayInput: FillRelayAsyncInput = {
+      const fillRelayInput: SvmSpokeClient.FillRelayAsyncInput = {
         ...formattedRelayData,
         ...formattedAccounts,
       };

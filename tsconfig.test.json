@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "es2020",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "include": ["./test", "./scripts", "./index.ts", "utils/utils.ts", "src/types"]
+}

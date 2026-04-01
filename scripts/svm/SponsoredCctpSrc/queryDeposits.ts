@@ -8,7 +8,7 @@ import {
   getSponsoredCctpSrcPeripheryProgram,
   publicKeyToEvmAddress,
   readProgramEvents,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

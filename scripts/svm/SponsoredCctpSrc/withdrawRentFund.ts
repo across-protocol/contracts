@@ -6,7 +6,7 @@ import { PublicKey, Transaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSponsoredCctpSrcPeripheryProgram } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { getSponsoredCctpSrcPeripheryProgram } from "@across-protocol/sdk/svm";
 
 // Set up the provider and program
 const provider = AnchorProvider.env();

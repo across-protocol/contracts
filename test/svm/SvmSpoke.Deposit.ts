@@ -32,12 +32,7 @@ import {
 } from "@solana/spl-token";
 import { Keypair, PublicKey, SystemProgram, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
-import {
-  SvmSpokeClient,
-  createDefaultTransaction,
-  signAndSendTransaction,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { DepositInput } from "@across-protocol/sdk/dist/cjs/src/svm/clients/SvmSpoke";
+import { SvmSpokeClient, createDefaultTransaction, signAndSendTransaction } from "@across-protocol/sdk/svm";
 import {
   getDepositNowPda,
   getDepositNowSeedHash,
@@ -47,8 +42,8 @@ import {
   readEventsUntilFound,
   u8Array32ToBigNumber,
   u8Array32ToInt,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { DepositData, DepositDataValues } from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
+import { DepositData, DepositDataValues } from "@across-protocol/sdk/svm";
 const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365;
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient } from "./utils";
@@ -853,7 +848,7 @@ describe("svm_spoke.deposit", () => {
         vault: address(vault.toString()),
       };
 
-      const depositInput: DepositInput = {
+      const depositInput: SvmSpokeClient.DepositInput = {
         ...formattedDepositData,
         ...formattedAccounts,
         eventAuthority,

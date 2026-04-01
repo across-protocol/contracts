@@ -5,8 +5,8 @@ import { Keypair, PublicKey, Signer } from "@solana/web3.js";
 import { assert } from "chai";
 import { randomBytes } from "crypto";
 import { ethers } from "ethers";
-import { evmAddressToPublicKey, intToU8Array32 } from "@across-protocol/sdk/dist/cjs/src/svm";
-import { DepositData } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { evmAddressToPublicKey, intToU8Array32 } from "@across-protocol/sdk/svm";
+import { DepositData } from "@across-protocol/sdk/svm";
 import { SvmSpoke } from "../../target/types/svm_spoke";
 
 const provider = anchor.AnchorProvider.env();

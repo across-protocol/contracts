@@ -29,7 +29,7 @@ import { PublicKey } from "@solana/web3.js";
 import { BigNumber, ethers } from "ethers";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { getSolanaChainId, SOLANA_USDC_DEVNET, SOLANA_USDC_MAINNET } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { getSolanaChainId, SOLANA_USDC_DEVNET, SOLANA_USDC_MAINNET } from "@across-protocol/sdk/svm";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import {
   constructEmptyPoolRebalanceTree,

@@ -38,14 +38,14 @@ import {
   SOLANA_SPOKE_STATE_SEED,
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 import { TOKEN_SYMBOLS_MAP } from "@across-protocol/constants";
 import { BigNumber, ethers } from "ethers";
 import {
   getMessageTransmitterProgram,
   getSpokePoolProgram,
   getTokenMessengerMinterProgram,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 import { CHAIN_IDs, getNodeUrl } from "../../utils";
 import { formatUsdc, getBondTokenContract, requireEnv } from "./utils/helpers";
 

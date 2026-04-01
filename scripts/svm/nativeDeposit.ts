@@ -30,7 +30,7 @@ import {
   intToU8Array32,
   SOLANA_SPOKE_STATE_SEED,
   u8Array32ToInt,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

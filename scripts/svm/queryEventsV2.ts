@@ -1,11 +1,11 @@
 // This script queries the events of the spoke pool and prints them in a human readable format.
 import { AnchorProvider } from "@coral-xyz/anchor";
 import { address, createSolanaRpc, createSolanaRpcSubscriptions } from "@solana/kit";
-import { stringifyCpiEvent } from "@across-protocol/sdk/dist/cjs/src/svm";
-import { SvmSpokeIdl } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { stringifyCpiEvent } from "@across-protocol/sdk/svm";
+import { SvmSpokeIdl } from "@across-protocol/sdk/svm";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { readProgramEvents } from "@across-protocol/sdk/dist/cjs/src/svm";
+import { readProgramEvents } from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

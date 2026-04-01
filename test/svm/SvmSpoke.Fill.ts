@@ -35,8 +35,7 @@ import {
   sendTransactionWithLookupTable,
   signAndSendTransaction,
   SvmSpokeClient,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { FillRelayAsyncInput } from "@across-protocol/sdk/dist/cjs/src/svm/clients/SvmSpoke";
+} from "@across-protocol/sdk/svm";
 import {
   calculateRelayHashUint8Array,
   hashNonEmptyMessage,
@@ -44,8 +43,8 @@ import {
   getFillRelayDelegatePda,
   readEventsUntilFound,
   sendTransactionWithLookupTable as sendTransactionWithLookupTableV1,
-} from "@across-protocol/sdk/dist/cjs/src/svm";
-import { FillDataValues, RelayData } from "@across-protocol/sdk/dist/cjs/src/svm";
+} from "@across-protocol/sdk/svm";
+import { FillDataValues, RelayData } from "@across-protocol/sdk/svm";
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient, testAcrossPlusMessage } from "./utils";
 const {
@@ -769,7 +768,7 @@ describe("svm_spoke.fill", () => {
         decimals: tokenDecimals,
       });
 
-      const fillRelayInput: FillRelayAsyncInput = {
+      const fillRelayInput: SvmSpokeClient.FillRelayAsyncInput = {
         ...formattedRelayData,
         ...formattedAccounts,
       };
@@ -874,7 +873,7 @@ describe("svm_spoke.fill", () => {
         decimals: tokenDecimals,
       });
 
-      const fillRelayInput: FillRelayAsyncInput = {
+      const fillRelayInput: SvmSpokeClient.FillRelayAsyncInput = {
         ...formattedRelayData,
         ...formattedAccounts,
       };
