@@ -151,7 +151,7 @@ contract ZkSync_SpokePoolTest is Test {
         );
 
         // Attempt upgrade from non-cross-domain admin should fail
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.upgradeTo(address(newImplementation));
 
         // Upgrade from cross domain alias should succeed
@@ -166,7 +166,7 @@ contract ZkSync_SpokePoolTest is Test {
         (, bytes32 root) = MerkleTreeUtils.buildRelayerRefundLeafAndRoot(spokePool.chainId(), l2Dai, AMOUNT_TO_RETURN);
 
         // Attempt from non-admin should fail
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.relayRootBundle(root, mockTreeRoot);
 
         // Should succeed from cross domain alias

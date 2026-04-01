@@ -141,12 +141,12 @@ contract Linea_SpokePoolTest is Test {
         );
 
         // Attempt upgrade from non-cross-domain admin should fail
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.upgradeTo(address(newImplementation));
 
         // Setting sender but calling from wrong address should also fail
         l2MessageService.setSender(owner);
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         vm.prank(owner);
         spokePool.upgradeTo(address(newImplementation));
 
@@ -190,7 +190,7 @@ contract Linea_SpokePoolTest is Test {
         );
 
         // Attempt from non-admin should fail
-        vm.expectRevert();
+        vm.expectRevert("ONLY_COUNTERPART_GATEWAY");
         spokePool.relayRootBundle(root, mockTreeRoot);
 
         // Should succeed from cross domain admin
@@ -217,7 +217,7 @@ contract Linea_SpokePoolTest is Test {
         l2MessageService.setMinimumFeeInWei(1);
 
         // Execute without fee should fail
-        vm.expectRevert();
+        vm.expectRevert("MESSAGE_FEE_MISMATCH");
         vm.prank(relayer);
         spokePool.executeRelayerRefundLeaf(0, leaf, MerkleTreeUtils.emptyProof());
     }

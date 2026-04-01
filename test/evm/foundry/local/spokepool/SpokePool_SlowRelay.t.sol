@@ -325,7 +325,7 @@ contract SpokePoolSlowRelayTest is Test {
         bytes memory functionCalldata = abi.encodeCall(spokePool.requestSlowFill, (relayData));
 
         vm.prank(depositor);
-        vm.expectRevert();
+        vm.expectRevert("ReentrancyGuard: reentrant call");
         spokePool.callback(functionCalldata);
     }
 
@@ -421,7 +421,7 @@ contract SpokePoolSlowRelayTest is Test {
         bytes memory functionCalldata = abi.encodeCall(spokePool.executeSlowRelayLeaf, (slowRelayLeaf, 0, proof));
 
         vm.prank(depositor);
-        vm.expectRevert();
+        vm.expectRevert("ReentrancyGuard: reentrant call");
         spokePool.callback(functionCalldata);
     }
 

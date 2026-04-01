@@ -42,6 +42,8 @@ contract Scroll_SpokePoolTest is Test {
     uint32 constant TEST_DEPOSIT_QUOTE_TIME_BUFFER = 1 hours;
     uint32 constant TEST_FILL_DEADLINE_BUFFER = 2 hours;
 
+    string constant NO_ADMIN_REVERT = "Sender must be admin";
+
     // ============ Contracts ============
 
     Scroll_SpokePool public spokePool;
@@ -135,7 +137,7 @@ contract Scroll_SpokePoolTest is Test {
 
         // Attempt upgrade from random address should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert(bytes(NO_ADMIN_REVERT));
         spokePool.upgradeTo(address(newImplementation));
 
         // Upgrade from cross domain admin (owner) should succeed
@@ -149,7 +151,7 @@ contract Scroll_SpokePoolTest is Test {
 
         // Attempt from non-admin should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert(bytes(NO_ADMIN_REVERT));
         spokePool.setL2GatewayRouter(IL2GatewayRouterExtended(rando));
 
         // Should succeed from cross domain admin
@@ -165,7 +167,7 @@ contract Scroll_SpokePoolTest is Test {
 
         // Attempt from non-admin should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert(bytes(NO_ADMIN_REVERT));
         spokePool.setL2ScrollMessenger(IScrollMessenger(rando));
 
         // Should succeed from cross domain admin
@@ -183,7 +185,7 @@ contract Scroll_SpokePoolTest is Test {
         );
 
         // Attempt from non-admin should fail
-        vm.expectRevert();
+        vm.expectRevert(bytes(NO_ADMIN_REVERT));
         spokePool.relayRootBundle(relayerRefundRoot, mockTreeRoot);
 
         // Should succeed from cross domain admin

@@ -703,11 +703,11 @@ contract Polygon_SpokePoolTest is Test, Constants {
         weth.transfer(address(polygonTokenBridger), 1 ether);
 
         // Cannot call retrieve on L2
-        vm.expectRevert();
+        vm.expectRevert("Cannot run method on this chain");
         polygonTokenBridger.retrieve(IERC20Upgradeable(address(weth)));
 
         // Cannot call callExit on L2
-        vm.expectRevert();
+        vm.expectRevert("Cannot run method on this chain");
         polygonTokenBridger.callExit(hex"");
     }
 
@@ -728,7 +728,7 @@ contract Polygon_SpokePoolTest is Test, Constants {
         dai.approve(address(l1Bridger), 1 ether);
 
         // Cannot call send on L1
-        vm.expectRevert();
+        vm.expectRevert("Cannot run method on this chain");
         vm.prank(owner);
         l1Bridger.send(PolygonIERC20Upgradeable(address(dai)), 1 ether);
     }

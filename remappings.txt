@@ -18,3 +18,4 @@ hardhat/=node_modules/hardhat/
 forge-std/=lib/forge-std/src/
 @sp1-contracts/=lib/sp1-contracts/contracts/
 murky/=lib/murky/src/
+@hyper-evm-lib/=lib/hyper-evm-lib/

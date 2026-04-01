@@ -95,7 +95,7 @@ contract Ethereum_SpokePoolTest is Test {
 
         // Attempt upgrade from non-owner should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("Ownable: caller is not the owner");
         spokePool.upgradeTo(address(newImplementation));
 
         // Upgrade from owner should succeed
@@ -108,7 +108,7 @@ contract Ethereum_SpokePoolTest is Test {
     function test_onlyOwnerCanSetCrossDomainAdmin() public {
         // Attempt from non-owner should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("Ownable: caller is not the owner");
         spokePool.setCrossDomainAdmin(rando);
 
         // Should succeed from owner
@@ -121,7 +121,7 @@ contract Ethereum_SpokePoolTest is Test {
     function test_onlyOwnerCanSetWithdrawalRecipient() public {
         // Attempt from non-owner should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("Ownable: caller is not the owner");
         spokePool.setWithdrawalRecipient(rando);
 
         // Should succeed from owner
@@ -134,7 +134,7 @@ contract Ethereum_SpokePoolTest is Test {
     function test_onlyOwnerCanRelayRootBundle() public {
         // Attempt from non-owner should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("Ownable: caller is not the owner");
         spokePool.relayRootBundle(mockTreeRoot, mockTreeRoot);
 
         // Should succeed from owner
@@ -153,7 +153,7 @@ contract Ethereum_SpokePoolTest is Test {
 
         // Attempt to delete from non-owner should fail
         vm.prank(rando);
-        vm.expectRevert();
+        vm.expectRevert("Ownable: caller is not the owner");
         spokePool.emergencyDeleteRootBundle(0);
 
         // Should succeed from owner

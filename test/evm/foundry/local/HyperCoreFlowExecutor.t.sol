@@ -4,8 +4,8 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
-import { BaseSimulatorTest } from "./external/hyper-evm-lib/test/BaseSimulatorTest.sol";
-import { PrecompileLib } from "./external/hyper-evm-lib/src/PrecompileLib.sol";
+import { BaseSimulatorTest } from "@hyper-evm-lib/test/BaseSimulatorTest.sol";
+import { PrecompileLib } from "@hyper-evm-lib/src/PrecompileLib.sol";
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 
 import { DonationBox } from "../../../../contracts/chain-adapters/DonationBox.sol";
@@ -105,7 +105,7 @@ contract HyperCoreFlowExecutorTest is BaseSimulatorTest {
 
         // Ensure bridge has enough liquidity so safety check passes
         address bridgeAddr = HyperCoreLib.toAssetBridgeAddress(CORE_INDEX);
-        hyperCore.forceSpot(bridgeAddr, CORE_INDEX, uint64(10_000_000e8)); // large buffer
+        hyperCore.forceSpotBalance(bridgeAddr, CORE_INDEX, uint64(10_000_000e8)); // large buffer
 
         // Handler must hold user funds that arrived via bridge
         deal(address(token), address(handler), amountIn, true);

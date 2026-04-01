@@ -420,7 +420,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
 
         vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
 
-        vm.expectRevert();
+        vm.expectRevert("SpokePool not initialized");
         vm.prank(dataWorker);
         fixture.hubPool.executeRootBundle(
             leaves[0].chainId,
@@ -444,7 +444,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
 
         vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
 
-        vm.expectRevert();
+        vm.expectRevert("Adapter not initialized");
         vm.prank(dataWorker);
         fixture.hubPool.executeRootBundle(
             leaves[0].chainId,
@@ -468,7 +468,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
 
         vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS + 1);
 
-        vm.expectRevert();
+        vm.expectRevert("Route not whitelisted");
         vm.prank(dataWorker);
         fixture.hubPool.executeRootBundle(
             leaves[0].chainId,
@@ -490,7 +490,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
         // Warp to 10 seconds before liveness ends
         vm.warp(block.timestamp + REFUND_PROPOSAL_LIVENESS - 10);
 
-        vm.expectRevert();
+        vm.expectRevert("Not passed liveness");
         vm.prank(dataWorker);
         fixture.hubPool.executeRootBundle(
             leaves[0].chainId,
@@ -518,7 +518,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
         HubPoolInterface.PoolRebalanceLeaf memory badLeaf = leaves[0];
         badLeaf.chainId = 13371;
 
-        vm.expectRevert();
+        vm.expectRevert("Bad Proof");
         vm.prank(dataWorker);
         fixture.hubPool.executeRootBundle(
             badLeaf.chainId,
@@ -542,7 +542,7 @@ contract HubPool_ExecuteRootBundleTest is HubPoolTestBase {
         _executeLeaf(leaves[0], _getMerkleProof(leaves, 0));
 
         // Second claim should fail
-        vm.expectRevert();
+        vm.expectRevert("Already claimed");
         vm.prank(dataWorker);
         fixture.hubPool.executeRootBundle(
             leaves[0].chainId,

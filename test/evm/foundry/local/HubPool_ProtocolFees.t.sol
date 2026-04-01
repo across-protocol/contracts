@@ -79,7 +79,7 @@ contract HubPool_ProtocolFeesTest is HubPoolTestBase {
 
     function test_OnlyOwnerCanSetProtocolFeeCapture() public {
         vm.prank(liquidityProvider);
-        vm.expectRevert();
+        vm.expectRevert("Ownable: caller is not the owner");
         fixture.hubPool.setProtocolFeeCapture(liquidityProvider, 0.1 ether);
     }
 
@@ -90,7 +90,7 @@ contract HubPool_ProtocolFeesTest is HubPoolTestBase {
         uint256 newPct = 0.1 ether;
 
         // Can't set to 0 address
-        vm.expectRevert();
+        vm.expectRevert("Bad protocolFeeCaptureAddress");
         fixture.hubPool.setProtocolFeeCapture(address(0), newPct);
 
         fixture.hubPool.setProtocolFeeCapture(liquidityProvider, newPct);
