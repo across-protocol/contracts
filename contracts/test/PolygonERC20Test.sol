@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../external/uma/core/contracts/common/implementation/ExpandedERC20.sol";
-import "../PolygonTokenBridger.sol";
+import "../spoke-pools/PolygonTokenBridger.sol";
 
 /**
  * @notice Simulated Polygon ERC20 for use in testing PolygonTokenBridger.

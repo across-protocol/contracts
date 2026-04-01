@@ -51,7 +51,7 @@ import {
   requireEnv,
 } from "./utils/helpers";
 
-import { MerkleTree } from "@uma/common";
+import { MerkleTree } from "../../utils/MerkleTree";
 import {
   CIRCLE_IRIS_API_URL_DEVNET,
   CIRCLE_IRIS_API_URL_MAINNET,
