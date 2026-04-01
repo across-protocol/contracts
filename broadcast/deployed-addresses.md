@@ -370,11 +370,13 @@ This file contains the latest deployed smart contract addresses from the broadca
 
 ## Base Sepolia (84532)
 
-| Contract Name      | Address                                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| MulticallHandler   | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| SpokePool          | [0x82B564983aE7274c86695917BBf8C99ECb6F0F8F](https://sepolia.basescan.org/address/0x82B564983aE7274c86695917BBf8C99ECb6F0F8F) |
-| SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://sepolia.basescan.org/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| Contract Name             | Address                                                                                                                       |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| DonationBox               | [0x956ce44fec719d713E7b5a0c42AF0CaFe9d1d96C](https://sepolia.basescan.org/address/0x956ce44fec719d713E7b5a0c42AF0CaFe9d1d96C) |
+| MulticallHandler          | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
+| SpokePool                 | [0x82B564983aE7274c86695917BBf8C99ECb6F0F8F](https://sepolia.basescan.org/address/0x82B564983aE7274c86695917BBf8C99ECb6F0F8F) |
+| SpokePoolPeriphery        | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://sepolia.basescan.org/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
+| SponsoredCCTPDstPeriphery | [0xA2cBA9cFcD2427C1201df51c19422E043c5bDe7a](https://sepolia.basescan.org/address/0xA2cBA9cFcD2427C1201df51c19422E043c5bDe7a) |
 
 ## Tatara (129399)
 

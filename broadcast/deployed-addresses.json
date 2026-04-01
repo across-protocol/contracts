@@ -1038,6 +1038,16 @@
           "address": "0x10D8b8DaA26d307489803e10477De69C0492B610",
           "block_number": 38490180,
           "transaction_hash": "0xe218c179f102dc03daa86d2fa3d925ad6d85c9f0c632de6f93733b481c221e2b"
+        },
+        "DonationBox": {
+          "address": "0x956ce44fec719d713E7b5a0c42AF0CaFe9d1d96C",
+          "block_number": 39648168,
+          "transaction_hash": "0x72833fd11b9fb6008a5988313176bc37c24d3ed469d6087db5f057341ce3f639"
+        },
+        "SponsoredCCTPDstPeriphery": {
+          "address": "0xA2cBA9cFcD2427C1201df51c19422E043c5bDe7a",
+          "block_number": 39649711,
+          "transaction_hash": "0x185dde4535aff9357ad180fdb2101c115dd54312289bca8364b709ccba915aa9"
         }
       }
     },

@@ -16,8 +16,8 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
         console.log("Deploying SponsoredCCTPDstPeriphery...");
         console.log("Chain ID:", block.chainid);
         require(
-            block.chainid == 999 || block.chainid == 1,
-            "Dst periphery must be deployed on HyperEVM (chain 999) or Ink (chain 57073)"
+            block.chainid == 999 || block.chainid == 1 || block.chainid == 84532,
+            "Dst periphery must be deployed on HyperEVM (chain 999), Mainnet (chain 1), or Base Sepolia (chain 84532)"
         );
 
         string memory deployerMnemonic = vm.envString("MNEMONIC");
