@@ -366,7 +366,8 @@
         },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
-          "transaction_hash": null
+          "block_number": 90078781,
+          "transaction_hash": "0x6a41b735854e874ff2610b6dfd7be678491c92a9faab3e56ed9933ff686e9770"
         }
       }
     },
