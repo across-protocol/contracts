@@ -3,6 +3,7 @@ pragma solidity ^0.8.30;
 
 import { Order, Step, Funding, TypedData, SubmitterInputs, USDFreeIdLib } from "./Interfaces.sol";
 import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 // ── Minimal external interfaces ──────────────────────────────────────────────
 
@@ -43,55 +44,68 @@ interface IExecutor {
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 // Command byte layout:
-//   Bit 7 (0x80): FLAG_ALLOW_REVERT — failure doesn't revert the tx
-//   Bit 6 (0x40): FLAG_SUBMITTER_INPUT — input comes from submitter (executorMessage), not owner (step.message)
-//   Bits 0-5:     command type (0x00–0x3f)
+//   Bits 6-7: input source
+//     00 = owner input only
+//     01 = submitter input only
+//     10 = both (merged as abi.encode(ownerInput, submitterInput))
+//     11 = reserved
+//   Bit 5 (0x20): FLAG_ALLOW_REVERT — failure doesn't revert the tx
+//   Bits 0-4:     command type (0x00–0x1f)
 //
 // step.message encodes the owner's plan:
 //   abi.encode(bytes executorStepMessage, bytes commands, bytes[] ownerInputs)
 //
 // executorMessage encodes the submitter's contributions:
 //   abi.encode(bytes executorDynamicMessage, bytes[] submitterInputs)
-//
-// The owner defines the full command sequence and marks which inputs the submitter provides.
-// This is the owner's auth — committed to via the Merkle root they sign over.
 
 library Commands {
-    bytes1 constant FLAG_ALLOW_REVERT = 0x80;
-    bytes1 constant FLAG_SUBMITTER_INPUT = 0x40;
-    bytes1 constant COMMAND_TYPE_MASK = 0x3f;
+    bytes1 constant INPUT_SOURCE_MASK = 0xC0;
+    bytes1 constant INPUT_OWNER = 0x00;
+    bytes1 constant INPUT_SUBMITTER = 0x40;
+    bytes1 constant INPUT_BOTH = 0x80;
+
+    bytes1 constant FLAG_ALLOW_REVERT = 0x20;
+    bytes1 constant COMMAND_TYPE_MASK = 0x1f;
 
     uint8 constant PULL_ERC20 = 0x00;
     uint8 constant PULL_3009 = 0x01;
     uint8 constant PULL_PERMIT2_WITNESS = 0x02;
     uint8 constant CLAIM_NATIVE = 0x03;
 
-    // EXECUTE input: (uint256 value)
     // Calls step.executor.execute(orderOwner, executorStepMessage, executorDynamicMessage)
     // Input: (uint256 value)
     uint8 constant EXECUTE = 0x10;
 
-    // Delegatecalls into an adapter contract (runs adapter code in gateway context).
+    // Delegatecalls into an approved adapter (runs in gateway context).
     // Input: (address adapter, bytes data)
-    // The adapter can directly approve/transfer tokens from the gateway's balance.
-    // Adding a new bridge = deploying a new adapter. No gateway changes needed.
+    // With INPUT_BOTH: owner provides (address adapter), submitter provides (bytes data).
     uint8 constant CALL_ADAPTER = 0x11;
 
-    uint8 constant TRANSFER = 0x20;
-    uint8 constant SWEEP = 0x21;
+    // Injects current token balances into calldata, then calls target.
+    // Input: (address target, bytes callData, uint256 value, Replacement[] replacements)
+    uint8 constant CALL_WITH_BALANCE = 0x12;
+
+    uint8 constant TRANSFER = 0x14;
+    uint8 constant SWEEP = 0x15;
 
     // Non-reverting balance assertion (use without FLAG_ALLOW_REVERT for hard requirements)
-    uint8 constant BALANCE_CHECK = 0x30;
+    uint8 constant BALANCE_CHECK = 0x18;
     // Record a balance for later delta comparison. Input: (uint8 slotId, address token, address account)
-    uint8 constant SNAPSHOT_BALANCE = 0x31;
+    uint8 constant SNAPSHOT_BALANCE = 0x19;
     // Check balance change since snapshot. Input: (uint8 slotId, address token, address account, int256 minDelta)
-    // Reverts-style like BALANCE_CHECK (non-reverting, use without FLAG_ALLOW_REVERT for hard requirements)
-    uint8 constant CHECK_DELTA = 0x32;
+    uint8 constant CHECK_DELTA = 0x1a;
+}
+
+// ── Structs ──────────────────────────────────────────────────────────────────
+
+struct Replacement {
+    address token; // address(0) for native ETH
+    uint256 offset; // byte offset in callData to inject balance
 }
 
 // ── OrderGateway ─────────────────────────────────────────────────────────────
 
-contract OrderGateway {
+contract OrderGateway is Ownable {
     // ── Errors ──
 
     error LengthMismatch();
@@ -102,10 +116,11 @@ contract OrderGateway {
     error NonceAlreadyUsed();
     error InvalidStepProof();
     error InvalidWitness();
-    error OrderAuthRequired();
     error AlreadyExecuted();
     error NotActiveExecutor();
     error InvalidFundingType(uint8 typ);
+    error AdapterNotApproved(address adapter);
+    error CalldataTooShort(uint256 callDataLength, uint256 offset);
 
     // ── Events ──
 
@@ -130,9 +145,8 @@ contract OrderGateway {
     address private _orderOwner;
     bytes32 private _orderId;
     mapping(bytes32 orderId => bool) public usedNonces;
-    // Snapshots for delta-based requirements. slotId => balance at snapshot time.
-    // Cleared at end of submit. slotId lets owners track multiple tokens independently.
     mapping(uint8 slotId => uint256) private _snapshots;
+    mapping(address adapter => bool) public approvedAdapters;
 
     modifier nonReentrant() {
         require(_locked == 1);
@@ -141,9 +155,15 @@ contract OrderGateway {
         _locked = 1;
     }
 
-    constructor(address permit2_, uint32 chainId) {
+    constructor(address permit2_, uint32 chainId, address owner_) Ownable(owner_) {
         PERMIT2 = IPermit2(permit2_);
         DOMAIN_HASH = USDFreeIdLib.domainHash(chainId, address(this));
+    }
+
+    // ── Admin ────────────────────────────────────────────────────────────────
+
+    function setAdapterApproval(address adapter, bool approved) external onlyOwner {
+        approvedAdapters[adapter] = approved;
     }
 
     // ── Entry point ─────────────────────────────────────────────────────────
@@ -160,9 +180,6 @@ contract OrderGateway {
             if (usedNonces[_orderId]) revert NonceAlreadyUsed();
             usedNonces[_orderId] = true;
         }
-
-        bool selfSubmit = order.orderOwner == msg.sender;
-        if (!selfSubmit && orderOwnerFunding.funding.length == 0) revert OrderAuthRequired();
 
         if (!_verifyProof(submitterInputs.proof, order.root, _stepLeaf(submitterInputs.step)))
             revert InvalidStepProof();
@@ -189,17 +206,13 @@ contract OrderGateway {
     }
 
     // ── Command execution ───────────────────────────────────────────────────
-    // Decodes the owner's plan from step.message and the submitter's contributions from executorMessage.
-    // Each command pulls its input from ownerInputs or submitterInputs based on FLAG_SUBMITTER_INPUT.
 
     function _executeFromStep(SubmitterInputs calldata si) internal {
-        // Owner's plan: executor static message + command sequence + owner-provided inputs
         (bytes memory executorStepMsg, bytes memory commands, bytes[] memory ownerInputs) = abi.decode(
             si.step.message,
             (bytes, bytes, bytes[])
         );
 
-        // Submitter's contributions: executor dynamic message + submitter-provided inputs
         (bytes memory executorDynMsg, bytes[] memory subInputs) = abi.decode(si.executorMessage, (bytes, bytes[]));
 
         uint256 ownerIdx;
@@ -210,9 +223,12 @@ contract OrderGateway {
             bytes1 cmd = commands[i];
             uint8 op = uint8(cmd & Commands.COMMAND_TYPE_MASK);
 
-            // Select input source based on FLAG_SUBMITTER_INPUT
+            // Select input source based on bits 6-7
             bytes memory input;
-            if (cmd & Commands.FLAG_SUBMITTER_INPUT != 0) {
+            bytes1 source = cmd & Commands.INPUT_SOURCE_MASK;
+            if (source == Commands.INPUT_BOTH) {
+                input = abi.encode(ownerInputs[ownerIdx++], subInputs[subIdx++]);
+            } else if (source == Commands.INPUT_SUBMITTER) {
                 input = subInputs[subIdx++];
             } else {
                 input = ownerInputs[ownerIdx++];
@@ -260,9 +276,6 @@ contract OrderGateway {
     }
 
     // ── Funding processing ──────────────────────────────────────────────────
-    //   typ 0 (ERC20):           data = (address token, uint256 amount)
-    //   typ 1 (3009):            data = (address token, uint256 amount, uint256 validAfter, uint256 validBefore, uint8 v, bytes32 r, bytes32 s)
-    //   typ 2 (PERMIT2_WITNESS): data = (address token, uint256 amount, uint256 nonce, uint256 deadline, string witnessType, bytes sig)
 
     function _processFunding(Funding calldata funding, bool isOwner) internal {
         address from = isOwner ? _orderOwner : msg.sender;
@@ -335,59 +348,113 @@ contract OrderGateway {
         ok = true;
 
         if (op < 0x10) {
-            if (op == Commands.PULL_ERC20) {
-                (uint8 src, address token, uint256 amt) = abi.decode(input, (uint8, address, uint256));
-                IERC20(token).transferFrom(_source(src), address(this), amt);
-            } else if (op == Commands.PULL_3009) {
-                _pull3009(input);
-            } else if (op == Commands.PULL_PERMIT2_WITNESS) {
-                _pullPermit2Witness(input);
-            } else if (op == Commands.CLAIM_NATIVE) {
-                uint256 amt = abi.decode(input, (uint256));
-                _nativeUsed += amt;
-                if (_nativeUsed > msg.value) revert NativeOverspend();
-            } else {
-                revert InvalidCommand(op);
-            }
-        } else if (op < 0x20) {
-            if (op == Commands.CALL_ADAPTER) {
-                (address adapter, bytes memory data) = abi.decode(input, (address, bytes));
-                (ok, out) = adapter.delegatecall(data);
-            } else {
-                revert InvalidCommand(op);
-            }
-        } else if (op < 0x30) {
-            if (op == Commands.TRANSFER) {
-                (address token, address to, uint256 amt) = abi.decode(input, (address, address, uint256));
-                _pay(token, to, amt);
-            } else if (op == Commands.SWEEP) {
-                (address token, address to, uint256 minAmt) = abi.decode(input, (address, address, uint256));
-                uint256 bal = token == address(0) ? address(this).balance : IERC20(token).balanceOf(address(this));
-                require(bal >= minAmt);
-                if (bal > 0) _pay(token, to, bal);
-            } else {
-                revert InvalidCommand(op);
-            }
+            _dispatchFunding(op, input);
+        } else if (op < 0x14) {
+            _dispatchExecution(op, input, ok, out);
+        } else if (op < 0x18) {
+            _dispatchTokenOps(op, input);
         } else {
-            if (op == Commands.BALANCE_CHECK) {
-                (address token, address account, uint256 minBal) = abi.decode(input, (address, address, uint256));
-                ok = _balanceOf(token, account) >= minBal;
-                if (!ok) out = abi.encodePacked(BalanceTooLow.selector);
-            } else if (op == Commands.SNAPSHOT_BALANCE) {
-                (uint8 slotId, address token, address account) = abi.decode(input, (uint8, address, address));
-                _snapshots[slotId] = _balanceOf(token, account);
-            } else if (op == Commands.CHECK_DELTA) {
-                (uint8 slotId, address token, address account, int256 minDelta) = abi.decode(
-                    input,
-                    (uint8, address, address, int256)
-                );
-                int256 delta = int256(_balanceOf(token, account)) - int256(_snapshots[slotId]);
-                ok = delta >= minDelta;
-                if (!ok) out = abi.encodePacked(BalanceTooLow.selector);
+            (ok, out) = _dispatchAssertions(op, input);
+        }
+    }
+
+    function _dispatchFunding(uint8 op, bytes memory input) internal {
+        if (op == Commands.PULL_ERC20) {
+            (uint8 src, address token, uint256 amt) = abi.decode(input, (uint8, address, uint256));
+            IERC20(token).transferFrom(_source(src), address(this), amt);
+        } else if (op == Commands.PULL_3009) {
+            _pull3009(input);
+        } else if (op == Commands.PULL_PERMIT2_WITNESS) {
+            _pullPermit2Witness(input);
+        } else if (op == Commands.CLAIM_NATIVE) {
+            uint256 amt = abi.decode(input, (uint256));
+            _nativeUsed += amt;
+            if (_nativeUsed > msg.value) revert NativeOverspend();
+        } else {
+            revert InvalidCommand(op);
+        }
+    }
+
+    function _dispatchExecution(uint8 op, bytes memory input, bool ok, bytes memory out) internal {
+        if (op == Commands.CALL_ADAPTER) {
+            // Decode adapter address and data. With INPUT_BOTH, input = abi.encode(ownerPart, subPart)
+            // where ownerPart = abi.encode(address adapter), subPart = adapter calldata.
+            // With INPUT_OWNER, input = abi.encode(address adapter, bytes data) directly.
+            (address adapter, bytes memory data) = abi.decode(input, (address, bytes));
+            if (!approvedAdapters[adapter]) revert AdapterNotApproved(adapter);
+            (ok, out) = adapter.delegatecall(data);
+        } else if (op == Commands.CALL_WITH_BALANCE) {
+            (ok, out) = _callWithBalance(input);
+        } else {
+            revert InvalidCommand(op);
+        }
+    }
+
+    function _dispatchTokenOps(uint8 op, bytes memory input) internal {
+        if (op == Commands.TRANSFER) {
+            (address token, address to, uint256 amt) = abi.decode(input, (address, address, uint256));
+            _pay(token, to, amt);
+        } else if (op == Commands.SWEEP) {
+            (address token, address to, uint256 minAmt) = abi.decode(input, (address, address, uint256));
+            uint256 bal = token == address(0) ? address(this).balance : IERC20(token).balanceOf(address(this));
+            require(bal >= minAmt);
+            if (bal > 0) _pay(token, to, bal);
+        } else {
+            revert InvalidCommand(op);
+        }
+    }
+
+    function _dispatchAssertions(uint8 op, bytes memory input) internal returns (bool ok, bytes memory out) {
+        ok = true;
+        if (op == Commands.BALANCE_CHECK) {
+            (address token, address account, uint256 minBal) = abi.decode(input, (address, address, uint256));
+            ok = _balanceOf(token, account) >= minBal;
+            if (!ok) out = abi.encodePacked(BalanceTooLow.selector);
+        } else if (op == Commands.SNAPSHOT_BALANCE) {
+            (uint8 slotId, address token, address account) = abi.decode(input, (uint8, address, address));
+            _snapshots[slotId] = _balanceOf(token, account);
+        } else if (op == Commands.CHECK_DELTA) {
+            (uint8 slotId, address token, address account, int256 minDelta) = abi.decode(
+                input,
+                (uint8, address, address, int256)
+            );
+            int256 delta = int256(_balanceOf(token, account)) - int256(_snapshots[slotId]);
+            ok = delta >= minDelta;
+            if (!ok) out = abi.encodePacked(BalanceTooLow.selector);
+        } else {
+            revert InvalidCommand(op);
+        }
+    }
+
+    // ── CALL_WITH_BALANCE ────────────────────────────────────────────────────
+    // Ported from MulticallHandler.makeCallWithBalance — injects current token
+    // balances into calldata at specified offsets before calling the target.
+
+    function _callWithBalance(bytes memory input) internal returns (bool ok, bytes memory out) {
+        (address target, bytes memory callData, uint256 value, Replacement[] memory replacements) = abi.decode(
+            input,
+            (address, bytes, uint256, Replacement[])
+        );
+
+        for (uint256 i; i < replacements.length; ++i) {
+            uint256 bal;
+            if (replacements[i].token != address(0)) {
+                bal = IERC20(replacements[i].token).balanceOf(address(this));
             } else {
-                revert InvalidCommand(op);
+                bal = address(this).balance;
+                value = bal;
+            }
+
+            uint256 offset = replacements[i].offset + 32; // +32 to skip bytes length prefix
+            if (offset > callData.length) revert CalldataTooShort(callData.length, offset);
+
+            assembly ("memory-safe") {
+                let ptr := add(callData, offset)
+                mstore(ptr, or(mload(ptr), bal))
             }
         }
+
+        (ok, out) = target.call{ value: value }(callData);
     }
 
     // ── Command funding helpers ──────────────────────────────────────────────
