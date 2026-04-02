@@ -35,10 +35,10 @@
     yargs "^17.7.2"
     zksync-web3 "^0.14.3"
 
-"@across-protocol/sdk@^4.4.0-alpha.2":
-  version "4.4.0-alpha.2"
-  resolved "https://registry.yarnpkg.com/@across-protocol/sdk/-/sdk-4.4.0-alpha.2.tgz#c322fd2d6baceba5dc8ed1c6bd0592ef9785e2bf"
-  integrity sha512-0klp+JiTftCcXOjNFLZ9psOqCAduPopOBugNsdswgm+Z0uGtIl+BajJMPbl5fTZ99fTT7jFJ7aVQ64lNBgYUtg==
+"@across-protocol/sdk@^4.4.0-alpha.4":
+  version "4.4.0-alpha.4"
+  resolved "https://registry.yarnpkg.com/@across-protocol/sdk/-/sdk-4.4.0-alpha.4.tgz#be1c1d902c6a442b1937fdeeebdb536174d46a57"
+  integrity sha512-L/Lxo9JyrDmBD0q22xLeobPzYY8qoF93Gaj93LaNdp/DB+/MDgKbLS5pjNihBjl7cV2VMJxg2ojISqWz3b+USQ==
   dependencies:
     "@across-protocol/constants" "^3.1.100"
     "@across-protocol/contracts" "5.0.4"
@@ -61,7 +61,7 @@
     arweave "^1.14.4"
     async "^3.2.5"
     axios "^0.27.2"
-    borsh "^2.0.0"
+    borsh "0.7.0"
     bs58 "^6.0.0"
     buffer-layout "^1.2.2"
     decimal.js "^10.3.1"
@@ -2781,7 +2781,7 @@ bn.js@^5.1.2, bn.js@^5.2.0, bn.js@^5.2.1:
   resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-5.2.1.tgz#0bc527a6a0d18d0aa8d5b0538ce4a77dccfa7b70"
   integrity sha512-eXRvHzWyYPBuB4NBy0cmYQjGitUrtqwbvlzP3G6VFnNRbsZQIxQ10PbKKHt8gZ/HW/D/747aDl+QkDqg3KQLMQ==
 
-borsh@^0.7.0:
+borsh@0.7.0, borsh@^0.7.0:
   version "0.7.0"
   resolved "https://registry.yarnpkg.com/borsh/-/borsh-0.7.0.tgz#6e9560d719d86d90dc589bca60ffc8a6c51fec2a"
   integrity sha512-CLCsZGIBCFnPtkNnieW/a8wmreDmfUtjU2m9yHrzPXIlNbqVs0AQrSatSG6vdNYUqdc83tkQi2eHfF98ubzQLA==
@@ -2789,11 +2789,6 @@ borsh@^0.7.0:
     bn.js "^5.2.0"
     bs58 "^4.0.0"
     text-encoding-utf-8 "^1.0.2"
-
-borsh@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/borsh/-/borsh-2.0.0.tgz#042a9f109565caac3c6a21297cd8c0ae8db3149d"
-  integrity sha512-kc9+BgR3zz9+cjbwM8ODoUB4fs3X3I5A/HtX7LZKxCLaMrEeDFoBpnhZY//DTS1VZBSs6S5v46RZRbZjRFspEg==
 
 brace-expansion@^1.1.7:
   version "1.1.11"
