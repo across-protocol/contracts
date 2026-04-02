@@ -2,8 +2,7 @@ import fs from "fs";
 import path from "path";
 import { ethers } from "ethers";
 import { BigNumber, Signer, Contract } from "ethers";
-import { EXPECTED_SAFE_OWNERS, OFT_EIDs } from "../src/consts";
-import { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
+import { OFT_EIDs } from "../src/consts";
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {
   const allArtifactsPaths = getAllFilesInPath(artifactsPath);
@@ -140,16 +139,3 @@ export function getOftEid(chainId: number): number {
   }
   return value;
 }
-
-export const safeAccountConfig: SafeAccountConfig = {
-  owners: EXPECTED_SAFE_OWNERS,
-  threshold: 2,
-};
-
-export const predictedSafe: PredictedSafeProps = {
-  safeAccountConfig,
-  safeDeploymentConfig: {
-    // Safe addresses are deterministic based on owners and salt nonce.
-    saltNonce: "0x1234",
-  },
-};

@@ -1,8 +1,21 @@
 import { getNodeUrl } from "../utils";
-import { ethers, predictedSafe } from "../utils/utils";
-import { EXPECTED_SAFE_ADDRESS } from "../src/consts";
+import { ethers } from "../utils/utils";
+import { EXPECTED_SAFE_ADDRESS, EXPECTED_SAFE_OWNERS } from "../src/consts";
 import { getProvider, getSigner, getChainId } from "./utils";
-import Safe from "@safe-global/protocol-kit";
+import Safe, { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
+
+const safeAccountConfig: SafeAccountConfig = {
+  owners: EXPECTED_SAFE_OWNERS,
+  threshold: 2,
+};
+
+const predictedSafe: PredictedSafeProps = {
+  safeAccountConfig,
+  safeDeploymentConfig: {
+    // Safe addresses are deterministic based on owners and salt nonce.
+    saltNonce: "0x1234",
+  },
+};
 
 /**
  * Script to deploy a new Safe Multisig contract via the Safe SDK. Run via:
