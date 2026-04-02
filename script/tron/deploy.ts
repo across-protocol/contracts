@@ -10,7 +10,7 @@
  *   MNEMONIC              — BIP-39 mnemonic (derives account 0 private key)
  *   NODE_URL_728126428    — Tron mainnet full node URL
  *   NODE_URL_3448148188   — Tron Nile testnet full node URL
- *   TRON_FEE_LIMIT        — optional, in sun (default: 1500000000 = 1500 TRX)
+ *   TRON_FEE_LIMIT        — optional, in sun (default: 100000000 = 100 TRX)
  */
 
 import "dotenv/config";
@@ -187,7 +187,7 @@ export async function deployContract(opts: {
     process.exit(1);
   }
 
-  const feeLimit = opts.feeLimit ?? parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
+  const feeLimit = opts.feeLimit ?? parseInt(process.env.TRON_FEE_LIMIT || "100000000", 10);
 
   // Create a TronWeb instance (private key set below after mnemonic derivation).
   const tronWeb = new TronWeb({ fullHost: fullNode });

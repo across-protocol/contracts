@@ -8,7 +8,7 @@
  *   MNEMONIC              — BIP-39 mnemonic (derives account 0 private key)
  *   NODE_URL_728126428    — Tron mainnet full node URL
  *   NODE_URL_3448148188   — Tron Nile testnet full node URL
- *   TRON_FEE_LIMIT        — optional, in sun (default: 1500000000 = 1500 TRX)
+ *   TRON_FEE_LIMIT        — optional, in sun (default: 100000000 = 100 TRX)
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)

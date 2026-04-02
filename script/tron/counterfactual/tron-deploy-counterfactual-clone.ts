@@ -78,7 +78,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "1500000000", 10);
+  const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "100000000", 10);
 
   const tronWeb = new TronWeb({ fullHost: fullNode });
 

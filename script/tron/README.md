@@ -47,7 +47,7 @@ NODE_URL_728126428=https://api.trongrid.io        # Tron mainnet
 NODE_URL_3448148188=https://nile.trongrid.io       # Tron Nile testnet
 
 # Optional
-TRON_FEE_LIMIT=1500000000  # Fee limit in sun (default: 1500 TRX)
+TRON_FEE_LIMIT=100000000  # Fee limit in sun (default: 100 TRX)
 ```
 
 > **Important:** Use the base TronGrid URL (`https://api.trongrid.io`), NOT the `/jsonrpc` endpoint. TronWeb needs the native Tron API, not the Ethereum-compatible JSON-RPC endpoint.

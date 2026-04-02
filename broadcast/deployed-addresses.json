@@ -240,6 +240,11 @@
           "block_number": 24421479,
           "transaction_hash": "0x0969ace8106c5b2b49d16acf429033531961704e89369e236eb903c2f371b206"
         },
+        "Universal_Adapter_728126428": {
+          "address": "0xA1da1A70cc9F27F4aEDff1d515B1a0C47fb6c3Db",
+          "block_number": 24780350,
+          "transaction_hash": "0x42ee92932f8f746d6f215d895dc5462d492979bc5f10ca539bc1c8d3f7c6eabe"
+        },
         "WithdrawImplementation": {
           "address": "0xbCc541C5AeD10843C75336c2d32D363Db6eCF351",
           "block_number": 24642482,
