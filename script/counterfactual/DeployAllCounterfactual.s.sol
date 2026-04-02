@@ -83,6 +83,11 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         bool transferRoles,
         bool broadcast
     ) external {
+        require(
+            keccak256(abi.encodePacked(getChainFamily(block.chainid))) != keccak256(abi.encodePacked("ZK_STACK")),
+            "ZkStack chains require the counterfactual-zksync profile; use individual deploy scripts instead"
+        );
+
         address signer = _loadSigner();
 
         // Resolve chain-specific params from constants and deployed addresses.
