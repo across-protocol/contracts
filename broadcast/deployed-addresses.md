@@ -55,7 +55,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | Universal_Adapter_143          | [0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452](https://etherscan.io/address/0xC29a3Ba0fBf477F16Fd53d2C438Eade024FD8452) |
 | Universal_Adapter_4217         | [0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c](https://etherscan.io/address/0x4577980eBFCC6fC8ff516aC06dA9e729c40cA57c) |
 | Universal_Adapter_56           | [0x6f1C9d3bcDF51316E7b515a62C02F601500b084b](https://etherscan.io/address/0x6f1C9d3bcDF51316E7b515a62C02F601500b084b) |
-| Universal_Adapter_728126428    | [0xA1da1A70cc9F27F4aEDff1d515B1a0C47fb6c3Db](https://etherscan.io/address/0xA1da1A70cc9F27F4aEDff1d515B1a0C47fb6c3Db) |
 | Universal_Adapter_9745         | [0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363](https://etherscan.io/address/0xb47fD69FE25878F4E43aAF2F9ad7D0A3A0B22363) |
 | Universal_Adapter_999          | [0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B](https://etherscan.io/address/0x0ec70777Ac388774041dD5A1778Cdf3AF3134D2B) |
 | WithdrawImplementation         | [0xbCc541C5AeD10843C75336c2d32D363Db6eCF351](https://etherscan.io/address/0xbCc541C5AeD10843C75336c2d32D363Db6eCF351) |
