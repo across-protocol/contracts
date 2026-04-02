@@ -13,7 +13,7 @@
  *   MNEMONIC                     — BIP-39 mnemonic (derives account 0 private key)
  *   NODE_URL_728126428           — Tron mainnet full node URL
  *   NODE_URL_3448148188          — Tron Nile testnet full node URL
- *   TRON_FEE_LIMIT               — optional, in sun (default: 1500000000 = 1500 TRX)
+ *   TRON_FEE_LIMIT               — optional, in sun (default: 100000000 = 100 TRX)
  *   SP1_RELEASE_TRON             — Genesis binary version (e.g. "0.1.0-alpha.20")
  *   SP1_PROVER_MODE_TRON         — SP1 prover type: "mock", "cpu", "cuda", or "network"
  *   SP1_VERIFIER_ADDRESS_TRON    — SP1 verifier contract address (Tron Base58Check, T...)
@@ -23,7 +23,7 @@
  *
  * Options:
  *   --testnet          — deploy to Tron Nile testnet (default: mainnet)
- *   --fee-limit <sun>  — fee limit in sun (default: 1500000000 = 1500 TRX)
+ *   --fee-limit <sun>  — fee limit in sun (default: 100000000 = 100 TRX)
  *
  * Usage:
  *   yarn tron-deploy-sp1-helios [--testnet] [--fee-limit <sun>]
