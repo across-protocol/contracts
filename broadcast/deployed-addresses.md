@@ -222,10 +222,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositCCTP      | [0x56245F07a5e03558142D95c9Eb1Af9a5AA174550](https://basescan.org/address/0x56245F07a5e03558142D95c9Eb1Af9a5AA174550) |
 | CounterfactualDepositFactory   | [0x20e67fBE0150B498048709306cc7729d382F1fB1](https://basescan.org/address/0x20e67fBE0150B498048709306cc7729d382F1fB1) |
 | CounterfactualDepositSpokePool | [0x8e77B3E3A6849f47f43f52B0A854Cc61441366E3](https://basescan.org/address/0x8e77B3E3A6849f47f43f52B0A854Cc61441366E3) |
+| DonationBox                    | [0xC1d6B848553602BED3524B05B7EB68c20899d861](https://basescan.org/address/0xC1d6B848553602BED3524B05B7EB68c20899d861) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://basescan.org/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://basescan.org/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPDstPeriphery      | [0xd9DC78B969E9Efb1e54B625c33A21Aaf2509e6a1](https://basescan.org/address/0xd9DC78B969E9Efb1e54B625c33A21Aaf2509e6a1) |
 | SponsoredCCTPSrcPeriphery      | [0xa30968D3468316D957B9115EAad3C1c8E450116d](https://basescan.org/address/0xa30968D3468316D957B9115EAad3C1c8E450116d) |
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://basescan.org/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4](https://basescan.org/address/0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4) |
