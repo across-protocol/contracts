@@ -21,7 +21,7 @@ contract DeployCounterfactualDepositOFT is CounterfactualConfig {
 
     function run(address oftSrcPeriphery, uint32 srcEid) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
         require(oftSrcPeriphery != address(0), "OFT SrcPeriphery cannot be zero address");
 

@@ -21,7 +21,7 @@ contract DeployCounterfactualDepositCCTP is CounterfactualConfig {
 
     function run(address srcPeriphery, uint32 sourceDomain) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
         require(srcPeriphery != address(0), "SrcPeriphery cannot be zero address");
 

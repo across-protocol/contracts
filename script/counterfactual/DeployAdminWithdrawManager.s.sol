@@ -18,7 +18,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 contract DeployAdminWithdrawManager is CounterfactualConfig {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
         address deployer = vm.addr(deployerPrivateKey);
 
         _loadCounterfactualConfig();
