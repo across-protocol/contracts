@@ -31,6 +31,6 @@ contract BalanceActionProxy {
      */
     function approveBalance(IERC20 token, address spender) external {
         uint256 balance = token.balanceOf(address(this));
-        if (balance > 0) token.safeIncreaseAllowance(spender, balance);
+        if (balance > 0) token.forceApprove(spender, balance);
     }
 }
