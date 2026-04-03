@@ -63,7 +63,7 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 3. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-//      --sig "run(string,bool,bool,bool,bool,bool)" <rpcUrl> true true true true true \
+//      --sig "run(string,bool,bool,bool,bool,bool,string)" <rpcUrl> true true true true true counterfactual \
 //      --rpc-url <rpcUrl> --ffi -vvvv
 // 4. Verify the logged predicted addresses and forge commands look correct
 contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
@@ -75,13 +75,15 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
     /// @param deployOft If true, deploy CounterfactualDepositOFT.
     /// @param transferRoles If true, transfer AdminWithdrawManager roles to config.toml addresses.
     /// @param broadcast If true, broadcast transactions on-chain.
+    /// @param profile Foundry profile to use for sub-script invocations (e.g. "counterfactual").
     function run(
         string calldata rpcUrl,
         bool deploySpokePool,
         bool deployCctp,
         bool deployOft,
         bool transferRoles,
-        bool broadcast
+        bool broadcast,
+        string calldata profile
     ) external {
         require(
             keccak256(abi.encodePacked(getChainFamily(block.chainid))) != keccak256(abi.encodePacked("ZK_STACK")),
@@ -206,7 +208,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployCounterfactualDeposit.s.sol"),
                 "DeployCounterfactualDeposit",
-                ""
+                "",
+                profile
             );
         }
 
@@ -220,7 +223,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployCounterfactualDepositFactory.s.sol"),
                 "DeployCounterfactualDepositFactory",
-                ""
+                "",
+                profile
             );
         }
 
@@ -234,7 +238,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployWithdrawImplementation.s.sol"),
                 "DeployWithdrawImplementation",
-                ""
+                "",
+                profile
             );
         }
 
@@ -256,7 +261,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                         vm.toString(signer),
                         " ",
                         vm.toString(wrappedNativeToken)
-                    )
+                    ),
+                    profile
                 );
             }
         }
@@ -277,7 +283,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                         vm.toString(cctpPeriphery),
                         " ",
                         vm.toString(uint256(cctpDomain))
-                    )
+                    ),
+                    profile
                 );
             }
         }
@@ -298,7 +305,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                         vm.toString(oftPeriphery),
                         " ",
                         vm.toString(uint256(oftEid))
-                    )
+                    ),
+                    profile
                 );
             }
         }
@@ -313,7 +321,8 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                 broadcastFlag,
                 string.concat(SCRIPT_DIR, "DeployAdminWithdrawManager.s.sol"),
                 "DeployAdminWithdrawManager",
-                ""
+                "",
+                profile
             );
         }
 
@@ -366,12 +375,15 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string memory broadcastFlag,
         string memory scriptPath,
         string memory contractName,
-        string memory sigArgs
+        string memory sigArgs,
+        string memory profile
     ) internal {
         // Append `|| true` so that non-fatal failures (e.g. etherscan verification
         // timing out) don't cause ffi to revert and halt subsequent deployments.
         string memory cmd = string.concat(
-            "FOUNDRY_PROFILE=counterfactual forge script ",
+            "FOUNDRY_PROFILE=",
+            profile,
+            " forge script ",
             scriptPath,
             ":",
             contractName,
