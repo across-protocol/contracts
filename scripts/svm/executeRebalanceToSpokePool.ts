@@ -79,7 +79,7 @@ async function executeRebalanceToSpokePool(): Promise<void> {
   if (evmChainId !== supportedEvmChainId) {
     throw new Error(`Chain ID ${evmChainId} does not match expected Solana cluster ${solanaCluster}`);
   }
-  const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
+  const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId as keyof typeof TOKEN_SYMBOLS_MAP.USDC.addresses];
   const solanaTokenKey = isDevnet ? new PublicKey(SOLANA_USDC_DEVNET) : new PublicKey(SOLANA_USDC_MAINNET);
 
   console.log("Executing rebalance pool bundle to spoke...");
