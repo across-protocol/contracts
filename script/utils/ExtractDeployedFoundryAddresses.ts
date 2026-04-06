@@ -223,6 +223,13 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           } else if (contractName.endsWith("_SpokePool")) {
             // skip
             continue;
+          } else if (contractName === "DonationBox") {
+            // Suffix DonationBox with _OFT or _CCTP based on the deploying script.
+            if (broadcastFile.scriptName.includes("DstHandler")) {
+              contractName = "DonationBox_OFT";
+            } else if (broadcastFile.scriptName.includes("SponsoredCCTP")) {
+              contractName = "DonationBox_CCTP";
+            }
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;
             let oftDstEid: string | undefined = undefined;
