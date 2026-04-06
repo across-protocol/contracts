@@ -2,8 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "../libraries/MerkleLib.sol";
-import "../erc7683/ERC7683.sol";
-import "../erc7683/ERC7683Permit2Lib.sol";
+import "../interfaces/ERC7683.sol"; // Deprecated: ERC-7683 v1. A new version of ERC-7683 is being developed.
 import "../external/interfaces/WETH9Interface.sol";
 import "../interfaces/SpokePoolMessageHandler.sol";
 import "../interfaces/SpokePoolInterface.sol";
@@ -1106,7 +1105,7 @@ abstract contract SpokePool is
 
     /**
      * @notice Fills a single leg of a particular order on the destination chain
-     * @dev ERC-7683 fill function.
+     * @dev Deprecated: ERC-7683 v1 fill function. A new version of ERC-7683 is being developed.
      * @param orderId Unique order identifier for this order
      * @param originData Data emitted on the origin to parameterize the fill
      * @param fillerData Data provided by the filler to inform the fill or express their preferences
