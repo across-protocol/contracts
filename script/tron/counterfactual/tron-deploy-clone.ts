@@ -24,7 +24,13 @@
 import "dotenv/config";
 import { TronWeb } from "tronweb";
 import { utils as ethersUtils } from "ethers";
-import { tronToEvmAddress, resolveChainId, TRON_MAINNET_CHAIN_ID, TRON_TESTNET_CHAIN_ID } from "../deploy";
+import {
+  tronToEvmAddress,
+  resolveChainId,
+  TRON_MAINNET_CHAIN_ID,
+  TRON_TESTNET_CHAIN_ID,
+  validateTronAddresses,
+} from "../deploy";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
@@ -50,17 +56,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  for (const [name, addr] of Object.entries({
+  validateTronAddresses({
     factory: factoryAddress,
     "counterfactual-deposit-impl": counterfactualDepositImpl,
     "spokepool-deposit-impl": spokePoolDepositImpl,
     "input-token": inputTokenAddress,
-  })) {
-    if (!TronWeb.isAddress(addr)) {
-      console.log(`Error: invalid ${name} "${addr}".`);
-      process.exit(1);
-    }
-  }
+  });
 
   const chainId = resolveChainId();
   const feeLimit = parseInt(process.env.TRON_FEE_LIMIT || "100000000", 10);

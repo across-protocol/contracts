@@ -125,6 +125,12 @@ yarn tron-deploy-counterfactual-deposit [--testnet]
 yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedNativeToken> [--testnet]
 ```
 
+### AdminWithdrawManager
+
+```bash
+yarn tron-deploy-admin-withdraw-manager <owner> <directWithdrawer> <signer> [--testnet]
+```
+
 ### WithdrawImplementation
 
 ```bash
@@ -176,6 +182,7 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `counterfactual/tron-deploy-counterfactual-factory.ts`           | Deploys CounterfactualDepositFactoryTron (no args)                     |
 | `counterfactual/tron-deploy-counterfactual-deposit.ts`           | Deploys CounterfactualDeposit implementation (no args)                 |
 | `counterfactual/tron-deploy-counterfactual-deposit-spokepool.ts` | Deploys CounterfactualDepositSpokePool                                 |
+| `counterfactual/tron-deploy-admin-withdraw-manager.ts`           | Deploys AdminWithdrawManager                                           |
 | `counterfactual/tron-deploy-withdraw-implementation.ts`          | Deploys WithdrawImplementation (no args)                               |
 | `counterfactual/tron-deploy-counterfactual-clone.ts`             | Deploys a clone from factory, verifies address prediction              |
 

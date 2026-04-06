@@ -56,6 +56,19 @@ export function tronToEvmAddress(base58: string): string {
   throw new Error(`Unexpected TronWeb hex address format: ${hex}`);
 }
 
+/** Exit if a value is not a valid Tron Base58Check address. */
+export function validateTronAddress(value: string, name: string): void {
+  if (!TronWeb.isAddress(value)) {
+    console.log(`Error: invalid ${name} "${value}". Expected Tron Base58Check address (T...).`);
+    process.exit(1);
+  }
+}
+
+/** Validate a set of named Tron Base58Check addresses. */
+export function validateTronAddresses(addresses: Record<string, string>): void {
+  for (const [name, value] of Object.entries(addresses)) validateTronAddress(value, name);
+}
+
 /** Decode ABI-encoded constructor args into human-readable strings for the broadcast `arguments` field. */
 function decodeConstructorArgs(tronWeb: TronWeb, abi: any[], parameterHex: string): string[] | null {
   const ctor = abi.find((e: any) => e.type === "constructor");

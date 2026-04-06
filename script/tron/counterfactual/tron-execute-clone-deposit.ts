@@ -27,7 +27,13 @@
 
 import "dotenv/config";
 import { TronWeb } from "tronweb";
-import { tronToEvmAddress, resolveChainId, TRON_MAINNET_CHAIN_ID, TRON_TESTNET_CHAIN_ID } from "../deploy";
+import {
+  tronToEvmAddress,
+  resolveChainId,
+  TRON_MAINNET_CHAIN_ID,
+  TRON_TESTNET_CHAIN_ID,
+  validateTronAddresses,
+} from "../deploy";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40;
@@ -53,16 +59,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  for (const [name, addr] of Object.entries({
+  validateTronAddresses({
     clone: cloneAddress,
     "spokepool-deposit-impl": spokePoolDepositImpl,
     "input-token": inputTokenAddress,
-  })) {
-    if (!TronWeb.isAddress(addr)) {
-      console.log(`Error: invalid ${name} "${addr}".`);
-      process.exit(1);
-    }
-  }
+  });
 
   const inputAmount = BigInt(inputAmountStr);
   const chainId = resolveChainId();

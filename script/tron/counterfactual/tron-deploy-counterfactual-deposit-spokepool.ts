@@ -11,15 +11,7 @@
 
 import "dotenv/config";
 import * as path from "path";
-import { TronWeb } from "tronweb";
-import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId } from "../deploy";
-
-function validateAddress(value: string, name: string): void {
-  if (!TronWeb.isAddress(value)) {
-    console.log(`Error: invalid ${name} "${value}". Expected Tron Base58Check address (T...).`);
-    process.exit(1);
-  }
-}
+import { deployContract, encodeArgs, tronToEvmAddress, resolveChainId, validateTronAddresses } from "../deploy";
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2).filter((a) => !a.startsWith("-"));
@@ -34,9 +26,7 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  validateAddress(spokePool, "spokePool");
-  validateAddress(signer, "signer");
-  validateAddress(wrappedNativeToken, "wrappedNativeToken");
+  validateTronAddresses({ spokePool, signer, wrappedNativeToken });
 
   const chainId = resolveChainId();
 

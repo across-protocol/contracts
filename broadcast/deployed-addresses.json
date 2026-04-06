@@ -1225,6 +1225,11 @@
     "728126428": {
       "chain_name": "TRON",
       "contracts": {
+        "AdminWithdrawManager": {
+          "address": "TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC",
+          "block_number": 81611914,
+          "transaction_hash": "a54824ff246025b9bf6ba4265cc3bd03d2f2382e2062e425239305ade3733f66"
+        },
         "CounterfactualDeposit": {
           "address": "TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy",
           "block_number": 81270966,

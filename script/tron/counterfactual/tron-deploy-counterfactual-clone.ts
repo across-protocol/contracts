@@ -16,7 +16,13 @@
 
 import "dotenv/config";
 import { TronWeb } from "tronweb";
-import { tronToEvmAddress, resolveChainId, TRON_MAINNET_CHAIN_ID, TRON_TESTNET_CHAIN_ID } from "../deploy";
+import {
+  tronToEvmAddress,
+  resolveChainId,
+  TRON_MAINNET_CHAIN_ID,
+  TRON_TESTNET_CHAIN_ID,
+  validateTronAddresses,
+} from "../deploy";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 40; // ~2 minutes
@@ -29,16 +35,7 @@ const TRONSCAN_URLS: Record<string, string> = {
 const BYTES32_RE = /^0x[0-9a-fA-F]{64}$/;
 
 function validateArgs(factoryAddress: string, implementationAddress: string, merkleRoot: string, salt: string): void {
-  if (!TronWeb.isAddress(factoryAddress)) {
-    console.log(`Error: invalid factory address "${factoryAddress}". Expected Tron Base58Check address (T...).`);
-    process.exit(1);
-  }
-  if (!TronWeb.isAddress(implementationAddress)) {
-    console.log(
-      `Error: invalid implementation address "${implementationAddress}". Expected Tron Base58Check address (T...).`
-    );
-    process.exit(1);
-  }
+  validateTronAddresses({ factory: factoryAddress, implementation: implementationAddress });
   if (!BYTES32_RE.test(merkleRoot)) {
     console.log(`Error: invalid merkleRoot "${merkleRoot}". Expected 0x-prefixed 32-byte hex.`);
     process.exit(1);
