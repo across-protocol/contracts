@@ -87,6 +87,20 @@ yarn tron-deploy-sp1-helios [--testnet] [--fee-limit <sun>]
 
 > **Warning:** Once SP1Helios is deployed, you have 7 days to deploy the Universal_SpokePool and activate it in-protocol. After 7 days with no update, the contract becomes immutable.
 
+### SP1Helios Update
+
+Extends the 7-day `MAX_SLOT_AGE` window by calling `SP1Helios.update()` with a valid `ProofOutputs` payload. Requires the SP1AutoVerifier (no-op verifier) to be attached. Reads current on-chain state and fetches the sync committee hash for the target period from an Ethereum consensus RPC.
+
+Additional env var:
+
+```bash
+SP1_CONSENSUS_RPC=https://lodestar-mainnet.chainsafe.io  # Ethereum beacon chain RPC
+```
+
+```bash
+yarn tron-update-sp1-helios <sp1-helios-address> [--testnet]
+```
+
 ### Universal_SpokePool
 
 Deploys the implementation contract and wraps it in a UUPS ERC1967Proxy, matching the behavior of `DeployUniversalSpokePool.s.sol`. Constructor params like wrapped native token (WTRX), time buffers, and HubPoolStore address are read from `generated/constants.json` and `broadcast/deployed-addresses.json`. If a Tron `SpokePool` proxy is already recorded for the current chain, the script skips deploying a new proxy and only deploys a fresh implementation.
@@ -178,6 +192,7 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `deploy.ts`                                                      | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb |
 | `universal/tron-deploy-sp1-auto-verifier.ts`                     | Deploys SP1AutoVerifier (no args)                                      |
 | `universal/tron-deploy-sp1-helios.ts`                            | Deploys SP1Helios with genesis binary                                  |
+| `universal/tron-update-sp1-helios.ts`                            | Updates SP1Helios to extend MAX_SLOT_AGE window                        |
 | `universal/tron-deploy-universal-spokepool.ts`                   | Deploys Universal_SpokePool implementation + ERC1967Proxy              |
 | `counterfactual/tron-deploy-counterfactual-factory.ts`           | Deploys CounterfactualDepositFactoryTron (no args)                     |
 | `counterfactual/tron-deploy-counterfactual-deposit.ts`           | Deploys CounterfactualDeposit implementation (no args)                 |

@@ -51,6 +51,7 @@
     "tron-deploy-sp1-auto-verifier": "ts-node script/tron/universal/tron-deploy-sp1-auto-verifier.ts",
     "tron-deploy-sp1-helios": "ts-node script/tron/universal/tron-deploy-sp1-helios.ts",
     "tron-deploy-universal-spokepool": "ts-node script/tron/universal/tron-deploy-universal-spokepool.ts",
+    "tron-update-sp1-helios": "ts-node script/tron/universal/tron-update-sp1-helios.ts",
     "tron-deploy-counterfactual-factory": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-factory.ts",
     "tron-deploy-counterfactual-deposit": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-deposit.ts",
     "tron-deploy-counterfactual-deposit-spokepool": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-deposit-spokepool.ts",
