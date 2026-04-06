@@ -76,11 +76,8 @@
     "@solana/kit": "^5.4.0",
     "@solana/web3.js": "1.98.2",
     "bs58": "^6.0.0",
-<<<<<<< pxrl/dependsMinor
     "ethers": "5.7.2"
-=======
-    "tronweb": "^6.2.0",
-    "yargs": "^17.7.2"
+    "tronweb": "^6.2.0"
 >>>>>>> master
   },
   "devDependencies": {
