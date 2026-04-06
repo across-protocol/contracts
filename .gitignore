@@ -35,7 +35,6 @@ cache-foundry
 cache-foundry-local
 cache-foundry-tron
 
-
 # Upgradeability files
 .openzeppelin
 
@@ -58,6 +57,12 @@ src/svm/clients/*
 # SP1Helios deploy artifacts
 script/universal/genesis-binary
 script/universal/genesis.json
+script/tron/universal/genesis-binary
+script/tron/universal/genesis.json
+
+# Tron solc binary and flattened sources
+bin/solc-tron
+flattened/
 
 # claude
 CLAUDE.local.md

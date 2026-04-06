@@ -1232,6 +1232,51 @@
         }
       }
     },
+    "728126428": {
+      "chain_name": "TRON",
+      "contracts": {
+        "AdminWithdrawManager": {
+          "address": "TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC",
+          "block_number": 81611914,
+          "transaction_hash": "a54824ff246025b9bf6ba4265cc3bd03d2f2382e2062e425239305ade3733f66"
+        },
+        "CounterfactualDeposit": {
+          "address": "TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy",
+          "block_number": 81270966,
+          "transaction_hash": "715d4b3c1dfdd0d7bd754c928ad812da1de4663502923d8bed79164ce047717e"
+        },
+        "CounterfactualDepositFactoryTron": {
+          "address": "TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob",
+          "block_number": 81269910,
+          "transaction_hash": "ac7736e4912d3bd8e02b9dc26bd0ba6c0486b488b091141a8dde7f0c96be13f5"
+        },
+        "CounterfactualDepositSpokePool": {
+          "address": "TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75",
+          "block_number": 81271437,
+          "transaction_hash": "d3a41d6aaf79a3a482c3824050ecd44457957b920893d92da222a2335eefdd09"
+        },
+        "SP1AutoVerifier": {
+          "address": "TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84",
+          "block_number": 81235137,
+          "transaction_hash": "6bb786350fb65c85df414085b65caa22e5de47d59a241ec4b213aae2b41a9738"
+        },
+        "SP1Helios": {
+          "address": "TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx",
+          "block_number": 81266543,
+          "transaction_hash": "2a282124875b409051659cb86e82d2e6ae7eaa16df3d1a801b0936a2ffae81e9"
+        },
+        "SpokePool": {
+          "address": "TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8",
+          "block_number": 81267900,
+          "transaction_hash": "916d12109b908916a5180dbaf032c577b758615e975ce909cdee696f066f5ac9"
+        },
+        "WithdrawImplementation": {
+          "address": "TJkwUDFPKXABkeu38v42sdwQS2VxgRweow",
+          "block_number": 81269861,
+          "transaction_hash": "226499b9a0e735991922ca744364017aa882df1b33ea23e44c80695181ed12d4"
+        }
+      }
+    },
     "133268194659241": {
       "chain_name": "Solana Devnet",
       "contracts": {

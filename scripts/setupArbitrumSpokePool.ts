@@ -21,8 +21,8 @@ async function main() {
   for (const token of tokenSymbols) {
     // Setup Arbitrum: We need to call whitelistToken on Arbitrum SpokePool so that SpokePool
     // is aware of L1 to L2 mappings.
-    const l1Token = token.addresses[CHAIN_IDs.MAINNET];
-    const arbitrumToken = token.addresses[CHAIN_IDs.ARBITRUM];
+    const l1Token = token.addresses[CHAIN_IDs.MAINNET as keyof typeof token.addresses];
+    const arbitrumToken = token.addresses[CHAIN_IDs.ARBITRUM as keyof typeof token.addresses];
     if (!l1Token || !arbitrumToken) {
       console.log(`Token ${token.symbol} does not exist on both Arbitrum and Mainnet. Skipping...`);
       continue;
