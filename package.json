@@ -78,7 +78,6 @@
     "bs58": "^6.0.0",
     "ethers": "5.7.2"
     "tronweb": "^6.2.0"
->>>>>>> master
   },
   "devDependencies": {
     "@codama/nodes-from-anchor": "1.2.2",
