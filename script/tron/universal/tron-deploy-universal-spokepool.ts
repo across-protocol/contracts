@@ -44,6 +44,26 @@ function getHubPoolAddress(hubChainId: string): string {
   return address;
 }
 
+/** Return the already-deployed Tron SpokePool proxy address for this chain, if present. */
+function getExistingSpokePoolProxyAddress(chainId: string): string | undefined {
+  const deployedAddressesPath = path.resolve(__dirname, "../../../broadcast/deployed-addresses.json");
+  if (fs.existsSync(deployedAddressesPath)) {
+    const deployedAddresses = JSON.parse(fs.readFileSync(deployedAddressesPath, "utf-8"));
+    const address = deployedAddresses.chains?.[chainId]?.contracts?.SpokePool?.address;
+    if (address) return address;
+  }
+
+  const proxyBroadcastPath = path.resolve(
+    __dirname,
+    `../../../broadcast/TronDeploySpokePool.s.sol/${chainId}/run-latest.json`
+  );
+  if (fs.existsSync(proxyBroadcastPath)) {
+    const proxyBroadcast = JSON.parse(fs.readFileSync(proxyBroadcastPath, "utf-8"));
+    const address = proxyBroadcast.transactions?.find((tx: any) => tx.contractName === "SpokePool")?.contractAddress;
+    if (address) return address;
+  }
+}
+
 /** Read the HubPoolStore address from generated/constants.json, matching the Solidity deploy script logic. */
 function getHubPoolStoreAddress(constants: any, hubChainId: string): string {
   const address = constants.L1_ADDRESS_MAP?.[hubChainId]?.hubPoolStore;
@@ -151,6 +171,13 @@ async function main(): Promise<void> {
   const proxyEncodedArgs = encodeArgs(["address", "bytes"], [tronToEvmAddress(implResult.address), initData]);
 
   const proxyArtifactPath = path.resolve(__dirname, "../../../out-tron/ERC1967Proxy.sol/ERC1967Proxy.json");
+  const existingProxyAddress = getExistingSpokePoolProxyAddress(chainId);
+
+  if (existingProxyAddress) {
+    console.log(`\nProxy already deployed: ${existingProxyAddress}`);
+    console.log(`Skipping proxy deployment and leaving implementation at: ${implResult.address}`);
+    return;
+  }
 
   const proxyResult = await deployContract({
     chainId,

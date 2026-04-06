@@ -89,7 +89,7 @@ yarn tron-deploy-sp1-helios [--testnet] [--fee-limit <sun>]
 
 ### Universal_SpokePool
 
-Deploys the implementation contract and wraps it in a UUPS ERC1967Proxy, matching the behavior of `DeployUniversalSpokePool.s.sol`. Constructor params like wrapped native token (WTRX), time buffers, and HubPoolStore address are read from `generated/constants.json` and `broadcast/deployed-addresses.json`.
+Deploys the implementation contract and wraps it in a UUPS ERC1967Proxy, matching the behavior of `DeployUniversalSpokePool.s.sol`. Constructor params like wrapped native token (WTRX), time buffers, and HubPoolStore address are read from `generated/constants.json` and `broadcast/deployed-addresses.json`. If a Tron `SpokePool` proxy is already recorded for the current chain, the script skips deploying a new proxy and only deploys a fresh implementation.
 
 ```bash
 yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]
