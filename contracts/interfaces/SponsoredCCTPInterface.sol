@@ -37,6 +37,17 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
         bytes signature
     );
 
+    event SponsoredCCTPDirectExecution(
+        bytes32 indexed quoteNonce,
+        address indexed originSender,
+        bytes32 indexed finalRecipient,
+        uint256 amount,
+        bytes signature
+    );
+
+    // Error thrown when direct flow destination handler is not a contract.
+    error InvalidDirectHandler();
+
     // Event when emergency receive is called
     event EmergencyReceiveMessage(bytes32 nonce, address finalRecipent, address finalToken, uint256 amount);
 
