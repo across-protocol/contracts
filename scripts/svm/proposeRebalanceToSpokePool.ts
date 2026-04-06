@@ -39,7 +39,7 @@ async function proposeRebalanceToSpokePool(): Promise<void> {
   if (evmChainId !== CHAIN_IDs.MAINNET && evmChainId !== CHAIN_IDs.SEPOLIA) throw new Error("Unsupported EVM chain ID");
   const solanaCluster = evmChainId === CHAIN_IDs.MAINNET ? "mainnet" : "devnet";
   const solanaChainId = getSolanaChainId(solanaCluster);
-  const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
+  const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId as keyof typeof TOKEN_SYMBOLS_MAP.USDC.addresses];
 
   // Construct simple merkle tree for the pool rebalance.
   const { poolRebalanceTree } = constructSimpleRebalanceTree(l1TokenAddress, netSendAmount, solanaChainId);

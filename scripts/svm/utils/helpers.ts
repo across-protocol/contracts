@@ -1,6 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { MerkleTree } from "@uma/common";
+import { MerkleTree } from "../../../utils/MerkleTree";
 import { BigNumber, ethers } from "ethers";
 import { relayerRefundHashFn } from "../../../src/svm/web3-v1";
 import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../../src/types/svm";

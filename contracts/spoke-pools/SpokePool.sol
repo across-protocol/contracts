@@ -1545,7 +1545,7 @@ abstract contract SpokePool is
 
     // Unwraps ETH and does a transfer to a recipient address. If the recipient is a smart contract then sends wrappedNativeToken.
     function _unwrapwrappedNativeTokenTo(address payable to, uint256 amount) internal {
-        if (!address(to).isContract() || _is7702DelegatedWallet(to)) {
+        if (!AddressLibUpgradeable.isContract(address(to)) || _is7702DelegatedWallet(to)) {
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
         } else {
@@ -1667,7 +1667,7 @@ abstract contract SpokePool is
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
-        if (updatedMessage.length > 0 && recipientToSend.isContract()) {
+        if (updatedMessage.length > 0 && AddressLibUpgradeable.isContract(recipientToSend)) {
             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
                 outputToken,
                 amountToSend,

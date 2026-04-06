@@ -297,10 +297,12 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositCCTP      | [0xD000850Bfb56B61995eB777e0602b5032B4Dcf55](https://basescan.org/address/0xD000850Bfb56B61995eB777e0602b5032B4Dcf55) |
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://basescan.org/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool | [0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C](https://basescan.org/address/0xF7d56A851767a3f1369c8Fe48c5740d5ffc1074C) |
+| DonationBox                    | [0xC1d6B848553602BED3524B05B7EB68c20899d861](https://basescan.org/address/0xC1d6B848553602BED3524B05B7EB68c20899d861) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://basescan.org/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool                      | [0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64](https://basescan.org/address/0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://basescan.org/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://basescan.org/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
+| SponsoredCCTPDstPeriphery      | [0xd9DC78B969E9Efb1e54B625c33A21Aaf2509e6a1](https://basescan.org/address/0xd9DC78B969E9Efb1e54B625c33A21Aaf2509e6a1) |
 | SponsoredCCTPSrcPeriphery      | [0xa30968D3468316D957B9115EAad3C1c8E450116d](https://basescan.org/address/0xa30968D3468316D957B9115EAad3C1c8E450116d) |
 | TransferProxy                  | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://basescan.org/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
 | UniswapV3_SwapAndBridge        | [0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4](https://basescan.org/address/0xbcfbCE9D92A516e3e7b0762AE218B4194adE34b4) |
@@ -426,6 +428,19 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://zorascan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://zorascan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://zorascan.xyz/address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
+
+## TRON (728126428)
+
+| Contract Name                    | Address                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| AdminWithdrawManager             | [TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC](https://tronscan.org/address/TTytyjRFYe2oe56Ny7YFmmQngBWTVANugC) |
+| CounterfactualDeposit            | [TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy](https://tronscan.org/address/TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy) |
+| CounterfactualDepositFactoryTron | [TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob](https://tronscan.org/address/TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob) |
+| CounterfactualDepositSpokePool   | [TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75](https://tronscan.org/address/TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75) |
+| SP1AutoVerifier                  | [TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84](https://tronscan.org/address/TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84) |
+| SP1Helios                        | [TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx](https://tronscan.org/address/TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx) |
+| SpokePool                        | [TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8](https://tronscan.org/address/TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8) |
+| WithdrawImplementation           | [TJkwUDFPKXABkeu38v42sdwQS2VxgRweow](https://tronscan.org/address/TJkwUDFPKXABkeu38v42sdwQS2VxgRweow) |
 
 ## Solana (34268394551451)
 
