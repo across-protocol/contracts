@@ -319,6 +319,18 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolPeriphery | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://zorascan.xyz/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier  | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://zorascan.xyz/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 
+## TRON (728126428)
+
+| Contract Name                    | Address                                                                                               |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| CounterfactualDeposit            | [TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy](https://tronscan.org/address/TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy) |
+| CounterfactualDepositFactoryTron | [TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob](https://tronscan.org/address/TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob) |
+| CounterfactualDepositSpokePool   | [TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75](https://tronscan.org/address/TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75) |
+| SP1AutoVerifier                  | [TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84](https://tronscan.org/address/TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84) |
+| SP1Helios                        | [TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx](https://tronscan.org/address/TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx) |
+| SpokePool                        | [TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8](https://tronscan.org/address/TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8) |
+| WithdrawImplementation           | [TJkwUDFPKXABkeu38v42sdwQS2VxgRweow](https://tronscan.org/address/TJkwUDFPKXABkeu38v42sdwQS2VxgRweow) |
+
 ## Solana (34268394551451)
 
 | Contract Name             | Address                                                                                                                 |
@@ -431,18 +443,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | MulticallHandler | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://sepolia.blastscan.io/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
 | SpokePool        | [0x5545092553Cf5Bf786e87a87192E902D50D8f022](https://sepolia.blastscan.io/address/0x5545092553Cf5Bf786e87a87192E902D50D8f022) |
-
-## Chain 728126428 (728126428)
-
-| Contract Name                    | Address                            |
-| -------------------------------- | ---------------------------------- |
-| CounterfactualDeposit            | TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy |
-| CounterfactualDepositFactoryTron | TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob |
-| CounterfactualDepositSpokePool   | TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75 |
-| SP1AutoVerifier                  | TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84 |
-| SP1Helios                        | TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx |
-| SpokePool                        | TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8 |
-| WithdrawImplementation           | TJkwUDFPKXABkeu38v42sdwQS2VxgRweow |
 
 ## Solana Devnet (133268194659241)
 
