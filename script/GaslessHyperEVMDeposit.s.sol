@@ -5,10 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { console2 } from "forge-std/console2.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SpokePoolPeripheryInterface } from "../contracts/interfaces/SpokePoolPeripheryInterface.sol";
-import { IPermit2 } from "../contracts/external/interfaces/IPermit2.sol";
-import { PeripherySigningLib } from "../contracts/libraries/PeripherySigningLib.sol";
 import { AddressToBytes32 } from "../contracts/libraries/AddressConverters.sol";
 
 /// @notice Query EIP-712 domain separator from EIP-3009/2612 tokens or Permit2.
@@ -129,7 +126,6 @@ Examples:
 */
 contract GaslessHyperEVMDeposit is Script {
     using AddressToBytes32 for address;
-    using SafeERC20 for IERC20;
 
     // ─── Constants ───────────────────────────────────────────────────
 
@@ -140,11 +136,6 @@ contract GaslessHyperEVMDeposit is Script {
 
     bytes32 constant BRIDGE_WITNESS_IDENTIFIER = keccak256("BridgeWitness");
 
-    string constant PERMIT_TRANSFER_TYPE_STUB =
-        "PermitWitnessTransferFrom(TokenPermissions permitted,address spender,uint256 nonce,uint256 deadline,";
-
-    bytes32 constant TOKEN_PERMISSIONS_TYPEHASH = keccak256("TokenPermissions(address token,uint256 amount)");
-
     // Hyperliquid EIP-712 constants
     bytes32 constant HL_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -152,23 +143,6 @@ contract GaslessHyperEVMDeposit is Script {
         keccak256(
             "HyperliquidTransaction:SendAsset(string hyperliquidChain,string destination,string sourceDex,string destinationDex,string token,string amount,string fromSubAccount,uint64 nonce)"
         );
-
-    // ─── Structs ─────────────────────────────────────────────────────
-
-    struct Env {
-        address periphery;
-        address spokePool;
-        address inputToken;
-        address permit2;
-        uint256 destinationChainId;
-        address outputToken;
-        uint256 userPk;
-        address user;
-        uint256 botPk;
-        address bot;
-        address feeRecipient;
-        uint256 submissionFee;
-    }
 
     // ─── Entry points ────────────────────────────────────────────────
 
@@ -453,89 +427,6 @@ contract GaslessHyperEVMDeposit is Script {
         _submitHLRequest(apiUrl, destination, hlToken, amount, chain, sigChainId, timestamp, r, s, v);
     }
 
-    // ─── Internal: Build deposit data ────────────────────────────────
-
-    function _buildDepositData(
-        Env memory env,
-        uint256 inputAmount,
-        address recipient,
-        uint256 outputAmount
-    ) internal view returns (SpokePoolPeripheryInterface.DepositData memory) {
-        uint256 nonce = SpokePoolPeripheryInterface(env.periphery).permitNonces(env.user);
-        address outToken = env.outputToken != address(0) ? env.outputToken : env.inputToken;
-
-        return
-            SpokePoolPeripheryInterface.DepositData({
-                submissionFees: SpokePoolPeripheryInterface.Fees({
-                    amount: env.submissionFee,
-                    recipient: env.feeRecipient
-                }),
-                baseDepositData: SpokePoolPeripheryInterface.BaseDepositData({
-                    inputToken: env.inputToken,
-                    outputToken: outToken.toBytes32(),
-                    outputAmount: outputAmount,
-                    depositor: env.user,
-                    recipient: recipient.toBytes32(),
-                    destinationChainId: env.destinationChainId,
-                    exclusiveRelayer: bytes32(0),
-                    quoteTimestamp: uint32(block.timestamp),
-                    fillDeadline: uint32(block.timestamp + 6 hours),
-                    exclusivityParameter: 0,
-                    message: new bytes(0)
-                }),
-                inputAmount: inputAmount,
-                spokePool: env.spokePool,
-                nonce: nonce
-            });
-    }
-
-    // ─── Internal: EIP-3009 signing ──────────────────────────────────
-
-    function _signReceiveWithAuth(
-        Env memory env,
-        address from,
-        address to,
-        uint256 value,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes32 nonce
-    ) internal view returns (bytes memory) {
-        bytes32 tokenDomainSep = IERC712DomainSeparator(env.inputToken).DOMAIN_SEPARATOR();
-
-        bytes32 structHash = keccak256(
-            abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce)
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", tokenDomainSep, structHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(env.userPk, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
-    // ─── Internal: Permit2 signing ───────────────────────────────────
-
-    function _signPermit2Witness(
-        Env memory env,
-        IPermit2.PermitTransferFrom memory permit,
-        bytes32 witness
-    ) internal view returns (bytes memory) {
-        bytes32 permit2DomainSep = IERC712DomainSeparator(env.permit2).DOMAIN_SEPARATOR();
-
-        bytes32 typehash = keccak256(
-            abi.encodePacked(PERMIT_TRANSFER_TYPE_STUB, PeripherySigningLib.EIP712_DEPOSIT_TYPE_STRING)
-        );
-
-        bytes32 tokenPermissions = keccak256(abi.encode(TOKEN_PERMISSIONS_TYPEHASH, permit.permitted));
-
-        bytes32 structHash = keccak256(
-            abi.encode(typehash, tokenPermissions, env.periphery, permit.nonce, permit.deadline, witness)
-        );
-
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", permit2DomainSep, structHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(env.userPk, digest);
-        return abi.encodePacked(r, s, v);
-    }
-
     // ─── Internal: HL API helpers ────────────────────────────────────
 
     function _submitHLRequest(
@@ -651,26 +542,5 @@ contract GaslessHyperEVMDeposit is Script {
             v /= 10;
         }
         return string(buf);
-    }
-
-    // ─── Internal: Environment ───────────────────────────────────────
-
-    function _loadEnv() internal view returns (Env memory env) {
-        string memory mnemonic = vm.envString("MNEMONIC");
-        env.userPk = vm.deriveKey(mnemonic, 0);
-        env.user = vm.addr(env.userPk);
-
-        uint32 botIndex = uint32(vm.envOr("BOT_INDEX", uint256(0)));
-        env.botPk = vm.deriveKey(mnemonic, botIndex);
-        env.bot = vm.addr(env.botPk);
-
-        env.periphery = vm.envAddress("PERIPHERY");
-        env.spokePool = vm.envAddress("SPOKE_POOL");
-        env.inputToken = vm.envAddress("INPUT_TOKEN");
-        env.permit2 = vm.envOr("PERMIT2", address(0));
-        env.destinationChainId = vm.envUint("DESTINATION_CHAIN");
-        env.outputToken = vm.envOr("OUTPUT_TOKEN", address(0));
-        env.feeRecipient = vm.envOr("FEE_RECIPIENT", env.bot);
-        env.submissionFee = vm.envOr("SUBMISSION_FEE", uint256(0));
     }
 }
