@@ -4,6 +4,7 @@ pragma solidity ^0.8.30;
 import { Order, Step, Funding, TypedData, SubmitterInputs, USDFreeIdLib } from "./Interfaces.sol";
 import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // ── Minimal external interfaces ──────────────────────────────────────────────
 
@@ -118,7 +119,7 @@ struct Replacement {
 
 // ── OrderGateway ─────────────────────────────────────────────────────────────
 
-contract OrderGateway is Ownable {
+contract OrderGateway is Ownable, ReentrancyGuard {
     // ── Errors ──
 
     error LengthMismatch();
@@ -157,7 +158,6 @@ contract OrderGateway is Ownable {
 
     // ── State ──
 
-    uint8 private _locked = 1;
     uint256 private _nativeUsed;
     address private _activeExecutor;
     address private _orderOwner;
@@ -166,13 +166,6 @@ contract OrderGateway is Ownable {
     mapping(uint8 slotId => uint256) private _snapshots;
     mapping(address adapter => bool) public approvedAdapters;
     bool private _contextVerified; // true when orderOwner's context signature has been verified
-
-    modifier nonReentrant() {
-        require(_locked == 1);
-        _locked = 2;
-        _;
-        _locked = 1;
-    }
 
     constructor(address permit2_, uint32 chainId, address owner_) Ownable(owner_) {
         PERMIT2 = IPermit2(permit2_);
