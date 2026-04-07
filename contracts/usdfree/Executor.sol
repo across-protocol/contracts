@@ -5,14 +5,40 @@ import { MulticallHandler } from "../handlers/MulticallHandler.sol";
 
 /// @title Executor
 /// @notice OrderGateway executor that reuses MulticallHandler's multicall infrastructure.
-///         Owner encodes static calls in stepMessage (pull tokens, approve router).
-///         Submitter encodes dynamic calls in executorMessage (swap route, send output back).
-///         Both encode Call[] arrays — owner calls run first, then submitter calls.
+///         Owner defines their calls in stepMessage (fixed order, committed to in the step).
+///         Submitter defines the interleaving + their own calls in executorMessage.
+///
+///         stepMessage     = abi.encode(Call[] ownerCalls)
+///         executorMessage = abi.encode(bytes callSources, Call[] submitterCalls)
+///
+///         Each byte in callSources: 0x00 = next owner call, 0x01 = next submitter call.
+///         Owner calls always execute in their committed order — the submitter controls
+///         where their calls are inserted but cannot reorder or skip owner calls.
 contract Executor is MulticallHandler {
+    error CallSourceOutOfBounds();
+    error OwnerCallsNotFullyExecuted();
+
     function execute(address, bytes calldata stepMessage, bytes calldata executorMessage) external payable {
-        this.attemptCalls(abi.decode(stepMessage, (Call[])));
-        if (executorMessage.length > 0) {
-            this.attemptCalls(abi.decode(executorMessage, (Call[])));
+        Call[] memory ownerCalls = abi.decode(stepMessage, (Call[]));
+        (bytes memory callSources, Call[] memory subCalls) = abi.decode(executorMessage, (bytes, Call[]));
+
+        Call[] memory merged = new Call[](callSources.length);
+        uint256 oi;
+        uint256 si;
+
+        for (uint256 i; i < callSources.length; ++i) {
+            if (callSources[i] == 0x01) {
+                if (si >= subCalls.length) revert CallSourceOutOfBounds();
+                merged[i] = subCalls[si++];
+            } else {
+                if (oi >= ownerCalls.length) revert CallSourceOutOfBounds();
+                merged[i] = ownerCalls[oi++];
+            }
         }
+
+        // Ensure all owner calls were included — submitter can't skip any
+        if (oi != ownerCalls.length) revert OwnerCallsNotFullyExecuted();
+
+        this.attemptCalls(merged);
     }
 }

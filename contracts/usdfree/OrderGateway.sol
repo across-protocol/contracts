@@ -56,10 +56,13 @@ interface IExecutor {
 //   Bits 0-4:     command type (0x00–0x1f)
 //
 // step.message encodes the owner's plan:
-//   abi.encode(bytes executorStepMessage, bytes commands, bytes[] ownerInputs)
+//   abi.encode(bytes commands, bytes[] ownerInputs)
 //
 // executorMessage encodes the submitter's contributions:
-//   abi.encode(bytes executorDynamicMessage, bytes[] submitterInputs)
+//   abi.encode(bytes[] submitterInputs)
+//
+// EXECUTE with INPUT_BOTH: owner provides (uint256 value, bytes executorStepMsg),
+// submitter provides (bytes executorDynMsg). No special top-level fields needed.
 
 library Commands {
     bytes1 constant INPUT_SOURCE_MASK = 0xC0;
@@ -126,7 +129,6 @@ contract OrderGateway is Ownable {
     error NonceAlreadyUsed();
     error InvalidStepProof();
     error InvalidWitness();
-    error AlreadyExecuted();
     error NotActiveExecutor();
     error InvalidFundingType(uint8 typ);
     error AdapterNotApproved(address adapter);
@@ -235,16 +237,11 @@ contract OrderGateway is Ownable {
     // ── Command execution ───────────────────────────────────────────────────
 
     function _executeFromStep(SubmitterInputs calldata si) internal {
-        (bytes memory executorStepMsg, bytes memory commands, bytes[] memory ownerInputs) = abi.decode(
-            si.step.message,
-            (bytes, bytes, bytes[])
-        );
-
-        (bytes memory executorDynMsg, bytes[] memory subInputs) = abi.decode(si.executorMessage, (bytes, bytes[]));
+        (bytes memory commands, bytes[] memory ownerInputs) = abi.decode(si.step.message, (bytes, bytes[]));
+        bytes[] memory subInputs = abi.decode(si.executorMessage, (bytes[]));
 
         uint256 ownerIdx;
         uint256 subIdx;
-        bool executed;
 
         for (uint256 i; i < commands.length; ++i) {
             bytes1 cmd = commands[i];
@@ -265,9 +262,7 @@ contract OrderGateway is Ownable {
             bytes memory out;
 
             if (op == Commands.EXECUTE) {
-                if (executed) revert AlreadyExecuted();
-                (ok, out) = _executeStep(si.step, executorStepMsg, executorDynMsg, input);
-                executed = true;
+                (ok, out) = _executeStep(si.step, input);
             } else {
                 (ok, out) = _dispatch(op, input);
             }
@@ -383,16 +378,16 @@ contract OrderGateway is Ownable {
 
     // ── Executor dispatch ───────────────────────────────────────────────────
 
-    function _executeStep(
-        Step calldata step,
-        bytes memory executorStepMsg,
-        bytes memory executorDynMsg,
-        bytes memory input
-    ) internal returns (bool ok, bytes memory out) {
-        uint256 value = abi.decode(input, (uint256));
+    /// @dev With INPUT_BOTH: input = abi.encode(ownerInput, submitterInput)
+    ///      ownerInput = abi.encode(uint256 value, bytes executorStepMsg)
+    ///      submitterInput = abi.encode(bytes executorDynMsg)
+    ///      With INPUT_OWNER: input = abi.encode(uint256 value, bytes executorStepMsg) (no dynamic msg)
+    function _executeStep(Step calldata step, bytes memory input) internal returns (bool ok, bytes memory out) {
+        (bytes memory ownerInput, bytes memory subInput) = abi.decode(input, (bytes, bytes));
+        (uint256 value, bytes memory executorStepMsg) = abi.decode(ownerInput, (uint256, bytes));
         _activeExecutor = step.executor;
         (ok, out) = step.executor.call{ value: value }(
-            abi.encodeCall(IExecutor.execute, (_orderOwner, executorStepMsg, executorDynMsg))
+            abi.encodeCall(IExecutor.execute, (_orderOwner, executorStepMsg, subInput))
         );
         _activeExecutor = address(0);
     }
