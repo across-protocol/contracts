@@ -36,17 +36,17 @@ This is the simplest flow. The user signs **one message** and the bot submits **
      │  (off-chain EIP-712 sig)     │                                   │
      │                              │                                   │
      │                              │  2. depositWithAuthorization()    │
-     │                              │  ────────────────────────────────► │
+     │                              │  ───────────────────────────────► │
      │                              │  (bot pays gas)                   │
      │                              │                                   │
-     │                              │                     3. Token calls │
-     │                              │                     receiveWithAuth│
-     │                              │                     (pulls from    │
-     │                              │                      user → periph)│
+     │                              │                    3. Token calls │
+     │                              │                    receiveWithAuth│
+     │                              │                    (pulls from    │
+     │                              │                     user → periph)│
      │                              │                                   │
-     │                              │                     4. Periphery   │
-     │                              │                     deposits into  │
-     │                              │                     SpokePool      │
+     │                              │                    4. Periphery   │
+     │                              │                    deposits into  │
+     │                              │                    SpokePool      │
      └──────────────────────────────┴───────────────────────────────────┘
 ```
 
@@ -106,16 +106,16 @@ This is a two-step flow. The user signs **two messages** and the bot submits **t
      │   domain)                    │                                   │
      │                              │                                   │
      │                              │  2b. depositWithPermit()          │
-     │                              │  ────────────────────────────────► │
+     │                              │  ───────────────────────────────► │
      │                              │  (empty permit sig + deposit sig) │
      │                              │                                   │
-     │                              │                     3. Periphery   │
-     │                              │                     transferFrom   │
-     │                              │                     (uses existing │
-     │                              │                      allowance)    │
+     │                              │                    3. Periphery   │
+     │                              │                    transferFrom   │
+     │                              │                    (uses existing │
+     │                              │                     allowance)    │
      │                              │                                   │
-     │                              │                     4. Deposits    │
-     │                              │                     into SpokePool │
+     │                              │                    4. Deposits    │
+     │                              │                    into SpokePool │
      └──────────────────────────────┴───────────────────────────────────┘
 ```
 
