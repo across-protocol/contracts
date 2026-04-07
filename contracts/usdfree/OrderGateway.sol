@@ -36,6 +36,9 @@ interface IPermit2 {
         string calldata witnessTypeString,
         bytes calldata signature
     ) external;
+
+    // Allowance-based transfer — uses pre-set approval, no per-transfer signature
+    function transferFrom(address from, address to, uint160 amount, address token) external;
 }
 
 interface IExecutor {
@@ -71,6 +74,13 @@ library Commands {
     uint8 constant PULL_3009 = 0x01;
     uint8 constant PULL_PERMIT2_WITNESS = 0x02;
     uint8 constant CLAIM_NATIVE = 0x03;
+    // Allowance-based Permit2 pull — requires pre-set permit2.approve + prior VERIFY_CONTEXT command.
+    // Input: (uint8 source, address token, uint160 amount)
+    uint8 constant PULL_PERMIT2_ALLOWANCE = 0x04;
+    // Verifies an EIP-712 context signature from orderOwner over orderId.
+    // Must run before any PULL_PERMIT2_ALLOWANCE commands. Sets _contextVerified = true.
+    // Input: (bytes signature) — 65-byte EIP-712 sig. Always FLAG_SUBMITTER_INPUT (submitter provides the sig).
+    uint8 constant VERIFY_CONTEXT = 0x05;
 
     // Calls step.executor.execute(orderOwner, executorStepMessage, executorDynamicMessage)
     // Input: (uint256 value)
@@ -121,6 +131,7 @@ contract OrderGateway is Ownable {
     error InvalidFundingType(uint8 typ);
     error AdapterNotApproved(address adapter);
     error CalldataTooShort(uint256 callDataLength, uint256 offset);
+    error InvalidContextSignature();
 
     // ── Events ──
 
@@ -132,10 +143,15 @@ contract OrderGateway is Ownable {
         address submitter
     );
 
+    // ── EIP-712 (for context signatures) ──
+
+    bytes32 private constant _ORDER_CONTEXT_TYPEHASH = keccak256("OrderContext(bytes32 orderId)");
+
     // ── Immutables ──
 
     IPermit2 public immutable PERMIT2;
-    bytes32 public immutable DOMAIN_HASH;
+    bytes32 public immutable DOMAIN_HASH; // USDFreeIdLib domain
+    bytes32 public immutable EIP712_DOMAIN_SEPARATOR; // EIP-712 domain for context signatures
 
     // ── State ──
 
@@ -147,6 +163,7 @@ contract OrderGateway is Ownable {
     mapping(bytes32 orderId => bool) public usedNonces;
     mapping(uint8 slotId => uint256) private _snapshots;
     mapping(address adapter => bool) public approvedAdapters;
+    bool private _contextVerified; // true when orderOwner's context signature has been verified
 
     modifier nonReentrant() {
         require(_locked == 1);
@@ -158,6 +175,15 @@ contract OrderGateway is Ownable {
     constructor(address permit2_, uint32 chainId, address owner_) Ownable(owner_) {
         PERMIT2 = IPermit2(permit2_);
         DOMAIN_HASH = USDFreeIdLib.domainHash(chainId, address(this));
+        EIP712_DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256("USDFree.OrderGateway"),
+                keccak256("1"),
+                chainId,
+                address(this)
+            )
+        );
     }
 
     // ── Admin ────────────────────────────────────────────────────────────────
@@ -203,6 +229,7 @@ contract OrderGateway is Ownable {
         _nativeUsed = 0;
         _orderId = bytes32(0);
         _orderOwner = address(0);
+        _contextVerified = false;
     }
 
     // ── Command execution ───────────────────────────────────────────────────
@@ -260,6 +287,29 @@ contract OrderGateway is Ownable {
         return _balanceOf(token, address(this));
     }
 
+    // ── Context signature verification ─────────────────────────────────────
+    // Verifies a one-time EIP-712 signature from the orderOwner over the orderId.
+    // Enables cheap allowance-based Permit2 pulls for the rest of the tx.
+
+    function _verifyContextSignature(bytes memory input) internal {
+        bytes memory sig = abi.decode(input, (bytes));
+        bytes32 structHash = keccak256(abi.encode(_ORDER_CONTEXT_TYPEHASH, _orderId));
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", EIP712_DOMAIN_SEPARATOR, structHash));
+
+        if (sig.length != 65) revert InvalidContextSignature();
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly ("memory-safe") {
+            r := mload(add(sig, 0x20))
+            s := mload(add(sig, 0x40))
+            v := byte(0, mload(add(sig, 0x60)))
+        }
+        address recovered = ecrecover(digest, v, r, s);
+        if (recovered == address(0) || recovered != _orderOwner) revert InvalidContextSignature();
+        _contextVerified = true;
+    }
+
     // ── Step verification ───────────────────────────────────────────────────
 
     function _stepLeaf(Step calldata step) internal pure returns (bytes32) {
@@ -292,6 +342,11 @@ contract OrderGateway is Ownable {
             _processFunding3009(item, from);
         } else if (item.typ == 2) {
             _processFundingPermit2(item, from);
+        } else if (item.typ == 3) {
+            // PERMIT2_ALLOWANCE: uses pre-set allowance + context signature for auth
+            require(_contextVerified);
+            (address token, uint160 amt) = abi.decode(item.data, (address, uint160));
+            PERMIT2.transferFrom(from, address(this), amt, token);
         } else {
             revert InvalidFundingType(item.typ);
         }
@@ -370,6 +425,12 @@ contract OrderGateway is Ownable {
             uint256 amt = abi.decode(input, (uint256));
             _nativeUsed += amt;
             if (_nativeUsed > msg.value) revert NativeOverspend();
+        } else if (op == Commands.PULL_PERMIT2_ALLOWANCE) {
+            require(_contextVerified);
+            (uint8 src, address token, uint160 amt) = abi.decode(input, (uint8, address, uint160));
+            PERMIT2.transferFrom(_source(src), address(this), amt, token);
+        } else if (op == Commands.VERIFY_CONTEXT) {
+            _verifyContextSignature(input);
         } else {
             revert InvalidCommand(op);
         }
