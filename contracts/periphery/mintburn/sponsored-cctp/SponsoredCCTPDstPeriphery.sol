@@ -24,8 +24,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     using SafeERC20 for IERC20Metadata;
     using Bytes32ToAddress for bytes32;
 
-    bytes32 public constant DIRECT_CALLER_ROLE = keccak256("DIRECT_CALLER_ROLE");
-
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
 
@@ -75,7 +73,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         $.quoteDeadlineBuffer = 30 minutes;
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setRoleAdmin(DIRECT_CALLER_ROLE, DEFAULT_ADMIN_ROLE);
     }
 
     /**

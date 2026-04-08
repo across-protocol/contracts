@@ -30,8 +30,6 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
     using AddressToBytes32 for address;
     using SafeERC20 for IERC20;
 
-    bytes32 public constant DIRECT_CALLER_ROLE = keccak256("DIRECT_CALLER_ROLE");
-
     address public immutable OFT_ENDPOINT_ADDRESS;
     address public immutable IOFT_ADDRESS;
 
@@ -107,7 +105,6 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
         }
 
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setRoleAdmin(DIRECT_CALLER_ROLE, DEFAULT_ADMIN_ROLE);
     }
 
     /**
