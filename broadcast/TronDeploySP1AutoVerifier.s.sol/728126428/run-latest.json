@@ -1,0 +1,38 @@
+{
+  "transactions": [
+    {
+      "hash": "6bb786350fb65c85df414085b65caa22e5de47d59a241ec4b213aae2b41a9738",
+      "transactionType": "CREATE",
+      "contractName": "SP1AutoVerifier",
+      "contractAddress": "TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84",
+      "function": null,
+      "arguments": null,
+      "transaction": {
+        "from": "TQ4T4DgHoezYBTRoZPCspsSgRw38Ni9prA",
+        "gas": "0x59682f00",
+        "value": "0x0",
+        "input": "0x60808060405234601c57d3601c57d2601c5760e390816100218239f35b5f80fdfe608060405260043610156010575f80fd5b5f3560e01c6341493c60146022575f80fd5b34607057d3607057d2607057606036600319011260705767ffffffffffffffff60243581811160705760579036906004016074565b5050604435908111607057606e9036906004016074565b005b5f80fd5b9181601f8401121560705782359167ffffffffffffffff83116070576020838186019501011160705756fea36474726f6e582212204f85e820606274aa796391a13cd7cfa65b4d32f40114856e31ceeeee246ca8026c6578706572696d656e74616cf564736f6c63430008190041",
+        "chainId": "0x2b6653dc"
+      },
+      "additionalContracts": []
+    }
+  ],
+  "receipts": [
+    {
+      "status": "0x1",
+      "cumulativeGasUsed": "0xb1da",
+      "transactionHash": "6bb786350fb65c85df414085b65caa22e5de47d59a241ec4b213aae2b41a9738",
+      "blockHash": null,
+      "blockNumber": "0x4d78cc1",
+      "gasUsed": "0xb1da",
+      "from": "TQ4T4DgHoezYBTRoZPCspsSgRw38Ni9prA",
+      "to": null,
+      "contractAddress": "TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84"
+    }
+  ],
+  "libraries": [],
+  "pending": [],
+  "returns": {},
+  "timestamp": 1774372630236,
+  "chain": 728126428
+}

@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: BUSL-1.1
+pragma solidity ^0.8.0;
+
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+import { WithdrawParams } from "./WithdrawImplementation.sol";
+
+/**
+ * @title AdminWithdrawManager
+ * @notice Manages admin withdrawals from counterfactual deposit clones via two paths:
+ *         1. Direct withdraw — trusted `directWithdrawer` calls clone.execute() with arbitrary submitterData
+ *         2. Signed withdraw — anyone can trigger with a `signer` signature; recipient is forced to the user
+ * @dev Set this contract's address as `admin` in withdrawal merkle leaves.
+ * @custom:security-contact bugs@across.to
+ */
+contract AdminWithdrawManager is Ownable, EIP712 {
+    /// @notice Emitted when the direct withdrawer address is updated.
+    /// @param directWithdrawer The new direct withdrawer address.
+    event DirectWithdrawerUpdated(address indexed directWithdrawer);
+
+    /// @notice Emitted when the signer address is updated.
+    /// @param signer The new signer address.
+    event SignerUpdated(address indexed signer);
+
+    error Unauthorized();
+    error InvalidSignature();
+    error SignatureExpired();
+
+    /// @notice EIP-712 typehash for signed withdraw messages.
+    bytes32 public constant SIGNED_WITHDRAW_TYPEHASH =
+        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
+
+    /// @notice Address authorized to call `directWithdraw` without a signature.
+    address public directWithdrawer;
+
+    /// @notice Address whose EIP-712 signature authorizes `signedWithdrawToUser` calls.
+    address public signer;
+
+    constructor(
+        address _owner,
+        address _directWithdrawer,
+        address _signer
+    ) Ownable(_owner) EIP712("AdminWithdrawManager", "v1.0.0") {
+        directWithdrawer = _directWithdrawer;
+        signer = _signer;
+    }
+
+    /**
+     * @notice Direct withdraw — calls clone.execute() with the provided parameters.
+     * @dev Only callable by `directWithdrawer`. Caller provides all merkle proof data.
+     * @param depositAddress Address of the deployed clone.
+     * @param implementation WithdrawImplementation address (merkle leaf implementation).
+     * @param params ABI-encoded WithdrawParams (admin must be this contract).
+     * @param submitterData ABI-encoded (token, to, amount) for the withdrawal.
+     * @param proof Merkle proof for the withdrawal leaf.
+     */
+    function directWithdraw(
+        address depositAddress,
+        address implementation,
+        bytes calldata params,
+        bytes calldata submitterData,
+        bytes32[] calldata proof
+    ) external {
+        if (msg.sender != directWithdrawer) revert Unauthorized();
+        ICounterfactualDeposit(depositAddress).execute(implementation, params, submitterData, proof);
+    }
+
+    /**
+     * @notice Signed withdraw to user — anyone can trigger with a valid signature from `signer`.
+     * @dev Recipient is forced to the `user` address committed in the merkle leaf's WithdrawParams.
+     * @param depositAddress Address of the deployed clone.
+     * @param implementation WithdrawImplementation address (merkle leaf implementation).
+     * @param params ABI-encoded WithdrawParams (admin = this, user = recipient).
+     * @param token Token to withdraw.
+     * @param amount Amount to withdraw.
+     * @param proof Merkle proof for the withdrawal leaf.
+     * @param deadline Timestamp after which the signature is no longer valid.
+     * @param signature EIP-712 signature from `signer`.
+     */
+    function signedWithdrawToUser(
+        address depositAddress,
+        address implementation,
+        bytes calldata params,
+        address token,
+        uint256 amount,
+        bytes32[] calldata proof,
+        uint256 deadline,
+        bytes calldata signature
+    ) external {
+        if (block.timestamp > deadline) revert SignatureExpired();
+
+        bytes32 structHash = keccak256(abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, token, amount, deadline));
+        if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
+
+        address to = abi.decode(params, (WithdrawParams)).user;
+        ICounterfactualDeposit(depositAddress).execute(implementation, params, abi.encode(token, to, amount), proof);
+    }
+
+    /// @notice Updates the direct withdrawer address.
+    /// @param _directWithdrawer The new direct withdrawer address.
+    function setDirectWithdrawer(address _directWithdrawer) external onlyOwner {
+        directWithdrawer = _directWithdrawer;
+        emit DirectWithdrawerUpdated(_directWithdrawer);
+    }
+
+    /// @notice Updates the signer address used for signed withdrawals.
+    /// @param _signer The new signer address.
+    function setSigner(address _signer) external onlyOwner {
+        signer = _signer;
+        emit SignerUpdated(_signer);
+    }
+}

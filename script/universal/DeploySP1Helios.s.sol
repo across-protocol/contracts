@@ -25,7 +25,7 @@ import { SP1MockVerifier } from "@sp1-contracts/src/SP1MockVerifier.sol";
 
 ///
 /// 2. Run the script:
-///    forge script script/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
+///    forge script script/universal/DeploySP1Helios.s.sol --rpc-url <RPC_URL> --broadcast --ffi -vvvv
 ///
 /// Binary naming convention:
 ///    - macOS (arm64): genesis_{version}_arm64_darwin
@@ -61,14 +61,6 @@ contract DeploySP1Helios is Script {
             console.log("Deploying SP1MockVerifier (verifier was address(0))...");
             params.verifier = address(new SP1MockVerifier());
             console.log("SP1MockVerifier deployed to:", params.verifier);
-        }
-
-        string memory confirmation = vm.prompt(
-            "Once Sp1Helios is deployed, you will have 7 days to deploy the UniversalSpokePool and activate it in-protocol. If 7 days passes with no update on this deployment, it will be impossible to make any updates to this contract. Press y/Y to confirm."
-        );
-        if (!strEq(confirmation, "y") && !strEq(confirmation, "Y")) {
-            console.log("Prompt not confirmed. Aborting deployment.");
-            return address(0);
         }
 
         // Deploy the SP1 Helios contract
@@ -270,9 +262,5 @@ contract DeploySP1Helios is Script {
         }
 
         console.log("Checksum verified successfully");
-    }
-
-    function strEq(string memory a, string memory b) private pure returns (bool) {
-        return keccak256(bytes(a)) == keccak256(bytes(b));
     }
 }

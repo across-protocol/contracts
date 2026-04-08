@@ -3,7 +3,7 @@ import { AnchorError, AnchorProvider, BN, Wallet, web3 } from "@coral-xyz/anchor
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { assert } from "chai";
 import { common } from "./SvmSpoke.common";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { MerkleTree } from "../../utils/MerkleTree";
 import {
   AuthorityType,
   createMint,

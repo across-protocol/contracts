@@ -21,7 +21,7 @@ import {
   VersionedTransaction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
-import { MerkleTree } from "@uma/common/dist/MerkleTree";
+import { MerkleTree } from "../../utils/MerkleTree";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 import {

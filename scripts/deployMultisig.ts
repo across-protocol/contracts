@@ -1,20 +1,33 @@
 import { getNodeUrl } from "../utils";
-import { ethers, predictedSafe } from "../utils/utils";
-import { hre } from "../utils/utils.hre";
-import { EXPECTED_SAFE_ADDRESS } from "../deploy/consts";
-import Safe from "@safe-global/protocol-kit";
+import { ethers } from "../utils/utils";
+import { EXPECTED_SAFE_ADDRESS, EXPECTED_SAFE_OWNERS } from "../src/consts";
+import { getProvider, getSigner, getChainId } from "./utils";
+import Safe, { SafeAccountConfig, PredictedSafeProps } from "@safe-global/protocol-kit";
+
+const safeAccountConfig: SafeAccountConfig = {
+  owners: EXPECTED_SAFE_OWNERS,
+  threshold: 2,
+};
+
+const predictedSafe: PredictedSafeProps = {
+  safeAccountConfig,
+  safeDeploymentConfig: {
+    // Safe addresses are deterministic based on owners and salt nonce.
+    saltNonce: "0x1234",
+  },
+};
 
 /**
  * Script to deploy a new Safe Multisig contract via the Safe SDK. Run via:
  * ```
- * yarn hardhat run ./scripts/deployMultisig.ts \
- * --network hyperevm \
+ * NODE_URL=<rpc_url> MNEMONIC="..." npx ts-node ./scripts/deployMultisig.ts
  * ```
  */
 async function main() {
-  const chainId = parseInt(await hre.getChainId());
+  const provider = getProvider();
+  const chainId = await getChainId(provider);
   const nodeUrl = getNodeUrl(chainId);
-  const wallet = ethers.Wallet.fromMnemonic((hre.network.config.accounts as any).mnemonic);
+  const wallet = getSigner(provider);
   const privateKey = wallet._signingKey().privateKey;
   console.log(`Connected to node ${nodeUrl} for chain ${chainId}`);
   const signer = wallet.connect(new ethers.providers.JsonRpcProvider(nodeUrl));
