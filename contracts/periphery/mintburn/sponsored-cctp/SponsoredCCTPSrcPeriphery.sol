@@ -9,14 +9,8 @@ import { ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.s
 
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredCCTPDstPeriphery } from "./SponsoredCCTPDstPeriphery.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
-
-interface ISponsoredCCTPDstPeriphery {
-    function directReceiveMessage(
-        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
-        bytes memory signature
-    ) external;
-}
 
 /**
  * @title SponsoredCCTPSrcPeriphery
@@ -100,7 +94,7 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
 
             address burnToken = quote.burnToken.toAddress();
             IERC20(burnToken).safeTransferFrom(msg.sender, destinationHandler, quote.amount);
-            ISponsoredCCTPDstPeriphery(destinationHandler).directReceiveMessage(quote, signature);
+            SponsoredCCTPDstPeriphery(payable(destinationHandler)).directReceiveMessage(quote, signature);
 
             emit SponsoredCCTPDirectExecution(quote.nonce, msg.sender, quote.finalRecipient, quote.amount, signature);
         } else {

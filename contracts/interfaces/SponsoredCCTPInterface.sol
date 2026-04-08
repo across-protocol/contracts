@@ -24,6 +24,12 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
     // Error thrown when the CCTP message transmitter receive message fails.
     error CCTPMessageTransmitterFailed();
 
+    // Error thrown when direct flow destination handler is not a contract.
+    error InvalidDirectHandler();
+
+    // Error thrown when the burn token is invalid.
+    error InvalidBurnToken();
+
     event SponsoredDepositForBurn(
         bytes32 indexed quoteNonce,
         address indexed originSender,
@@ -44,9 +50,6 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
         uint256 amount,
         bytes signature
     );
-
-    // Error thrown when direct flow destination handler is not a contract.
-    error InvalidDirectHandler();
 
     // Event when emergency receive is called
     event EmergencyReceiveMessage(bytes32 nonce, address finalRecipent, address finalToken, uint256 amount);

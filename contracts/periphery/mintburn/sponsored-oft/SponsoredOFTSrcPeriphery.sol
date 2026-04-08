@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import { SponsoredOFTInterface } from "../../../interfaces/SponsoredOFTInterface.sol";
 import { QuoteSignLib } from "./QuoteSignLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
+import { DstOFTHandler } from "./DstOFTHandler.sol";
 
 import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
 import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
@@ -15,10 +16,6 @@ import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 import { Address } from "@openzeppelin/contracts-v4/utils/Address.sol";
-
-interface IDirectDstOFTHandler {
-    function executeDirect(address tokenSent, uint256 amountLD, bytes calldata composeMsg) external;
-}
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Across-supported flows on destination chain. Uses LayerZero's OFT as an underlying bridge
@@ -37,8 +34,6 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
 
     /// @notice Source endpoint id
     uint32 public immutable SRC_EID;
-    /// @notice OFT shared decimals used by this deployment.
-    uint8 public immutable SHARED_DECIMALS;
 
     /// @custom:storage-location erc7201:SponsoredOFTSrcPeriphery.main
     struct MainStorage {
@@ -102,6 +97,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
         _getMainStorage().quoteNonces[quote.signedParams.nonce] = true;
 
         if (quote.signedParams.dstEid == SRC_EID) {
+            if (msg.value > 0) revert InvalidNativeFee();
             address destinationHandler = address(uint160(uint256(quote.signedParams.destinationHandler)));
             if (!destinationHandler.isContract()) {
                 revert InvalidDirectHandler();
@@ -121,7 +117,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
             );
 
             IERC20(TOKEN).safeTransferFrom(msg.sender, destinationHandler, quote.signedParams.amountLD);
-            IDirectDstOFTHandler(destinationHandler).executeDirect(TOKEN, quote.signedParams.amountLD, composeMsg);
+            DstOFTHandler(payable(destinationHandler)).executeDirect(TOKEN, quote.signedParams.amountLD, composeMsg);
 
             emit SponsoredOFTDirectExecution(
                 quote.signedParams.nonce,
@@ -134,7 +130,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
             (SendParam memory sendParam, MessagingFee memory fee, address refundAddress) = _buildOftTransfer(quote);
 
             if (fee.nativeFee > msg.value) {
-                revert InsufficientNativeFee();
+                revert InvalidNativeFee();
             }
             // OFT doesn't refund the unused native fee portion. Instead, it expects precise fee.nativeFee to be transferred
             // as msg.value, so we refund the user ourselves

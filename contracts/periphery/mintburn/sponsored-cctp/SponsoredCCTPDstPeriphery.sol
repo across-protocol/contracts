@@ -205,6 +205,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
         bytes memory signature
     ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
+        if (quote.burnToken.toAddress() != baseToken) revert InvalidBurnToken();
         _validateQuoteOrRevert(quote, signature);
         _executeQuote(quote, 0);
     }

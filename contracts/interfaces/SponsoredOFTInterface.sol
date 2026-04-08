@@ -81,8 +81,8 @@ interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
     error QuoteExpired();
     /// @notice Thrown if Quote nonce was already used.
     error NonceAlreadyUsed();
-    /// @notice Thrown when provided msg.value is not sufficient to cover OFT bridging fee.
-    error InsufficientNativeFee();
+    /// @notice Thrown when msg.value does not match the expected native fee.
+    error InvalidNativeFee();
     /// @notice Thrown when array lengths do not match.
     error ArrayLengthMismatch();
     /// @notice Thrown when maxOftFeeBps is greater than 10000.
