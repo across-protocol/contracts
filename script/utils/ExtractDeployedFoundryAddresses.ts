@@ -264,6 +264,26 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             blockNumber: blockNumber,
           });
         }
+
+        // Extract contracts created internally by factory calls. Safe proxies deployed via
+        // SafeProxyFactory.createProxyWithNonce appear as additionalContracts on a CALL tx,
+        // not as top-level CREATE/CREATE2 transactions.
+        if (tx.additionalContracts && Array.isArray(tx.additionalContracts)) {
+          const txHash = tx.hash;
+          const blockNumber = txHashToBlock[txHash] || null;
+          const isDeploySafe = broadcastFile.scriptName === "DeploySafe.s.sol";
+
+          for (const additional of tx.additionalContracts) {
+            if (isDeploySafe && additional.address && additional.transactionType === "CREATE2") {
+              contracts.push({
+                contractName: "Safe",
+                contractAddress: additional.address,
+                transactionHash: txHash,
+                blockNumber: blockNumber,
+              });
+            }
+          }
+        }
       }
 
       return contracts;
