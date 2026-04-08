@@ -7,7 +7,7 @@ import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
 import { DstOFTHandler } from "./DstOFTHandler.sol";
 
 import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
-import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
 import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
 
@@ -23,6 +23,7 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
+    using Bytes32ToAddress for bytes32;
     using Address for address;
 
     bytes public constant EMPTY_OFT_COMMAND = new bytes(0);
@@ -98,10 +99,8 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
 
         if (quote.signedParams.dstEid == SRC_EID) {
             if (msg.value > 0) revert InvalidNativeFee();
-            address destinationHandler = address(uint160(uint256(quote.signedParams.destinationHandler)));
-            if (!destinationHandler.isContract()) {
-                revert InvalidDirectHandler();
-            }
+            address destinationHandler = quote.signedParams.destinationHandler.toAddress();
+            if (!destinationHandler.isContract()) revert InvalidDirectHandler();
 
             bytes memory composeMsg = ComposeMsgCodec._encode(
                 quote.signedParams.nonce,
