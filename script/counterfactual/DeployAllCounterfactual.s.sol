@@ -12,6 +12,7 @@ import { WithdrawImplementation } from "../../contracts/periphery/counterfactual
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { CounterfactualDepositSpokePoolPeriphery } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolPeriphery.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // Deploys all 7 counterfactual contracts via CREATE2 using the deterministic deployment proxy
@@ -46,7 +47,8 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //   3 = CounterfactualDepositSpokePool
 //   4 = CounterfactualDepositCCTP
 //   5 = CounterfactualDepositOFT
-//   6 = AdminWithdrawManager
+//   6 = CounterfactualDepositSpokePoolPeriphery
+//   7 = AdminWithdrawManager
 //
 // Environment variables:
 //   MNEMONIC          - Required. Mnemonic phrase for key derivation.
@@ -56,17 +58,17 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 2. forge script \
 //      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-//      --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
+//      --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,address,bool)" \
 //      <rpcUrl> <spokePool> <signer> <wrappedNativeToken> \
 //      <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
-//      <owner> <directWithdrawer> true \
+//      <spokePoolPeriphery> <owner> <directWithdrawer> true \
 //      --rpc-url <rpcUrl> --ffi -vvvv
 // 3. Verify the logged predicted addresses and forge commands look correct
 //
 // To skip deployments (e.g. CCTP and OFT):
 //   SKIP=4,5 forge script ... --ffi
 contract DeployAllCounterfactual is Script, Test {
-    uint256 constant TOTAL_DEPLOYMENTS = 7;
+    uint256 constant TOTAL_DEPLOYMENTS = 8;
 
     string constant SCRIPT_DIR = "script/counterfactual/";
 
@@ -79,6 +81,7 @@ contract DeployAllCounterfactual is Script, Test {
         uint32 cctpDomain,
         address oftPeriphery,
         uint32 oftEid,
+        address spokePoolPeriphery,
         address owner,
         address directWithdrawer,
         bool broadcast
@@ -120,6 +123,13 @@ contract DeployAllCounterfactual is Script, Test {
         );
         predicted[6] = _predictCreate2(
             bytes32(0),
+            abi.encodePacked(
+                type(CounterfactualDepositSpokePoolPeriphery).creationCode,
+                abi.encode(spokePoolPeriphery, spokePool, signer)
+            )
+        );
+        predicted[7] = _predictCreate2(
+            bytes32(0),
             abi.encodePacked(type(AdminWithdrawManager).creationCode, abi.encode(owner, directWithdrawer, signer))
         );
 
@@ -130,6 +140,7 @@ contract DeployAllCounterfactual is Script, Test {
             "CounterfactualDepositSpokePool",
             "CounterfactualDepositCCTP",
             "CounterfactualDepositOFT",
+            "CounterfactualDepositSpokePoolPeriphery",
             "AdminWithdrawManager"
         ];
 
@@ -251,11 +262,33 @@ contract DeployAllCounterfactual is Script, Test {
             );
         }
 
-        // --- 6: AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
+        // --- 6: CounterfactualDepositSpokePoolPeriphery (deposit implementation for swap + bridge via SpokePoolPeriphery) ---
         if (skip[6]) {
-            console.log("[6] AdminWithdrawManager: SKIPPED");
+            console.log("[6] CounterfactualDepositSpokePoolPeriphery: SKIPPED");
         } else {
-            console.log("[6] Deploying AdminWithdrawManager...");
+            console.log("[6] Deploying CounterfactualDepositSpokePoolPeriphery...");
+            _runForgeScript(
+                rpcUrl,
+                broadcastFlag,
+                string.concat(SCRIPT_DIR, "DeployCounterfactualDepositSpokePoolPeriphery.s.sol"),
+                "DeployCounterfactualDepositSpokePoolPeriphery",
+                string.concat(
+                    ' --sig "run(address,address,address)" ',
+                    vm.toString(spokePoolPeriphery),
+                    " ",
+                    vm.toString(spokePool),
+                    " ",
+                    vm.toString(signer)
+                ),
+                6
+            );
+        }
+
+        // --- 7: AdminWithdrawManager (admin contract for managing withdrawals from clones) ---
+        if (skip[7]) {
+            console.log("[7] AdminWithdrawManager: SKIPPED");
+        } else {
+            console.log("[7] Deploying AdminWithdrawManager...");
             _runForgeScript(
                 rpcUrl,
                 broadcastFlag,
@@ -269,7 +302,7 @@ contract DeployAllCounterfactual is Script, Test {
                     " ",
                     vm.toString(signer)
                 ),
-                6
+                7
             );
         }
 
