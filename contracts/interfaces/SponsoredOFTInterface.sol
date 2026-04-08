@@ -113,15 +113,6 @@ interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
     function deposit(Quote calldata quote, bytes calldata signature) external payable;
 
     /**
-     * @notice Executes quote locally without OFT bridging by calling destinationHandler directly.
-     * @dev Reuses the same signed quote validation and nonce replay protection.
-     * Requires quote.signedParams.dstEid to equal SRC_EID.
-     * @param quote The quote struct containing all transfer parameters.
-     * @param signature The signature authorizing the quote.
-     */
-    function depositDirect(Quote calldata quote, bytes calldata signature) external;
-
-    /**
      * @notice Sets the quote signer.
      * @param _newSigner New signer address.
      */

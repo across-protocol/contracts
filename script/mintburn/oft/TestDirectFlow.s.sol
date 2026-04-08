@@ -303,7 +303,7 @@ contract TestDirectFlow is Script, Config {
 
         vm.startBroadcast(pk);
         IERC20(token).approve(srcPeriphery, amountLD);
-        periphery.depositDirect(quote, signature);
+        periphery.deposit(quote, signature);
         vm.stopBroadcast();
     }
 

@@ -330,7 +330,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
 
         uint256 userBalBefore = IERC20(address(token)).balanceOf(user);
         vm.prank(user);
-        periphery.depositDirect(oftQuote, oftSig);
+        periphery.deposit(oftQuote, oftSig);
 
         assertTrue(periphery.usedNonces(oftNonce), "OFT nonce not used");
         assertTrue(cctpSrcPeriphery.usedNonces(cctpNonce), "CCTP nonce not used");
@@ -370,7 +370,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
             SEND_AMOUNT,
             signature
         );
-        periphery.depositDirect(quote, signature);
+        periphery.deposit(quote, signature);
 
         assertEq(
             IERC20(address(token)).balanceOf(address(directHandler)),
@@ -407,7 +407,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
 
         vm.prank(user);
         vm.expectRevert(SponsoredOFTInterface.InvalidDirectDstEid.selector);
-        periphery.depositDirect(quote, signature);
+        periphery.deposit(quote, signature);
     }
 
     function testDepositDirectRevertsOnInvalidDirectHandler() public {
@@ -426,7 +426,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
 
         vm.prank(user);
         vm.expectRevert(SponsoredOFTInterface.InvalidDirectHandler.selector);
-        periphery.depositDirect(quote, signature);
+        periphery.deposit(quote, signature);
     }
 
     function testDepositRevertsOnInsufficientNativeFee() public {
