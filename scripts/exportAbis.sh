@@ -7,6 +7,11 @@ set -e
 OUT_DIR="out"
 ABI_DIR="dist/abi"
 
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Error: jq is required but not installed." >&2
+  exit 1
+fi
+
 if [ ! -d "$OUT_DIR" ]; then
   echo "Error: $OUT_DIR not found. Run 'forge build' first." >&2
   exit 1
@@ -47,5 +52,10 @@ for sol_dir in "$OUT_DIR"/*.sol; do
     exported=$(( exported + 1 ))
   done
 done
+
+if [ "$exported" -eq 0 ]; then
+  echo "Error: no ABIs were exported. Check that $OUT_DIR contains valid Foundry artifacts." >&2
+  exit 1
+fi
 
 echo "Exported $exported ABIs to $ABI_DIR, skipped $skipped, filtered $filtered"
