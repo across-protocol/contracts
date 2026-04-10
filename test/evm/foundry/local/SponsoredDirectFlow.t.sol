@@ -474,7 +474,7 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
         address unauthorized = makeAddr("unauthorized");
         vm.prank(unauthorized);
         vm.expectRevert();
-        dstPeriphery.directReceiveMessage(quote, sig);
+        dstPeriphery.directReceiveMessage(quote);
     }
 
     function testDirectReceiveMessage_RevertsOnInvalidBurnToken() public {
@@ -487,6 +487,6 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
         dstPeriphery.grantRole(dstPeriphery.DIRECT_CALLER_ROLE(), address(this));
 
         vm.expectRevert(SponsoredCCTPInterface.InvalidBurnToken.selector);
-        dstPeriphery.directReceiveMessage(quote, sig);
+        dstPeriphery.directReceiveMessage(quote);
     }
 }

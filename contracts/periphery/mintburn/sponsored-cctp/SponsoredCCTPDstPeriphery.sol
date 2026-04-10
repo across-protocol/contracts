@@ -199,14 +199,14 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
      * @notice Direct execution entrypoint for same-chain flows that bypass CCTP transport.
      * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
      * @param quote The quote that contains the data for the deposit.
-     * @param signature The signature of the quote.
      */
     function directReceiveMessage(
-        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote,
-        bytes memory signature
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
     ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
         if (quote.burnToken.toAddress() != baseToken) revert InvalidBurnToken();
-        _validateQuoteOrRevert(quote, signature);
+        MainStorage storage $ = _getMainStorage();
+        if ($.usedNonces[quote.nonce]) revert InvalidNonce();
+        $.usedNonces[quote.nonce] = true;
         _executeQuote(quote, 0);
     }
 
