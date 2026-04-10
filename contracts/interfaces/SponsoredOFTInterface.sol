@@ -66,8 +66,12 @@ interface SponsoredOFTInterface is SponsoredExecutionModeInterface {
     event SponsoredOFTDirectExecution(
         bytes32 indexed quoteNonce,
         address indexed originSender,
-        bytes32 indexed destinationHandler,
-        uint256 amountLD,
+        bytes32 indexed finalRecipient,
+        bytes32 destinationHandler,
+        uint256 quoteDeadline,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
+        bytes32 finalToken,
         bytes sig
     );
 

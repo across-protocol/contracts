@@ -47,7 +47,12 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
         bytes32 indexed quoteNonce,
         address indexed originSender,
         bytes32 indexed finalRecipient,
-        uint256 amount,
+        uint256 quoteDeadline,
+        uint256 maxBpsToSponsor,
+        uint256 maxUserSlippageBps,
+        bytes32 finalToken,
+        uint32 destinationDex,
+        uint8 accountCreationMode,
         bytes signature
     );
 

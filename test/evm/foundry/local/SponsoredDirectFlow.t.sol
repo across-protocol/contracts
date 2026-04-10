@@ -190,8 +190,12 @@ contract OFTDirectFlowTest is Test {
         emit SponsoredOFTInterface.SponsoredOFTDirectExecution(
             quote.signedParams.nonce,
             user,
+            quote.signedParams.finalRecipient,
             quote.signedParams.destinationHandler,
-            SEND_AMOUNT,
+            quote.signedParams.deadline,
+            quote.signedParams.maxBpsToSponsor,
+            quote.signedParams.maxUserSlippageBps,
+            quote.signedParams.finalToken,
             sig
         );
         srcPeriphery.deposit(quote, sig);
@@ -406,7 +410,12 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
             quote.nonce,
             user,
             quote.finalRecipient,
-            DEFAULT_AMOUNT,
+            quote.deadline,
+            quote.maxBpsToSponsor,
+            quote.maxUserSlippageBps,
+            quote.finalToken,
+            quote.destinationDex,
+            quote.accountCreationMode,
             sig
         );
         srcPeriphery.depositForBurn(quote, sig);

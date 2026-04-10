@@ -121,8 +121,12 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
             emit SponsoredOFTDirectExecution(
                 quote.signedParams.nonce,
                 msg.sender,
+                quote.signedParams.finalRecipient,
                 quote.signedParams.destinationHandler,
-                quote.signedParams.amountLD,
+                quote.signedParams.deadline,
+                quote.signedParams.maxBpsToSponsor,
+                quote.signedParams.maxUserSlippageBps,
+                quote.signedParams.finalToken,
                 signature
             );
         } else {

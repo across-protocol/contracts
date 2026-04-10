@@ -96,7 +96,18 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
             IERC20(burnToken).safeTransferFrom(msg.sender, destinationHandler, quote.amount);
             SponsoredCCTPDstPeriphery(payable(destinationHandler)).directReceiveMessage(quote, signature);
 
-            emit SponsoredCCTPDirectExecution(quote.nonce, msg.sender, quote.finalRecipient, quote.amount, signature);
+            emit SponsoredCCTPDirectExecution(
+                quote.nonce,
+                msg.sender,
+                quote.finalRecipient,
+                quote.deadline,
+                quote.maxBpsToSponsor,
+                quote.maxUserSlippageBps,
+                quote.finalToken,
+                quote.destinationDex,
+                quote.accountCreationMode,
+                signature
+            );
         } else {
             (
                 uint256 amount,
