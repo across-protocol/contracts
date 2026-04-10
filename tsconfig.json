@@ -10,5 +10,5 @@
     "resolveJsonModule": true,
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
-  "include": ["./scripts", "./index.ts", "utils/utils.ts", "src/types"]
+  "include": ["./index.ts", "utils/utils.ts", "src/types"]
 }
