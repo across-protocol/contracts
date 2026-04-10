@@ -12,7 +12,6 @@
   },
   "files": [
     "/contracts/**/*.sol",
-    "!/contracts/test/**",
     "/dist/**/*"
   ],
   "types": "dist/index.d.ts",
