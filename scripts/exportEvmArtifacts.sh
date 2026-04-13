@@ -1,11 +1,11 @@
 #!/bin/sh
-# Extracts ABI and bytecode from Foundry's out/ artifacts into dist/abi/ for npm publishing.
+# Extracts ABI and bytecode from Foundry's out/ artifacts into dist/evm/artifacts/ for npm publishing.
 # This avoids shipping the full out/ directory (~1 GB of ASTs, storage layouts, etc.)
 # while still providing ABIs and bytecode for downstream consumers (e.g. typechain, tests).
 set -e
 
 OUT_DIR="out"
-ABI_DIR="dist/abi"
+ARTIFACTS_DIR="dist/evm/artifacts"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "Error: jq is required but not installed." >&2
@@ -47,7 +47,7 @@ for sol_dir in "$OUT_DIR"/*.sol; do
 
     bytecode=$(jq -c '.bytecode.object // empty' "$json_file" 2>/dev/null) || true
 
-    dest_dir="$ABI_DIR/$dir_name"
+    dest_dir="$ARTIFACTS_DIR/$dir_name"
     mkdir -p "$dest_dir"
     if [ -n "$bytecode" ] && [ "$bytecode" != '""' ]; then
       printf '{"abi":%s,"bytecode":%s}' "$abi" "$bytecode" > "$dest_dir/$(basename "$json_file")"
@@ -59,8 +59,8 @@ for sol_dir in "$OUT_DIR"/*.sol; do
 done
 
 if [ "$exported" -eq 0 ]; then
-  echo "Error: no ABIs were exported. Check that $OUT_DIR contains valid Foundry artifacts." >&2
+  echo "Error: no EVM artifacts were exported. Check that $OUT_DIR contains valid Foundry artifacts." >&2
   exit 1
 fi
 
-echo "Exported $exported ABIs to $ABI_DIR, skipped $skipped, filtered $filtered"
+echo "Exported $exported EVM artifacts to $ARTIFACTS_DIR, skipped $skipped, filtered $filtered"
