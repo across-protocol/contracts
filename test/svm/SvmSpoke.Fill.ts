@@ -32,7 +32,7 @@ import {
   createLookupTable,
   createDefaultTransaction,
   extendLookupTable,
-  sendTransactionWithLookupTable,
+  sendTransactionWithLookupTableV2 as sendTransactionWithLookupTable,
   signAndSendTransaction,
   SvmSpokeClient,
 } from "@across-protocol/sdk/svm";
