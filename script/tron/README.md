@@ -145,6 +145,24 @@ Deploys a clone from the factory and verifies the predicted address matches the 
 yarn tron-deploy-counterfactual-clone <factory> <implementation> <merkleRoot> <salt> [--testnet]
 ```
 
+## Periphery Scripts
+
+### SpokePoolPeriphery
+
+Deploys `SpokePoolPeriphery`. The constructor internally deploys a `SwapProxy`, which is accessible via `spokePoolPeriphery.swapProxy()` — a separate `SwapProxy` deployment is not required when deploying the periphery.
+
+```bash
+yarn tron-deploy-spoke-pool-periphery <permit2> [--testnet]
+```
+
+### SwapProxy
+
+Deploys a standalone `SwapProxy`. Use this only if a dedicated `SwapProxy` is needed outside of a periphery deployment (the periphery's constructor already deploys its own).
+
+```bash
+yarn tron-deploy-swap-proxy <permit2> [--testnet]
+```
+
 ## Verifying contracts on TronScan
 
 TronScan requires a single flattened Solidity file for verification. Flatten with `forge flatten` and fix the merged pragma:
@@ -185,6 +203,8 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `counterfactual/tron-deploy-admin-withdraw-manager.ts`           | Deploys AdminWithdrawManager                                           |
 | `counterfactual/tron-deploy-withdraw-implementation.ts`          | Deploys WithdrawImplementation (no args)                               |
 | `counterfactual/tron-deploy-counterfactual-clone.ts`             | Deploys a clone from factory, verifies address prediction              |
+| `periphery/tron-deploy-spoke-pool-periphery.ts`                  | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
+| `periphery/tron-deploy-swap-proxy.ts`                            | Deploys a standalone SwapProxy                                         |
 
 ## Chain IDs
 

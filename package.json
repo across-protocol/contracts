@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "5.0.5",
+  "version": "5.0.6",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -58,7 +58,9 @@
     "tron-deploy-withdraw-implementation": "ts-node script/tron/counterfactual/tron-deploy-withdraw-implementation.ts",
     "tron-deploy-counterfactual-clone": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-clone.ts",
     "tron-deploy-clone": "ts-node script/tron/counterfactual/tron-deploy-clone.ts",
-    "tron-execute-clone-deposit": "ts-node script/tron/counterfactual/tron-execute-clone-deposit.ts"
+    "tron-execute-clone-deposit": "ts-node script/tron/counterfactual/tron-execute-clone-deposit.ts",
+    "tron-deploy-spoke-pool-periphery": "ts-node script/tron/periphery/tron-deploy-spoke-pool-periphery.ts",
+    "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.107",
