@@ -1,20 +1,20 @@
-# Multisig Scripts
+# Safe Multisig
 
 TypeScript helpers for deterministic Safe deployments that still emit Foundry-style broadcast artifacts.
 
 ## Files
 
-- `deployMultisig.ts` - Deploys a Safe using the committed chain config and writes `broadcast/DeployMultisig.s.sol/<chainId>/run-latest.json`
+- `deploySafe.ts` - Deploys a Safe using the committed chain config and writes `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`
 - `config.json` - Global Safe owners, threshold, and salt nonce
 - `broadcast.ts` - Foundry-style broadcast writer for the Safe deployment transaction
 
 ## Usage
 
 ```bash
-yarn ts-node ./script/multisig/deployMultisig.ts --chain-id 1
+yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id 1
 ```
 
-The script always reads `script/multisig/config.json` and loads `MNEMONIC`, `NODE_URL_<chainId>`, and `CUSTOM_NODE_URL` from the repo `.env`.
+The script always reads `script/safe-multisig/config.json` and loads `MNEMONIC`, `NODE_URL_<chainId>`, and `CUSTOM_NODE_URL` from the repo `.env`.
 
 ## Config
 

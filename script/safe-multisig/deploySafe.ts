@@ -49,7 +49,7 @@ function loadMultisigConfig(configPath: string): MultisigConfig {
 }
 
 function printUsage(): void {
-  console.log(`Usage: yarn ts-node ./script/multisig/deployMultisig.ts --chain-id <id>
+  console.log(`Usage: yarn ts-node ./script/safe-multisig/deploySafe.ts --chain-id <id>
 
 Reads env vars from .env automatically.
 

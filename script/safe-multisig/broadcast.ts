@@ -4,7 +4,7 @@ import { execSync } from "child_process";
 import { BigNumber, ethers } from "ethers";
 import { getAddress } from "ethers/lib/utils";
 
-const BROADCAST_SCRIPT_NAME = "DeployMultisig.s.sol";
+const BROADCAST_SCRIPT_NAME = "DeploySafe.s.sol";
 
 function toHex(value: BigNumber | number | string | null | undefined): string | null {
   if (value === null || value === undefined) return null;
