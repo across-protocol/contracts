@@ -7,7 +7,7 @@ import Safe, { PredictedSafeProps, SafeAccountConfig } from "@safe-global/protoc
 import { getAddress } from "ethers/lib/utils";
 import { ethers } from "../../utils/utils";
 import { getNodeUrl } from "../../utils";
-import { getProvider, getSigner } from "../../scripts/utils";
+import { getChainId, getProvider, getSigner } from "../../scripts/utils";
 import { writeMultisigBroadcastArtifact } from "./broadcast";
 
 const DEFAULT_CONFIG_PATH = path.resolve(__dirname, "config.json");
@@ -69,7 +69,12 @@ async function resolveChainContext(): Promise<{
   const chainId = Number(explicitChainId);
   if (!Number.isInteger(chainId) || chainId <= 0) throw new Error(`Invalid --chain-id value: ${explicitChainId}`);
   const nodeUrl = getNodeUrl(chainId);
-  return { chainId, provider: getProvider(nodeUrl), nodeUrl };
+  const provider = getProvider(nodeUrl);
+  const runtimeChainId = await getChainId(provider);
+  if (runtimeChainId !== chainId) {
+    throw new Error(`RPC ${nodeUrl} reported chain ID ${runtimeChainId}, but --chain-id was ${chainId}`);
+  }
+  return { chainId, provider, nodeUrl };
 }
 
 function assertSameOwners(actualOwners: string[], expectedOwners: string[]): void {
