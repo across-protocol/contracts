@@ -74,7 +74,7 @@
     "ethers": "5.7.2"
   },
   "devDependencies": {
-    "@across-protocol/sdk": "^4.4.0-alpha.6",
+    "@across-protocol/sdk": "^4.4.0-alpha.7",
     "@codama/nodes-from-anchor": "1.2.2",
     "@codama/renderers-js": "1.3.0",
     "@openzeppelin/foundry-upgrades": "^0.4.0",
