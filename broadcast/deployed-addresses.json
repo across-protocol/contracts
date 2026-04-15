@@ -1666,11 +1666,6 @@
           "block_number": 32766836,
           "transaction_hash": "0x143fcc2dcb1bfa4a851175b36fad15d1fc4c7548e1e7a074a50d8600ff1925ef"
         },
-        "Safe": {
-          "address": "0xd396CcB6770EAB84045c9Bce2939c478639E2A7F",
-          "block_number": 33296123,
-          "transaction_hash": "0xbdff400e11670ff5441ed27adffb282eb1a71e8b17a4de1ace4064df101d5681"
-        },
         "WithdrawImplementation": {
           "address": "0x679D43e1d304001538Bf083D421484fD67c00a45",
           "block_number": 32766806,

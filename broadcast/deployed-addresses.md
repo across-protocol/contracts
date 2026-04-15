@@ -420,7 +420,6 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://scrollscan.com/address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool | [0x6EE9C95803Ae6114A7e91d53322638E2a6097B72](https://scrollscan.com/address/0x6EE9C95803Ae6114A7e91d53322638E2a6097B72) |
 | MulticallHandler               | [0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E](https://scrollscan.com/address/0x0F7Ae28dE1C8532170AD4ee566B5801485c13a0E) |
-| Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://scrollscan.com/address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SpokePool                      | [0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96](https://scrollscan.com/address/0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://scrollscan.com/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://scrollscan.com/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
