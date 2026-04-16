@@ -97,7 +97,6 @@ async function main() {
   const { chainId, provider, nodeUrl } = await resolveChainContext();
   const config = loadMultisigConfig(configPath);
   const wallet = getSigner(provider);
-  const signer = wallet.connect(new ethers.providers.JsonRpcProvider(nodeUrl));
   const privateKey = wallet._signingKey().privateKey;
 
   const safeAccountConfig: SafeAccountConfig = {
@@ -141,7 +140,7 @@ async function main() {
   if (!deploymentTransaction.to) throw new Error("Safe deployment transaction is missing target address");
   if (!deploymentTransaction.data) throw new Error("Safe deployment transaction is missing calldata");
 
-  const sentTransaction = await signer.sendTransaction({
+  const sentTransaction = await wallet.sendTransaction({
     to: deploymentTransaction.to,
     data: deploymentTransaction.data,
     value: deploymentTransaction.value.toString(),
