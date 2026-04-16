@@ -94,7 +94,6 @@ export function writeMultisigBroadcastArtifact(opts: {
     returns: {},
     timestamp,
     chain: opts.chainId,
-    multi: false,
     commit: getGitCommit(),
   };
 
