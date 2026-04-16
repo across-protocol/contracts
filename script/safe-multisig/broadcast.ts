@@ -63,7 +63,7 @@ export function writeMultisigBroadcastArtifact(opts: {
           to: tx.to ? getAddress(tx.to) : getAddress(opts.deploymentTransaction.to),
           gas: toHex(tx.gasLimit),
           value: toHex(tx.value ?? opts.deploymentTransaction.value),
-          data: tx.data ?? opts.deploymentTransaction.data,
+          input: tx.data ?? opts.deploymentTransaction.data,
           nonce: toHex(tx.nonce),
           accessList: tx.accessList ?? [],
         },
