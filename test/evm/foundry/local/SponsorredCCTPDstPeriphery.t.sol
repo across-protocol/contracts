@@ -802,27 +802,26 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice If CCTP's receiveMessage doesn't actually mint `baseToken` to this contract (e.g. a signed quote
-    /// whose burnToken / recipient routes through some non-mint flow), the periphery must early-return without
-    /// consuming the user's nonce or firing downstream flows — even though the caller already has baseToken
-    /// sitting in the contract (resting / sponsorship balance).
-    function test_ReceiveMessage_NoBaseTokenMinted_FailsValidation() public {
+    /// whose burnToken / recipient routes through some non-mint flow), the periphery must revert so the user's
+    /// nonce is preserved and no downstream flow fires — even though the caller already has baseToken sitting
+    /// in the contract (resting / sponsorship balance).
+    function test_ReceiveMessage_NoBaseTokenMinted_Reverts() public {
         messageTransmitter.setShouldMint(false);
 
         SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
         bytes memory signature = signQuote(quote, signerPrivateKey);
         bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
 
-        uint256 periphBalBefore = usdc.balanceOf(address(periphery));
-
+        vm.expectRevert(SponsoredCCTPInterface.InvalidMintedAmount.selector);
         periphery.receiveMessage(message, bytes("mock-attestation"), signature);
 
-        assertEq(usdc.balanceOf(address(periphery)), periphBalBefore);
         assertFalse(periphery.usedNonces(quote.nonce));
     }
 
-    /// @notice Emergency path must apply the same mint-produced check, or a compromised bot could use a
-    /// fabricated CCTP message to drain `baseToken` out of the contract's existing balance.
-    function test_EmergencyReceiveMessage_NoBaseTokenMinted_EarlyReturn() public {
+    /// @notice Emergency path forwards only what the CCTP call actually credited to this contract. A message
+    /// that mints nothing must result in a zero-amount forward (no drain of the contract's prior balance), with
+    /// the nonce still consumed so the same broken message can't be replayed.
+    function test_EmergencyReceiveMessage_NoBaseTokenMinted_ForwardsZero() public {
         messageTransmitter.setShouldMint(false);
 
         bytes32 botRole = periphery.PERMISSIONED_BOT_ROLE();
@@ -839,7 +838,26 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
         assertEq(usdc.balanceOf(address(periphery)), periphBalBefore);
         assertEq(usdc.balanceOf(finalRecipient), recipBalBefore);
-        assertFalse(periphery.usedNonces(quote.nonce));
+        assertTrue(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice Emergency path forwards the actual minted amount even if it doesn't equal `amount - feeExecuted`.
+    /// Uses deal() to simulate a partial credit into the periphery mid-CCTP-call.
+    function test_EmergencyReceiveMessage_ForwardsActualMintedAmount() public {
+        bytes32 botRole = periphery.PERMISSIONED_BOT_ROLE();
+        vm.prank(admin);
+        periphery.grantRole(botRole, address(this));
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        uint256 recipBalBefore = usdc.balanceOf(finalRecipient);
+
+        periphery.emergencyReceiveMessage(message, bytes("mock-attestation"));
+
+        // Mock credits exactly `amount - feeExecuted` on receiveMessage; recipient should net that amount.
+        assertEq(usdc.balanceOf(finalRecipient), recipBalBefore + DEFAULT_AMOUNT - FEE_EXECUTED);
+        assertTrue(periphery.usedNonces(quote.nonce));
     }
 
     /// @notice Pre-existing `baseToken` balance must not be counted toward the mint-produced amount:
@@ -855,6 +873,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         // Fund the periphery with far more baseToken than the expected mint — it must still fail validation.
         deal(address(usdc), address(periphery), usdc.balanceOf(address(periphery)) + DEFAULT_AMOUNT * 10);
 
+        vm.expectRevert(SponsoredCCTPInterface.InvalidMintedAmount.selector);
         periphery.receiveMessage(message, bytes("mock-attestation"), signature);
 
         assertFalse(periphery.usedNonces(quote.nonce));

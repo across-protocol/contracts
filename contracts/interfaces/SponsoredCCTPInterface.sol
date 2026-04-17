@@ -24,6 +24,11 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
     // Error thrown when the CCTP message transmitter receive message fails.
     error CCTPMessageTransmitterFailed();
 
+    // Error thrown when the amount actually minted into this contract by the CCTP call does not match
+    // the `amount - feeExecuted` encoded in the message, i.e. the message did not produce a real mint
+    // of `baseToken` to this contract.
+    error InvalidMintedAmount();
+
     event SponsoredDepositForBurn(
         bytes32 indexed quoteNonce,
         address indexed originSender,

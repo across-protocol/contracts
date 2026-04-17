@@ -132,6 +132,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         if (!success) {
             return;
         }
+        // Forward only what the CCTP call actually credited to this contract, so a message that mints nothing
+        // (wrong recipient, unlinked burnToken, etc.) cannot drain this contract's prior `baseToken` balance.
+        uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
+        uint256 mintedAmount = baseBalAfter > baseBalBefore ? baseBalAfter - baseBalBefore : 0;
 
         // Use try-catch to handle potential abi.decode reverts gracefully
         try this.validateMessage(message) returns (bool isValid) {
@@ -142,26 +146,16 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             // Malformed message that causes abi.decode to revert then early return
             return;
         }
-        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
-            .getSponsoredCCTPQuoteData(message);
-
-        // Confirm the CCTP call actually minted `baseToken` to this contract. Without this, a signer/API
-        // compromise could sign a quote whose message doesn't mint any `baseToken` (wrong recipient, unlinked
-        // burnToken, etc.) and drain the transfer below from this contract's prior balance.
-        if (!_mintProducedBaseToken(baseBalBefore, quote.amount, feeExecuted)) {
-            return;
-        }
+        (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, ) = SponsoredCCTPQuoteLib.getSponsoredCCTPQuoteData(
+            message
+        );
 
         _getMainStorage().usedNonces[quote.nonce] = true;
 
-        IERC20Metadata(baseToken).safeTransfer(quote.finalRecipient.toAddress(), quote.amount - feeExecuted);
+        address finalRecipient = quote.finalRecipient.toAddress();
+        IERC20Metadata(baseToken).safeTransfer(finalRecipient, mintedAmount);
 
-        emit EmergencyReceiveMessage(
-            quote.nonce,
-            quote.finalRecipient.toAddress(),
-            baseToken,
-            quote.amount - feeExecuted
-        );
+        emit EmergencyReceiveMessage(quote.nonce, finalRecipient, baseToken, mintedAmount);
     }
 
     /**
@@ -199,9 +193,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
         // Confirm the CCTP call actually minted `baseToken` to this contract. A message whose recipient/burnToken
         // don't produce a real `baseToken` mint would otherwise consume the user's nonce and draw sponsorship
-        // fees out of DonationBox against a fake bridge event.
+        // fees out of DonationBox against a fake bridge event. Revert (not early-return) so the user can retry
+        // with a correct message rather than losing the nonce silently.
         if (!_mintProducedBaseToken(baseBalBefore, quote.amount, feeExecuted)) {
-            return;
+            revert InvalidMintedAmount();
         }
 
         // Validate the quote and the signature. Revert on invalid to prevent griefing attacks
@@ -281,7 +276,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     }
 
     /**
-     * @notice Returns true iff `baseToken.balanceOf(this)` grew by at least `amount - feeExecuted` since
+     * @notice Returns true iff `baseToken.balanceOf(this)` grew by exactly `amount - feeExecuted` since
      * `baseBalBefore`, which is the amount CCTP is expected to mint when `mintRecipient == address(this)`.
      * Saturating subtraction avoids reverting if an unusual flow reduces the balance mid-call.
      */
@@ -293,7 +288,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         if (feeExecuted > amount) return false;
         uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
         uint256 minted = baseBalAfter > baseBalBefore ? baseBalAfter - baseBalBefore : 0;
-        return minted >= amount - feeExecuted;
+        return minted == amount - feeExecuted;
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {
