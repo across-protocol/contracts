@@ -8,7 +8,11 @@ import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IH
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { SponsoredExecutionModeInterface } from "../../../../contracts/interfaces/SponsoredExecutionModeInterface.sol";
-import { IMessageTransmitterV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import {
+    IMessageTransmitterV2,
+    ITokenMessengerV2,
+    ITokenMinter
+} from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
@@ -27,6 +31,48 @@ contract MockMessageTransmitter is IMessageTransmitterV2 {
     function receiveMessage(bytes calldata, bytes calldata) external view override returns (bool) {
         return shouldSucceed;
     }
+}
+
+contract MockTokenMinter is ITokenMinter {
+    // remoteDomain => remoteToken => localToken
+    mapping(uint32 => mapping(bytes32 => address)) internal links;
+
+    function setLink(uint32 remoteDomain, bytes32 remoteToken, address localToken) external {
+        links[remoteDomain][remoteToken] = localToken;
+    }
+
+    function burnLimitsPerMessage(address) external pure override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function getLocalToken(uint32 remoteDomain, bytes32 remoteToken) external view override returns (address) {
+        return links[remoteDomain][remoteToken];
+    }
+}
+
+contract MockTokenMessenger is ITokenMessengerV2 {
+    ITokenMinter internal _localMinter;
+
+    constructor(ITokenMinter minter) {
+        _localMinter = minter;
+    }
+
+    function localMinter() external view override returns (ITokenMinter) {
+        return _localMinter;
+    }
+
+    function depositForBurn(uint256, uint32, bytes32, address, bytes32, uint256, uint32) external override {}
+
+    function depositForBurnWithHook(
+        uint256,
+        uint32,
+        bytes32,
+        address,
+        bytes32,
+        uint256,
+        uint32,
+        bytes calldata
+    ) external override {}
 }
 
 contract MockDonationBox {
@@ -75,6 +121,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     SponsoredCCTPDstPeriphery public periphery;
     MockMessageTransmitter public messageTransmitter;
+    MockTokenMessenger public tokenMessenger;
+    MockTokenMinter public tokenMinter;
     MockDonationBox public donationBox;
     MockUSDC public usdc;
 
@@ -108,8 +156,13 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
         // Deploy mock contracts
         messageTransmitter = new MockMessageTransmitter();
+        tokenMinter = new MockTokenMinter();
+        tokenMessenger = new MockTokenMessenger(tokenMinter);
         donationBox = new MockDonationBox();
         usdc = MockUSDC(0xb88339CB7199b77E23DB6E890353E22632Ba630f);
+
+        // Source domain burnToken -> local baseToken (USDC) wiring that the real Circle TokenMinter would provide.
+        tokenMinter.setLink(SOURCE_DOMAIN, address(usdc).toBytes32(), address(usdc));
 
         // Setup HyperCore precompile mocks using the helper
         hyperCore.forceAccountActivation(finalRecipient);
@@ -118,6 +171,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         vm.startPrank(admin);
         periphery = new SponsoredCCTPDstPeriphery(
             address(messageTransmitter),
+            address(tokenMessenger),
             signer,
             address(donationBox),
             address(usdc),
@@ -170,7 +224,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             quote.destinationDomain, // destinationDomain
             bytes32(uint256(1)), // nonce (CCTP nonce)
             quote.burnToken, // sender (token messenger on source)
-            bytes32(uint256(uint160(address(messageTransmitter)))), // recipient (token messenger on dest)
+            bytes32(uint256(uint160(address(tokenMessenger)))), // recipient (token messenger on dest)
             quote.destinationCaller, // destinationCaller
             quote.minFinalityThreshold, // minFinalityThreshold
             uint32(0), // finalityThresholdExecuted
@@ -757,8 +811,70 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     function test_View_ContractReferences() public {
         assertEq(address(periphery.cctpMessageTransmitter()), address(messageTransmitter));
+        assertEq(address(periphery.cctpTokenMessenger()), address(tokenMessenger));
         assertEq(periphery.signer(), signer);
         assertEq(periphery.quoteDeadlineBuffer(), 30 minutes);
         assertEq(address(IHyperCoreFlowExecutor(address(periphery)).donationBox()), address(donationBox));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        TOKEN MESSENGER / MINT VALIDATION TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice If the CCTP message was routed to some address other than the configured TokenMessenger,
+    /// the mint flow is not guaranteed and validation must fail (funds stay in contract, nonce not used).
+    function test_ReceiveMessage_RecipientNotTokenMessenger_FailsValidation() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory signature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        // Repoint the top-level message recipient to the MessageTransmitter (wrong contract).
+        // Recipient lives at byte offset 76 in the CCTP V2 message header.
+        bytes32 wrongRecipient = bytes32(uint256(uint160(address(messageTransmitter))));
+        assembly {
+            mstore(add(message, add(32, 76)), wrongRecipient)
+        }
+
+        periphery.receiveMessage(message, bytes("mock-attestation"), signature);
+
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice If the burnToken does not resolve to baseToken via the TokenMinter link,
+    /// the mint produced (if any) is not `baseToken` and validation must fail.
+    function test_ReceiveMessage_BurnTokenDoesNotMintBaseToken_FailsValidation() public {
+        // Remove the SOURCE_DOMAIN -> usdc link to simulate Circle not linking burnToken to baseToken.
+        tokenMinter.setLink(SOURCE_DOMAIN, address(usdc).toBytes32(), address(0));
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory signature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        periphery.receiveMessage(message, bytes("mock-attestation"), signature);
+
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice Same protection must apply to the emergency path, which otherwise would send `baseToken`
+    /// directly to `finalRecipient` without a signature check.
+    function test_EmergencyReceiveMessage_BurnTokenDoesNotMintBaseToken_EarlyReturn() public {
+        tokenMinter.setLink(SOURCE_DOMAIN, address(usdc).toBytes32(), address(0));
+
+        // Grant bot role to this test contract so we can call the emergency entrypoint.
+        bytes32 botRole = periphery.PERMISSIONED_BOT_ROLE();
+        vm.prank(admin);
+        periphery.grantRole(botRole, address(this));
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        uint256 periphBalBefore = usdc.balanceOf(address(periphery));
+        uint256 recipBalBefore = usdc.balanceOf(finalRecipient);
+
+        periphery.emergencyReceiveMessage(message, bytes("mock-attestation"));
+
+        assertEq(usdc.balanceOf(address(periphery)), periphBalBefore);
+        assertEq(usdc.balanceOf(finalRecipient), recipBalBefore);
+        assertFalse(periphery.usedNonces(quote.nonce));
     }
 }

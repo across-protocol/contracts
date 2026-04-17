@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { BaseModuleHandler } from "../BaseModuleHandler.sol";
-import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
+import { IMessageTransmitterV2, ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
@@ -26,6 +26,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    /// @notice The CCTP token messenger contract that is the expected recipient of MessageTransmitter calls
+    /// and owns the TokenMinter used to resolve burnToken -> local token.
+    ITokenMessengerV2 public immutable cctpTokenMessenger;
 
     /// @notice Base token associated with this handler. The one we receive from the CCTP bridge
     address public immutable baseToken;
@@ -52,6 +56,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     /**
      * @notice Constructor for the SponsoredCCTPDstPeriphery contract.
      * @param _cctpMessageTransmitter The address of the CCTP message transmitter contract.
+     * @param _cctpTokenMessenger The address of the CCTP token messenger contract. Used as a reference point to prove
+     * that a received message actually routed through the minting flow and produced `baseToken`.
      * @param _signer The address of the signer that was used to sign the quotes.
      * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
      * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
@@ -59,6 +65,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
      */
     constructor(
         address _cctpMessageTransmitter,
+        address _cctpTokenMessenger,
         address _signer,
         address _donationBox,
         address _baseToken,
@@ -67,6 +74,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         baseToken = _baseToken;
 
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
+        cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
 
         MainStorage storage $ = _getMainStorage();
         $.signer = _signer;
@@ -230,12 +238,26 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     }
 
     /**
-     * @notice External wrapper for validateMessage to enable try-catch for safe abi.decode handling
+     * @notice External wrapper for validateMessage to enable try-catch for safe abi.decode handling.
+     * Beyond format validation, requires the CCTP message to have been routed to `cctpTokenMessenger` (which
+     * owns the mint flow) and its TokenMinter to link `burnToken` -> `baseToken` on this domain. Without
+     * these checks, a signer/API compromise could route signed quotes through an unrelated recipient or
+     * burnToken that never produces `baseToken` — allowing sponsorship fees or resting balances to be drained.
      * @param message The CCTP message to validate
      * @return True if the message is valid, false otherwise
      */
     function validateMessage(bytes memory message) external view returns (bool) {
-        return SponsoredCCTPQuoteLib.validateMessage(message);
+        if (!SponsoredCCTPQuoteLib.validateMessage(message)) {
+            return false;
+        }
+        if (SponsoredCCTPQuoteLib.extractRecipient(message).toAddress() != address(cctpTokenMessenger)) {
+            return false;
+        }
+        address localToken = cctpTokenMessenger.localMinter().getLocalToken(
+            SponsoredCCTPQuoteLib.extractSourceDomain(message),
+            SponsoredCCTPQuoteLib.extractBurnToken(message)
+        );
+        return localToken == baseToken;
     }
 
     /**
