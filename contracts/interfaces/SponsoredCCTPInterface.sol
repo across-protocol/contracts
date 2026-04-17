@@ -25,17 +25,14 @@ interface SponsoredCCTPInterface is SponsoredExecutionModeInterface {
     error CCTPMessageTransmitterFailed();
 
     // Error thrown when the amount actually minted into this contract by the CCTP call does not match
-    // the `amount - feeExecuted` encoded in the message, i.e. the message did not produce a real mint
-    // of `baseToken` to this contract.
+    // the `amount - feeExecuted` encoded in the message.
     error InvalidMintedAmount();
 
     // Error thrown when the CCTP message's top-level `recipient` is not the configured TokenMessenger.
-    // Without this, a compromised signer could sign a quote whose `recipient` routes through some other
-    // contract and bypass the real mint flow.
     error InvalidRecipient();
 
     // Error thrown when the TokenMinter does not link the message's remote burnToken to this periphery's
-    // `baseToken` on the local domain, meaning the CCTP mint (if any) would not produce `baseToken`.
+    // `baseToken` on the local domain.
     error InvalidMintedToken();
 
     event SponsoredDepositForBurn(
