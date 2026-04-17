@@ -178,6 +178,19 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         bytes memory attestation,
         bytes memory signature
     ) external nonReentrant authorizeFundedFlow {
+        // Check that the CCTP message was actually routed through our TokenMessenger (which owns the mint flow),
+        // and that its TokenMinter links the remote burnToken to our `baseToken` on this domain.
+        if (SponsoredCCTPQuoteLib.extractRecipient(message).toAddressUnchecked() != address(cctpTokenMessenger)) {
+            revert InvalidRecipient();
+        }
+        address localToken = cctpTokenMessenger.localMinter().getLocalToken(
+            SponsoredCCTPQuoteLib.extractSourceDomain(message),
+            SponsoredCCTPQuoteLib.extractBurnToken(message)
+        );
+        if (localToken != baseToken) {
+            revert InvalidMintedToken();
+        }
+
         uint256 baseBalBefore = IERC20Metadata(baseToken).balanceOf(address(this));
         bool success = cctpMessageTransmitter.receiveMessage(message, attestation);
         if (!success) {
@@ -195,19 +208,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             // Malformed message that causes abi.decode to revert then early return
             return;
         }
-        // Check that the CCTP message was actually routed through our TokenMessenger (which owns the mint flow),
-        // and that its TokenMinter links the remote burnToken to our `baseToken` on this domain.
-        if (SponsoredCCTPQuoteLib.extractRecipient(message).toAddressUnchecked() != address(cctpTokenMessenger)) {
-            revert InvalidRecipient();
-        }
-        address localToken = cctpTokenMessenger.localMinter().getLocalToken(
-            SponsoredCCTPQuoteLib.extractSourceDomain(message),
-            SponsoredCCTPQuoteLib.extractBurnToken(message)
-        );
-        if (localToken != baseToken) {
-            revert InvalidMintedToken();
-        }
-
         // Extract the quote and the fee that was executed from the message.
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
