@@ -6,23 +6,13 @@ import { IMessageTransmitter } from "../external/interfaces/CCTPInterfaces.sol";
 
 contract MockCCTPMinter is ITokenMinter {
     uint256 private _burnLimit = type(uint256).max;
-    // remoteDomain => remoteToken => localToken
-    mapping(uint32 => mapping(bytes32 => address)) private _localTokens;
 
     function setBurnLimit(uint256 limit) external {
         _burnLimit = limit;
     }
 
-    function setLocalToken(uint32 remoteDomain, bytes32 remoteToken, address localToken) external {
-        _localTokens[remoteDomain][remoteToken] = localToken;
-    }
-
     function burnLimitsPerMessage(address) external view returns (uint256) {
         return _burnLimit;
-    }
-
-    function getLocalToken(uint32 remoteDomain, bytes32 remoteToken) external view returns (address) {
-        return _localTokens[remoteDomain][remoteToken];
     }
 }
 
