@@ -214,15 +214,14 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
         // Confirm the CCTP call actually minted `baseToken` to this contract.
         uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
-        if (baseBalAfter - baseBalBefore != quote.amount - feeExecuted) {
+        uint256 amountAfterFees = quote.amount - feeExecuted;
+        if (baseBalAfter - baseBalBefore != amountAfterFees) {
             revert InvalidMintedAmount();
         }
 
         // Validate the quote and the signature. Revert on invalid to prevent griefing attacks
         // where an attacker provides correct message/attestation but invalid signature.
         _validateQuoteOrRevert(quote, signature);
-
-        uint256 amountAfterFees = quote.amount - feeExecuted;
 
         CommonFlowParams memory commonParams = CommonFlowParams({
             amountInEVM: amountAfterFees,
