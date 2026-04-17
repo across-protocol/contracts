@@ -58,6 +58,14 @@ interface ITokenMessenger {
 }
 
 interface ITokenMessengerV2 {
+    /**
+     * @notice Minter responsible for minting and burning tokens on the local domain.
+     * Used on destination to prove that a received message would mint via the expected
+     * TokenMinter, and to resolve the local token that corresponds to a remote burnToken.
+     * https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/TokenMessengerV2.sol
+     */
+    function localMinter() external view returns (ITokenMinter minter);
+
     // Source: https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/v2/TokenMessengerV2.sol#L138C1-L166C15
     /**
      * @notice Deposits and burns tokens from sender to be minted on destination domain.
@@ -139,6 +147,16 @@ interface ITokenMinter {
      * @return burnLimit maximum burn amount per message for token
      */
     function burnLimitsPerMessage(address token) external view returns (uint256);
+
+    /**
+     * @notice Returns the local token that is associated with the given remote burnToken on `remoteDomain`.
+     * Returns address(0) when no link has been configured.
+     * https://github.com/circlefin/evm-cctp-contracts/blob/63ab1f0ac06ce0793c0bbfbb8d09816bc211386d/src/TokenMinter.sol#L155
+     * @param remoteDomain CCTP source domain
+     * @param remoteToken burnToken (as bytes32) on the remote domain
+     * @return localToken the locally-minted token, or address(0) if the pair is not linked
+     */
+    function getLocalToken(uint32 remoteDomain, bytes32 remoteToken) external view returns (address localToken);
 }
 
 /**

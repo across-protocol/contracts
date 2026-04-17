@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { BaseModuleHandler } from "../BaseModuleHandler.sol";
-import { IMessageTransmitterV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
+import { IMessageTransmitterV2, ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
 import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
@@ -26,6 +26,10 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
     /// @notice The CCTP message transmitter contract.
     IMessageTransmitterV2 public immutable cctpMessageTransmitter;
+
+    /// @notice The CCTP token messenger contract that is the expected top-level recipient of MessageTransmitter
+    /// deliveries and owns the TokenMinter used to resolve burnToken -> local token for non-direct-deposit flows.
+    ITokenMessengerV2 public immutable cctpTokenMessenger;
 
     /// @notice Base token associated with this handler. The one we receive from the CCTP bridge
     address public immutable baseToken;
@@ -52,6 +56,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
     /**
      * @notice Constructor for the SponsoredCCTPDstPeriphery contract.
      * @param _cctpMessageTransmitter The address of the CCTP message transmitter contract.
+     * @param _cctpTokenMessenger The address of the CCTP token messenger contract. Used to pin that a received
+     * message actually routed through the real mint flow and that the remote burnToken links to `baseToken`.
      * @param _signer The address of the signer that was used to sign the quotes.
      * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
      * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
@@ -59,6 +65,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
      */
     constructor(
         address _cctpMessageTransmitter,
+        address _cctpTokenMessenger,
         address _signer,
         address _donationBox,
         address _baseToken,
@@ -67,6 +74,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         baseToken = _baseToken;
 
         cctpMessageTransmitter = IMessageTransmitterV2(_cctpMessageTransmitter);
+        cctpTokenMessenger = ITokenMessengerV2(_cctpTokenMessenger);
 
         MainStorage storage $ = _getMainStorage();
         $.signer = _signer;
@@ -135,7 +143,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         // Forward only what the CCTP call actually credited to this contract, so a message that mints nothing
         // (wrong recipient, unlinked burnToken, etc.) cannot drain this contract's prior `baseToken` balance.
         uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
-        uint256 mintedAmount = baseBalAfter > baseBalBefore ? baseBalAfter - baseBalBefore : 0;
+        uint256 mintedAmount = baseBalAfter - baseBalBefore;
 
         // Use try-catch to handle potential abi.decode reverts gracefully
         try this.validateMessage(message) returns (bool isValid) {
@@ -187,15 +195,26 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             // Malformed message that causes abi.decode to revert then early return
             return;
         }
+        // Check that the CCTP message was actually routed through our TokenMessenger (which owns the mint flow),
+        // and that its TokenMinter links the remote burnToken to our `baseToken` on this domain.
+        if (SponsoredCCTPQuoteLib.extractRecipient(message).toAddressUnchecked() != address(cctpTokenMessenger)) {
+            revert InvalidRecipient();
+        }
+        address localToken = cctpTokenMessenger.localMinter().getLocalToken(
+            SponsoredCCTPQuoteLib.extractSourceDomain(message),
+            SponsoredCCTPQuoteLib.extractBurnToken(message)
+        );
+        if (localToken != baseToken) {
+            revert InvalidMintedToken();
+        }
+
         // Extract the quote and the fee that was executed from the message.
         (SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) = SponsoredCCTPQuoteLib
             .getSponsoredCCTPQuoteData(message);
 
-        // Confirm the CCTP call actually minted `baseToken` to this contract. A message whose recipient/burnToken
-        // don't produce a real `baseToken` mint would otherwise consume the user's nonce and draw sponsorship
-        // fees out of DonationBox against a fake bridge event. Revert (not early-return) so the user can retry
-        // with a correct message rather than losing the nonce silently.
-        if (!_mintProducedBaseToken(baseBalBefore, quote.amount, feeExecuted)) {
+        // Confirm the CCTP call actually minted `baseToken` to this contract.
+        uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
+        if (baseBalAfter - baseBalBefore != quote.amount - feeExecuted) {
             revert InvalidMintedAmount();
         }
 
@@ -273,22 +292,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         }
 
         $.usedNonces[quote.nonce] = true;
-    }
-
-    /**
-     * @notice Returns true iff `baseToken.balanceOf(this)` grew by exactly `amount - feeExecuted` since
-     * `baseBalBefore`, which is the amount CCTP is expected to mint when `mintRecipient == address(this)`.
-     * Saturating subtraction avoids reverting if an unusual flow reduces the balance mid-call.
-     */
-    function _mintProducedBaseToken(
-        uint256 baseBalBefore,
-        uint256 amount,
-        uint256 feeExecuted
-    ) internal view returns (bool) {
-        if (feeExecuted > amount) return false;
-        uint256 baseBalAfter = IERC20Metadata(baseToken).balanceOf(address(this));
-        uint256 minted = baseBalAfter > baseBalBefore ? baseBalAfter - baseBalBefore : 0;
-        return minted == amount - feeExecuted;
     }
 
     function _executeWithEVMFlow(EVMFlowParams memory params) internal {

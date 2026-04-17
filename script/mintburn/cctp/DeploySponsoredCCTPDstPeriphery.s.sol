@@ -28,6 +28,7 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
         _loadConfig("./script/mintburn/cctp/config.toml", true);
 
         address cctpMessageTransmitter = config.get("cctpMessageTransmitter").toAddress();
+        address cctpTokenMessenger = config.get("cctpTokenMessenger").toAddress();
         address baseToken = config.get("baseToken").toAddress();
         address multicallHandler = config.get("multicallHandler").toAddress();
 
@@ -38,6 +39,7 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         SponsoredCCTPDstPeriphery sponsoredCCTPDstPeriphery = new SponsoredCCTPDstPeriphery(
             cctpMessageTransmitter,
+            cctpTokenMessenger,
             deployer,
             address(donationBox),
             baseToken,
@@ -56,6 +58,7 @@ contract DeploySponsoredCCTPDstPeriphery is DeploymentUtils {
 
         // Post-deployment verification.
         assertEq(address(sponsoredCCTPDstPeriphery.cctpMessageTransmitter()), cctpMessageTransmitter);
+        assertEq(address(sponsoredCCTPDstPeriphery.cctpTokenMessenger()), cctpTokenMessenger);
         assertEq(sponsoredCCTPDstPeriphery.baseToken(), baseToken);
         assertEq(sponsoredCCTPDstPeriphery.signer(), deployer);
         assertTrue(donationBox.hasRole(donationBox.WITHDRAWER_ROLE(), address(sponsoredCCTPDstPeriphery)));
