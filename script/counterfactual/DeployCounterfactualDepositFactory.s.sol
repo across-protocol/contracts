@@ -13,7 +13,7 @@ import { CounterfactualDepositFactory } from "../../contracts/periphery/counterf
 contract DeployCounterfactualDepositFactory is DeploymentUtils {
     function run() external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
         bytes memory initCode = type(CounterfactualDepositFactory).creationCode;
 

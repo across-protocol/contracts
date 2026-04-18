@@ -75,6 +75,16 @@ revert_strings = "default"
 cache_path = "cache-foundry-local"
 out = "out-local"
 
+# Counterfactual profile. Strips metadata hash so CREATE2 addresses are stable across commits.
+# Run with `FOUNDRY_PROFILE=counterfactual forge script ...`
+[profile.counterfactual]
+src = "contracts/periphery/counterfactual"
+script = "script/counterfactual"
+cache_path = "cache-foundry-counterfactual"
+out = "out-counterfactual"
+bytecode_hash = "none"
+
+# Tron-compatible profile. Compiles counterfactual contracts at 0.8.25 (max supported by Tron's solc fork).
 # Tron-compatible profile. Uses Tron's solc fork (bin/solc-tron) to compile all Tron-targeted
 # contracts: counterfactual, UniversalSpokePool, and SP1Helios.
 # Run with `FOUNDRY_PROFILE=tron forge build`

@@ -59,11 +59,6 @@ Located in `contracts/periphery/mintburn/`. A modular framework for executing cr
 
 Canonical deployed addresses are generated into `broadcast/deployed-addresses.json`, with `broadcast/deployed-addresses.md` as the readable companion. `deployments/legacy-addresses.json` is still included for legacy Hardhat deployments. In Foundry scripts, use `script/utils/DeploymentUtils.sol` lookup helpers such as `getDeployedAddress()` and `getSpokePoolDeploymentInfo()`.
 
-## Development Frameworks
-
-- **Foundry** (primary) - Used for new tests and deployment scripts
-- **Hardhat** (legacy) - Some tests still use Hardhat; we're migrating to Foundry
-
 ## Project Structure
 
 ```
@@ -83,7 +78,6 @@ test/
     local/           # Local unit tests
     fork/            # Fork tests
     utils/           # Test base classes
-  evm/hardhat/       # Legacy Hardhat tests (.ts)
   svm/               # Solana program tests
 programs/            # Solana/Anchor programs
 idls/                # Anchor IDL files
@@ -109,7 +103,6 @@ yarn test-evm-foundry                 # Foundry local tests (recommended)
 yarn test-evm-foundry -- --match-test testDeposit
 yarn test-evm-foundry -- --match-contract Router_Adapter
 yarn test-evm-foundry -- -vvv         # Verbose output
-yarn test-evm-hardhat                 # Hardhat tests (legacy)
 ```
 
 Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=local-test`. `yarn build-evm-foundry` can take up to 5 minutes.
@@ -124,14 +117,19 @@ Use `yarn test-evm-foundry` for local Foundry runs; it sets `FOUNDRY_PROFILE=loc
 
 ### Test Files
 
-- Foundry: `.t.sol` suffix: `Router_Adapter.t.sol`, `Arbitrum_Adapter.t.sol`
+- `.t.sol` suffix: `Router_Adapter.t.sol`, `Arbitrum_Adapter.t.sol`
 - Test contracts: `contract <Name>Test is Test { ... }`
 - Test functions: `function test<Description>() public`
 
-### Deployment Scripts
+## Scripting & Deployment
 
-- `.s.sol` suffix, organized into subfolders by context (e.g. `script/chain-adapters/DeployArbitrumAdapter.s.sol`)
-- Script contracts: `contract Deploy<ContractName> is Script, Test, Constants`
+This repo uses **Foundry** as its development framework. The Foundry toolkit includes `forge` (build/test/deploy), `cast` (CLI for interacting with contracts and chains), `anvil` (local testnet node), and `chisel` (Solidity REPL).
+
+**Always use Foundry (Solidity scripts) for scripting tasks — never bash.** The repo has a rich set of Foundry scripting utilities in `script/utils/` (`Constants.sol`, `DeploymentUtils.sol`, `DeployedAddresses.sol`) that handle common needs like looking up deployed addresses, resolving chain-specific constants, and managing proxy deployments. Use and extend these utilities rather than hand-rolling fragile bash scripts that re-implement the same lookups (e.g. parsing addresses from JSON, fetching chain IDs, or resolving token addresses).
+
+If a task genuinely cannot be accomplished in Foundry, explain why before reaching for another tool. The goal is to keep all scripting logic in one composable, testable, version-controlled framework.
+
+**Script naming**: `.s.sol` suffix, organized into subfolders by context (e.g. `script/chain-adapters/DeployArbitrumAdapter.s.sol`). Script contracts: `contract Deploy<ContractName> is Script, Test, Constants`.
 
 ## Writing Tests
 

@@ -1,6 +1,6 @@
 {
   "name": "@across-protocol/contracts",
-  "version": "5.0.5",
+  "version": "5.0.7",
   "author": "UMA Team",
   "license": "AGPL-3.0-only",
   "repository": {
@@ -12,8 +12,7 @@
   },
   "files": [
     "/contracts/**/*.sol",
-    "/dist/**/*",
-    "/out/**/*"
+    "/dist/**/*"
   ],
   "types": "dist/index.d.ts",
   "main": "dist/index.js",
@@ -32,8 +31,10 @@
     "generate-svm-clients": "yarn ts-node ./scripts/svm/buildHelpers/generateSvmClients.ts && yarn ts-node ./scripts/svm/buildHelpers/renameClientsImports.ts",
     "build-svm": "bash ./scripts/svm/buildHelpers/buildSvmLocalToolchain.sh",
     "build-svm-solana-verify": "bash ./scripts/svm/buildHelpers/buildSolanaVerify.sh",
-    "build-ts": "rm -rf ./dist && tsc && yarn export-idl",
+    "build-ts": "rm -rf ./dist && tsc",
     "export-idl": "mkdir -p dist/src/svm/assets/idl && cp src/svm/assets/idl/*.json dist/src/svm/assets/idl/",
+    "export-evm-artifacts": "sh scripts/exportEvmArtifacts.sh",
+    "prepublishOnly": "yarn build-ts && yarn export-idl && yarn export-evm-artifacts",
     "build": "yarn build-evm-foundry && yarn build-svm && yarn generate-svm-artifacts && yarn build-ts",
     "build-verified": "yarn build-evm-foundry && yarn build-svm-solana-verify && yarn generate-svm-artifacts && yarn build-ts",
     "build-evm-foundry": "forge build",
@@ -58,7 +59,9 @@
     "tron-deploy-withdraw-implementation": "ts-node script/tron/counterfactual/tron-deploy-withdraw-implementation.ts",
     "tron-deploy-counterfactual-clone": "ts-node script/tron/counterfactual/tron-deploy-counterfactual-clone.ts",
     "tron-deploy-clone": "ts-node script/tron/counterfactual/tron-deploy-clone.ts",
-    "tron-execute-clone-deposit": "ts-node script/tron/counterfactual/tron-execute-clone-deposit.ts"
+    "tron-execute-clone-deposit": "ts-node script/tron/counterfactual/tron-execute-clone-deposit.ts",
+    "tron-deploy-spoke-pool-periphery": "ts-node script/tron/periphery/tron-deploy-spoke-pool-periphery.ts",
+    "tron-deploy-swap-proxy": "ts-node script/tron/periphery/tron-deploy-swap-proxy.ts"
   },
   "dependencies": {
     "@across-protocol/constants": "^3.1.107",
