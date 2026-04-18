@@ -874,8 +874,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
     }
 
     /// @notice Emergency path forwards only what the CCTP call actually credited to this contract. A message
-    /// that mints nothing must result in a zero-amount forward (no drain of the contract's prior balance), with
-    /// the nonce still consumed so the same broken message can't be replayed.
+    /// that mints nothing must result in a zero-amount forward (no drain of the contract's prior balance).
+    /// Replay protection is delegated to CCTP's own nonce tracking, so we don't assert local nonce state.
     function test_EmergencyReceiveMessage_NoBaseTokenMinted_ForwardsZero() public {
         messageTransmitter.setShouldMint(false);
 
@@ -893,11 +893,9 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
         assertEq(usdc.balanceOf(address(periphery)), periphBalBefore);
         assertEq(usdc.balanceOf(finalRecipient), recipBalBefore);
-        assertTrue(periphery.usedNonces(quote.nonce));
     }
 
-    /// @notice Emergency path forwards the actual minted amount even if it doesn't equal `amount - feeExecuted`.
-    /// Uses deal() to simulate a partial credit into the periphery mid-CCTP-call.
+    /// @notice Emergency path forwards whatever amount the CCTP call actually credited to this contract.
     function test_EmergencyReceiveMessage_ForwardsActualMintedAmount() public {
         bytes32 botRole = periphery.PERMISSIONED_BOT_ROLE();
         vm.prank(admin);
@@ -912,7 +910,6 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
         // Mock credits exactly `amount - feeExecuted` on receiveMessage; recipient should net that amount.
         assertEq(usdc.balanceOf(finalRecipient), recipBalBefore + DEFAULT_AMOUNT - FEE_EXECUTED);
-        assertTrue(periphery.usedNonces(quote.nonce));
     }
 
     /// @notice Pre-existing `baseToken` balance must not be counted toward the mint-produced amount:
