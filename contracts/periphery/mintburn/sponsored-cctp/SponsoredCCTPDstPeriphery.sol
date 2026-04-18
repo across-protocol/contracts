@@ -158,8 +158,6 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
             message
         );
 
-        _getMainStorage().usedNonces[quote.nonce] = true;
-
         address finalRecipient = quote.finalRecipient.toAddress();
         IERC20Metadata(baseToken).safeTransfer(finalRecipient, mintedAmount);
 
