@@ -290,61 +290,66 @@ Deploys all 7 contracts via the [deterministic deployment proxy](https://github.
 
 ### Contracts
 
-| Index | Contract                         | Same address across chains?               |
-| ----- | -------------------------------- | ----------------------------------------- |
-| 0     | `CounterfactualDeposit`          | Yes (no constructor args)                 |
-| 1     | `CounterfactualDepositFactory`   | Yes (no constructor args)                 |
-| 2     | `WithdrawImplementation`         | Yes (no constructor args)                 |
-| 3     | `CounterfactualDepositSpokePool` | No (chain-specific constructor args)      |
-| 4     | `CounterfactualDepositCCTP`      | No (chain-specific constructor args)      |
-| 5     | `CounterfactualDepositOFT`       | No (chain-specific constructor args)      |
-| 6     | `AdminWithdrawManager`           | Yes (same constructor args on all chains) |
+| Index | Contract                         | Same address across chains?                                  |
+| ----- | -------------------------------- | ------------------------------------------------------------ |
+| 0     | `CounterfactualDeposit`          | Yes (no constructor args)                                    |
+| 1     | `CounterfactualDepositFactory`   | Yes (no constructor args)                                    |
+| 2     | `WithdrawImplementation`         | Yes (no constructor args)                                    |
+| 3     | `CounterfactualDepositSpokePool` | No (chain-specific constructor args)                         |
+| 4     | `CounterfactualDepositCCTP`      | No (chain-specific constructor args)                         |
+| 5     | `CounterfactualDepositOFT`       | No (chain-specific constructor args)                         |
+| 6     | `AdminWithdrawManager`           | Yes (deployer as owner/directWithdrawer, signer from config) |
 
-1. **Fund the deployer** on the target chain with enough ETH for gas.
+1. **Configure** `script/counterfactual/config.toml` with operational params (per chain):
 
-2. **Simulate**:
+   ```toml
+   [1]
+   [1.address]
+   signer = "0x..."
+   ownerAndDirectWithdrawer = "0x..."
+
+   [42161]
+   [42161.address]
+   signer = "0x..."
+   ownerAndDirectWithdrawer = "0x..."
+   ```
+
+   - `signer` — signer address for AdminWithdrawManager and CounterfactualDepositSpokePool (used in constructor / transferred post-deploy)
+   - `ownerAndDirectWithdrawer` — address that receives both owner and directWithdrawer roles on AdminWithdrawManager (reverts if missing for the target chain)
+   - Chain-specific params (`spokePool`, `wrappedNativeToken`, `cctpPeriphery`, `cctpDomain`, `oftPeriphery`, `oftEid`) are auto-resolved from `generated/constants.json` and `broadcast/deployed-addresses.json`
+   - SpokePool, CCTP, and OFT deployments are controlled by bool arguments; the script reverts if a requested deployment lacks chain support
+
+2. **Fund the deployer** on the target chain with enough ETH for gas.
+
+3. **Simulate** (deploy all including SpokePool, CCTP, and OFT):
 
    ```bash
    source .env
-   forge script \
+   FOUNDRY_PROFILE=counterfactual forge script \
      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
-     $RPC_URL \
-     <spokePool> <signer> <wrappedNativeToken> \
-     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
-     <owner> <directWithdrawer> \
-     false \
+     --sig "run(string,bool,bool,bool,bool,bool)" $RPC_URL true true true true false \
      --rpc-url $RPC_URL -vvvv
    ```
 
-3. **Deploy** (set `broadcast` to `true` and add `--ffi`):
+   Arguments: `rpcUrl`, `deploySpokePool`, `deployCctp`, `deployOft`, `transferRoles`, `broadcast`.
+
+4. **Deploy** (set `broadcast` to `true` and add `--ffi`):
 
    ```bash
-   forge script \
+   FOUNDRY_PROFILE=counterfactual forge script \
      script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-     --sig "run(string,address,address,address,address,uint32,address,uint32,address,address,bool)" \
-     $RPC_URL \
-     <spokePool> <signer> <wrappedNativeToken> \
-     <cctpPeriphery> <cctpDomain> <oftPeriphery> <oftEid> \
-     <owner> <directWithdrawer> \
-     true \
+     --sig "run(string,bool,bool,bool,bool,bool)" $RPC_URL true true true true true \
      --rpc-url $RPC_URL --ffi -vvvv
    ```
 
-### Skipping Contracts
+### AdminWithdrawManager Role Transfer
 
-Set the `SKIP` env var with a comma-separated list of deployment indices:
-
-```bash
-SKIP=4,5 forge script \
-  script/counterfactual/DeployAllCounterfactual.s.sol:DeployAllCounterfactual \
-  --sig "run(...)" ... true --rpc-url $RPC_URL --ffi -vvvv
-```
+The `AdminWithdrawManager` is deployed with the deployer as owner and directWithdrawer, and the signer from `config.toml` (all global, ensuring the same CREATE2 address on every chain). After all deployments complete, if `transferRoles` is `true`, `DeployAllCounterfactual` transfers directWithdrawer first, verifies it succeeded, then transfers ownership to the chain-specific `ownerAndDirectWithdrawer` address from `config.toml`. If the directWithdrawer transfer fails, ownership transfer is skipped to avoid losing access.
 
 ### Important
 
 - Any funded address can deploy. No ordering constraints. Already-deployed contracts are auto-skipped.
-- Individual deploy scripts can still be run standalone.
+- Individual deploy scripts can also be run standalone.
 
 ## Security Model
 

@@ -1,0 +1,131 @@
+[1]
+endpoint_url = "${NODE_URL_1}"
+[1.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+
+[10]
+endpoint_url = "${NODE_URL_10}"
+[10.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+
+[56]
+endpoint_url = "${NODE_URL_56}"
+[56.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x40EA40013Ab948ef3e77B87EcdCe715A422CB417"
+
+[130]
+endpoint_url = "${NODE_URL_130}"
+[130.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+
+[137]
+endpoint_url = "${NODE_URL_137}"
+[137.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+
+[143]
+endpoint_url = "${NODE_URL_143}"
+[143.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+
+[232]
+endpoint_url = "${NODE_URL_232}"
+[232.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[324]
+endpoint_url = "${NODE_URL_324}"
+[324.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[480]
+endpoint_url = "${NODE_URL_480}"
+[480.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+
+[999]
+endpoint_url = "${NODE_URL_999}"
+[999.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x8d6e1729FeCe1AC62c05aA4F57819A90B4Cd22aF"
+
+[1135]
+endpoint_url = "${NODE_URL_1135}"
+[1135.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[1868]
+endpoint_url = "${NODE_URL_1868}"
+[1868.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[4217]
+endpoint_url = "${NODE_URL_4217}"
+[4217.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[4326]
+endpoint_url = "${NODE_URL_4326}"
+[4326.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x384122A019e62965eBFB83b55EC48cC5CEEc618d"
+
+[8453]
+endpoint_url = "${NODE_URL_8453}"
+[8453.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+
+[9745]
+endpoint_url = "${NODE_URL_9745}"
+[9745.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xB524735356985D2f267FA010D681f061DfF03715"
+
+[42161]
+endpoint_url = "${NODE_URL_42161}"
+[42161.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+
+[57073]
+endpoint_url = "${NODE_URL_57073}"
+[57073.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x384122A019e62965eBFB83b55EC48cC5CEEc618d"
+
+[59144]
+endpoint_url = "${NODE_URL_59144}"
+[59144.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0xFbc9BED5311567F7CbEbD12947A5a0767f67EF4B"
+
+[81457]
+endpoint_url = "${NODE_URL_81457}"
+[81457.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[534352]
+endpoint_url = "${NODE_URL_534352}"
+[534352.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"
+
+[7777777]
+endpoint_url = "${NODE_URL_7777777}"
+[7777777.address]
+signer = "0xDDB199Ca909901299aDcAB370C3C8212cea80AFE"
+ownerAndDirectWithdrawer = "0x996267d7d1B7f5046543feDe2c2Db473Ed4f65e9"

@@ -2,20 +2,25 @@
 pragma solidity ^0.8.0;
 
 import { console } from "forge-std/console.sol";
-import { DeploymentUtils } from "../utils/DeploymentUtils.sol";
+import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 
-// How to run:
-// 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
-// 2. forge script script/counterfactual/DeployCounterfactualDepositSpokePool.s.sol:DeployCounterfactualDepositSpokePool \
-//      --sig "run(address,address,address)" <spokePool> <signer> <wrappedNativeToken> \
+// How to run (zero-arg, reads from config.toml + constants):
+// 1. Edit script/counterfactual/config.toml with signer address
+// 2. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
+// 3. forge script script/counterfactual/DeployCounterfactualDepositSpokePool.s.sol:DeployCounterfactualDepositSpokePool \
 //      --rpc-url $NODE_URL -vvvv
-// 3. Verify simulation works
 // 4. Deploy: append --broadcast --verify to the command above
-contract DeployCounterfactualDepositSpokePool is DeploymentUtils {
+contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
+    /// @notice Zero-arg entry point: resolves all params from config.toml and on-chain constants.
+    function run() external {
+        address signer = _loadSigner();
+        this.run(_resolveSpokePool(), signer, _resolveWrappedNativeToken());
+    }
+
     function run(address spokePool, address signer, address wrappedNativeToken) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
-        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, uint32(vm.envOr("DEPLOYER_INDEX", uint256(0))));
+        uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
         require(spokePool != address(0), "SpokePool cannot be zero address");
         require(signer != address(0), "Signer cannot be zero address");
