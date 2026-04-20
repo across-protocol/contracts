@@ -225,9 +225,10 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             continue;
           } else if (contractName === "DonationBox") {
             // Suffix DonationBox with _OFT or _CCTP based on the deploying script.
-            if (broadcastFile.scriptName.includes("DstHandler")) {
+            console.log(broadcastFile.scriptName);
+            if (broadcastFile.scriptName.includes("DeployDstHandler")) {
               contractName = "DonationBox_OFT";
-            } else if (broadcastFile.scriptName.includes("SponsoredCCTP")) {
+            } else if (broadcastFile.scriptName.includes("DeploySponsoredCCTPDstPeriphery")) {
               contractName = "DonationBox_CCTP";
             }
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
