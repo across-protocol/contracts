@@ -234,6 +234,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
 | SponsoredCCTPDstPeriphery      | [0x478D451e101bE484880a14cf3cCC293CD48E6140](https://hyperevmscan.io//address/0x478D451e101bE484880a14cf3cCC293CD48E6140) |
 | SponsoredCCTPSrcPeriphery      | [0xc611D7c33d1C7915F13ef35f488EAee9D9DC3555](https://hyperevmscan.io//address/0xc611D7c33d1C7915F13ef35f488EAee9D9DC3555) |
+| Unknown                        | [0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF](https://hyperevmscan.io//address/0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://hyperevmscan.io//address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
 ## Lisk (1135)
