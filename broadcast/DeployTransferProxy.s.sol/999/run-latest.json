@@ -3,7 +3,7 @@
     {
       "hash": "0xd42a3ccefa601d3e11821937a53cbd5f2ec26f1d480411c11f0358981d1932a4",
       "transactionType": "CREATE2",
-      "contractName": null,
+      "contractName": "TransferProxy",
       "contractAddress": "0x8b2c0bfabd6dad8cc700dde3f168d3c81cf0eeff",
       "function": null,
       "arguments": null,
