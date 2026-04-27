@@ -27,6 +27,7 @@ abstract contract BaseModuleHandler is
 
         _setRoleAdmin(PERMISSIONED_BOT_ROLE, _roleAdmin);
         _setRoleAdmin(FUNDS_SWEEPER_ROLE, _roleAdmin);
+        _setRoleAdmin(DIRECT_CALLER_ROLE, _roleAdmin);
     }
 
     /// @notice Fallback function to proxy all calls to the HyperCore module via delegatecall

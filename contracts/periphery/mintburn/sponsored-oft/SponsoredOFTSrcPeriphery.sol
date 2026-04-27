@@ -4,9 +4,10 @@ pragma solidity ^0.8.23;
 import { SponsoredOFTInterface } from "../../../interfaces/SponsoredOFTInterface.sol";
 import { QuoteSignLib } from "./QuoteSignLib.sol";
 import { ComposeMsgCodec } from "./ComposeMsgCodec.sol";
+import { DstOFTHandler } from "./DstOFTHandler.sol";
 
 import { IOFT, IOAppCore, SendParam, MessagingFee } from "../../../interfaces/IOFT.sol";
-import { AddressToBytes32 } from "../../../libraries/AddressConverters.sol";
+import { AddressToBytes32, Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 import { MinimalLZOptions } from "../../../external/libraries/MinimalLZOptions.sol";
 import { OFTCoreMath } from "../../../external/libraries/OFTCoreMath.sol";
 
@@ -14,6 +15,7 @@ import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts-v4/utils/Address.sol";
 
 /// @notice Source chain periphery contract for users to interact with to start a sponsored or a non-sponsored flow
 /// that allows custom Across-supported flows on destination chain. Uses LayerZero's OFT as an underlying bridge
@@ -21,6 +23,8 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
     using AddressToBytes32 for address;
     using MinimalLZOptions for bytes;
     using SafeERC20 for IERC20;
+    using Bytes32ToAddress for bytes32;
+    using Address for address;
 
     bytes public constant EMPTY_OFT_COMMAND = new bytes(0);
 
@@ -90,42 +94,71 @@ contract SponsoredOFTSrcPeriphery is Ownable, OFTCoreMath, SponsoredOFTInterface
      * @param signature The signature authorizing the quote
      */
     function deposit(Quote calldata quote, bytes calldata signature) external payable {
-        // Step 1: validate quote and mark quote nonce used
         _validateQuote(quote, signature);
         _getMainStorage().quoteNonces[quote.signedParams.nonce] = true;
 
-        // Step 2: build oft send params from quote
-        (SendParam memory sendParam, MessagingFee memory fee, address refundAddress) = _buildOftTransfer(quote);
+        if (quote.signedParams.dstEid == SRC_EID) {
+            if (msg.value > 0) revert InvalidNativeFee();
+            address destinationHandler = quote.signedParams.destinationHandler.toAddress();
+            if (!destinationHandler.isContract()) revert InvalidDirectHandler();
 
-        if (fee.nativeFee > msg.value) {
-            revert InsufficientNativeFee();
+            bytes memory composeMsg = ComposeMsgCodec._encode(
+                quote.signedParams.nonce,
+                uint256(_toSD(quote.signedParams.amountLD)),
+                quote.signedParams.maxBpsToSponsor,
+                quote.signedParams.maxUserSlippageBps,
+                quote.signedParams.finalRecipient,
+                quote.signedParams.finalToken,
+                quote.signedParams.destinationDex,
+                quote.signedParams.accountCreationMode,
+                quote.signedParams.executionMode,
+                quote.signedParams.actionData
+            );
+
+            IERC20(TOKEN).safeTransferFrom(msg.sender, destinationHandler, quote.signedParams.amountLD);
+            DstOFTHandler(payable(destinationHandler)).executeDirect(TOKEN, quote.signedParams.amountLD, composeMsg);
+
+            emit SponsoredOFTDirectExecution(
+                quote.signedParams.nonce,
+                msg.sender,
+                quote.signedParams.finalRecipient,
+                quote.signedParams.destinationHandler,
+                quote.signedParams.deadline,
+                quote.signedParams.maxBpsToSponsor,
+                quote.signedParams.maxUserSlippageBps,
+                quote.signedParams.finalToken,
+                signature
+            );
+        } else {
+            (SendParam memory sendParam, MessagingFee memory fee, address refundAddress) = _buildOftTransfer(quote);
+
+            if (fee.nativeFee > msg.value) {
+                revert InvalidNativeFee();
+            }
+            // OFT doesn't refund the unused native fee portion. Instead, it expects precise fee.nativeFee to be transferred
+            // as msg.value, so we refund the user ourselves
+            uint256 nativeFeeRefund = msg.value - fee.nativeFee;
+            if (nativeFeeRefund > 0) {
+                (bool success, ) = payable(refundAddress).call{ value: nativeFeeRefund }("");
+                require(success, "Unable to send value, recipient may have reverted");
+            }
+
+            IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
+            IERC20(TOKEN).forceApprove(address(OFT_MESSENGER), quote.signedParams.amountLD);
+
+            IOFT(OFT_MESSENGER).send{ value: fee.nativeFee }(sendParam, fee, refundAddress);
+            emit SponsoredOFTSend(
+                quote.signedParams.nonce,
+                msg.sender,
+                quote.signedParams.finalRecipient,
+                quote.signedParams.destinationHandler,
+                quote.signedParams.deadline,
+                quote.signedParams.maxBpsToSponsor,
+                quote.signedParams.maxUserSlippageBps,
+                quote.signedParams.finalToken,
+                signature
+            );
         }
-        // OFT doesn't refund the unused native fee portion. Instead, it expects precise fee.nativeFee to be transferred
-        // as msg.value, so we refund the user ourselves
-        uint256 nativeFeeRefund = msg.value - fee.nativeFee;
-        if (nativeFeeRefund > 0) {
-            // Adapted from "@openzeppelin/contracts/utils/Address.sol";
-            (bool success, ) = payable(refundAddress).call{ value: nativeFeeRefund }("");
-            require(success, "Unable to send value, recipient may have reverted");
-        }
-
-        // Step 3: pull tokens from user and apporove OFT messenger
-        IERC20(TOKEN).safeTransferFrom(msg.sender, address(this), quote.signedParams.amountLD);
-        IERC20(TOKEN).forceApprove(address(OFT_MESSENGER), quote.signedParams.amountLD);
-
-        // Step 4: send oft transfer and emit event with auxiliary data
-        IOFT(OFT_MESSENGER).send{ value: fee.nativeFee }(sendParam, fee, refundAddress);
-        emit SponsoredOFTSend(
-            quote.signedParams.nonce,
-            msg.sender,
-            quote.signedParams.finalRecipient,
-            quote.signedParams.destinationHandler,
-            quote.signedParams.deadline,
-            quote.signedParams.maxBpsToSponsor,
-            quote.signedParams.maxUserSlippageBps,
-            quote.signedParams.finalToken,
-            signature
-        );
     }
 
     function _buildOftTransfer(
