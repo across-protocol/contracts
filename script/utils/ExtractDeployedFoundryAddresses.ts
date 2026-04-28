@@ -216,7 +216,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
 
-          let contractName = tx.contractName as string;
+          let contractName = (tx.contractName as string | null) ?? "";
 
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
@@ -225,7 +225,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
             continue;
           } else if (contractName === "DonationBox") {
             // Suffix DonationBox with _OFT or _CCTP based on the deploying script.
-            console.log(broadcastFile.scriptName);
             if (broadcastFile.scriptName.includes("DeployDstHandler")) {
               contractName = "DonationBox_OFT";
             } else if (broadcastFile.scriptName.includes("DeploySponsoredCCTPDstPeriphery")) {

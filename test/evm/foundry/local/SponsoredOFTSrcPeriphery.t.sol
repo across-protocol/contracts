@@ -194,7 +194,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         // assertTrue(periphery.getMainStorage().usedNonces[nonce], "nonce should be marked used");
     }
 
-    function testDepositRevertsOnInsufficientNativeFee() public {
+    function testDepositRevertsOnInvalidNativeFee() public {
         bytes32 nonce = keccak256("q-2");
         uint256 deadline = block.timestamp + 1 days;
         SponsoredOFTInterface.Quote memory quote = createDefaultQuote(
@@ -207,7 +207,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         bytes memory signature = signQuote(signerPk, quote);
 
         vm.prank(user);
-        vm.expectRevert(SponsoredOFTInterface.InsufficientNativeFee.selector);
+        vm.expectRevert(SponsoredOFTInterface.InvalidNativeFee.selector);
         periphery.deposit{ value: QUOTED_NATIVE_FEE - 1 }(quote, signature);
     }
 
