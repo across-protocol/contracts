@@ -1,0 +1,79 @@
+name: Deployment Config Check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  NODE_VERSION: 22.18
+
+concurrency:
+  group: deployment-config-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  deployment-config-check:
+    name: Deployment Config Check
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check which paths changed
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            broadcast:
+              - 'broadcast/**/run-latest.json'
+
+      - name: Use Node ${{ env.NODE_VERSION }}
+        if: steps.filter.outputs.broadcast == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "${{ env.NODE_VERSION }}"
+          cache: yarn
+
+      - name: Install packages
+        if: steps.filter.outputs.broadcast == 'true'
+        run: yarn install --frozen-lockfile --ignore-optional
+
+      - name: Install Foundry
+        if: steps.filter.outputs.broadcast == 'true'
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install forge dependencies
+        if: steps.filter.outputs.broadcast == 'true'
+        run: forge install
+
+      - name: Build EVM artifacts
+        if: steps.filter.outputs.broadcast == 'true'
+        run: yarn build-evm-foundry
+
+      - name: Run deployment config checker
+        if: steps.filter.outputs.broadcast == 'true'
+        env:
+          DEPLOY_CONFIG_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DEPLOY_CONFIG_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DEPLOY_CONFIG_PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_MODEL: claude-sonnet-4-20250514
+          DEPLOY_CONFIG_RPC_URLS_JSON: ${{ secrets.DEPLOY_CONFIG_RPC_URLS_JSON }}
+        run: yarn check-deployment-configs
+
+      - name: Upload checker report
+        if: steps.filter.outputs.broadcast == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-config-check-report
+          path: deployment-config-check-report.json
+          if-no-files-found: ignore
