@@ -222,18 +222,18 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositCCTP      | [0xA45F9f1c963500a91ea87df6c30C2fc8548b944b](https://hyperevmscan.io//address/0xA45F9f1c963500a91ea87df6c30C2fc8548b944b) |
 | CounterfactualDepositFactory   | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://hyperevmscan.io//address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool | [0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99](https://hyperevmscan.io//address/0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99) |
-| DonationBox_CCTP               | [0x46FCbf700512bFB48E0aD189dA33363fa2c80Da7](https://hyperevmscan.io//address/0x46FCbf700512bFB48E0aD189dA33363fa2c80Da7) |
+| DonationBox_CCTP               | [0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60](https://hyperevmscan.io//address/0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60) |
 | DonationBox_OFT                | [0xf9a0c1C775f1B6e156ad3f1DB784520461DDb19e](https://hyperevmscan.io//address/0xf9a0c1C775f1B6e156ad3f1DB784520461DDb19e) |
 | DstOFTHandler                  | [0x0Ca8316a6fcc15C833A220c40D84550B08339438](https://hyperevmscan.io//address/0x0Ca8316a6fcc15C833A220c40D84550B08339438) |
 | HyperliquidDepositHandler      | [0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5](https://hyperevmscan.io//address/0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5) |
 | MulticallHandler               | [0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba](https://hyperevmscan.io//address/0x5E7840E06fAcCb6d1c3b5F5E0d1d3d07F2829bba) |
-| PermissionedMulticallHandler   | [0xaB98a974E3F7edB28cdc4794c9F3dbA45853DcFd](https://hyperevmscan.io//address/0xaB98a974E3F7edB28cdc4794c9F3dbA45853DcFd) |
+| PermissionedMulticallHandler   | [0xD7B719ed2b02Bfa0247600EDd6bd8Fb3957e95c8](https://hyperevmscan.io//address/0xD7B719ed2b02Bfa0247600EDd6bd8Fb3957e95c8) |
 | Safe                           | [0xd396CcB6770EAB84045c9Bce2939c478639E2A7F](https://hyperevmscan.io//address/0xd396CcB6770EAB84045c9Bce2939c478639E2A7F) |
 | SP1Helios                      | [0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0](https://hyperevmscan.io//address/0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0) |
 | SpokePool                      | [0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04](https://hyperevmscan.io//address/0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04) |
 | SpokePoolPeriphery             | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://hyperevmscan.io//address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier              | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://hyperevmscan.io//address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPDstPeriphery      | [0x1450c4825c960809Cc5b10A18EAE755e01901878](https://hyperevmscan.io//address/0x1450c4825c960809Cc5b10A18EAE755e01901878) |
+| SponsoredCCTPDstPeriphery      | [0x1CFE31eD57c2d2b4CB69c0298A1b586965b882d5](https://hyperevmscan.io//address/0x1CFE31eD57c2d2b4CB69c0298A1b586965b882d5) |
 | SponsoredCCTPSrcPeriphery      | [0xc611D7c33d1C7915F13ef35f488EAee9D9DC3555](https://hyperevmscan.io//address/0xc611D7c33d1C7915F13ef35f488EAee9D9DC3555) |
 | WithdrawImplementation         | [0x679D43e1d304001538Bf083D421484fD67c00a45](https://hyperevmscan.io//address/0x679D43e1d304001538Bf083D421484fD67c00a45) |
 
