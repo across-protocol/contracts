@@ -24,9 +24,8 @@ import {
   SOLANA_USDC_DEVNET,
   SOLANA_USDC_MAINNET,
 } from "../../src/svm/web3-v1";
-import { HubPool__factory } from "../../typechain";
 import { CHAIN_IDs, getNodeUrl, TOKEN_SYMBOLS_MAP } from "../../utils";
-import { requireEnv } from "./utils/helpers";
+import { getHubPoolContract, requireEnv } from "./utils/helpers";
 import { constructSimpleRebalanceTree } from "./utils/poolRebalanceTree";
 
 // Set up Solana provider.
@@ -46,7 +45,7 @@ const ethersSigner = ethers.Wallet.fromMnemonic(requireEnv("MNEMONIC")).connect(
 
 // Get the HubPool contract instance.
 const hubPoolAddress = ethers.utils.getAddress(requireEnv("HUB_POOL_ADDRESS"));
-const hubPool = HubPool__factory.connect(hubPoolAddress, ethersProvider);
+const hubPool = getHubPoolContract(hubPoolAddress, ethersProvider);
 
 // CCTP domains.
 const remoteDomain = 0; // Ethereum
@@ -80,7 +79,7 @@ async function executeRebalanceToSpokePool(): Promise<void> {
   if (evmChainId !== supportedEvmChainId) {
     throw new Error(`Chain ID ${evmChainId} does not match expected Solana cluster ${solanaCluster}`);
   }
-  const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId];
+  const l1TokenAddress = TOKEN_SYMBOLS_MAP.USDC.addresses[evmChainId as keyof typeof TOKEN_SYMBOLS_MAP.USDC.addresses];
   const solanaTokenKey = isDevnet ? new PublicKey(SOLANA_USDC_DEVNET) : new PublicKey(SOLANA_USDC_MAINNET);
 
   console.log("Executing rebalance pool bundle to spoke...");

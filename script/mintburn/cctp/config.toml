@@ -2,12 +2,12 @@
 endpoint_url = "${NODE_URL_1}"
 
 [mainnet.address]
-sponsoredCCTPSrcPeriphery = "0x89004EA51Bac007FEc55976967135b2Aa6e838d4"
+sponsoredCCTPSrcPeriphery = "0x6769155b16F25D317819eFef011E0A50A48e83c5"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
 baseToken = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-sponsoredCCTPDstPeriphery = "0x5616194d65638086a3191B1fEF436f503ff329eC"
+sponsoredCCTPDstPeriphery = "0xde589398a3fe1dcca80c12053a14811f3e4033f4"
 multicallHandler = "0x64a43393866DBA0044879979fAa7AD3d000622e9"
 zkLighter = "0x3B4D794a66304F130a4Db8F2551B0070dfCf5ca7"
 
@@ -19,7 +19,7 @@ endpoint_url = "${NODE_URL_8453}"
 
 [base.address]
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
-sponsoredCCTPSrcPeriphery = "0xA7A8d1efC1EE3E69999D370380949092251a5c20"
+sponsoredCCTPSrcPeriphery = "0xa30968D3468316D957B9115EAad3C1c8E450116d"
 usdc = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
 [base.uint]
@@ -30,13 +30,12 @@ endpoint_url = "${NODE_URL_42161}"
 
 [arbitrum.address]
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
-sponsoredCCTPSrcPeriphery = "0xce1FFE01eBB4f8521C12e74363A396ee3d337E1B"
+sponsoredCCTPSrcPeriphery = "0xc9c54d789ebc18169d942E781C75bb4e3D19a27b"
 usdc = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
 
 [arbitrum.uint]
 cctpDomainId = 3
 
-# Arbitrum Sepolia
 [arbitrum-sepolia]
 endpoint_url = "${NODE_URL_421614}"
 
@@ -50,7 +49,7 @@ cctpDomainId = 3
 endpoint_url = "${NODE_URL_10}"
 
 [optimism.address]
-sponsoredCCTPSrcPeriphery = "0x986E476F93a423d7a4CD0baF362c5E0903268142"
+sponsoredCCTPSrcPeriphery = "0x4d11A23E4408eF08Ae1216B3917560e0001CD000"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
 
@@ -61,7 +60,7 @@ cctpDomainId = 2
 endpoint_url = "${NODE_URL_130}"
 
 [unichain.address]
-sponsoredCCTPSrcPeriphery = "0x2918236893EC1ec739a96C381e00403d52ac560F"
+sponsoredCCTPSrcPeriphery = "0xce9Cf0C8f8121b573f6212344F53BC7746846e71"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x078D782b760474a361dDA0AF3839290b0EF57AD6"
 
@@ -72,7 +71,7 @@ cctpDomainId = 10
 endpoint_url = "${NODE_URL_480}"
 
 [world.address]
-sponsoredCCTPSrcPeriphery = "0x1c8243198570658f818FC56538f2c837C2a32958"
+sponsoredCCTPSrcPeriphery = "0x2C7a3cCd1a8F4f96174c42E0638AAb3BDA6Bc923"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x79A02482A880bCE3F13e09Da970dC34db4CD24d1"
 
@@ -83,7 +82,7 @@ cctpDomainId = 14
 endpoint_url = "${NODE_URL_59144}"
 
 [linea.address]
-sponsoredCCTPSrcPeriphery = "0x60eB88A83434f13095B0A138cdCBf5078Aa5005C"
+sponsoredCCTPSrcPeriphery = "0xe3E88958d181AB43bf3902f8F00AF57cf5D44E8c"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x176211869cA2b568f2A7D4EE941E073a821EE1ff"
 
@@ -94,7 +93,7 @@ cctpDomainId = 11
 endpoint_url = "${NODE_URL_137}"
 
 [polygon.address]
-sponsoredCCTPSrcPeriphery = "0x473dEBE3dB7338E03E3c8Dc8e980bb1DACb25bc5"
+sponsoredCCTPSrcPeriphery = "0x6005CD9f10c0Dc654445f138350b2FA7370BE42d"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
 
@@ -105,7 +104,7 @@ cctpDomainId = 7
 endpoint_url = "${NODE_URL_143}"
 
 [143.address]
-sponsoredCCTPSrcPeriphery = "0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5"
+sponsoredCCTPSrcPeriphery = "0xc49226858478DE8757E425661b1B5297102330d7"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
 
@@ -118,37 +117,38 @@ endpoint_url = "${NODE_URL_57073}"
 [57073.address]
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
 usdc = "0x2D270e6886d130D724215A266106e6832161EAEd"
+sponsoredCCTPSrcPeriphery = "0x1771c470d41b8c39338450C380bf2C080a2CEdD8"
 
 [57073.uint]
 cctpDomainId = 21
 
-# HyperEVM Mainnet
 [999]
 endpoint_url = "${NODE_URL_999}"
 
 [999.address]
+cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+usdc = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
+sponsoredCCTPSrcPeriphery = "0xc611D7c33d1C7915F13ef35f488EAee9D9DC3555"
 cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
-# USDC
 baseToken = "0xb88339CB7199b77E23DB6E890353E22632Ba630f"
 multicallHandler = "0xfD0876712DD9003D014CDCd8e5140B4EFAC9BFCC"
+sponsoredCCTPDstPeriphery = "0x478d451e101be484880a14cf3ccc293cd48e6140"
 
 [999.uint]
 cctpDomainId = 19
 coreIndex = 0
 accountActivationFeeCore = 100000000
-bridgeSafetyBufferCore = 100000000
+bridgeSafetyBufferCore = 100000000000000000
 
 [999.bool]
 canBeUsedForAccountActivation = true
 
-# HyperEVM testnet
 [998]
 endpoint_url = "${NODE_URL_998}"
 
 [998.address]
 cctpTokenMessenger = "0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA"
 cctpMessageTransmitter = "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275"
-# USDC
 baseToken = "0x2B3370eE501B4a559b57D449569354196457D8Ab"
 
 [998.uint]

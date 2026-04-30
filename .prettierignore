@@ -10,3 +10,4 @@ cache-zk
 lib
 target
 idls
+*.rs

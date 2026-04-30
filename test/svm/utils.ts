@@ -21,7 +21,7 @@ import {
 } from "../../src/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 
-import { MerkleTree } from "@uma/common";
+import { MerkleTree } from "../../utils/MerkleTree";
 import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
 
 export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };

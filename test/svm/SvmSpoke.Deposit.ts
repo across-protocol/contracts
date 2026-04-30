@@ -45,7 +45,7 @@ import {
   u8Array32ToInt,
 } from "../../src/svm/web3-v1";
 import { DepositData, DepositDataValues } from "../../src/types/svm";
-import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
+const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365;
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient } from "./utils";
 const {
@@ -794,7 +794,7 @@ describe("svm_spoke.deposit", () => {
   });
 
   describe("codama client and solana kit", () => {
-    it("Deposit with with solana kit and codama client", async () => {
+    it("Deposit with solana kit and codama client", async () => {
       // typescript is not happy with the depositData object
       if (!depositData.inputToken || !depositData.depositor) {
         throw new Error("Input token or depositor is null");

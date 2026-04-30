@@ -22,7 +22,7 @@ import {
   L1_ADDRESS_MAP,
   OP_STACK_ADDRESS_MAP,
   L2_ADDRESS_MAP,
-} from "../../deploy/consts";
+} from "../../src/consts";
 
 const convertChainFamiliesEnumString = () => {
   const publicNetworksWithEnum = Object.fromEntries(
@@ -73,7 +73,11 @@ function generateWrappedNativeTokens(): { [key: string]: string } {
     // Check if the wrapped token symbol exists in TOKEN_SYMBOLS_MAP
     if (wrappedNativeSymbol in TOKEN_SYMBOLS_MAP) {
       const tokenInfo = TOKEN_SYMBOLS_MAP[wrappedNativeSymbol as keyof typeof TOKEN_SYMBOLS_MAP];
-      const wrappedNativeToken = tokenInfo.addresses[Number(key)];
+      const wrappedNativeToken = (tokenInfo.addresses as Record<string, string>)[key];
+      if (!wrappedNativeToken) {
+        console.warn(`Warning: Wrapped token "${wrappedNativeSymbol}" missing address for chain ${key}`);
+        continue;
+      }
       result[key] = wrappedNativeToken;
     } else {
       console.warn(
