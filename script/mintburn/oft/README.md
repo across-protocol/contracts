@@ -40,7 +40,7 @@ Activate HyperLiquid account for that (see step 3 for an example).
 And FinalTokenInfo:
 
 ```
-cast send $DEPLOYED_DST_OFT "setFinalTokenInfo(address,uint32,bool,uint32,uint32)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 166 false 140 2 --rpc-url hyperevm --account dev
+cast send $DEPLOYED_DST_OFT "setFinalTokenInfo(address,uint32,bool,uint32,uint32)" 0xb88339CB7199b77E23DB6E890353E22632Ba630f 166 false 140 1 --rpc-url hyperevm --account dev
 ```
 
 3. **Activate $DEPLOYED_DST_OFT account on HyperCore**

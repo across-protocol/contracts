@@ -192,16 +192,38 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         // where an attacker provides correct message/attestation but invalid signature.
         _validateQuoteOrRevert(quote, signature);
 
+        _executeQuote(quote, feeExecuted);
+    }
+
+    /**
+     * @notice Direct execution entrypoint for same-chain flows that bypass CCTP transport.
+     * @dev Caller must hold DIRECT_CALLER_ROLE and transfer baseToken funds to this contract before invoking.
+     * @param quote The quote that contains the data for the deposit.
+     */
+    function directReceiveMessage(
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote
+    ) external nonReentrant authorizeFundedFlow onlyRole(DIRECT_CALLER_ROLE) {
+        if (quote.burnToken.toAddress() != baseToken) revert InvalidBurnToken();
+        MainStorage storage $ = _getMainStorage();
+        if ($.usedNonces[quote.nonce]) revert InvalidNonce();
+        $.usedNonces[quote.nonce] = true;
+        _executeQuote(quote, 0);
+    }
+
+    /**
+     * @notice Shared execution logic for both CCTP-bridged and direct flows.
+     * @param quote The validated quote.
+     * @param feeExecuted The CCTP fee deducted (0 for direct flows).
+     */
+    function _executeQuote(SponsoredCCTPInterface.SponsoredCCTPQuote memory quote, uint256 feeExecuted) internal {
         uint256 amountAfterFees = quote.amount - feeExecuted;
 
         CommonFlowParams memory commonParams = CommonFlowParams({
             amountInEVM: amountAfterFees,
             quoteNonce: quote.nonce,
             finalRecipient: quote.finalRecipient.toAddress(),
-            // If the quote is invalid we don't want to swap, so we use the base token as the final token
             finalToken: quote.finalToken.toAddress(),
             destinationDex: quote.destinationDex,
-            // If the quote is invalid we don't sponsor the flow or the extra fees
             maxBpsToSponsor: quote.maxBpsToSponsor,
             extraFeesIncurred: feeExecuted,
             accountCreationMode: StructsAccountCreationMode(quote.accountCreationMode)

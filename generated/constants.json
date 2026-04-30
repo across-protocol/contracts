@@ -460,6 +460,16 @@
       "oftEid": -1,
       "hypDomainId": 168587773
     },
+    "728126428": {
+      "name": "TRON",
+      "family": "TVM",
+      "nativeToken": "TRX",
+      "publicRPC": "https://api.trongrid.io/jsonrpc",
+      "blockExplorer": "https://tronscan.org",
+      "cctpDomain": -1,
+      "oftEid": 30420,
+      "hypDomainId": -1
+    },
     "34268394551451": {
       "name": "Solana",
       "family": "SVM",
@@ -508,6 +518,7 @@
     "SONEIUM": 1868,
     "SUPERSEED": 5330,
     "TEMPO": 4217,
+    "TRON": 728126428,
     "UNICHAIN": 130,
     "WORLD_CHAIN": 480,
     "ZK_SYNC": 324,
@@ -617,6 +628,7 @@
     "11155111": "0xfFf9976782d46CC05630D1f6eBAb18b2324d6B14",
     "11155420": "0x4200000000000000000000000000000000000006",
     "168587773": "0x4200000000000000000000000000000000000023",
+    "728126428": "0x891cdb91d149f23B1a45D9c5Ca78a88d0cB44C18",
     "34268394551451": "So11111111111111111111111111111111111111112",
     "133268194659241": "So11111111111111111111111111111111111111112"
   },

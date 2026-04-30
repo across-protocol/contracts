@@ -5,6 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { Config } from "forge-std/Config.sol";
+import { StdConstants } from "forge-std/StdConstants.sol";
 import { Upgrades } from "@openzeppelin/foundry-upgrades/src/Upgrades.sol";
 import { Options } from "@openzeppelin/foundry-upgrades/src/Options.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Proxy.sol";
@@ -200,6 +201,34 @@ contract DeploymentUtils is Script, Test, Constants, DeployedAddresses, Config {
      * @dev This function will revert if the chain ID is a ZkSync chain but the FOUNDRY_PROFILE is not zksync
      * @param chainId Chain ID to check
      */
+    /// @dev Deploys a contract via CREATE2 if not already deployed. Returns the deployed address.
+    function _deployCreate2(bytes32 salt, bytes memory initCode) internal returns (address deployed) {
+        deployed = _predictCreate2(salt, initCode);
+
+        if (deployed.code.length > 0) {
+            console.log("  Already deployed at:", deployed);
+            return deployed;
+        }
+
+        (bool success, ) = StdConstants.CREATE2_FACTORY.call(abi.encodePacked(salt, initCode));
+        require(success, "CREATE2 deployment failed");
+        require(deployed.code.length > 0, "CREATE2 deployment did not produce code");
+    }
+
+    /// @dev Predicts the CREATE2 address for a given salt and initCode.
+    function _predictCreate2(bytes32 salt, bytes memory initCode) internal pure returns (address) {
+        return
+            address(
+                uint160(
+                    uint256(
+                        keccak256(
+                            abi.encodePacked(bytes1(0xff), StdConstants.CREATE2_FACTORY, salt, keccak256(initCode))
+                        )
+                    )
+                )
+            );
+    }
+
     function checkZkStackChain(uint256 chainId) internal view {
         bool isZkStackChain = keccak256(abi.encodePacked(getChainFamily(chainId))) ==
             keccak256(abi.encodePacked("ZK_STACK"));

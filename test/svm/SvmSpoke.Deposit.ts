@@ -45,7 +45,7 @@ import {
   u8Array32ToInt,
 } from "../../src/svm/web3-v1";
 import { DepositData, DepositDataValues } from "../../src/types/svm";
-import { MAX_EXCLUSIVITY_OFFSET_SECONDS } from "../../test-utils";
+const MAX_EXCLUSIVITY_OFFSET_SECONDS = 24 * 60 * 60 * 365;
 import { common } from "./SvmSpoke.common";
 import { createDefaultSolanaClient } from "./utils";
 const {

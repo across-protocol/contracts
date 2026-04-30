@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { Config } from "forge-std/Config.sol";
 import { console } from "forge-std/console.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+import { SafeCast } from "@openzeppelin/contracts-v4/utils/math/SafeCast.sol";
 
 import { ReadHCoreTokenInfoUtil } from "../../mintburn/ReadHCoreTokenInfoUtil.s.sol";
 import { DstOFTHandler } from "../../../contracts/periphery/mintburn/sponsored-oft/DstOFTHandler.sol";
@@ -14,6 +14,7 @@ import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters
 /// @notice Shared helper for configuring `DstOFTHandler` instances using TOML and JSON metadata.
 abstract contract DstHandlerConfigLib is Config {
     using AddressToBytes32 for address;
+    using SafeCast for uint256;
 
     function _loadTokenConfig(string memory tokenKey) internal {
         require(bytes(tokenKey).length != 0, "token key required");
@@ -26,7 +27,7 @@ abstract contract DstHandlerConfigLib is Config {
 
         ReadHCoreTokenInfoUtil reader = new ReadHCoreTokenInfoUtil();
         ReadHCoreTokenInfoUtil.TokenJson memory info = reader.readToken(tokenName);
-        address tokenAddr = reader.resolveEvmAddress(info, block.chainid);
+        address tokenAddr = reader.resolveEvmAddress(info);
         require(tokenAddr != address(0), "token addr missing");
 
         console.log("Configuring CoreTokenInfo for", tokenName);
@@ -35,10 +36,10 @@ abstract contract DstHandlerConfigLib is Config {
 
         HyperCoreFlowExecutor(dstHandlerAddress).setCoreTokenInfo(
             tokenAddr,
-            uint32(info.index),
+            info.index.toUint32(),
             info.canBeUsedForAccountActivation,
-            uint64(info.accountActivationFeeCore),
-            uint64(info.bridgeSafetyBufferCore)
+            info.accountActivationFeeCore.toUint64(),
+            info.bridgeSafetyBufferCore.toUint64()
         );
     }
 

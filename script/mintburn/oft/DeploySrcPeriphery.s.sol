@@ -26,6 +26,19 @@ Note that both of these will update:
 - the config + deployments file: ./script/mintburn/oft/<tokenName>.toml
 - the `broadcast/` folder with the latest_run params (used by the precommit hooks to populate some generated artifacts file)
 
+# MegaETH (chain 4326) has a dual-gas model (compute + storage) that Foundry's local
+# simulation doesn't understand, causing "intrinsic gas too low" errors. Use --skip-simulation
+# to let the MegaETH RPC handle gas estimation:
+forge script script/mintburn/oft/DeploySrcPeriphery.s.sol:DepoySrcOFTPeriphery \
+  --sig "run(string,address)" usdt0 0xSigner \
+  --rpc-url megaeth --broadcast --skip-simulation -vvvv
+
+# To manually verify on explorers that Foundry doesn't natively support, generate the
+# standard JSON input and upload it to the block explorer's verification page:
+forge verify-contract --show-standard-json-input 0xDeployedAddress \
+  contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol:SponsoredOFTSrcPeriphery \
+  > standard-json-input.json
+
 */
 
 contract DepoySrcOFTPeriphery is Script, Test, DeploymentUtils {

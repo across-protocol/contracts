@@ -42,14 +42,13 @@ fi
 
 echo "Running generate-constants-json on staged files ..."
 yarn generate-constants-json && yarn prettier --write generated/constants.json
-if git diff --name-only | grep -E 'generated/constants.json$' >/dev/null; then
-    echo "Generated constants have changed."
-    git add generated/constants.json
-fi
 GENERATE_CONSTANTS_JSON_EXIT=$?
 if [ $GENERATE_CONSTANTS_JSON_EXIT -ne 0 ]; then
     echo "generate-constants-json encountered an error. Aborting the hook."
     exit $GENERATE_CONSTANTS_JSON_EXIT
+fi
+if [ -f generated/constants.json ]; then
+    git add generated/constants.json
 fi
 
 echo "Running extract-addresses on staged files ..."
@@ -59,8 +58,9 @@ if [ $EXTRACT_ADDRESSES_EXIT -ne 0 ]; then
     echo "extract-addresses encountered an error. Aborting the hook."
     exit $EXTRACT_ADDRESSES_EXIT
 fi
-if git diff --name-only | grep -E 'broadcast/deployed-addresses\.(json|md)$' >/dev/null; then
-    echo "Broadcast or deployed addresses have changed."
+if [ -f broadcast/deployed-addresses.json ]; then
     git add broadcast/deployed-addresses.json
+fi
+if [ -f broadcast/deployed-addresses.md ]; then
     git add broadcast/deployed-addresses.md
 fi

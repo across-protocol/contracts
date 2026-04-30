@@ -12,12 +12,15 @@ import { Optimism_Adapter } from "../../../../contracts/chain-adapters/Optimism_
 import { WETH9Interface } from "../../../../contracts/external/interfaces/WETH9Interface.sol";
 import { WETH9 } from "../../../../contracts/external/WETH9.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
-import { MockBedrockL1StandardBridge, MockBedrockCrossDomainMessenger } from "../../../../contracts/test/MockBedrockStandardBridge.sol";
+import {
+    MockBedrockL1StandardBridge,
+    MockBedrockCrossDomainMessenger
+} from "../../../../contracts/test/MockBedrockStandardBridge.sol";
 import { Arbitrum_Forwarder } from "../../../../contracts/chain-adapters/Arbitrum_Forwarder.sol";
 import { ForwarderBase } from "../../../../contracts/chain-adapters/ForwarderBase.sol";
 import { CrossDomainAddressUtils } from "../../../../contracts/libraries/CrossDomainAddressUtils.sol";
 import { ForwarderInterface } from "../../../../contracts/chain-adapters/interfaces/ForwarderInterface.sol";
-import { AdapterStore } from "../../../../contracts/AdapterStore.sol";
+import { AdapterStore } from "../../../../contracts/hub-pool/AdapterStore.sol";
 
 contract Token_ERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
