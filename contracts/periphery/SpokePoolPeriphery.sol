@@ -10,7 +10,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts-v4/security/ReentrancyG
 import { SignatureChecker } from "@openzeppelin/contracts-v4/utils/cryptography/SignatureChecker.sol";
 import { EIP712 } from "@openzeppelin/contracts-v4/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../interfaces/V3SpokePoolInterface.sol";
-import { IERC20Auth } from "../external/interfaces/IERC20Auth.sol";
+import { IERC20Auth, IERC20AuthBytes } from "../external/interfaces/IERC20Auth.sol";
 import { WETH9Interface } from "../external/interfaces/WETH9Interface.sol";
 import { IPermit2 } from "../external/interfaces/IPermit2.sol";
 import { PeripherySigningLib } from "../libraries/PeripherySigningLib.sol";
@@ -376,10 +376,50 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             r,
             s
         );
+        _finishSwapAndBridgeWithAuthorization(swapAndDepositData, witness, signatureOwner);
+    }
+
+    /**
+     * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Mirrors `swapAndBridgeWithAuthorization` but pulls tokens via the extended EIP-3009
+     * `receiveWithAuthorization(...,bytes signature)` overload, allowing both EOA (ECDSA) and
+     * contract (EIP-1271) signers.
+     */
+    function swapAndBridgeWithAuthorizationBytes(
+        address signatureOwner,
+        SwapAndDepositData calldata swapAndDepositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata receiveWithAuthSignature
+    ) external override nonReentrant {
+        bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
+        uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
+        IERC20AuthBytes(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
+            signatureOwner,
+            address(this),
+            swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
+            validAfter,
+            validBefore,
+            witness,
+            receiveWithAuthSignature
+        );
+        _finishSwapAndBridgeWithAuthorization(swapAndDepositData, witness, signatureOwner);
+    }
+
+    /**
+     * @notice Shared tail logic for swapAndBridgeWithAuthorization* entry points after the token
+     * pull has succeeded. Pays submission fees and dispatches the swap+bridge using the witness as
+     * the ERC-3009 nonce.
+     */
+    function _finishSwapAndBridgeWithAuthorization(
+        SwapAndDepositData calldata swapAndDepositData,
+        bytes32 witness,
+        address signatureOwner
+    ) private {
         _paySubmissionFees(
             swapAndDepositData.swapToken,
             swapAndDepositData.submissionFees.recipient,
-            _submissionFeeAmount
+            swapAndDepositData.submissionFees.amount
         );
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
@@ -503,16 +543,13 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009DepositWitness(depositData);
-        // Load variables used multiple times onto the stack.
-        uint256 _inputAmount = depositData.inputAmount;
-        uint256 _submissionFeeAmount = depositData.submissionFees.amount;
 
         // Redeem the receiveWithAuthSignature.
         (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         IERC20Auth(depositData.baseDepositData.inputToken).receiveWithAuthorization(
             signatureOwner,
             address(this),
-            _inputAmount + _submissionFeeAmount,
+            depositData.inputAmount + depositData.submissionFees.amount,
             validAfter,
             validBefore,
             witness,
@@ -520,10 +557,49 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             r,
             s
         );
+        _finishDepositWithAuthorization(depositData, witness, signatureOwner);
+    }
+
+    /**
+     * @inheritdoc SpokePoolPeripheryInterface
+     * @dev Mirrors `depositWithAuthorization` but pulls tokens via the extended EIP-3009
+     * `receiveWithAuthorization(...,bytes signature)` overload, allowing both EOA (ECDSA) and
+     * contract (EIP-1271) signers.
+     */
+    function depositWithAuthorizationBytes(
+        address signatureOwner,
+        DepositData calldata depositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata receiveWithAuthSignature
+    ) external override nonReentrant {
+        bytes32 witness = getERC3009DepositWitness(depositData);
+        IERC20AuthBytes(depositData.baseDepositData.inputToken).receiveWithAuthorization(
+            signatureOwner,
+            address(this),
+            depositData.inputAmount + depositData.submissionFees.amount,
+            validAfter,
+            validBefore,
+            witness,
+            receiveWithAuthSignature
+        );
+        _finishDepositWithAuthorization(depositData, witness, signatureOwner);
+    }
+
+    /**
+     * @notice Shared tail logic for depositWithAuthorization* entry points after the token pull has
+     * succeeded. Pays submission fees and dispatches the bridge using the witness as the ERC-3009
+     * nonce.
+     */
+    function _finishDepositWithAuthorization(
+        DepositData calldata depositData,
+        bytes32 witness,
+        address signatureOwner
+    ) private {
         _paySubmissionFees(
             depositData.baseDepositData.inputToken,
             depositData.submissionFees.recipient,
-            _submissionFeeAmount
+            depositData.submissionFees.amount
         );
 
         // Note: No need to validate our internal nonce for receiveWithAuthorization
@@ -535,7 +611,7 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
             depositData.baseDepositData.recipient,
             depositData.baseDepositData.inputToken,
             depositData.baseDepositData.outputToken,
-            _inputAmount,
+            depositData.inputAmount,
             depositData.baseDepositData.outputAmount,
             depositData.baseDepositData.destinationChainId,
             depositData.baseDepositData.exclusiveRelayer,

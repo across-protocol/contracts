@@ -73,6 +73,25 @@ contract Exchange {
     }
 }
 
+// Minimal EIP-1271 contract wallet used to test the bytes-signature ERC-3009 flows. It treats a
+// pre-approved (hash, signature) pair as the only valid signature.
+contract EIP1271Wallet is IERC1271 {
+    bytes4 private constant MAGIC_VALUE = 0x1626ba7e;
+
+    mapping(bytes32 => bytes32) private approvedSignatures;
+
+    function approve(bytes32 hash, bytes calldata signature) external {
+        approvedSignatures[hash] = keccak256(signature);
+    }
+
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view returns (bytes4) {
+        if (approvedSignatures[hash] == keccak256(signature) && approvedSignatures[hash] != bytes32(0)) {
+            return MAGIC_VALUE;
+        }
+        return 0xffffffff;
+    }
+}
+
 // Utility contract which lets us perform external calls to an internal library.
 contract HashUtils {
     function hashDepositData(
@@ -1031,6 +1050,287 @@ contract SpokePoolPeripheryTest is Test {
             block.timestamp, // validBefore
             signature // receiveWithAuthSignature
         );
+    }
+
+    /**
+     * Transfer with authorization (bytes-signature variant) flows.
+     *
+     * These mirror the v/r/s tests above but exercise the extended EIP-3009 entry points that
+     * accept `bytes signature` directly, allowing both EOA and EIP-1271 contract signers.
+     */
+    function testTransferWithAuthBytesDepositValidWitness() public {
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            depositor
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+        bytes memory signature = _signReceiveWithAuthorization(
+            privateKey,
+            depositor,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor,
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithAuthorizationBytes(
+            depositor,
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            signature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testTransferWithAuthBytesSwapAndBridgeValidWitness() public {
+        // Deal exchange WETH since we swap an ERC20 to WETH.
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+        bytes memory signature = _signReceiveWithAuthorization(
+            privateKey,
+            depositor,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            depositor,
+            depositor,
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockWETH).toBytes32(),
+            address(mockWETH).toBytes32(),
+            depositAmount,
+            depositAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            depositor.toBytes32(),
+            depositor.toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.swapAndBridgeWithAuthorizationBytes(
+            depositor,
+            swapAndDepositData,
+            block.timestamp,
+            block.timestamp,
+            signature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function testTransferWithAuthBytesSwapAndBridgeInvalidWitness(address rando) public {
+        vm.assume(rando != depositor);
+        mockWETH.deposit{ value: depositAmount }();
+        mockWETH.transfer(address(dex), depositAmount);
+
+        SpokePoolPeripheryInterface.SwapAndDepositData memory swapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            depositor,
+            true,
+            0
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_AND_SWAP_WITNESS_IDENTIFIER(), abi.encode(swapAndDepositData))
+        );
+        bytes memory signature = _signReceiveWithAuthorization(
+            privateKey,
+            depositor,
+            address(spokePoolPeriphery),
+            mintAmountWithSubmissionFee,
+            block.timestamp,
+            block.timestamp,
+            witness
+        );
+
+        // Same signature, but a swapAndDepositData object the depositor never signed off on.
+        SpokePoolPeripheryInterface.SwapAndDepositData memory invalidSwapAndDepositData = _defaultSwapAndDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            dex,
+            SpokePoolPeripheryInterface.TransferType.Permit2Approval,
+            address(mockWETH),
+            depositAmount,
+            rando,
+            true,
+            0
+        );
+
+        vm.expectRevert();
+        spokePoolPeriphery.swapAndBridgeWithAuthorizationBytes(
+            depositor,
+            invalidSwapAndDepositData,
+            block.timestamp,
+            block.timestamp,
+            signature
+        );
+    }
+
+    function testTransferWithAuthBytesDepositEIP1271ContractSigner() public {
+        // Deploy a contract wallet that recognises a single fixed signature payload as valid.
+        // Fund the wallet so it can authorize a transfer to the periphery.
+        EIP1271Wallet wallet = new EIP1271Wallet();
+        deal(address(mockERC20), address(wallet), mintAmountWithSubmissionFee, true);
+
+        SpokePoolPeripheryInterface.DepositData memory depositData = _defaultDepositData(
+            address(mockERC20),
+            mintAmount,
+            submissionFeeAmount,
+            relayer,
+            address(wallet)
+        );
+
+        bytes32 witness = keccak256(
+            abi.encodePacked(spokePoolPeriphery.BRIDGE_WITNESS_IDENTIFIER(), abi.encode(depositData))
+        );
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                address(wallet),
+                address(spokePoolPeriphery),
+                mintAmountWithSubmissionFee,
+                block.timestamp,
+                block.timestamp,
+                witness
+            )
+        );
+        bytes32 sigHash = mockERC20.hashTypedData(structHash);
+
+        // The wallet treats this exact arbitrary blob as a valid signature for `sigHash`.
+        bytes memory contractSignature = hex"deadbeef";
+        wallet.approve(sigHash, contractSignature);
+
+        uint256 expectedDepositId = spokePoolPeriphery.getDepositId(
+            address(wallet),
+            address(wallet),
+            spokePoolPeriphery.AUTHORIZATION_NONCE_IDENTIFIER(),
+            uint256(witness),
+            V3SpokePoolInterface(address(ethereumSpokePool))
+        );
+
+        vm.expectEmit(address(ethereumSpokePool));
+        emit V3SpokePoolInterface.FundsDeposited(
+            address(mockERC20).toBytes32(),
+            address(mockERC20).toBytes32(),
+            mintAmount,
+            mintAmount,
+            destinationChainId,
+            expectedDepositId,
+            uint32(block.timestamp),
+            uint32(block.timestamp) + fillDeadlineBuffer,
+            0,
+            address(wallet).toBytes32(),
+            address(wallet).toBytes32(),
+            bytes32(0),
+            new bytes(0)
+        );
+        spokePoolPeriphery.depositWithAuthorizationBytes(
+            address(wallet),
+            depositData,
+            block.timestamp,
+            block.timestamp,
+            contractSignature
+        );
+
+        assertEq(mockERC20.balanceOf(relayer), submissionFeeAmount);
+    }
+
+    function _signReceiveWithAuthorization(
+        uint256 _privateKey,
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _validAfter,
+        uint256 _validBefore,
+        bytes32 _nonce
+    ) internal view returns (bytes memory) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                mockERC20.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                _from,
+                _to,
+                _value,
+                _validAfter,
+                _validBefore,
+                _nonce
+            )
+        );
+        bytes32 msgHash = mockERC20.hashTypedData(structHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, msgHash);
+        return bytes.concat(r, s, bytes1(v));
     }
 
     /**
