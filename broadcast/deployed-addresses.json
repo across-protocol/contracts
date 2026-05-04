@@ -1232,16 +1232,6 @@
           "block_number": 44959760,
           "transaction_hash": "0x052db9819150099889e890e641781eedcb3f7e016f87d72bea2984ce6554d350"
         },
-        "DonationBox": {
-          "address": "0xC1d6B848553602BED3524B05B7EB68c20899d861",
-          "block_number": 42941026,
-          "transaction_hash": "0xe8250326847544f47a63a3b799e07e127d21dc62a1901722293ef1335bee17e4"
-        },
-        "SponsoredCCTPDstPeriphery": {
-          "address": "0xd9DC78B969E9Efb1e54B625c33A21Aaf2509e6a1",
-          "block_number": 42941286,
-          "transaction_hash": "0x75e0619a67afe82f14b279e9b1896882a0b64513161f4d49cc80fd771e019df6"
-        },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0xa30968D3468316D957B9115EAad3C1c8E450116d",
           "block_number": 42117817,
