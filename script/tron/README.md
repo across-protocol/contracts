@@ -60,7 +60,7 @@ All scripts default to **Tron mainnet** (`728126428`). Pass `--testnet` to deplo
 
 ### SP1AutoVerifier
 
-No-op verifier for testing SP1Helios without real ZK proofs. No constructor args.
+No-op verifier that accepts any proof. No constructor args.
 
 ```bash
 yarn tron-deploy-sp1-auto-verifier [--testnet]
@@ -97,7 +97,7 @@ yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]
 
 ### Universal deployment order
 
-1. **SP1AutoVerifier** (testnet only) or wait for Succinct to deploy the real Groth16 verifier
+1. **SP1AutoVerifier** A no-op verifier that accepts any proof.
 2. **SP1Helios** — needs the verifier address
 3. **Universal_SpokePool** — needs the SP1Helios address
 
