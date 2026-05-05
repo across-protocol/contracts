@@ -215,12 +215,12 @@
           "block_number": 24021499,
           "transaction_hash": "0x70b3edf99db66aac34338c3686cd708ddfc2b503c2f707f51ced67dc50e5022f"
         },
-        "DonationBox_CCTP": {
+        "DonationBox_CCTP_USDC": {
           "address": "0xc1A2465c0913438A51d0b6339169f8b944f00cD1",
           "block_number": 24451558,
           "transaction_hash": "0x2571a14def62200935cd4c90356b1f1415e6977e60380c7dbdd4b0f4915d12fa"
         },
-        "SponsoredCCTPDstPeriphery": {
+        "SponsoredCCTPDstPeriphery_CCTP_USDC": {
           "address": "0xDe589398a3FE1DCca80C12053A14811f3E4033f4",
           "block_number": 24451558,
           "transaction_hash": "0x60497293901970b1fc224cc51f134a171e5430ef6f30ff9a9084b7a0c852718a"
@@ -849,15 +849,20 @@
           "block_number": 31071129,
           "transaction_hash": "0xd78f71ca11de6d28fe02006adf91b55f05efe0ffb1e0b2f51cb450cdf5ade5c0"
         },
-        "DonationBox_OFT": {
-          "address": "0xf9a0c1C775f1B6e156ad3f1DB784520461DDb19e",
-          "block_number": 27226495,
-          "transaction_hash": "0x79d57ee428509b8a739a619580ef0154d3618f782d5cab1bfad01c0d542d2e3e"
+        "DonationBox_OFT_USDT": {
+          "address": "0x1635Eb08fe35e8297ddd394Abc6d53f39330A8FE",
+          "block_number": 34254973,
+          "transaction_hash": "0x519e48cc52914b81c14de8fd00ae9585cff27a1c5cdb263ea73daf308693a7d5"
         },
-        "DstOFTHandler": {
-          "address": "0x0Ca8316a6fcc15C833A220c40D84550B08339438",
-          "block_number": 27226495,
-          "transaction_hash": "0x11abc3566704b51ee63255b70eddb4e3f127c7e6c9dad6bdfbf547b684bcaf2c"
+        "PermissionedMulticallHandler_OFT_USDT": {
+          "address": "0xeaa13e675Fb95821B99D34B9c94c3D60fecAdd4A",
+          "block_number": 34255034,
+          "transaction_hash": "0x39825b39641504f3b2dca5e70fac9d8c0c6c0595ca2fb115804092ac6efe7dad"
+        },
+        "DstOFTHandler_OFT_USDT": {
+          "address": "0xeb8feE79B59D048162986B0432a187Be46322284",
+          "block_number": 34255095,
+          "transaction_hash": "0x60d15964d33311f23aeba14cedd9f14a8f46a89dcad084e3e244519845130188"
         },
         "HyperliquidDepositHandler": {
           "address": "0xbFB53E9C8acCe6D6aC54885A8e33A7Aec95427D5",
@@ -869,12 +874,12 @@
           "block_number": 32382094,
           "transaction_hash": "0x188d49f786ebe99a6dbeb7c845d525064431a1eb615d0bea275d8da8a32953b1"
         },
-        "DonationBox_CCTP": {
+        "DonationBox_CCTP_USDC": {
           "address": "0xEd7422d44045781f4492Fa4b569063e5a1EB185b",
           "block_number": 27222774,
           "transaction_hash": "0x4eab452b9de97795c5d6644791e824359af36006ec521a7d1fb4c4283d247ff3"
         },
-        "SponsoredCCTPDstPeriphery": {
+        "SponsoredCCTPDstPeriphery_CCTP_USDC": {
           "address": "0x478D451e101bE484880a14cf3cCC293CD48E6140",
           "block_number": 27222774,
           "transaction_hash": "0x2b293a55b216b63afc96c148a0043b7522c4f6a847b9bc73112d03da3f1d2c6e"
@@ -883,6 +888,11 @@
           "address": "0xc611D7c33d1C7915F13ef35f488EAee9D9DC3555",
           "block_number": 27219602,
           "transaction_hash": "0x13b2a5eee6960ab615fe83eaac7203a16878d039fa4a91cb9e1dfafc1bc56298"
+        },
+        "SponsoredOFTSrcPeriphery": {
+          "address": "0x93e1E5E9D840e758CC016F8b13cDf5dbAeca4b06",
+          "block_number": 34253936,
+          "transaction_hash": "0xc92f27a2736d47bed6ea737d590a27a2498fc73829ffd0b828775d0628aa14cf"
         },
         "TransferProxy": {
           "address": "0x8b2C0BFaBD6DaD8cc700dde3F168D3c81CF0eEfF",
@@ -1192,7 +1202,7 @@
           "block_number": 43894633,
           "transaction_hash": "0x28b429aae286cfb5f09ce924514384b64203a62def3fbb61296a93e1bb3636eb"
         },
-        "DonationBox_CCTP": {
+        "DonationBox": {
           "address": "0xC1d6B848553602BED3524B05B7EB68c20899d861",
           "block_number": 42941026,
           "transaction_hash": "0xe8250326847544f47a63a3b799e07e127d21dc62a1901722293ef1335bee17e4"
