@@ -8,6 +8,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
+import { SafeTransferErc20 } from "./SafeTransferErc20.sol";
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
@@ -51,7 +52,7 @@ struct SpokePoolSubmitterData {
  *      cannot sign `speedUpV3Deposit` messages.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712 {
+contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferErc20 {
     using SafeERC20 for IERC20;
 
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
@@ -166,16 +167,6 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
             sd.fillDeadline,
             sd.signatureDeadline
         );
-    }
-
-    /**
-     * @notice ERC20 transfer hook for the execution-fee payout. Default uses OZ
-     *         `SafeERC20.safeTransfer`. Chain-specific variants may override to tolerate
-     *         non-standard ERC20 implementations (e.g. Tron USDT, whose `transfer`
-     *         returns false on success).
-     */
-    function _safeTransferErc20(address token, address to, uint256 amount) internal virtual {
-        IERC20(token).safeTransfer(to, amount);
     }
 
     function _checkFee(
