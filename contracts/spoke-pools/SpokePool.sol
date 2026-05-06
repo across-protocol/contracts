@@ -1237,7 +1237,7 @@ abstract contract SpokePool is
      * @param l2TokenAddress Address of the L2 token to claim refunds for.
      * @param refundAddress Address to send the refund to.
      */
-    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external {
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external virtual {
         uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
         relayerRefund[l2TokenAddress.toAddress()][msg.sender] = 0;
@@ -1429,7 +1429,7 @@ abstract contract SpokePool is
     // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
     // bool indicating if the external call was successful, rather than reverting. Original method:
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
-    function _noRevertTransfer(address token, address to, uint256 amount) internal returns (bool) {
+    function _noRevertTransfer(address token, address to, uint256 amount) internal virtual returns (bool) {
         bool success;
         uint256 returnSize;
         uint256 returnValue;
@@ -1644,7 +1644,7 @@ abstract contract SpokePool is
         V3RelayExecutionParams memory relayExecution,
         V3RelayData memory relayData,
         bool isSlowFill
-    ) internal {
+    ) internal virtual {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();

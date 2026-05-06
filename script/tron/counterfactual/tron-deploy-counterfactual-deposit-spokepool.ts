@@ -1,6 +1,8 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys CounterfactualDepositSpokePool to Tron.
+ * Deploys CounterfactualDepositSpokePoolTron to Tron — the Tron-specific variant
+ * that handles Tron USDT's non-standard `transfer` return value via a balance-delta
+ * check. See contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTron.sol.
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
@@ -30,7 +32,7 @@ async function main(): Promise<void> {
 
   const chainId = resolveChainId();
 
-  console.log("=== CounterfactualDepositSpokePool Deployment ===");
+  console.log("=== CounterfactualDepositSpokePoolTron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
   const encodedArgs = encodeArgs(
@@ -40,7 +42,7 @@ async function main(): Promise<void> {
 
   const artifactPath = path.resolve(
     __dirname,
-    "../../../out-tron/CounterfactualDepositSpokePool.sol/CounterfactualDepositSpokePool.json"
+    "../../../out-tron/CounterfactualDepositSpokePoolTron.sol/CounterfactualDepositSpokePoolTron.json"
   );
 
   await deployContract({ chainId, artifactPath, encodedArgs });

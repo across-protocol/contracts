@@ -115,7 +115,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
      *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
      *      `NativeTransferFailed`.
      */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable virtual {
         SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
@@ -152,7 +152,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+                _safeTransferErc20(inputToken, sd.executionFeeRecipient, dp.executionFee);
             }
         }
 
@@ -166,6 +166,16 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
             sd.fillDeadline,
             sd.signatureDeadline
         );
+    }
+
+    /**
+     * @notice ERC20 transfer hook for the execution-fee payout. Default uses OZ
+     *         `SafeERC20.safeTransfer`. Chain-specific variants may override to tolerate
+     *         non-standard ERC20 implementations (e.g. Tron USDT, whose `transfer`
+     *         returns false on success).
+     */
+    function _safeTransferErc20(address token, address to, uint256 amount) internal virtual {
+        IERC20(token).safeTransfer(to, amount);
     }
 
     function _checkFee(

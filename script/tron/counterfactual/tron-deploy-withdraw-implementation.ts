@@ -1,6 +1,8 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys WithdrawImplementation to Tron. No constructor args.
+ * Deploys WithdrawImplementationTron to Tron — the Tron-specific variant that handles
+ * Tron USDT's non-standard `transfer` return value via a balance-delta check. No
+ * constructor args. See contracts/periphery/counterfactual/WithdrawImplementationTron.sol.
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
@@ -16,12 +18,12 @@ import { deployContract, resolveChainId } from "../deploy";
 async function main(): Promise<void> {
   const chainId = resolveChainId();
 
-  console.log("=== WithdrawImplementation Deployment ===");
+  console.log("=== WithdrawImplementationTron Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
   const artifactPath = path.resolve(
     __dirname,
-    "../../../out-tron/WithdrawImplementation.sol/WithdrawImplementation.json"
+    "../../../out-tron/WithdrawImplementationTron.sol/WithdrawImplementationTron.json"
   );
 
   await deployContract({ chainId, artifactPath });

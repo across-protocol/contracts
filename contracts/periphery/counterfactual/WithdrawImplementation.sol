@@ -36,7 +36,7 @@ contract WithdrawImplementation is ICounterfactualImplementation {
      *      `submitterData` as `(address token, address to, uint256 amount)`.
      *      Reverts: `Unauthorized` (caller is not admin or user), `NativeTransferFailed`.
      */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable virtual {
         WithdrawParams memory wp = abi.decode(params, (WithdrawParams));
         (address token, address to, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
 
@@ -46,9 +46,18 @@ contract WithdrawImplementation is ICounterfactualImplementation {
             (bool success, ) = to.call{ value: amount }("");
             if (!success) revert NativeTransferFailed();
         } else {
-            IERC20(token).safeTransfer(to, amount);
+            _safeTransferErc20(token, to, amount);
         }
 
         emit Withdraw(token, to, amount);
+    }
+
+    /**
+     * @notice ERC20 transfer hook. Default uses OZ `SafeERC20.safeTransfer`. Chain-specific
+     *         variants may override to tolerate non-standard ERC20 implementations (e.g.
+     *         Tron USDT, whose `transfer` returns false on success).
+     */
+    function _safeTransferErc20(address token, address to, uint256 amount) internal virtual {
+        IERC20(token).safeTransfer(to, amount);
     }
 }

@@ -113,6 +113,9 @@ async function main(): Promise<void> {
   const executionFee = 0n;
   const exclusiveRelayer = "0x" + "00".repeat(32);
 
+  // Domain name inherited from CounterfactualDepositSpokePool. The Tron variant does not
+  // override the EIP-712 domain — clone-address-based isolation already prevents
+  // cross-implementation signature replay via the `verifyingContract` field.
   const domain = {
     name: "CounterfactualDepositSpokePool",
     version: "v1.0.0",
