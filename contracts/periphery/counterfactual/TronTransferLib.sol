@@ -16,6 +16,6 @@ library TronTransferLib {
         uint256 pre = IERC20(token).balanceOf(to);
         (bool ok, ) = token.call(abi.encodeCall(IERC20.transfer, (to, amount)));
         if (!ok) revert TronTransferFailed();
-        if (IERC20(token).balanceOf(to) < pre + amount) revert TronTransferFailed();
+        if (IERC20(token).balanceOf(to) != pre + amount) revert TronTransferFailed();
     }
 }

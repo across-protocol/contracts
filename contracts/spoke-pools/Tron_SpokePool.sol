@@ -57,7 +57,7 @@ contract Tron_SpokePool is Universal_SpokePool {
         uint256 pre = IERC20Upgradeable(token).balanceOf(to);
         (bool ok, ) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (to, amount)));
         if (!ok) return false;
-        return IERC20Upgradeable(token).balanceOf(to) >= pre + amount;
+        return IERC20Upgradeable(token).balanceOf(to) == pre + amount;
     }
 
     /// @dev Revert-on-failure variant of the balance-delta transfer. Replaces the base
