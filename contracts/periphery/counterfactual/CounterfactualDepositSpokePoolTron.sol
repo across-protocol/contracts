@@ -9,7 +9,7 @@ import { TronTransferLib } from "./TronTransferLib.sol";
  * @notice Tron-specific variant of `CounterfactualDepositSpokePool` for chains where the
  *         input token may be Tron USDT (whose `transfer` returns false on success).
  * @dev Inherits everything from the mainline implementation and overrides the
- *      `_safeTransferERC20` hook to use a balance-delta success check that tolerates
+ *      `_safeTransfer` hook to use a balance-delta success check that tolerates
  *      Tron USDT's non-standard return value. `forceApprove` is unaffected — `approve`
  *      returns true correctly on Tron USDT.
  *
@@ -30,7 +30,7 @@ contract CounterfactualDepositSpokePoolTron is CounterfactualDepositSpokePool {
     /// @dev TRON OVERRIDE: was `IERC20(token).safeTransfer(to, amount)` in the parent.
     ///      `TronTransferLib._balanceCheckTransfer` uses a balance-delta success check so it
     ///      tolerates Tron USDT's non-standard `transfer` return value.
-    function _safeTransferERC20(address token, address to, uint256 amount) internal override {
+    function _safeTransfer(address token, address to, uint256 amount) internal override {
         TronTransferLib._balanceCheckTransfer(token, to, amount);
     }
 }

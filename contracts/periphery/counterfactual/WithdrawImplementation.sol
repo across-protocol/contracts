@@ -43,7 +43,7 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferER
             (bool success, ) = to.call{ value: amount }("");
             if (!success) revert NativeTransferFailed();
         } else {
-            _safeTransferERC20(token, to, amount);
+            _safeTransfer(token, to, amount);
         }
 
         emit Withdraw(token, to, amount);

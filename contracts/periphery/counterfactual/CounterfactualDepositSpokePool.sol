@@ -153,7 +153,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                _safeTransferERC20(inputToken, sd.executionFeeRecipient, dp.executionFee);
+                _safeTransfer(inputToken, sd.executionFeeRecipient, dp.executionFee);
             }
         }
 
