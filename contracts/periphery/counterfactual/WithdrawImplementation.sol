@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { NATIVE_ASSET } from "./CounterfactualConstants.sol";
-import { SafeTransferERC20 } from "./SafeTransferERC20.sol";
+import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
  * @notice Withdrawal parameters committed to in the merkle leaf.

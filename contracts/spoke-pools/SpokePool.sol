@@ -11,6 +11,7 @@ import "../upgradeable/MultiCallerUpgradeable.sol";
 import "../upgradeable/EIP712CrossChainUpgradeable.sol";
 import "../upgradeable/AddressLibUpgradeable.sol";
 import "../libraries/AddressConverters.sol";
+import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
 
@@ -39,7 +40,8 @@ abstract contract SpokePool is
     MultiCallerUpgradeable,
     EIP712CrossChainUpgradeable,
     IDestinationSettler,
-    OFTTransportAdapter
+    OFTTransportAdapter,
+    SafeTransferERC20
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
@@ -1440,12 +1442,6 @@ abstract contract SpokePool is
             returnValue := mload(0)
         }
         return success && (returnSize == 0 ? address(token).code.length > 0 : returnValue == 1);
-    }
-
-    // Revert-on-failure ERC20 transfer hook. Default delegates to OZ `safeTransfer`, preserving its
-    // revert-reason propagation. Overridable by chain-specific variants (e.g. Tron USDT).
-    function _safeTransfer(address token, address to, uint256 amount) internal virtual {
-        IERC20Upgradeable(token).safeTransfer(to, amount);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
