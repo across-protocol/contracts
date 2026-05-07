@@ -2,12 +2,15 @@
 //         test net.
 // @dev    Command: `npx ts-node ./scripts/buildSampleTree.ts`
 
-import { ethers } from "ethers";
-import { toBN, defaultAbiCoder, keccak256, toBNWeiWithDecimals } from "../utils/utils";
+import { BigNumber, ethers } from "ethers";
+import { toBN, defaultAbiCoder, keccak256 } from "../utils/utils";
 import { MerkleTree } from "../utils/MerkleTree";
 import { V3SlowFill, PoolRebalanceLeaf, RelayerRefundLeaf } from "../utils/MerkleLib.types";
 import MerkleLibTestArtifact from "../out/MerkleLibTest.sol/MerkleLibTest.json";
 import { ZERO_ADDRESS } from "../src/consts";
+
+const toBNWeiWithDecimals = (num: string | number | BigNumber, decimals: number): BigNumber =>
+  ethers.utils.parseUnits(num.toString(), decimals);
 
 // Extract ABI types from the MerkleLibTest Foundry artifact so they stay in sync with the Solidity structs.
 function getStructType(functionName: string): ethers.utils.ParamType {

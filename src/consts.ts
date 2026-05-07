@@ -1,4 +1,4 @@
-import { CHAIN_IDs, PUBLIC_NETWORKS, TOKEN_SYMBOLS_MAP } from "../utils";
+import { CHAIN_IDs, TOKEN_SYMBOLS_MAP } from "../utils";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -6,7 +6,6 @@ export const USDC = TOKEN_SYMBOLS_MAP.USDC.addresses;
 export const USDCe = TOKEN_SYMBOLS_MAP["USDC.e"].addresses;
 export const WETH = TOKEN_SYMBOLS_MAP.WETH.addresses;
 export const WMATIC = TOKEN_SYMBOLS_MAP.WMATIC.addresses;
-export const WGRASS = TOKEN_SYMBOLS_MAP.WGRASS.addresses;
 export const WGHO = TOKEN_SYMBOLS_MAP.WGHO.addresses;
 
 export const QUOTE_TIME_BUFFER = 3600;
@@ -347,26 +346,3 @@ export const L2_ADDRESS_MAP: { [key: number]: { [contractName: string]: string }
     cctpV2MessageTransmitter: "0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275",
   },
 };
-
-export const POLYGON_CHAIN_IDS: { [l1ChainId: number]: number } = {
-  [CHAIN_IDs.MAINNET]: CHAIN_IDs.POLYGON,
-  [CHAIN_IDs.SEPOLIA]: CHAIN_IDs.POLYGON_AMOY,
-};
-
-/**
- * An official mapping of chain IDs to CCTP domains. This mapping is separate from chain identifiers
- * and is an internal mappinng maintained by Circle.
- * @link https://developers.circle.com/stablecoins/docs/supported-domains
- */
-export const CIRCLE_DOMAIN_IDs = Object.fromEntries(
-  Object.entries(PUBLIC_NETWORKS).map(([chainId, { cctpDomain }]) => [Number(chainId), cctpDomain])
-);
-
-const createChainMap = <T>(selector: (network: any) => T) =>
-  new Map(Object.entries(PUBLIC_NETWORKS).map(([id, network]) => [Number(id), selector(network)]));
-
-/**
- * Mapping chainId => oft endpoint id
- * @link https://docs.layerzero.network/v2/deployments/deployed-contracts
- */
-export const OFT_EIDs = createChainMap<number>((network) => network.oftEid);

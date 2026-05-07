@@ -1,5 +1,6 @@
 import { BN } from "@coral-xyz/anchor";
-import { ethers } from "ethers";
+import { defaultAbiCoder } from "@ethersproject/abi";
+import { keccak256 } from "@ethersproject/keccak256";
 import { RelayerRefundLeaf, RelayerRefundLeafSolana, SlowFillLeaf } from "../../types/svm";
 import { serialize } from "borsh";
 
@@ -23,7 +24,7 @@ export function calculateRelayHashUint8Array(relayData: any, chainId: BN): Uint8
     chainId.toArrayLike(Buffer, "le", 8),
   ]);
 
-  const relayHash = ethers.utils.keccak256(contentToHash);
+  const relayHash = keccak256(contentToHash);
   const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
   return new Uint8Array(relayHashBuffer);
 }
@@ -48,7 +49,7 @@ export function calculateRelayEventHashUint8Array(relayEventData: any, chainId: 
     chainId.toArrayLike(Buffer, "le", 8),
   ]);
 
-  const relayHash = ethers.utils.keccak256(contentToHash);
+  const relayHash = keccak256(contentToHash);
   const relayHashBuffer = Buffer.from(relayHash.slice(2), "hex");
   return new Uint8Array(relayHashBuffer);
 }
@@ -69,7 +70,7 @@ export const readUInt256BE = (buffer: Buffer): BigInt => {
  */
 export function hashNonEmptyMessage(message: Buffer) {
   if (message.length > 0) {
-    const hash = ethers.utils.keccak256(message);
+    const hash = keccak256(message);
     return Uint8Array.from(Buffer.from(hash.slice(2), "hex"));
   }
   // else return zeroed bytes32
@@ -125,7 +126,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
   // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves can never be played on SVM and vice versa.
   const contentToHash = Buffer.concat([Buffer.alloc(64, 0), serializedData]);
 
-  return ethers.utils.keccak256(contentToHash);
+  return keccak256(contentToHash);
 }
 
 /**
@@ -133,8 +134,7 @@ export function calculateRelayerRefundLeafHashUint8Array(relayData: RelayerRefun
  */
 export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeafSolana) => {
   if (!input.isSolana) {
-    const abiCoder = new ethers.utils.AbiCoder();
-    const encodedData = abiCoder.encode(
+    const encodedData = defaultAbiCoder.encode(
       [
         "tuple( uint256 amountToReturn, uint256 chainId, uint256[] refundAmounts, uint256 leafId, address l2TokenAddress, address[] refundAddresses)",
       ],
@@ -149,7 +149,7 @@ export const relayerRefundHashFn = (input: RelayerRefundLeaf | RelayerRefundLeaf
         },
       ]
     );
-    return ethers.utils.keccak256(encodedData);
+    return keccak256(encodedData);
   } else {
     return calculateRelayerRefundLeafHashUint8Array(input as RelayerRefundLeafSolana);
   }
@@ -218,5 +218,5 @@ export function slowFillHashFn(slowFillLeaf: SlowFillLeaf): string {
   // SVM leaves require the first 64 bytes to be 0 to ensure EVM leaves cannot be played on SVM and vice versa
   const contentToHash = Buffer.concat([Buffer.alloc(64, 0), serializedData]);
 
-  return ethers.utils.keccak256(contentToHash);
+  return keccak256(contentToHash);
 }
