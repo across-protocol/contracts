@@ -14,9 +14,9 @@ import { TronTransferLib } from "./TronTransferLib.sol";
  */
 contract WithdrawImplementationTron is WithdrawImplementation {
     /// @dev TRON OVERRIDE: was `IERC20(token).safeTransfer(to, amount)` in the parent.
-    ///      `TronTransferLib._balanceCheckTransfer` uses a balance-delta success check so it
+    ///      `TronTransferLib._safeTransferBalanceCheck` uses a balance-delta success check so it
     ///      tolerates Tron USDT's non-standard `transfer` return value.
     function _safeTransfer(address token, address to, uint256 amount) internal override {
-        TronTransferLib._balanceCheckTransfer(token, to, amount);
+        TronTransferLib._safeTransferBalanceCheck(token, to, amount);
     }
 }

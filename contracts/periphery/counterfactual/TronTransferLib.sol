@@ -12,7 +12,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 library TronTransferLib {
     error TronTransferFailed();
 
-    function _balanceCheckTransfer(address token, address to, uint256 amount) internal {
+    function _safeTransferBalanceCheck(address token, address to, uint256 amount) internal {
         uint256 pre = IERC20(token).balanceOf(to);
         (bool ok, ) = token.call(abi.encodeCall(IERC20.transfer, (to, amount)));
         if (!ok) revert TronTransferFailed();
