@@ -5,7 +5,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
-import { SafeTransferErc20 } from "./SafeTransferErc20.sol";
+import { SafeTransferERC20 } from "./SafeTransferERC20.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
@@ -55,7 +55,7 @@ struct OFTSubmitterData {
  *      msg.value covers LayerZero native messaging fees.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositOFT is ICounterfactualImplementation, SafeTransferErc20 {
+contract CounterfactualDepositOFT is ICounterfactualImplementation, SafeTransferERC20 {
     using SafeERC20 for IERC20;
 
     /**
@@ -88,7 +88,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, SafeTransfer
         OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
-        if (dp.executionFee > 0) _safeTransferErc20(dp.token, sd.executionFeeRecipient, dp.executionFee);
+        if (dp.executionFee > 0) _safeTransferERC20(dp.token, sd.executionFeeRecipient, dp.executionFee);
 
         uint256 depositAmount = sd.amount - dp.executionFee;
 

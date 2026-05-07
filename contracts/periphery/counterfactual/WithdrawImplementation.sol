@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { NATIVE_ASSET } from "./CounterfactualConstants.sol";
-import { SafeTransferErc20 } from "./SafeTransferErc20.sol";
+import { SafeTransferERC20 } from "./SafeTransferERC20.sol";
 
 /**
  * @notice Withdrawal parameters committed to in the merkle leaf.
@@ -21,7 +21,7 @@ struct WithdrawParams {
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. `address(this)` is the clone
  *      and `msg.sender` is the original caller.
  */
-contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferErc20 {
+contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
     event Withdraw(address indexed token, address indexed to, uint256 amount);
 
     error Unauthorized();
@@ -43,7 +43,7 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferEr
             (bool success, ) = to.call{ value: amount }("");
             if (!success) revert NativeTransferFailed();
         } else {
-            _safeTransferErc20(token, to, amount);
+            _safeTransferERC20(token, to, amount);
         }
 
         emit Withdraw(token, to, amount);

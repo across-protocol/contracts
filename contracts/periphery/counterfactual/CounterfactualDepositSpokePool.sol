@@ -8,7 +8,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
-import { SafeTransferErc20 } from "./SafeTransferErc20.sol";
+import { SafeTransferERC20 } from "./SafeTransferERC20.sol";
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
@@ -52,7 +52,7 @@ struct SpokePoolSubmitterData {
  *      cannot sign `speedUpV3Deposit` messages.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferErc20 {
+contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferERC20 {
     using SafeERC20 for IERC20;
 
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
@@ -153,7 +153,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                _safeTransferErc20(inputToken, sd.executionFeeRecipient, dp.executionFee);
+                _safeTransferERC20(inputToken, sd.executionFeeRecipient, dp.executionFee);
             }
         }
 
