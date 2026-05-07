@@ -1237,11 +1237,11 @@ abstract contract SpokePool is
      * @param l2TokenAddress Address of the L2 token to claim refunds for.
      * @param refundAddress Address to send the refund to.
      */
-    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external virtual {
+    function claimRelayerRefund(bytes32 l2TokenAddress, bytes32 refundAddress) external {
         uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
         relayerRefund[l2TokenAddress.toAddress()][msg.sender] = 0;
-        IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
+        _safeTransfer(l2TokenAddress.toAddress(), refundAddress.toAddress(), refund);
 
         emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
     }
@@ -1440,6 +1440,12 @@ abstract contract SpokePool is
             returnValue := mload(0)
         }
         return success && (returnSize == 0 ? address(token).code.length > 0 : returnValue == 1);
+    }
+
+    // Revert-on-failure ERC20 transfer hook. Default delegates to OZ `safeTransfer`, preserving its
+    // revert-reason propagation. Overridable by chain-specific variants (e.g. Tron USDT).
+    function _safeTransfer(address token, address to, uint256 amount) internal virtual {
+        IERC20Upgradeable(token).safeTransfer(to, amount);
     }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
@@ -1644,7 +1650,7 @@ abstract contract SpokePool is
         V3RelayExecutionParams memory relayExecution,
         V3RelayData memory relayData,
         bool isSlowFill
-    ) internal virtual {
+    ) internal {
         address outputToken = relayData.outputToken.toAddress();
         uint256 amountToSend = relayExecution.updatedOutputAmount;
         address recipientToSend = relayExecution.updatedRecipient.toAddress();
@@ -1662,7 +1668,7 @@ abstract contract SpokePool is
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
-            else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
+            else _safeTransfer(outputToken, recipientToSend, amountToSend);
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;
