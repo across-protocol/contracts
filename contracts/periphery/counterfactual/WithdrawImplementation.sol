@@ -33,7 +33,7 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferER
      *      `submitterData` as `(address token, address to, uint256 amount)`.
      *      Reverts: `Unauthorized` (caller is not admin or user), `NativeTransferFailed`.
      */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable virtual {
+    function execute(bytes calldata params, bytes calldata submitterData) external payable {
         WithdrawParams memory wp = abi.decode(params, (WithdrawParams));
         (address token, address to, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
 
