@@ -14,11 +14,14 @@ import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counte
 contract DeployCounterfactualDepositSpokePool is CounterfactualConfig {
     /// @notice Zero-arg entry point: resolves all params from config.toml and on-chain constants.
     function run() external {
-        address signer = _loadSigner();
-        this.run(_resolveSpokePool(), signer, _resolveWrappedNativeToken());
+        _run(_resolveSpokePool(), _loadSigner(), _resolveWrappedNativeToken());
     }
 
     function run(address spokePool, address signer, address wrappedNativeToken) external {
+        _run(spokePool, signer, wrappedNativeToken);
+    }
+
+    function _run(address spokePool, address signer, address wrappedNativeToken) internal {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 

@@ -212,13 +212,11 @@ Native ETH withdrawals are supported via `token = NATIVE_ASSET` (`0xEeeeeEeeeEeE
 
 ## Tron Variants (`*Tron`)
 
-Tron USDT's `transfer` function is non-standard: it moves balances correctly but always returns `false`, breaking `SafeERC20.safeTransfer` callers. The mainline `CounterfactualDepositSpokePool`, `WithdrawImplementation`, and `CounterfactualDepositOFT` all inherit the virtual `_safeTransferERC20(token, to, amount)` hook from the shared `SafeTransferERC20` mixin (default: OZ `safeTransfer`) and mark `execute` as `virtual`. `CounterfactualDepositSpokePoolTron`, `WithdrawImplementationTron`, and `CounterfactualDepositOFTTron` inherit from their mainline counterparts and override only the hook to use `TronTransferLib._balanceCheckTransfer`, which detects success via a recipient balance-delta check and reverts with `TronTransferFailed` on genuine failure.
+Tron USDT's `transfer` function is non-standard: it moves balances correctly but always returns `false`, breaking `SafeERC20.safeTransfer` callers. The mainline `CounterfactualDepositSpokePool` and `WithdrawImplementation` inherit the virtual `_safeTransferERC20(token, to, amount)` hook from the shared `SafeTransferERC20` mixin (default: OZ `safeTransfer`) and mark `execute` as `virtual`. `CounterfactualDepositSpokePoolTron` and `WithdrawImplementationTron` inherit from their mainline counterparts and override only the hook to use `TronTransferLib._balanceCheckTransfer`, which detects success via a recipient balance-delta check and reverts with `TronTransferFailed` on genuine failure.
 
 `forceApprove` is unaffected — `approve` returns `true` correctly on Tron USDT. The EIP-712 domain on `CounterfactualDepositSpokePoolTron` is inherited from the mainline; cross-implementation signature replay is already prevented by the `verifyingContract` field, since each clone's CREATE2 address depends on the implementation. Off-chain callers must pass the Tron-variant implementation address into `CounterfactualDepositFactoryTron.deploy(...)` for any USDT TRC20 flow — clone addresses change with the implementation.
 
-The OFT Tron variant exists for symmetry. Tron OFT routes today bridge USDT0 (LayerZero's standard OFT contract), which is a compliant ERC20, so the bug does not apply in production. The Tron variant defensively covers any future route that uses a non-standard ERC20.
-
-`CounterfactualDepositCCTP` is unchanged — CCTP is USDC-only by design, and USDC is a compliant ERC20.
+`CounterfactualDepositOFT` and `CounterfactualDepositCCTP` are unchanged — Tron OFT routes bridge USDT0 (LayerZero's standard OFT contract) and CCTP is USDC-only by design; both are compliant ERC20s.
 
 ## Key Design Decisions
 
