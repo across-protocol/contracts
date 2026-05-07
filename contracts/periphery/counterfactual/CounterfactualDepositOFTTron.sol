@@ -19,9 +19,9 @@ contract CounterfactualDepositOFTTron is CounterfactualDepositOFT {
     constructor(address _oftSrcPeriphery, uint32 _srcEid) CounterfactualDepositOFT(_oftSrcPeriphery, _srcEid) {} // solhint-disable-line no-empty-blocks
 
     /// @dev TRON OVERRIDE: was `IERC20(token).safeTransfer(to, amount)` in the parent.
-    ///      `TronTransferLib.balanceCheckTransfer` uses a balance-delta success check so it
+    ///      `TronTransferLib._balanceCheckTransfer` uses a balance-delta success check so it
     ///      tolerates Tron USDT's non-standard `transfer` return value.
     function _safeTransferErc20(address token, address to, uint256 amount) internal override {
-        TronTransferLib.balanceCheckTransfer(token, to, amount);
+        TronTransferLib._balanceCheckTransfer(token, to, amount);
     }
 }
