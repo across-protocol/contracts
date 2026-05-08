@@ -14,9 +14,9 @@ import "@openzeppelin/contracts-v4/security/ReentrancyGuard.sol";
  * completely consumed; otherwise leftover balances will be sent to the fallbackRecipient (when one is provided)
  * or remain on this contract.
  *
- * @dev Any tokens left on this contract can be claimed by any caller. This is intentional — the handler is a
- * stateless utility with no per-user accounting or admin rescue, and tokens delivered to it are expected to be
- * consumed in the same transaction. Not a security issue; please do not report.
+ * @dev This contract is a stateless utility with no per-user accounting or admin rescue. Tokens delivered to it
+ * are expected to be consumed in the same transaction; any balances left on the contract can be claimed by any
+ * caller.
  */
 contract MulticallHandler is AcrossMessageHandler, ReentrancyGuard {
     using SafeERC20 for IERC20;
