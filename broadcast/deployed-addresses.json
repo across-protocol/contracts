@@ -216,19 +216,19 @@
           "transaction_hash": "0x70b3edf99db66aac34338c3686cd708ddfc2b503c2f707f51ced67dc50e5022f"
         },
         "PermissionedMulticallHandler_CCTP_USDC": {
-          "address": "0xD9D9Fd5A693dCD8FEf97A1d58d1d38aeeE771dF4",
-          "block_number": 24923036,
-          "transaction_hash": "0xdf6e007fee3ff93b47e6b135cb0ba9457fafea8f38350025e7c8c84d46ef0905"
+          "address": "0xDd52f8134f85f3979fbA24387Ce0CEC05937259E",
+          "block_number": 25050834,
+          "transaction_hash": "0xc7f656f7ae6a105c3cef94d67c488c14b2e44037af06dd3541d13e87305b8d53"
         },
         "DonationBox_CCTP_USDC": {
-          "address": "0xE694EbDFfCAD44ffb2025E2341027743fFDEAe3f",
-          "block_number": 24923037,
-          "transaction_hash": "0xa718319386ecd03007db65595e2905385658c329a7beb626e3403eb0bd594ea4"
+          "address": "0x109Db572e719Fa363dC53Fbaf3617422159060c9",
+          "block_number": 25050835,
+          "transaction_hash": "0x0da10665bd5c3250388d5e07ae01004275fda9033d8eccfb94932623df6f667c"
         },
         "SponsoredCCTPDstPeriphery_CCTP_USDC": {
-          "address": "0x545cd9145A7B783328e9f0B9f489c962464F82e0",
-          "block_number": 24923038,
-          "transaction_hash": "0xd96182e721a33c860d4296d20d86e439bf423026841c8433e3d1ce5fe0321f82"
+          "address": "0x214C19FBcdFb683F2c726B4BBAf24AB483bFaDf3",
+          "block_number": 25050837,
+          "transaction_hash": "0xd3a1f51d6917a22db3fafe940a9ce0b72986974eee1861c0706d46a49ba408e2"
         },
         "SponsoredCCTPSrcPeriphery": {
           "address": "0x6769155b16F25D317819eFef011E0A50A48e83c5",

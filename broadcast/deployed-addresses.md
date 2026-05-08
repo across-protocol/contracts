@@ -27,7 +27,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositSpokePool         | [0xc7b1662674b2226ce7943162f655897a40699ff9](https://etherscan.io/address/0xc7b1662674b2226ce7943162f655897a40699ff9) |
 | DoctorWho_Adapter                      | [0x8956eFa31572E1d7ed5c8e36772F214A57DFA0D1](https://etherscan.io/address/0x8956eFa31572E1d7ed5c8e36772F214A57DFA0D1) |
 | DonationBox                            | [0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168](https://etherscan.io/address/0x1648fC159a5c13c060EFdF44f3CEE9bD184fa168) |
-| DonationBox_CCTP_USDC                  | [0xE694EbDFfCAD44ffb2025E2341027743fFDEAe3f](https://etherscan.io/address/0xE694EbDFfCAD44ffb2025E2341027743fFDEAe3f) |
+| DonationBox_CCTP_USDC                  | [0x109Db572e719Fa363dC53Fbaf3617422159060c9](https://etherscan.io/address/0x109Db572e719Fa363dC53Fbaf3617422159060c9) |
 | Ethereum_Adapter                       | [0x527E872a5c3f0C7c24Fe33F2593cFB890a285084](https://etherscan.io/address/0x527E872a5c3f0C7c24Fe33F2593cFB890a285084) |
 | HubPool                                | [0xc186fA914353c44b2E33eBE05f21846F1048bEda](https://etherscan.io/address/0xc186fA914353c44b2E33eBE05f21846F1048bEda) |
 | HubPoolStore                           | [0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61](https://etherscan.io/address/0x1Ace3BbD69b63063F859514Eca29C9BDd8310E61) |
@@ -41,7 +41,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | OP_Adapter_57073                       | [0x545E43B6eC2f9a44CAa531298699Ff05958670B5](https://etherscan.io/address/0x545E43B6eC2f9a44CAa531298699Ff05958670B5) |
 | Optimism_Adapter                       | [0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5](https://etherscan.io/address/0x3562e309C6C79626E5F0Cf746FB5Bf4f6b8EebE5) |
 | PermissionedMulticallHandler           | [0x64a43393866DBA0044879979fAa7AD3d000622e9](https://etherscan.io/address/0x64a43393866DBA0044879979fAa7AD3d000622e9) |
-| PermissionedMulticallHandler_CCTP_USDC | [0xD9D9Fd5A693dCD8FEf97A1d58d1d38aeeE771dF4](https://etherscan.io/address/0xD9D9Fd5A693dCD8FEf97A1d58d1d38aeeE771dF4) |
+| PermissionedMulticallHandler_CCTP_USDC | [0xDd52f8134f85f3979fbA24387Ce0CEC05937259E](https://etherscan.io/address/0xDd52f8134f85f3979fbA24387Ce0CEC05937259E) |
 | PermissionSplitterProxy                | [0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7](https://etherscan.io/address/0x0Bf07B2e415F02711fFBB32491f8ec9e5489B2e7) |
 | Polygon_Adapter                        | [0x537abE038C223066B50312474409924487D2E655](https://etherscan.io/address/0x537abE038C223066B50312474409924487D2E655) |
 | PolygonTokenBridger                    | [0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57](https://etherscan.io/address/0x0330E9b4D0325cCfF515E81DFbc7754F2a02ac57) |
@@ -50,7 +50,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                              | [0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5](https://etherscan.io/address/0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5) |
 | SpokePoolPeriphery                     | [0x10D8b8DaA26d307489803e10477De69C0492B610](https://etherscan.io/address/0x10D8b8DaA26d307489803e10477De69C0492B610) |
 | SpokePoolVerifier                      | [0x3Fb9cED51E968594C87963a371Ed90c39519f65A](https://etherscan.io/address/0x3Fb9cED51E968594C87963a371Ed90c39519f65A) |
-| SponsoredCCTPDstPeriphery_CCTP_USDC    | [0x545cd9145A7B783328e9f0B9f489c962464F82e0](https://etherscan.io/address/0x545cd9145A7B783328e9f0B9f489c962464F82e0) |
+| SponsoredCCTPDstPeriphery_CCTP_USDC    | [0x214C19FBcdFb683F2c726B4BBAf24AB483bFaDf3](https://etherscan.io/address/0x214C19FBcdFb683F2c726B4BBAf24AB483bFaDf3) |
 | SponsoredCCTPSrcPeriphery              | [0x6769155b16F25D317819eFef011E0A50A48e83c5](https://etherscan.io/address/0x6769155b16F25D317819eFef011E0A50A48e83c5) |
 | SponsoredOFTSrcPeriphery               | [0xc80B267469D509ae45Df65845B291CBbe1945CB9](https://etherscan.io/address/0xc80B267469D509ae45Df65845B291CBbe1945CB9) |
 | TransferProxy                          | [0x03743372098Aa51E1fCe537D51025F08b55C4144](https://etherscan.io/address/0x03743372098Aa51E1fCe537D51025F08b55C4144) |
