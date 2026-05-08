@@ -160,6 +160,8 @@ See `foundry.toml` for Foundry configuration. **Do not modify `foundry.toml` wit
 - UUPS proxy pattern for upgradeable contracts
 - Cross-chain ownership: HubPool owns all SpokePool contracts
 
+See `KNOWN_ISSUES.md` for findings that are intentional, accepted, or have planned remediation and are out of scope for the bug bounty program. Check it before opening security issues or filing reports.
+
 ## Code Style
 
 Prioritize security, succinctness, and DRY code.
