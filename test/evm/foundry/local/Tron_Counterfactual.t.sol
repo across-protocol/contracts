@@ -243,7 +243,7 @@ contract Tron_CounterfactualTest is Test {
         // Force the fee transfer to revert.
         usdt.setBlacklisted(relayer, true);
 
-        vm.expectRevert(TronTransferLib.TronTransferFailed.selector);
+        vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
     }
@@ -286,7 +286,7 @@ contract Tron_CounterfactualTest is Test {
         bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
 
         vm.prank(admin);
-        vm.expectRevert(TronTransferLib.TronTransferFailed.selector);
+        vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
         ICounterfactualDeposit(clone).execute(
             address(withdrawImpl),
             wp,

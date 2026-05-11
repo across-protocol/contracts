@@ -199,7 +199,7 @@ contract Tron_SpokePoolTest is Test {
         usdt.setBlacklisted(relayer, false);
 
         vm.prank(relayer);
-        vm.expectRevert(Tron_SpokePool.TronTransferFailed.selector);
+        vm.expectRevert(Tron_SpokePool.TronTransferCallReverted.selector);
         spokePool.claimRelayerRefund(address(usdt).toBytes32(), newRefundAddress.toBytes32());
     }
 
@@ -241,7 +241,7 @@ contract Tron_SpokePoolTest is Test {
         });
 
         vm.prank(relayer);
-        vm.expectRevert(Tron_SpokePool.TronTransferFailed.selector);
+        vm.expectRevert(Tron_SpokePool.TronTransferCallReverted.selector);
         spokePool.fillRelayV3External(exec, relayer.toBytes32(), true);
     }
 

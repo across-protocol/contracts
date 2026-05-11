@@ -21,7 +21,8 @@ import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Tron_SpokePool is Universal_SpokePool {
-    error TronTransferFailed();
+    error TronTransferCallReverted();
+    error TronTransferBalanceMismatch();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
@@ -62,7 +63,12 @@ contract Tron_SpokePool is Universal_SpokePool {
 
     /// @dev Revert-on-failure variant of the balance-delta transfer. Replaces the base
     ///      `safeTransfer` call sites (claimRelayerRefund, slow-fill ERC20 path).
+    ///      Logic mirrors `_noRevertTransfer` but reverts with a mode-specific error so
+    ///      callers can distinguish "call reverted" from "balance delta mismatch".
     function _safeTransfer(address token, address to, uint256 amount) internal override {
-        if (!_noRevertTransfer(token, to, amount)) revert TronTransferFailed();
+        uint256 pre = IERC20Upgradeable(token).balanceOf(to);
+        (bool ok, ) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (to, amount)));
+        if (!ok) revert TronTransferCallReverted();
+        if (IERC20Upgradeable(token).balanceOf(to) != pre + amount) revert TronTransferBalanceMismatch();
     }
 }
