@@ -10,7 +10,10 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  *         ERC20 transfer semantics.
  */
 abstract contract SafeTransferERC20 {
-    using SafeERC20 for IERC20;
+    // This mixin is the only place in the codebase permitted to call `IERC20.safeTransfer`
+    // directly. Inheriting contracts restrict their own `using` directives to exclude
+    // `safeTransfer` so all transfer call sites are forced through this overridable hook.
+    using { SafeERC20.safeTransfer } for IERC20;
 
     function _safeTransfer(address token, address to, uint256 amount) internal virtual {
         IERC20(token).safeTransfer(to, amount);

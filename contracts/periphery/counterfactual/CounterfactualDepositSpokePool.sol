@@ -53,7 +53,11 @@ struct SpokePoolSubmitterData {
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferERC20 {
-    using SafeERC20 for IERC20;
+    // Restrict the `using` attachment to `forceApprove` only. All `safeTransfer` calls must go
+    // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
+    // variants (e.g. `CounterfactualDepositSpokePoolTron`) can override transfer semantics in one
+    // place. Attaching the full library would let future patches silently bypass the hook.
+    using { SafeERC20.forceApprove } for IERC20;
 
     uint256 internal constant EXCHANGE_RATE_SCALAR = 1e18;
 

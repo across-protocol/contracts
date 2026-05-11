@@ -43,7 +43,11 @@ abstract contract SpokePool is
     OFTTransportAdapter,
     SafeTransferERC20
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
+    // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
+    // variants (e.g. `Tron_SpokePool`) can override transfer semantics in one place. Attaching the
+    // full library would let future patches silently bypass the hook via `IERC20.safeTransfer(...)`.
+    using { SafeERC20Upgradeable.safeTransferFrom } for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -1550,7 +1554,7 @@ abstract contract SpokePool is
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
         } else {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
+            _safeTransfer(address(wrappedNativeToken), to, amount);
         }
     }
 
