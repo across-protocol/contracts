@@ -45,8 +45,7 @@ abstract contract SpokePool is
 {
     // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
     // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
-    // variants (e.g. `Tron_SpokePool`) can override transfer semantics in one place. Attaching the
-    // full library would let future patches silently bypass the hook via `IERC20.safeTransfer(...)`.
+    // variants can override transfer semantics in one place.
     using { SafeERC20Upgradeable.safeTransferFrom } for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
     using Bytes32ToAddress for bytes32;
