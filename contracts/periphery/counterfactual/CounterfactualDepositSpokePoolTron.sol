@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { CounterfactualDepositSpokePool } from "./CounterfactualDepositSpokePool.sol";
-import { TronTransferLib } from "./TronTransferLib.sol";
+import { TronTransferLib } from "../../libraries/TronTransferLib.sol";
 
 /**
  * @title CounterfactualDepositSpokePoolTron

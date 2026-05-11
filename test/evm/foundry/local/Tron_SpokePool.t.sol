@@ -6,6 +6,7 @@ import { ERC1967Proxy } from "@openzeppelin/contracts-v4/proxy/ERC1967/ERC1967Pr
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 
 import { Tron_SpokePool } from "../../../../contracts/spoke-pools/Tron_SpokePool.sol";
+import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
 import { Universal_SpokePool } from "../../../../contracts/spoke-pools/Universal_SpokePool.sol";
 import { ITokenMessenger } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { V3SpokePoolInterface } from "../../../../contracts/interfaces/V3SpokePoolInterface.sol";
@@ -199,7 +200,7 @@ contract Tron_SpokePoolTest is Test {
         usdt.setBlacklisted(relayer, false);
 
         vm.prank(relayer);
-        vm.expectRevert(Tron_SpokePool.TronTransferCallReverted.selector);
+        vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
         spokePool.claimRelayerRefund(address(usdt).toBytes32(), newRefundAddress.toBytes32());
     }
 
@@ -241,7 +242,7 @@ contract Tron_SpokePoolTest is Test {
         });
 
         vm.prank(relayer);
-        vm.expectRevert(Tron_SpokePool.TronTransferCallReverted.selector);
+        vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
         spokePool.fillRelayV3External(exec, relayer.toBytes32(), true);
     }
 

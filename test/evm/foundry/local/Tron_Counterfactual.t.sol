@@ -13,7 +13,7 @@ import {
 import { CounterfactualDepositSpokePoolTron } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTron.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
 import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { TronTransferLib } from "../../../../contracts/periphery/counterfactual/TronTransferLib.sol";
+import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 
 import { MockTronUSDT } from "../../../../contracts/test/MockTronUSDT.sol";

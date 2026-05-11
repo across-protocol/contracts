@@ -2,18 +2,18 @@
 pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable-v4/token/ERC20/IERC20Upgradeable.sol";
 
 import { Universal_SpokePool } from "./Universal_SpokePool.sol";
 import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
+import { TronTransferLib } from "../libraries/TronTransferLib.sol";
 
 /**
  * @notice Tron-specific SpokePool variant that handles non-standard ERC20 implementations.
  * @dev Tron USDT's `transfer` always returns false on success, which breaks the return-value
  *      checks in `SafeERC20.safeTransfer` and `SpokePool._noRevertTransfer`. This variant
- *      overrides both base hooks (`_noRevertTransfer` and `_safeTransfer`) with a balance-delta
- *      success check. `transferFrom` is correct on Tron USDT, so paths using `safeTransferFrom`
- *      are unchanged.
+ *      overrides both base hooks (`_noRevertTransfer` and `_safeTransfer`) to delegate to
+ *      `TronTransferLib`, which performs a balance-delta success check. `transferFrom` is
+ *      correct on Tron USDT, so paths using `safeTransferFrom` are unchanged.
  *
  *      Assumes Tether's `basisPointsRate` fee-on-transfer mechanism stays at zero. If it
  *      is ever activated, balance-delta will report failure on successful transfers and
@@ -21,9 +21,6 @@ import { ITokenMessenger } from "../external/interfaces/CCTPInterfaces.sol";
  * @custom:security-contact bugs@across.to
  */
 contract Tron_SpokePool is Universal_SpokePool {
-    error TronTransferCallReverted();
-    error TronTransferBalanceMismatch();
-
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor(
         uint256 _adminUpdateBufferSeconds,
@@ -55,20 +52,14 @@ contract Tron_SpokePool is Universal_SpokePool {
     ///      balance-delta check. Required because Tron USDT's `transfer` returns false
     ///      even on successful transfers.
     function _noRevertTransfer(address token, address to, uint256 amount) internal override returns (bool) {
-        uint256 pre = IERC20Upgradeable(token).balanceOf(to);
-        (bool ok, ) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (to, amount)));
-        if (!ok) return false;
-        return IERC20Upgradeable(token).balanceOf(to) == pre + amount;
+        (bool callOk, bool balanceOk) = TronTransferLib._balanceDeltaTransfer(token, to, amount);
+        return callOk && balanceOk;
     }
 
-    /// @dev Revert-on-failure variant of the balance-delta transfer. Replaces the base
-    ///      `safeTransfer` call sites (claimRelayerRefund, slow-fill ERC20 path).
-    ///      Logic mirrors `_noRevertTransfer` but reverts with a mode-specific error so
-    ///      callers can distinguish "call reverted" from "balance delta mismatch".
+    /// @dev Revert-on-failure variant; reverts with `TronTransferCallReverted` or
+    ///      `TronTransferBalanceMismatch` so callers can distinguish failure modes.
+    ///      Replaces the base `safeTransfer` call sites (claimRelayerRefund, slow-fill ERC20 path).
     function _safeTransfer(address token, address to, uint256 amount) internal override {
-        uint256 pre = IERC20Upgradeable(token).balanceOf(to);
-        (bool ok, ) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (to, amount)));
-        if (!ok) revert TronTransferCallReverted();
-        if (IERC20Upgradeable(token).balanceOf(to) != pre + amount) revert TronTransferBalanceMismatch();
+        TronTransferLib._safeTransferBalanceCheck(token, to, amount);
     }
 }
