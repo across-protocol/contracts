@@ -2,7 +2,7 @@
 /**
  * Deploys a counterfactual deposit clone for testing.
  *
- * Builds a merkle tree with a single leaf for CounterfactualDepositSpokePool,
+ * Builds a merkle tree with a single leaf for CounterfactualDepositSpokePoolTron,
  * then deploys a clone via the factory. Outputs the clone address and all parameters
  * needed by the execute script.
  *
@@ -16,7 +16,7 @@
  *   --testnet  — use Tron Nile testnet (default: mainnet)
  *
  * Usage:
- *   yarn test-deploy-clone <factory> <counterfactual-deposit-impl> <spokepool-deposit-impl> <input-token> [--testnet]
+ *   yarn test-deploy-clone <factory> <counterfactual-deposit-impl> <spokepool-deposit-impl-tron> <input-token> [--testnet]
  *
  * Addresses in Tron Base58Check format (T...).
  */
@@ -51,7 +51,7 @@ async function main(): Promise<void> {
 
   if (!factoryAddress || !counterfactualDepositImpl || !spokePoolDepositImpl || !inputTokenAddress) {
     console.log(
-      "Usage: yarn test-deploy-clone <factory> <counterfactual-deposit-impl> <spokepool-deposit-impl> <input-token> [--testnet]"
+      "Usage: yarn test-deploy-clone <factory> <counterfactual-deposit-impl> <spokepool-deposit-impl-tron> <input-token> [--testnet]"
     );
     process.exit(1);
   }
@@ -59,7 +59,7 @@ async function main(): Promise<void> {
   validateTronAddresses({
     factory: factoryAddress,
     "counterfactual-deposit-impl": counterfactualDepositImpl,
-    "spokepool-deposit-impl": spokePoolDepositImpl,
+    "spokepool-deposit-impl-tron": spokePoolDepositImpl,
     "input-token": inputTokenAddress,
   });
 
@@ -94,7 +94,7 @@ async function main(): Promise<void> {
   console.log(`Chain ID:                    ${chainId}`);
   console.log(`Factory:                     ${factoryAddress}`);
   console.log(`CounterfactualDeposit impl:  ${counterfactualDepositImpl} (${counterfactualDepositImplEvm})`);
-  console.log(`SpokePoolDeposit impl:       ${spokePoolDepositImpl} (${spokePoolDepositImplEvm})`);
+  console.log(`SpokePoolDepositTron impl:   ${spokePoolDepositImpl} (${spokePoolDepositImplEvm})`);
   console.log(`Input token:                 ${inputTokenAddress} (${inputTokenEvmAddress})`);
   console.log(`Signer/recipient:            ${signerEvmAddress}`);
 

@@ -9,8 +9,6 @@ import "../periphery/counterfactual/CounterfactualDeposit.sol";
 import "../periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import "../periphery/counterfactual/CounterfactualDepositFactoryTron.sol";
 import "../periphery/counterfactual/CounterfactualDepositOFT.sol";
-import "../periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import "../periphery/counterfactual/CounterfactualDepositSpokePoolTron.sol";
 import "../libraries/TronTransferLib.sol";
-import "../periphery/counterfactual/WithdrawImplementation.sol";
 import "../periphery/counterfactual/WithdrawImplementationTron.sol";

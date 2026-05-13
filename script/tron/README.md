@@ -119,10 +119,10 @@ Clone implementation contract used by the factory. No constructor args. Must be 
 yarn tron-deploy-counterfactual-deposit [--testnet]
 ```
 
-### CounterfactualDepositSpokePool
+### CounterfactualDepositSpokePoolTron
 
 ```bash
-yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedNativeToken> [--testnet]
+yarn tron-deploy-counterfactual-deposit-spokepool-tron <spokePool> <signer> <wrappedNativeToken> [--testnet]
 ```
 
 ### AdminWithdrawManager
@@ -131,10 +131,10 @@ yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedN
 yarn tron-deploy-admin-withdraw-manager <owner> <directWithdrawer> <signer> [--testnet]
 ```
 
-### WithdrawImplementation
+### WithdrawImplementationTron
 
 ```bash
-yarn tron-deploy-withdraw-implementation [--testnet]
+yarn tron-deploy-withdraw-implementation-tron [--testnet]
 ```
 
 ### Deploy Clone
@@ -191,20 +191,20 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 
 ## File overview
 
-| File                                                             | Purpose                                                                |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `deploy.ts`                                                      | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb |
-| `universal/tron-deploy-sp1-auto-verifier.ts`                     | Deploys SP1AutoVerifier (no args)                                      |
-| `universal/tron-deploy-sp1-helios.ts`                            | Deploys SP1Helios with genesis binary                                  |
-| `universal/tron-deploy-universal-spokepool.ts`                   | Deploys Tron_SpokePool implementation + ERC1967Proxy                   |
-| `counterfactual/tron-deploy-counterfactual-factory.ts`           | Deploys CounterfactualDepositFactoryTron (no args)                     |
-| `counterfactual/tron-deploy-counterfactual-deposit.ts`           | Deploys CounterfactualDeposit implementation (no args)                 |
-| `counterfactual/tron-deploy-counterfactual-deposit-spokepool.ts` | Deploys CounterfactualDepositSpokePool                                 |
-| `counterfactual/tron-deploy-admin-withdraw-manager.ts`           | Deploys AdminWithdrawManager                                           |
-| `counterfactual/tron-deploy-withdraw-implementation.ts`          | Deploys WithdrawImplementation (no args)                               |
-| `counterfactual/tron-deploy-counterfactual-clone.ts`             | Deploys a clone from factory, verifies address prediction              |
-| `periphery/tron-deploy-spoke-pool-periphery.ts`                  | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
-| `periphery/tron-deploy-swap-proxy.ts`                            | Deploys a standalone SwapProxy                                         |
+| File                                                                  | Purpose                                                                |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `deploy.ts`                                                           | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb |
+| `universal/tron-deploy-sp1-auto-verifier.ts`                          | Deploys SP1AutoVerifier (no args)                                      |
+| `universal/tron-deploy-sp1-helios.ts`                                 | Deploys SP1Helios with genesis binary                                  |
+| `universal/tron-deploy-universal-spokepool.ts`                        | Deploys Tron_SpokePool implementation + ERC1967Proxy                   |
+| `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (no args)                     |
+| `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Deploys CounterfactualDeposit implementation (no args)                 |
+| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTron                             |
+| `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                           |
+| `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                           |
+| `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction              |
+| `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
+| `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone SwapProxy                                         |
 
 ## Chain IDs
 
