@@ -10,7 +10,7 @@ import {
     SpokePoolDepositParams,
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
-import { CounterfactualDepositSpokePoolTron } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTron.sol";
+import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
 import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
@@ -51,7 +51,7 @@ contract Tron_CounterfactualTest is Test {
     Merkle merkle;
     CounterfactualDepositFactory factory;
     CounterfactualDeposit dispatcher;
-    CounterfactualDepositSpokePoolTron spokePoolImpl;
+    CounterfactualDepositSpokePoolTr spokePoolImpl;
     WithdrawImplementationTron withdrawImpl;
     MockSpokePool spokePool;
     MockTronUSDT usdt;
@@ -84,7 +84,7 @@ contract Tron_CounterfactualTest is Test {
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        spokePoolImpl = new CounterfactualDepositSpokePoolTron(address(spokePool), signerAddr, makeAddr("weth"));
+        spokePoolImpl = new CounterfactualDepositSpokePoolTr(address(spokePool), signerAddr, makeAddr("weth"));
         withdrawImpl = new WithdrawImplementationTron();
 
         usdt.mint(user, 1000e6);

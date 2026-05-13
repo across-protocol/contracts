@@ -1,6 +1,6 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys CounterfactualDepositSpokePoolTron to Tron.
+ * Deploys CounterfactualDepositSpokePoolTr to Tron.
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
   const chainId = resolveChainId();
 
-  console.log("=== CounterfactualDepositSpokePoolTron Deployment ===");
+  console.log("=== CounterfactualDepositSpokePoolTr Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
   const encodedArgs = encodeArgs(
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
 
   const artifactPath = path.resolve(
     __dirname,
-    "../../../out-tron/CounterfactualDepositSpokePoolTron.sol/CounterfactualDepositSpokePoolTron.json"
+    "../../../out-tron/CounterfactualDepositSpokePoolTr.sol/CounterfactualDepositSpokePoolTr.json"
   );
 
   await deployContract({ chainId, artifactPath, encodedArgs });

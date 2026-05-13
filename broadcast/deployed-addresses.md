@@ -451,6 +451,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDeposit            | [TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy](https://tronscan.org/address/TUE4j3wvnJf5Qwo9ZdYS9XebFzbMMvisEy) |
 | CounterfactualDepositFactoryTron | [TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob](https://tronscan.org/address/TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob) |
 | CounterfactualDepositSpokePool   | [TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75](https://tronscan.org/address/TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75) |
+| CounterfactualDepositSpokePoolTr | [TF3BzhGswEw4kEWnR5dzjCsZEj4cVzVtsG](https://tronscan.org/address/TF3BzhGswEw4kEWnR5dzjCsZEj4cVzVtsG) |
 | SP1AutoVerifier                  | [TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84](https://tronscan.org/address/TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84) |
 | SP1Helios                        | [TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm](https://tronscan.org/address/TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm) |
 | SpokePool                        | [TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS](https://tronscan.org/address/TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS) |

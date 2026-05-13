@@ -2,7 +2,7 @@
 /**
  * Deploys a counterfactual deposit clone for testing.
  *
- * Builds a merkle tree with a single leaf for CounterfactualDepositSpokePoolTron,
+ * Builds a merkle tree with a single leaf for CounterfactualDepositSpokePoolTr,
  * then deploys a clone via the factory. Outputs the clone address and all parameters
  * needed by the execute script.
  *

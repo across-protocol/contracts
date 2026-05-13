@@ -5,7 +5,7 @@ import { CounterfactualDepositSpokePool } from "./CounterfactualDepositSpokePool
 import { TronTransferLib } from "../../libraries/TronTransferLib.sol";
 
 /**
- * @title CounterfactualDepositSpokePoolTron
+ * @title CounterfactualDepositSpokePoolTr
  * @notice Tron-specific variant of `CounterfactualDepositSpokePool` for chains where the
  *         input token may be Tron USDT (whose `transfer` returns false on success).
  * @dev Inherits everything from the mainline implementation and overrides the
@@ -20,7 +20,7 @@ import { TronTransferLib } from "../../libraries/TronTransferLib.sol";
  *      a Tron-variant clone.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositSpokePoolTron is CounterfactualDepositSpokePool {
+contract CounterfactualDepositSpokePoolTr is CounterfactualDepositSpokePool {
     constructor(
         address _spokePool,
         address _signer,

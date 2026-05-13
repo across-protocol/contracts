@@ -1865,6 +1865,11 @@
           "block_number": 81271437,
           "transaction_hash": "d3a41d6aaf79a3a482c3824050ecd44457957b920893d92da222a2335eefdd09"
         },
+        "CounterfactualDepositSpokePoolTr": {
+          "address": "TF3BzhGswEw4kEWnR5dzjCsZEj4cVzVtsG",
+          "block_number": 82681402,
+          "transaction_hash": "7c4a10b23d583e9290d43a3b2b8dca02cccf47b53b2f5932e6fa92ab72b6ba47"
+        },
         "SP1AutoVerifier": {
           "address": "TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84",
           "block_number": 81235137,

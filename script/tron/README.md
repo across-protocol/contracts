@@ -119,7 +119,7 @@ Clone implementation contract used by the factory. No constructor args. Must be 
 yarn tron-deploy-counterfactual-deposit [--testnet]
 ```
 
-### CounterfactualDepositSpokePoolTron
+### CounterfactualDepositSpokePoolTr
 
 ```bash
 yarn tron-deploy-counterfactual-deposit-spokepool-tron <spokePool> <signer> <wrappedNativeToken> [--testnet]
@@ -199,7 +199,7 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 | `universal/tron-deploy-universal-spokepool.ts`                        | Deploys Tron_SpokePool implementation + ERC1967Proxy                   |
 | `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (no args)                     |
 | `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Deploys CounterfactualDeposit implementation (no args)                 |
-| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTron                             |
+| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTr                               |
 | `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                           |
 | `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                           |
 | `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction              |
