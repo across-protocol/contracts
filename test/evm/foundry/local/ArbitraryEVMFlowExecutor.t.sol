@@ -210,6 +210,34 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         assertEq(tokenOut.balanceOf(address(harness)), 400e6, "tokenOut received");
     }
 
+    // ----- Pre-existing handler dust in initialToken must not orphan the swap output -----
+    // Pre-fix: initialBalance from dust drain triggered the "swap didn't happen" branch,
+    // rewriting finalToken to initialToken and stranding the actual finalToken output in the executor.
+    function testDifferentTokens_HandlerDustInInitialToken_DoesNotOrphanSwapOutput() public {
+        tokenIn.mint(address(harness), 1000e6);
+        tokenIn.mint(address(multicallHandler), 500e6); // pre-existing dust on handler
+        tokenOut.mint(address(swap), 1000e6);
+
+        ArbitraryEVMFlowExecutor.CompressedCall[] memory calls = _buildSwapCalls(
+            address(tokenIn),
+            address(tokenOut),
+            500e6,
+            400e6
+        );
+
+        EVMFlowParams memory p = _params(address(tokenIn), address(tokenOut), 500e6, abi.encode(calls));
+        CommonFlowParams memory out = harness.executeFlow(p);
+
+        assertEq(out.finalToken, address(tokenOut), "finalToken must remain tokenOut despite handler dust");
+        assertEq(out.amountInEVM, 400e6, "credits actual swap output, not stale initialAmountSnapshot");
+        // Harness physically holds 1000 - 500 transferred + 500 dust returned = 1000 tokenIn,
+        // plus the 400 tokenOut from the swap. The dust stays on the executor but is not credited to the user.
+        assertEq(tokenIn.balanceOf(address(harness)), 1000e6, "handler dust drained back to executor");
+        assertEq(tokenOut.balanceOf(address(harness)), 400e6, "swap output preserved");
+        assertEq(tokenIn.balanceOf(address(multicallHandler)), 0, "handler fully drained");
+        assertEq(tokenOut.balanceOf(address(multicallHandler)), 0);
+    }
+
     // ----- Branch 3 (partial consumption): different tokens, leftover initialToken returned -----
     function testDifferentTokens_PartialConsumption_LeftoverInitialTokenReturned() public {
         tokenIn.mint(address(harness), 1000e6);
