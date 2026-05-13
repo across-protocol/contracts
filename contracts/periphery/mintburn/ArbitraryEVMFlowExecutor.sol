@@ -83,17 +83,22 @@ abstract contract ArbitraryEVMFlowExecutor {
         );
 
         uint256 finalAmount;
-        // This means the swap (if one was intended) didn't happen (action failed), so we use the initial token as the final token.
-        if (initialAmountSnapshot == IERC20(params.initialToken).balanceOf(address(this))) {
-            params.commonParams.finalToken = params.initialToken;
-            finalAmount = params.commonParams.amountInEVM;
+        uint256 initialBalance = IERC20(params.initialToken).balanceOf(address(this));
+        if (params.initialToken == params.commonParams.finalToken) {
+            finalAmount = initialBalance >= initialAmountSnapshot
+                ? params.commonParams.amountInEVM
+                : params.commonParams.amountInEVM - (initialAmountSnapshot - initialBalance);
         } else {
             uint256 finalBalance = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-            if (finalBalance >= finalAmountSnapshot) {
-                // This means the swap did happen, so we check the balance of the output token and send it.
+            if (finalBalance > finalAmountSnapshot) {
+                // Swap produced final tokens; credit the delta.
                 finalAmount = finalBalance - finalAmountSnapshot;
+            } else if (initialBalance >= initialAmountSnapshot) {
+                // No final-token output and initial token is back: action didn't swap, fall back to initial token.
+                params.commonParams.finalToken = params.initialToken;
+                finalAmount = params.commonParams.amountInEVM;
             } else {
-                // If we somehow lost final tokens (e.g. by depositing into some contract), just set the finalAmount to 0.
+                // Lost both initial and final tokens.
                 finalAmount = 0;
             }
         }
