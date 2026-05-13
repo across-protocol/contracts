@@ -854,6 +854,11 @@
           "block_number": 31071129,
           "transaction_hash": "0xd78f71ca11de6d28fe02006adf91b55f05efe0ffb1e0b2f51cb450cdf5ade5c0"
         },
+        "DonationBox_CCTP_USDC_EVM": {
+          "address": "0x64a0A69d16518E4544fAb83C624e01339DC36945",
+          "block_number": 35005190,
+          "transaction_hash": "0xed4511c6892fd1379e7e9d03ec4bb61c7f036a50cecc9adfb4fdd3ccdfe4b145"
+        },
         "DonationBox_OFT_USDT": {
           "address": "0x1635Eb08fe35e8297ddd394Abc6d53f39330A8FE",
           "block_number": 34254973,

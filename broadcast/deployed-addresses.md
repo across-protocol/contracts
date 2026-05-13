@@ -224,6 +224,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactory           | [0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772](https://hyperevmscan.io//address/0x9CD343B1cE2798bFDC09debc83f9CbFad4A22772) |
 | CounterfactualDepositSpokePool         | [0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99](https://hyperevmscan.io//address/0xF90d87fcd15D3Eb35e8725FAe2DDEd3998B0DB99) |
 | DonationBox_CCTP_USDC                  | [0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60](https://hyperevmscan.io//address/0xe3D0D1B6d3571EDC9657dB5076AC1Be5f0bBfE60) |
+| DonationBox_CCTP_USDC_EVM              | [0x64a0A69d16518E4544fAb83C624e01339DC36945](https://hyperevmscan.io//address/0x64a0A69d16518E4544fAb83C624e01339DC36945) |
 | DonationBox_CCTP_USDH                  | [0x35B7D6e007f499c806F6d6742d7285D285e17F29](https://hyperevmscan.io//address/0x35B7D6e007f499c806F6d6742d7285D285e17F29) |
 | DonationBox_OFT_USDT                   | [0x1635Eb08fe35e8297ddd394Abc6d53f39330A8FE](https://hyperevmscan.io//address/0x1635Eb08fe35e8297ddd394Abc6d53f39330A8FE) |
 | DstOFTHandler_OFT_USDT                 | [0xeb8feE79B59D048162986B0432a187Be46322284](https://hyperevmscan.io//address/0xeb8feE79B59D048162986B0432a187Be46322284) |
