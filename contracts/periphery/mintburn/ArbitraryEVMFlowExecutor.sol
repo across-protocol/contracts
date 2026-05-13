@@ -87,10 +87,10 @@ abstract contract ArbitraryEVMFlowExecutor {
         uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
         uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
         if (params.initialToken != params.commonParams.finalToken && eBF > sBF + sBFMCH) {
-            params.commonParams.amountInEVM = eBF - sBF;
+            finalAmount = eBF - sBF;
         } else {
             params.commonParams.finalToken = params.initialToken;
-            params.commonParams.amountInEVM = params.commonParams.amountInEVM + eBI - sBI;
+            finalAmount = params.commonParams.amountInEVM + eBI - sBI;
         }
 
         params.commonParams.extraFeesIncurred = _calcExtraFeesFinal(
