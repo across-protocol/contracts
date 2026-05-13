@@ -457,6 +457,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | SpokePool                        | [TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS](https://tronscan.org/address/TTbCVPfUZmPhrB9sYC8GKgGBQQEdZovkmS) |
 | SpokePoolPeriphery               | [TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ](https://tronscan.org/address/TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ) |
 | WithdrawImplementation           | [TJkwUDFPKXABkeu38v42sdwQS2VxgRweow](https://tronscan.org/address/TJkwUDFPKXABkeu38v42sdwQS2VxgRweow) |
+| WithdrawImplementationTron       | [THPA5L2jxGE84FHMieds212WH3sRX5Hi9t](https://tronscan.org/address/THPA5L2jxGE84FHMieds212WH3sRX5Hi9t) |
 
 ## Solana (34268394551451)
 

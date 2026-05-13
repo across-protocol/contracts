@@ -1894,6 +1894,11 @@
           "address": "TJkwUDFPKXABkeu38v42sdwQS2VxgRweow",
           "block_number": 81269861,
           "transaction_hash": "226499b9a0e735991922ca744364017aa882df1b33ea23e44c80695181ed12d4"
+        },
+        "WithdrawImplementationTron": {
+          "address": "THPA5L2jxGE84FHMieds212WH3sRX5Hi9t",
+          "block_number": 82681537,
+          "transaction_hash": "5afe38b1baa3538f6692da873b1480b99dc30af81400948daf38fce8ac336d1d"
         }
       }
     },
