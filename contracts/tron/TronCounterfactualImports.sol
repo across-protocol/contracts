@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 // Entry point for counterfactual contracts in the tron Foundry profile. These use OZ v4 and must
-// be in a separate file from SP1Helios/UniversalSpokePool (OZ v5) to avoid name collisions.
+// be in a separate file from SP1Helios/Tron_SpokePool (OZ v5) to avoid name collisions.
 import "../periphery/counterfactual/AdminWithdrawManager.sol";
 import "../periphery/counterfactual/CounterfactualConstants.sol";
 import "../periphery/counterfactual/CounterfactualDeposit.sol";

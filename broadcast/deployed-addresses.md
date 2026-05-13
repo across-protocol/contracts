@@ -452,7 +452,7 @@ This file contains the latest deployed smart contract addresses from the broadca
 | CounterfactualDepositFactoryTron | [TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob](https://tronscan.org/address/TTLJiJFju5Qi3tmnZNx7Bxrk753p4AMjob) |
 | CounterfactualDepositSpokePool   | [TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75](https://tronscan.org/address/TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75) |
 | SP1AutoVerifier                  | [TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84](https://tronscan.org/address/TUsGvWXwp8fhFfJD2Qj3qGUWUFqH4sjm84) |
-| SP1Helios                        | [TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx](https://tronscan.org/address/TM7RW746BsRpoarBGZfwWVnVvhLNK6tBQx) |
+| SP1Helios                        | [TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm](https://tronscan.org/address/TBQff32XdcRpknUY6iJVz2GkQe4aeB9eSm) |
 | SpokePool                        | [TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8](https://tronscan.org/address/TDe6gRnHcqZnhn1H5UZQcJ29kmvadFKjb8) |
 | SpokePoolPeriphery               | [TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ](https://tronscan.org/address/TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ) |
 | WithdrawImplementation           | [TJkwUDFPKXABkeu38v42sdwQS2VxgRweow](https://tronscan.org/address/TJkwUDFPKXABkeu38v42sdwQS2VxgRweow) |
