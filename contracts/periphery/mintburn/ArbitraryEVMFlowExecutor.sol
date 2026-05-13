@@ -86,7 +86,7 @@ abstract contract ArbitraryEVMFlowExecutor {
         uint256 finalAmount;
         uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
         uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-        if (params.initialToken == params.commonParams.finalToken && eBF > sBF + sBFMCH) {
+        if (params.initialToken != params.commonParams.finalToken && eBF > sBF + sBFMCH) {
             params.commonParams.amountInEVM = eBF - sBF;
         } else {
             params.commonParams.finalToken = params.initialToken;
