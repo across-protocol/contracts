@@ -61,8 +61,9 @@ abstract contract ArbitraryEVMFlowExecutor {
         CompressedCall[] memory compressedCalls = abi.decode(params.actionData, (CompressedCall[]));
 
         // Snapshot balances
-        uint256 initialAmountSnapshot = IERC20(params.initialToken).balanceOf(address(this));
-        uint256 finalAmountSnapshot = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+        uint256 sBI = IERC20(params.initialToken).balanceOf(address(this));
+        uint256 sBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+        uint256 sBFMCH = IERC20(params.commonParams.finalToken).balanceOf(multicallHandler);
 
         // Transfer tokens to MulticallHandler
         IERC20(params.initialToken).safeTransfer(multicallHandler, params.commonParams.amountInEVM);
@@ -83,24 +84,13 @@ abstract contract ArbitraryEVMFlowExecutor {
         );
 
         uint256 finalAmount;
-        uint256 initialBalance = IERC20(params.initialToken).balanceOf(address(this));
-        if (params.initialToken == params.commonParams.finalToken) {
-            finalAmount = initialBalance >= initialAmountSnapshot
-                ? params.commonParams.amountInEVM
-                : params.commonParams.amountInEVM - (initialAmountSnapshot - initialBalance);
+        uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
+        uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+        if (params.initialToken == params.commonParams.finalToken && eBF > sBF + sBFMCH) {
+            params.commonParams.amountInEVM = eBF - sBF;
         } else {
-            uint256 finalBalance = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-            if (finalBalance > finalAmountSnapshot) {
-                // Swap produced final tokens; credit the delta.
-                finalAmount = finalBalance - finalAmountSnapshot;
-            } else if (initialBalance >= initialAmountSnapshot) {
-                // No final-token output and initial token is back: action didn't swap, fall back to initial token.
-                params.commonParams.finalToken = params.initialToken;
-                finalAmount = params.commonParams.amountInEVM;
-            } else {
-                // Lost both initial and final tokens.
-                finalAmount = 0;
-            }
+            params.commonParams.finalToken = params.initialToken;
+            params.commonParams.amountInEVM = params.commonParams.amountInEVM + eBI - sBI;
         }
 
         params.commonParams.extraFeesIncurred = _calcExtraFeesFinal(
