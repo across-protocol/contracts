@@ -100,7 +100,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -153,8 +153,8 @@ contract CounterfactualSpokePoolDepositTest is Test {
         });
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _computeLeaf(address implementation, bytes memory params) internal view returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(block.chainid, implementation, keccak256(params)))));
     }
 
     function _buildTreeAndDeploy(
@@ -197,6 +197,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function _signExecuteDeposit(
         address clone,
+        bytes32 paramsHash,
         uint256 inputAmount,
         uint256 outputAmount,
         bytes32 exclusiveRelayer,
@@ -208,6 +209,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                paramsHash,
                 inputAmount,
                 outputAmount,
                 exclusiveRelayer,
@@ -224,6 +226,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function _encodeSubmitterData(
         address clone,
+        bytes memory paramsEncoded,
         uint256 inputAmount,
         uint256 outputAmount,
         bytes32 exclusiveRelayer,
@@ -234,6 +237,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     ) internal view returns (bytes memory) {
         bytes memory sig = _signExecuteDeposit(
             clone,
+            keccak256(paramsEncoded),
             inputAmount,
             outputAmount,
             exclusiveRelayer,
@@ -289,6 +293,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -339,6 +344,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -375,6 +381,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -405,6 +412,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -437,6 +445,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             exclusiveRelayer,
@@ -471,6 +480,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                keccak256(paramsEncoded),
                 inputAmount,
                 outputAmount,
                 bytes32(0),
@@ -518,6 +528,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -548,6 +559,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -576,6 +588,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -735,6 +748,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         // Sign for clone1
         bytes memory sig = _signExecuteDeposit(
             clone1,
+            keccak256(paramsEncoded),
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -787,6 +801,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -817,6 +832,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -849,6 +865,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -881,6 +898,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -931,6 +949,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -960,6 +979,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1074,6 +1094,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData1 = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1103,6 +1124,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData2 = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1135,6 +1157,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            paramsEncoded,
             inputAmount,
             outputAmount,
             bytes32(0),
