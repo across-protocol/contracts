@@ -107,7 +107,7 @@ contract ArbitraryEVMFlowExecutorTest is Test {
             });
     }
 
-    // ----- Branch 1: action fails -> initialToken returned, finalToken rewritten to initialToken -----
+    // ----- Action fails -> initialToken returned, finalToken rewritten to initialToken -----
     function testActionFails_FallsBackToInitialToken() public {
         tokenIn.mint(address(harness), 1000e6);
 
@@ -127,8 +127,7 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         assertEq(tokenIn.balanceOf(address(multicallHandler)), 0, "handler drained");
     }
 
-    // ----- Branch 2: same input/output token, action consumes more than it returns -----
-    // Pre-fix this case incorrectly reported finalAmount = 0.
+    // ----- Same input/output token, action consumes more than it returns (net loss) -----
     function testSameToken_PartialConsumption() public {
         tokenIn.mint(address(harness), 1000e6);
         tokenIn.mint(address(swap), 1000e6); // pre-fund swap with output liquidity
@@ -145,13 +144,14 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         CommonFlowParams memory out = harness.executeFlow(p);
 
         assertEq(out.finalToken, address(tokenIn), "finalToken unchanged");
-        assertEq(out.amountInEVM, 400e6, "finalAmount = amountInEVM - (X - Y) = 500 - 100 = 400");
+        // finalAmount = amountInEVM + eBI - sBI = 500 + 900 - 1000 = 400.
+        assertEq(out.amountInEVM, 400e6, "credits net delta against amountInEVM");
         // Harness: 1000 - 500 transfer + 400 drain back = 900.
         assertEq(tokenIn.balanceOf(address(harness)), 900e6);
         assertEq(tokenIn.balanceOf(address(multicallHandler)), 0);
     }
 
-    // ----- Branch 1 (no-op): same token, empty calls -> full amountInEVM returned -----
+    // ----- Same token, empty calls -> full amountInEVM returned -----
     function testSameToken_NoCalls() public {
         tokenIn.mint(address(harness), 1000e6);
 
@@ -165,9 +165,8 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         assertEq(tokenIn.balanceOf(address(harness)), 1000e6, "harness balance unchanged");
     }
 
-    // ----- Edge case: same token, profitable (Y > X) ----
-    // The `<=` in branch 1 swallows the surplus; documents current behaviour.
-    function testSameToken_Profitable_SurplusStaysInContract() public {
+    // ----- Same token, profitable (Y > X) -> surplus is credited to finalAmount -----
+    function testSameToken_Profitable_SurplusIsCredited() public {
         tokenIn.mint(address(harness), 1000e6);
         tokenIn.mint(address(swap), 1000e6);
 
@@ -183,13 +182,12 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         CommonFlowParams memory out = harness.executeFlow(p);
 
         assertEq(out.finalToken, address(tokenIn));
-        // Branch 1 triggers (initialBalance > initialAmountSnapshot via `<=`); reports the original input.
-        assertEq(out.amountInEVM, 500e6, "branch 1 reports amountInEVM, ignoring surplus");
-        // Harness physically holds 1000 - 500 + 600 = 1100. Surplus of 100 is held but unreported.
-        assertEq(tokenIn.balanceOf(address(harness)), 1100e6, "surplus is retained in the contract");
+        // finalAmount = amountInEVM + eBI - sBI = 500 + 1100 - 1000 = 600.
+        assertEq(out.amountInEVM, 600e6, "surplus is credited via balance delta");
+        assertEq(tokenIn.balanceOf(address(harness)), 1100e6, "harness physically holds the surplus");
     }
 
-    // ----- Branch 3: different tokens, normal swap -----
+    // ----- Different tokens, normal swap -----
     function testDifferentTokens_NormalSwap() public {
         tokenIn.mint(address(harness), 1000e6);
         tokenOut.mint(address(swap), 1000e6);
@@ -210,10 +208,8 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         assertEq(tokenOut.balanceOf(address(harness)), 400e6, "tokenOut received");
     }
 
-    // ----- Pre-existing handler dust in initialToken must not orphan the swap output -----
-    // Pre-fix: initialBalance from dust drain triggered the "swap didn't happen" branch,
-    // rewriting finalToken to initialToken and stranding the actual finalToken output in the executor.
-    function testDifferentTokens_HandlerDustInInitialToken_DoesNotOrphanSwapOutput() public {
+    // ----- Pre-existing handler dust in initialToken is drained upfront and not credited to the flow -----
+    function testDifferentTokens_HandlerDustInInitialToken_IsDrainedUpfront() public {
         tokenIn.mint(address(harness), 1000e6);
         tokenIn.mint(address(multicallHandler), 500e6); // pre-existing dust on handler
         tokenOut.mint(address(swap), 1000e6);
@@ -228,17 +224,43 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         EVMFlowParams memory p = _params(address(tokenIn), address(tokenOut), 500e6, abi.encode(calls));
         CommonFlowParams memory out = harness.executeFlow(p);
 
-        assertEq(out.finalToken, address(tokenOut), "finalToken must remain tokenOut despite handler dust");
-        assertEq(out.amountInEVM, 400e6, "credits actual swap output, not stale initialAmountSnapshot");
-        // Harness physically holds 1000 - 500 transferred + 500 dust returned = 1000 tokenIn,
-        // plus the 400 tokenOut from the swap. The dust stays on the executor but is not credited to the user.
-        assertEq(tokenIn.balanceOf(address(harness)), 1000e6, "handler dust drained back to executor");
-        assertEq(tokenOut.balanceOf(address(harness)), 400e6, "swap output preserved");
-        assertEq(tokenIn.balanceOf(address(multicallHandler)), 0, "handler fully drained");
+        assertEq(out.finalToken, address(tokenOut));
+        assertEq(out.amountInEVM, 400e6, "credits finalToken balance delta only");
+        // _drainMulticallHandlerDust pulled 500 tokenIn back to the harness before the snapshot,
+        // so sBI captured it and the swap delta is unaffected by the dust.
+        assertEq(tokenIn.balanceOf(address(harness)), 1000e6);
+        assertEq(tokenOut.balanceOf(address(harness)), 400e6);
+        assertEq(tokenIn.balanceOf(address(multicallHandler)), 0);
         assertEq(tokenOut.balanceOf(address(multicallHandler)), 0);
     }
 
-    // ----- Branch 3 (partial consumption): different tokens, leftover initialToken returned -----
+    // ----- Pre-existing handler dust in finalToken is drained upfront and not credited to the flow -----
+    function testDifferentTokens_HandlerDustInFinalToken_IsDrainedUpfront() public {
+        tokenIn.mint(address(harness), 1000e6);
+        tokenOut.mint(address(multicallHandler), 250e6); // pre-existing finalToken dust on handler
+        tokenOut.mint(address(swap), 1000e6);
+
+        ArbitraryEVMFlowExecutor.CompressedCall[] memory calls = _buildSwapCalls(
+            address(tokenIn),
+            address(tokenOut),
+            500e6,
+            400e6
+        );
+
+        EVMFlowParams memory p = _params(address(tokenIn), address(tokenOut), 500e6, abi.encode(calls));
+        CommonFlowParams memory out = harness.executeFlow(p);
+
+        assertEq(out.finalToken, address(tokenOut));
+        // Without the upfront drain, sBF would have started at 250 and the swap's 400 output
+        // would still pass eBF > sBF. Verifying 400e6 here also confirms the dust wasn't double-credited.
+        assertEq(out.amountInEVM, 400e6, "finalAmount = eBF - sBF, dust excluded by upfront drain");
+        // Harness keeps the drained dust (250) + swap output (400) = 650 tokenOut.
+        assertEq(tokenOut.balanceOf(address(harness)), 650e6);
+        assertEq(tokenIn.balanceOf(address(multicallHandler)), 0);
+        assertEq(tokenOut.balanceOf(address(multicallHandler)), 0);
+    }
+
+    // ----- Different tokens, partial consumption: leftover initialToken returned by handler's tail drain -----
     function testDifferentTokens_PartialConsumption_LeftoverInitialTokenReturned() public {
         tokenIn.mint(address(harness), 1000e6);
         tokenOut.mint(address(swap), 1000e6);
@@ -255,9 +277,9 @@ contract ArbitraryEVMFlowExecutorTest is Test {
         CommonFlowParams memory out = harness.executeFlow(p);
 
         assertEq(out.finalToken, address(tokenOut));
-        assertEq(out.amountInEVM, 400e6, "credits finalToken received");
-        // The 200 of unspent initialToken at handler is drained by MulticallHandler's tail drain.
-        assertEq(tokenIn.balanceOf(address(harness)), 700e6, "1000 - 500 transferred + 200 leftover returned");
+        assertEq(out.amountInEVM, 400e6, "finalAmount = eBF - sBF (finalToken delta)");
+        // The 200 of unspent initialToken left at handler is returned by handleV3AcrossMessage's tail drain.
+        assertEq(tokenIn.balanceOf(address(harness)), 700e6);
         assertEq(tokenOut.balanceOf(address(harness)), 400e6);
         assertEq(tokenIn.balanceOf(address(multicallHandler)), 0);
     }
