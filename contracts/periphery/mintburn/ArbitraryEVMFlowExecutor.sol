@@ -65,7 +65,7 @@ abstract contract ArbitraryEVMFlowExecutor {
 
         bool differentTokens = params.initialToken != params.commonParams.finalToken;
 
-        // Snapshot balances (skip finalToken read when it equals initialToken)
+        // Read "starting balance initial token"(sBI) and "starting balance final token"(sBF)
         uint256 sBI = IERC20(params.initialToken).balanceOf(address(this));
         uint256 sBF = differentTokens ? IERC20(params.commonParams.finalToken).balanceOf(address(this)) : sBI;
 
@@ -88,9 +88,11 @@ abstract contract ArbitraryEVMFlowExecutor {
         );
 
         // Default to initial-token accounting; overwrite below if finalToken was actually produced.
+        // Ending balance initial token
         uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
         uint256 finalAmount = params.commonParams.amountInEVM + eBI - sBI;
         if (differentTokens) {
+            // Ending balance final token
             uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
             if (eBF > sBF) {
                 finalAmount = eBF - sBF;
