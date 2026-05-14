@@ -60,10 +60,12 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Decode the compressed action data
         CompressedCall[] memory compressedCalls = abi.decode(params.actionData, (CompressedCall[]));
 
+        // Sweep any pre-existing dust on MulticallHandler so it cannot pollute our balance snapshots
+        _drainMulticallHandlerDust(params.initialToken, params.commonParams.finalToken);
+
         // Snapshot balances
         uint256 sBI = IERC20(params.initialToken).balanceOf(address(this));
         uint256 sBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-        uint256 sBFMCH = IERC20(params.commonParams.finalToken).balanceOf(multicallHandler);
 
         // Transfer tokens to MulticallHandler
         IERC20(params.initialToken).safeTransfer(multicallHandler, params.commonParams.amountInEVM);
@@ -86,7 +88,7 @@ abstract contract ArbitraryEVMFlowExecutor {
         uint256 finalAmount;
         uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
         uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-        if (params.initialToken != params.commonParams.finalToken && eBF > sBF + sBFMCH) {
+        if (params.initialToken != params.commonParams.finalToken && eBF > sBF) {
             finalAmount = eBF - sBF;
         } else {
             params.commonParams.finalToken = params.initialToken;
@@ -148,6 +150,51 @@ abstract contract ArbitraryEVMFlowExecutor {
         });
 
         return abi.encode(instructions);
+    }
+
+    /**
+     * @notice Drains any pre-existing balances of initialToken and finalToken from MulticallHandler
+     * @dev No-op when MulticallHandler holds no dust in either token. Otherwise routes a minimal set of
+     *      direct IERC20.transfer calls through handleV3AcrossMessage with fallbackRecipient = 0
+     *      (skipping the handler's own post-drain), then asserts both balances are zero.
+     */
+    function _drainMulticallHandlerDust(address initialToken, address finalToken) internal {
+        uint256 dustInitial = IERC20(initialToken).balanceOf(multicallHandler);
+        bool sameToken = initialToken == finalToken;
+        uint256 dustFinal = sameToken ? 0 : IERC20(finalToken).balanceOf(multicallHandler);
+
+        uint256 callCount = (dustInitial > 0 ? 1 : 0) + (dustFinal > 0 ? 1 : 0);
+        if (callCount == 0) return;
+
+        MulticallHandler.Call[] memory calls = new MulticallHandler.Call[](callCount);
+        uint256 idx;
+        if (dustInitial > 0) {
+            calls[idx++] = MulticallHandler.Call({
+                target: initialToken,
+                callData: abi.encodeCall(IERC20.transfer, (address(this), dustInitial)),
+                value: 0
+            });
+        }
+        if (dustFinal > 0) {
+            calls[idx] = MulticallHandler.Call({
+                target: finalToken,
+                callData: abi.encodeCall(IERC20.transfer, (address(this), dustFinal)),
+                value: 0
+            });
+        }
+
+        bytes memory instructions = abi.encode(
+            MulticallHandler.Instructions({ calls: calls, fallbackRecipient: address(0) })
+        );
+
+        MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(initialToken, 0, address(this), instructions);
+
+        if (dustInitial > 0) {
+            require(IERC20(initialToken).balanceOf(multicallHandler) == 0, "MCH initial token dust");
+        }
+        if (dustFinal > 0) {
+            require(IERC20(finalToken).balanceOf(multicallHandler) == 0, "MCH final token dust");
+        }
     }
 
     /// @notice Calculates proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount
