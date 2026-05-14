@@ -5,9 +5,6 @@ import { Script } from "forge-std/Script.sol";
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
-import { CounterfactualDepositSpokePool } from "../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
-import { CounterfactualDepositCCTP } from "../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
-import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 
 // Verifies counterfactual contract deployments across all configured chains.
@@ -71,21 +68,27 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         console.log("## %s (Chain %s)", name, chainId);
 
         _checkBytecodeContracts(chainId);
-        _checkSpokePoolContract(chainId);
-        _checkCctpContract(chainId);
-        _checkOftContract(chainId);
+        _checkRegistryBackedImpl("CounterfactualDepositSpokePool", chainId);
+        _checkRegistryBackedImpl("CounterfactualDepositCCTP", chainId);
+        _checkRegistryBackedImpl("CounterfactualDepositOFT", chainId);
         _checkAdminWithdrawManager(chainId);
     }
 
     // --- Bytecode-only contracts ---
+    //
+    // Under Registry Routes, all counterfactual impls have a single constructor arg (the registry
+    // address). Per-impl field-level cross-checks against constants/deployed-addresses no longer
+    // apply — those values now live in ChainConfig and should be audited separately against
+    // ChainConfig events. Here we only verify that the deployed bytecode exists.
 
     function _checkBytecodeContracts(uint256 chainId) internal {
-        string[3] memory names = [
+        string[4] memory names = [
             string("CounterfactualDeposit"),
             "CounterfactualDepositFactory",
-            "WithdrawImplementation"
+            "WithdrawImplementation",
+            "ChainConfig"
         ];
-        for (uint256 i = 0; i < 3; i++) {
+        for (uint256 i = 0; i < 4; i++) {
             address addr = _getDeployed(names[i], chainId);
             if (addr == address(0)) {
                 _fail(names[i], "address", "not in deployed-addresses.json");
@@ -97,116 +100,17 @@ contract CheckCounterfactualDeployments is Script, Test, CounterfactualConfig {
         }
     }
 
-    // --- CounterfactualDepositSpokePool ---
-
-    function _checkSpokePoolContract(uint256 chainId) internal {
-        address addr = _getDeployed("CounterfactualDepositSpokePool", chainId);
+    function _checkRegistryBackedImpl(string memory name, uint256 chainId) internal {
+        address addr = _getDeployed(name, chainId);
         if (addr == address(0)) {
-            _fail("CounterfactualDepositSpokePool", "address", "not in deployed-addresses.json");
+            _info(name, "skipped (not deployed on this chain)");
             return;
         }
         if (addr.code.length == 0) {
-            _fail("CounterfactualDepositSpokePool", "bytecode", "no code on-chain");
+            _fail(name, "bytecode", "no code on-chain");
             return;
         }
-
-        CounterfactualDepositSpokePool sp = CounterfactualDepositSpokePool(addr);
-
-        // Auto-check: spokePool vs deployed-addresses.json
-        address expectedSpokePool = _getDeployed("SpokePool", chainId);
-        if (expectedSpokePool != address(0)) {
-            _assertAddrEq("CounterfactualDepositSpokePool", "spokePool", sp.spokePool(), expectedSpokePool);
-        } else {
-            _review(
-                "CounterfactualDepositSpokePool",
-                "spokePool",
-                sp.spokePool(),
-                address(0),
-                "deployed-addresses.json (no entry)"
-            );
-        }
-
-        // Auto-check: wrappedNativeToken vs constants.json
-        {
-            string memory wntKey = string.concat(".WRAPPED_NATIVE_TOKENS.", vm.toString(chainId));
-            if (vm.keyExists(file, wntKey)) {
-                _assertAddrEq(
-                    "CounterfactualDepositSpokePool",
-                    "wrappedNativeToken",
-                    sp.wrappedNativeToken(),
-                    vm.parseJsonAddress(file, wntKey)
-                );
-            } else {
-                _review(
-                    "CounterfactualDepositSpokePool",
-                    "wrappedNativeToken",
-                    sp.wrappedNativeToken(),
-                    address(0),
-                    "constants.json (no entry)"
-                );
-            }
-        }
-
-        // Manual review: signer (no second source)
-        address configSigner = config.get("signer").toAddress();
-        _review("CounterfactualDepositSpokePool", "signer", sp.signer(), configSigner, "config.toml");
-    }
-
-    // --- CounterfactualDepositCCTP ---
-
-    function _checkCctpContract(uint256 chainId) internal {
-        address addr = _getDeployed("CounterfactualDepositCCTP", chainId);
-        if (addr == address(0)) {
-            if (hasCctpDomain(chainId) && _getCctpPeriphery(chainId) != address(0)) {
-                _fail("CounterfactualDepositCCTP", "deployment", "CCTP supported + periphery exists, but not deployed");
-            } else {
-                _info("CounterfactualDepositCCTP", "skipped (not applicable on this chain)");
-            }
-            return;
-        }
-        if (addr.code.length == 0) {
-            _fail("CounterfactualDepositCCTP", "bytecode", "no code on-chain");
-            return;
-        }
-
-        CounterfactualDepositCCTP cctp = CounterfactualDepositCCTP(addr);
-
-        // Auto-check: srcPeriphery vs deployed-addresses.json
-        _assertAddrEq("CounterfactualDepositCCTP", "srcPeriphery", cctp.srcPeriphery(), _getCctpPeriphery(chainId));
-
-        // Auto-check: sourceDomain vs constants.json
-        _assertUintEq(
-            "CounterfactualDepositCCTP",
-            "sourceDomain",
-            uint256(cctp.sourceDomain()),
-            uint256(getCircleDomainId(chainId))
-        );
-    }
-
-    // --- CounterfactualDepositOFT ---
-
-    function _checkOftContract(uint256 chainId) internal {
-        address addr = _getDeployed("CounterfactualDepositOFT", chainId);
-        if (addr == address(0)) {
-            if (hasOftEid(chainId) && _getOftPeriphery(chainId) != address(0)) {
-                _fail("CounterfactualDepositOFT", "deployment", "OFT supported + periphery exists, but not deployed");
-            } else {
-                _info("CounterfactualDepositOFT", "skipped (not applicable on this chain)");
-            }
-            return;
-        }
-        if (addr.code.length == 0) {
-            _fail("CounterfactualDepositOFT", "bytecode", "no code on-chain");
-            return;
-        }
-
-        CounterfactualDepositOFT oft = CounterfactualDepositOFT(addr);
-
-        // Auto-check: oftSrcPeriphery vs deployed-addresses.json
-        _assertAddrEq("CounterfactualDepositOFT", "oftSrcPeriphery", oft.oftSrcPeriphery(), _getOftPeriphery(chainId));
-
-        // Auto-check: srcEid vs constants.json
-        _assertUintEq("CounterfactualDepositOFT", "srcEid", uint256(oft.srcEid()), getOftEid(chainId));
+        _pass(name, "bytecode", "deployed");
     }
 
     // --- AdminWithdrawManager ---

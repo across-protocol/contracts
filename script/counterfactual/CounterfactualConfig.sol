@@ -55,4 +55,8 @@ abstract contract CounterfactualConfig is DeploymentUtils {
     function _resolveOftPeriphery() internal view returns (address) {
         return getDeployedAddress("SponsoredOFTSrcPeriphery", block.chainid, false);
     }
+
+    function _resolveChainConfig() internal view returns (address) {
+        return getDeployedAddress("ChainConfig", block.chainid, false);
+    }
 }

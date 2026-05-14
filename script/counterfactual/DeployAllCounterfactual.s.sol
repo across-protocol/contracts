@@ -21,16 +21,19 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 // across chains (no constructor args, or same constructor args) get the same address everywhere.
 // Contracts with chain-specific constructor args get chain-specific addresses.
 //
+// Under Registry Routes, every counterfactual contract listed below has the SAME deterministic
+// address on every EVM chain (assuming the ChainConfig registry has the same address on every
+// chain — see DeployChainConfig). Per-chain values (spokePool, src peripheries, source domain,
+// src eid, signer, token addresses) live in ChainConfig and are NOT baked into impl bytecode.
+//
 // Same address across all chains:
 //   - CounterfactualDeposit (no constructor args)
 //   - CounterfactualDepositFactory (no constructor args)
 //   - WithdrawImplementation (no constructor args)
 //   - AdminWithdrawManager (same constructor args on all chains)
-//
-// Chain-specific addresses (different constructor args per chain):
-//   - CounterfactualDepositSpokePool
-//   - CounterfactualDepositCCTP
-//   - CounterfactualDepositOFT
+//   - CounterfactualDepositSpokePool (constructor: registry — same address on every chain)
+//   - CounterfactualDepositCCTP    (constructor: registry — same address on every chain)
+//   - CounterfactualDepositOFT     (constructor: registry — same address on every chain)
 //
 // Advantages over nonce-based (CREATE) deployment:
 //   - No fresh EOA required — any funded address can deploy
@@ -40,8 +43,8 @@ import { AdminWithdrawManager } from "../../contracts/periphery/counterfactual/A
 //
 // Configuration:
 //   - Operational params (signer, ownerAndDirectWithdrawer): script/counterfactual/config.toml
-//   - Chain-specific params (spokePool, wrappedNativeToken, cctpPeriphery, cctpDomain,
-//     oftPeriphery, oftEid): auto-resolved from constants.json and deployed-addresses.json
+//   - ChainConfig registry: looked up from deployed-addresses.json. Per-chain bridge / token / scalar
+//     entries are populated via ChainConfig setters out-of-band (see DESIGN doc), NOT by this script.
 //   - AdminWithdrawManager is deployed with deployer as owner/directWithdrawer and signer from
 //     config.toml. Role transfers (owner/directWithdrawer) are done directly by this script after
 //     all ffi deployments complete, with a safety check that directWithdrawer transferred
@@ -86,33 +89,9 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         string calldata profile
     ) external {
         address signer = _loadSigner();
-
-        // Resolve chain-specific params from constants and deployed addresses.
-        address spokePool;
-        address wrappedNativeToken;
-        if (deploySpokePool) {
-            spokePool = _resolveSpokePool();
-            wrappedNativeToken = _resolveWrappedNativeToken();
-        }
-
-        // CCTP: resolve or revert if requested but unsupported.
-        address cctpPeriphery;
-        uint32 cctpDomain;
-        if (deployCctp) {
-            require(hasCctpDomain(block.chainid), "CCTP not supported on this chain");
-            cctpPeriphery = _resolveCctpPeriphery();
-            require(cctpPeriphery != address(0), "CCTP periphery not deployed on this chain");
-            cctpDomain = getCircleDomainId(block.chainid);
-        }
-
-        // OFT: resolve or revert if requested but unsupported.
-        address oftPeriphery;
-        uint32 oftEid;
-        if (deployOft) {
-            require(hasOftEid(block.chainid), "OFT not supported on this chain");
-            oftPeriphery = _resolveOftPeriphery();
-            require(oftPeriphery != address(0), "OFT periphery not deployed on this chain");
-            oftEid = uint32(getOftEid(block.chainid));
+        address registry = _resolveChainConfig();
+        if (deploySpokePool || deployCctp || deployOft) {
+            require(registry != address(0), "ChainConfig must be deployed before counterfactual impls");
         }
 
         string memory mnemonic = vm.envString("MNEMONIC");
@@ -128,20 +107,9 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         console.log("Broadcast: ", broadcast);
         console.log("--------------------------------------------");
         console.log("Resolved parameters:");
-        console.log("  Signer:             ", signer);
-        if (deploySpokePool) {
-            console.log("  SpokePool:          ", spokePool);
-            console.log("  WrappedNativeToken:  ", wrappedNativeToken);
-        }
-        if (deployCctp) {
-            console.log("  CCTP Periphery:     ", cctpPeriphery);
-            console.log("  CCTP Domain:        ", uint256(cctpDomain));
-        }
-        if (deployOft) {
-            console.log("  OFT Periphery:      ", oftPeriphery);
-            console.log("  OFT EID:            ", uint256(oftEid));
-        }
-        console.log("  Transfer roles:     ", transferRoles);
+        console.log("  Signer (AdminWithdrawManager): ", signer);
+        console.log("  ChainConfig registry:          ", registry);
+        console.log("  Transfer roles:                ", transferRoles);
         console.log("--------------------------------------------");
         console.log("Predicted addresses:");
 
@@ -163,10 +131,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (deploySpokePool) {
             predictedSpokePool = _predictCreate2(
                 bytes32(0),
-                abi.encodePacked(
-                    type(CounterfactualDepositSpokePool).creationCode,
-                    abi.encode(spokePool, signer, wrappedNativeToken)
-                )
+                abi.encodePacked(type(CounterfactualDepositSpokePool).creationCode, abi.encode(registry))
             );
             _logPredicted("CounterfactualDepositSpokePool", predictedSpokePool);
         }
@@ -175,7 +140,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (deployCctp) {
             predictedCctp = _predictCreate2(
                 bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositCCTP).creationCode, abi.encode(cctpPeriphery, cctpDomain))
+                abi.encodePacked(type(CounterfactualDepositCCTP).creationCode, abi.encode(registry))
             );
             _logPredicted("CounterfactualDepositCCTP", predictedCctp);
         }
@@ -184,7 +149,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
         if (deployOft) {
             predictedOft = _predictCreate2(
                 bytes32(0),
-                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(oftPeriphery, oftEid))
+                abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(registry))
             );
             _logPredicted("CounterfactualDepositOFT", predictedOft);
         }
@@ -249,14 +214,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     broadcastFlag,
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositSpokePool.s.sol"),
                     "DeployCounterfactualDepositSpokePool",
-                    string.concat(
-                        ' --sig "run(address,address,address)" ',
-                        vm.toString(spokePool),
-                        " ",
-                        vm.toString(signer),
-                        " ",
-                        vm.toString(wrappedNativeToken)
-                    ),
+                    string.concat(' --sig "run(address)" ', vm.toString(registry)),
                     profile
                 );
             }
@@ -273,12 +231,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     broadcastFlag,
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositCCTP.s.sol"),
                     "DeployCounterfactualDepositCCTP",
-                    string.concat(
-                        ' --sig "run(address,uint32)" ',
-                        vm.toString(cctpPeriphery),
-                        " ",
-                        vm.toString(uint256(cctpDomain))
-                    ),
+                    string.concat(' --sig "run(address)" ', vm.toString(registry)),
                     profile
                 );
             }
@@ -295,12 +248,7 @@ contract DeployAllCounterfactual is Script, Test, CounterfactualConfig {
                     broadcastFlag,
                     string.concat(SCRIPT_DIR, "DeployCounterfactualDepositOFT.s.sol"),
                     "DeployCounterfactualDepositOFT",
-                    string.concat(
-                        ' --sig "run(address,uint32)" ',
-                        vm.toString(oftPeriphery),
-                        " ",
-                        vm.toString(uint256(oftEid))
-                    ),
+                    string.concat(' --sig "run(address)" ', vm.toString(registry)),
                     profile
                 );
             }

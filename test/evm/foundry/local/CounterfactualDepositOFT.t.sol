@@ -12,6 +12,8 @@ import {
     OFTDepositParams,
     OFTSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
+import { ChainConfig } from "../../../../contracts/periphery/counterfactual/ChainConfig.sol";
+import { OFT_SRC_PERIPHERY_ID, USDC_ID } from "../../../../contracts/periphery/counterfactual/ChainConfigIds.sol";
 import {
     WithdrawImplementation,
     WithdrawParams
@@ -66,11 +68,13 @@ contract CounterfactualOFTDepositTest is Test {
     WithdrawImplementation public withdrawImpl;
     MockSponsoredOFTSrcPeriphery public srcPeriphery;
     MintableERC20 public token;
+    ChainConfig public registry;
     Merkle public merkle;
 
     address public admin;
     address public user;
     address public relayer;
+    address public registryOwner;
 
     uint32 public constant SRC_EID = 30101; // Ethereum LZ eid
     uint32 public constant DST_EID = 30284; // Example destination eid
@@ -83,6 +87,7 @@ contract CounterfactualOFTDepositTest is Test {
         admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
+        registryOwner = makeAddr("registryOwner");
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
 
         token = new MintableERC20("USDC", "USDC", 6);
@@ -90,16 +95,23 @@ contract CounterfactualOFTDepositTest is Test {
         srcPeriphery = new MockSponsoredOFTSrcPeriphery(address(token));
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        oftImpl = new CounterfactualDepositOFT(address(srcPeriphery), SRC_EID);
+        registry = new ChainConfig(registryOwner);
+        oftImpl = new CounterfactualDepositOFT(address(registry));
         withdrawImpl = new WithdrawImplementation();
         merkle = new Merkle();
+
+        vm.startPrank(registryOwner);
+        registry.setBridge(OFT_SRC_PERIPHERY_ID, address(srcPeriphery));
+        registry.setToken(USDC_ID, address(token));
+        registry.setOftSrcEid(SRC_EID);
+        vm.stopPrank();
 
         token.mint(user, 1000e6);
 
         defaultDepositParams = OFTDepositParams({
             dstEid: DST_EID,
             destinationHandler: bytes32(uint256(uint160(makeAddr("composer")))),
-            token: address(token),
+            tokenId: USDC_ID,
             maxOftFeeBps: 100,
             lzReceiveGasLimit: 200000,
             lzComposeGasLimit: 500000,
@@ -513,6 +525,54 @@ contract CounterfactualOFTDepositTest is Test {
             _encodeWithdrawSubmitterData(address(token), user, 100e6),
             proof
         );
+    }
+
+    function testRegistryUnsetBridgeReverts() public {
+        bytes32 salt = keccak256("oft-unset-bridge");
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, 100e6);
+
+        // Precompute proof and submitter data so the foundry cheats below apply to the right call.
+        bytes32[] memory proof = _depositProof();
+        bytes memory params = abi.encode(defaultDepositParams);
+        bytes memory submitterData = _encodeDepositSubmitterData(
+            100e6,
+            relayer,
+            keccak256("nonce"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
+
+        vm.prank(registryOwner);
+        registry.setBridge(OFT_SRC_PERIPHERY_ID, address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(CounterfactualDepositOFT.RegistryUnset.selector, OFT_SRC_PERIPHERY_ID));
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(oftImpl), params, submitterData, proof);
+    }
+
+    function testRegistryUnsetTokenReverts() public {
+        bytes32 salt = keccak256("oft-unset-token");
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+
+        bytes32[] memory proof = _depositProof();
+        bytes memory params = abi.encode(defaultDepositParams);
+        bytes memory submitterData = _encodeDepositSubmitterData(
+            100e6,
+            relayer,
+            keccak256("nonce"),
+            block.timestamp + 1 hours,
+            "sig"
+        );
+
+        vm.prank(registryOwner);
+        registry.setToken(USDC_ID, address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(CounterfactualDepositOFT.RegistryUnset.selector, USDC_ID));
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(oftImpl), params, submitterData, proof);
     }
 
     function testDeployIfNeededAndExecute() public {

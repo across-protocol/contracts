@@ -5,6 +5,8 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { ChainConfig } from "./ChainConfig.sol";
+import { OFT_SRC_PERIPHERY_ID } from "./ChainConfigIds.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery
@@ -16,11 +18,13 @@ interface ISponsoredOFTSrcPeriphery {
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
+ * @dev `tokenId` is a chain-agnostic id (see ChainConfigIds.sol) resolved against the registry
+ *      at execute time.
  */
 struct OFTDepositParams {
     uint32 dstEid;
     bytes32 destinationHandler;
-    address token;
+    uint32 tokenId;
     uint256 maxOftFeeBps;
     uint256 lzReceiveGasLimit;
     uint256 lzComposeGasLimit;
@@ -50,7 +54,11 @@ struct OFTSubmitterData {
 /**
  * @title CounterfactualDepositOFT
  * @notice Implementation contract for counterfactual deposits via SponsoredOFT.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ * @dev Chain-agnostic: same bytecode + same constructor arg (registry) → same deterministic address
+ *      on every EVM chain. The OFT src periphery, src endpoint id, and bridged token address are
+ *      resolved from `ChainConfig` at execute time.
+ *
+ *      Called via delegatecall from the CounterfactualDeposit dispatcher.
  *      msg.value covers LayerZero native messaging fees.
  * @custom:security-contact bugs@across.to
  */
@@ -66,15 +74,14 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
      */
     event OFTDepositExecuted(uint256 amount, address indexed executionFeeRecipient, bytes32 nonce, uint256 oftDeadline);
 
-    /// @notice SponsoredOFTSrcPeriphery contract
-    address public immutable oftSrcPeriphery;
+    /// @notice Reverts when a registry id resolves to `address(0)`.
+    error RegistryUnset(uint32 id);
 
-    /// @notice OFT source endpoint ID for this chain
-    uint32 public immutable srcEid;
+    /// @notice Chain-local config registry. Same address on every chain.
+    ChainConfig public immutable registry;
 
-    constructor(address _oftSrcPeriphery, uint32 _srcEid) {
-        oftSrcPeriphery = _oftSrcPeriphery;
-        srcEid = _srcEid;
+    constructor(address _registry) {
+        registry = ChainConfig(_registry);
     }
 
     /**
@@ -87,24 +94,31 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
         OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
-        if (dp.executionFee > 0) IERC20(dp.token).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+        address token = _requireRegistryAddress(registry.tokens(dp.tokenId), dp.tokenId);
+        address oftSrcPeriphery = _requireRegistryAddress(registry.bridges(OFT_SRC_PERIPHERY_ID), OFT_SRC_PERIPHERY_ID);
+        uint32 srcEid = registry.oftSrcEid();
+
+        if (dp.executionFee > 0) IERC20(token).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
 
         uint256 depositAmount = sd.amount - dp.executionFee;
 
-        IERC20(dp.token).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(token).forceApprove(oftSrcPeriphery, depositAmount);
 
-        _deposit(dp, sd, depositAmount);
+        _deposit(dp, sd, depositAmount, oftSrcPeriphery, srcEid);
 
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline);
     }
 
     /**
      * @notice Calls deposit on the SponsoredOFTSrcPeriphery with the constructed quote.
-     * @param dp Route parameters from the merkle leaf.
-     * @param sd Submitter-provided execution data.
-     * @param depositAmount Amount to deposit after deducting the execution fee.
      */
-    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) private {
+    function _deposit(
+        OFTDepositParams memory dp,
+        OFTSubmitterData memory sd,
+        uint256 depositAmount,
+        address oftSrcPeriphery,
+        uint32 srcEid
+    ) private {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
@@ -130,5 +144,10 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation {
             }),
             sd.signature
         );
+    }
+
+    function _requireRegistryAddress(address resolved, uint32 id) private pure returns (address) {
+        if (resolved == address(0)) revert RegistryUnset(id);
+        return resolved;
     }
 }

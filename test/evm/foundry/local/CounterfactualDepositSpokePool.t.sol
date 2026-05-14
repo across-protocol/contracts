@@ -12,6 +12,13 @@ import {
     SpokePoolDepositParams,
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
+import { ChainConfig } from "../../../../contracts/periphery/counterfactual/ChainConfig.sol";
+import {
+    SPOKE_POOL_ID,
+    USDC_ID,
+    WRAPPED_NATIVE_ID,
+    NATIVE_ASSET_TOKEN_ID
+} from "../../../../contracts/periphery/counterfactual/ChainConfigIds.sol";
 import {
     WithdrawImplementation,
     WithdrawParams
@@ -86,11 +93,13 @@ contract CounterfactualSpokePoolDepositTest is Test {
     WithdrawImplementation public withdrawImpl;
     MockSpokePool public spokePool;
     MintableERC20 public inputToken;
+    ChainConfig public registry;
     address public weth;
 
     address public admin;
     address public user;
     address public relayer;
+    address public registryOwner;
     uint256 public signerPrivateKey;
     address public signerAddr;
 
@@ -100,7 +109,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(uint32 inputTokenId,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -113,6 +122,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
+        registryOwner = makeAddr("registryOwner");
         signerPrivateKey = 0xA11CE;
         signerAddr = vm.addr(signerPrivateKey);
 
@@ -123,14 +133,23 @@ contract CounterfactualSpokePoolDepositTest is Test {
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        spokePoolImpl = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
+        registry = new ChainConfig(registryOwner);
+        spokePoolImpl = new CounterfactualDepositSpokePool(address(registry));
         withdrawImpl = new WithdrawImplementation();
+
+        vm.startPrank(registryOwner);
+        registry.setBridge(SPOKE_POOL_ID, address(spokePool));
+        registry.setToken(USDC_ID, address(inputToken));
+        registry.setToken(WRAPPED_NATIVE_ID, weth);
+        registry.setToken(NATIVE_ASSET_TOKEN_ID, NATIVE_ASSET);
+        registry.setSpokePoolSigner(signerAddr);
+        vm.stopPrank();
 
         inputToken.mint(user, 1000e6);
 
         defaultParams = SpokePoolDepositParams({
             destinationChainId: 42161, // Arbitrum
-            inputToken: bytes32(uint256(uint160(address(inputToken)))),
+            inputTokenId: USDC_ID,
             outputToken: bytes32(uint256(uint160(address(inputToken)))), // Same token
             recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
             message: "",
@@ -142,7 +161,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         nativeParams = SpokePoolDepositParams({
             destinationChainId: 42161,
-            inputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
+            inputTokenId: NATIVE_ASSET_TOKEN_ID,
             outputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
             recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
             message: "",
@@ -197,6 +216,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function _signExecuteDeposit(
         address clone,
+        uint32 inputTokenId,
         uint256 inputAmount,
         uint256 outputAmount,
         bytes32 exclusiveRelayer,
@@ -208,6 +228,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                inputTokenId,
                 inputAmount,
                 outputAmount,
                 exclusiveRelayer,
@@ -224,6 +245,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function _encodeSubmitterData(
         address clone,
+        uint32 inputTokenId,
         uint256 inputAmount,
         uint256 outputAmount,
         bytes32 exclusiveRelayer,
@@ -234,6 +256,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     ) internal view returns (bytes memory) {
         bytes memory sig = _signExecuteDeposit(
             clone,
+            inputTokenId,
             inputAmount,
             outputAmount,
             exclusiveRelayer,
@@ -289,6 +312,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -339,6 +363,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -375,6 +400,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -405,6 +431,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -437,6 +464,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             exclusiveRelayer,
@@ -471,6 +499,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                defaultParams.inputTokenId,
                 inputAmount,
                 outputAmount,
                 bytes32(0),
@@ -518,6 +547,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -548,6 +578,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -576,6 +607,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -735,6 +767,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         // Sign for clone1
         bytes memory sig = _signExecuteDeposit(
             clone1,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -787,6 +820,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -817,6 +851,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -849,6 +884,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -881,6 +917,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            nativeParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -931,6 +968,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            nativeParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -960,6 +998,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            nativeParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1074,6 +1113,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData1 = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1103,6 +1143,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData2 = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1135,6 +1176,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         bytes memory submitterData = _encodeSubmitterData(
             depositAddress,
+            defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
             bytes32(0),
@@ -1153,5 +1195,155 @@ contract CounterfactualSpokePoolDepositTest is Test {
         assertEq(spokePool.lastMsgValue(), 0);
         assertEq(spokePool.lastInputAmount(), expectedDeposit);
         assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee);
+    }
+
+    // --- Registry-driven behavior ---
+
+    function testRegistryUnsetSpokePoolReverts() public {
+        bytes32 salt = keccak256("registry-unset-spoke");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
+
+        bytes memory submitterData = _encodeSubmitterData(
+            depositAddress,
+            defaultParams.inputTokenId,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.prank(registryOwner);
+        registry.setBridge(SPOKE_POOL_ID, address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(CounterfactualDepositSpokePool.RegistryUnset.selector, SPOKE_POOL_ID));
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+    }
+
+    function testRegistryUnsetInputTokenReverts() public {
+        bytes32 salt = keccak256("registry-unset-token");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
+
+        bytes memory submitterData = _encodeSubmitterData(
+            depositAddress,
+            defaultParams.inputTokenId,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
+        );
+
+        vm.prank(registryOwner);
+        registry.setToken(USDC_ID, address(0));
+
+        vm.expectRevert(abi.encodeWithSelector(CounterfactualDepositSpokePool.RegistryUnset.selector, USDC_ID));
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+    }
+
+    function testRegistryUnsetSignerInvalidatesSignature() public {
+        bytes32 salt = keccak256("registry-unset-signer");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
+
+        bytes memory submitterData = _encodeSubmitterData(
+            depositAddress,
+            defaultParams.inputTokenId,
+            inputAmount,
+            outputAmount,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        // Rotate signer; the previously-issued signature no longer matches.
+        vm.prank(registryOwner);
+        registry.setSpokePoolSigner(makeAddr("newSigner"));
+
+        vm.expectRevert(CounterfactualDepositSpokePool.InvalidSignature.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+    }
+
+    function testRegistrySignerRotationLetsNewSignerSign() public {
+        bytes32 salt = keccak256("registry-rotate-signer");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+
+        // Rotate to a new signer that we control the key for.
+        uint256 newKey = 0xC0FFEE;
+        address newSigner = vm.addr(newKey);
+        vm.prank(registryOwner);
+        registry.setSpokePoolSigner(newSigner);
+
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                EXECUTE_DEPOSIT_TYPEHASH,
+                defaultParams.inputTokenId,
+                inputAmount,
+                outputAmount,
+                bytes32(0),
+                uint32(0),
+                uint32(block.timestamp),
+                fillDeadline,
+                uint32(block.timestamp) + 3600
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(depositAddress), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(newKey, digest);
+        bytes memory sig = abi.encodePacked(r, s, v);
+
+        bytes memory submitterData = abi.encode(
+            SpokePoolSubmitterData({
+                inputAmount: inputAmount,
+                outputAmount: outputAmount,
+                exclusiveRelayer: bytes32(0),
+                exclusivityDeadline: 0,
+                executionFeeRecipient: relayer,
+                quoteTimestamp: uint32(block.timestamp),
+                fillDeadline: fillDeadline,
+                signatureDeadline: uint32(block.timestamp) + 3600,
+                signature: sig
+            })
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+        assertEq(spokePool.callCount(), 1);
     }
 }

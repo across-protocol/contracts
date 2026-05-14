@@ -5,34 +5,33 @@ import { console } from "forge-std/console.sol";
 import { CounterfactualConfig } from "./CounterfactualConfig.sol";
 import { CounterfactualDepositOFT } from "../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 
-// How to run (zero-arg, reads from constants + deployed addresses):
+// How to run (zero-arg, reads from deployed addresses for the ChainConfig):
 // 1. `source .env` where `.env` has MNEMONIC="x x x ... x" and ETHERSCAN_API_KEY="x"
 // 2. forge script script/counterfactual/DeployCounterfactualDepositOFT.s.sol:DeployCounterfactualDepositOFT \
 //      --rpc-url $NODE_URL -vvvv
 // 3. Deploy: append --broadcast --verify to the command above
+//
+// NOTE: under Registry Routes the impl is chain-agnostic — its only constructor arg is the
+// ChainConfig registry address. The OFT src periphery, src endpoint id, and bridged token are
+// all resolved from the registry at execute time.
 contract DeployCounterfactualDepositOFT is CounterfactualConfig {
-    /// @notice Zero-arg entry point: resolves all params from constants and deployed addresses.
+    /// @notice Zero-arg entry point: resolves the registry address from deployed-addresses.json.
     function run() external {
-        require(hasOftEid(block.chainid), "Chain does not support OFT");
-        address oftSrcPeriphery = _resolveOftPeriphery();
-        require(oftSrcPeriphery != address(0), "OFT periphery not deployed on this chain");
-        this.run(oftSrcPeriphery, uint32(getOftEid(block.chainid)));
+        address registry = _resolveChainConfig();
+        require(registry != address(0), "ChainConfig not deployed on this chain");
+        this.run(registry);
     }
 
-    function run(address oftSrcPeriphery, uint32 srcEid) external {
+    function run(address registry) external {
         string memory deployerMnemonic = vm.envString("MNEMONIC");
         uint256 deployerPrivateKey = vm.deriveKey(deployerMnemonic, 0);
 
-        require(oftSrcPeriphery != address(0), "OFT SrcPeriphery cannot be zero address");
+        require(registry != address(0), "Registry cannot be zero address");
 
-        bytes memory initCode = abi.encodePacked(
-            type(CounterfactualDepositOFT).creationCode,
-            abi.encode(oftSrcPeriphery, srcEid)
-        );
+        bytes memory initCode = abi.encodePacked(type(CounterfactualDepositOFT).creationCode, abi.encode(registry));
         console.log("Deploying CounterfactualDepositOFT via CREATE2...");
         console.log("Chain ID:", block.chainid);
-        console.log("OFT SrcPeriphery:", oftSrcPeriphery);
-        console.log("Source EID:", uint256(srcEid));
+        console.log("Registry:", registry);
 
         vm.startBroadcast(deployerPrivateKey);
         address deployed = _deployCreate2(bytes32(0), initCode);

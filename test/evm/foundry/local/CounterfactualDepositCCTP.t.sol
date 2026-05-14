@@ -13,6 +13,8 @@ import {
     CCTPSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
+import { ChainConfig } from "../../../../contracts/periphery/counterfactual/ChainConfig.sol";
+import { CCTP_SRC_PERIPHERY_ID, USDC_ID } from "../../../../contracts/periphery/counterfactual/ChainConfigIds.sol";
 import {
     WithdrawImplementation,
     WithdrawParams
@@ -50,11 +52,13 @@ contract CounterfactualDepositTest is Test {
     WithdrawImplementation public withdrawImpl;
     MockSponsoredCCTPSrcPeriphery public srcPeriphery;
     MintableERC20 public burnToken;
+    ChainConfig public registry;
     Merkle public merkle;
 
     address public admin;
     address public user;
     address public relayer;
+    address public registryOwner;
 
     uint32 public constant SOURCE_DOMAIN = 0; // Ethereum
     uint32 public constant DESTINATION_DOMAIN = 3; // Hyperliquid
@@ -66,6 +70,7 @@ contract CounterfactualDepositTest is Test {
         admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
+        registryOwner = makeAddr("registryOwner");
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
 
         burnToken = new MintableERC20("USDC", "USDC", 6);
@@ -73,16 +78,23 @@ contract CounterfactualDepositTest is Test {
         srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        cctpImpl = new CounterfactualDepositCCTP(address(srcPeriphery), SOURCE_DOMAIN);
+        registry = new ChainConfig(registryOwner);
+        cctpImpl = new CounterfactualDepositCCTP(address(registry));
         withdrawImpl = new WithdrawImplementation();
         merkle = new Merkle();
+
+        vm.startPrank(registryOwner);
+        registry.setBridge(CCTP_SRC_PERIPHERY_ID, address(srcPeriphery));
+        registry.setToken(USDC_ID, address(burnToken));
+        registry.setCctpSourceDomain(SOURCE_DOMAIN);
+        vm.stopPrank();
 
         burnToken.mint(user, 1000e6);
 
         defaultDepositParams = CCTPDepositParams({
             destinationDomain: DESTINATION_DOMAIN,
             mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
-            burnToken: bytes32(uint256(uint160(address(burnToken)))),
+            burnTokenId: USDC_ID,
             destinationCaller: bytes32(uint256(uint160(makeAddr("bot")))),
             cctpMaxFeeBps: 100,
             minFinalityThreshold: 1000,
@@ -579,6 +591,69 @@ contract CounterfactualDepositTest is Test {
 
         assertEq(burnToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
         assertEq(srcPeriphery.callCount(), 1, "Deposit should be executed");
+    }
+
+    function testRegistryUpdateChangesResolvedToken() public {
+        // Verifies impls re-read the registry on each execute (no caching).
+        bytes32 salt = keccak256("registry-update");
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        MintableERC20 newBurnToken = new MintableERC20("USDC2", "USDC2", 6);
+        newBurnToken.mint(depositAddress, 100e6);
+
+        vm.prank(registryOwner);
+        registry.setToken(USDC_ID, address(newBurnToken));
+
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce"), block.timestamp + 1 hours, bytes("sig"))
+        );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData, proof);
+
+        // The new token was burned, not the original.
+        assertEq(newBurnToken.balanceOf(address(srcPeriphery)), 100e6 - defaultDepositParams.executionFee);
+        assertEq(newBurnToken.balanceOf(relayer), defaultDepositParams.executionFee);
+    }
+
+    function testRegistryUnsetBridgeReverts() public {
+        bytes32 salt = keccak256("registry-unset-bridge");
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        vm.prank(user);
+        burnToken.transfer(depositAddress, 100e6);
+
+        vm.prank(registryOwner);
+        registry.setBridge(CCTP_SRC_PERIPHERY_ID, address(0));
+
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce"), block.timestamp + 1 hours, bytes("sig"))
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(CounterfactualDepositCCTP.RegistryUnset.selector, CCTP_SRC_PERIPHERY_ID)
+        );
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData, proof);
+    }
+
+    function testRegistryUnsetTokenReverts() public {
+        bytes32 salt = keccak256("registry-unset-token");
+        bytes memory depositParams = _encodedDepositParams();
+        (bytes32 merkleRoot, bytes32[] memory proof) = _depositOnlyTree(depositParams);
+        address depositAddress = factory.deploy(address(dispatcher), merkleRoot, salt);
+
+        vm.prank(registryOwner);
+        registry.setToken(USDC_ID, address(0));
+
+        bytes memory submitterData = abi.encode(
+            CCTPSubmitterData(uint256(100e6), relayer, keccak256("nonce"), block.timestamp + 1 hours, bytes("sig"))
+        );
+        vm.expectRevert(abi.encodeWithSelector(CounterfactualDepositCCTP.RegistryUnset.selector, USDC_ID));
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(cctpImpl), depositParams, submitterData, proof);
     }
 
     function testDeployIfNeededAndExecute() public {

@@ -6,6 +6,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
+import { ChainConfig } from "./ChainConfig.sol";
+import { CCTP_SRC_PERIPHERY_ID } from "./ChainConfigIds.sol";
 
 /**
  * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
@@ -17,11 +19,13 @@ interface ISponsoredCCTPSrcPeriphery {
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
+ * @dev `burnTokenId` is a chain-agnostic id (see ChainConfigIds.sol) resolved against the registry
+ *      at execute time. The same id means the same canonical token on every chain.
  */
 struct CCTPDepositParams {
     uint32 destinationDomain;
     bytes32 mintRecipient;
-    bytes32 burnToken;
+    uint32 burnTokenId;
     bytes32 destinationCaller;
     uint256 cctpMaxFeeBps;
     uint32 minFinalityThreshold;
@@ -50,7 +54,11 @@ struct CCTPSubmitterData {
 /**
  * @title CounterfactualDepositCCTP
  * @notice Implementation contract for counterfactual deposits via SponsoredCCTP.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ * @dev Chain-agnostic: same bytecode + same constructor arg (registry) → same deterministic address
+ *      on every EVM chain. All chain-specific values (CCTP source domain, src periphery address,
+ *      burn token address) are resolved from `ChainConfig` at execute time.
+ *
+ *      Called via delegatecall from the CounterfactualDeposit dispatcher.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositCCTP is ICounterfactualImplementation {
@@ -70,15 +78,14 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         uint256 cctpDeadline
     );
 
-    /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
-    address public immutable srcPeriphery;
+    /// @notice Reverts when a registry id resolves to `address(0)`.
+    error RegistryUnset(uint32 id);
 
-    /// @notice CCTP source domain ID for this chain
-    uint32 public immutable sourceDomain;
+    /// @notice Chain-local config registry. Same address on every chain.
+    ChainConfig public immutable registry;
 
-    constructor(address _srcPeriphery, uint32 _sourceDomain) {
-        srcPeriphery = _srcPeriphery;
-        sourceDomain = _sourceDomain;
+    constructor(address _registry) {
+        registry = ChainConfig(_registry);
     }
 
     /**
@@ -91,33 +98,39 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
         CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
 
-        address inputToken = address(uint160(uint256(dp.burnToken)));
+        address burnToken = _requireRegistryAddress(registry.tokens(dp.burnTokenId), dp.burnTokenId);
+        address srcPeriphery = _requireRegistryAddress(registry.bridges(CCTP_SRC_PERIPHERY_ID), CCTP_SRC_PERIPHERY_ID);
+        uint32 sourceDomain = registry.cctpSourceDomain();
 
-        if (dp.executionFee > 0) IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+        if (dp.executionFee > 0) IERC20(burnToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
 
         uint256 depositAmount = sd.amount - dp.executionFee;
 
-        IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
+        IERC20(burnToken).forceApprove(srcPeriphery, depositAmount);
 
-        _depositForBurn(dp, sd, depositAmount);
+        _depositForBurn(dp, sd, depositAmount, srcPeriphery, sourceDomain, burnToken);
 
         emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
     }
 
     /**
      * @notice Calls depositForBurn on the SponsoredCCTPSrcPeriphery with the constructed quote.
-     * @param dp Route parameters from the merkle leaf.
-     * @param sd Submitter-provided execution data.
-     * @param depositAmount Amount to deposit after deducting the execution fee.
      */
-    function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) private {
+    function _depositForBurn(
+        CCTPDepositParams memory dp,
+        CCTPSubmitterData memory sd,
+        uint256 depositAmount,
+        address srcPeriphery,
+        uint32 sourceDomain,
+        address burnToken
+    ) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
                 destinationDomain: dp.destinationDomain,
                 mintRecipient: dp.mintRecipient,
                 amount: depositAmount,
-                burnToken: dp.burnToken,
+                burnToken: bytes32(uint256(uint160(burnToken))),
                 destinationCaller: dp.destinationCaller,
                 maxFee: (depositAmount * dp.cctpMaxFeeBps) / BPS_SCALAR,
                 minFinalityThreshold: dp.minFinalityThreshold,
@@ -134,5 +147,10 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
             }),
             sd.signature
         );
+    }
+
+    function _requireRegistryAddress(address resolved, uint32 id) private pure returns (address) {
+        if (resolved == address(0)) revert RegistryUnset(id);
+        return resolved;
     }
 }
