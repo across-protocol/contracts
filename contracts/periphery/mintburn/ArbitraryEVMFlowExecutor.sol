@@ -61,7 +61,10 @@ abstract contract ArbitraryEVMFlowExecutor {
         CompressedCall[] memory compressedCalls = abi.decode(params.actionData, (CompressedCall[]));
 
         // Sweep any pre-existing dust on MulticallHandler so it cannot pollute our balance snapshots
-        _drainMulticallHandlerDust(params.initialToken, params.commonParams.finalToken);
+        _drainMulticallHandlerDust(params.initialToken);
+        if (params.commonParams.finalToken != params.initialToken) {
+            _drainMulticallHandlerDust(params.commonParams.finalToken);
+        }
 
         bool differentTokens = params.initialToken != params.commonParams.finalToken;
 
@@ -158,49 +161,17 @@ abstract contract ArbitraryEVMFlowExecutor {
         return abi.encode(instructions);
     }
 
-    /**
-     * @notice Drains any pre-existing balances of initialToken and finalToken from MulticallHandler
-     * @dev No-op when MulticallHandler holds no dust in either token. Otherwise routes a minimal set of
-     *      direct IERC20.transfer calls through handleV3AcrossMessage with fallbackRecipient = 0
-     *      (skipping the handler's own post-drain), then asserts both balances are zero.
-     */
-    function _drainMulticallHandlerDust(address initialToken, address finalToken) internal {
-        uint256 dustInitial = IERC20(initialToken).balanceOf(multicallHandler);
-        bool sameToken = initialToken == finalToken;
-        uint256 dustFinal = sameToken ? 0 : IERC20(finalToken).balanceOf(multicallHandler);
+    /// @notice Drains any pre-existing balance of token from MulticallHandler
+    function _drainMulticallHandlerDust(address token) internal {
+        if (IERC20(token).balanceOf(multicallHandler) == 0) return;
 
-        uint256 callCount = (dustInitial > 0 ? 1 : 0) + (dustFinal > 0 ? 1 : 0);
-        if (callCount == 0) return;
-
-        MulticallHandler.Call[] memory calls = new MulticallHandler.Call[](callCount);
-        uint256 idx;
-        if (dustInitial > 0) {
-            calls[idx++] = MulticallHandler.Call({
-                target: initialToken,
-                callData: abi.encodeCall(IERC20.transfer, (address(this), dustInitial)),
-                value: 0
-            });
-        }
-        if (dustFinal > 0) {
-            calls[idx] = MulticallHandler.Call({
-                target: finalToken,
-                callData: abi.encodeCall(IERC20.transfer, (address(this), dustFinal)),
-                value: 0
-            });
-        }
-
+        // Empty instructions with `fallbackRecipient` set. Causes MulticallHandler to call `_drainRemainingTokens`, which
+        // does a safeTransfer of `token` to `fallbackRecipient`, this contract, essentially removing dust
         bytes memory instructions = abi.encode(
-            MulticallHandler.Instructions({ calls: calls, fallbackRecipient: address(0) })
+            MulticallHandler.Instructions({ calls: new MulticallHandler.Call[](0), fallbackRecipient: address(this) })
         );
 
-        MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(initialToken, 0, address(this), instructions);
-
-        if (dustInitial > 0) {
-            require(IERC20(initialToken).balanceOf(multicallHandler) == 0, "MCH initial token dust");
-        }
-        if (dustFinal > 0) {
-            require(IERC20(finalToken).balanceOf(multicallHandler) == 0, "MCH final token dust");
-        }
+        MulticallHandler(payable(multicallHandler)).handleV3AcrossMessage(token, 0, address(this), instructions);
     }
 
     /// @notice Calculates proportional fees to sponsor in finalToken, given the fees to sponsor in initial token and initial amount
