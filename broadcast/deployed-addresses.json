@@ -1860,11 +1860,6 @@
           "block_number": 81269910,
           "transaction_hash": "ac7736e4912d3bd8e02b9dc26bd0ba6c0486b488b091141a8dde7f0c96be13f5"
         },
-        "CounterfactualDepositSpokePool": {
-          "address": "TN3K7Tk2jZMjdafcUQrkg8yw6BneQtXZ75",
-          "block_number": 81271437,
-          "transaction_hash": "d3a41d6aaf79a3a482c3824050ecd44457957b920893d92da222a2335eefdd09"
-        },
         "CounterfactualDepositSpokePoolTr": {
           "address": "TF3BzhGswEw4kEWnR5dzjCsZEj4cVzVtsG",
           "block_number": 82681402,
@@ -1889,11 +1884,6 @@
           "address": "TN88jHbhTpRcKwS6f7fNmXFbGbeqJR1trZ",
           "block_number": 81812685,
           "transaction_hash": "9a708fb56c6b0bba4e87599f8b1309b479f144badc7a2130d4cd3554836e4481"
-        },
-        "WithdrawImplementation": {
-          "address": "TJkwUDFPKXABkeu38v42sdwQS2VxgRweow",
-          "block_number": 81269861,
-          "transaction_hash": "226499b9a0e735991922ca744364017aa882df1b33ea23e44c80695181ed12d4"
         },
         "WithdrawImplementationTron": {
           "address": "THPA5L2jxGE84FHMieds212WH3sRX5Hi9t",
