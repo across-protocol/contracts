@@ -2,7 +2,7 @@
 /**
  * Deploys SP1AutoVerifier to Tron via TronWeb.
  *
- * SP1AutoVerifier has no constructor args — it's a no-op verifier for testing.
+ * SP1AutoVerifier has no constructor args — it's a no-op verifier.
  *
  * Env vars:
  *   MNEMONIC              — BIP-39 mnemonic (derives account 0 private key)
