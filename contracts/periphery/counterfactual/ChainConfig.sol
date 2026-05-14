@@ -32,8 +32,8 @@ contract ChainConfig is Ownable2Step {
     event CctpSourceDomainSet(uint32 value);
     /// @notice Emitted when the OFT source endpoint id is set.
     event OftSrcEidSet(uint32 value);
-    /// @notice Emitted when the SpokePool signer is set.
-    event SpokePoolSignerSet(address indexed signer);
+    /// @notice Emitted when the signer is set.
+    event SignerSet(address indexed signer);
 
     /// @notice Bridge address by stable, chain-agnostic id (see ChainConfigIds.sol).
     mapping(uint32 id => address addr) public bridges;
@@ -44,8 +44,9 @@ contract ChainConfig is Ownable2Step {
     uint32 public cctpSourceDomain;
     /// @notice LayerZero source endpoint id for this chain. Used by CounterfactualDepositOFT.
     uint32 public oftSrcEid;
-    /// @notice Signer authorized to issue ExecuteDeposit signatures consumed by CounterfactualDepositSpokePool.
-    address public spokePoolSigner;
+    /// @notice Signer authorized to issue execution-fee envelope signatures consumed by all
+    ///         counterfactual deposit implementations (SpokePool, CCTP, OFT).
+    address public signer;
 
     constructor(address _owner) Ownable(_owner) {}
 
@@ -71,8 +72,8 @@ contract ChainConfig is Ownable2Step {
         emit OftSrcEidSet(value);
     }
 
-    function setSpokePoolSigner(address signer) external onlyOwner {
-        spokePoolSigner = signer;
-        emit SpokePoolSignerSet(signer);
+    function setSigner(address newSigner) external onlyOwner {
+        signer = newSigner;
+        emit SignerSet(newSigner);
     }
 }

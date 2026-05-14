@@ -40,7 +40,7 @@ contract ChainConfigTest is Test {
         assertEq(registry.tokens(USDC_ID), address(0));
         assertEq(registry.cctpSourceDomain(), 0);
         assertEq(registry.oftSrcEid(), 0);
-        assertEq(registry.spokePoolSigner(), address(0));
+        assertEq(registry.signer(), address(0));
     }
 
     // --- setBridge ---
@@ -150,19 +150,19 @@ contract ChainConfigTest is Test {
         assertEq(registry.oftSrcEid(), 30101);
     }
 
-    function testSetSpokePoolSigner() public {
-        address signer = makeAddr("signer");
+    function testSetSigner() public {
+        address newSigner = makeAddr("signer");
 
         vm.prank(attacker);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
-        registry.setSpokePoolSigner(signer);
+        registry.setSigner(newSigner);
 
         vm.expectEmit(true, true, true, true);
-        emit ChainConfig.SpokePoolSignerSet(signer);
+        emit ChainConfig.SignerSet(newSigner);
         vm.prank(owner);
-        registry.setSpokePoolSigner(signer);
+        registry.setSigner(newSigner);
 
-        assertEq(registry.spokePoolSigner(), signer);
+        assertEq(registry.signer(), newSigner);
     }
 
     // --- Ownable2Step ---

@@ -109,7 +109,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
     // EIP-712 constants (must match contract)
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint32 inputTokenId,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(uint32 inputTokenId,uint256 inputAmount,uint256 outputAmount,uint256 executionFee,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -117,6 +117,10 @@ contract CounterfactualSpokePoolDepositTest is Test {
     bytes32 constant VERSION_HASH = keccak256("v1.0.0");
 
     address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+    /// @dev Absolute execution fees the signer authorizes in the default test setup.
+    uint256 constant EXEC_FEE = 1e6;
+    uint256 constant NATIVE_EXEC_FEE = 0.01 ether;
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -142,7 +146,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         registry.setToken(USDC_ID, address(inputToken));
         registry.setToken(WRAPPED_NATIVE_ID, weth);
         registry.setToken(NATIVE_ASSET_TOKEN_ID, NATIVE_ASSET);
-        registry.setSpokePoolSigner(signerAddr);
+        registry.setSigner(signerAddr);
         vm.stopPrank();
 
         inputToken.mint(user, 1000e6);
@@ -156,7 +160,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             stableExchangeRate: 1e18, // 1:1
             maxFeeFixed: 1e6, // 1 USDC fixed
             maxFeeBps: 500, // 5% variable
-            executionFee: 1e6 // 1 USDC
+            maxExecutionFeeBps: 100 // 1% cap on inputAmount
         });
 
         nativeParams = SpokePoolDepositParams({
@@ -168,7 +172,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             stableExchangeRate: 1e18,
             maxFeeFixed: 0.01 ether,
             maxFeeBps: 500,
-            executionFee: 0.01 ether
+            maxExecutionFeeBps: 100
         });
     }
 
@@ -219,6 +223,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 inputTokenId,
         uint256 inputAmount,
         uint256 outputAmount,
+        uint256 executionFee,
         bytes32 exclusiveRelayer,
         uint32 exclusivityDeadline,
         uint32 quoteTimestamp,
@@ -231,6 +236,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 inputTokenId,
                 inputAmount,
                 outputAmount,
+                executionFee,
                 exclusiveRelayer,
                 exclusivityDeadline,
                 quoteTimestamp,
@@ -248,6 +254,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint32 inputTokenId,
         uint256 inputAmount,
         uint256 outputAmount,
+        uint256 executionFee,
         bytes32 exclusiveRelayer,
         uint32 exclusivityDeadline,
         uint32 quoteTimestamp,
@@ -259,6 +266,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             inputTokenId,
             inputAmount,
             outputAmount,
+            executionFee,
             exclusiveRelayer,
             exclusivityDeadline,
             quoteTimestamp,
@@ -270,6 +278,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 SpokePoolSubmitterData({
                     inputAmount: inputAmount,
                     outputAmount: outputAmount,
+                    executionFee: executionFee,
                     exclusiveRelayer: exclusiveRelayer,
                     exclusivityDeadline: exclusivityDeadline,
                     executionFeeRecipient: relayer,
@@ -304,7 +313,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
+        uint256 expectedDeposit = inputAmount - EXEC_FEE;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes memory paramsEncoded = abi.encode(defaultParams);
@@ -315,6 +324,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -347,7 +357,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(inputToken.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee, "Relayer should receive execution fee");
+        assertEq(inputToken.balanceOf(relayer), EXEC_FEE, "Relayer should receive execution fee");
         assertEq(spokePool.lastInputAmount(), expectedDeposit, "SpokePool should have received net amount");
     }
 
@@ -355,7 +365,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
+        uint256 expectedDeposit = inputAmount - EXEC_FEE;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes memory paramsEncoded = abi.encode(defaultParams);
@@ -366,6 +376,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -385,7 +396,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         factory.execute(depositAddress, executeCalldata);
 
         assertEq(inputToken.balanceOf(depositAddress), 0);
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee);
+        assertEq(inputToken.balanceOf(relayer), EXEC_FEE);
         assertEq(spokePool.lastInputAmount(), expectedDeposit);
     }
 
@@ -403,6 +414,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -434,6 +446,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -467,6 +480,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             exclusiveRelayer,
             exclusivityDeadline,
             uint32(block.timestamp),
@@ -502,6 +516,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 defaultParams.inputTokenId,
                 inputAmount,
                 outputAmount,
+                EXEC_FEE,
                 bytes32(0),
                 uint32(0),
                 uint32(block.timestamp),
@@ -517,6 +532,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             SpokePoolSubmitterData({
                 inputAmount: inputAmount,
                 outputAmount: outputAmount,
+                executionFee: EXEC_FEE,
                 exclusiveRelayer: bytes32(0),
                 exclusivityDeadline: 0,
                 executionFeeRecipient: relayer,
@@ -550,6 +566,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -581,6 +598,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -610,6 +628,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -770,6 +789,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -780,6 +800,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             SpokePoolSubmitterData({
                 inputAmount: inputAmount,
                 outputAmount: outputAmount,
+                executionFee: EXEC_FEE,
                 exclusiveRelayer: bytes32(0),
                 exclusivityDeadline: 0,
                 executionFeeRecipient: relayer,
@@ -809,7 +830,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testExecuteWithZeroExecutionFee() public {
         SpokePoolDepositParams memory params = defaultParams;
-        params.executionFee = 0;
+        params.maxExecutionFeeBps = 0;
         bytes32 salt = keccak256("test-salt-zero-fee");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
@@ -823,6 +844,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            0,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -854,6 +876,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -887,6 +910,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -909,7 +933,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("native-salt");
         uint256 inputAmount = 1 ether;
         uint256 outputAmount = 0.98 ether;
-        uint256 expectedDeposit = inputAmount - nativeParams.executionFee;
+        uint256 expectedDeposit = inputAmount - NATIVE_EXEC_FEE;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes memory paramsEncoded = abi.encode(nativeParams);
@@ -920,6 +944,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             nativeParams.inputTokenId,
             inputAmount,
             outputAmount,
+            NATIVE_EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -951,7 +976,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         assertEq(deployed, depositAddress);
         assertEq(depositAddress.balance, 0);
-        assertEq(relayer.balance, nativeParams.executionFee);
+        assertEq(relayer.balance, NATIVE_EXEC_FEE);
         assertEq(spokePool.lastInputAmount(), expectedDeposit);
         assertEq(spokePool.lastMsgValue(), expectedDeposit);
         assertEq(spokePool.lastInputToken(), bytes32(uint256(uint160(weth))));
@@ -971,6 +996,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             nativeParams.inputTokenId,
             inputAmount,
             outputAmount,
+            NATIVE_EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -987,7 +1013,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
     function testNativeZeroExecutionFee() public {
         SpokePoolDepositParams memory params = nativeParams;
-        params.executionFee = 0;
+        params.maxExecutionFeeBps = 0;
         bytes32 salt = keccak256("native-zero-fee");
         uint256 inputAmount = 1 ether;
         uint256 outputAmount = 0.98 ether;
@@ -1001,6 +1027,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             nativeParams.inputTokenId,
             inputAmount,
             outputAmount,
+            0,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1105,7 +1132,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
+        uint256 expectedDeposit = inputAmount - EXEC_FEE;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes memory paramsEncoded = abi.encode(defaultParams);
@@ -1116,6 +1143,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1146,6 +1174,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1168,7 +1197,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         bytes32 salt = keccak256("erc20-flow");
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
+        uint256 expectedDeposit = inputAmount - EXEC_FEE;
         uint32 fillDeadline = uint32(block.timestamp) + 3600;
 
         bytes memory paramsEncoded = abi.encode(defaultParams);
@@ -1179,6 +1208,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1194,7 +1224,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         assertEq(spokePool.lastMsgValue(), 0);
         assertEq(spokePool.lastInputAmount(), expectedDeposit);
-        assertEq(inputToken.balanceOf(relayer), defaultParams.executionFee);
+        assertEq(inputToken.balanceOf(relayer), EXEC_FEE);
     }
 
     // --- Registry-driven behavior ---
@@ -1213,6 +1243,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1245,6 +1276,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1274,6 +1306,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             defaultParams.inputTokenId,
             inputAmount,
             outputAmount,
+            EXEC_FEE,
             bytes32(0),
             0,
             uint32(block.timestamp),
@@ -1286,7 +1319,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
 
         // Rotate signer; the previously-issued signature no longer matches.
         vm.prank(registryOwner);
-        registry.setSpokePoolSigner(makeAddr("newSigner"));
+        registry.setSigner(makeAddr("newSigner"));
 
         vm.expectRevert(CounterfactualDepositSpokePool.InvalidSignature.selector);
         vm.prank(relayer);
@@ -1303,7 +1336,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
         uint256 newKey = 0xC0FFEE;
         address newSigner = vm.addr(newKey);
         vm.prank(registryOwner);
-        registry.setSpokePoolSigner(newSigner);
+        registry.setSigner(newSigner);
 
         bytes memory paramsEncoded = abi.encode(defaultParams);
         (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
@@ -1314,6 +1347,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
                 defaultParams.inputTokenId,
                 inputAmount,
                 outputAmount,
+                EXEC_FEE,
                 bytes32(0),
                 uint32(0),
                 uint32(block.timestamp),
@@ -1329,6 +1363,7 @@ contract CounterfactualSpokePoolDepositTest is Test {
             SpokePoolSubmitterData({
                 inputAmount: inputAmount,
                 outputAmount: outputAmount,
+                executionFee: EXEC_FEE,
                 exclusiveRelayer: bytes32(0),
                 exclusivityDeadline: 0,
                 executionFeeRecipient: relayer,
@@ -1345,5 +1380,89 @@ contract CounterfactualSpokePoolDepositTest is Test {
         vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
         assertEq(spokePool.callCount(), 1);
+    }
+
+    // --- Dynamic execution fee ---
+
+    function testExecutionFeeAboveMaxReverts() public {
+        bytes32 salt = keccak256("exec-fee-too-high");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+        // Submitter (correctly signed) tries to claim more than the leaf's cap.
+        uint256 attemptedFee = EXEC_FEE + 1;
+
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
+
+        bytes memory submitterData = _encodeSubmitterData(
+            depositAddress,
+            defaultParams.inputTokenId,
+            inputAmount,
+            outputAmount,
+            attemptedFee,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            uint32(block.timestamp) + 3600
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.expectRevert(CounterfactualDepositSpokePool.ExecutionFeeTooHigh.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+    }
+
+    function testExecutionFeeMismatchSigFails() public {
+        // Signer signs `executionFee = 0.5e6` but submitter claims 1e6 in the struct → InvalidSignature.
+        bytes32 salt = keccak256("exec-fee-sig-mismatch");
+        uint256 inputAmount = 100e6;
+        uint256 outputAmount = 98e6;
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+        uint32 signatureDeadline = uint32(block.timestamp) + 3600;
+        uint256 signedFee = 0.5e6;
+        uint256 submittedFee = 1e6;
+
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        (address depositAddress, bytes32[] memory proof) = _buildTreeAndDeploy(paramsEncoded, salt);
+
+        // Sign for signedFee, build submitter data with submittedFee.
+        bytes memory sig = _signExecuteDeposit(
+            depositAddress,
+            defaultParams.inputTokenId,
+            inputAmount,
+            outputAmount,
+            signedFee,
+            bytes32(0),
+            0,
+            uint32(block.timestamp),
+            fillDeadline,
+            signatureDeadline
+        );
+
+        bytes memory submitterData = abi.encode(
+            SpokePoolSubmitterData({
+                inputAmount: inputAmount,
+                outputAmount: outputAmount,
+                executionFee: submittedFee,
+                exclusiveRelayer: bytes32(0),
+                exclusivityDeadline: 0,
+                executionFeeRecipient: relayer,
+                quoteTimestamp: uint32(block.timestamp),
+                fillDeadline: fillDeadline,
+                signatureDeadline: signatureDeadline,
+                signature: sig
+            })
+        );
+
+        vm.prank(user);
+        inputToken.transfer(depositAddress, inputAmount);
+
+        vm.expectRevert(CounterfactualDepositSpokePool.InvalidSignature.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
     }
 }

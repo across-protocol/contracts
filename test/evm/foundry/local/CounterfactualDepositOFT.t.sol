@@ -75,6 +75,8 @@ contract CounterfactualOFTDepositTest is Test {
     address public user;
     address public relayer;
     address public registryOwner;
+    uint256 public signerPrivateKey;
+    address public signerAddr;
 
     uint32 public constant SRC_EID = 30101; // Ethereum LZ eid
     uint32 public constant DST_EID = 30284; // Example destination eid
@@ -83,11 +85,26 @@ contract CounterfactualOFTDepositTest is Test {
     OFTDepositParams internal defaultDepositParams;
     WithdrawParams internal withdrawParamsVal;
 
+    // EIP-712 constants — must match contract.
+    bytes32 constant EXECUTE_OFT_DEPOSIT_TYPEHASH =
+        keccak256(
+            "ExecuteOFTDeposit(uint32 tokenId,uint256 amount,uint256 executionFee,bytes32 nonce,uint256 oftDeadline,uint32 signatureDeadline)"
+        );
+    bytes32 constant EIP712_DOMAIN_TYPEHASH =
+        keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 constant NAME_HASH = keccak256("CounterfactualDepositOFT");
+    bytes32 constant VERSION_HASH = keccak256("v1.0.0");
+
+    /// @dev Absolute execution fee the signer authorizes in the default test setup.
+    uint256 constant EXEC_FEE = 1e6;
+
     function setUp() public {
         admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         registryOwner = makeAddr("registryOwner");
+        signerPrivateKey = 0xA11CE;
+        signerAddr = vm.addr(signerPrivateKey);
         finalRecipient = bytes32(uint256(uint160(makeAddr("finalRecipient"))));
 
         token = new MintableERC20("USDC", "USDC", 6);
@@ -104,6 +121,7 @@ contract CounterfactualOFTDepositTest is Test {
         registry.setBridge(OFT_SRC_PERIPHERY_ID, address(srcPeriphery));
         registry.setToken(USDC_ID, address(token));
         registry.setOftSrcEid(SRC_EID);
+        registry.setSigner(signerAddr);
         vm.stopPrank();
 
         token.mint(user, 1000e6);
@@ -124,7 +142,7 @@ contract CounterfactualOFTDepositTest is Test {
             executionMode: 0,
             refundRecipient: makeAddr("refundRecipient"),
             actionData: "",
-            executionFee: 1e6
+            maxExecutionFeeBps: 100
         });
 
         withdrawParamsVal = WithdrawParams({ admin: admin, user: user });
@@ -157,22 +175,98 @@ contract CounterfactualOFTDepositTest is Test {
         return merkle.getProof(_defaultLeaves(), 1);
     }
 
-    function _encodeDepositSubmitterData(
-        uint256 amount,
-        address executionFeeRecipient,
-        bytes32 nonce,
-        uint256 oftDeadline,
-        bytes memory signature
-    ) internal pure returns (bytes memory) {
-        return abi.encode(OFTSubmitterData(amount, executionFeeRecipient, nonce, oftDeadline, signature));
-    }
-
     function _encodeWithdrawSubmitterData(
         address tokenAddr,
         address to,
         uint256 amount
     ) internal pure returns (bytes memory) {
         return abi.encode(tokenAddr, to, amount);
+    }
+
+    // -- EIP-712 helpers --
+
+    function _domainSeparator(address clone) internal view returns (bytes32) {
+        return keccak256(abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, clone));
+    }
+
+    function _signOftDeposit(
+        address clone,
+        uint32 tokenId,
+        uint256 amount,
+        uint256 executionFee,
+        bytes32 nonce,
+        uint256 oftDeadline,
+        uint32 signatureDeadline
+    ) internal view returns (bytes memory) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                EXECUTE_OFT_DEPOSIT_TYPEHASH,
+                tokenId,
+                amount,
+                executionFee,
+                nonce,
+                oftDeadline,
+                signatureDeadline
+            )
+        );
+        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _buildSubmitterData(
+        address clone,
+        uint32 tokenId,
+        uint256 amount,
+        uint256 executionFee,
+        bytes32 nonce,
+        uint256 oftDeadline,
+        uint32 signatureDeadline,
+        bytes memory peripherySignature
+    ) internal view returns (bytes memory) {
+        bytes memory localSig = _signOftDeposit(
+            clone,
+            tokenId,
+            amount,
+            executionFee,
+            nonce,
+            oftDeadline,
+            signatureDeadline
+        );
+        return
+            abi.encode(
+                OFTSubmitterData({
+                    amount: amount,
+                    executionFee: executionFee,
+                    executionFeeRecipient: relayer,
+                    nonce: nonce,
+                    oftDeadline: oftDeadline,
+                    signatureDeadline: signatureDeadline,
+                    signature: localSig,
+                    peripherySignature: peripherySignature
+                })
+            );
+    }
+
+    /// @dev Convenience wrapper: signs for `EXEC_FEE` and reuses the
+    ///      OFT deadline as the signature deadline.
+    function _defaultSubmitterData(
+        address clone,
+        uint256 amount,
+        bytes32 nonce,
+        uint256 oftDeadline
+    ) internal view returns (bytes memory) {
+        return
+            _buildSubmitterData(
+                clone,
+                defaultDepositParams.tokenId,
+                amount,
+                EXEC_FEE,
+                nonce,
+                oftDeadline,
+                uint32(oftDeadline),
+                bytes("peripherySig")
+            );
     }
 
     // --- Tests ---
@@ -191,7 +285,7 @@ contract CounterfactualOFTDepositTest is Test {
         bytes32 salt = keccak256("test-salt");
         bytes32 nonce = keccak256("nonce-1");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
+        uint256 expectedDeposit = amount - EXEC_FEE;
 
         bytes32 root = _merkleRoot();
         address depositAddress = factory.predictDepositAddress(address(dispatcher), root, salt);
@@ -200,14 +294,14 @@ contract CounterfactualOFTDepositTest is Test {
         token.transfer(depositAddress, amount);
 
         vm.expectEmit(true, true, true, true);
-        emit CounterfactualDepositOFT.OFTDepositExecuted(amount, relayer, nonce, block.timestamp + 1 hours);
+        emit CounterfactualDepositOFT.OFTDepositExecuted(amount, EXEC_FEE, relayer, nonce, block.timestamp + 1 hours);
 
         bytes memory executeCalldata = abi.encodeCall(
             CounterfactualDeposit.execute,
             (
                 address(oftImpl),
                 abi.encode(defaultDepositParams),
-                _encodeDepositSubmitterData(amount, relayer, nonce, block.timestamp + 1 hours, "sig"),
+                _defaultSubmitterData(depositAddress, amount, nonce, block.timestamp + 1 hours),
                 _depositProof()
             )
         );
@@ -223,7 +317,7 @@ contract CounterfactualOFTDepositTest is Test {
 
         assertEq(deployed, depositAddress, "Deployed address should match prediction");
         assertEq(token.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(token.balanceOf(relayer), defaultDepositParams.executionFee, "Relayer should receive execution fee");
+        assertEq(token.balanceOf(relayer), EXEC_FEE, "Relayer should receive execution fee");
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
         assertEq(srcPeriphery.lastNonce(), nonce, "SrcPeriphery should have received correct nonce");
     }
@@ -243,7 +337,7 @@ contract CounterfactualOFTDepositTest is Test {
         ICounterfactualDeposit(depositAddress).execute{ value: lzFee }(
             address(oftImpl),
             abi.encode(defaultDepositParams),
-            _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+            _defaultSubmitterData(depositAddress, amount, keccak256("nonce-1"), block.timestamp + 1 hours),
             _depositProof()
         );
 
@@ -253,7 +347,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testQuoteParamsBuiltCorrectly() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
+        uint256 expectedDeposit = amount - EXEC_FEE;
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
 
@@ -264,7 +358,7 @@ contract CounterfactualOFTDepositTest is Test {
         ICounterfactualDeposit(depositAddress).execute(
             address(oftImpl),
             abi.encode(defaultDepositParams),
-            _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+            _defaultSubmitterData(depositAddress, amount, keccak256("nonce-1"), block.timestamp + 1 hours),
             _depositProof()
         );
 
@@ -296,35 +390,31 @@ contract CounterfactualOFTDepositTest is Test {
         ICounterfactualDeposit(depositAddress).execute(
             address(oftImpl),
             abi.encode(defaultDepositParams),
-            _encodeDepositSubmitterData(100e6, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+            _defaultSubmitterData(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours),
             _depositProof()
         );
 
         // Second deposit
         vm.prank(user);
-        token.transfer(depositAddress, 50e6);
+        token.transfer(depositAddress, 100e6);
 
         vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(oftImpl),
             abi.encode(defaultDepositParams),
-            _encodeDepositSubmitterData(50e6, relayer, keccak256("nonce-2"), block.timestamp + 1 hours, "sig"),
+            _defaultSubmitterData(depositAddress, 100e6, keccak256("nonce-2"), block.timestamp + 1 hours),
             _depositProof()
         );
 
         assertEq(srcPeriphery.callCount(), 2, "Should have two deposits");
         assertEq(token.balanceOf(depositAddress), 0, "All tokens should be deposited");
-        assertEq(
-            token.balanceOf(relayer),
-            2 * defaultDepositParams.executionFee,
-            "Relayer should receive fees from both deposits"
-        );
+        assertEq(token.balanceOf(relayer), 2 * EXEC_FEE, "Relayer should receive fees from both deposits");
     }
 
     function testExecuteViaFactory() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
+        uint256 expectedDeposit = amount - EXEC_FEE;
 
         address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
 
@@ -336,7 +426,7 @@ contract CounterfactualOFTDepositTest is Test {
             (
                 address(oftImpl),
                 abi.encode(defaultDepositParams),
-                _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+                _defaultSubmitterData(depositAddress, amount, keccak256("nonce-1"), block.timestamp + 1 hours),
                 _depositProof()
             )
         );
@@ -345,7 +435,7 @@ contract CounterfactualOFTDepositTest is Test {
         factory.execute(depositAddress, executeCalldata);
 
         assertEq(token.balanceOf(depositAddress), 0, "Deposit contract should have no balance left");
-        assertEq(token.balanceOf(relayer), defaultDepositParams.executionFee, "Relayer should receive execution fee");
+        assertEq(token.balanceOf(relayer), EXEC_FEE, "Relayer should receive execution fee");
         assertEq(srcPeriphery.lastAmount(), expectedDeposit, "SrcPeriphery should have received net amount");
     }
 
@@ -364,7 +454,7 @@ contract CounterfactualOFTDepositTest is Test {
             (
                 address(oftImpl),
                 abi.encode(defaultDepositParams),
-                _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+                _defaultSubmitterData(depositAddress, amount, keccak256("nonce-1"), block.timestamp + 1 hours),
                 _depositProof()
             )
         );
@@ -456,7 +546,7 @@ contract CounterfactualOFTDepositTest is Test {
 
     function testExecuteWithZeroExecutionFee() public {
         OFTDepositParams memory zeroFeeParams = defaultDepositParams;
-        zeroFeeParams.executionFee = 0;
+        zeroFeeParams.maxExecutionFeeBps = 0;
 
         // Build a new merkle tree with the zero-fee deposit params.
         bytes32[] memory leaves = new bytes32[](4);
@@ -475,11 +565,23 @@ contract CounterfactualOFTDepositTest is Test {
         vm.prank(user);
         token.transfer(depositAddress, amount);
 
+        // Submitter claims 0 execution fee (matches the leaf cap of 0).
+        bytes memory submitterData = _buildSubmitterData(
+            depositAddress,
+            zeroFeeParams.tokenId,
+            amount,
+            0,
+            keccak256("nonce-1"),
+            block.timestamp + 1 hours,
+            uint32(block.timestamp + 1 hours),
+            bytes("peripherySig")
+        );
+
         vm.prank(relayer);
         ICounterfactualDeposit(depositAddress).execute(
             address(oftImpl),
             abi.encode(zeroFeeParams),
-            _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+            submitterData,
             proof
         );
 
@@ -505,7 +607,7 @@ contract CounterfactualOFTDepositTest is Test {
         ICounterfactualDeposit(depositAddress).execute(
             address(oftImpl),
             abi.encode(wrongParams),
-            _encodeDepositSubmitterData(100e6, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+            _defaultSubmitterData(depositAddress, 100e6, keccak256("nonce-1"), block.timestamp + 1 hours),
             proof
         );
     }
@@ -537,12 +639,11 @@ contract CounterfactualOFTDepositTest is Test {
         // Precompute proof and submitter data so the foundry cheats below apply to the right call.
         bytes32[] memory proof = _depositProof();
         bytes memory params = abi.encode(defaultDepositParams);
-        bytes memory submitterData = _encodeDepositSubmitterData(
+        bytes memory submitterData = _defaultSubmitterData(
+            depositAddress,
             100e6,
-            relayer,
             keccak256("nonce"),
-            block.timestamp + 1 hours,
-            "sig"
+            block.timestamp + 1 hours
         );
 
         vm.prank(registryOwner);
@@ -559,12 +660,11 @@ contract CounterfactualOFTDepositTest is Test {
 
         bytes32[] memory proof = _depositProof();
         bytes memory params = abi.encode(defaultDepositParams);
-        bytes memory submitterData = _encodeDepositSubmitterData(
+        bytes memory submitterData = _defaultSubmitterData(
+            depositAddress,
             100e6,
-            relayer,
             keccak256("nonce"),
-            block.timestamp + 1 hours,
-            "sig"
+            block.timestamp + 1 hours
         );
 
         vm.prank(registryOwner);
@@ -578,7 +678,7 @@ contract CounterfactualOFTDepositTest is Test {
     function testDeployIfNeededAndExecute() public {
         bytes32 salt = keccak256("test-salt");
         uint256 amount = 100e6;
-        uint256 expectedDeposit = amount - defaultDepositParams.executionFee;
+        uint256 expectedDeposit = amount - EXEC_FEE;
 
         bytes32 root = _merkleRoot();
         address depositAddress = factory.predictDepositAddress(address(dispatcher), root, salt);
@@ -591,7 +691,7 @@ contract CounterfactualOFTDepositTest is Test {
             (
                 address(oftImpl),
                 abi.encode(defaultDepositParams),
-                _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-1"), block.timestamp + 1 hours, "sig"),
+                _defaultSubmitterData(depositAddress, amount, keccak256("nonce-1"), block.timestamp + 1 hours),
                 _depositProof()
             )
         );
@@ -611,7 +711,7 @@ contract CounterfactualOFTDepositTest is Test {
             (
                 address(oftImpl),
                 abi.encode(defaultDepositParams),
-                _encodeDepositSubmitterData(amount, relayer, keccak256("nonce-2"), block.timestamp + 1 hours, "sig"),
+                _defaultSubmitterData(depositAddress, amount, keccak256("nonce-2"), block.timestamp + 1 hours),
                 _depositProof()
             )
         );
@@ -620,5 +720,101 @@ contract CounterfactualOFTDepositTest is Test {
         address deployed2 = factory.deployIfNeededAndExecute(address(dispatcher), root, salt, executeCalldata2);
         assertEq(deployed2, depositAddress, "Should return same address");
         assertEq(srcPeriphery.callCount(), 2, "Both deposits should execute");
+    }
+
+    // --- Dynamic execution fee ---
+
+    function testExecutionFeeAboveMaxReverts() public {
+        bytes32 salt = keccak256("oft-fee-too-high");
+        uint256 amount = 100e6;
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes32[] memory proof = _depositProof();
+        bytes memory params = abi.encode(defaultDepositParams);
+        bytes memory submitterData = _buildSubmitterData(
+            depositAddress,
+            defaultDepositParams.tokenId,
+            amount,
+            EXEC_FEE + 1,
+            keccak256("nonce"),
+            block.timestamp + 1 hours,
+            uint32(block.timestamp + 1 hours),
+            bytes("peripherySig")
+        );
+
+        vm.expectRevert(CounterfactualDepositOFT.ExecutionFeeTooHigh.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(oftImpl), params, submitterData, proof);
+    }
+
+    function testExecutionFeeMismatchSigFails() public {
+        bytes32 salt = keccak256("oft-fee-sig-mismatch");
+        uint256 amount = 100e6;
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes32[] memory proof = _depositProof();
+        bytes memory params = abi.encode(defaultDepositParams);
+
+        // Sign for 0.5e6 but submit 1e6 (within the cap).
+        bytes memory sig = _signOftDeposit(
+            depositAddress,
+            defaultDepositParams.tokenId,
+            amount,
+            0.5e6,
+            keccak256("nonce"),
+            block.timestamp + 1 hours,
+            uint32(block.timestamp + 1 hours)
+        );
+        bytes memory submitterData = abi.encode(
+            OFTSubmitterData({
+                amount: amount,
+                executionFee: 1e6,
+                executionFeeRecipient: relayer,
+                nonce: keccak256("nonce"),
+                oftDeadline: block.timestamp + 1 hours,
+                signatureDeadline: uint32(block.timestamp + 1 hours),
+                signature: sig,
+                peripherySignature: bytes("peripherySig")
+            })
+        );
+
+        vm.expectRevert(CounterfactualDepositOFT.InvalidSignature.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(oftImpl), params, submitterData, proof);
+    }
+
+    function testExpiredSignatureReverts() public {
+        bytes32 salt = keccak256("oft-sig-expired");
+        uint256 amount = 100e6;
+        address depositAddress = factory.deploy(address(dispatcher), _merkleRoot(), salt);
+
+        vm.prank(user);
+        token.transfer(depositAddress, amount);
+
+        bytes32[] memory proof = _depositProof();
+        bytes memory params = abi.encode(defaultDepositParams);
+        uint32 signatureDeadline = uint32(block.timestamp + 60);
+        bytes memory submitterData = _buildSubmitterData(
+            depositAddress,
+            defaultDepositParams.tokenId,
+            amount,
+            EXEC_FEE,
+            keccak256("nonce"),
+            block.timestamp + 1 hours,
+            signatureDeadline,
+            bytes("peripherySig")
+        );
+
+        vm.warp(uint256(signatureDeadline) + 1);
+
+        vm.expectRevert(CounterfactualDepositOFT.SignatureExpired.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(depositAddress).execute(address(oftImpl), params, submitterData, proof);
     }
 }

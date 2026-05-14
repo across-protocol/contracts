@@ -15,7 +15,9 @@ import { SPOKE_POOL_ID, WRAPPED_NATIVE_ID } from "./ChainConfigIds.sol";
  * @notice Route parameters committed to in the merkle leaf.
  * @dev `inputTokenId` is a chain-agnostic id resolved against the registry at execute time
  *      (see ChainConfigIds.sol). `outputToken` stays as a raw bytes32 since it lives on the
- *      destination chain and is opaque to the source-chain registry.
+ *      destination chain and is opaque to the source-chain registry. `maxExecutionFeeBps` caps
+ *      the execution fee the submitter may claim at execute time, expressed in basis points of
+ *      `inputAmount`.
  */
 struct SpokePoolDepositParams {
     uint256 destinationChainId;
@@ -26,15 +28,18 @@ struct SpokePoolDepositParams {
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
-    uint256 executionFee;
+    uint256 maxExecutionFeeBps;
 }
 
 /**
- * @notice Data supplied by the submitter at execution time.
+ * @notice Data supplied by the submitter at execution time. The submitter chooses `executionFee`
+ *         (capped by the leaf's `maxExecutionFee`) and must hold a signer signature over the
+ *         envelope below.
  */
 struct SpokePoolSubmitterData {
     uint256 inputAmount;
     uint256 outputAmount;
+    uint256 executionFee;
     bytes32 exclusiveRelayer;
     uint32 exclusivityDeadline;
     address executionFeeRecipient;
@@ -85,17 +90,18 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     );
 
     error MaxFee();
+    error ExecutionFeeTooHigh();
     error InvalidSignature();
     error SignatureExpired();
     error NativeTransferFailed();
     error RegistryUnset(uint32 id);
 
-    /// @notice EIP-712 typehash for execute deposit signature verification. `inputTokenId` is
-    ///         included so a signer authorization cannot be replayed across leaves naming
-    ///         different input tokens.
+    /// @notice EIP-712 typehash for execute deposit signature verification. `inputTokenId` and
+    ///         `executionFee` are included so a signer authorization cannot be replayed against a
+    ///         different input token or a higher execution fee.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint32 inputTokenId,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(uint32 inputTokenId,uint256 inputAmount,uint256 outputAmount,uint256 executionFee,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
 
     /// @notice Chain-local config registry. Same address on every chain.
@@ -119,14 +125,15 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
+        if (sd.executionFee > (dp.maxExecutionFeeBps * sd.inputAmount) / BPS_SCALAR) revert ExecutionFeeTooHigh();
         _verifySignature(dp.inputTokenId, sd);
 
         address inputToken = _requireRegistryAddress(registry.tokens(dp.inputTokenId), dp.inputTokenId);
         address spokePool = _requireRegistryAddress(registry.bridges(SPOKE_POOL_ID), SPOKE_POOL_ID);
 
-        uint256 depositAmount = sd.inputAmount - dp.executionFee;
+        uint256 depositAmount = sd.inputAmount - sd.executionFee;
 
-        _checkFee(dp, sd.inputAmount, sd.outputAmount, depositAmount);
+        _checkFee(dp, sd.inputAmount, sd.outputAmount, sd.executionFee, depositAmount);
 
         bool isNative = inputToken == NATIVE_ASSET;
 
@@ -155,12 +162,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         );
 
         // Pay execution fee
-        if (dp.executionFee > 0) {
+        if (sd.executionFee > 0) {
             if (isNative) {
-                (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
+                (bool success, ) = sd.executionFeeRecipient.call{ value: sd.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+                IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
             }
         }
 
@@ -180,11 +187,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         SpokePoolDepositParams memory dp,
         uint256 inputAmount,
         uint256 outputAmount,
+        uint256 executionFee,
         uint256 depositAmount
     ) private pure {
         uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + dp.executionFee;
+        uint256 totalFee = relayerFee + executionFee;
         uint256 maxFee = dp.maxFeeFixed + (dp.maxFeeBps * inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
     }
@@ -196,6 +204,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 inputTokenId,
                 sd.inputAmount,
                 sd.outputAmount,
+                sd.executionFee,
                 sd.exclusiveRelayer,
                 sd.exclusivityDeadline,
                 sd.quoteTimestamp,
@@ -203,7 +212,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 sd.signatureDeadline
             )
         );
-        address signer = registry.spokePoolSigner();
+        address signer = registry.signer();
         if (signer == address(0)) revert InvalidSignature();
         if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
     }

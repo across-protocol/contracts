@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
@@ -20,7 +22,8 @@ interface ISponsoredCCTPSrcPeriphery {
 /**
  * @notice Route parameters committed to in the merkle leaf.
  * @dev `burnTokenId` is a chain-agnostic id (see ChainConfigIds.sol) resolved against the registry
- *      at execute time. The same id means the same canonical token on every chain.
+ *      at execute time. `maxExecutionFeeBps` caps the execution fee the submitter may claim,
+ *      expressed in basis points of `amount`.
  */
 struct CCTPDepositParams {
     uint32 destinationDomain;
@@ -37,18 +40,25 @@ struct CCTPDepositParams {
     uint8 accountCreationMode;
     uint8 executionMode;
     bytes actionData;
-    uint256 executionFee;
+    uint256 maxExecutionFeeBps;
 }
 
 /**
  * @notice Data supplied by the submitter at execution time.
+ * @dev `signature` is verified locally against the registry-configured signer and covers
+ *      `(amount, executionFee, nonce, cctpDeadline, signatureDeadline)`. `peripherySignature` is
+ *      forwarded unchanged to the SponsoredCCTPSrcPeriphery and validated there against the
+ *      periphery's own schema.
  */
 struct CCTPSubmitterData {
     uint256 amount;
+    uint256 executionFee;
     address executionFeeRecipient;
     bytes32 nonce;
     uint256 cctpDeadline;
+    uint32 signatureDeadline;
     bytes signature;
+    bytes peripherySignature;
 }
 
 /**
@@ -58,59 +68,78 @@ struct CCTPSubmitterData {
  *      on every EVM chain. All chain-specific values (CCTP source domain, src periphery address,
  *      burn token address) are resolved from `ChainConfig` at execute time.
  *
- *      Called via delegatecall from the CounterfactualDeposit dispatcher.
+ *      Called via delegatecall from the CounterfactualDeposit dispatcher. The local impl signature
+ *      uses EIP-712 with `address(this)` (the clone) as the verifying contract, so signer
+ *      authorizations cannot be replayed across clones.
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositCCTP is ICounterfactualImplementation {
+contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     using SafeERC20 for IERC20;
 
     /**
      * @notice Emitted after a CCTP deposit is successfully executed.
      * @param amount Total input amount (including execution fee).
+     * @param executionFee Execution fee paid to the submitter-designated recipient.
      * @param executionFeeRecipient Address that received the execution fee.
      * @param nonce CCTP nonce used for the deposit.
      * @param cctpDeadline Deadline timestamp for the CCTP quote.
      */
     event CCTPDepositExecuted(
         uint256 amount,
+        uint256 executionFee,
         address indexed executionFeeRecipient,
         bytes32 nonce,
         uint256 cctpDeadline
     );
 
-    /// @notice Reverts when a registry id resolves to `address(0)`.
     error RegistryUnset(uint32 id);
+    error ExecutionFeeTooHigh();
+    error SignatureExpired();
+    error InvalidSignature();
+
+    /// @notice EIP-712 typehash for the local execution-fee envelope. `burnTokenId` binds the
+    ///         signature to a specific source token so it cannot be replayed across leaves naming
+    ///         different burn tokens.
+    bytes32 public constant EXECUTE_CCTP_DEPOSIT_TYPEHASH =
+        keccak256(
+            "ExecuteCCTPDeposit(uint32 burnTokenId,uint256 amount,uint256 executionFee,bytes32 nonce,uint256 cctpDeadline,uint32 signatureDeadline)"
+        );
 
     /// @notice Chain-local config registry. Same address on every chain.
     ChainConfig public immutable registry;
 
-    constructor(address _registry) {
+    constructor(address _registry) EIP712("CounterfactualDepositCCTP", "v1.0.0") {
         registry = ChainConfig(_registry);
     }
 
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Bridges tokens via SponsoredCCTP. `params` is ABI-encoded as `CCTPDepositParams`;
-     *      `submitterData` as `CCTPSubmitterData` (includes a signature forwarded to the CCTP periphery).
-     *      ERC-20 only (no native tokens). No local signature verification — delegated to `srcPeriphery`.
+     *      `submitterData` as `CCTPSubmitterData`. The impl verifies `signature` locally against
+     *      the registry signer; `peripherySignature` is forwarded to the CCTP periphery.
+     *      ERC-20 only (no native tokens).
      */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
         CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
 
+        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
+        if (sd.executionFee > (dp.maxExecutionFeeBps * sd.amount) / BPS_SCALAR) revert ExecutionFeeTooHigh();
+        _verifySignature(dp.burnTokenId, sd);
+
         address burnToken = _requireRegistryAddress(registry.tokens(dp.burnTokenId), dp.burnTokenId);
         address srcPeriphery = _requireRegistryAddress(registry.bridges(CCTP_SRC_PERIPHERY_ID), CCTP_SRC_PERIPHERY_ID);
         uint32 sourceDomain = registry.cctpSourceDomain();
 
-        if (dp.executionFee > 0) IERC20(burnToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+        if (sd.executionFee > 0) IERC20(burnToken).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
 
-        uint256 depositAmount = sd.amount - dp.executionFee;
+        uint256 depositAmount = sd.amount - sd.executionFee;
 
         IERC20(burnToken).forceApprove(srcPeriphery, depositAmount);
 
         _depositForBurn(dp, sd, depositAmount, srcPeriphery, sourceDomain, burnToken);
 
-        emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
+        emit CCTPDepositExecuted(sd.amount, sd.executionFee, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
     }
 
     /**
@@ -145,8 +174,25 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
                 executionMode: dp.executionMode,
                 actionData: dp.actionData
             }),
-            sd.signature
+            sd.peripherySignature
         );
+    }
+
+    function _verifySignature(uint32 burnTokenId, CCTPSubmitterData memory sd) private view {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                EXECUTE_CCTP_DEPOSIT_TYPEHASH,
+                burnTokenId,
+                sd.amount,
+                sd.executionFee,
+                sd.nonce,
+                sd.cctpDeadline,
+                sd.signatureDeadline
+            )
+        );
+        address signer = registry.signer();
+        if (signer == address(0)) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
     }
 
     function _requireRegistryAddress(address resolved, uint32 id) private pure returns (address) {
