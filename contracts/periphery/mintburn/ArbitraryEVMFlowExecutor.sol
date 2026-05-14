@@ -63,9 +63,11 @@ abstract contract ArbitraryEVMFlowExecutor {
         // Sweep any pre-existing dust on MulticallHandler so it cannot pollute our balance snapshots
         _drainMulticallHandlerDust(params.initialToken, params.commonParams.finalToken);
 
-        // Snapshot balances
+        bool differentTokens = params.initialToken != params.commonParams.finalToken;
+
+        // Snapshot balances (skip finalToken read when it equals initialToken)
         uint256 sBI = IERC20(params.initialToken).balanceOf(address(this));
-        uint256 sBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+        uint256 sBF = differentTokens ? IERC20(params.commonParams.finalToken).balanceOf(address(this)) : sBI;
 
         // Transfer tokens to MulticallHandler
         IERC20(params.initialToken).safeTransfer(multicallHandler, params.commonParams.amountInEVM);
@@ -85,14 +87,16 @@ abstract contract ArbitraryEVMFlowExecutor {
             instructions
         );
 
-        uint256 finalAmount;
+        // Default to initial-token accounting; overwrite below if finalToken was actually produced.
         uint256 eBI = IERC20(params.initialToken).balanceOf(address(this));
-        uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
-        if (params.initialToken != params.commonParams.finalToken && eBF > sBF) {
-            finalAmount = eBF - sBF;
-        } else {
-            params.commonParams.finalToken = params.initialToken;
-            finalAmount = params.commonParams.amountInEVM + eBI - sBI;
+        uint256 finalAmount = params.commonParams.amountInEVM + eBI - sBI;
+        if (differentTokens) {
+            uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
+            if (eBF > sBF) {
+                finalAmount = eBF - sBF;
+            } else {
+                params.commonParams.finalToken = params.initialToken;
+            }
         }
 
         params.commonParams.extraFeesIncurred = _calcExtraFeesFinal(
