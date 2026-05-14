@@ -26,7 +26,17 @@ contract ChainConfigTest is Test {
         newOwner = makeAddr("newOwner");
         attacker = makeAddr("attacker");
 
-        registry = new ChainConfig(owner);
+        // Empty-config registry — singular-setter tests below populate fields one at a time.
+        registry = new ChainConfig(
+            owner,
+            new uint32[](0),
+            new address[](0),
+            new uint32[](0),
+            new address[](0),
+            0,
+            0,
+            address(0)
+        );
     }
 
     // --- Construction ---
@@ -211,5 +221,153 @@ contract ChainConfigTest is Test {
 
         assertEq(registry.bridges(1), address(0xAA));
         assertEq(registry.tokens(1), address(0xBB));
+    }
+
+    // --- Batch setters ---
+
+    function testSetBridgesBatch() public {
+        uint32[] memory ids = new uint32[](3);
+        ids[0] = SPOKE_POOL_ID;
+        ids[1] = CCTP_SRC_PERIPHERY_ID;
+        ids[2] = OFT_SRC_PERIPHERY_ID;
+        address[] memory addrs = new address[](3);
+        addrs[0] = address(0xA1);
+        addrs[1] = address(0xA2);
+        addrs[2] = address(0xA3);
+
+        vm.expectEmit(true, true, true, true);
+        emit ChainConfig.BridgeSet(SPOKE_POOL_ID, address(0xA1));
+        vm.expectEmit(true, true, true, true);
+        emit ChainConfig.BridgeSet(CCTP_SRC_PERIPHERY_ID, address(0xA2));
+        vm.expectEmit(true, true, true, true);
+        emit ChainConfig.BridgeSet(OFT_SRC_PERIPHERY_ID, address(0xA3));
+
+        vm.prank(owner);
+        registry.setBridges(ids, addrs);
+
+        assertEq(registry.bridges(SPOKE_POOL_ID), address(0xA1));
+        assertEq(registry.bridges(CCTP_SRC_PERIPHERY_ID), address(0xA2));
+        assertEq(registry.bridges(OFT_SRC_PERIPHERY_ID), address(0xA3));
+    }
+
+    function testSetBridgesOnlyOwner() public {
+        uint32[] memory ids = new uint32[](1);
+        ids[0] = SPOKE_POOL_ID;
+        address[] memory addrs = new address[](1);
+        addrs[0] = address(0xA1);
+
+        vm.prank(attacker);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
+        registry.setBridges(ids, addrs);
+    }
+
+    function testSetBridgesLengthMismatchReverts() public {
+        uint32[] memory ids = new uint32[](2);
+        ids[0] = SPOKE_POOL_ID;
+        ids[1] = CCTP_SRC_PERIPHERY_ID;
+        address[] memory addrs = new address[](1);
+        addrs[0] = address(0xA1);
+
+        vm.prank(owner);
+        vm.expectRevert(ChainConfig.LengthMismatch.selector);
+        registry.setBridges(ids, addrs);
+    }
+
+    function testSetBridgesEmptyArraysNoOp() public {
+        vm.prank(owner);
+        registry.setBridges(new uint32[](0), new address[](0));
+        assertEq(registry.bridges(SPOKE_POOL_ID), address(0));
+    }
+
+    function testSetTokensBatch() public {
+        uint32[] memory ids = new uint32[](2);
+        ids[0] = USDC_ID;
+        ids[1] = USDT_ID;
+        address[] memory addrs = new address[](2);
+        addrs[0] = address(0xB1);
+        addrs[1] = address(0xB2);
+
+        vm.expectEmit(true, true, true, true);
+        emit ChainConfig.TokenSet(USDC_ID, address(0xB1));
+        vm.expectEmit(true, true, true, true);
+        emit ChainConfig.TokenSet(USDT_ID, address(0xB2));
+
+        vm.prank(owner);
+        registry.setTokens(ids, addrs);
+
+        assertEq(registry.tokens(USDC_ID), address(0xB1));
+        assertEq(registry.tokens(USDT_ID), address(0xB2));
+    }
+
+    function testSetTokensOnlyOwner() public {
+        uint32[] memory ids = new uint32[](1);
+        ids[0] = USDC_ID;
+        address[] memory addrs = new address[](1);
+        addrs[0] = address(0xB1);
+
+        vm.prank(attacker);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, attacker));
+        registry.setTokens(ids, addrs);
+    }
+
+    function testSetTokensLengthMismatchReverts() public {
+        uint32[] memory ids = new uint32[](1);
+        ids[0] = USDC_ID;
+        address[] memory addrs = new address[](2);
+        addrs[0] = address(0xB1);
+        addrs[1] = address(0xB2);
+
+        vm.prank(owner);
+        vm.expectRevert(ChainConfig.LengthMismatch.selector);
+        registry.setTokens(ids, addrs);
+    }
+
+    // --- Full-config constructor ---
+
+    function testConstructorPopulatesAllConfig() public {
+        uint32[] memory bridgeIds = new uint32[](2);
+        bridgeIds[0] = SPOKE_POOL_ID;
+        bridgeIds[1] = CCTP_SRC_PERIPHERY_ID;
+        address[] memory bridgeAddrs = new address[](2);
+        bridgeAddrs[0] = address(0xC1);
+        bridgeAddrs[1] = address(0xC2);
+
+        uint32[] memory tokenIds = new uint32[](2);
+        tokenIds[0] = USDC_ID;
+        tokenIds[1] = USDT_ID;
+        address[] memory tokenAddrs = new address[](2);
+        tokenAddrs[0] = address(0xD1);
+        tokenAddrs[1] = address(0xD2);
+
+        address ctorSigner = makeAddr("ctorSigner");
+
+        ChainConfig populated = new ChainConfig(
+            owner,
+            bridgeIds,
+            bridgeAddrs,
+            tokenIds,
+            tokenAddrs,
+            7,
+            30101,
+            ctorSigner
+        );
+
+        assertEq(populated.owner(), owner);
+        assertEq(populated.bridges(SPOKE_POOL_ID), address(0xC1));
+        assertEq(populated.bridges(CCTP_SRC_PERIPHERY_ID), address(0xC2));
+        assertEq(populated.tokens(USDC_ID), address(0xD1));
+        assertEq(populated.tokens(USDT_ID), address(0xD2));
+        assertEq(populated.cctpSourceDomain(), 7);
+        assertEq(populated.oftSrcEid(), 30101);
+        assertEq(populated.signer(), ctorSigner);
+    }
+
+    function testConstructorLengthMismatchReverts() public {
+        uint32[] memory bridgeIds = new uint32[](1);
+        bridgeIds[0] = SPOKE_POOL_ID;
+        address[] memory bridgeAddrs = new address[](0);
+
+        vm.expectRevert(ChainConfig.LengthMismatch.selector);
+        new ChainConfig(owner, bridgeIds, bridgeAddrs, new uint32[](0), new address[](0), 0, 0, address(0));
     }
 }

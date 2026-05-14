@@ -95,17 +95,29 @@ contract CounterfactualDepositTest is Test {
         srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        registry = new ChainConfig(registryOwner);
+
+        uint32[] memory bridgeIds = new uint32[](1);
+        bridgeIds[0] = CCTP_SRC_PERIPHERY_ID;
+        address[] memory bridgeAddrs = new address[](1);
+        bridgeAddrs[0] = address(srcPeriphery);
+        uint32[] memory tokenIds = new uint32[](1);
+        tokenIds[0] = USDC_ID;
+        address[] memory tokenAddrs = new address[](1);
+        tokenAddrs[0] = address(burnToken);
+        registry = new ChainConfig(
+            registryOwner,
+            bridgeIds,
+            bridgeAddrs,
+            tokenIds,
+            tokenAddrs,
+            SOURCE_DOMAIN,
+            0,
+            signerAddr
+        );
+
         cctpImpl = new CounterfactualDepositCCTP(address(registry));
         withdrawImpl = new WithdrawImplementation();
         merkle = new Merkle();
-
-        vm.startPrank(registryOwner);
-        registry.setBridge(CCTP_SRC_PERIPHERY_ID, address(srcPeriphery));
-        registry.setToken(USDC_ID, address(burnToken));
-        registry.setCctpSourceDomain(SOURCE_DOMAIN);
-        registry.setSigner(signerAddr);
-        vm.stopPrank();
 
         burnToken.mint(user, 1000e6);
 

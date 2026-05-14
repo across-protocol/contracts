@@ -112,17 +112,20 @@ contract CounterfactualOFTDepositTest is Test {
         srcPeriphery = new MockSponsoredOFTSrcPeriphery(address(token));
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        registry = new ChainConfig(registryOwner);
+
+        uint32[] memory bridgeIds = new uint32[](1);
+        bridgeIds[0] = OFT_SRC_PERIPHERY_ID;
+        address[] memory bridgeAddrs = new address[](1);
+        bridgeAddrs[0] = address(srcPeriphery);
+        uint32[] memory tokenIds = new uint32[](1);
+        tokenIds[0] = USDC_ID;
+        address[] memory tokenAddrs = new address[](1);
+        tokenAddrs[0] = address(token);
+        registry = new ChainConfig(registryOwner, bridgeIds, bridgeAddrs, tokenIds, tokenAddrs, 0, SRC_EID, signerAddr);
+
         oftImpl = new CounterfactualDepositOFT(address(registry));
         withdrawImpl = new WithdrawImplementation();
         merkle = new Merkle();
-
-        vm.startPrank(registryOwner);
-        registry.setBridge(OFT_SRC_PERIPHERY_ID, address(srcPeriphery));
-        registry.setToken(USDC_ID, address(token));
-        registry.setOftSrcEid(SRC_EID);
-        registry.setSigner(signerAddr);
-        vm.stopPrank();
 
         token.mint(user, 1000e6);
 

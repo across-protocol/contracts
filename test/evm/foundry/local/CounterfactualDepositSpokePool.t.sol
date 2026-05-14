@@ -137,17 +137,23 @@ contract CounterfactualSpokePoolDepositTest is Test {
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
         dispatcher = new CounterfactualDeposit();
-        registry = new ChainConfig(registryOwner);
+
+        uint32[] memory bridgeIds = new uint32[](1);
+        bridgeIds[0] = SPOKE_POOL_ID;
+        address[] memory bridgeAddrs = new address[](1);
+        bridgeAddrs[0] = address(spokePool);
+        uint32[] memory tokenIds = new uint32[](3);
+        tokenIds[0] = USDC_ID;
+        tokenIds[1] = WRAPPED_NATIVE_ID;
+        tokenIds[2] = NATIVE_ASSET_TOKEN_ID;
+        address[] memory tokenAddrs = new address[](3);
+        tokenAddrs[0] = address(inputToken);
+        tokenAddrs[1] = weth;
+        tokenAddrs[2] = NATIVE_ASSET;
+        registry = new ChainConfig(registryOwner, bridgeIds, bridgeAddrs, tokenIds, tokenAddrs, 0, 0, signerAddr);
+
         spokePoolImpl = new CounterfactualDepositSpokePool(address(registry));
         withdrawImpl = new WithdrawImplementation();
-
-        vm.startPrank(registryOwner);
-        registry.setBridge(SPOKE_POOL_ID, address(spokePool));
-        registry.setToken(USDC_ID, address(inputToken));
-        registry.setToken(WRAPPED_NATIVE_ID, weth);
-        registry.setToken(NATIVE_ASSET_TOKEN_ID, NATIVE_ASSET);
-        registry.setSigner(signerAddr);
-        vm.stopPrank();
 
         inputToken.mint(user, 1000e6);
 
