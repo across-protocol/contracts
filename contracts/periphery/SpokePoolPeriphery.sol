@@ -364,21 +364,18 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         bytes calldata receiveWithAuthSignature
     ) external override nonReentrant {
         bytes32 witness = getERC3009SwapAndBridgeWitness(swapAndDepositData);
-        (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
         uint256 _submissionFeeAmount = swapAndDepositData.submissionFees.amount;
         // While any contract can vacuously implement `receiveWithAuthorization` (or just have a fallback),
         // if tokens were not sent to this contract, by this call to swapData.swapToken, this function will revert
         // when attempting to swap tokens it does not own.
-        IERC20Auth(address(swapAndDepositData.swapToken)).receiveWithAuthorization(
+        _receiveWithAuthorization(
+            swapAndDepositData.swapToken,
             signatureOwner,
-            address(this),
             swapAndDepositData.swapTokenAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
             witness,
-            v,
-            r,
-            s
+            receiveWithAuthSignature
         );
         _paySubmissionFees(
             swapAndDepositData.swapToken,
@@ -512,17 +509,14 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         uint256 _submissionFeeAmount = depositData.submissionFees.amount;
 
         // Redeem the receiveWithAuthSignature.
-        (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(receiveWithAuthSignature);
-        IERC20Auth(depositData.baseDepositData.inputToken).receiveWithAuthorization(
+        _receiveWithAuthorization(
+            depositData.baseDepositData.inputToken,
             signatureOwner,
-            address(this),
             _inputAmount + _submissionFeeAmount,
             validAfter,
             validBefore,
             witness,
-            v,
-            r,
-            s
+            receiveWithAuthSignature
         );
         _paySubmissionFees(
             depositData.baseDepositData.inputToken,
@@ -816,6 +810,52 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
         );
     }
 
+    /**
+     * @notice Calls `receiveWithAuthorization` on the token, using the v,r,s overload for 65-byte EOA signatures
+     * and the bytes overload for smart contract wallet signatures (ERC-1271).
+     * @param token The ERC-3009 token to call.
+     * @param from The payer's address.
+     * @param value The amount to transfer.
+     * @param validAfter The time after which the authorization is valid.
+     * @param validBefore The time before which the authorization is valid.
+     * @param nonce The authorization nonce.
+     * @param signature The signature bytes (65 bytes for EOA, variable length for smart contract wallets).
+     */
+    function _receiveWithAuthorization(
+        address token,
+        address from,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata signature
+    ) private {
+        if (!_isContract(from)) {
+            (bytes32 r, bytes32 s, uint8 v) = PeripherySigningLib.deserializeSignature(signature);
+            IERC20Auth(token).receiveWithAuthorization(
+                from,
+                address(this),
+                value,
+                validAfter,
+                validBefore,
+                nonce,
+                v,
+                r,
+                s
+            );
+        } else {
+            IERC20Auth(token).receiveWithAuthorization(
+                from,
+                address(this),
+                value,
+                validAfter,
+                validBefore,
+                nonce,
+                signature
+            );
+        }
+    }
+
     function _paySubmissionFees(address feeToken, address recipient, uint256 amount) private {
         if (amount > 0) {
             // Use msg.sender as recipient if recipient is zero address, otherwise use the specified recipient
@@ -825,16 +865,31 @@ contract SpokePoolPeriphery is SpokePoolPeripheryInterface, ReentrancyGuard, Mul
     }
 
     /**
-     * @notice Internal function to check if an address is a contract
-     * @dev This is a replacement for OpenZeppelin's isContract function which is deprecated
-     * @param addr The address to check
-     * @return True if the address is a contract, false otherwise
+     * @notice Internal function to check if an address is a smart contract wallet (not an EOA).
+     * @dev Returns false for EOAs, including EIP-7702 delegated EOAs whose code starts with the
+     * delegation designator (0xef0100). This ensures 7702 wallets use the EOA (v,r,s) signature
+     * path for EIP-3009 authorization.
+     * @param addr The address to check.
+     * @return True if the address is a smart contract wallet, false otherwise.
      */
     function _isContract(address addr) private view returns (bool) {
         uint256 size;
         assembly {
             size := extcodesize(addr)
         }
-        return size > 0;
+        if (size == 0) return false;
+        // EIP-7702 delegated EOAs have code set to 0xef0100 || address (23 bytes).
+        // These are EOAs that delegate to an implementation but still sign with ECDSA.
+        if (size == 23) {
+            bool is7702;
+            assembly {
+                let ptr := mload(0x40)
+                extcodecopy(addr, ptr, 0, 3)
+                // Check if the first 3 bytes match the EIP-7702 delegation designator 0xef0100.
+                is7702 := eq(shr(232, mload(ptr)), 0xef0100)
+            }
+            if (is7702) return false;
+        }
+        return true;
     }
 }

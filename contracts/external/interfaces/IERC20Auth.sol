@@ -32,4 +32,26 @@ interface IERC20Auth {
         bytes32 r,
         bytes32 s
     ) external;
+
+    /**
+     * @notice Receive a transfer with a signed authorization from the payer (bytes signature variant)
+     * @dev Supports both EOA signatures and smart contract wallet signatures (ERC-1271).
+     * Available in tokens like USDC v2.2+ (FiatTokenV2_2).
+     * @param from          Payer's address (Authorizer)
+     * @param to            Payee's address
+     * @param value         Amount to be transferred
+     * @param validAfter    The time after which this is valid (unix time)
+     * @param validBefore   The time before which this is valid (unix time)
+     * @param nonce         Unique nonce
+     * @param signature     Signature bytes (EOA or ERC-1271 smart contract signature)
+     */
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) external;
 }

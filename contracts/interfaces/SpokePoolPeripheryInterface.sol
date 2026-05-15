@@ -206,7 +206,8 @@ interface SpokePoolPeripheryInterface {
      * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param receiveWithAuthSignature EIP3009 signature. For EOA wallets, encoded as (bytes32 r, bytes32 s, uint8 v) (65 bytes).
+     * For smart contract wallets (ERC-1271), variable-length bytes forwarded to the token's bytes-signature overload.
      */
     function swapAndBridgeWithAuthorization(
         address signatureOwner,
@@ -266,7 +267,8 @@ interface SpokePoolPeripheryInterface {
      * @param depositData Specifies the Across deposit params to send.
      * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
      * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
-     * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
+     * @param receiveWithAuthSignature EIP3009 signature. For EOA wallets, encoded as (bytes32 r, bytes32 s, uint8 v) (65 bytes).
+     * For smart contract wallets (ERC-1271), variable-length bytes forwarded to the token's bytes-signature overload.
      */
     function depositWithAuthorization(
         address signatureOwner,
