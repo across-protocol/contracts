@@ -28,23 +28,6 @@ export function getDeployedAddress(
 }
 
 /**
- * Returns all active deployments for a given contract name across all chains.
- * Each result contains chainId, address, and blockNumber.
- */
-export function getAllDeployedAddresses(
-  contractName: string
-): Array<{ chainId: number; address: string; blockNumber: number }> {
-  const results: Array<{ chainId: number; address: string; blockNumber: number }> = [];
-  Object.keys(DEPLOYMENTS).forEach((_chainId) => {
-    const info = DEPLOYMENTS[_chainId]?.contracts[contractName];
-    if (info?.address) {
-      results.push({ chainId: Number(_chainId), address: info.address, blockNumber: info.block_number });
-    }
-  });
-  return results;
-}
-
-/**
  * Returns the deployment block number of any contract on any network.
  */
 export function getDeployedBlockNumber(contractName: string, networkId: number): number {

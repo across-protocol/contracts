@@ -4,8 +4,8 @@ import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
 import Safe, { PredictedSafeProps, SafeAccountConfig } from "@safe-global/protocol-kit";
+import { providers } from "ethers";
 import { getAddress } from "ethers/lib/utils";
-import { ethers } from "../../utils/utils";
 import { getNodeUrl } from "../../utils";
 import { getChainId, getProvider, getSigner } from "../../scripts/utils";
 import { writeMultisigBroadcastArtifact } from "./broadcast";
@@ -61,7 +61,7 @@ Required env vars:
 
 async function resolveChainContext(): Promise<{
   chainId: number;
-  provider: ethers.providers.JsonRpcProvider;
+  provider: providers.JsonRpcProvider;
   nodeUrl: string;
 }> {
   const explicitChainId = getArg("--chain-id");

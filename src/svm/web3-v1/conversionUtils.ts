@@ -1,6 +1,8 @@
 import { utils as anchorUtils, BN } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { BigNumber, ethers } from "ethers";
+import { isAddress } from "@ethersproject/address";
+import { BigNumber } from "@ethersproject/bignumber";
+import { arrayify, hexZeroPad, isHexString } from "@ethersproject/bytes";
 
 /**
  * Converts an integer to a 32-byte Uint8Array.
@@ -53,7 +55,7 @@ export function strPublicKey(publicKey: PublicKey): string {
  */
 export const evmAddressToPublicKey = (address: string): PublicKey => {
   const bytes32Address = `0x000000000000000000000000${address.replace("0x", "")}`;
-  return new PublicKey(ethers.utils.arrayify(bytes32Address));
+  return new PublicKey(arrayify(bytes32Address));
 };
 
 /**
@@ -97,9 +99,9 @@ export const fromBytes32ToAddress = (input: string): string => {
  * Converts EVM or SVM address to a bytes32 string.
  */
 export const addressOrBase58ToBytes32 = (input: string): string => {
-  if (ethers.utils.isAddress(input)) {
-    return ethers.utils.hexZeroPad(input, 32);
-  } else if (ethers.utils.isHexString(input, 32)) {
+  if (isAddress(input)) {
+    return hexZeroPad(input, 32);
+  } else if (isHexString(input, 32)) {
     return input;
   } else {
     return fromBase58ToBytes32(input);

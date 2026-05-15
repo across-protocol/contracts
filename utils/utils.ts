@@ -1,8 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { ethers } from "ethers";
-import { BigNumber, Signer, Contract } from "ethers";
-import { OFT_EIDs } from "../src/consts";
+import { defaultAbiCoder } from "@ethersproject/abi";
+import { BigNumber } from "@ethersproject/bignumber";
+import { hexlify, isHexString } from "@ethersproject/bytes";
+import { keccak256 } from "@ethersproject/keccak256";
 
 export function findArtifactFromPath(contractName: string, artifactsPath: string) {
   const allArtifactsPaths = getAllFilesInPath(artifactsPath);
@@ -25,117 +26,20 @@ export function getAllFilesInPath(dirPath: string, arrayOfFiles: string[] = []):
   return arrayOfFiles;
 }
 
-export const toWei = (num: string | number | BigNumber) => ethers.utils.parseEther(num.toString());
-
-export const toWeiWithDecimals = (num: string | number | BigNumber, decimals: number) =>
-  ethers.utils.parseUnits(num.toString(), decimals);
-
-export const toBNWei = (num: string | number | BigNumber) => BigNumber.from(toWei(num));
-
-export const toBNWeiWithDecimals = (num: string | number | BigNumber, decimals: number) =>
-  BigNumber.from(toWeiWithDecimals(num, decimals));
-
-export const fromWei = (num: string | number | BigNumber) => ethers.utils.formatUnits(num.toString());
-
 export const toBN = (num: string | number | BigNumber) => {
   // If the string version of the num contains a `.` then it is a number which needs to be parsed to a string int.
   if (num.toString().includes(".")) return BigNumber.from(parseInt(num.toString()));
   return BigNumber.from(num.toString());
 };
 
-export const utf8ToHex = (input: string) => ethers.utils.formatBytes32String(input);
-
-export const hexToUtf8 = (input: string) => ethers.utils.toUtf8String(input);
-
-export const createRandomBytes32 = () => ethers.utils.hexlify(ethers.utils.randomBytes(32));
-
-export const hexZeroPad = (input: string, length: number) => ethers.utils.hexZeroPad(input, length);
-
-export const addressToBytes = (input: string) => hexZeroPad(input.toLowerCase(), 32);
-
-export const bytes32ToAddress = (input: string) => {
-  if (!/^0x[a-fA-F0-9]{64}$/.test(input)) {
-    throw new Error("Invalid bytes32 input");
-  }
-  return ethers.utils.getAddress("0x" + input.slice(26));
-};
-
-export const isBytes32 = (input: string) => /^0x[0-9a-fA-F]{64}$/.test(input);
-
-export async function seedWallet(
-  walletToFund: Signer,
-  tokens: Contract[],
-  weth: Contract | undefined,
-  amountToSeedWith: number | BigNumber
-) {
-  for (const token of tokens) await token.mint(await walletToFund.getAddress(), amountToSeedWith);
-
-  if (weth) await weth.connect(walletToFund).deposit({ value: amountToSeedWith });
-}
-
-export async function seedContract(
-  contract: Contract,
-  walletToFund: Signer,
-  tokens: Contract[],
-  weth: Contract | undefined,
-  amountToSeedWith: number | BigNumber
-) {
-  await seedWallet(walletToFund, tokens, weth, amountToSeedWith);
-  for (const token of tokens) await token.connect(walletToFund).transfer(contract.address, amountToSeedWith);
-  if (weth) await weth.connect(walletToFund).transfer(contract.address, amountToSeedWith);
-}
-
-export function randomBigNumber(bytes = 32, signed = false) {
-  const sign = signed && Math.random() < 0.5 ? "-" : "";
-  const byteString = "0x" + Buffer.from(ethers.utils.randomBytes(signed ? bytes - 1 : bytes)).toString("hex");
-  return ethers.BigNumber.from(sign + byteString);
-}
-
-export function randomAddress() {
-  return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
-}
-
-export function randomBytes32() {
-  return ethers.utils.hexlify(ethers.utils.randomBytes(32));
-}
-
-function avmL1ToL2Alias(l1Address: string) {
-  const offset = toBN("0x1111000000000000000000000000000000001111");
-  const l1AddressAsNumber = toBN(l1Address);
-
-  const l2AddressAsNumber = l1AddressAsNumber.add(offset);
-
-  const mask = toBN("2").pow(toBN("160"));
-  return ethers.utils.hexlify(l2AddressAsNumber.mod(mask));
-}
-
-export function trimSolanaAddress(bytes32Address: string): string {
-  if (!ethers.utils.isHexString(bytes32Address, 32)) {
-    throw new Error("Invalid bytes32 address");
-  }
-
-  const uint160Address = ethers.BigNumber.from(bytes32Address).mask(160);
-  return ethers.utils.hexZeroPad(ethers.utils.hexlify(uint160Address), 20);
-}
-
 export function hashNonEmptyMessage(message: string) {
-  if (!ethers.utils.isHexString(message) || message.length % 2 !== 0) throw new Error("Invalid hex message bytes");
+  if (!isHexString(message) || message.length % 2 !== 0) throw new Error("Invalid hex message bytes");
 
   // account for 0x prefix when checking length
   if (message.length > 2) {
-    return ethers.utils.keccak256(message);
+    return keccak256(message);
   }
-  return ethers.utils.hexlify(new Uint8Array(32));
+  return hexlify(new Uint8Array(32));
 }
 
-const { defaultAbiCoder, keccak256 } = ethers.utils;
-
-export { avmL1ToL2Alias, Contract, ethers, BigNumber, defaultAbiCoder, keccak256, Signer };
-
-export function getOftEid(chainId: number): number {
-  const value = OFT_EIDs.get(chainId);
-  if (value === undefined) {
-    throw new Error(`Chain id ${chainId} not present in OFT_EIDs`);
-  }
-  return value;
-}
+export { defaultAbiCoder, keccak256 };

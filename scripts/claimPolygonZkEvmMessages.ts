@@ -1,5 +1,5 @@
 /* eslint-disable camelcase */
-import { ethers } from "../utils/utils";
+import { Contract, providers } from "ethers";
 import { L1_ADDRESS_MAP, L2_ADDRESS_MAP } from "../src/consts";
 import { getNodeUrl } from "../utils/network";
 import { getProvider, getSigner, getChainId } from "./utils";
@@ -82,7 +82,7 @@ async function main() {
   const l2Provider = getProvider();
   const l2ChainId = await getChainId(l2Provider);
   const l1ChainId = parseInt(process.env.L1_CHAIN_ID || "1");
-  const l1Provider = new ethers.providers.JsonRpcProvider(process.env.NODE_URL_1 || getNodeUrl(l1ChainId));
+  const l1Provider = new providers.JsonRpcProvider(process.env.NODE_URL_1 || getNodeUrl(l1ChainId));
   const l1Signer = getSigner(l1Provider);
   const l2Signer = getSigner(l2Provider);
 
@@ -114,7 +114,7 @@ async function main() {
   }
 
   // Receive messages
-  const polygonZkEvmBridge = new ethers.Contract(
+  const polygonZkEvmBridge = new Contract(
     claimMessagesOn === "l1"
       ? L1_ADDRESS_MAP[l1ChainId].polygonZkEvmBridge
       : L2_ADDRESS_MAP[l2ChainId].polygonZkEvmBridge,
