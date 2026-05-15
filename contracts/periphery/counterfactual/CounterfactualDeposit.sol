@@ -9,7 +9,14 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
 /**
  * @title CounterfactualDeposit
  * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are instances of this contract.
- * @dev The clone's immutable arg is a merkle root. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))))`.
+ * @dev The clone's immutable arg is a merkle root. Each leaf is
+ *      `keccak256(bytes.concat(keccak256(abi.encode(block.chainid, implementation, keccak256(params)))))`.
+ *      The dispatcher folds `block.chainid` into the leaf preimage so the same merkle root can authorize
+ *      different `(implementation, params)` tuples on different chains. The off-chain tree enumerates one
+ *      leaf per `(srcChainId, implementation, params)` triple; because the tree is identical on every chain,
+ *      the clone CREATE2 address is identical on every chain. A chain-A leaf cannot be replayed on chain B
+ *      because the dispatcher rebuilds the leaf with the chain's own `block.chainid`.
+ *
  *      Callers prove leaf inclusion, then the dispatcher delegatecalls the implementation.
  *
  *      Call chain: Caller → CALL → Clone (EIP-1167 proxy) → DELEGATECALL → Dispatcher → DELEGATECALL → Implementation
@@ -17,13 +24,10 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
  *      - msg.sender = original caller throughout
  *      - msg.value = original value throughout
  *
- *      Note: Some implementations — such as CounterfactualDepositSpokePool — use authorization signatures
- *      that cover execution-time parameters (amounts, deadlines, etc.) but do not commit to the leaf's
- *      route-specific `params` (destination chain, tokens, recipient, etc.). If two leaves share the same
- *      implementation address, a caller could prove leaf A's route params while submitting an authorization
- *      signature intended for leaf B's route, since the signature is valid for either leaf. The system is
- *      intended to be used such that a clone's merkle tree never contains multiple leaves with the same
- *      implementation address.
+ *      Implementations whose authorization signatures cover only execution-time parameters (e.g. amounts,
+ *      deadlines) must additionally commit to `keccak256(params)` in their signed payload so that a caller
+ *      cannot prove leaf A's params while submitting a signature issued for leaf B's route. See
+ *      `CounterfactualDepositSpokePool` for the canonical example.
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).
@@ -34,7 +38,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
      * @param implementation The implementation contract to delegatecall.
      * @param params ABI-encoded route parameters (hashed into the merkle leaf).
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
-     * @param proof Merkle proof for the (implementation, keccak256(params)) leaf.
+     * @param proof Merkle proof for the (block.chainid, implementation, keccak256(params)) leaf.
      */
     function execute(
         address implementation,
@@ -44,8 +48,9 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
     ) external payable {
         bytes32 merkleRoot = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
 
+        // `block.chainid` is folded in (not caller-supplied) so chain-A leaves cannot be replayed on chain B.
         // Double-hash to prevent leaf/internal-node ambiguity (OpenZeppelin standard).
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(block.chainid, implementation, keccak256(params)))));
 
         if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert InvalidProof();
 

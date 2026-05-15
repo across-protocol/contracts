@@ -63,8 +63,16 @@ contract CounterfactualDepositTest is Test {
         relayer = makeAddr("relayer");
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _computeLeaf(address implementation, bytes memory params) internal view returns (bytes32) {
+        return _computeLeaf(block.chainid, implementation, params);
+    }
+
+    function _computeLeaf(
+        uint256 chainId,
+        address implementation,
+        bytes memory params
+    ) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(chainId, implementation, keccak256(params)))));
     }
 
     function _deployClone(bytes32 merkleRoot, bytes32 salt) internal returns (address) {
@@ -283,5 +291,52 @@ contract CounterfactualDepositTest is Test {
         vm.deal(relayer, 1 ether);
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute{ value: 0.1 ether }(address(mockImpl), params, "submitter", proof);
+    }
+
+    // --- Cross-chain leaf semantics ---
+
+    /// @dev Verifies that the same merkle root produces the same clone address on different chains,
+    ///      and that a leaf for chain A's chainId cannot be proved on chain B.
+    function testSameRootSameAddressDifferentChains() public {
+        bytes memory params1 = abi.encode(uint256(111));
+        bytes memory params2 = abi.encode(uint256(222));
+
+        // Tree contains one leaf per (chainId, impl, params) tuple — the cross-product the
+        // off-chain SDK would build for two source chains.
+        bytes32[] memory leaves = new bytes32[](4);
+        leaves[0] = _computeLeaf(1, address(mockImpl), params1);
+        leaves[1] = _computeLeaf(42161, address(mockImpl), params2);
+        leaves[2] = keccak256("padding-a");
+        leaves[3] = keccak256("padding-b");
+        bytes32 root = merkle.getRoot(leaves);
+
+        // Predicted address depends only on (factory, salt, root) — not on block.chainid.
+        bytes32 salt = keccak256("cross-chain");
+        address predictedOnChain1;
+        address predictedOnChain42161;
+
+        vm.chainId(1);
+        predictedOnChain1 = factory.predictDepositAddress(address(dispatcher), root, salt);
+        vm.chainId(42161);
+        predictedOnChain42161 = factory.predictDepositAddress(address(dispatcher), root, salt);
+        assertEq(predictedOnChain1, predictedOnChain42161, "Same root must produce same address across chains");
+
+        // Deploy on chain 1; execute the chain-1 leaf with chain-1 proof — passes.
+        vm.chainId(1);
+        address clone = factory.deploy(address(dispatcher), root, salt);
+        bytes32[] memory proof1 = merkle.getProof(leaves, 0);
+        ICounterfactualDeposit(clone).execute(address(mockImpl), params1, "", proof1);
+
+        // Replay the chain-1 leaf's proof on chain 42161 — the dispatcher rebuilds the leaf with
+        // block.chainid=42161, so the proof no longer matches. Cross-chain replay is prevented.
+        vm.chainId(42161);
+        // Deploy on chain 42161 too — same root, same address (no-op on clone state since clones are
+        // CREATE2-deterministic; here we just need a code-bearing target).
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        ICounterfactualDeposit(clone).execute(address(mockImpl), params1, "", proof1);
+
+        // The chain-42161 leaf with its own proof passes on chain 42161.
+        bytes32[] memory proof42161 = merkle.getProof(leaves, 1);
+        ICounterfactualDeposit(clone).execute(address(mockImpl), params2, "", proof42161);
     }
 }

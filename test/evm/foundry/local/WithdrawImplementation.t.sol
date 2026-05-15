@@ -37,8 +37,8 @@ contract WithdrawImplementationTest is Test {
         relayer = makeAddr("relayer");
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _computeLeaf(address implementation, bytes memory params) internal view returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(block.chainid, implementation, keccak256(params)))));
     }
 
     function _deployCloneWithWithdrawLeaf(

@@ -46,6 +46,11 @@ struct SpokePoolSubmitterData {
  *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
  *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
  *
+ *      The signed payload commits to `keccak256(params)` so a signature issued for one leaf cannot be replayed
+ *      against another leaf in the same clone — this is what makes it safe to have multiple SpokePool leaves
+ *      per clone (e.g. one per input token in the "any input token" cross-product enabled by the chainId-in-leaf
+ *      same-address design).
+ *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
  *      `address(this)` (the clone), which has no private key and does not implement EIP-1271, and therefore
  *      cannot sign `speedUpV3Deposit` messages.
@@ -84,9 +89,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     error NativeTransferFailed();
 
     /// @notice EIP-712 typehash for execute deposit signature verification.
+    /// @dev `paramsHash` binds the signature to the leaf's route params so a signature issued for one leaf
+    ///      cannot be replayed against a different leaf in the same clone. This is required for multi-leaf
+    ///      SpokePool clones (e.g. "any input token" trees) introduced by the same-address feature.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
 
     /// @notice Across SpokePool contract
@@ -111,7 +119,8 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
-     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
+     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer` over
+     *      `keccak256(params)` plus the execution-time fields).
      *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
      *      `NativeTransferFailed`.
      */
@@ -120,7 +129,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
-        _verifySignature(sd);
+        _verifySignature(keccak256(params), sd);
 
         address inputToken = address(uint160(uint256(dp.inputToken)));
         uint256 depositAmount = sd.inputAmount - dp.executionFee;
@@ -181,10 +190,11 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(SpokePoolSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 paramsHash, SpokePoolSubmitterData memory sd) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                paramsHash,
                 sd.inputAmount,
                 sd.outputAmount,
                 sd.exclusiveRelayer,

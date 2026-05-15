@@ -106,9 +106,9 @@ contract CounterfactualDepositTest is Test {
     ) internal view returns (bytes32 merkleRoot, bytes32[] memory proof) {
         // For a single-leaf tree, murky requires at least 2 leaves. Use the deposit leaf and a dummy.
         bytes32 depositLeaf = keccak256(
-            bytes.concat(keccak256(abi.encode(address(cctpImpl), keccak256(depositParams))))
+            bytes.concat(keccak256(abi.encode(block.chainid, address(cctpImpl), keccak256(depositParams))))
         );
-        bytes32 dummyLeaf = keccak256(bytes.concat(keccak256(abi.encode(address(0), keccak256("")))));
+        bytes32 dummyLeaf = keccak256(bytes.concat(keccak256(abi.encode(block.chainid, address(0), keccak256("")))));
 
         bytes32[] memory leaves = new bytes32[](2);
         leaves[0] = depositLeaf;
@@ -124,10 +124,10 @@ contract CounterfactualDepositTest is Test {
         bytes memory withdrawParams
     ) internal view returns (bytes32 merkleRoot, bytes32[] memory depositProof, bytes32[] memory withdrawProof) {
         bytes32 depositLeaf = keccak256(
-            bytes.concat(keccak256(abi.encode(address(cctpImpl), keccak256(depositParams))))
+            bytes.concat(keccak256(abi.encode(block.chainid, address(cctpImpl), keccak256(depositParams))))
         );
         bytes32 withdrawLeaf = keccak256(
-            bytes.concat(keccak256(abi.encode(address(withdrawImpl), keccak256(withdrawParams))))
+            bytes.concat(keccak256(abi.encode(block.chainid, address(withdrawImpl), keccak256(withdrawParams))))
         );
 
         bytes32[] memory leaves = new bytes32[](2);
