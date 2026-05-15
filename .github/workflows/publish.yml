@@ -19,7 +19,7 @@ env:
   NODE_VERSION: 22.18
   EVM_ARTIFACTS_PATHS: |
     out
-    cache-foundry
+    cache
   SVM_ARTIFACTS_PATHS: |
     target/idl
     target/types

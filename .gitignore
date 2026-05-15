@@ -32,8 +32,8 @@ out-local
 out-tron
 out-counterfactual
 zkout
-cache-foundry
-cache-foundry-local
+cache
+cache-foundry-fork
 cache-foundry-tron
 cache-foundry-counterfactual
 
