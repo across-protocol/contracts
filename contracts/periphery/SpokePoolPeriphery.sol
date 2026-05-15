@@ -21,6 +21,10 @@ import { AddressToBytes32 } from "../libraries/AddressConverters.sol";
  * @title SwapProxy
  * @notice A dedicated proxy contract that isolates swap execution to mitigate frontrunning vulnerabilities.
  * The SpokePoolPeriphery transfers tokens to this contract, which performs the swap and returns tokens back to the periphery.
+ *
+ * @dev This contract is a stateless utility with no per-user accounting or admin rescue. Tokens delivered to it
+ * are expected to be consumed in the same transaction; any balances left on the contract can be claimed by any
+ * caller.
  * @custom:security-contact bugs@across.to
  */
 contract SwapProxy is ReentrancyGuard {

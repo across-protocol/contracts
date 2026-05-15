@@ -1,12 +1,12 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys CounterfactualDepositSpokePool to Tron.
+ * Deploys CounterfactualDepositSpokePoolTr to Tron.
  *
  * Options:
  *   --testnet  — deploy to Tron Nile testnet (default: mainnet)
  *
  * Usage:
- *   yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedNativeToken> [--testnet]
+ *   yarn tron-deploy-counterfactual-deposit-spokepool-tron <spokePool> <signer> <wrappedNativeToken> [--testnet]
  */
 
 import "dotenv/config";
@@ -21,7 +21,7 @@ async function main(): Promise<void> {
 
   if (!spokePool || !signer || !wrappedNativeToken) {
     console.log(
-      "Usage: yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedNativeToken> [--testnet]"
+      "Usage: yarn tron-deploy-counterfactual-deposit-spokepool-tron <spokePool> <signer> <wrappedNativeToken> [--testnet]"
     );
     process.exit(1);
   }
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
 
   const chainId = resolveChainId();
 
-  console.log("=== CounterfactualDepositSpokePool Deployment ===");
+  console.log("=== CounterfactualDepositSpokePoolTr Deployment ===");
   console.log(`Chain ID: ${chainId}`);
 
   const encodedArgs = encodeArgs(
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
 
   const artifactPath = path.resolve(
     __dirname,
-    "../../../out-tron/CounterfactualDepositSpokePool.sol/CounterfactualDepositSpokePool.json"
+    "../../../out-tron/CounterfactualDepositSpokePoolTr.sol/CounterfactualDepositSpokePoolTr.json"
   );
 
   await deployContract({ chainId, artifactPath, encodedArgs });

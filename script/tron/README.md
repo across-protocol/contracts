@@ -56,11 +56,11 @@ TRON_FEE_LIMIT=100000000  # Fee limit in sun (default: 100 TRX)
 
 All scripts default to **Tron mainnet** (`728126428`). Pass `--testnet` to deploy to Nile testnet (`3448148188`). All address arguments use **Tron Base58Check format** (`T...`).
 
-## Universal SpokePool Scripts
+## Tron SpokePool Scripts
 
 ### SP1AutoVerifier
 
-No-op verifier for testing SP1Helios without real ZK proofs. No constructor args.
+No-op verifier that accepts any proof. No constructor args.
 
 ```bash
 yarn tron-deploy-sp1-auto-verifier [--testnet]
@@ -85,11 +85,11 @@ SP1_CONSENSUS_RPCS_LIST_TRON=https://...           # Comma-separated beacon chai
 yarn tron-deploy-sp1-helios [--testnet] [--fee-limit <sun>]
 ```
 
-> **Warning:** Once SP1Helios is deployed, you have 7 days to deploy the Universal_SpokePool and activate it in-protocol. After 7 days with no update, the contract becomes immutable.
+> **Warning:** Once SP1Helios is deployed, you have 7 days to deploy the Tron_SpokePool and activate it in-protocol. After 7 days with no update, the contract becomes immutable.
 
-### Universal_SpokePool
+### Tron_SpokePool
 
-Deploys the implementation contract and wraps it in a UUPS ERC1967Proxy, matching the behavior of `DeployUniversalSpokePool.s.sol`. Constructor params like wrapped native token (WTRX), time buffers, and HubPoolStore address are read from `generated/constants.json` and `broadcast/deployed-addresses.json`. If a Tron `SpokePool` proxy is already recorded for the current chain, the script skips deploying a new proxy and only deploys a fresh implementation.
+Deploys the Tron-specific SpokePool implementation and wraps it in a UUPS ERC1967Proxy. `Tron_SpokePool` inherits the Universal storage-proof flow and adds non-standard ERC20 transfer handling required for Tron USDT. Constructor params like wrapped native token (WTRX), time buffers, SP1Helios, and HubPoolStore address are read from the CLI argument, `generated/constants.json`, and `broadcast/deployed-addresses.json`. If a Tron `SpokePool` proxy is already recorded for the current chain, the script skips deploying a new proxy and only deploys a fresh implementation.
 
 ```bash
 yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]
@@ -97,9 +97,9 @@ yarn tron-deploy-universal-spokepool <sp1-helios-address> [--testnet]
 
 ### Universal deployment order
 
-1. **SP1AutoVerifier** (testnet only) or wait for Succinct to deploy the real Groth16 verifier
+1. **SP1AutoVerifier** A no-op verifier that accepts any proof.
 2. **SP1Helios** — needs the verifier address
-3. **Universal_SpokePool** — needs the SP1Helios address
+3. **Tron_SpokePool** — needs the SP1Helios address
 
 ## Counterfactual Deposit Scripts
 
@@ -119,10 +119,10 @@ Clone implementation contract used by the factory. No constructor args. Must be 
 yarn tron-deploy-counterfactual-deposit [--testnet]
 ```
 
-### CounterfactualDepositSpokePool
+### CounterfactualDepositSpokePoolTr
 
 ```bash
-yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedNativeToken> [--testnet]
+yarn tron-deploy-counterfactual-deposit-spokepool-tron <spokePool> <signer> <wrappedNativeToken> [--testnet]
 ```
 
 ### AdminWithdrawManager
@@ -131,10 +131,10 @@ yarn tron-deploy-counterfactual-deposit-spokepool <spokePool> <signer> <wrappedN
 yarn tron-deploy-admin-withdraw-manager <owner> <directWithdrawer> <signer> [--testnet]
 ```
 
-### WithdrawImplementation
+### WithdrawImplementationTron
 
 ```bash
-yarn tron-deploy-withdraw-implementation [--testnet]
+yarn tron-deploy-withdraw-implementation-tron [--testnet]
 ```
 
 ### Deploy Clone
@@ -169,7 +169,7 @@ TronScan requires a single flattened Solidity file for verification. Flatten wit
 
 ```bash
 forge flatten contracts/sp1-helios/SP1Helios.sol | sed 's/pragma solidity .*/pragma solidity ^0.8.25;/' > flattened/SP1Helios.sol
-forge flatten contracts/Universal_SpokePool.sol | sed 's/pragma solidity .*/pragma solidity ^0.8.25;/' > flattened/Universal_SpokePool.sol
+forge flatten contracts/spoke-pools/Tron_SpokePool.sol | sed 's/pragma solidity .*/pragma solidity ^0.8.25;/' > flattened/Tron_SpokePool.sol
 ```
 
 Then verify on TronScan:
@@ -191,20 +191,20 @@ Each deployment writes a Foundry-compatible broadcast artifact to `broadcast/Tro
 
 ## File overview
 
-| File                                                             | Purpose                                                                |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `deploy.ts`                                                      | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb |
-| `universal/tron-deploy-sp1-auto-verifier.ts`                     | Deploys SP1AutoVerifier (no args)                                      |
-| `universal/tron-deploy-sp1-helios.ts`                            | Deploys SP1Helios with genesis binary                                  |
-| `universal/tron-deploy-universal-spokepool.ts`                   | Deploys Universal_SpokePool implementation + ERC1967Proxy              |
-| `counterfactual/tron-deploy-counterfactual-factory.ts`           | Deploys CounterfactualDepositFactoryTron (no args)                     |
-| `counterfactual/tron-deploy-counterfactual-deposit.ts`           | Deploys CounterfactualDeposit implementation (no args)                 |
-| `counterfactual/tron-deploy-counterfactual-deposit-spokepool.ts` | Deploys CounterfactualDepositSpokePool                                 |
-| `counterfactual/tron-deploy-admin-withdraw-manager.ts`           | Deploys AdminWithdrawManager                                           |
-| `counterfactual/tron-deploy-withdraw-implementation.ts`          | Deploys WithdrawImplementation (no args)                               |
-| `counterfactual/tron-deploy-counterfactual-clone.ts`             | Deploys a clone from factory, verifies address prediction              |
-| `periphery/tron-deploy-spoke-pool-periphery.ts`                  | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
-| `periphery/tron-deploy-swap-proxy.ts`                            | Deploys a standalone SwapProxy                                         |
+| File                                                                  | Purpose                                                                |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `deploy.ts`                                                           | Shared TronWeb deployer — reads Foundry artifacts, deploys via TronWeb |
+| `universal/tron-deploy-sp1-auto-verifier.ts`                          | Deploys SP1AutoVerifier (no args)                                      |
+| `universal/tron-deploy-sp1-helios.ts`                                 | Deploys SP1Helios with genesis binary                                  |
+| `universal/tron-deploy-universal-spokepool.ts`                        | Deploys Tron_SpokePool implementation + ERC1967Proxy                   |
+| `counterfactual/tron-deploy-counterfactual-factory.ts`                | Deploys CounterfactualDepositFactoryTron (no args)                     |
+| `counterfactual/tron-deploy-counterfactual-deposit.ts`                | Deploys CounterfactualDeposit implementation (no args)                 |
+| `counterfactual/tron-deploy-counterfactual-deposit-spokepool-tron.ts` | Deploys CounterfactualDepositSpokePoolTr                               |
+| `counterfactual/tron-deploy-admin-withdraw-manager.ts`                | Deploys AdminWithdrawManager                                           |
+| `counterfactual/tron-deploy-withdraw-implementation-tron.ts`          | Deploys WithdrawImplementationTron (no args)                           |
+| `counterfactual/tron-deploy-counterfactual-clone.ts`                  | Deploys a clone from factory, verifies address prediction              |
+| `periphery/tron-deploy-spoke-pool-periphery.ts`                       | Deploys SpokePoolPeriphery (constructor also deploys inner SwapProxy)  |
+| `periphery/tron-deploy-swap-proxy.ts`                                 | Deploys a standalone SwapProxy                                         |
 
 ## Chain IDs
 
