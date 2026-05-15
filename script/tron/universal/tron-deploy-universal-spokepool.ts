@@ -1,9 +1,9 @@
 #!/usr/bin/env ts-node
 /**
- * Deploys Universal_SpokePool to Tron via TronWeb.
+ * Deploys Tron_SpokePool to Tron via TronWeb.
  *
  * Deploys the implementation contract and wraps it in a UUPS ERC1967Proxy,
- * matching the behavior of DeployUniversalSpokePool.s.sol.
+ * using the Tron-specific SpokePool variant for non-standard token transfer handling.
  *
  * Env vars:
  *   MNEMONIC                          — BIP-39 mnemonic (derives account 0 private key)
@@ -85,13 +85,13 @@ async function main(): Promise<void> {
   const chainId = resolveChainId();
   const hubChainId = chainId === TRON_TESTNET_CHAIN_ID ? "11155111" : "1";
 
-  console.log("=== Universal_SpokePool Tron Deployment ===");
+  console.log("=== Tron_SpokePool Deployment ===");
   console.log(`Chain ID: ${chainId}`);
   console.log(`Hub Chain ID: ${hubChainId}`);
 
   const constants = readConstants();
 
-  const adminUpdateBuffer = 86400; // 1 day, matching DeployUniversalSpokePool.s.sol
+  const adminUpdateBuffer = 86400; // 1 day.
   const heliosAddress = tronToEvmAddress(sp1HeliosAddress);
   const hubPoolStoreAddress = getHubPoolStoreAddress(constants, hubChainId);
   const hubPoolAddress = getHubPoolAddress(hubChainId);
@@ -135,10 +135,7 @@ async function main(): Promise<void> {
     ]
   );
 
-  const implArtifactPath = path.resolve(
-    __dirname,
-    "../../../out-tron/Universal_SpokePool.sol/Universal_SpokePool.json"
-  );
+  const implArtifactPath = path.resolve(__dirname, "../../../out-tron/Tron_SpokePool.sol/Tron_SpokePool.json");
 
   const implResult = await deployContract({
     chainId,
@@ -149,17 +146,16 @@ async function main(): Promise<void> {
   console.log(`\nImplementation deployed: ${implResult.address}`);
 
   // Step 2: Deploy ERC1967Proxy pointing to the implementation, with initialize calldata.
-  // Matches DeployUniversalSpokePool.s.sol: initialize(1, hubPool, hubPool)
   console.log("\n--- Deploying ERC1967Proxy ---");
 
-  // Universal_SpokePool.initialize(uint32 _initialDepositId, address _crossDomainAdmin, address _withdrawalRecipient)
+  // Tron_SpokePool inherits initialize(uint32,address,address).
   // selector: initialize(uint32,address,address)
   const initCalldata = encodeArgs(["uint32", "address", "address"], [1, hubPoolAddress, hubPoolAddress]);
 
   // Compute the full initialize calldata with function selector.
   // initialize(uint32,address,address) selector = 0x1794bb3c — but let's compute it properly.
   // We need abi.encodeWithSelector, which is selector + args.
-  // The initialize function signature from Universal_SpokePool:
+  // The initialize function signature:
   //   function initialize(uint32 _initialDepositId, address _crossDomainAdmin, address _withdrawalRecipient)
   const { TronWeb } = await import("tronweb");
   const twUtil = new TronWeb({ fullHost: "http://localhost" });
