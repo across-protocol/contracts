@@ -217,6 +217,27 @@ interface SpokePoolPeripheryInterface {
     ) external;
 
     /**
+     * @notice Same as `swapAndBridgeWithAuthorization`, but for tokens that implement the extended
+     * EIP-3009 `receiveWithAuthorization` overload that accepts an unstructured `bytes signature`
+     * (e.g. USDC v2.2). The bytes form supports both EOA (ECDSA) signers and contract (EIP-1271)
+     * signers.
+     * @dev If swapToken does not implement the bytes-signature `receiveWithAuthorization` overload,
+     * this call will revert.
+     * @param signatureOwner The owner of the EIP3009 signature and swapAndDepositData signature. Assumed to be the depositor for the Across spoke pool.
+     * @param swapAndDepositData Specifies the params we need to perform a swap on a generic exchange.
+     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
+     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
+     * @param receiveWithAuthSignature EIP3009 signature, unstructured bytes (EOA or EIP-1271).
+     */
+    function swapAndBridgeWithAuthorizationBytes(
+        address signatureOwner,
+        SwapAndDepositData calldata swapAndDepositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata receiveWithAuthSignature
+    ) external;
+
+    /**
      * @notice Deposits an EIP-2612 token Across input token into the Spoke Pool contract.
      * @dev If the token does not implement `permit` to the specifications of EIP-2612, the permit call result will be ignored and the function will continue.
      * @dev If `acrossInputToken` does not implement `permit` to the specifications of EIP-2612, this function will fail.
@@ -269,6 +290,27 @@ interface SpokePoolPeripheryInterface {
      * @param receiveWithAuthSignature EIP3009 signature encoded as (bytes32 r, bytes32 s, uint8 v).
      */
     function depositWithAuthorization(
+        address signatureOwner,
+        DepositData calldata depositData,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata receiveWithAuthSignature
+    ) external;
+
+    /**
+     * @notice Same as `depositWithAuthorization`, but for tokens that implement the extended
+     * EIP-3009 `receiveWithAuthorization` overload that accepts an unstructured `bytes signature`
+     * (e.g. USDC v2.2). The bytes form supports both EOA (ECDSA) signers and contract (EIP-1271)
+     * signers.
+     * @dev If `acrossInputToken` does not implement the bytes-signature `receiveWithAuthorization`
+     * overload, this call will revert.
+     * @param signatureOwner The owner of the EIP3009 signature and depositData signature. Assumed to be the depositor for the Across spoke pool.
+     * @param depositData Specifies the Across deposit params to send.
+     * @param validAfter The unix time after which the `receiveWithAuthorization` signature is valid.
+     * @param validBefore The unix time before which the `receiveWithAuthorization` signature is valid.
+     * @param receiveWithAuthSignature EIP3009 signature, unstructured bytes (EOA or EIP-1271).
+     */
+    function depositWithAuthorizationBytes(
         address signatureOwner,
         DepositData calldata depositData,
         uint256 validAfter,
