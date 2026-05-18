@@ -19,7 +19,15 @@
   - [SpokePool](#spokepool)
   - [CCTP and OFT](#cctp-and-oft)
 - [Route Signature Binding (SpokePool)](#route-signature-binding-spokepool)
-- [System Evolution](#system-evolution)
+- [Upgradeability](#upgradeability)
+  - [Storage layout on the clone](#storage-layout-on-the-clone)
+  - [Upgrade contracts](#upgrade-contracts)
+  - [Upgrade tree construction](#upgrade-tree-construction)
+  - [What can change in an upgrade](#what-can-change-in-an-upgrade)
+  - [End-to-end upgrade flow](#end-to-end-upgrade-flow)
+  - [Per-chain operation](#per-chain-operation)
+  - [Effect on in-flight deposits](#effect-on-in-flight-deposits)
+  - [Failure modes](#failure-modes)
   - [Trust shift](#trust-shift)
 - [Worked Example](#worked-example)
   - [Execution Flow](#execution-flow)
@@ -75,9 +83,8 @@
 
 - **Volatile-to-stable** swaps (e.g. ETH → USDC).
 - **Volatile-to-volatile** swaps (e.g. WBTC → ETH).
-- **In-place upgrade** of an existing address's behavior. Once an address is derived, its merkle tree and the implementation addresses it points to are immutable; behavior cannot be retroactively expanded for that address. Migration to a new-version address is the supported evolution path.
 
-The volatile-input cases are excluded because the fee-cap model assumes stable price ratios between `inputToken` and `outputToken`; volatile pairs would require either a different fee model or oracle-priced execution, both deferred.
+The volatile-input cases are excluded because the fee-cap model assumes stable price ratios between `inputToken` and `outputToken`; volatile pairs would require either a different fee model or oracle-priced execution, both deferred. In-place upgrade of an existing address's policy _is_ supported via the upgradeability system — see [Upgradeability](#upgradeability).
 
 ## Summary
 
@@ -113,6 +120,8 @@ System evolution is handled by deploying new contract versions and generating ne
 | `CounterfactualDepositOFT`       | SponsoredOFT (LayerZero) deposit implementation. Verifies a local EIP-712 fee signature, enforces `maxExecutionFeeBps`, forwards to `SponsoredOFTSrcPeriphery.deposit()`.                       |
 | `WithdrawImplementation`         | Sweeps tokens / ETH from the clone. Authorized by either an `admin` or `user` address committed in the leaf's `WithdrawParams`. Provides the refund path for unsupported inputs.                |
 | `AdminWithdrawManager`           | The contract typically set as `admin` in withdraw leaves. Supports direct withdraw by a trusted operator and permissionless signed withdraw to the user.                                        |
+| `UpgradeImplementation`          | Overwrites a clone's stored active merkle root after verifying an upgrade-tree proof against the chain-local `UpgradeApprover`. See [Upgradeability](#upgradeability).                          |
+| `UpgradeApprover`                | Chain-local contract owned by a multisig. Holds the approved upgrade root(s) that `UpgradeImplementation` verifies upgrade proofs against.                                                      |
 
 ### Clone Layout
 
@@ -246,34 +255,148 @@ Two signatures are verified per CCTP / OFT execute: the periphery's quote signat
 
 Pre-V2, the SpokePool implementation relied on the rule "no duplicate implementation type per clone" to prevent signature confusion between leaves. V2's any-input-token cross-product produces multiple SpokePool leaves per clone, so this rule cannot hold. The fix is the `paramsHash` binding in the EIP-712 typehash above: the signer attests to a specific leaf's route, so a signature issued for leaf A cannot be replayed by submitting it with leaf B's params. CCTP and OFT are unaffected because their periphery-side signature already covers the full route.
 
-## System Evolution
+## Upgradeability
 
-V2 clones are upgradeable. The CREATE2 address derives from the initial merkle root, so the address binds to the policy the user originally signed up for. The active merkle root lives in storage and can be replaced by an executor presenting a proof against an `UpgradeApprover`-approved meta-root (see [Design Decisions](#design-decisions) [#10](#10-upgradeability-storage-layout-immutable-initial-root--storage-active-root--lazy-fallback-option-1)–[#14](#14-no-final-immutable-opt-out)).
+V2 clones have a mutable active merkle root, replaceable through a multisig-authorized batch upgrade. The CREATE2 address binds to the _initial_ merkle root, so the address itself remains a stable handle for the user's funds; the _active_ root determines what executions are currently authorized, and that can change over time.
 
-The evolution model:
+Upgradeability is universal across V2 ([Design Decision #11](#11-all-v2-clones-are-upgradeable)) — every clone's canonical tree includes an `UpgradeImplementation` leaf, so any V2 address can be upgraded by the multisig that controls its chain's `UpgradeApprover`. Users who want immutability cannot opt out at address-derivation time.
 
-- **New source chain.** Add the chain to the canonical tree's cross-product. Existing addresses can be upgraded to support the new chain via a multisig-approved batch.
-- **New destination chain.** Introduce as a new `(outputToken, destinationChainId, recipient)` identity. Has its own address space, separate from existing addresses.
-- **New input token.** Add to the supported-input set in the policy. Existing addresses upgrade via a multisig-approved batch.
-- **New bridge integration.** Deploy the new bridge implementation, include it in the cross-product. Same upgrade path.
-- **Bug fixes in implementations.** Deploy a new implementation, update tree generation to point at it. Existing addresses can be patched via a multisig-approved upgrade swapping the affected leaves.
+### Storage layout on the clone
+
+Two pieces of state on the clone are relevant ([Design Decision #10](#10-upgradeability-storage-layout-immutable-initial-root--storage-active-root--lazy-fallback-option-1)):
+
+- **Immutable arg:** `initialMerkleRoot` (32 bytes). Embedded in the clone's bytecode at CREATE2 time. Never changes. Participates in the CREATE2 address derivation, so the address binds to the original policy.
+- **Storage slot:** `activeMerkleRoot` (32 bytes). Starts at `0x00…00`. Written by `UpgradeImplementation` after a successful upgrade.
+
+`CounterfactualDeposit` (the dispatcher) reads the storage slot at proof-verification time. If the slot is zero, it falls back to the immutable initial root. This handles the "no constructor on EIP-1167" problem cleanly — never-upgraded clones run against the immutable, upgraded clones run against storage. The cost is one cold SLOAD per execute on never-upgraded clones (~2.1k gas).
+
+### Upgrade contracts
+
+Two new contracts implement the upgrade flow:
+
+- **`UpgradeImplementation`** — A bridge-style implementation contract whose `execute(params, submitterData)` overwrites the clone's `activeMerkleRoot`. Receives a candidate new root and a merkle proof against an approved upgrade tree, and queries `UpgradeApprover` to confirm the upgrade tree was authorized.
+- **`UpgradeApprover`** — A chain-local contract owned by a multisig. Holds the currently approved upgrade root (or set of approved upgrade roots, depending on the design decision in [Open Questions](#upgradeability-mechanics)). Multisig calls `approve(upgradeRoot)` to authorize an upgrade batch. `UpgradeImplementation` queries `approvedUpgradeRoot()` (or `isApproved(upgradeRoot)`) at execute time.
+
+Both contracts are deployed at deterministic addresses via the standard deterministic-deployment proxy. `UpgradeImplementation` is the same address on every EVM chain (no chain-specific immutables). `UpgradeApprover` is also the same address on every chain — the multisig controlling it is the chain-local trust authority, set as owner at deploy time.
+
+### Upgrade tree construction
+
+An upgrade batch is represented off-chain as a merkle tree whose leaves authorize specific clone state transitions. The currently-described leaf format is:
+
+```
+leaf = keccak256(bytes.concat(keccak256(abi.encode(currentMerkleRoot, newMerkleRoot))))
+```
+
+Each upgrade-tree leaf authorizes "the clone whose current root is `currentMerkleRoot` may move to `newMerkleRoot`." Each batch contains one upgrade-tree leaf per clone to be upgraded.
+
+The leaf format is an [open question](#upgradeability-mechanics) — the destination-bound alternative `(cloneAddress, newRoot)` (potentially with a per-clone batch-ID counter) is also under consideration and has different operational tradeoffs. The rest of this section is written agnostic to the choice.
+
+### What can change in an upgrade
+
+Through an upgrade, the clone's active merkle root is replaced. That changes the set of executable leaves. The kinds of policy changes that motivate batches:
+
+- **New source chain.** Cross-product the tree against the new chain's bridge implementations and tokens. Clones upgraded with this batch can accept funds on the new source chain.
+- **New input token.** Add to the supported-input set in the policy. Clones upgraded with this batch can accept the new input token.
+- **New bridge integration.** Include leaves pointing at a newly-deployed bridge implementation contract.
+- **Bridge implementation bug fix.** Substitute the affected bridge implementation's leaves with leaves pointing at the patched implementation contract.
+- **Fee bound adjustment.** Re-issue leaves with tighter or looser fee caps.
+
+What does **not** change in an upgrade:
+
+- The clone's CREATE2 address. Funds remain at the same address.
+- The clone's `initialMerkleRoot` immutable arg.
+- The clone's destination identity `(outputToken, destinationChainId, recipient)` — that's part of every leaf's `params`, and altering it would imply a policy that bridges to a different destination than the one the user funded the address for. Multisig policy is to preserve destination identity across upgrades; the contract does not enforce this.
+- The clone's withdraw authority `(admin, user, withdrawImpl)`. Multisig policy is to preserve this across upgrades ([Design Decision #15](#15-withdraw-preservation-off-chain-policy-only-at-launch)) so the user always retains an executable withdraw leaf.
+- The clone's `UpgradeImplementation` leaf — preserved to keep the clone upgradable in subsequent batches. Without it, future upgrades to that clone are impossible. Multisig policy is to always include it; the contract does not enforce this.
+
+### End-to-end upgrade flow
+
+A complete upgrade has six phases. The first four are off-chain.
+
+**Phase 1 — Policy change identified.** A system maintainer decides that some set of clones should move from policy P_old to policy P_new. Could be triggered by a new chain rollout, a stablecoin allowlist expansion, or a bridge bug fix.
+
+**Phase 2 — Per-clone tree regeneration.** For each affected clone:
+
+1. Read the clone's `(outputToken, destinationChainId, recipient)` identity from the SDK / canonical address registry.
+2. Apply P_new to derive the new canonical tree for that clone.
+3. Compute the new merkle root `R_new`.
+4. Read the clone's _current_ active root `R_current` from chain (needed for `(currentRoot, newRoot)` leaves; not needed for `(cloneAddress, newRoot)` leaves — pending design choice).
+5. Add an upgrade-tree leaf to the batch.
+
+**Phase 3 — Off-chain review.** The multisig (and their tooling) reviews every upgrade-tree leaf:
+
+- Destination identity is preserved across `(R_current, R_new)` for every clone.
+- `(admin, user, withdrawImpl)` is preserved.
+- The `UpgradeImplementation` leaf is preserved.
+- The new tree's leaves are well-formed (valid bridge implementations, valid token addresses, valid destination encodings).
+
+This phase enforces all invariants that aren't on-chain. Per [Design Decision #15](#15-withdraw-preservation-off-chain-policy-only-at-launch), the withdraw-preservation invariant is one of the things this review must catch.
+
+**Phase 4 — Upgrade root computed.** Once the batch passes review, the multisig computes the upgrade root over all the upgrade-tree leaves.
+
+**Phase 5 — Per-chain multisig approval.** Per [Design Decision #12](#12-approval-propagation-across-chains-multisig-operates-per-chain), the multisig submits `UpgradeApprover.approve(upgradeRoot)` separately on every chain where the upgrade should land. The upgrade root is identical across chains (because clone addresses and roots are identical across chains, the upgrade tree content is identical), so the same `upgradeRoot` value works everywhere. The multisig signs and submits N transactions for N chains.
+
+There is no timelock at launch ([Design Decision #13](#13-no-upgrade-timelock-at-launch)). The new root is usable in the next block on each chain.
+
+**Phase 6 — Per-clone execution.** With approval on-chain, any executor can land the upgrade for any clone in the batch. For each clone:
+
+1. Executor builds a merkle proof for the clone's upgrade-tree leaf against the approved upgrade root.
+2. Executor calls `clone.execute(UpgradeImplementation, params, submitterData, proof)`, where:
+   - `params` is the `UpgradeImplementation` leaf's params (whatever distinguishes the leaf in the _clone's tree_, not the upgrade tree).
+   - `submitterData = abi.encode(newRoot, upgradeProof, …)` — the new root the clone should move to, and the upgrade proof against `UpgradeApprover`.
+   - `proof` is the merkle proof for the `UpgradeImplementation` leaf in the _clone's current tree_.
+3. The dispatcher verifies the merkle proof against the clone's active root — confirming the clone authorized this `UpgradeImplementation` to act on it.
+4. The dispatcher delegatecalls `UpgradeImplementation`.
+5. `UpgradeImplementation` reads the clone's active root (current state), reconstructs the upgrade-tree leaf, queries `UpgradeApprover.approvedUpgradeRoot()`, verifies the upgrade proof.
+6. `UpgradeImplementation` writes `newRoot` to the clone's `activeMerkleRoot` storage slot.
+
+After Phase 6, the clone executes against the new root for all subsequent operations.
+
+Executors are unprivileged. Any address can submit Phase 6 transactions; the only gate is having a valid upgrade proof against the approved root. The multisig is not involved in execution — they only set policy via approval.
+
+### Per-chain operation
+
+A clone exists at the same address on every supported EVM chain, but its storage is independent per chain. Upgrading on chain A does not change the active root on chain B. To roll out an upgrade everywhere:
+
+1. The multisig approves the upgrade root on every chain (Phase 5, per [Design Decision #12](#12-approval-propagation-across-chains-multisig-operates-per-chain)).
+2. Executors land Phase 6 transactions on every chain that has approval.
+
+Chain rollouts can be staggered. A clone may be at `R_new` on chain A and `R_old` on chain B for an extended period. This is fine — clones are independent per chain.
+
+### Effect on in-flight deposits
+
+A "deposit" in this system is funds sitting at the clone's address awaiting execution. An upgrade replaces the tree; the funds themselves are untouched. After upgrade:
+
+- If the new tree contains a leaf compatible with the funded token (e.g. SpokePool leaf for USDC, and there's USDC at the clone), an executor can still execute the deposit against the new tree's leaf.
+- If the new tree does not contain a compatible leaf (e.g. the input token was removed from the supported set in the policy change), the funded token becomes "unsupported." It can be withdrawn via `WithdrawImplementation.execute`, but cannot be bridged through this address until a subsequent upgrade re-adds support.
+
+There is no "in-flight execution" that can be partially complete across an upgrade — each `execute()` is atomic. An execute either succeeds before the upgrade (using the old tree) or after (using the new tree).
+
+### Failure modes
+
+- **Missed upgrade.** A clone that wasn't executed against in a batch retains its previous active root. The clone is not stuck — it can be included in a subsequent batch. With `(currentRoot, newRoot)` leaves, the next batch must include a leaf bound to the clone's actual (unchanged) current root, so the multisig must read on-chain state per batch. With the candidate `(cloneAddress, newRoot)` + batch-ID design, the same clone is upgradable to any newer batch's target root regardless of how many batches it missed. See [Open Questions](#upgradeability-mechanics).
+- **Race between state-read and approval.** Specific to `(currentRoot, newRoot)`: if a clone's active root changes between when the multisig snapshots it for batch construction and when the upgrade root is approved on-chain, the clone's leaf in the batch references a now-stale `currentRoot` and fails verification. Recoverable by including the clone in the next batch with the corrected `currentRoot`. Eliminated by the `(cloneAddress, newRoot)` candidate design.
+- **Buggy approved root.** If an upgrade tree contains a leaf with a bad target root (e.g. a leaf that breaks something on the affected clones), the multisig can approve a corrective batch with a `(brokenRoot, fixedRoot)` leaf to upgrade affected clones forward. Users at affected clones can also withdraw their funds via the still-executable withdraw leaf while waiting for the corrective batch.
+- **Multisig unavailability.** If the multisig stops approving upgrades (key loss, organizational dissolution, etc.), clones stay at their last approved root indefinitely. Funds remain accessible via `WithdrawImplementation` because the withdraw leaf is preserved. New functionality (new chains, new tokens) is not available to existing clones until/unless the multisig resumes operation.
+- **Multisig compromise.** A compromised multisig can approve a malicious batch (e.g. a tree that bridges to attacker-controlled addresses). The withdraw escape is the only on-chain defense — see Trust shift below.
 
 ### Trust shift
 
 Including an `UpgradeImplementation` leaf in every V2 clone transfers a meaningful capability to the multisig that controls `UpgradeApprover`:
 
 - The multisig can authorize new bridge leaves, new input tokens, or new source chains for any address (intended use).
-- The multisig can also, in principle, authorize a new tree whose leaves drain funds to a different recipient (worst-case misuse).
+- The multisig can also, in principle, authorize a new tree whose leaves bridge to a different recipient (worst-case misuse).
 
 Mitigations in V2:
 
-- **Withdraw escape hatch.** As long as the user retains an executable `WithdrawImplementation` leaf, they can sweep funds out unilaterally. Preservation of that leaf across upgrades is an active design question (see Open Questions).
-- **Public meta-root.** Every upgrade batch is publicly proposed via the on-chain `UpgradeApprover.approve(metaRoot)` call. Users can watch for approvals and react.
+- **Withdraw escape hatch.** As long as the user retains an executable `WithdrawImplementation` leaf, they can sweep funds out unilaterally. Multisig policy preserves this leaf across upgrades ([Design Decision #15](#15-withdraw-preservation-off-chain-policy-only-at-launch)); the contract does not enforce it.
+- **Public upgrade root.** Every upgrade batch is publicly proposed via the on-chain `UpgradeApprover.approve(upgradeRoot)` call. Users can watch for approvals, fetch the corresponding upgrade tree from a public source (the multisig's tooling exposes the leaf list), inspect their clone's target root, and react.
 
-What V2 does _not_ provide:
+What V2 does **not** provide:
 
-- A timelock between `approve` and `effective` ([Design Decision #13](#13-no-upgrade-timelock-at-launch) — deferred).
-- A "terminal" upgrade that strips the upgrade leaf ([Design Decision #14](#14-no-final-immutable-opt-out) — not supported).
+- A timelock between `approve` and `effective` ([Design Decision #13](#13-no-upgrade-timelock-at-launch) — deferred). Users do not have a guaranteed reaction window between approval and a malicious upgrade being landed.
+- A "terminal" upgrade that strips the upgrade leaf ([Design Decision #14](#14-no-final-immutable-opt-out) — not supported). Users cannot opt out of future upgrades, even after a particular batch has landed.
+- On-chain enforcement of withdraw preservation ([Design Decision #15](#15-withdraw-preservation-off-chain-policy-only-at-launch)). Users rely on multisig honesty (and off-chain review) to preserve their escape hatch.
 
 ## Worked Example
 
@@ -515,17 +638,17 @@ The lazy-fallback dispatcher pattern means a never-upgraded clone pays one extra
 
 Every V2 clone's canonical tree includes an `UpgradeImplementation` leaf. There is no per-user opt-out at address-derivation time — using V2 means accepting the multisig as an upgrade authority for the address.
 
-Consequence: the trust assumption is universal across V2. Every V2 user trusts the multisig that controls `UpgradeApprover` not to land malicious meta-roots. The mitigations described in the System Evolution → Trust shift section (withdraw escape, public meta-root approvals) apply to every V2 clone.
+Consequence: the trust assumption is universal across V2. Every V2 user trusts the multisig that controls `UpgradeApprover` not to land malicious upgrade roots. The mitigations described in the [Upgradeability → Trust shift](#trust-shift) section (withdraw escape, public upgrade root approvals) apply to every V2 clone.
 
 ### 12. Approval propagation across chains: multisig operates per-chain
 
-The `UpgradeApprover` contract on each chain holds its own approved meta-root. The multisig calls `approve(metaRoot)` separately on every chain where the upgrade should land. No cross-chain messaging, no off-chain signed approvals propagated permissionlessly.
+The `UpgradeApprover` contract on each chain holds its own approved upgrade root. The multisig calls `approve(upgradeRoot)` separately on every chain where the upgrade should land. No cross-chain messaging, no off-chain signed approvals propagated permissionlessly.
 
 Considered and rejected: **off-chain-signed approvals** (multisig signs once, anyone propagates) and **cross-chain message from L1**. Both reduce the operational burden but introduce additional trust surfaces (the propagation channel) and additional contracts. Per-chain operation is simplest at launch; the propagation question can be revisited if the operational cost becomes a real friction.
 
 ### 13. No upgrade timelock at launch
 
-`UpgradeApprover.approve(metaRoot)` makes the new root immediately usable; executors can run the upgrade in the next block. Users wanting to escape an upgrade they object to must monitor approvals and withdraw before any executor lands the upgrade.
+`UpgradeApprover.approve(upgradeRoot)` makes the new root immediately usable; executors can run the upgrade in the next block. Users wanting to escape an upgrade they object to must monitor approvals and withdraw before any executor lands the upgrade.
 
 This is a launch-time choice, not a permanent one. Adding a timelock later is a non-breaking change to `UpgradeApprover` (the contract gates between `approve` and `effective`); existing clones do not need redeployment. The duration and conditions for adding one are recorded in open questions.
 
@@ -565,14 +688,14 @@ Smart-contract work to ship V2. `[x]` = completed, `[ ]` = pending.
 - [ ] Add storage slot for the active merkle root on the clone. Use the lazy-fallback pattern: dispatcher reads storage; if `0x00…00`, falls back to the immutable initial root.
 - [ ] Keep the initial merkle root as the clone's sole immutable arg ([Design Decision #10](#10-upgradeability-storage-layout-immutable-initial-root--storage-active-root--lazy-fallback-option-1)). Factory signature does not change.
 - [ ] Implement `UpgradeImplementation` contract:
-  - Receives `submitterData = (bytes32 newRoot, bytes32[] metaProof)`.
+  - Receives `submitterData = (bytes32 newRoot, bytes32[] upgradeProof)`.
   - Reads the clone's current root (via storage with the same fallback pattern as the dispatcher).
-  - Constructs the meta-leaf and verifies `metaProof` against `UpgradeApprover.approvedMetaRoot()`.
+  - Constructs the upgrade-tree leaf and verifies `upgradeProof` against `UpgradeApprover.approvedUpgradeRoot()`.
   - Writes `newRoot` to the clone's storage slot.
 - [ ] Implement `UpgradeApprover` contract:
   - Owner = chain-local multisig.
-  - `approve(bytes32 metaRoot)` — `onlyOwner`, sets the active approved meta-root.
-  - `approvedMetaRoot()` — view.
+  - `approve(bytes32 upgradeRoot)` — `onlyOwner`, sets the active approved upgrade root.
+  - `approvedUpgradeRoot()` — view.
   - No timelock at launch ([Design Decision #13](#13-no-upgrade-timelock-at-launch)). Owner can replace the approved root at any time.
 - [ ] Decide `UpgradeApprover` scope (per-clone via params, or global via `UpgradeImplementation` immutable) — see Open Questions.
 
@@ -583,12 +706,12 @@ Smart-contract work to ship V2. `[x]` = completed, `[ ]` = pending.
 - [ ] Add tests for `paramsHash`-bound SpokePool signature (signature for leaf A should not validate against leaf B's params in the same clone).
 - [ ] Add tests for dynamic `executionFee` signature verification, including `maxExecutionFeeBps` cap and signature expiry, on CCTP and OFT.
 - [ ] Add tests for `UpgradeImplementation`:
-  - Successful upgrade with valid meta-proof updates storage root.
-  - Upgrade fails if `UpgradeApprover` has no approved meta-root.
-  - Upgrade fails if meta-proof doesn't match the current `(currentRoot, newRoot)` pair.
+  - Successful upgrade with valid upgrade proof updates storage root.
+  - Upgrade fails if `UpgradeApprover` has no approved upgrade root.
+  - Upgrade fails if upgrade proof doesn't match the current `(currentRoot, newRoot)` pair.
   - After upgrade, dispatcher uses the new root for proof verification.
   - Pre-first-upgrade execution uses the immutable initial root (lazy fallback).
-  - Re-executing the same meta-leaf after upgrade fails (precondition no longer matches).
+  - Re-executing the same upgrade-tree leaf after upgrade fails (precondition no longer matches).
 - [ ] Add tests for `UpgradeApprover` access control and `approve()` overwriting prior approval.
 
 ### Scripts and deployment
@@ -608,6 +731,11 @@ Smart-contract work to ship V2. `[x]` = completed, `[ ]` = pending.
 
 ### Upgradeability mechanics
 
+- **Upgrade tree leaf format.** Two candidates:
+  - **`(currentRoot, newRoot)`** — transition-bound. Each upgrade-tree leaf consumable exactly once per clone (precondition mismatch makes stale leaves naturally inert). Multisig must read each clone's on-chain root when constructing a batch, and is vulnerable to a state-read-vs-approval race where the clone's root changes between snapshot and approval. Skip-ahead for stale clones requires the multisig to explicitly include catch-up leaves bound to the stale `currentRoot`.
+  - **`(cloneAddress, newRoot)` + per-clone batch-ID counter** — destination-bound. Skip-ahead is automatic (a stale clone can use any newer batch's leaf for it). No state-read race during batch construction. Requires an additional storage slot on the clone (`lastBatchId`) plus a batch-ID parameter on `UpgradeApprover.approve(upgradeRoot, batchId)`. Monotonicity comes from the counter rather than the precondition mismatch.
+  - `(cloneAddress, newRoot)` without a counter has rollback risk (old approvals can re-execute and revert state); not a viable standalone option.
+  - The choice affects the on-chain layout (`(cloneAddress, newRoot)` adds one clone storage slot for the counter), the contents of `submitterData` to `UpgradeImplementation`, and the multisig's off-chain workflow.
 - **`UpgradeApprover` scope: per-clone or global.** Should the approver address live in the `UpgradeImplementation` leaf's params (per-clone, flexible — different cohorts can use different approvers) or as an immutable in `UpgradeImplementation` (one global approver, simpler)?
 - **Strengthen withdraw-preservation beyond off-chain policy.** V2 launches with Design A (multisig tooling enforces preservation; contract enforces nothing — [Design Decision #15](#15-withdraw-preservation-off-chain-policy-only-at-launch)). The stronger alternatives remain available for later adoption:
   - **Design B** — pin `withdrawIdentityHash = keccak256(admin, user, withdrawImpl)` in clone immutable args; `UpgradeImplementation` requires a merkle proof per upgrade that the new tree preserves the same withdraw leaf. Strong on-chain guarantee at the cost of an extra immutable arg, an extra proof per upgrade, and the inability to rotate `WithdrawImplementation` for an existing address.
