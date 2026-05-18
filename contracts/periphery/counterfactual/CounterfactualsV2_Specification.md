@@ -21,7 +21,6 @@
 - [Route Signature Binding (SpokePool)](#route-signature-binding-spokepool)
 - [System Evolution](#system-evolution)
   - [Trust shift](#trust-shift)
-  - [Migration](#migration)
 - [Worked Example](#worked-example)
   - [Execution Flow](#execution-flow)
 - [Caveats](#caveats)
@@ -31,7 +30,6 @@
   - [Relayer Infrastructure](#relayer-infrastructure)
   - [Refund Bot](#refund-bot)
   - [Indexer / Analytics](#indexer--analytics)
-  - [Migration](#migration-1)
 - [Design Decisions](#design-decisions)
   - [#1 — Destination identity bound by merkle root](#1-destination-identity-is-bound-by-the-merkle-root-not-a-separate-immutable)
   - [#2 — Dynamic execution fees with EIP-712](#2-dynamic-execution-fees-with-signer-bound-eip-712-authorization)
@@ -277,17 +275,6 @@ What V2 does _not_ provide:
 - A timelock between `approve` and `effective` ([Design Decision #13](#13-no-upgrade-timelock-at-launch) — deferred).
 - A "terminal" upgrade that strips the upgrade leaf ([Design Decision #14](#14-no-final-immutable-opt-out) — not supported).
 
-### Migration
-
-Migration of an existing address's funds to a new-version address is performed by the address owner via the withdraw leaf, regardless of clone flavor:
-
-1. New version of the system is deployed (new factory, new implementations) — or, for upgradable clones, the user simply waits for a multisig-approved upgrade.
-2. SDK generates the new-version address for the same `(outputToken, destinationChainId, recipient)` policy.
-3. The address owner (via `user` authorization or via `AdminWithdrawManager.signedWithdrawToUser`) sweeps the old clone's balance to themselves.
-4. The owner redeposits to the new-version address.
-
-For upgradable clones, migration is also the user's escape if they object to a pending multisig upgrade.
-
 ## Worked Example
 
 Destination identity:
@@ -457,12 +444,6 @@ This is where most of the non-contract work lands.
 
 - **Address ↔ deposit-source mapping is no longer 1:1 with a single event.** Per-execute, the deposit event identifies the source chain and input token. The address itself is shared across chains, so cross-chain aggregation is required for any "where did this user deposit?" question.
 - **Versioning.** Indexers must track the system version each address was derived against, since address generation is non-portable across versions.
-
-### Migration
-
-- **Existing V1 addresses do not migrate to V2 in place.** They keep working against V1 contracts. V2 deploys at fresh CREATE2 addresses (new factory, new implementations). The SDK switches new address generation to V2.
-- **No upgrade path for live V1 clones.** EIP-1167 proxies are not upgradeable. A user with a populated V1 tree keeps that tree; they obtain a new address if they want V2 properties.
-- **Forward migration.** Users with funds at a V1 address use the V1 withdraw leaf to sweep funds to themselves, then redeposit to their V2 address.
 
 ## Design Decisions
 
