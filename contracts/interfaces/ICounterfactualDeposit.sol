@@ -15,7 +15,7 @@ interface ICounterfactualDeposit {
      * @param implementation The implementation contract to delegatecall.
      * @param params ABI-encoded route parameters (hashed into the merkle leaf).
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
-     * @param proof Merkle proof for the (implementation, keccak256(params)) leaf.
+     * @param proof Merkle proof for the (block.chainid, implementation, keccak256(params)) leaf.
      */
     function execute(
         address implementation,

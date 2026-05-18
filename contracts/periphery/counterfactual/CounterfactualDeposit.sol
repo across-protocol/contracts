@@ -9,15 +9,15 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
 /**
  * @title CounterfactualDeposit
  * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are instances of this contract.
- * @dev The clone's immutable arg is a merkle root. Each leaf is
- *      `keccak256(bytes.concat(keccak256(abi.encode(block.chainid, implementation, keccak256(params)))))`.
- *      The dispatcher folds `block.chainid` into the leaf preimage so the same merkle root can authorize
- *      different `(implementation, params)` tuples on different chains. The off-chain tree enumerates one
- *      leaf per `(srcChainId, implementation, params)` triple; because the tree is identical on every chain,
- *      the clone CREATE2 address is identical on every chain. A chain-A leaf cannot be replayed on chain B
- *      because the dispatcher rebuilds the leaf with the chain's own `block.chainid`.
+ * @dev The clone's sole immutable arg is the merkle root of the
+ *      `(block.chainid, implementation, keccak256(params))` leaf tree. The dispatcher folds `block.chainid`
+ *      into the leaf preimage so the same root can authorize different `(implementation, params)` tuples on
+ *      different chains, while a chain-A leaf cannot be replayed on chain B because the dispatcher rebuilds
+ *      the leaf with the chain's own `block.chainid`.
  *
- *      Callers prove leaf inclusion, then the dispatcher delegatecalls the implementation.
+ *      Because every leaf's `params` encodes the full route (including destination), the root commits to
+ *      every destination the clone can bridge to, and the CREATE2 address itself binds destination identity.
+ *      Implementations therefore do not need a separate on-chain "destination identity" immutable.
  *
  *      Call chain: Caller → CALL → Clone (EIP-1167 proxy) → DELEGATECALL → Dispatcher → DELEGATECALL → Implementation
  *      - address(this) = clone address throughout (correct for EIP-712, token balances)
@@ -25,9 +25,8 @@ import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.
  *      - msg.value = original value throughout
  *
  *      Implementations whose authorization signatures cover only execution-time parameters (e.g. amounts,
- *      deadlines) must additionally commit to `keccak256(params)` in their signed payload so that a caller
- *      cannot prove leaf A's params while submitting a signature issued for leaf B's route. See
- *      `CounterfactualDepositSpokePool` for the canonical example.
+ *      deadlines, executionFee) must additionally commit to `keccak256(params)` in their signed payload so a
+ *      caller cannot prove leaf A's params while submitting a signature issued for leaf B's route.
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).

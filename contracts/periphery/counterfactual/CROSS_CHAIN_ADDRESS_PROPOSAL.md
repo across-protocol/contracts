@@ -33,7 +33,13 @@ The naive fix is a chain-config registry contract whose values are read at execu
 
 ## Proposal
 
-Two contract changes plus a tree-construction discipline.
+Two contract changes plus a tree-construction discipline:
+
+1. Bind `block.chainid` into the merkle leaf so the same root is valid on every chain without permitting cross-chain replay.
+2. Cross-product the tree over input tokens so the same address can accept any supported source token.
+3. Make `executionFee` dynamic at execution time, authorized by a signer EIP-712 signature bound to the leaf. The fee value is supplied by the executor but only succeeds if the signer signed for that specific `(paramsHash, amount, executionFee, …)`.
+
+Destination identity (the "every path lands at `(dstChain, dstToken, recipient)`" promise) is enforced **by the merkle root alone** — each leaf's `params` already commits to its destination, and the CREATE2 clone address derives from the root, so a tree containing a leaf for a different destination produces a different address that the user would not have funded. No separate on-chain identity-hash check is needed.
 
 ### 1. Bind `block.chainid` into the merkle leaf
 
@@ -72,9 +78,7 @@ Leaf format: (block.chainid, implementation, params)
 
 Tree size grows linearly with `srcChains × inputTokens × bridges`. With ~10 EVM chains × ~3 input tokens × ~2 bridges ≈ 60 leaves (proof depth 6). Tiny in practice.
 
-**Destination-identifier mapping is a backend responsibility.** "HyperEVM" maps to a `destinationChainId` for SpokePool, a `destinationDomain` for CCTP, and a `dstEid` for OFT. The SDK must hold the canonical mapping `dstChain → (destinationChainId, destinationDomain, dstEid)` and use it when constructing leaves. A wrong mapping for one bridge means the leaf for that bridge points at a different destination than the others — the on-chain code can't detect this, since each leaf's destination field is opaque to the dispatcher. See the backend implications section for how to defend against this.
-
-Tree size grows linearly with `srcChains × inputTokens × bridges`. With ~10 EVM chains × ~3 input tokens × ~2 bridges ≈ 60 leaves (proof depth 6). Tiny in practice.
+**Destination-identifier mapping is a backend responsibility.** "HyperEVM" maps to a `destinationChainId` for SpokePool, a `destinationDomain` for CCTP, and a `dstEid` for OFT. The SDK holds the canonical mapping `dstChain → (destinationChainId, destinationDomain, dstEid)` and uses it when constructing leaves. The on-chain code is destination-agnostic — destination consistency across leaves is enforced by the CREATE2 binding (see §5), so an SDK that emits inconsistent leaves produces a different address that the user would not have funded in the first place.
 
 ### 3. Bind the SpokePool signature to the route
 
@@ -105,21 +109,76 @@ Two clean options:
 
 Default: **replicate per chain**. Cleaner audit, no wildcards.
 
-### 5. Optional — on-chain destination-identity invariance
+### 5. Destination identity is bound by the merkle root
 
-The user's promise — _"every path in this tree lands at the same `(dstChain, dstToken, recipient)`"_ — is enforced today by the SDK / tree builder. Anyone can audit by enumerating leaves.
+The user's promise — _"every path in this tree lands at the same `(dstChain, dstToken, recipient)`"_ — is enforced by CREATE2 address derivation, not by a separate on-chain check.
 
-If we want on-chain enforcement (defense-in-depth against compromised tree builders), split the clone's immutable args into:
+Each leaf's `params` includes the destination (`destinationChainId` + `outputToken` + `recipient` for SpokePool; `destinationDomain` + `finalToken` + `finalRecipient` for CCTP; `dstEid` + `finalToken` + `finalRecipient` for OFT). The merkle root commits to every leaf, and the CREATE2 clone address commits to the merkle root. So:
 
+- A tree containing leaves with inconsistent destinations produces a **different root** and therefore a **different CREATE2 address** than a tree whose leaves all share one destination.
+- Users (or auditors) regenerate the expected address by reconstructing the canonical tree from their policy `(destination, input tokens, source chains, bridges, fee caps)` and comparing against what the SDK or integrator published. If those don't match, they don't fund the address.
+- Once funded, the dispatcher's merkle-proof check guarantees only leaves actually in the tree can be executed.
+
+No new immutable arg, no new on-chain check, no clone-bytecode expansion. The clone keeps its single 32-byte `merkleRoot` immutable.
+
+#### What's trusted
+
+The SDK / tree builder that constructs the leaves. The mitigation is the same as for any other policy field (input-token set, fee caps, exclusive-relayer rules): an honest party reconstructs the tree, verifies the resulting address, and only funds an address whose root they can rederive from a policy they trust. If a stricter guarantee is later needed — e.g. for fully untrusted tree builders — a `destinationIdentityHash` immutable plus per-impl equality check can be reintroduced later. It is omitted here because the CREATE2 binding already gives the user the property they need.
+
+Withdraw leaves are unchanged.
+
+### 6. Dynamic execution fees
+
+Today every implementation bakes `executionFee` into its `params` struct, so the fee is committed at address-generation time and frozen forever. This is too rigid — gas prices and relayer competition vary day-to-day, and the user is forced to either over-quote (so the address remains attractive when gas is high) or under-quote (so the address goes unfilled when gas is high).
+
+We make `executionFee` a runtime input authorized by a signer EIP-712 signature bound to the specific leaf:
+
+- The `executionFee` value is removed from each implementation's `*DepositParams` struct (so it no longer affects the merkle leaf or clone address).
+- The `executionFee` value is added to each implementation's `*SubmitterData` struct (so the executor passes it at runtime).
+- The signer EIP-712 typehash gains an `executionFee` field. The signer attests that the fee is acceptable for this leaf and amount in this signing window.
+
+The trust model is unchanged: the same `signer` who today attests amounts/deadlines also attests the fee. Compromise of the signer key already lets an attacker steer outputs; adding fee control to the same key does not widen the blast radius beyond what's bounded by users' off-chain expectations.
+
+#### SpokePool (existing local signer)
+
+Existing typehash:
+
+```solidity
+"ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
 ```
-abi.encode(destinationIdentityHash, merkleRoot)
+
+New typehash:
+
+```solidity
+"ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,uint256 executionFee,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
 ```
 
-where `destinationIdentityHash = keccak256(dstChain, dstToken, recipient)`. The dispatcher requires each leaf to commit to the same `destinationIdentityHash`. Clone size grows from ~77 bytes to ~109 bytes (~6k extra gas at deploy).
+The fee check (`maxFeeFixed + maxFeeBps × inputAmount`) still applies, so even with a compromised signer the executor cannot extract more than the user-committed fee cap.
 
-This is most attractive if integrators (e.g. Coinbase, Native) generate addresses for end users — the integrator no longer needs to be trusted to construct trees correctly.
+#### CCTP and OFT (new local signer)
 
-## Worked example: full tree for one destination identity
+CCTP and OFT today rely on their `SrcPeriphery` to validate the bridging quote. The periphery's quote does not include the execution fee — it's a separate value paid in `burnToken` / `token` at the source. Without a local signer for that fee, an attacker could call `execute(... executionFee = balance - 1 ...)` and drain the clone before bridging.
+
+We add a local EIP-712 signer to each of `CounterfactualDepositCCTP` and `CounterfactualDepositOFT` with a minimal typehash:
+
+```solidity
+// CounterfactualDepositCCTP
+"ExecuteCCTP(bytes32 paramsHash,uint256 amount,uint256 executionFee,uint256 executionFeeDeadline)"
+
+// CounterfactualDepositOFT
+"ExecuteOFT(bytes32 paramsHash,uint256 amount,uint256 executionFee,uint256 executionFeeDeadline)"
+```
+
+The signer is a new constructor immutable. Operationally this can be the same off-chain key already used for SpokePool, but it's a separate trust setting in each implementation. The periphery-side signature continues to be required and unchanged — there are now two signatures verified on execution: the periphery's (route + amount) and the local one (fee).
+
+#### Bound on fee abuse
+
+To prevent a compromised signer from sweeping the clone via an inflated fee, each implementation still enforces an upper bound on `executionFee`:
+
+- SpokePool: covered by the existing `maxFeeFixed + maxFeeBps × inputAmount` check, which includes `executionFee` as a component of `totalFee`.
+- CCTP and OFT: add a `maxExecutionFeeBps` field to the params struct (merkle-committed at address generation), and require `executionFee ≤ maxExecutionFeeBps × amount / 10_000` at execution time.
+
+This preserves the property that "an isolated signer compromise is bounded by user-committed caps."
 
 A concrete example, to make the cross-product tangible.
 
@@ -209,9 +268,10 @@ SpokePoolDepositParams({
     message:            "",
     stableExchangeRate: 1e18,            // USDT ≈ USDC for fee-cap arithmetic
     maxFeeFixed:        2_000_000,       // 2 USDT (6 decimals) fixed-fee headroom
-    maxFeeBps:          20,              // 0.20% variable-fee cap
-    executionFee:       500_000          // 0.5 USDT execution fee (or dynamic; see Change #1)
+    maxFeeBps:          20               // 0.20% variable-fee cap (also caps executionFee)
 })
+// Note: `executionFee` is no longer in params — it's supplied at execute time in submitter data
+//       and authorized by the signer EIP-712 signature (see §6).
 ```
 
 And **leaf #4** (Ethereum, CCTP, USDC → USDC_hyper) decodes to:
@@ -232,8 +292,10 @@ CCTPDepositParams({
     accountCreationMode:  0,                                    // Standard
     executionMode:        0,                                    // DirectToCore
     actionData:           "",
-    executionFee:         500_000                               // 0.5 USDC execution fee
+    maxExecutionFeeBps:   50                                    // 0.50% cap on the dynamic executionFee
 })
+// `executionFee` is now in submitter data, signed by the local CCTP-impl signer over
+// `ExecuteCCTP(paramsHash, amount, executionFee, executionFeeDeadline)` (see §6).
 ```
 
 And **leaf #31** (Arbitrum, Withdraw) decodes to:
@@ -289,15 +351,17 @@ Multiplied across the user base: one of these per `(recipient, dstChain, dstToke
 
 ## Contract-side diff (summary)
 
-| Change                                                     | File                                                            | Approx size |
-| ---------------------------------------------------------- | --------------------------------------------------------------- | ----------- |
-| `block.chainid` in leaf preimage                           | `CounterfactualDeposit.sol`                                     | 1 line      |
-| `paramsHash` in SpokePool EIP-712 typehash + struct hash   | `CounterfactualDepositSpokePool.sol`                            | ~10 lines   |
-| Per-chain withdraw leaf convention                         | docs / SDK                                                      | docs        |
-| (Optional) `destinationIdentityHash` immutable arg + check | `CounterfactualDeposit.sol`, `CounterfactualDepositFactory.sol` | ~30 lines   |
-| Drop "no duplicate impl per clone" rule                    | `README.md`                                                     | docs        |
+| Change                                                                           | File                                                                                                  | Approx size |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------- |
+| `block.chainid` in leaf preimage                                                 | `CounterfactualDeposit.sol`                                                                           | 1 line      |
+| `paramsHash` + `executionFee` in SpokePool EIP-712 typehash + struct hash        | `CounterfactualDepositSpokePool.sol`                                                                  | ~15 lines   |
+| Move `executionFee` from params struct into submitter data (all impls)           | `CounterfactualDepositSpokePool.sol`, `CounterfactualDepositCCTP.sol`, `CounterfactualDepositOFT.sol` | ~15 lines   |
+| New local `signer` + EIP-712 signature verifying `executionFee` for CCTP and OFT | `CounterfactualDepositCCTP.sol`, `CounterfactualDepositOFT.sol`                                       | ~40 lines   |
+| `maxExecutionFeeBps` param + on-chain bound for CCTP and OFT                     | `CounterfactualDepositCCTP.sol`, `CounterfactualDepositOFT.sol`                                       | ~10 lines   |
+| Per-chain withdraw leaf convention                                               | docs / SDK                                                                                            | docs        |
+| Drop "no duplicate impl per clone" rule                                          | `README.md`                                                                                           | docs        |
 
-No new contracts. No storage. No registry. No SLOADs per execute.
+No new contracts. No storage. No registry. No SLOADs per execute. Clone immutable args stay at one 32-byte slot (the merkle root). Two EIP-712 verifications added on the CCTP/OFT paths.
 
 ## What this gets you vs. a chain-config registry
 
@@ -328,14 +392,14 @@ This is where most of the _non-contract_ work lands. Worth surfacing early.
 - **Cross-product enumeration.** The SDK must enumerate `(srcChain, inputToken, bridge)` tuples and build a merkle tree of the full cross-product. For each tuple, it must look up the chain-correct implementation address and the chain-correct token address. Today's "one route → one address" derivation logic becomes "set of routes → one address."
 - **Per-chain implementation address registry.** Whatever package today computes counterfactual addresses must know the deployed `CounterfactualDepositSpokePool` / `CounterfactualDepositCCTP` / `CounterfactualDepositOFT` address on every supported chain. This is already in `broadcast/deployed-addresses.json`; the SDK needs a maintained mirror or a load path.
 - **Per-chain token-address registry.** USDC's address on every supported chain, etc. Most teams already have a token list; this proposal makes accuracy load-bearing for address correctness.
-- **Destination-identifier mapping per bridge.** "Destination = HyperEVM" must be translated to a `destinationChainId` for SpokePool leaves, a `destinationDomain` for CCTP leaves, and a `dstEid` for OFT leaves. The SDK owns this mapping; getting it wrong on a single bridge means that leaf's deposits silently route to a different destination than the user expected. If we adopt **Option B** (on-chain `destinationIdentityHash`), we should canonicalize the destination identity to one form (e.g. `chainId`) and have each bridge implementation translate from its native identifier into that canonical form for the on-chain check — otherwise a per-bridge identifier mismatch passes the check trivially.
+- **Destination-identifier mapping per bridge.** "Destination = HyperEVM" must be translated to a `destinationChainId` for SpokePool leaves, a `destinationDomain` for CCTP leaves, and a `dstEid` for OFT leaves. The SDK owns this mapping. Getting it wrong on any bridge means that leaf bridges to a different destination than the user expected — and because destination identity is bound into the CREATE2 address via the merkle root, the failure shape is "the SDK gives the user an address whose tree contains a mis-routed leaf." Users/auditors can detect this by independently reconstructing the tree from their declared policy and confirming the address matches. Treat the destination mapping as load-bearing and version-pin it.
 - **Mismatch failure mode.** If the SDK uses a wrong implementation or token address for a chain, the derived clone address is different from the canonical one. Funds sent by users will land at an address that _no_ relayer is watching, and recovery requires the user (or admin) to call withdraw against the clone they actually funded. The SDK should treat the deployed-addresses file as a single source of truth and version-pin it.
 
 ### API / quoting
 
 - **Per-leaf quote semantics.** Today a quote covers one route. Now a single address has many possible routes; the quoting service must decide which leaves to advertise and how to price each. Likely there's a "preferred route" the user sees in the UI (e.g. cheapest), but the relayer can execute any leaf at runtime based on what's actually funded.
 - **Quote signing.** The SpokePool signature now binds to `paramsHash`. Quote-signing infrastructure must produce one signature per `(leaf, executionTimeArgs)` it's quoting for. CCTP/OFT quotes are unchanged (they already bind to the route at the periphery).
-- **Tree exposure for transparency.** If we stick with SDK-enforced destination invariance (Option A), the API should expose the full leaf list for any clone address so integrators / users can audit _"every path in this tree lands at my destination."_ If we adopt on-chain `destinationIdentityHash` (Option B), this exposure is a nice-to-have rather than a trust requirement.
+- **Tree exposure for transparency.** Verification of "every path in this tree lands at my destination" is performed by reconstructing the tree off-chain from declared policy and confirming the resulting address matches the SDK's. The API should expose the full leaf list (or the policy that derives it) so integrators / users can audit the address they're being asked to fund.
 
 ### Relayer infrastructure
 
@@ -366,15 +430,14 @@ This is where most of the _non-contract_ work lands. Worth surfacing early.
 ## Open product questions
 
 - Default input-token set per `(dstChain, dstToken)` — what's in the cross-product? (Affects tree size, relayer coverage, marketing claim.)
-- Should we adopt **Option A** (SDK-enforced destination identity) or **Option B** (on-chain `destinationIdentityHash`)? B is cheap and gives integrators a hard guarantee; A is simpler.
-- Is the "address regeneration when adding a new chain" tradeoff acceptable, or do we want a different design (e.g. a per-chain extension leaf that can be appended via signed root update — out of scope for this proposal)?
+- Is the "address regeneration when adding a new source or destination chain" tradeoff acceptable, or do we want a different design (e.g. a per-chain extension leaf that can be appended via signed root update — out of scope for this proposal)? Bridge implementations are destination-agnostic; only the tree (and therefore the address) needs to change.
 
 ## Recommendation
 
-Proceed with the chainId-in-leaf + SpokePool route binding change. It's a small, well-scoped contract delta that achieves both the cross-chain-address goal and the any-input-token goal without introducing a registry or storage reads. Sequence:
+Proceed with chainId-in-leaf, SpokePool route binding, and dynamic signer-authorized `executionFee`. Destination identity is bound by the CREATE2 address derivation, not by a separate on-chain check. The contract delta is well-scoped (one dispatcher line, three implementations updated). Sequence:
 
-1. Align with product on **Option A vs. B** and the default input-token set.
+1. Align with product on the default input-token set.
 2. Land contract changes + tests.
-3. Audit (small scope — single dispatcher + one EIP-712 binding tweak).
+3. Audit (scope: dispatcher leaf-preimage change and three implementations with new EIP-712 paths binding `paramsHash` and dynamic `executionFee`).
 4. SDK + API + relayer-infra updates in parallel with audit.
 5. Deploy new contracts at fresh CREATE2 addresses; SDK cuts over.

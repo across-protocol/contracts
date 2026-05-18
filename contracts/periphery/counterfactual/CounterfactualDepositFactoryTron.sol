@@ -17,19 +17,19 @@ contract CounterfactualDepositFactoryTron is CounterfactualDepositFactory {
      * @notice Predicts the Tron CREATE2 address of a counterfactual deposit contract.
      * @dev Uses TronClones with the 0x41 prefix instead of OZ's 0xff to match TVM behavior.
      * @param counterfactualDepositImplementation Implementation contract address.
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters.
+     * @param merkleRoot Root of the leaf tree authorizing the clone's executable actions.
      * @param salt Unique salt for address generation.
      * @return Predicted address of the clone on Tron.
      */
     function predictDepositAddress(
         address counterfactualDepositImplementation,
-        bytes32 paramsHash,
+        bytes32 merkleRoot,
         bytes32 salt
     ) public view override returns (address) {
         return
             TronClones.predictDeterministicAddressWithImmutableArgs(
                 counterfactualDepositImplementation,
-                abi.encode(paramsHash),
+                abi.encode(merkleRoot),
                 salt
             );
     }

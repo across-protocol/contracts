@@ -11,6 +11,8 @@ import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
+ * @dev `executionFee` is intentionally NOT in this struct — it is supplied at execute time in
+ *      `SpokePoolSubmitterData` and authorized by the signer EIP-712 signature.
  */
 struct SpokePoolDepositParams {
     uint256 destinationChainId;
@@ -21,15 +23,18 @@ struct SpokePoolDepositParams {
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
-    uint256 executionFee;
 }
 
 /**
  * @notice Data supplied by the submitter at execution time.
+ * @dev `executionFee` is signer-authorized via the EIP-712 typehash, so it cannot exceed what the signer
+ *      attested for this `(paramsHash, inputAmount, outputAmount, …)` tuple. The fee cap
+ *      (`maxFeeFixed + maxFeeBps * inputAmount / 10_000`) bounds it further on top.
  */
 struct SpokePoolSubmitterData {
     uint256 inputAmount;
     uint256 outputAmount;
+    uint256 executionFee;
     bytes32 exclusiveRelayer;
     uint32 exclusivityDeadline;
     address executionFeeRecipient;
@@ -47,9 +52,11 @@ struct SpokePoolSubmitterData {
  *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
  *
  *      The signed payload commits to `keccak256(params)` so a signature issued for one leaf cannot be replayed
- *      against another leaf in the same clone — this is what makes it safe to have multiple SpokePool leaves
- *      per clone (e.g. one per input token in the "any input token" cross-product enabled by the chainId-in-leaf
- *      same-address design).
+ *      against another leaf in the same clone, and binds `executionFee` so the executor cannot inflate it.
+ *
+ *      Cross-leaf destination consistency is enforced by the merkle root: every leaf's `params` encodes its
+ *      destination, so the root commits to every destination the clone can bridge to, and the CREATE2 address
+ *      itself binds destination identity. No separate on-chain identity check is required.
  *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
  *      `address(this)` (the clone), which has no private key and does not implement EIP-1271, and therefore
@@ -65,6 +72,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
      * @notice Emitted after a SpokePool deposit is successfully executed.
      * @param inputAmount Total input amount (including execution fee).
      * @param outputAmount Output amount on the destination chain.
+     * @param executionFee Fee paid to the executor at execution time (signer-authorized).
      * @param exclusiveRelayer Address of the exclusive relayer (bytes32-encoded).
      * @param exclusivityDeadline Timestamp until which the exclusive relayer has priority.
      * @param executionFeeRecipient Address that received the execution fee.
@@ -75,6 +83,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
         uint256 outputAmount,
+        uint256 executionFee,
         bytes32 indexed exclusiveRelayer,
         uint32 exclusivityDeadline,
         address indexed executionFeeRecipient,
@@ -89,12 +98,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     error NativeTransferFailed();
 
     /// @notice EIP-712 typehash for execute deposit signature verification.
-    /// @dev `paramsHash` binds the signature to the leaf's route params so a signature issued for one leaf
-    ///      cannot be replayed against a different leaf in the same clone. This is required for multi-leaf
-    ///      SpokePool clones (e.g. "any input token" trees) introduced by the same-address feature.
+    /// @dev Binds `paramsHash` (so signatures don't cross leaves) and `executionFee` (so the executor cannot
+    ///      inflate the runtime-supplied fee). Together with `signatureDeadline`, this constrains the
+    ///      executor to fee/amount values the signer attested for this specific leaf.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,uint256 executionFee,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
 
     /// @notice Across SpokePool contract
@@ -119,8 +128,8 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
-     *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer` over
-     *      `keccak256(params)` plus the execution-time fields).
+     *      `submitterData` as `SpokePoolSubmitterData` (includes the runtime-supplied `executionFee` and an
+     *      EIP-712 signature from `signer` over `keccak256(params)` plus all execution-time fields).
      *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
      *      `NativeTransferFailed`.
      */
@@ -132,9 +141,9 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         _verifySignature(keccak256(params), sd);
 
         address inputToken = address(uint160(uint256(dp.inputToken)));
-        uint256 depositAmount = sd.inputAmount - dp.executionFee;
+        uint256 depositAmount = sd.inputAmount - sd.executionFee;
 
-        _checkFee(dp, sd.inputAmount, sd.outputAmount, depositAmount);
+        _checkFee(dp, sd.inputAmount, sd.outputAmount, sd.executionFee, depositAmount);
 
         bool isNative = inputToken == NATIVE_ASSET;
         if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
@@ -156,18 +165,19 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         );
 
         // Pay execution fee
-        if (dp.executionFee > 0) {
+        if (sd.executionFee > 0) {
             if (isNative) {
-                (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
+                (bool success, ) = sd.executionFeeRecipient.call{ value: sd.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+                IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
             }
         }
 
         emit SpokePoolDepositExecuted(
             sd.inputAmount,
             sd.outputAmount,
+            sd.executionFee,
             sd.exclusiveRelayer,
             sd.exclusivityDeadline,
             sd.executionFeeRecipient,
@@ -181,11 +191,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         SpokePoolDepositParams memory dp,
         uint256 inputAmount,
         uint256 outputAmount,
+        uint256 executionFee,
         uint256 depositAmount
     ) private pure {
         uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + dp.executionFee;
+        uint256 totalFee = relayerFee + executionFee;
         uint256 maxFee = dp.maxFeeFixed + (dp.maxFeeBps * inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
     }
@@ -197,6 +208,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 paramsHash,
                 sd.inputAmount,
                 sd.outputAmount,
+                sd.executionFee,
                 sd.exclusiveRelayer,
                 sd.exclusivityDeadline,
                 sd.quoteTimestamp,
