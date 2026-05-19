@@ -1,6 +1,6 @@
 # Route Policies
 
-A lighter architecture for counterfactual addresses that separates _what an address is_ from _what routes it can execute_, and lets entire groups of addresses upgrade together with a single transaction.
+A lighter architecture for counterfactual addresses that separates _what an address is_ from _what routes it can execute_, and lets entire groups of addresses upgrade together on a chain with a single transaction.
 
 ## What is a policy?
 
@@ -39,11 +39,10 @@ All five values participate in CREATE2 address derivation. Same identity + same 
 
 ## What the merkle tree commits to
 
-Each leaf in the tree represents one route — a single position in the 5-dimensional cross-product `srcChain × inputToken × bridge × dstChain × outputToken` — and carries that route's full configuration on top of the indexing dimensions: per-bridge fields (e.g. `stableExchangeRate` for SpokePool, `mintRecipient` / `minFinalityThreshold` for CCTP, `destinationHandler` and LZ gas limits for OFT), plus fee bounds (`maxFeeFixed`, `maxFeeBps`, `maxExecutionFeeBps`). Two of the cross-product dimensions live in the leaf preimage directly (source chain via `block.chainid`, bridge via the impl address); the remaining three plus all per-route configuration sit inside the params struct hashed into the leaf:
+A `RoutePolicy` deployed on a given chain commits only to routes _originating from that chain_. Source chain is implicit in which copy of the policy is being read — the per-chain `activeRoot` storage slot enforces that automatically. Each leaf in the tree therefore represents one route on a **4-dimensional** cross-product `inputToken × bridge × dstChain × outputToken`, and carries that route's full configuration on top of the indexing dimensions: per-bridge fields (e.g. `stableExchangeRate` for SpokePool, `mintRecipient` / `minFinalityThreshold` for CCTP, `destinationHandler` and LZ gas limits for OFT), plus fee bounds (`maxFeeFixed`, `maxFeeBps`, `maxExecutionFeeBps`). The bridge dimension lives in the leaf preimage directly (via the impl address); the remaining three plus all per-route configuration sit inside the params struct hashed into the leaf:
 
 ```
 leaf = keccak256(bytes.concat(keccak256(abi.encode(
-    block.chainid,
     bridgeImpl,
     keccak256(abi.encode(leafParams))
 ))))
@@ -90,16 +89,16 @@ At execute time the impl additionally checks the leaf's `outputToken` and `desti
 
 ## Cross-product and tree size
 
-The full cross-product has **5 dimensions**: `srcChain × inputToken × bridge × dstChain × outputToken`. Realistic policies are sparse — CCTP only handles USDC, OFT only specific OFT tokens, stable-to-stable only across the supported stablecoin allowlist, etc. — so the actual leaf count is well below the dense cross-product.
+Each chain's policy tree enumerates a **4-dimensional** cross-product: `inputToken × bridge × dstChain × outputToken`. Realistic policies are sparse — CCTP only handles USDC, OFT only specific OFT tokens, stable-to-stable only across the supported stablecoin allowlist, etc. — so the actual leaf count is well below the dense cross-product.
 
-Estimates for typical policy sizes:
+Estimates for typical per-chain policy sizes:
 
-- **Per-destination policy** (one `(dstChain, outputToken)`): `~10 srcChains × ~4 inputTokens × ~2 bridges = ~80 leaves` after filtering. Proof depth ~7.
-- **Per-destination, multi-output policy** (one `dstChain`, all outputs): `10 × 4 × 2 × 1 × 4 = ~320 leaves`. Proof depth ~9.
-- **Wide canonical policy** (all destinations, all outputs): `10 × 4 × 3 × 5 × 4 ≈ 2,400` theoretical, ~900–1,500 after sparsity filtering. Proof depth ~11, ~3.5k gas per execute.
-- **Per-integrator wide policy** (5 destinations, 4 outputs): similar to wide canonical — ~1,000–1,500 leaves.
+- **Per-destination policy** (one `(dstChain, outputToken)`): `~4 inputTokens × ~2 bridges = ~8 leaves` after filtering. Proof depth ~3.
+- **Per-destination, multi-output policy** (one `dstChain`, all outputs): `~4 × 2 × 1 × 4 = ~32 leaves`. Proof depth ~5.
+- **Wide canonical policy** (all destinations, all outputs): `~4 × 3 × 5 × 4 ≈ 240` theoretical, ~90–150 after sparsity filtering. Proof depth ~7, ~2.5k gas per execute.
+- **Per-integrator wide policy** (5 destinations, 4 outputs): similar to wide canonical — ~100–150 leaves.
 
-Trees in the low thousands are entirely workable on-chain — the per-execute proof cost is modest, and the multisig review surface is a list the SDK / signing tools can render as a table. Adding a new source chain, input token, destination, or output token requires re-rooting the policy (off-chain tree rebuild, single on-chain `approve(newRoot)` call).
+Trees are small enough that per-execute proof cost is negligible and the multisig review surface is something the SDK / signing tools can render as a short table. Adding a new input token, destination, output token, or bridge requires re-rooting the policy on each chain it applies to. Adding a new source chain is a fresh deployment on that chain — no impact on existing chains' policies.
 
 ## Architecture summary
 
@@ -123,8 +122,9 @@ Implementation
 
 RoutePolicy contract (one or many, e.g. one per integrator)
   - owner:      Across or integrator multisig
-  - activeRoot: merkle root over (srcChain × inputToken × bridge ×
-                                  dstChain × outputToken) route leaves
+  - activeRoot: merkle root over (inputToken × bridge × dstChain ×
+                                  outputToken) route leaves for the
+                                  chain this policy is deployed on
   - approve(newRoot): replaces activeRoot
 ```
 
@@ -132,13 +132,16 @@ RoutePolicy contract (one or many, e.g. one per integrator)
 
 A `RoutePolicy` is deployed through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`, available on every EVM chain) with identical initCode on every chain, so a given policy lives at the same address everywhere. Ownership is set to a global placeholder at deploy time and transferred to each chain's local multisig as a post-deploy step — the contract address stays identical even though governance is chain-local.
 
-Because the policy address is identical across chains and the other clone immutable args (`outputToken`, `destinationChainId`, `recipient`, `withdrawUser`) are user input, a clone with a given identity referencing a given policy lands at the **same CREATE2 address on every supported EVM chain**. Users can fund the address from any source chain, and the dispatcher's `block.chainid` binding ensures execution uses the correct chain-specific bridge implementation per leaf.
+Because the policy address is identical across chains and the other clone immutable args (`outputToken`, `destinationChainId`, `recipient`, `withdrawUser`) are user input, a clone with a given identity referencing a given policy lands at the **same CREATE2 address on every supported EVM chain**. Users can fund the address from any source chain.
 
-Policy upgrades are per-chain state. To keep route availability consistent across chains, the multisig calls `approve(newRoot)` on every chain with the same root value — no cross-chain messaging required. If approvals land on different chains at different times, clones using that policy temporarily have different available route sets across chains until every chain catches up; the address itself is unchanged throughout.
+Each chain's deployment of a policy has **its own `activeRoot`** in storage. The merkle tree on Ethereum commits to routes originating from Ethereum; the tree on Arbitrum commits to routes originating from Arbitrum; and so on. The root content is intentionally chain-specific — it captures what bridges and destinations are reachable from that source chain. The contract _address_ is uniform across chains; the contract _state_ is per-chain.
+
+This is what makes new source chains cheap to add: deploy the policy on the new chain (same address via deterministic deployment), have the multisig approve a fresh root for that chain. Existing chains are untouched — no coordinated multi-chain upgrade required, no rebuild of every existing tree to add leaves for the new source.
 
 ## What this enables
 
-- **Global upgrades per policy.** One `approve(newRoot)` call on a `RoutePolicy` upgrades every clone referencing that policy. No per-clone trees, no per-clone execute transactions for upgrades.
+- **Per-chain upgrades cover all clones at once.** One `approve(newRoot)` call on a chain upgrades every clone using that policy on that chain. No per-clone trees, no per-clone execute transactions for upgrades.
+- **Adding a new source chain is independent.** Deploy the policy on the new chain and approve its root. Existing chains' policies don't change — no coordinated multi-chain upgrade required.
 - **Independent policy lifecycles.** Different integrators ship route updates at their own pace.
 - **Cheap clone deployment.** ~150 bytes of immutable args per clone, ~25k extra gas per deploy. No tree construction at deploy time.
 - **Hash-only address derivation.** The SDK predicts the address by encoding the five immutable values; no policy-tree lookup required.
@@ -147,7 +150,6 @@ Policy upgrades are per-chain state. To keep route availability consistent acros
 ## Tradeoffs
 
 - **Multisig blast radius is concentrated per policy.** One approval on a policy affects every clone using it. The user-side defense is still the withdraw escape; route-policy contracts emit `Approved` events so users / integrators can audit pending changes.
-- **Tree size grows with cross-product breadth.** Wide multi-destination policies land in the 1,000–1,500-leaf range. On-chain cost is fine (proof depth ~11), but the SDK / signing tooling has to be able to render and review a tree of that size — meaningful operational tooling investment.
-- **Adding a new input token, bridge, chain, or output requires a tree rebuild and re-approval.** Routes are fully enumerated in the leaves, so any expansion of the cross-product is a root-update operation.
+- **Adding a new input token, destination, output, or bridge requires re-rooting the policy on each chain it applies to.** Routes are fully enumerated in the leaves, so any expansion of the per-chain cross-product is a root-update operation. Per-chain trees are small (typically <150 leaves even for wide policies), so the per-chain rebuild and review are tractable.
 - **Policy choice is bound into the address.** Switching a clone from policy A to policy B requires regenerating the address.
 - **No per-clone customization within a policy.** All clones in the same policy share the same routes and fee caps. Institutional users wanting bespoke bounds get their own dedicated policy (and address space).
