@@ -19,6 +19,7 @@ This document is an implementation specification. Starting point: the original c
 - [WithdrawImplementation](#withdrawimplementation)
 - [Leaf format & off-chain tree construction](#leaf-format--off-chain-tree-construction)
 - [Cross-chain address consistency](#cross-chain-address-consistency)
+- [Deployment](#deployment)
 - [Implementation plan](#implementation-plan)
 - [Open questions](#open-questions)
 
@@ -160,12 +161,10 @@ The contract emits an `Approved(bytes32 newRoot)` event on every successful root
 
 Intentionally **not** included in V1 of `RoutePolicy`:
 
-- No timelock between approval and activation.
+- No timelock between approval and activation (timelock is still flagged in [open questions](#open-questions) as the mitigation for owner compromise).
 - No multi-root grandfathering.
 - No per-leaf governance.
-- No upgrade mechanism for the policy contract itself.
-
-These are flagged in [open questions](#open-questions).
+- No upgrade mechanism for the policy contract itself — a code-level bug would require deploying a new policy at a new address and re-rooting clones. Keeping the contract minimal (one storage slot + `Ownable`) is the mitigation; UUPS proxying would add an upgrade authority and per-execute overhead that's not worth the trade-off here.
 
 ---
 
@@ -201,7 +200,7 @@ Four conventions apply across all bridge impls:
 
 - **Leaf-params layout.** Every `*LeafParams` struct begins with `(uint256 destinationChainId, bytes32 outputToken, ...)`. This is what makes the dispatcher's standardized identity check work. Other fields (bridge-native destination encoding, fee caps, bridge config) follow. **This is a breaking change to the existing structs** — for example, today's `SpokePoolDepositParams` is `(destinationChainId, inputToken, outputToken, recipient, ...)`; the new layout drops `recipient` (read from `cloneArgs`) and reorders so `outputToken` sits at position 2. SDK encoders, indexers, and off-chain leaf builders must be updated in lockstep.
 - **Reads `cloneArgs` for user identity.** Recipients, output tokens, and withdraw authority come from the dispatcher-verified `cloneArgs`, never from caller-supplied leaf params or submitter data. The bridge call's `recipient` field is `cloneArgs.recipient`; the `finalToken` field is `cloneArgs.outputToken`.
-- **Dynamic `executionFee` authorized by a local signer.** Every bridge impl (SpokePool, CCTP, OFT) carries its own `signer` immutable and validates an EIP-712 signature at execute time over a runtime `executionFee` (plus deadline and recipient). The fee is supplied in `submitterData`, not committed in the leaf, so it can move with market conditions; the leaf only bounds it via `maxExecutionFeeBps` (and, for SpokePool, the existing `maxFeeFixed + maxFeeBps`). For CCTP and OFT this is **new** — those impls had no local signature validation in the original contracts and gain one as part of this design. For SpokePool the existing local signer is extended to cover the dynamic fee.
+- **Dynamic `executionFee` authorized by a local signer, hard-capped per leaf.** Every bridge impl (SpokePool, CCTP, OFT) carries its own `signer` immutable and validates an EIP-712 signature at execute time over a runtime `executionFee` (plus deadline and recipient). The fee is supplied in `submitterData`, not committed in the leaf, so it can move with market conditions. Every leaf carries a fixed-amount `maxExecutionFee` field that hard-bounds the `executionFee` the signer can authorize for that route — this is what makes signer compromise non-catastrophic, since a malicious signer cannot extract more than the per-leaf cap that the policy owner committed via the merkle root. For SpokePool the existing `maxFeeFixed + maxFeeBps` total-fee check is preserved on top of this. For CCTP and OFT, local signature validation is **new** — those impls had no local signer in the original contracts and gain one as part of this design. For SpokePool the existing local signer is extended to cover the dynamic fee.
 - **Signer EIP-712 binds to the clone and the leaf.** Every signer signature includes `address(this)` (the clone) and `paramsHash = keccak256(leafParams)` in its EIP-712 message. This prevents signature reuse across clones (with the same destination identity, different recipients) and across leaves (different routes within the same policy).
 
 ### SpokePool
@@ -211,8 +210,7 @@ Already had a local signer in the original contracts. This design adds:
 - **Dynamic `executionFee`** — moved from leaf params into submitter data. The signer's EIP-712 message now includes `executionFee` so it cannot be inflated by the executor.
 - **`paramsHash` in the signer typehash** — needed because a policy now contains multiple SpokePool leaves (different routes); signatures must not be reusable across leaves.
 - **`clone` in the signer typehash** — prevents signature reuse across clones with the same destination identity.
-
-Fee bounds are still enforced via the existing `maxFeeFixed + maxFeeBps × inputAmount` check applied to `relayerFee + executionFee`.
+- **New leaf-params field `maxExecutionFee`** — fixed-amount cap on the runtime `executionFee` for this route. The existing `maxFeeFixed + maxFeeBps × inputAmount` check on `relayerFee + executionFee` is preserved on top of this; together they bound both the total fee and the executionFee portion specifically.
 
 ### CCTP
 
@@ -221,13 +219,13 @@ In the original contracts CCTP had **no local signature validation** — it forw
 - New `signer` constructor immutable.
 - New typehash: `ExecuteCCTP(address clone, bytes32 paramsHash, uint256 amount, uint256 executionFee, uint256 executionFeeDeadline)`.
 - New submitter-data fields: `executionFee`, `executionFeeRecipient`, `executionFeeDeadline`, `executionFeeSignature`.
-- New leaf-params field: `maxExecutionFeeBps`, bounding `executionFee` against `amount`.
+- New leaf-params field: `maxExecutionFee`, a fixed-amount cap that hard-bounds the runtime `executionFee` for this route. The signer can choose any value `≤ maxExecutionFee`; values above revert.
 
 The CCTP periphery's existing quote signature is still required and forwarded unchanged. Two signatures are checked per execute: the periphery signature (route + amount) and the new local signature (runtime fee).
 
 ### OFT
 
-Same pattern as CCTP — **adds local EIP-712 signature validation** that didn't previously exist on this impl, along with the EIP-712 typehash, submitter-data fields, and `maxExecutionFeeBps` leaf-params field, all dedicated to authorizing the runtime `executionFee`. The OFT periphery's existing quote signature continues to be required and forwarded unchanged.
+Same pattern as CCTP — **adds local EIP-712 signature validation** that didn't previously exist on this impl, along with the EIP-712 typehash, submitter-data fields, and `maxExecutionFee` leaf-params field (fixed-amount cap on the runtime `executionFee`). The OFT periphery's existing quote signature continues to be required and forwarded unchanged.
 
 `msg.value` is still forwarded to the OFT periphery to cover LayerZero native messaging fees.
 
@@ -289,6 +287,25 @@ Tron remains a carveout. Its TVM uses a different CREATE2 prefix, so Tron clones
 
 ---
 
+## Deployment
+
+Deployment must follow a fixed order because two contracts depend on each other's deterministic addresses at construction time:
+
+1. **`WithdrawImplementation`** — deploy first, through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`). No constructor args, so the same address lands on every EVM chain.
+2. **`CounterfactualDeposit` (dispatcher)** — deploy next, through the same proxy, passing the `WithdrawImplementation` address from step 1 as the `WITHDRAW_IMPL` constructor immutable. Because that address is identical across chains, the dispatcher's initCode is identical across chains, so the dispatcher lands at the same address everywhere.
+3. **`RoutePolicy`** — deploy through the proxy with `(placeholderOwner, bytes32(0))` as constructor args. Both values must be identical across chains for the policy to land at the same address everywhere.
+4. **Transfer `RoutePolicy` ownership** — separately per chain, transfer ownership from the placeholder to the chain-local multisig. This is a state change, not an initCode change, so it doesn't affect the policy's address.
+5. **Bridge implementations** (`CounterfactualDepositSpokePool`, `CounterfactualDepositCCTP`, `CounterfactualDepositOFT`) — deploy with their chain-specific constructor args (SpokePool address, signer address, wrapped native, etc.). These intentionally land at different addresses per chain since their constructor args differ.
+6. **`AdminWithdrawManager`** — deploy with `(owner, directWithdrawer, signer)`. Chain-specific.
+7. **`CounterfactualDepositFactory`** / **`CounterfactualDepositFactoryTron`** — deploy through the proxy. Because the factory's only chain-dependent reference is the dispatcher (which lives at the same address everywhere), the factory's initCode is identical and it lands at the same address everywhere.
+8. **First root approval** — the multisig calls `RoutePolicy.approve(initialRoot)` to activate the policy. Until this transaction lands the policy is unusable (root is `bytes32(0)`, no proof can verify).
+
+The invariant to remember: anything whose constructor arg comes from a deterministic-proxy-deployed contract is itself eligible for deterministic deployment, as long as it's deployed _after_ its dependency. The ordering above is the only valid topological sort.
+
+**Tron path.** Tron's deployment mirrors steps 1–8 with `WithdrawImplementationTron` and a Tron-specific dispatcher; addresses diverge from the EVM path by design (different CREATE2 prefix, different `WITHDRAW_IMPL`).
+
+---
+
 ## Implementation plan
 
 Work is split into three tracks — contracts, tests, scripts — each ordered by dependency so a single PR per track (or per logical bundle within a track) is reviewable in isolation. Items within a track are listed in build order.
@@ -301,8 +318,8 @@ Work is split into three tracks — contracts, tests, scripts — each ordered b
 4. **`ICounterfactualImplementation.sol`** (interface update) — evolve `execute` to `execute(CloneArgs calldata cloneArgs, bytes calldata params, bytes calldata submitterData)`. All bridge impls update their signatures accordingly.
 5. **`CounterfactualDeposit.sol`** (dispatcher rewrite) — adds `WITHDRAW_IMPL` constructor immutable; `execute(cloneArgs, implementation, leafParams, submitterData, proof)` (a) loads the clone's 32-byte `argsHash` via `Clones.fetchCloneArgs`, (b) verifies `keccak256(abi.encode(cloneArgs)) == argsHash`, (c) runs the structural withdraw escape using `cloneArgs.withdrawUser`, (d) runs the standardized `(destinationChainId, outputToken)` identity check against the first two leaf-params fields and `cloneArgs`, (e) fetches `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`, verifies the merkle proof, and (f) delegatecalls the impl forwarding `cloneArgs`.
 6. **`WithdrawImplementation.sol`** — drop `WithdrawParams`. New signature `execute(CloneArgs calldata cloneArgs, bytes calldata params, bytes calldata submitterData)` ignores `cloneArgs` and `params` and decodes `submitterData` as `(token, to, amount)`. Remove the `msg.sender == admin || msg.sender == user` check (now enforced by the dispatcher's escape).
-7. **`CounterfactualDepositSpokePool.sol`** — adopt the new interface signature; extend `EXECUTE_DEPOSIT_TYPEHASH` to include `address clone` and `bytes32 paramsHash`; move `executionFee` out of `SpokePoolDepositParams` (leaf) and into `SpokePoolSubmitterData` (runtime); reorder `SpokePoolDepositParams` to start with `(destinationChainId, outputToken, ...)` and drop `recipient` / `inputToken` from the leaf (recipient comes from `cloneArgs`; inputToken is no longer leaf-bound since the policy enumerates per-input-token leaves at the tree level).
-8. **`CounterfactualDepositCCTP.sol`** — adopt the new interface signature; add `signer` constructor immutable, `ExecuteCCTP` EIP-712 typehash, signature verification over `(clone, paramsHash, amount, executionFee, executionFeeDeadline)`, new submitter-data fields, `maxExecutionFeeBps` leaf field, and the standardized leaf-params prefix.
+7. **`CounterfactualDepositSpokePool.sol`** — adopt the new interface signature; extend `EXECUTE_DEPOSIT_TYPEHASH` to include `address clone` and `bytes32 paramsHash`; move `executionFee` out of `SpokePoolDepositParams` (leaf) and into `SpokePoolSubmitterData` (runtime); add a new `maxExecutionFee` field to `SpokePoolDepositParams` that hard-caps `executionFee`; reorder `SpokePoolDepositParams` to start with `(destinationChainId, outputToken, ...)` and drop `recipient` / `inputToken` from the leaf (recipient comes from `cloneArgs`; inputToken is no longer leaf-bound since the policy enumerates per-input-token leaves at the tree level).
+8. **`CounterfactualDepositCCTP.sol`** — adopt the new interface signature; add `signer` constructor immutable, `ExecuteCCTP` EIP-712 typehash, signature verification over `(clone, paramsHash, amount, executionFee, executionFeeDeadline)`, new submitter-data fields, `maxExecutionFee` leaf field (fixed-amount cap on `executionFee`), and the standardized leaf-params prefix.
 9. **`CounterfactualDepositOFT.sol`** — same treatment as CCTP plus `msg.value` forwarding to the OFT periphery is preserved.
 10. **`CounterfactualDepositFactory.sol`** — `deploy` / `predictDepositAddress` take the five identity fields; internally compute `argsHash = keccak256(abi.encode(...))` and use that 32-byte hash as the clone's immutable-args blob. Update `deployAndExecute` / `deployIfNeededAndExecute` signatures accordingly. Update `DepositAddressCreated` event to emit the five fields (or just `argsHash`, since indexers can recompute).
 11. **`CounterfactualDepositFactoryTron.sol`** — mirror (10), keep the Tron CREATE2-prefix override.
@@ -320,8 +337,8 @@ Existing tests in `test/evm/foundry/local/` are the starting point; each item be
    - Non-withdraw escape still requires a valid proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
    - After `RoutePolicy.approve(newRoot)`, the same clone can prove leaves under the new root and old proofs stop working.
    - End-to-end delegatecall: the impl receives the same `cloneArgs` the dispatcher verified.
-3. **`CounterfactualDepositSpokePool.t.sol`** (update) — signature now includes `clone` and `paramsHash`; cross-clone and cross-leaf signature reuse both revert; dynamic `executionFee` is bounded by `maxFeeFixed + maxFeeBps`; native-token path still works.
-4. **`CounterfactualDepositCCTP.t.sol`** (update) — local signature is required, signature reuse across clones / leaves reverts, `maxExecutionFeeBps` bound is enforced, periphery signature is still forwarded unchanged.
+3. **`CounterfactualDepositSpokePool.t.sol`** (update) — signature now includes `clone` and `paramsHash`; cross-clone and cross-leaf signature reuse both revert; dynamic `executionFee` is bounded by the new per-leaf `maxExecutionFee` cap _and_ by the existing `maxFeeFixed + maxFeeBps` total-fee check; native-token path still works.
+4. **`CounterfactualDepositCCTP.t.sol`** (update) — local signature is required, signature reuse across clones / leaves reverts, `maxExecutionFee` bound is enforced, periphery signature is still forwarded unchanged.
 5. **`CounterfactualDepositOFT.t.sol`** (update) — same as CCTP plus `msg.value` is forwarded to the OFT periphery.
 6. **`WithdrawImplementation.t.sol`** (slim down) — drops the admin/user-auth tests (now covered by the dispatcher tests) and keeps token / native transfer correctness.
 7. **`AdminWithdrawManager.t.sol`** (update) — new EIP-712 typehash with `to`; direct-withdraw and signed-withdraw flows both round-trip through the dispatcher's escape; recipient mismatch in the signed path reverts.
@@ -348,24 +365,4 @@ All scripts live under `script/counterfactual/`. The deterministic-deployment pr
 
 ## Open questions
 
-Each of these is a real risk or improvement the design has not yet committed to.
-
 **1. Owner compromise / blast radius.** The `RoutePolicy` owner can replace `activeRoot` with any value in one transaction. A compromised owner can authorize draining-style routes (up to the leaf's fee caps), approve degraded fee caps, or set `bytes32(0)` to brick the policy. The structural withdraw escape protects user funds in all cases, but the policy itself can be made unusable. Mitigations to consider: a timelock between propose and activate, and/or an emergency-only path that can shrink the route set without delay while expansions go through the timelock.
-
-**2. Signer compromise.** The bridge impls' local signers authorize runtime `executionFee` and amounts. A compromised signer can extract fees up to the leaf's caps and manipulate exclusivity / quote timestamps. Destination, recipient, and output token are clone immutables and can't be redirected. Worth tight signature deadlines, off-chain monitoring of unusual signature patterns, and operational rotation procedures.
-
-**3. Withdraw recipient is freely caller-chosen.** `WithdrawImplementation` lets the caller pick `to` for the transfer. The dispatcher checks `msg.sender == withdrawUser` but doesn't restrict the recipient. This is flexible but worth flagging — a stricter variant would force `to == clone.withdrawUser`. Decide which behavior to ship.
-
-**4. `RoutePolicy` contract code is not upgradeable.** The active root is mutable — the owner can call `approve(newRoot)` to swap it at any time — but the contract's logic itself is fixed at deploy. A bug in the policy contract's code would require deploying a new policy at a new address, forcing every clone using it to regenerate. Mitigations: keep the policy contract minimal (one slot of state + `Ownable`), audit carefully, accept the migration cost if it ever happens. UUPS proxying is possible but adds an upgrade authority and per-execute overhead.
-
-**5. Per-leaf publication of route data.** Only the root is on-chain. The route list lives off-chain. Consider emitting a URI / content hash in the `Approved` event pointing at a published leaf list, and maintaining an SDK-side registry of known-good policies with human-readable descriptions.
-
-**6. Policy version counter.** Adding a `uint256 version` slot incremented on every `approve` would let off-chain tooling cache trees by version and detect when a refresh is needed. ~5k extra gas per approve; not load-bearing but operationally useful.
-
-**7. Known-good policy registry.** A user can set `routePolicyAddress` to any address. There's no on-chain mechanism preventing a malicious policy from being chosen. Mitigate SDK-side: curated registry of endorsed policies, warn on unknown ones. An on-chain `PolicyRegistry` is possible but probably overkill.
-
-**8. Periphery signer scope.** CCTP and OFT now have two signer trust points per execute (periphery quote signer + local executionFee signer). Worth being explicit in the audit brief about each one's blast radius — the periphery signer is bounded by the user's deposit balance and the periphery's own checks; the local signer is bounded by the leaf's fee caps.
-
-**9. Adding new bridge types.** The standardized leaf-params prefix (`destinationChainId, outputToken` first) is a contract-level invariant enforced only by convention across impls. Adding a new bridge type requires remembering this. Consider encoding via a stricter interface, or having the impl expose a `getDestinationIdentity()` view the dispatcher static-calls, to make the invariant unforgettable.
-
-**10. Deterministic deployment ordering.** The dispatcher's `WITHDRAW_IMPL` immutable references `WithdrawImplementation`. The deployment flow must be: deploy `WithdrawImplementation` first (deterministically), get its address, then deploy `CounterfactualDeposit` with that address as a constructor arg. Same address on every chain because the dispatcher's initCode is then identical. Document this as part of the deployment runbook.
