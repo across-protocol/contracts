@@ -16,7 +16,7 @@ Clones reference a specific policy via their `routePolicyAddress` immutable arg.
 Multiple policies can coexist on the same chain. The typical deployment looks like:
 
 - **Default policy** — owned by the Across multisig. Holds the canonical set of routes (supported chains, tokens, bridges, fee caps). Most users use this.
-- **Per-integrator policies** — Coinbase, Native, or an institutional partner can each deploy their own `RoutePolicy` with their own bridge whitelist, fee caps, and supported destinations. Owned by the integrator's multisig. Their users' clones reference their policy.
+- **Per-integrator policies** — an integrator or institutional partner can deploy their own `RoutePolicy` with their own bridge whitelist, fee caps, and supported destinations. Owned by the integrator's multisig. Their users' clones reference their policy.
 - **Experimental policy** — a beta route set for early adopters to opt into. Lets new bridges or chains ship with limited blast radius before the default policy adopts them.
 
 Each policy has its own lifecycle. Across upgrades the default policy when the protocol adds new chains or fixes bridge bugs; integrators upgrade their policies independently, on their own schedule.
@@ -122,7 +122,7 @@ Implementation
   - calls the bridge
 
 RoutePolicy contract (one or many, e.g. one per integrator)
-  - owner:      integrator multisig (Across, Coinbase, etc.)
+  - owner:      Across or integrator multisig
   - activeRoot: merkle root over (srcChain × inputToken × bridge ×
                                   dstChain × outputToken) route leaves
   - approve(newRoot): replaces activeRoot
