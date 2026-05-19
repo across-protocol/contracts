@@ -10,11 +10,11 @@ pragma solidity ^0.8.0;
  */
 interface IRoutePolicy {
     /// @notice Emitted on every successful root update.
-    event Approved(bytes32 newRoot);
+    event RootUpdated(bytes32 newRoot);
 
     /// @notice Returns the merkle root that currently authorizes routes on this chain.
     function activeRoot() external view returns (bytes32);
 
     /// @notice Replace the active root. Restricted to the policy owner.
-    function approve(bytes32 newRoot) external;
+    function updateRoot(bytes32 newRoot) external;
 }

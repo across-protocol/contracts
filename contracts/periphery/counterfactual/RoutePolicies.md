@@ -29,7 +29,7 @@ This document is an implementation specification. Starting point: the original c
 
 1. **Persistent, evolvable addresses.** An address is keyed solely to `(outputToken, destinationChainId, recipient, withdrawUser, routePolicyAddress)` and never needs to change. The routes it can execute can evolve without regenerating the address.
 2. **Same address on every EVM chain** for a given identity + policy.
-3. **Global upgrade per chain per policy.** One `approve(newRoot)` transaction per chain upgrades every clone using that policy on that chain. No per-clone upgrade transaction.
+3. **Global upgrade per chain per policy.** One `updateRoot(newRoot)` transaction per chain upgrades every clone using that policy on that chain. No per-clone upgrade transaction.
 4. **Independent integrator lifecycles.** Different policies are owned and upgraded independently of each other.
 5. **Dynamic execution fees.** The executor supplies `executionFee` at execute time; a signer's EIP-712 signature authorizes it. Applies uniformly to **SpokePool, CCTP, and OFT** implementations.
 6. **Bounded trust.** The policy owner is a meaningful authority but cannot redirect destination, output token, or recipient (clone immutables guard those). Fee bounds are committed in the merkle tree. The user retains a structurally-guaranteed withdraw escape.
@@ -59,7 +59,7 @@ Deployer / SDK
 │   - verifies keccak256(args) == clone.argsHash               │ ─────────────► │   - owner: Across or integrator multisig │
 │   - withdraw escape if msg.sender == args.withdrawUser       │   activeRoot() │   - activeRoot: merkle root over the     │
 │   - else: verifies merkle proof of the leaf against          │ ◄───────────── │     chain's 4-dim route-leaf tree        │
-│     RoutePolicy.activeRoot() and delegatecalls the impl,     │     bytes32    │   - approve(newRoot): replaces activeRoot│
+│     RoutePolicy.activeRoot() and delegatecalls the impl,     │     bytes32    │   - updateRoot(newRoot): replaces root   │
 │     forwarding the verified args                             │                │                                          │
 └──────────────────────────────────────────────────────────────┘                └──────────────────────────────────────────┘
        │
@@ -157,7 +157,7 @@ A minimal `Ownable` contract with one storage slot for the active merkle root an
 
 The constructor takes an `initialOwner` and an `initialRoot`. To make the contract land at the same address on every chain (cross-chain consistency, see below), both values must be identical across chains at deploy time. A globally-deterministic placeholder is used for `initialOwner`; ownership is transferred to the chain-local multisig as a post-deploy step. `initialRoot` is typically `bytes32(0)` (the policy is unusable until a real root is approved).
 
-The contract emits an `Approved(bytes32 newRoot)` event on every successful root update. Off-chain indexers use this to detect upgrades.
+The contract emits a `RootUpdated(bytes32 newRoot)` event on every successful root update. Off-chain indexers use this to detect upgrades.
 
 Intentionally **not** included in V1 of `RoutePolicy`:
 
@@ -298,7 +298,7 @@ Deployment must follow a fixed order because two contracts depend on each other'
 5. **Bridge implementations** (`CounterfactualDepositSpokePool`, `CounterfactualDepositCCTP`, `CounterfactualDepositOFT`) — deploy with their chain-specific constructor args (SpokePool address, signer address, wrapped native, etc.). These intentionally land at different addresses per chain since their constructor args differ.
 6. **`AdminWithdrawManager`** — deploy with `(owner, directWithdrawer, signer)`. Chain-specific.
 7. **`CounterfactualDepositFactory`** / **`CounterfactualDepositFactoryTron`** — deploy through the proxy. Because the factory's only chain-dependent reference is the dispatcher (which lives at the same address everywhere), the factory's initCode is identical and it lands at the same address everywhere.
-8. **First root approval** — the multisig calls `RoutePolicy.approve(initialRoot)` to activate the policy. Until this transaction lands the policy is unusable (root is `bytes32(0)`, no proof can verify).
+8. **First root approval** — the multisig calls `RoutePolicy.updateRoot(initialRoot)` to activate the policy. Until this transaction lands the policy is unusable (root is `bytes32(0)`, no proof can verify).
 
 The invariant to remember: anything whose constructor arg comes from a deterministic-proxy-deployed contract is itself eligible for deterministic deployment, as long as it's deployed _after_ its dependency. The ordering above is the only valid topological sort.
 
@@ -312,7 +312,7 @@ Work is split into three tracks — contracts, tests, scripts — each ordered b
 
 ### Contracts
 
-- [x] **`IRoutePolicy.sol`** — minimal interface: `activeRoot() view returns (bytes32)`, `approve(bytes32 newRoot)`, `Approved(bytes32)` event.
+- [x] **`IRoutePolicy.sol`** — minimal interface: `activeRoot() view returns (bytes32)`, `updateRoot(bytes32 newRoot)`, `RootUpdated(bytes32)` event.
 - [x] **`RoutePolicy.sol`** — implements `IRoutePolicy`, inherits `Ownable`. One storage slot for `activeRoot`. Constructor takes `(address initialOwner, bytes32 initialRoot)`. No timelock, no version counter (see open questions).
 - [x] **`CloneArgs` struct + hashing helper** — shared `struct CloneArgs { bytes32 outputToken; uint256 destinationChainId; bytes32 recipient; address withdrawUser; address routePolicyAddress; }` defined in a small library (e.g. `CounterfactualCloneArgs.sol`) along with a `hash(CloneArgs)` helper. Dispatcher and factory both depend on this for hash consistency.
 - [x] **`ICounterfactualImplementation.sol`** (interface update) — evolve `execute` to `execute(CloneArgs calldata cloneArgs, bytes calldata params, bytes calldata submitterData)`. All bridge impls update their signatures accordingly.
@@ -329,13 +329,13 @@ Work is split into three tracks — contracts, tests, scripts — each ordered b
 
 Existing tests in `test/evm/foundry/local/` are the starting point; each item below indicates whether it's a rewrite (existing file) or new.
 
-- [ ] **`RoutePolicy.t.sol`** (new) — owner can `approve`, non-owner reverts, `Approved` event emitted with the new root, `activeRoot()` returns the latest root, two-step ownership transfer works.
+- [ ] **`RoutePolicy.t.sol`** (new) — owner can `updateRoot`, non-owner reverts, `RootUpdated` event emitted with the new root, `activeRoot()` returns the latest root, two-step ownership transfer works.
 - [ ] **`CounterfactualDeposit.t.sol`** (rewrite) — covers the dispatcher's new shape:
   - `cloneArgs` hash verification: supplying tampered `cloneArgs` (any field altered) reverts before any other check runs.
   - Standardized identity check reverts when leaf's `(destinationChainId, outputToken)` mismatches `cloneArgs`.
   - Structural withdraw escape: `msg.sender == cloneArgs.withdrawUser` + `implementation == WITHDRAW_IMPL` bypasses the proof, including when `activeRoot == bytes32(0)`. Hash verification still runs first, so a fabricated `withdrawUser` is rejected.
   - Non-withdraw escape still requires a valid proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
-  - After `RoutePolicy.approve(newRoot)`, the same clone can prove leaves under the new root and old proofs stop working.
+  - After `RoutePolicy.updateRoot(newRoot)`, the same clone can prove leaves under the new root and old proofs stop working.
   - End-to-end delegatecall: the impl receives the same `cloneArgs` the dispatcher verified.
 - [ ] **`CounterfactualDepositSpokePool.t.sol`** (update) — signature now includes `clone` and `paramsHash`; cross-clone and cross-leaf signature reuse both revert; dynamic `executionFee` is bounded by the new per-leaf `maxExecutionFee` cap _and_ by the existing `maxFeeFixed + maxFeeBps` total-fee check; native-token path still works.
 - [ ] **`CounterfactualDepositCCTP.t.sol`** (update) — local signature is required, signature reuse across clones / leaves reverts, `maxExecutionFee` bound is enforced, periphery signature is still forwarded unchanged.
@@ -353,7 +353,7 @@ All scripts live under `script/counterfactual/`. The deterministic-deployment pr
 - [ ] **`DeployWithdrawImplementation.s.sol`** (update) — already deterministic; verify no constructor args change.
 - [ ] **`DeployCounterfactualDeposit.s.sol`** (update) — pass `WITHDRAW_IMPL` constructor arg, sourced from the deterministic `WithdrawImplementation` address. Asserts the deployed dispatcher address is identical across chains.
 - [ ] **`DeployRoutePolicy.s.sol`** (new) — deploys `RoutePolicy` via deterministic-deployment proxy with `(placeholderOwner, bytes32(0))`; emits the deployed address. A second `TransferRoutePolicyOwnership.s.sol` runs after, called per-chain, transferring to the chain-local multisig.
-- [ ] **`ApproveRoutePolicyRoot.s.sol`** (new) — multisig-callable script that calls `RoutePolicy.approve(newRoot)`. Takes the new root and the policy address as args; usable as a Safe transaction template.
+- [ ] **`ApproveRoutePolicyRoot.s.sol`** (new) — multisig-callable script that calls `RoutePolicy.updateRoot(newRoot)`. Takes the new root and the policy address as args; usable as a Safe transaction template.
 - [ ] **`DeployCounterfactualDepositSpokePool.s.sol`** (update) — no signature changes to the constructor; just rebuild against the new impl.
 - [ ] **`DeployCounterfactualDepositCCTP.s.sol`** (update) — add `signer` constructor arg.
 - [ ] **`DeployCounterfactualDepositOFT.s.sol`** (update) — add `signer` constructor arg.
