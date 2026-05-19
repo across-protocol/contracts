@@ -77,7 +77,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         uint256 executionFee
     );
 
-    error InvalidExecutionFeeSignature();
+    error InvalidSignature();
     error SignatureExpired();
     error MaxExecutionFee();
 
@@ -119,7 +119,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
-        _verifyExecutionFeeSignature(keccak256(params), sd);
+        _verifySignature(keccak256(params), sd);
 
         if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
@@ -134,7 +134,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline, sd.executionFee);
     }
 
-    function _verifyExecutionFeeSignature(bytes32 paramsHash, OFTSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 paramsHash, OFTSubmitterData memory sd) private view {
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
             abi.encode(
@@ -146,8 +146,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
                 sd.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.executionFeeSignature) != signer)
-            revert InvalidExecutionFeeSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.executionFeeSignature) != signer) revert InvalidSignature();
     }
 
     function _deposit(
