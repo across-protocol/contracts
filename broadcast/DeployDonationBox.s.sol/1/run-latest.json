@@ -3,7 +3,7 @@
     {
       "hash": "0x1a11ebe652ccb6ba833b38454b56f75e250a84ea7a5ec01c896a9d4361314dac",
       "transactionType": "CREATE",
-      "contractName": "DonationBox",
+      "contractName": "DonationBox_CCTP_USDC",
       "contractAddress": "0x1648fc159a5c13c060efdf44f3cee9bd184fa168",
       "function": null,
       "arguments": null,
