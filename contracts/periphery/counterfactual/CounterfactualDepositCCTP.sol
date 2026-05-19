@@ -101,7 +101,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
         address _srcPeriphery,
         uint32 _sourceDomain,
         address _signer
-    ) EIP712("CounterfactualDepositCCTP", "v1.0.0") {
+    ) EIP712("CounterfactualDepositCCTP", "v1.1.0") {
         srcPeriphery = _srcPeriphery;
         sourceDomain = _sourceDomain;
         signer = _signer;

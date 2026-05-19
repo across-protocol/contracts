@@ -21,11 +21,6 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  *           `cloneArgs`, then verifies the merkle proof against
  *           `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
  *        4. Delegatecalls the implementation forwarding the verified `cloneArgs`.
- *
- *      Call chain: Caller → CALL → Clone (EIP-1167 proxy) → DELEGATECALL → Dispatcher → DELEGATECALL → Implementation
- *      - `address(this) == clone` throughout (correct for EIP-712, token balances).
- *      - `msg.sender == original caller` throughout.
- *      - `msg.value == original value` throughout.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
@@ -71,7 +66,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
             revert InvalidIdentity();
 
         // 4. Verify merkle proof against the policy's active root.
-        // Double-hashed leaf per the OZ standard, committing to (implementation, paramsHash).
+        // Double-hashed leaf, committing to (implementation, paramsHash).
         bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
         bytes32 root = IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot();
         if (!MerkleProof.verify(proof, root, leaf)) revert InvalidProof();

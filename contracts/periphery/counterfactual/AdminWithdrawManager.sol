@@ -47,7 +47,7 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         address _directWithdrawer,
         address _signer,
         address _withdrawImpl
-    ) Ownable(_owner) EIP712("AdminWithdrawManager", "v1.0.0") {
+    ) Ownable(_owner) EIP712("AdminWithdrawManager", "v1.1.0") {
         directWithdrawer = _directWithdrawer;
         signer = _signer;
         withdrawImpl = _withdrawImpl;

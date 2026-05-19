@@ -102,7 +102,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         address _spokePool,
         address _signer,
         address _wrappedNativeToken
-    ) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
+    ) EIP712("CounterfactualDepositSpokePool", "v1.1.0") {
         spokePool = _spokePool;
         signer = _signer;
         wrappedNativeToken = _wrappedNativeToken;
