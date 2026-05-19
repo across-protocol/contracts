@@ -8,7 +8,11 @@ import { IHyperCoreFlowExecutor } from "../../../../contracts/test/interfaces/IH
 import { HyperCoreLib } from "../../../../contracts/libraries/HyperCoreLib.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { SponsoredExecutionModeInterface } from "../../../../contracts/interfaces/SponsoredExecutionModeInterface.sol";
-import { IMessageTransmitterV2 } from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
+import {
+    IMessageTransmitterV2,
+    ITokenMessengerV2,
+    ITokenMinter
+} from "../../../../contracts/external/interfaces/CCTPInterfaces.sol";
 import { AddressToBytes32, Bytes32ToAddress } from "../../../../contracts/libraries/AddressConverters.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { HyperCoreMockHelper } from "./HyperCoreMockHelper.sol";
@@ -17,16 +21,89 @@ import { PrecompileLib } from "./external/hyper-evm-lib/src/PrecompileLib.sol";
 import { CoreWriterLib } from "./external/hyper-evm-lib/src/CoreWriterLib.sol";
 import { CoreSimulatorLib } from "./external/hyper-evm-lib/test/simulation/CoreSimulatorLib.sol";
 
-contract MockMessageTransmitter is IMessageTransmitterV2 {
+contract MockMessageTransmitter is IMessageTransmitterV2, Test {
     bool internal shouldSucceed = true;
+    bool internal shouldMint = true;
+    address internal mintToken;
 
     function setShouldSucceed(bool _shouldSucceed) external {
         shouldSucceed = _shouldSucceed;
     }
 
-    function receiveMessage(bytes calldata, bytes calldata) external view override returns (bool) {
-        return shouldSucceed;
+    /// @dev When false, receiveMessage returns true but does not credit the mint recipient (simulates a
+    /// CCTP message whose recipient/burnToken doesn't actually produce a real `mintToken` mint).
+    function setShouldMint(bool _shouldMint) external {
+        shouldMint = _shouldMint;
     }
+
+    function setMintToken(address _mintToken) external {
+        mintToken = _mintToken;
+    }
+
+    function receiveMessage(bytes calldata message, bytes calldata) external override returns (bool) {
+        if (!shouldSucceed) return false;
+        if (shouldMint && mintToken != address(0) && message.length >= 344) {
+            // CCTP V2 MessageV2 body starts at header offset 148. Within the body:
+            //   amount @ 68 -> global 216, feeExecuted @ 164 -> global 312, mintRecipient @ 36 -> global 184.
+            uint256 amount;
+            uint256 feeExecuted;
+            bytes32 mintRecipientB;
+            assembly {
+                amount := calldataload(add(message.offset, 216))
+                feeExecuted := calldataload(add(message.offset, 312))
+                mintRecipientB := calldataload(add(message.offset, 184))
+            }
+            if (feeExecuted <= amount) {
+                address to = address(uint160(uint256(mintRecipientB)));
+                // Simulate a CCTP mint by crediting baseToken to the mintRecipient via Foundry's deal cheat.
+                uint256 existing = IERC20(mintToken).balanceOf(to);
+                deal(mintToken, to, existing + amount - feeExecuted);
+            }
+        }
+        return true;
+    }
+}
+
+contract MockTokenMinter is ITokenMinter {
+    // remoteDomain => remoteToken => localToken
+    mapping(uint32 => mapping(bytes32 => address)) internal links;
+
+    function setLink(uint32 remoteDomain, bytes32 remoteToken, address localToken) external {
+        links[remoteDomain][remoteToken] = localToken;
+    }
+
+    function burnLimitsPerMessage(address) external pure override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    function getLocalToken(uint32 remoteDomain, bytes32 remoteToken) external view override returns (address) {
+        return links[remoteDomain][remoteToken];
+    }
+}
+
+contract MockTokenMessenger is ITokenMessengerV2 {
+    ITokenMinter internal _localMinter;
+
+    constructor(ITokenMinter minter) {
+        _localMinter = minter;
+    }
+
+    function localMinter() external view override returns (ITokenMinter) {
+        return _localMinter;
+    }
+
+    function depositForBurn(uint256, uint32, bytes32, address, bytes32, uint256, uint32) external override {}
+
+    function depositForBurnWithHook(
+        uint256,
+        uint32,
+        bytes32,
+        address,
+        bytes32,
+        uint256,
+        uint32,
+        bytes calldata
+    ) external override {}
 }
 
 contract MockDonationBox {
@@ -75,6 +152,8 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     SponsoredCCTPDstPeriphery public periphery;
     MockMessageTransmitter public messageTransmitter;
+    MockTokenMessenger public tokenMessenger;
+    MockTokenMinter public tokenMinter;
     MockDonationBox public donationBox;
     MockUSDC public usdc;
 
@@ -108,8 +187,17 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
         // Deploy mock contracts
         messageTransmitter = new MockMessageTransmitter();
+        tokenMinter = new MockTokenMinter();
+        tokenMessenger = new MockTokenMessenger(tokenMinter);
         donationBox = new MockDonationBox();
         usdc = MockUSDC(0xb88339CB7199b77E23DB6E890353E22632Ba630f);
+
+        // Have the MessageTransmitter mock simulate real CCTP mint behavior: on successful receiveMessage,
+        // credit `amount - feeExecuted` of `usdc` to the `mintRecipient` encoded in the message.
+        messageTransmitter.setMintToken(address(usdc));
+
+        // Wire burnToken (source domain) -> baseToken (usdc) link — mirrors Circle's TokenMinter linkage.
+        tokenMinter.setLink(SOURCE_DOMAIN, address(usdc).toBytes32(), address(usdc));
 
         // Setup HyperCore precompile mocks using the helper
         hyperCore.forceAccountActivation(finalRecipient);
@@ -118,6 +206,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
         vm.startPrank(admin);
         periphery = new SponsoredCCTPDstPeriphery(
             address(messageTransmitter),
+            address(tokenMessenger),
             signer,
             address(donationBox),
             address(usdc),
@@ -170,7 +259,7 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
             quote.destinationDomain, // destinationDomain
             bytes32(uint256(1)), // nonce (CCTP nonce)
             quote.burnToken, // sender (token messenger on source)
-            bytes32(uint256(uint160(address(messageTransmitter)))), // recipient (token messenger on dest)
+            bytes32(uint256(uint160(address(tokenMessenger)))), // recipient (token messenger on dest)
             quote.destinationCaller, // destinationCaller
             quote.minFinalityThreshold, // minFinalityThreshold
             uint32(0), // finalityThresholdExecuted
@@ -757,8 +846,129 @@ contract SponsoredCCTPDstPeripheryTest is BaseSimulatorTest {
 
     function test_View_ContractReferences() public {
         assertEq(address(periphery.cctpMessageTransmitter()), address(messageTransmitter));
+        assertEq(address(periphery.cctpTokenMessenger()), address(tokenMessenger));
         assertEq(periphery.signer(), signer);
         assertEq(periphery.quoteDeadlineBuffer(), 30 minutes);
         assertEq(address(IHyperCoreFlowExecutor(address(periphery)).donationBox()), address(donationBox));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        BALANCE-DELTA MINT VALIDATION TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice If CCTP's receiveMessage doesn't actually mint `baseToken` to this contract (e.g. a signed quote
+    /// whose burnToken / recipient routes through some non-mint flow), the periphery must revert so the user's
+    /// nonce is preserved and no downstream flow fires — even though the caller already has baseToken sitting
+    /// in the contract (resting / sponsorship balance).
+    function test_ReceiveMessage_NoBaseTokenMinted_Reverts() public {
+        messageTransmitter.setShouldMint(false);
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory signature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidMintedAmount.selector);
+        periphery.receiveMessage(message, bytes("mock-attestation"), signature);
+
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice Emergency path forwards only what the CCTP call actually credited to this contract. A message
+    /// that mints nothing must result in a zero-amount forward (no drain of the contract's prior balance).
+    /// Replay protection is delegated to CCTP's own nonce tracking, so we don't assert local nonce state.
+    function test_EmergencyReceiveMessage_NoBaseTokenMinted_ForwardsZero() public {
+        messageTransmitter.setShouldMint(false);
+
+        bytes32 botRole = periphery.PERMISSIONED_BOT_ROLE();
+        vm.prank(admin);
+        periphery.grantRole(botRole, address(this));
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        uint256 periphBalBefore = usdc.balanceOf(address(periphery));
+        uint256 recipBalBefore = usdc.balanceOf(finalRecipient);
+
+        periphery.emergencyReceiveMessage(message, bytes("mock-attestation"));
+
+        assertEq(usdc.balanceOf(address(periphery)), periphBalBefore);
+        assertEq(usdc.balanceOf(finalRecipient), recipBalBefore);
+    }
+
+    /// @notice Emergency path forwards whatever amount the CCTP call actually credited to this contract.
+    function test_EmergencyReceiveMessage_ForwardsActualMintedAmount() public {
+        bytes32 botRole = periphery.PERMISSIONED_BOT_ROLE();
+        vm.prank(admin);
+        periphery.grantRole(botRole, address(this));
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        uint256 recipBalBefore = usdc.balanceOf(finalRecipient);
+
+        periphery.emergencyReceiveMessage(message, bytes("mock-attestation"));
+
+        // Mock credits exactly `amount - feeExecuted` on receiveMessage; recipient should net that amount.
+        assertEq(usdc.balanceOf(finalRecipient), recipBalBefore + DEFAULT_AMOUNT - FEE_EXECUTED);
+    }
+
+    /// @notice Pre-existing `baseToken` balance must not be counted toward the mint-produced amount:
+    /// the check compares the delta across the CCTP call, so seeding the contract before the call cannot
+    /// spoof validation when the CCTP call itself produces no mint.
+    function test_ReceiveMessage_PreseededBalance_CannotSpoofMint() public {
+        messageTransmitter.setShouldMint(false);
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory signature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        // Fund the periphery with far more baseToken than the expected mint — it must still fail validation.
+        deal(address(usdc), address(periphery), usdc.balanceOf(address(periphery)) + DEFAULT_AMOUNT * 10);
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidMintedAmount.selector);
+        periphery.receiveMessage(message, bytes("mock-attestation"), signature);
+
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                TOKEN MESSENGER / LOCAL-MINTER VALIDATION TESTS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice A signed quote whose top-level CCTP `recipient` is not the configured TokenMessenger must
+    /// revert with InvalidRecipient so the nonce is preserved and the flow is not executed against a mint
+    /// that went through some unrelated contract.
+    function test_ReceiveMessage_RecipientNotTokenMessenger_Reverts() public {
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory signature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        // Overwrite the top-level recipient (at header offset 76) with an unrelated address.
+        bytes32 wrongRecipient = bytes32(uint256(uint160(address(messageTransmitter))));
+        assembly {
+            mstore(add(message, add(32, 76)), wrongRecipient)
+        }
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidRecipient.selector);
+        periphery.receiveMessage(message, bytes("mock-attestation"), signature);
+
+        assertFalse(periphery.usedNonces(quote.nonce));
+    }
+
+    /// @notice A signed quote whose burnToken does not resolve to `baseToken` on this domain via the
+    /// configured TokenMinter must revert with InvalidMintedToken (prevents mint of a different token
+    /// being treated as `baseToken`).
+    function test_ReceiveMessage_BurnTokenUnlinked_Reverts() public {
+        // Remove the SOURCE_DOMAIN -> usdc link so getLocalToken returns address(0).
+        tokenMinter.setLink(SOURCE_DOMAIN, address(usdc).toBytes32(), address(0));
+
+        SponsoredCCTPInterface.SponsoredCCTPQuote memory quote = createDefaultQuote();
+        bytes memory signature = signQuote(quote, signerPrivateKey);
+        bytes memory message = createCCTPMessage(quote, FEE_EXECUTED);
+
+        vm.expectRevert(SponsoredCCTPInterface.InvalidMintedToken.selector);
+        periphery.receiveMessage(message, bytes("mock-attestation"), signature);
+
+        assertFalse(periphery.usedNonces(quote.nonce));
     }
 }
