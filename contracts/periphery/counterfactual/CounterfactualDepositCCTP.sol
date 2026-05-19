@@ -52,7 +52,7 @@ struct CCTPSubmitterData {
     bytes32 nonce;
     uint256 cctpDeadline;
     uint256 executionFee;
-    uint256 executionFeeDeadline;
+    uint32 signatureDeadline;
     bytes signature;
     bytes executionFeeSignature;
 }
@@ -79,13 +79,13 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     );
 
     error InvalidExecutionFeeSignature();
-    error ExecutionFeeSignatureExpired();
+    error SignatureExpired();
     error MaxExecutionFee();
 
     /// @notice EIP-712 typehash binding the local fee signature to (clone, leaf, runtime fee).
     bytes32 public constant EXECUTE_CCTP_TYPEHASH =
         keccak256(
-            "ExecuteCCTP(address clone,bytes32 paramsHash,uint256 amount,uint256 executionFee,uint256 executionFeeDeadline)"
+            "ExecuteCCTP(address clone,bytes32 paramsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
         );
 
     /// @notice SponsoredCCTPSrcPeriphery contract.
@@ -138,7 +138,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     }
 
     function _verifyExecutionFeeSignature(bytes32 paramsHash, CCTPSubmitterData memory sd) private view {
-        if (block.timestamp > sd.executionFeeDeadline) revert ExecutionFeeSignatureExpired();
+        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_CCTP_TYPEHASH,
@@ -146,7 +146,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
                 paramsHash,
                 sd.amount,
                 sd.executionFee,
-                sd.executionFeeDeadline
+                sd.signatureDeadline
             )
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), sd.executionFeeSignature) != signer)
