@@ -2,15 +2,20 @@
 # yarn lockfile v1
 
 
-"@across-protocol/constants@^3.1.100", "@across-protocol/constants@^3.1.107":
+"@across-protocol/constants@^3.1.107":
   version "3.1.109"
   resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.109.tgz#3a7e9f7581405cd09dbbdc480800d4a775051c46"
   integrity sha512-Mt0wYTzMPbfNSEWZFuGdMTn8N4z9+yNWJ0HDFaZwVlaiW8m9F1uK5SWHsc6TAZURTvrC2T98nIDGm+ibPgwEYA==
 
-"@across-protocol/contracts@5.0.5":
-  version "5.0.5"
-  resolved "https://registry.yarnpkg.com/@across-protocol/contracts/-/contracts-5.0.5.tgz#fc99bdbb589217e50123e65954e0727e4b964f2c"
-  integrity sha512-2gccirRrHvxhAYsXWKzoHSKjLBXoTK0GY/50sDfL/uGsLJ6T/6UN2ndw3uND5rwoyqUktI/QFa3ZlQyDKrX9mg==
+"@across-protocol/constants@^3.1.110":
+  version "3.1.111"
+  resolved "https://registry.yarnpkg.com/@across-protocol/constants/-/constants-3.1.111.tgz#bad4718e4d6179a2012a6d66d3440e1a8c1b2cb5"
+  integrity sha512-z1ly6ROzCHE6G66wYaARFtYDRLii9LWBL1HhBiHnzi2ukLA5Qg62MipFXN5Ux5aS62xLyvBcgtCB8HKUvGzhrA==
+
+"@across-protocol/contracts@5.0.10":
+  version "5.0.10"
+  resolved "https://registry.yarnpkg.com/@across-protocol/contracts/-/contracts-5.0.10.tgz#c6eb6a88ef83b51fe019829668e928794b73b4d6"
+  integrity sha512-W1AAXzYjNmRsSQ8sckvrcI0gYOpBjPdJ01VseGLUxAoSqn2w2xPH65ZOsXyUVZrLdzoYNpYeJVYFgcaIEgVd0g==
   dependencies:
     "@across-protocol/constants" "^3.1.107"
     "@coral-xyz/anchor" "^0.31.1"
@@ -22,24 +27,20 @@
     "@openzeppelin/contracts-upgradeable" "5.5.0"
     "@openzeppelin/contracts-upgradeable-v4" "npm:@openzeppelin/contracts-upgradeable@4.9.6"
     "@openzeppelin/contracts-v4" "npm:@openzeppelin/contracts@4.9.6"
-    "@openzeppelin/foundry-upgrades" "^0.4.0"
     "@scroll-tech/contracts" "^0.1.0"
     "@solana-program/address-lookup-table" "0.10.0"
-    "@solana-program/token" "0.9.0"
     "@solana/kit" "^5.4.0"
-    "@solana/spl-token" "0.4.14"
     "@solana/web3.js" "1.98.2"
     bs58 "^6.0.0"
-    tronweb "^6.2.0"
-    yargs "^17.7.2"
+    ethers "5.7.2"
 
-"@across-protocol/sdk@^4.4.0-alpha.7":
-  version "4.4.0-alpha.7"
-  resolved "https://registry.yarnpkg.com/@across-protocol/sdk/-/sdk-4.4.0-alpha.7.tgz#2ca60a829e3d70dcc95b10ff4f754b33220ed9c2"
-  integrity sha512-ohwHK0LFmN6Gn4SQtsFmPlYpu+FKAGJx1mATVwAUrfIEWFy0JyvKO6dZFNL+2jMe30keeczLPORldrGuihU2mA==
+"@across-protocol/sdk@^4.4.0-alpha.10":
+  version "4.4.0-alpha.10"
+  resolved "https://registry.yarnpkg.com/@across-protocol/sdk/-/sdk-4.4.0-alpha.10.tgz#b4a0ae9824288866e501b5419df993c868ae2f8d"
+  integrity sha512-/ohGPSFfUTDn1oJZRdp5MD1ZfL5WF0sy8LdNKEiCSlyq1sHkKscPITVEA6rmS0Eptj3Cq9A1yZHWYqXB0dqBuA==
   dependencies:
-    "@across-protocol/constants" "^3.1.100"
-    "@across-protocol/contracts" "5.0.5"
+    "@across-protocol/constants" "^3.1.110"
+    "@across-protocol/contracts" "5.0.10"
     "@coral-xyz/anchor" "^0.31.1"
     "@coral-xyz/borsh" "^0.31.1"
     "@eth-optimism/sdk" "^3.3.1"
@@ -1219,13 +1220,13 @@
   resolved "https://registry.yarnpkg.com/@pkgr/core/-/core-0.2.9.tgz#d229a7b7f9dac167a156992ef23c7f023653f53b"
   integrity sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==
 
-"@safe-global/protocol-kit@^7.0.0":
-  version "7.1.0"
-  resolved "https://registry.yarnpkg.com/@safe-global/protocol-kit/-/protocol-kit-7.1.0.tgz#c0107877408d9c63482a223a3f6dfb8967099942"
-  integrity sha512-eFJ6SwxF9TIDpQkQj8bTP9ma1zpf1C1nhdhAwx16rUX749CWT6styg7e9dSmeV40zSleWFeQUWcqgLOaRnxj1g==
+"@safe-global/protocol-kit@7.0.0":
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/@safe-global/protocol-kit/-/protocol-kit-7.0.0.tgz#9f2002b02b3d876cbec19e6d442e83167241b9d3"
+  integrity sha512-h2Aw+o13gfZng/ou2vt+Yzq/SNI6d98ScEJCCn6hZHvNlrFjEzKNuXJcmDuG/nGdsMq9vAnm0SvnTm9W2Qjf4A==
   dependencies:
-    "@safe-global/safe-deployments" "^1.37.54"
-    "@safe-global/safe-modules-deployments" "^3.0.2"
+    "@safe-global/safe-deployments" "^1.37.52"
+    "@safe-global/safe-modules-deployments" "^3.0.0"
     "@safe-global/types-kit" "^3.1.0"
     abitype "^1.0.2"
     semver "^7.7.2"
@@ -1234,14 +1235,14 @@
     "@noble/curves" "^1.6.0"
     "@peculiar/asn1-schema" "^2.3.13"
 
-"@safe-global/safe-deployments@^1.37.54":
+"@safe-global/safe-deployments@^1.37.52":
   version "1.37.56"
   resolved "https://registry.yarnpkg.com/@safe-global/safe-deployments/-/safe-deployments-1.37.56.tgz#8a13d2aed4d8bfb5ab8fcc105fec3025b45114e5"
   integrity sha512-HF3ETre/KSP3nCOZ72XEbq5U56gOGgYLJ22LxOAnR8+YzMjzZ8cpnHpx5Z31Zt1xkUTGSCMi9XF950lJt6WbsQ==
   dependencies:
     semver "^7.6.2"
 
-"@safe-global/safe-modules-deployments@^3.0.2":
+"@safe-global/safe-modules-deployments@^3.0.0":
   version "3.0.4"
   resolved "https://registry.yarnpkg.com/@safe-global/safe-modules-deployments/-/safe-modules-deployments-3.0.4.tgz#36fae3e242f4a5caab7fd8a61aec3bdd6fe2af2e"
   integrity sha512-aOFcv5tLPA/CS50Lknuo0QyB+zbwTCLKhnwzOoHRU9az6YDhB1q7ppq3jYk7+xhvzluhpPEfDd8HGKAOxHpLoQ==
