@@ -11,6 +11,7 @@ import "../upgradeable/MultiCallerUpgradeable.sol";
 import "../upgradeable/EIP712CrossChainUpgradeable.sol";
 import "../upgradeable/AddressLibUpgradeable.sol";
 import "../libraries/AddressConverters.sol";
+import { SafeTransferERC20 } from "../libraries/SafeTransferERC20.sol";
 import { IOFT, SendParam, MessagingFee } from "../interfaces/IOFT.sol";
 import { OFTTransportAdapter } from "../libraries/OFTTransportAdapter.sol";
 
@@ -39,9 +40,13 @@ abstract contract SpokePool is
     MultiCallerUpgradeable,
     EIP712CrossChainUpgradeable,
     IDestinationSettler,
-    OFTTransportAdapter
+    OFTTransportAdapter,
+    SafeTransferERC20
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    // Restrict the `using` attachment to `safeTransferFrom` only. All `safeTransfer` calls must go
+    // through the `_safeTransfer` hook (inherited from `SafeTransferERC20`) so chain-specific
+    // variants can override transfer semantics in one place.
+    using { SafeERC20Upgradeable.safeTransferFrom } for IERC20Upgradeable;
     using AddressLibUpgradeable for address;
     using Bytes32ToAddress for bytes32;
     using AddressToBytes32 for address;
@@ -1241,7 +1246,7 @@ abstract contract SpokePool is
         uint256 refund = relayerRefund[l2TokenAddress.toAddress()][msg.sender];
         if (refund == 0) revert NoRelayerRefundToClaim();
         relayerRefund[l2TokenAddress.toAddress()][msg.sender] = 0;
-        IERC20Upgradeable(l2TokenAddress.toAddress()).safeTransfer(refundAddress.toAddress(), refund);
+        _safeTransfer(l2TokenAddress.toAddress(), refundAddress.toAddress(), refund);
 
         emit ClaimedRelayerRefund(l2TokenAddress, refundAddress, refund, msg.sender);
     }
@@ -1429,7 +1434,7 @@ abstract contract SpokePool is
     // Re-implementation of OZ _callOptionalReturnBool to use private logic. Function executes a transfer and returns a
     // bool indicating if the external call was successful, rather than reverting. Original method:
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/28aed34dc5e025e61ea0390c18cac875bfde1a78/contracts/token/ERC20/utils/SafeERC20.sol#L188
-    function _noRevertTransfer(address token, address to, uint256 amount) internal returns (bool) {
+    function _noRevertTransfer(address token, address to, uint256 amount) internal virtual returns (bool) {
         bool success;
         uint256 returnSize;
         uint256 returnValue;
@@ -1548,7 +1553,7 @@ abstract contract SpokePool is
             wrappedNativeToken.withdraw(amount);
             AddressLibUpgradeable.sendValue(to, amount);
         } else {
-            IERC20Upgradeable(address(wrappedNativeToken)).safeTransfer(to, amount);
+            _safeTransfer(address(wrappedNativeToken), to, amount);
         }
     }
 
@@ -1662,7 +1667,7 @@ abstract contract SpokePool is
         } else {
             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
             if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
-            else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
+            else _safeTransfer(outputToken, recipientToSend, amountToSend);
         }
 
         bytes memory updatedMessage = relayExecution.updatedMessage;

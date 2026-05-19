@@ -4,10 +4,13 @@ pragma solidity ^0.8.0;
 import { Ownable } from "@openzeppelin/contracts-v4/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts-v4/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
+import { Address } from "@openzeppelin/contracts-v4/utils/Address.sol";
 import { ITokenMessengerV2 } from "../../../external/interfaces/CCTPInterfaces.sol";
 
 import { SponsoredCCTPQuoteLib } from "../../../libraries/SponsoredCCTPQuoteLib.sol";
 import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterface.sol";
+import { SponsoredCCTPDstPeriphery } from "./SponsoredCCTPDstPeriphery.sol";
+import { Bytes32ToAddress } from "../../../libraries/AddressConverters.sol";
 
 /**
  * @title SponsoredCCTPSrcPeriphery
@@ -16,6 +19,8 @@ import { SponsoredCCTPInterface } from "../../../interfaces/SponsoredCCTPInterfa
  */
 contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
     using SafeERC20 for IERC20;
+    using Bytes32ToAddress for bytes32;
+    using Address for address;
 
     /// @notice The CCTP token messenger contract.
     ITokenMessengerV2 public immutable cctpTokenMessenger;
@@ -81,45 +86,67 @@ contract SponsoredCCTPSrcPeriphery is SponsoredCCTPInterface, Ownable {
         if (quote.deadline < block.timestamp) revert InvalidDeadline();
         if (quote.sourceDomain != sourceDomain) revert InvalidSourceDomain();
 
-        (
-            uint256 amount,
-            uint32 destinationDomain,
-            bytes32 mintRecipient,
-            address burnToken,
-            bytes32 destinationCaller,
-            uint256 maxFee,
-            uint32 minFinalityThreshold,
-            bytes memory hookData
-        ) = SponsoredCCTPQuoteLib.getDepositForBurnData(quote);
-
         $.usedNonces[quote.nonce] = true;
 
-        IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
-        IERC20(burnToken).forceApprove(address(cctpTokenMessenger), amount);
+        if (quote.destinationDomain == sourceDomain) {
+            address destinationHandler = quote.mintRecipient.toAddress();
+            if (!destinationHandler.isContract()) revert InvalidDirectHandler();
 
-        cctpTokenMessenger.depositForBurnWithHook(
-            amount,
-            destinationDomain,
-            mintRecipient,
-            burnToken,
-            destinationCaller,
-            maxFee,
-            minFinalityThreshold,
-            hookData
-        );
+            address burnToken = quote.burnToken.toAddress();
+            IERC20(burnToken).safeTransferFrom(msg.sender, destinationHandler, quote.amount);
+            SponsoredCCTPDstPeriphery(payable(destinationHandler)).directReceiveMessage(quote);
 
-        emit SponsoredDepositForBurn(
-            quote.nonce,
-            msg.sender,
-            quote.finalRecipient,
-            quote.deadline,
-            quote.maxBpsToSponsor,
-            quote.maxUserSlippageBps,
-            quote.finalToken,
-            quote.destinationDex,
-            quote.accountCreationMode,
-            signature
-        );
+            emit SponsoredCCTPDirectExecution(
+                quote.nonce,
+                msg.sender,
+                quote.finalRecipient,
+                quote.deadline,
+                quote.maxBpsToSponsor,
+                quote.maxUserSlippageBps,
+                quote.finalToken,
+                quote.destinationDex,
+                quote.accountCreationMode,
+                signature
+            );
+        } else {
+            (
+                uint256 amount,
+                uint32 destinationDomain,
+                bytes32 mintRecipient,
+                address burnToken,
+                bytes32 destinationCaller,
+                uint256 maxFee,
+                uint32 minFinalityThreshold,
+                bytes memory hookData
+            ) = SponsoredCCTPQuoteLib.getDepositForBurnData(quote);
+
+            IERC20(burnToken).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(burnToken).forceApprove(address(cctpTokenMessenger), amount);
+
+            cctpTokenMessenger.depositForBurnWithHook(
+                amount,
+                destinationDomain,
+                mintRecipient,
+                burnToken,
+                destinationCaller,
+                maxFee,
+                minFinalityThreshold,
+                hookData
+            );
+
+            emit SponsoredDepositForBurn(
+                quote.nonce,
+                msg.sender,
+                quote.finalRecipient,
+                quote.deadline,
+                quote.maxBpsToSponsor,
+                quote.maxUserSlippageBps,
+                quote.finalToken,
+                quote.destinationDex,
+                quote.accountCreationMode,
+                signature
+            );
+        }
     }
 
     /**

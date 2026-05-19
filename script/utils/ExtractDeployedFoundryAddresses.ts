@@ -216,13 +216,20 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           const txHash = tx.hash;
           const blockNumber = txHashToBlock[txHash] || null;
 
-          let contractName = tx.contractName as string;
+          let contractName = (tx.contractName as string | null) ?? "";
 
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
           } else if (contractName.endsWith("_SpokePool")) {
             // skip
             continue;
+          } else if (contractName === "DonationBox") {
+            // Suffix DonationBox with _OFT or _CCTP based on the deploying script.
+            if (broadcastFile.scriptName.includes("DeployDstHandler")) {
+              contractName = "DonationBox_OFT";
+            } else if (broadcastFile.scriptName.includes("DeploySponsoredCCTPDstPeriphery")) {
+              contractName = "DonationBox_CCTP";
+            }
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;
             let oftDstEid: string | undefined = undefined;

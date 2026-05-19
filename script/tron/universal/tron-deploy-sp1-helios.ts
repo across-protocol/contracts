@@ -228,7 +228,7 @@ async function main(): Promise<void> {
 
   // Step 5: Deploy SP1Helios
   console.log("\n=== WARNING ===");
-  console.log("Once SP1Helios is deployed, you have 7 days to deploy the UniversalSpokePool");
+  console.log("Once SP1Helios is deployed, you have 7 days to deploy the Tron_SpokePool");
   console.log("and activate it in-protocol. After 7 days with no update, the contract becomes");
   console.log("immutable and cannot be updated.");
   console.log("================\n");
