@@ -98,9 +98,9 @@ abstract contract ArbitraryEVMFlowExecutor {
             // Ending balance final token
             uint256 eBF = IERC20(params.commonParams.finalToken).balanceOf(address(this));
 
-            // When a positive finalToken delta is produced, the action sequence is expected to have
-            // consumed the initialToken input. If it did not, any unspent initialToken remains stuck on this
-            // contract.
+            // Any positive finalToken delta is treated as successful execution when initialToken != finalToken. If any
+            // (or all) of the initialToken amount is unspent during the execution, it lands back into this contract and
+            // can be withdrawn by the admin
             if (eBF > sBF) {
                 finalAmount = eBF - sBF;
             } else {
