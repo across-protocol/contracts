@@ -220,10 +220,6 @@
           "block_number": 25138380,
           "transaction_hash": "0x135450e78b12f576b5d294d2fe26000eb1bb0bbf9ba755f5e8cd41d9587ac0f9"
         },
-        "DonationBox_CCTP": {
-          "address": "0xc1A2465c0913438A51d0b6339169f8b944f00cD1",
-          "block_number": 24451558,
-          "transaction_hash": "0x2571a14def62200935cd4c90356b1f1415e6977e60380c7dbdd4b0f4915d12fa"
         "PermissionedMulticallHandler_CCTP_USDC": {
           "address": "0xDd52f8134f85f3979fbA24387Ce0CEC05937259E",
           "block_number": 25050834,
@@ -1266,10 +1262,6 @@
           "block_number": 46258138,
           "transaction_hash": "0x3267da18ba0bb69bad4f9dac7b1932ed00e16aa87b5a7f31cccefddafad248ec"
         },
-        "DonationBox_CCTP": {
-          "address": "0xC1d6B848553602BED3524B05B7EB68c20899d861",
-          "block_number": 42941026,
-          "transaction_hash": "0xe8250326847544f47a63a3b799e07e127d21dc62a1901722293ef1335bee17e4"
         "PermissionedMulticallHandler_CCTP_USDC": {
           "address": "0xB6CAAfD8Ecf18385fFc7c020327E111a1D40A2D4",
           "block_number": 44959757,
