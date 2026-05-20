@@ -12,7 +12,6 @@ This document is an implementation specification. Starting point: the original c
 - [Architecture Overview](#architecture-overview)
 - [What is a policy?](#what-is-a-policy)
 - [Clone immutable args](#clone-immutable-args)
-- [Contracts to modify or create](#contracts-to-modify-or-create)
 - [RoutePolicy contract](#routepolicy-contract)
 - [CounterfactualDeposit (dispatcher)](#counterfactualdeposit-dispatcher)
 - [Bridge implementations](#bridge-implementations)
@@ -130,32 +129,13 @@ All five values still participate in CREATE2 address derivation — they're comm
 
 ---
 
-## Contracts to modify or create
-
-**Modify** (from `master` baseline):
-
-- `CounterfactualDeposit.sol` — rewrite leaf-binding logic, add withdraw escape, fetch root from `RoutePolicy`.
-- `CounterfactualDepositFactory.sol` — accept the five immutable args instead of one.
-- `CounterfactualDepositFactoryTron.sol` — mirror factory changes.
-- `CounterfactualDepositSpokePool.sol` — dynamic `executionFee`, leaf-bound and clone-bound signatures, identity-match check.
-- `CounterfactualDepositCCTP.sol` — **new** local signer for dynamic `executionFee`, identity-match check.
-- `CounterfactualDepositOFT.sol` — **new** local signer for dynamic `executionFee`, identity-match check.
-- `WithdrawImplementation.sol` — drop the per-leaf `(admin, user)` params; rely on the dispatcher's structural escape against `clone.withdrawUser`.
-- `AdminWithdrawManager.sol` — drop the `params` and `proof` arguments from both withdraw paths (the dispatcher's escape bypasses them); move the recipient address into the signer's EIP-712 message on the signed path so the manager no longer needs an on-chain `user` field to know where to send funds.
-
-**Create**:
-
-- `RoutePolicy.sol` and `IRoutePolicy.sol` (interface).
-
-**Unchanged**: `CounterfactualConstants.sol`.
-
----
-
 ## RoutePolicy contract
 
 A minimal `Ownable` contract with one storage slot for the active merkle root and one external function to replace it.
 
-The constructor takes an `initialOwner` and an `initialRoot`. To make the contract land at the same address on every chain (cross-chain consistency, see below), both values must be identical across chains at deploy time. A globally-deterministic placeholder is used for `initialOwner`; ownership is transferred to the chain-local multisig as a post-deploy step. `initialRoot` is typically `bytes32(0)` (the policy is unusable until a real root is approved).
+The constructor takes an `initialOwner` and an `initialRoot`. To make the contract land at the same address on every chain (cross-chain consistency, see below), both values must be identical across chains at deploy time. `initialOwner` is a **deployer EOA** controlled by the party deploying the policy (Across, or an integrator deploying their own policy); ownership is transferred to the chain-local multisig as a post-deploy step. Chain-local multisigs are typically not at the same address across chains, which is why a deployer EOA — held by a single party and trivially identical across chains — is used as the bootstrap owner. `initialRoot` is `bytes32(0)` (the policy is unusable until a real root is approved).
+
+The deployer EOA holds full owner authority on the policy during the window between deployment and ownership transfer. Operationally this is mitigated by (a) using a hardware-wallet-backed key, (b) deploying and transferring ownership in the same campaign so the window is short, and (c) destroying / retiring the key after the deployment campaign — the key has no purpose after every policy on every chain has been transferred to its chain-local multisig.
 
 The contract emits a `RootUpdated(bytes32 newRoot)` event on every successful root update. Off-chain indexers use this to detect upgrades.
 
@@ -279,7 +259,7 @@ For a clone to land at the same CREATE2 address on every EVM chain, its initCode
 
 - **Factory at the same address everywhere.** `CounterfactualDepositFactory` and the dispatcher have no chain-specific construction state and are deployed through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`) with identical initCode.
 - **Identical immutable args.** The clone's appended immutable arg is a single 32-byte `argsHash`. The five underlying fields (`outputToken`, `destinationChainId`, `recipient`, `withdrawUser`, `routePolicyAddress`) are identical across chains by definition, so `argsHash` is identical too. `routePolicyAddress` must also be identical, which means the policy itself must land at the same address everywhere.
-- **`RoutePolicy` at the same address everywhere.** Deploy through the deterministic-deployment proxy with constructor args that are identical across chains. Ownership is initially set to a globally-deterministic placeholder and transferred to the chain-local multisig as a post-deploy step. The transfer is a separate transaction that doesn't affect the contract's address.
+- **`RoutePolicy` at the same address everywhere.** Deploy through the deterministic-deployment proxy with constructor args that are identical across chains: `initialOwner = deployerEOA` (the same EOA the deploying party controls on every chain) and `initialRoot = bytes32(0)`. Ownership is transferred to the chain-local multisig as a per-chain post-deploy step. The transfer is a state change, not an initCode change, so it doesn't affect the policy's address.
 
 Once the policy is deployed and transferred to the chain-local multisig, each chain's deployment has its own per-chain `activeRoot` storage. The merkle tree on Ethereum commits to routes originating from Ethereum; the tree on Arbitrum commits to Arbitrum routes; and so on. **The contract address is uniform across chains; the contract state is per-chain.** This is what makes new source chains cheap to add — deploy on the new chain, approve a fresh root for that chain, no impact on existing chains.
 
@@ -293,8 +273,8 @@ Deployment must follow a fixed order because two contracts depend on each other'
 
 1. **`WithdrawImplementation`** — deploy first, through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`). No constructor args, so the same address lands on every EVM chain.
 2. **`CounterfactualDeposit` (dispatcher)** — deploy next, through the same proxy, passing the `WithdrawImplementation` address from step 1 as the `WITHDRAW_IMPL` constructor immutable. Because that address is identical across chains, the dispatcher's initCode is identical across chains, so the dispatcher lands at the same address everywhere.
-3. **`RoutePolicy`** — deploy through the proxy with `(placeholderOwner, bytes32(0))` as constructor args. Both values must be identical across chains for the policy to land at the same address everywhere.
-4. **Transfer `RoutePolicy` ownership** — separately per chain, transfer ownership from the placeholder to the chain-local multisig. This is a state change, not an initCode change, so it doesn't affect the policy's address.
+3. **`RoutePolicy`** — deploy through the proxy with `(deployerEOA, bytes32(0))` as constructor args. The deployer EOA is held by the deploying party (Across or an integrator) and must be the same address on every chain. Both constructor values must be identical across chains for the policy to land at the same address everywhere.
+4. **Transfer `RoutePolicy` ownership** — separately per chain, the deployer EOA calls `transferOwnership(chainLocalMultisig)`. This is a state change, not an initCode change, so it doesn't affect the policy's address. Until this transfer lands, the deployer EOA holds full owner authority on the policy — see the [RoutePolicy contract](#routepolicy-contract) section for operational mitigations.
 5. **Bridge implementations** (`CounterfactualDepositSpokePool`, `CounterfactualDepositCCTP`, `CounterfactualDepositOFT`) — deploy with their chain-specific constructor args (SpokePool address, signer address, wrapped native, etc.). These intentionally land at different addresses per chain since their constructor args differ.
 6. **`AdminWithdrawManager`** — deploy with `(owner, directWithdrawer, signer)`. Chain-specific.
 7. **`CounterfactualDepositFactory`** / **`CounterfactualDepositFactoryTron`** — deploy through the proxy. Because the factory's only chain-dependent reference is the dispatcher (which lives at the same address everywhere), the factory's initCode is identical and it lands at the same address everywhere.
@@ -349,10 +329,10 @@ Existing tests in `test/evm/foundry/local/` are the starting point; each item be
 
 All scripts live under `script/counterfactual/`. The deterministic-deployment proxy at `0x4e59b44847b379578588920cA78FbF26c0B4956C` is used for every contract that needs cross-chain address consistency.
 
-- [ ] **`config.toml` / `CounterfactualConfig.sol`** — extend with policy-related config (initial owner placeholder, initial root, chain-local multisig owner per chain, signer addresses for CCTP / OFT).
+- [ ] **`config.toml` / `CounterfactualConfig.sol`** — extend with policy-related config (deployer EOA used as `initialOwner`, initial root, chain-local multisig owner per chain, signer addresses for CCTP / OFT).
 - [ ] **`DeployWithdrawImplementation.s.sol`** (update) — already deterministic; verify no constructor args change.
 - [ ] **`DeployCounterfactualDeposit.s.sol`** (update) — pass `WITHDRAW_IMPL` constructor arg, sourced from the deterministic `WithdrawImplementation` address. Asserts the deployed dispatcher address is identical across chains.
-- [ ] **`DeployRoutePolicy.s.sol`** (new) — deploys `RoutePolicy` via deterministic-deployment proxy with `(placeholderOwner, bytes32(0))`; emits the deployed address. A second `TransferRoutePolicyOwnership.s.sol` runs after, called per-chain, transferring to the chain-local multisig.
+- [ ] **`DeployRoutePolicy.s.sol`** (new) — deploys `RoutePolicy` via deterministic-deployment proxy with `(deployerEOA, bytes32(0))`; emits the deployed address. A second `TransferRoutePolicyOwnership.s.sol` runs after, called per-chain by the deployer EOA, transferring ownership to the chain-local multisig.
 - [ ] **`ApproveRoutePolicyRoot.s.sol`** (new) — multisig-callable script that calls `RoutePolicy.updateRoot(newRoot)`. Takes the new root and the policy address as args; usable as a Safe transaction template.
 - [ ] **`DeployCounterfactualDepositSpokePool.s.sol`** (update) — no signature changes to the constructor; just rebuild against the new impl.
 - [ ] **`DeployCounterfactualDepositCCTP.s.sol`** (update) — add `signer` constructor arg.
@@ -377,3 +357,8 @@ All scripts live under `script/counterfactual/`. The deterministic-deployment pr
 - _Operational only (current)_: rely on short deadlines and signer-side bookkeeping. Zero gas overhead, zero contract change. Cost: any leaked or buffered signature is replay-exploitable within its deadline; correctness depends entirely on the signer's discipline.
 - _Monotonic nonce_: add `mapping(address clone => uint256) nonces` in each impl and the manager; include `nonce` in the typehash; require equality and increment on use. Forces ordered consumption — if the signer issues two quotes, the executor must use them in order. Bad fit for the "signer broadcasts, permissionless executors pick up" model.
 - _One-time signature marks (recommended)_: `mapping(bytes32 sigHash => bool used)` checked and set after `ECDSA.recover`. Allows out-of-order consumption, matches the broadcast-and-pick-up model. ~1 SSTORE per execute. For CCTP/OFT/SpokePool, the mapping can live in a small shared `SignatureMarks` mixin using ERC-7201 namespaced storage (so all three impls share one slot in the clone's storage without colliding with anything else). For `AdminWithdrawManager`, a regular mapping in normal storage (the manager is not delegatecalled).
+
+**4. Does `WithdrawImplementation` need to be a separate implementation contract?** Today withdraw is split awkwardly between the dispatcher and a one-purpose impl: the dispatcher special-cases the auth path (`implementation == WITHDRAW_IMPL && msg.sender == cloneArgs.withdrawUser`), then delegatecalls a separate `WithdrawImplementation` that decodes `(token, to, amount)` and transfers. The impl conforms to `ICounterfactualImplementation` for uniformity, but two of its three arguments are unused, and its address is pinned by the dispatcher's `WITHDRAW_IMPL` immutable — so it isn't actually swappable. The auth half of the escape lives in the dispatcher already; only the transfer logic is delegated. Options:
+
+- _Separate impl (current)_: uniform `ICounterfactualImplementation.execute` interface across every execute target, including withdraw. The dispatcher carries no transfer logic. Cost: a second contract to deploy and verify per chain, an extra immutable on the dispatcher, the deployment ordering invariant (withdraw impl must land before the dispatcher so its address is known), and an obviously-vestigial interface conformance on the impl side (`cloneArgs` and `params` are unused).
+- _Inlined into the dispatcher_: drop `WithdrawImplementation.sol`, drop the `WITHDRAW_IMPL` immutable, and move the `(token, to, amount)` decode + transfer into a dispatcher method that the escape branch falls into directly. The escape becomes a function rather than an impl dispatch. Cost: the dispatcher gains a transfer code path and a `SafeTransferERC20` dependency, and the abstraction "every execute goes through an impl" is broken — withdraw becomes a structural feature of the dispatcher, not a pluggable implementation. Saves one contract, one immutable, one delegatecall hop, and the awkward unused-parameter interface conformance.
