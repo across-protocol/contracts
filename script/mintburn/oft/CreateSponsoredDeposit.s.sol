@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import { Script } from "forge-std/Script.sol";
 import { Config } from "forge-std/Config.sol";
 import { Vm } from "forge-std/Vm.sol";
+import { console } from "forge-std/console.sol";
 import { SponsoredOFTSrcPeriphery } from "../../../contracts/periphery/mintburn/sponsored-oft/SponsoredOFTSrcPeriphery.sol";
 import { SponsoredOFTInterface } from "../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { AddressToBytes32 } from "../../../contracts/libraries/AddressConverters.sol";
@@ -63,40 +64,44 @@ library DebugQuoteSignLib {
 }
 
 /*
-Examples:
+Examples (the trailing `bool showCast` arg prints a copy/paste cast command and skips the broadcast when true):
 
 - Simple transfer (no swap), sponsored (e.g. 1%):
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,uint256)" usdt0 1000000 100 --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,uint256,bool)" usdt0 1000000 100 false --rpc-url arbitrum -vvvv
 
 - Simple transfer (no swap), non-sponsored:
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,uint256)" usdt0 1000000 0 --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,uint256,bool)" usdt0 1000000 0 false --rpc-url arbitrum -vvvv
 
 - Simple transfer (no swap) with explicit recipient, sponsored:
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,address,uint256)" usdt0 1000000 0xRecipient 100 --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,address,uint256,bool)" usdt0 1000000 0xRecipient 100 false --rpc-url arbitrum -vvvv
 
 - Simple transfer (no swap) with explicit recipient, non-sponsored:
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,address,uint256)" usdt0 1000000 0xRecipient 0 --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,address,uint256,bool)" usdt0 1000000 0xRecipient 0 false --rpc-url arbitrum -vvvv
 
 - Swap flow (finalToken specified), sponsored (e.g. 1%):
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,uint256,address)" usdt0 1000000 100 0xFinalToken --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,uint256,address,bool)" usdt0 1000000 100 0xFinalToken false --rpc-url arbitrum -vvvv
 
 - Swap flow (finalToken specified), non-sponsored:
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,uint256,address)" usdt0 1000000 0 0xFinalToken --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,uint256,address,bool)" usdt0 1000000 0 0xFinalToken false --rpc-url arbitrum -vvvv
 
 - Swap flow with explicit recipient, sponsored:
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "run(string,uint256,address,uint256,address)" usdt0 1000000 0xRecipient 100 0xFinalToken --rpc-url arbitrum -vvvv
+    --sig "run(string,uint256,address,uint256,address,bool)" usdt0 1000000 0xRecipient 100 0xFinalToken false --rpc-url arbitrum -vvvv
 
 - Account creation from user funds with explicit recipient:
   USER=0xRecipient
   forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
-    --sig "runFromUserFunds(string,uint256,address,uint256)" usdt0 1000000 $USER 0 --rpc-url arbitrum -vvvv
+    --sig "runFromUserFunds(string,uint256,address,uint256,bool)" usdt0 1000000 $USER 0 false --rpc-url arbitrum -vvvv
+
+- Print cast command instead of sending (use --rpc-url to fork-quote the LZ fee):
+  forge script script/mintburn/oft/CreateSponsoredDeposit.s.sol:CreateSponsoredDeposit \
+    --sig "run(string,uint256,uint256,bool)" usdt0 1000000 100 true --rpc-url arbitrum -vvvv
 */
 contract CreateSponsoredDeposit is Script, Config {
     using AddressToBytes32 for address;
@@ -125,7 +130,7 @@ contract CreateSponsoredDeposit is Script, Config {
     }
 
     /// @notice Simple transfer entrypoint: finalToken defaults to the input token from config, recipient defaults to signer.
-    function run(string memory tokenName, uint256 amountLD, uint256 maxBpsToSponsor) external {
+    function run(string memory tokenName, uint256 amountLD, uint256 maxBpsToSponsor, bool showCast) external {
         require(bytes(tokenName).length != 0, "token key required");
         string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
         _loadConfigAndForks(configPath, false);
@@ -146,12 +151,19 @@ contract CreateSponsoredDeposit is Script, Config {
             maxBpsToSponsor,
             finalToken,
             ACCOUNT_CREATION_STANDARD,
-            EXECUTION_MODE_DIRECT_TO_CORE
+            EXECUTION_MODE_DIRECT_TO_CORE,
+            showCast
         );
     }
 
     /// @notice Simple transfer entrypoint with explicit recipient (finalToken defaults to the input token).
-    function run(string memory tokenName, uint256 amountLD, address finalRecipient, uint256 maxBpsToSponsor) external {
+    function run(
+        string memory tokenName,
+        uint256 amountLD,
+        address finalRecipient,
+        uint256 maxBpsToSponsor,
+        bool showCast
+    ) external {
         require(bytes(tokenName).length != 0, "token key required");
         string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
         _loadConfigAndForks(configPath, false);
@@ -172,12 +184,19 @@ contract CreateSponsoredDeposit is Script, Config {
             maxBpsToSponsor,
             finalToken,
             ACCOUNT_CREATION_STANDARD,
-            EXECUTION_MODE_DIRECT_TO_CORE
+            EXECUTION_MODE_DIRECT_TO_CORE,
+            showCast
         );
     }
 
     /// @notice Run with default finalRecipient = signer, and custom sponsorship and finalToken (swap) configuration.
-    function run(string memory tokenName, uint256 amountLD, uint256 maxBpsToSponsor, address finalToken) external {
+    function run(
+        string memory tokenName,
+        uint256 amountLD,
+        uint256 maxBpsToSponsor,
+        address finalToken,
+        bool showCast
+    ) external {
         require(bytes(tokenName).length != 0, "token key required");
         string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
         _loadConfigAndForks(configPath, false);
@@ -197,7 +216,8 @@ contract CreateSponsoredDeposit is Script, Config {
             maxBpsToSponsor,
             finalToken,
             ACCOUNT_CREATION_STANDARD,
-            EXECUTION_MODE_DIRECT_TO_CORE
+            EXECUTION_MODE_DIRECT_TO_CORE,
+            showCast
         );
     }
 
@@ -207,7 +227,8 @@ contract CreateSponsoredDeposit is Script, Config {
         uint256 amountLD,
         address finalRecipient,
         uint256 maxBpsToSponsor,
-        address finalToken
+        address finalToken,
+        bool showCast
     ) external {
         require(bytes(tokenName).length != 0, "token key required");
         string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
@@ -228,7 +249,8 @@ contract CreateSponsoredDeposit is Script, Config {
             maxBpsToSponsor,
             finalToken,
             ACCOUNT_CREATION_STANDARD,
-            EXECUTION_MODE_DIRECT_TO_CORE
+            EXECUTION_MODE_DIRECT_TO_CORE,
+            showCast
         );
     }
 
@@ -237,7 +259,8 @@ contract CreateSponsoredDeposit is Script, Config {
         string memory tokenName,
         uint256 amountLD,
         address finalRecipient,
-        uint256 maxBpsToSponsor
+        uint256 maxBpsToSponsor,
+        bool showCast
     ) external {
         require(bytes(tokenName).length != 0, "token key required");
         string memory configPath = string(abi.encodePacked("./script/mintburn/oft/", tokenName, ".toml"));
@@ -258,7 +281,8 @@ contract CreateSponsoredDeposit is Script, Config {
             maxBpsToSponsor,
             env.dstToken,
             ACCOUNT_CREATION_FROM_USER_FUNDS,
-            EXECUTION_MODE_DIRECT_TO_CORE
+            EXECUTION_MODE_DIRECT_TO_CORE,
+            showCast
         );
     }
 
@@ -271,7 +295,8 @@ contract CreateSponsoredDeposit is Script, Config {
         uint256 maxBpsToSponsor,
         address finalToken,
         uint8 accountCreationMode,
-        uint8 executionMode
+        uint8 executionMode,
+        bool showCast
     ) private {
         require(accountCreationMode <= ACCOUNT_CREATION_FROM_USER_FUNDS, "invalid account mode");
         SponsoredOFTSrcPeriphery srcPeripheryContract = SponsoredOFTSrcPeriphery(env.srcPeriphery);
@@ -315,12 +340,105 @@ contract CreateSponsoredDeposit is Script, Config {
 
         bytes memory signature = DebugQuoteSignLib.signMemory(vm, deployerPrivateKey, signedParams);
 
-        MessagingFee memory fee = _quoteMessagingFee(srcPeripheryContract, quote);
+        // Same-chain (direct) flow: the src periphery skips the OFT bridge entirely and
+        // requires msg.value == 0, so don't call quoteSend on the OFT messenger.
+        MessagingFee memory fee;
+        if (env.srcEid != env.dstEid) {
+            fee = _quoteMessagingFee(srcPeripheryContract, quote);
+        }
+
+        if (showCast) {
+            _logCastCommand(address(srcPeripheryContract), quote, signature, fee.nativeFee);
+            return;
+        }
 
         vm.startBroadcast(deployerPrivateKey);
         IERC20(env.token).forceApprove(address(srcPeripheryContract), amountLD);
         srcPeripheryContract.deposit{ value: fee.nativeFee }(quote, signature);
         vm.stopBroadcast();
+    }
+
+    function _logCastCommand(
+        address target,
+        SponsoredOFTInterface.Quote memory quote,
+        bytes memory signature,
+        uint256 nativeFee
+    ) private view {
+        SponsoredOFTInterface.SignedQuoteParams memory s = quote.signedParams;
+
+        string memory signedTuple = string.concat(
+            "(",
+            vm.toString(uint256(s.srcEid)),
+            ",",
+            vm.toString(uint256(s.dstEid)),
+            ",",
+            vm.toString(s.destinationHandler),
+            ",",
+            vm.toString(s.amountLD),
+            ",",
+            vm.toString(s.nonce),
+            ",",
+            vm.toString(s.deadline),
+            ","
+        );
+        signedTuple = string.concat(
+            signedTuple,
+            vm.toString(s.maxBpsToSponsor),
+            ",",
+            vm.toString(s.maxUserSlippageBps),
+            ",",
+            vm.toString(s.finalRecipient),
+            ",",
+            vm.toString(s.finalToken),
+            ",",
+            vm.toString(uint256(s.destinationDex)),
+            ","
+        );
+        signedTuple = string.concat(
+            signedTuple,
+            vm.toString(s.lzReceiveGasLimit),
+            ",",
+            vm.toString(s.lzComposeGasLimit),
+            ",",
+            vm.toString(s.maxOftFeeBps),
+            ",",
+            vm.toString(uint256(s.accountCreationMode)),
+            ",",
+            vm.toString(uint256(s.executionMode)),
+            ",",
+            vm.toString(s.actionData),
+            ")"
+        );
+
+        string memory tuple = string.concat(
+            "(",
+            signedTuple,
+            ",(",
+            vm.toString(quote.unsignedParams.refundRecipient),
+            "))"
+        );
+
+        string
+            memory funcSig = "deposit(((uint32,uint32,bytes32,uint256,bytes32,uint256,uint256,uint256,bytes32,bytes32,uint32,uint256,uint256,uint256,uint8,uint8,bytes),(address)),bytes)";
+
+        string memory cmd = string.concat(
+            "cast send ",
+            vm.toString(target),
+            " \\\n  '",
+            funcSig,
+            "' \\\n  '",
+            tuple,
+            "' \\\n  ",
+            vm.toString(signature),
+            " \\\n  --value ",
+            vm.toString(nativeFee),
+            " \\\n  --rpc-url <network> --account dev"
+        );
+
+        console.log("=== cast command (copy/paste; swap `cast send` for `cast call` to dry-run) ===");
+        console.log(cmd);
+        console.log("Note: caller must approve `token` to the src periphery for at least amountLD before sending.");
+        console.log("=============================================================================");
     }
 
     function _resolveEnv() internal returns (DepositEnv memory env) {

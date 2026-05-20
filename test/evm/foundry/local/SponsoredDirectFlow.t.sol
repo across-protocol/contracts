@@ -308,6 +308,7 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
         // Deploy CCTP dst periphery
         dstPeriphery = new SponsoredCCTPDstPeriphery(
             address(messageTransmitter),
+            makeAddr("tokenMessenger"),
             signer,
             address(donationBox),
             address(usdc),

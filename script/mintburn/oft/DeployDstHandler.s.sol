@@ -36,16 +36,13 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
 
         address ioft = config.get("oft_messenger").toAddress();
         address baseToken = config.get("token").toAddress();
-        address multicallHandler = _getOptionalAddress("multicall_handler");
         address oftEndpoint = address(IOAppCore(ioft).endpoint());
         require(oftEndpoint != address(0) && ioft != address(0) && baseToken != address(0), "config missing");
 
         vm.startBroadcast(deployerPrivateKey);
 
         DonationBox donationBox = new DonationBox();
-        if (multicallHandler == address(0)) {
-            multicallHandler = address(new PermissionedMulticallHandler(deployer));
-        }
+        address multicallHandler = address(new PermissionedMulticallHandler(deployer));
         DstOFTHandler dstOFTHandler = new DstOFTHandler(
             oftEndpoint,
             ioft,
@@ -72,6 +69,7 @@ contract DeployDstOFTHandler is Script, Test, DeploymentUtils, DstHandlerConfigL
         // Note: foundry doesn't work with precompiles, configure it manually via cast or blockchain explorer
         // _configureCoreTokenInfo(tokenName, address(dstOFTHandler));
         // Note: this sometimes sends way too many transactions so you might want to comment it when deploying
+        // Note: you can also use `--slow` flag which will wait for each transaction confirmation before submitting the next transaction
         _configureAuthorizedPeripheries(address(dstOFTHandler), deployerPrivateKey);
     }
 

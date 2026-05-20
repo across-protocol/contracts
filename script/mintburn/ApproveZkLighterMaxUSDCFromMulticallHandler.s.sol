@@ -11,15 +11,15 @@ import { PermissionedMulticallHandler } from "../../contracts/handlers/Permissio
 import { MulticallHandler } from "../../contracts/handlers/MulticallHandler.sol";
 
 /**
-Approves zkLighter to spend USDC from the deployed PermissionedMulticallHandler by having the handler call USDC.approve().
-Requires msg.sender (broadcast signer) to be whitelisted on PermissionedMulticallHandler.
-
-@notice This script makes sense only with PermissionedMulticallHandler, with the API controlling what functions can be called
-as a part of custom EVM execution. Otherwise, anyone can rescind the approval
-
-Run:
-forge script script/mintburn/ApproveZkLighterMaxUSDCFromMulticallHandler.s.sol:ApproveZkLighterMaxUSDCFromMulticallHandler \
-  --rpc-url <network> -vvvv --broadcast
+ * Approves zkLighter to spend USDC from the deployed PermissionedMulticallHandler by having the handler call USDC.approve().
+ * Requires msg.sender (broadcast signer) to be whitelisted on PermissionedMulticallHandler.
+ *
+ * @notice This script makes sense only with PermissionedMulticallHandler, with the API controlling what functions can be called
+ * as a part of custom EVM execution. Otherwise, anyone can rescind the approval
+ *
+ * Run:
+ * forge script script/mintburn/ApproveZkLighterMaxUSDCFromMulticallHandler.s.sol:ApproveZkLighterMaxUSDCFromMulticallHandler \
+ *   --rpc-url <network> -vvvv --broadcast
  */
 contract ApproveZkLighterMaxUSDCFromMulticallHandler is Script, Config {
     function run() external {
@@ -35,7 +35,7 @@ contract ApproveZkLighterMaxUSDCFromMulticallHandler is Script, Config {
 
         address usdc = config.get("usdc").toAddress();
         address zkLighter = config.get("zkLighter").toAddress();
-        address multicallHandlerAddr = config.get("multicallHandler").toAddress();
+        address multicallHandlerAddr = config.get("multicallHandler_usdc").toAddress();
 
         require(usdc != address(0), "missing usdc in config");
         require(zkLighter != address(0), "missing zkLighter in config");
@@ -63,6 +63,7 @@ contract ApproveZkLighterMaxUSDCFromMulticallHandler is Script, Config {
 
         console.log("Done.");
         console.log("USDC:", usdc);
+        console.logBytes(message);
         console.log("zkLighter:", zkLighter);
         console.log("multicallHandler:", multicallHandlerAddr);
     }

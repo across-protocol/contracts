@@ -223,13 +223,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
           } else if (contractName.endsWith("_SpokePool")) {
             // skip
             continue;
-          } else if (contractName === "DonationBox") {
-            // Suffix DonationBox with _OFT or _CCTP based on the deploying script.
-            if (broadcastFile.scriptName.includes("DeployDstHandler")) {
-              contractName = "DonationBox_OFT";
-            } else if (broadcastFile.scriptName.includes("DeploySponsoredCCTPDstPeriphery")) {
-              contractName = "DonationBox_CCTP";
-            }
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
             let cctpDomainId: string | undefined = undefined;
             let oftDstEid: string | undefined = undefined;
@@ -262,6 +255,14 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
                 `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
               );
             }
+          }
+
+          if (broadcastFile.scriptName === "DeployDstHandler.s.sol") {
+            contractName += "_OFT_USDT";
+          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeriphery.s.sol") {
+            contractName += "_CCTP_USDC";
+          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeripheryUSDH.s.sol") {
+            contractName += "_CCTP_USDH";
           }
 
           contracts.push({
