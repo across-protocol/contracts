@@ -16,7 +16,7 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
  * @custom:security-contact bugs@across.to
  */
 contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
-    event Withdraw(address indexed token, address indexed to, uint256 amount);
+    event Withdraw(address indexed caller, address indexed token, address indexed to, uint256 amount);
 
     error NativeTransferFailed();
 
@@ -38,6 +38,6 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferER
             _safeTransfer(token, to, amount);
         }
 
-        emit Withdraw(token, to, amount);
+        emit Withdraw(msg.sender, token, to, amount);
     }
 }
