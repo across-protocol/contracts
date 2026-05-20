@@ -15,8 +15,8 @@ interface ICounterfactualDeposit {
     error InvalidIdentity();
     /// @dev Merkle proof verification failed.
     error InvalidProof();
-    /// @dev Leaf params shorter than the required `(destinationChainId, outputToken)` prefix.
-    error LeafParamsTooShort();
+    /// @dev `params` shorter than the required `(destinationChainId, outputToken)` prefix.
+    error ParamsTooShort();
 
     /**
      * @notice Execute an implementation against the clone's bound route policy.

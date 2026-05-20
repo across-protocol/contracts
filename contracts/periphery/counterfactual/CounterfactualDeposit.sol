@@ -55,7 +55,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         }
 
         // 3. Standardized destination-identity check on the first two leaf-params fields.
-        if (params.length < 64) revert LeafParamsTooShort();
+        if (params.length < 64) revert ParamsTooShort();
         uint256 leafDestinationChainId;
         bytes32 leafOutputToken;
         assembly {
