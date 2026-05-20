@@ -43,8 +43,8 @@ struct OFTDepositParams {
 
 /**
  * @notice Data supplied by the submitter at execution time. `executionFee` is dynamic and authorized
- *         by `executionFeeSignature` (local signer). The OFT periphery's quote signature is supplied
- *         separately via `signature` and forwarded unchanged.
+ *         by `signature` (local signer). The OFT periphery's quote signature is supplied separately
+ *         via `peripherySignature` and forwarded unchanged.
  */
 struct OFTSubmitterData {
     uint256 amount;
@@ -53,8 +53,8 @@ struct OFTSubmitterData {
     uint256 oftDeadline;
     uint256 executionFee;
     uint32 signatureDeadline;
+    bytes peripherySignature;
     bytes signature;
-    bytes executionFeeSignature;
 }
 
 /**
@@ -146,7 +146,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
                 sd.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.executionFeeSignature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
     }
 
     function _deposit(
@@ -178,7 +178,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
                 }),
                 unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({ refundRecipient: dp.refundRecipient })
             }),
-            sd.signature
+            sd.peripherySignature
         );
     }
 }

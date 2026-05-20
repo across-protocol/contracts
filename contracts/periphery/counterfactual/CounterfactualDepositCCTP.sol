@@ -43,8 +43,8 @@ struct CCTPDepositParams {
 
 /**
  * @notice Data supplied by the submitter at execution time. `executionFee` is dynamic and
- *         authorized by `executionFeeSignature` (local signer). The CCTP periphery's own quote
- *         signature is supplied separately via `signature` and forwarded unchanged.
+ *         authorized by `signature` (local signer). The CCTP periphery's own quote signature is
+ *         supplied separately via `peripherySignature` and forwarded unchanged.
  */
 struct CCTPSubmitterData {
     uint256 amount;
@@ -53,8 +53,8 @@ struct CCTPSubmitterData {
     uint256 cctpDeadline;
     uint256 executionFee;
     uint32 signatureDeadline;
+    bytes peripherySignature;
     bytes signature;
-    bytes executionFeeSignature;
 }
 
 /**
@@ -149,7 +149,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
                 sd.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.executionFeeSignature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
     }
 
     function _depositForBurn(
@@ -179,7 +179,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
                 executionMode: dp.executionMode,
                 actionData: dp.actionData
             }),
-            sd.signature
+            sd.peripherySignature
         );
     }
 }

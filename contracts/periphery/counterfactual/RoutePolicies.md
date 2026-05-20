@@ -218,7 +218,7 @@ In the original contracts CCTP had **no local signature validation** — it forw
 
 - New `signer` constructor immutable.
 - New typehash: `ExecuteCCTP(address clone, bytes32 paramsHash, uint256 amount, uint256 executionFee, uint32 signatureDeadline)`.
-- New submitter-data fields: `executionFee`, `executionFeeRecipient`, `signatureDeadline`, `executionFeeSignature`.
+- New submitter-data fields: `executionFee`, `executionFeeRecipient`, `signatureDeadline`, `signature` (local signer) alongside the existing `peripherySignature` (forwarded periphery quote).
 - New leaf-params field: `maxExecutionFee`, a fixed-amount cap that hard-bounds the runtime `executionFee` for this route. The signer can choose any value `≤ maxExecutionFee`; values above revert.
 
 The CCTP periphery's existing quote signature is still required and forwarded unchanged. Two signatures are checked per execute: the periphery signature (route + amount) and the new local signature (runtime fee).
