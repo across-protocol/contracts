@@ -57,10 +57,10 @@ Deployer / SDK
 ┌──────────────────────────────────────────────────────────────┐                ┌──────────────────────────────────────────┐
 │ CounterfactualDeposit (dispatcher, no per-clone state)       │  staticcall    │ RoutePolicy (one or many, per integrator)│
 │   - verifies keccak256(args) == clone.argsHash               │ ─────────────► │   - owner: Across or integrator multisig │
-│   - withdraw escape if msg.sender == args.withdrawUser       │   activeRoot() │   - activeRoot: merkle root over the     │
-│   - else: verifies merkle proof of the leaf against          │ ◄───────────── │     chain's 4-dim route-leaf tree        │
-│     RoutePolicy.activeRoot() and delegatecalls the impl,     │     bytes32    │   - updateRoot(newRoot): replaces root   │
-│     forwarding the verified args                             │                │                                          │
+│   - withdraw escape if impl == WITHDRAW_IMPL                 │   activeRoot() │   - activeRoot: merkle root over the     │
+│     and msg.sender == args.withdrawUser                      │ ◄───────────── │     chain's 4-dim route-leaf tree        │
+│   - else: verifies merkle proof against policy root, then    │     bytes32    │   - updateRoot(newRoot): replaces root   │
+│     delegatecalls impl with verified args                    │                │                                          │
 └──────────────────────────────────────────────────────────────┘                └──────────────────────────────────────────┘
        │
        │ delegatecall
