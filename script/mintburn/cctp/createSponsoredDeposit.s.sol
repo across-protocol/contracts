@@ -169,7 +169,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
                 destinationCaller: mintRecipient,
                 finalRecipient: finalRecipient,
                 finalToken: finalToken,
-                maxFee: (amount * maxFeeBps) / 100000,
+                maxFee: (amount * maxFeeBps) / 10000,
                 minFinalityThreshold: 1000,
                 maxBpsToSponsor: 400,
                 maxUserSlippageBps: 400,
