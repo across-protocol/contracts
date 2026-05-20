@@ -3,77 +3,64 @@ pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Merkle } from "murky/Merkle.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
-import {
-    WithdrawImplementation,
-    WithdrawParams
-} from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
+import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
+import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 contract AdminWithdrawManagerTest is Test {
-    Merkle public merkle;
     CounterfactualDepositFactory public factory;
     CounterfactualDeposit public dispatcher;
     WithdrawImplementation public withdrawImpl;
     AdminWithdrawManager public manager;
+    RoutePolicy public policy;
     MintableERC20 public token;
 
     address public owner;
     address public directWithdrawer;
-    address public user;
     uint256 public signerPrivateKey;
     address public signerAddr;
 
     address public depositAddress;
 
-    // Single withdraw leaf: admin = manager, user = user
-    bytes internal withdrawParams;
-    bytes32[] internal withdrawProof;
-
-    // EIP-712 constants for AdminWithdrawManager
     bytes32 constant SIGNED_WITHDRAW_TYPEHASH =
-        keccak256("SignedWithdraw(address depositAddress,address token,uint256 amount,uint256 deadline)");
+        keccak256("SignedWithdraw(address depositAddress,address token,address to,uint256 amount,uint256 deadline)");
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant MANAGER_NAME_HASH = keccak256("AdminWithdrawManager");
-    bytes32 constant MANAGER_VERSION_HASH = keccak256("v1.0.0");
+    bytes32 constant MANAGER_VERSION_HASH = keccak256("v1.1.0");
 
     function setUp() public {
         owner = makeAddr("owner");
         directWithdrawer = makeAddr("directWithdrawer");
-        user = makeAddr("user");
         signerPrivateKey = 0xA11CE;
         signerAddr = vm.addr(signerPrivateKey);
 
-        merkle = new Merkle();
         token = new MintableERC20("USDC", "USDC", 6);
-        factory = new CounterfactualDepositFactory();
-        dispatcher = new CounterfactualDeposit();
         withdrawImpl = new WithdrawImplementation();
-        manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr);
+        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        factory = new CounterfactualDepositFactory();
+        policy = new RoutePolicy(address(this), bytes32(0));
+        manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr, address(withdrawImpl));
 
-        // Build merkle tree with one withdraw leaf
-        withdrawParams = abi.encode(WithdrawParams({ admin: address(manager), user: user }));
-
-        bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(withdrawImpl), withdrawParams);
-        leaves[1] = keccak256("padding");
-
-        bytes32 root = merkle.getRoot(leaves);
-        withdrawProof = merkle.getProof(leaves, 0);
-
-        depositAddress = factory.deploy(address(dispatcher), root, keccak256("test-salt"));
-
-        // Fund the clone
+        // Deploy a clone with withdrawUser = manager so the structural escape lands on the manager.
+        depositAddress = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("test-salt"));
         token.mint(depositAddress, 100e6);
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _cloneArgs() internal returns (CloneArgs memory) {
+        return
+            CloneArgs({
+                outputToken: bytes32(uint256(uint160(address(token)))),
+                destinationChainId: 42161,
+                recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
+                withdrawUser: address(manager),
+                routePolicyAddress: address(policy)
+            });
     }
 
     function _managerDomainSeparator() internal view returns (bytes32) {
@@ -92,33 +79,29 @@ contract AdminWithdrawManagerTest is Test {
     function _signWithdraw(
         address _depositAddress,
         address _token,
+        address _to,
         uint256 _amount,
-        uint256 _deadline
+        uint256 _deadline,
+        uint256 _privateKey
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
-            abi.encode(SIGNED_WITHDRAW_TYPEHASH, _depositAddress, _token, _amount, _deadline)
+            abi.encode(SIGNED_WITHDRAW_TYPEHASH, _depositAddress, _token, _to, _amount, _deadline)
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _managerDomainSeparator(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_privateKey, digest);
         return abi.encodePacked(r, s, v);
     }
 
-    // --- directWithdraw tests ---
+    // --- directWithdraw ---
 
     function testDirectWithdraw() public {
-        address recipient = makeAddr("recipient");
+        address recipient = makeAddr("recipient-of-funds");
 
         vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(address(token), recipient, 50e6);
+        emit WithdrawImplementation.Withdraw(address(manager), address(token), recipient, 50e6);
 
         vm.prank(directWithdrawer);
-        manager.directWithdraw(
-            depositAddress,
-            address(withdrawImpl),
-            withdrawParams,
-            abi.encode(address(token), recipient, 50e6),
-            withdrawProof
-        );
+        manager.directWithdraw(depositAddress, _cloneArgs(), address(token), recipient, 50e6);
 
         assertEq(token.balanceOf(recipient), 50e6);
     }
@@ -126,83 +109,71 @@ contract AdminWithdrawManagerTest is Test {
     function testDirectWithdrawUnauthorized() public {
         vm.expectRevert(AdminWithdrawManager.Unauthorized.selector);
         vm.prank(makeAddr("random"));
-        manager.directWithdraw(
-            depositAddress,
-            address(withdrawImpl),
-            withdrawParams,
-            abi.encode(address(token), user, 50e6),
-            withdrawProof
-        );
+        manager.directWithdraw(depositAddress, _cloneArgs(), address(token), makeAddr("attacker"), 50e6);
     }
 
-    // --- signedWithdrawToUser tests ---
+    function testDirectWithdrawCallerCanChooseRecipient() public {
+        address attackerControlled = makeAddr("attacker-controlled");
 
-    function testSignedWithdrawToUser() public {
+        // The directWithdrawer is fully trusted — it can withdraw to any address it wants.
+        vm.prank(directWithdrawer);
+        manager.directWithdraw(depositAddress, _cloneArgs(), address(token), attackerControlled, 50e6);
+
+        assertEq(token.balanceOf(attackerControlled), 50e6);
+    }
+
+    // --- signedWithdraw ---
+
+    function testSignedWithdraw() public {
+        address to = makeAddr("signer-chose-recipient");
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 3600;
-        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, deadline);
+        bytes memory sig = _signWithdraw(depositAddress, address(token), to, amount, deadline, signerPrivateKey);
 
         vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(address(token), user, amount);
+        emit WithdrawImplementation.Withdraw(address(manager), address(token), to, amount);
 
-        manager.signedWithdrawToUser(
-            depositAddress,
-            address(withdrawImpl),
-            withdrawParams,
-            address(token),
-            amount,
-            withdrawProof,
-            deadline,
-            sig
-        );
+        // Anyone can submit the tx; the signer authorized `to`.
+        vm.prank(makeAddr("submitter"));
+        manager.signedWithdraw(depositAddress, _cloneArgs(), address(token), to, amount, deadline, sig);
 
-        assertEq(token.balanceOf(user), amount);
+        assertEq(token.balanceOf(to), amount);
     }
 
-    function testSignedWithdrawToUserInvalidSignature() public {
+    function testSignedWithdrawInvalidSignature() public {
+        address to = makeAddr("recipient");
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 3600;
-
-        // Sign with wrong key
         uint256 wrongKey = 0xDEAD;
-        bytes32 structHash = keccak256(
-            abi.encode(SIGNED_WITHDRAW_TYPEHASH, depositAddress, address(token), amount, deadline)
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _managerDomainSeparator(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, digest);
-        bytes memory badSig = abi.encodePacked(r, s, v);
+        bytes memory badSig = _signWithdraw(depositAddress, address(token), to, amount, deadline, wrongKey);
 
         vm.expectRevert(AdminWithdrawManager.InvalidSignature.selector);
-        manager.signedWithdrawToUser(
-            depositAddress,
-            address(withdrawImpl),
-            withdrawParams,
-            address(token),
-            amount,
-            withdrawProof,
-            deadline,
-            badSig
-        );
+        manager.signedWithdraw(depositAddress, _cloneArgs(), address(token), to, amount, deadline, badSig);
     }
 
-    function testSignedWithdrawToUserExpired() public {
+    function testSignedWithdrawExpired() public {
+        address to = makeAddr("recipient");
         uint256 amount = 50e6;
         uint256 deadline = block.timestamp + 100;
-        bytes memory sig = _signWithdraw(depositAddress, address(token), amount, deadline);
+        bytes memory sig = _signWithdraw(depositAddress, address(token), to, amount, deadline, signerPrivateKey);
 
         vm.warp(block.timestamp + 101);
 
         vm.expectRevert(AdminWithdrawManager.SignatureExpired.selector);
-        manager.signedWithdrawToUser(
-            depositAddress,
-            address(withdrawImpl),
-            withdrawParams,
-            address(token),
-            amount,
-            withdrawProof,
-            deadline,
-            sig
-        );
+        manager.signedWithdraw(depositAddress, _cloneArgs(), address(token), to, amount, deadline, sig);
+    }
+
+    function testSignedWithdrawMismatchedRecipientReverts() public {
+        address signedTo = makeAddr("signed-to");
+        address attackerTo = makeAddr("attacker-to");
+        uint256 amount = 50e6;
+        uint256 deadline = block.timestamp + 3600;
+
+        // Signer signs for `signedTo` but caller tries to use `attackerTo` — recovered signer mismatches.
+        bytes memory sig = _signWithdraw(depositAddress, address(token), signedTo, amount, deadline, signerPrivateKey);
+
+        vm.expectRevert(AdminWithdrawManager.InvalidSignature.selector);
+        manager.signedWithdraw(depositAddress, _cloneArgs(), address(token), attackerTo, amount, deadline, sig);
     }
 
     // --- Owner functions ---
@@ -241,20 +212,25 @@ contract AdminWithdrawManagerTest is Test {
         manager.setSigner(makeAddr("newSigner"));
     }
 
-    // --- User withdraw via dispatcher (not AdminWithdrawManager) ---
+    // --- Cross-clone replay: signature includes depositAddress ---
 
-    function testUserWithdrawDirect() public {
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(address(token), user, 50e6);
+    function testSignatureBoundToDepositAddress() public {
+        // Deploy a second clone with the same withdrawUser (manager) but different recipient field
+        // → different argsHash → different clone address.
+        CloneArgs memory args2 = _cloneArgs();
+        args2.recipient = bytes32(uint256(uint160(makeAddr("other-recipient"))));
+        address depositAddress2 = factory.deploy(address(dispatcher), args2, keccak256("salt-2"));
+        token.mint(depositAddress2, 100e6);
 
-        vm.prank(user);
-        ICounterfactualDeposit(depositAddress).execute(
-            address(withdrawImpl),
-            withdrawParams,
-            abi.encode(address(token), user, 50e6),
-            withdrawProof
-        );
+        address to = makeAddr("recipient");
+        uint256 amount = 50e6;
+        uint256 deadline = block.timestamp + 3600;
 
-        assertEq(token.balanceOf(user), 50e6);
+        // Signature was issued for depositAddress (clone 1).
+        bytes memory sig = _signWithdraw(depositAddress, address(token), to, amount, deadline, signerPrivateKey);
+
+        // Replay against depositAddress2 fails — the signature commits to depositAddress.
+        vm.expectRevert(AdminWithdrawManager.InvalidSignature.selector);
+        manager.signedWithdraw(depositAddress2, args2, address(token), to, amount, deadline, sig);
     }
 }

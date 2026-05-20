@@ -55,12 +55,17 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         }
 
         // 3. Standardized destination-identity check on the first two leaf-params fields.
-        if (params.length < 64) revert ParamsTooShort();
+        // `params` is `abi.encode(StructWithDynamicField)`; the standard ABI encoding for a single
+        // dynamic-tuple argument prefixes the struct's data with a 32-byte offset pointer (0x20).
+        // The two identity fields live at offsets 0x20 and 0x40 within `params`. All current impl
+        // structs include at least one dynamic field (`message` / `actionData`), so the prefix is
+        // always present — new impls must preserve this property.
+        if (params.length < 0x60) revert ParamsTooShort();
         uint256 leafDestinationChainId;
         bytes32 leafOutputToken;
         assembly {
-            leafDestinationChainId := calldataload(params.offset)
-            leafOutputToken := calldataload(add(params.offset, 32))
+            leafDestinationChainId := calldataload(add(params.offset, 0x20))
+            leafOutputToken := calldataload(add(params.offset, 0x40))
         }
         if (leafDestinationChainId != cloneArgs.destinationChainId || leafOutputToken != cloneArgs.outputToken)
             revert InvalidIdentity();
