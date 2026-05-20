@@ -18,11 +18,11 @@ import {
   readProgramEvents,
   relayerRefundHashFn,
   RpcClient,
-} from "../../src/svm";
+} from "@across-protocol/sdk/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 
 import { MerkleTree } from "../../utils/MerkleTree";
-import { RelayerRefundLeaf, RelayerRefundLeafType } from "../../src/types/svm";
+import { RelayerRefundLeaf, RelayerRefundLeafType } from "@across-protocol/sdk/svm";
 
 export { calculateRelayHashUint8Array, findProgramAddress, readEvents, readProgramEvents };
 

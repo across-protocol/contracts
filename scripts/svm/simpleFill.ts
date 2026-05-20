@@ -19,8 +19,8 @@ import {
   getFillRelayDelegatePda,
   getSpokePoolProgram,
   intToU8Array32,
-} from "../../src/svm/web3-v1";
-import { FillDataValues } from "../../src/types/svm";
+} from "@across-protocol/sdk/svm";
+import { FillDataValues } from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();

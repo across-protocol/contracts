@@ -30,7 +30,7 @@ import {
   loadRequestSlowFillParams,
   loadExecuteSlowRelayLeafParams,
   intToU8Array32,
-} from "../../src/svm/web3-v1";
+} from "@across-protocol/sdk/svm";
 import { MulticallHandler } from "../../target/types/multicall_handler";
 import { common } from "./SvmSpoke.common";
 import {
@@ -39,7 +39,7 @@ import {
   RequestSlowFillDataParams,
   RequestSlowFillDataValues,
   SlowFillLeaf,
-} from "../../src/types/svm";
+} from "@across-protocol/sdk/svm";
 const { provider, connection, program, owner, chainId, setCurrentTime } = common;
 const { initializeState, assertSE, assert } = common;
 

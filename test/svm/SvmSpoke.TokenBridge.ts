@@ -10,8 +10,8 @@ import {
   loadExecuteRelayerRefundLeafParams,
   readEventsUntilFound,
   relayerRefundHashFn,
-} from "../../src/svm/web3-v1";
-import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "../../src/types/svm";
+} from "@across-protocol/sdk/svm";
+import { RelayerRefundLeafSolana, RelayerRefundLeafType } from "@across-protocol/sdk/svm";
 import { MessageTransmitter } from "../../target/types/message_transmitter";
 import { TokenMessengerMinter } from "../../target/types/token_messenger_minter";
 import { common } from "./SvmSpoke.common";

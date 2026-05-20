@@ -24,7 +24,7 @@ import {
   getSpokePoolProgram,
   intToU8Array32,
   u8Array32ToInt,
-} from "../../src/svm/web3-v1";
+} from "@across-protocol/sdk/svm";
 
 // Set up the provider
 const provider = AnchorProvider.env();
