@@ -110,11 +110,13 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
      * @dev ERC-20 only (no native tokens). `finalRecipient` and `finalToken` for the CCTP quote
      *      come from the dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is
      *      unused by the CCTP path — CCTP uses its own `destinationDomain` field in `routeParams`.
+     *      `admin` is unused (policy-callable impl).
      */
     function execute(
         bytes32 recipient,
         bytes32 outputToken,
         uint256 /* destinationChainId */,
+        address /* admin */,
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {

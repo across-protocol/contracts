@@ -22,6 +22,7 @@ contract RecordingImplementation is ICounterfactualImplementation {
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
+        address admin,
         bytes routeParams,
         bytes submitterData
     );
@@ -30,17 +31,18 @@ contract RecordingImplementation is ICounterfactualImplementation {
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
+        address admin,
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        emit Recorded(recipient, outputToken, destinationChainId, routeParams, submitterData);
+        emit Recorded(recipient, outputToken, destinationChainId, admin, routeParams, submitterData);
     }
 }
 
 contract RevertingImplementation is ICounterfactualImplementation {
     error CustomRevert(string reason);
 
-    function execute(bytes32, bytes32, uint256, bytes calldata, bytes calldata) external payable {
+    function execute(bytes32, bytes32, uint256, address, bytes calldata, bytes calldata) external payable {
         revert CustomRevert("test revert");
     }
 }
@@ -184,6 +186,7 @@ contract CounterfactualDepositTest is Test {
             args.recipient,
             args.outputToken,
             args.destinationChainId,
+            args.admin,
             routeParams,
             "data"
         );
@@ -206,6 +209,30 @@ contract CounterfactualDepositTest is Test {
             "",
             abi.encode(address(token), relayer, uint256(50e6)),
             new bytes32[](0)
+        );
+    }
+
+    function testWithdrawImplRejectsNonAdminEvenWithValidProof() public {
+        // Defense-in-depth: even if a policy tree mistakenly includes a withdrawImpl leaf, the
+        // impl itself rejects non-admin callers based on the dispatcher-forwarded `admin` arg.
+        CloneArgs memory args = _cloneArgs();
+        // Withdraw impl uses empty routeParams.
+        bytes memory routeParams = "";
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(args, address(withdrawImpl), routeParams);
+        _setPolicyRoot(root);
+
+        address clone = factory.deploy(address(dispatcher), args, SALT);
+        token.mint(clone, 100e6);
+
+        // Proof verifies, dispatcher delegatecalls withdrawImpl, withdrawImpl reverts.
+        vm.expectRevert(WithdrawImplementation.Unauthorized.selector);
+        vm.prank(relayer);
+        ICounterfactualDeposit(clone).execute(
+            args,
+            address(withdrawImpl),
+            routeParams,
+            abi.encode(address(token), relayer, uint256(100e6)),
+            proof
         );
     }
 
@@ -264,6 +291,7 @@ contract CounterfactualDepositTest is Test {
             args.recipient,
             args.outputToken,
             args.destinationChainId,
+            args.admin,
             routeParams,
             "submitter"
         );
@@ -335,6 +363,7 @@ contract CounterfactualDepositTest is Test {
             args.recipient,
             args.outputToken,
             args.destinationChainId,
+            args.admin,
             routeParams,
             "data"
         );

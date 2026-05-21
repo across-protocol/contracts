@@ -108,13 +108,14 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
      * @inheritdoc ICounterfactualImplementation
      * @dev ERC-20 only. `finalRecipient` and `finalToken` for the OFT quote come from the
      *      dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is unused by the
-     *      OFT path — OFT uses its own `dstEid` field in `routeParams`. Forwards `msg.value` for
-     *      LayerZero fees.
+     *      OFT path — OFT uses its own `dstEid` field in `routeParams`. `admin` is unused
+     *      (policy-callable impl). Forwards `msg.value` for LayerZero fees.
      */
     function execute(
         bytes32 recipient,
         bytes32 outputToken,
         uint256 /* destinationChainId */,
+        address /* admin */,
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {

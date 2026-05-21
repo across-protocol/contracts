@@ -68,8 +68,9 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         }
 
         // Delegatecall the implementation with the dispatcher-verified clone-identity fields.
-        // Only `recipient`, `outputToken`, and `destinationChainId` are forwarded; impls do not
-        // see `admin` or `routePolicyAddress`, which are dispatcher-internal concerns.
+        // `recipient`, `outputToken`, `destinationChainId`, and `admin` are forwarded; impls that
+        // depend on the admin escape for authorization (e.g. WithdrawImplementation) verify
+        // `msg.sender == admin` independently. `routePolicyAddress` stays dispatcher-internal.
         _delegate(implementation, cloneArgs, routeParams, submitterData);
     }
 
@@ -82,7 +83,14 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         (bool success, bytes memory result) = implementation.delegatecall(
             abi.encodeCall(
                 ICounterfactualImplementation.execute,
-                (cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, routeParams, submitterData)
+                (
+                    cloneArgs.recipient,
+                    cloneArgs.outputToken,
+                    cloneArgs.destinationChainId,
+                    cloneArgs.admin,
+                    routeParams,
+                    submitterData
+                )
             )
         );
         if (!success) {

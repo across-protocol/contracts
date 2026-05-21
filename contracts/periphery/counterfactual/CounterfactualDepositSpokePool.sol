@@ -106,6 +106,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev `recipient`/`outputToken`/`destinationChainId` are dispatcher-verified clone identity;
+     *      `admin` is unused (this impl is policy-callable and doesn't gate on admin);
      *      `routeParams` is `SpokePoolDepositParams`; `submitterData` is `SpokePoolSubmitterData`.
      *      Supports native-token deposits via `NATIVE_ASSET` sentinel.
      */
@@ -113,6 +114,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
+        address /* admin */,
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
