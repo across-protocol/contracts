@@ -150,8 +150,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
                 message: "",
                 stableExchangeRate: 1e18,
                 maxFeeFixed: 1e6,
-                maxFeeBps: 500,
-                maxExecutionFee: 1e6
+                maxFeeBps: 500
             });
     }
 
@@ -162,8 +161,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
                 message: "",
                 stableExchangeRate: 1e18,
                 maxFeeFixed: 0.01 ether,
-                maxFeeBps: 500,
-                maxExecutionFee: 0.01 ether
+                maxFeeBps: 500
             });
     }
 
@@ -365,27 +363,6 @@ contract CounterfactualDepositSpokePoolTest is Test {
         vm.warp(block.timestamp + 101);
 
         vm.expectRevert(CounterfactualDepositSpokePool.SignatureExpired.selector);
-        ICounterfactualDeposit(clone).execute(
-            _cloneArgs(outputTokenBytes32),
-            address(spokePoolImpl),
-            paramsEncoded,
-            submitterData,
-            proof
-        );
-    }
-
-    function testMaxExecutionFeeEnforced() public {
-        bytes memory paramsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, paramsEncoded);
-        address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
-        vm.prank(user);
-        inputToken.transfer(clone, 100e6);
-
-        ExecCtx memory ctx = _defaultExecCtx(clone, paramsEncoded);
-        ctx.executionFee = 2e6; // > maxExecutionFee (1e6)
-        bytes memory submitterData = _buildSubmitterData(ctx, signerPrivateKey);
-
-        vm.expectRevert(CounterfactualDepositSpokePool.MaxExecutionFee.selector);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(outputTokenBytes32),
             address(spokePoolImpl),

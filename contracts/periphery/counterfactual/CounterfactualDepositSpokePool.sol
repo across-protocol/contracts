@@ -20,12 +20,12 @@ struct SpokePoolDepositParams {
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
-    uint256 maxExecutionFee;
 }
 
 /**
  * @notice Data supplied by the submitter at execution time. `executionFee` is dynamic (set by the
- *         executor, bounded by `maxExecutionFee` in the leaf) and authorized by `counterfactualSignature`.
+ *         executor, bounded together with the implicit relayer fee by the leaf's
+ *         `maxFeeFixed + maxFeeBps × inputAmount` cap) and authorized by `counterfactualSignature`.
  */
 struct SpokePoolSubmitterData {
     uint256 inputAmount;
@@ -73,7 +73,6 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         uint256 executionFee
     );
 
-    error MaxExecutionFee();
     error MaxFee();
     error InvalidSignature();
     error SignatureExpired();
@@ -122,8 +121,6 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         _verifySignature(keccak256(routeParams), sd);
-
-        if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
         address inputToken = address(uint160(uint256(dp.inputToken)));
         uint256 depositAmount = sd.inputAmount - sd.executionFee;

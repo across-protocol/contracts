@@ -93,8 +93,7 @@ contract Tron_CounterfactualTest is Test {
             message: "",
             stableExchangeRate: 1e18,
             maxFeeFixed: 1e6,
-            maxFeeBps: 500,
-            maxExecutionFee: 1e6
+            maxFeeBps: 500
         });
     }
 
