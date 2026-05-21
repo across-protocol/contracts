@@ -60,7 +60,7 @@ contract CounterfactualDepositCCTPTest is Test {
     uint256 public constant DESTINATION_CHAIN_ID = 999;
 
     bytes32 constant EXECUTE_CCTP_TYPEHASH =
-        keccak256("ExecuteCCTP(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteCCTP(bytes32 routeParamsHash,uint256 executionFee,uint32 signatureDeadline)");
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositCCTP");
@@ -122,15 +122,15 @@ contract CounterfactualDepositCCTPTest is Test {
         address impl,
         bytes32 outputToken,
         uint256 destChainId,
-        bytes memory params
+        bytes memory routeParams
     ) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(params)))));
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))));
     }
 
-    function _setRoot(bytes memory params) internal returns (bytes32[] memory proof) {
+    function _setRoot(bytes memory routeParams) internal returns (bytes32[] memory proof) {
         bytes32 outputToken = bytes32(uint256(uint160(address(burnToken))));
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(cctpImpl), outputToken, DESTINATION_CHAIN_ID, params);
+        leaves[0] = _computeLeaf(address(cctpImpl), outputToken, DESTINATION_CHAIN_ID, routeParams);
         leaves[1] = keccak256("padding");
         bytes32 a = leaves[0];
         bytes32 b = leaves[1];
@@ -147,12 +147,14 @@ contract CounterfactualDepositCCTPTest is Test {
 
     function _sign(
         address clone,
-        bytes32 paramsHash,
+        bytes32 routeParamsHash,
         uint256 executionFee,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes32 structHash = keccak256(abi.encode(EXECUTE_CCTP_TYPEHASH, paramsHash, executionFee, signatureDeadline));
+        bytes32 structHash = keccak256(
+            abi.encode(EXECUTE_CCTP_TYPEHASH, routeParamsHash, executionFee, signatureDeadline)
+        );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
         return abi.encodePacked(r, s, v);
@@ -160,14 +162,14 @@ contract CounterfactualDepositCCTPTest is Test {
 
     function _buildSubmitterData(
         address clone,
-        bytes memory paramsEncoded,
+        bytes memory routeParamsEncoded,
         uint256 amount,
         uint256 executionFee,
         bytes32 nonce,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes memory sig = _sign(clone, keccak256(paramsEncoded), executionFee, signatureDeadline, privKey);
+        bytes memory sig = _sign(clone, keccak256(routeParamsEncoded), executionFee, signatureDeadline, privKey);
         return
             abi.encode(
                 CCTPSubmitterData({
@@ -186,8 +188,8 @@ contract CounterfactualDepositCCTPTest is Test {
     // --- Tests ---
 
     function testDeployAndExecute() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         uint256 amount = 100e6;
@@ -198,7 +200,7 @@ contract CounterfactualDepositCCTPTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             amount,
             executionFee,
             keccak256("nonce"),
@@ -207,7 +209,13 @@ contract CounterfactualDepositCCTPTest is Test {
         );
 
         vm.prank(relayer);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
 
         assertEq(burnToken.balanceOf(clone), 0);
         assertEq(burnToken.balanceOf(relayer), executionFee);
@@ -217,8 +225,8 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testInvalidSignatureReverts() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         vm.prank(user);
@@ -226,7 +234,7 @@ contract CounterfactualDepositCCTPTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             1e6,
             keccak256("nonce"),
@@ -235,12 +243,18 @@ contract CounterfactualDepositCCTPTest is Test {
         );
 
         vm.expectRevert(CounterfactualDepositCCTP.InvalidSignature.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
     }
 
     function testExpiredSignatureReverts() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         vm.prank(user);
@@ -249,7 +263,7 @@ contract CounterfactualDepositCCTPTest is Test {
         uint32 deadline = uint32(block.timestamp) + 100;
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             1e6,
             keccak256("nonce"),
@@ -260,12 +274,18 @@ contract CounterfactualDepositCCTPTest is Test {
         vm.warp(block.timestamp + 101);
 
         vm.expectRevert(CounterfactualDepositCCTP.SignatureExpired.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
     }
 
     function testMaxExecutionFeeEnforced() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         vm.prank(user);
@@ -273,7 +293,7 @@ contract CounterfactualDepositCCTPTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             2e6, // > maxExecutionFee (1e6)
             keccak256("nonce"),
@@ -282,12 +302,18 @@ contract CounterfactualDepositCCTPTest is Test {
         );
 
         vm.expectRevert(CounterfactualDepositCCTP.MaxExecutionFee.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
     }
 
     function testZeroExecutionFee() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         uint256 amount = 100e6;
@@ -296,7 +322,7 @@ contract CounterfactualDepositCCTPTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             amount,
             0,
             keccak256("nonce"),
@@ -304,15 +330,21 @@ contract CounterfactualDepositCCTPTest is Test {
             signerPrivateKey
         );
 
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
 
         assertEq(burnToken.balanceOf(relayer), 0);
         assertEq(srcPeriphery.lastAmount(), amount);
     }
 
     function testCrossCloneReplayReverts() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone1 = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt-1"));
 
         CloneArgs memory args2 = _cloneArgs();
@@ -328,7 +360,7 @@ contract CounterfactualDepositCCTPTest is Test {
         // Sign for clone1.
         bytes memory submitterData = _buildSubmitterData(
             clone1,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             1e6,
             keccak256("nonce"),
@@ -336,16 +368,22 @@ contract CounterfactualDepositCCTPTest is Test {
             signerPrivateKey
         );
 
-        ICounterfactualDeposit(clone1).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone1).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
 
         // Replay on clone2 fails — EIP-712 domain separator binds to clone1.
         vm.expectRevert(CounterfactualDepositCCTP.InvalidSignature.selector);
-        ICounterfactualDeposit(clone2).execute(args2, address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone2).execute(args2, address(cctpImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testAdminEscape() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         burnToken.mint(clone, 100e6);
 
@@ -362,8 +400,8 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testCctpMaxFeeBpsCalculation() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         uint256 amount = 100e6;
@@ -375,7 +413,7 @@ contract CounterfactualDepositCCTPTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             amount,
             executionFee,
             keccak256("nonce"),
@@ -383,7 +421,13 @@ contract CounterfactualDepositCCTPTest is Test {
             signerPrivateKey
         );
 
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(cctpImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(cctpImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
 
         assertEq(srcPeriphery.lastMaxFee(), (depositAmount * 100) / 10_000);
     }

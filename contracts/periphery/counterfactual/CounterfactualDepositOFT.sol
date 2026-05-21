@@ -83,7 +83,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     ///      field (= `address(this)` = the clone during delegatecall). `amount` is bound implicitly
     ///      via the periphery signature, which covers `depositAmount = sd.amount - sd.executionFee`.
     bytes32 public constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFT(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 routeParamsHash,uint256 executionFee,uint32 signatureDeadline)");
 
     /// @notice SponsoredOFTSrcPeriphery contract.
     address public immutable oftSrcPeriphery;
@@ -136,10 +136,10 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline, sd.executionFee);
     }
 
-    function _verifySignature(bytes32 paramsHash, OFTSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 routeParamsHash, OFTSubmitterData memory sd) private view {
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_OFT_TYPEHASH, paramsHash, sd.executionFee, sd.signatureDeadline)
+            abi.encode(EXECUTE_OFT_TYPEHASH, routeParamsHash, sd.executionFee, sd.signatureDeadline)
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
             revert InvalidSignature();

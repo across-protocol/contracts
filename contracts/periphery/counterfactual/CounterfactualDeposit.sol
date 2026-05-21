@@ -19,7 +19,7 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  *           full execution authority over this clone and can call any implementation regardless of
  *           policy state, including when the policy's `activeRoot` is `bytes32(0)`).
  *        3. Otherwise computes the leaf as
- *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params)))))`
+ *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))`
  *           and verifies the merkle proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
  *           Binding the clone identity into the leaf preimage ensures a leaf can only be proven
  *           against the clone it was authored for.
@@ -37,7 +37,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
     function execute(
         CloneArgs calldata cloneArgs,
         address implementation,
-        bytes calldata params,
+        bytes calldata routeParams,
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable {
@@ -58,7 +58,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
                             implementation,
                             cloneArgs.outputToken,
                             cloneArgs.destinationChainId,
-                            keccak256(params)
+                            keccak256(routeParams)
                         )
                     )
                 )
@@ -70,19 +70,19 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         // Delegatecall the implementation with the dispatcher-verified clone-identity fields.
         // Only `recipient`, `outputToken`, and `destinationChainId` are forwarded; impls do not
         // see `admin` or `routePolicyAddress`, which are dispatcher-internal concerns.
-        _delegate(implementation, cloneArgs, params, submitterData);
+        _delegate(implementation, cloneArgs, routeParams, submitterData);
     }
 
     function _delegate(
         address implementation,
         CloneArgs calldata cloneArgs,
-        bytes calldata params,
+        bytes calldata routeParams,
         bytes calldata submitterData
     ) private {
         (bool success, bytes memory result) = implementation.delegatecall(
             abi.encodeCall(
                 ICounterfactualImplementation.execute,
-                (cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, params, submitterData)
+                (cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, routeParams, submitterData)
             )
         );
         if (!success) {

@@ -18,16 +18,16 @@ interface ICounterfactualDeposit {
      * @notice Execute an implementation against the clone's bound route policy.
      * @param cloneArgs The clone's identity fields. Must hash to the clone's stored `argsHash`.
      * @param implementation The implementation contract to delegatecall.
-     * @param params ABI-encoded route parameters (impl-specific). Hashed into the leaf.
+     * @param routeParams ABI-encoded route parameters (impl-specific). Hashed into the leaf.
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
      * @param proof Merkle proof for the leaf
-     *              `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params)))))`
+     *              `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))`
      *              against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
      */
     function execute(
         CloneArgs calldata cloneArgs,
         address implementation,
-        bytes calldata params,
+        bytes calldata routeParams,
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable;

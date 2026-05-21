@@ -84,7 +84,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     ///      field (= `address(this)` = the clone during delegatecall). `amount` is bound implicitly
     ///      via the periphery signature, which covers `depositAmount = sd.amount - sd.executionFee`.
     bytes32 public constant EXECUTE_CCTP_TYPEHASH =
-        keccak256("ExecuteCCTP(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteCCTP(bytes32 routeParamsHash,uint256 executionFee,uint32 signatureDeadline)");
 
     /// @notice SponsoredCCTPSrcPeriphery contract.
     address public immutable srcPeriphery;
@@ -138,10 +138,10 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
         emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline, sd.executionFee);
     }
 
-    function _verifySignature(bytes32 paramsHash, CCTPSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 routeParamsHash, CCTPSubmitterData memory sd) private view {
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_CCTP_TYPEHASH, paramsHash, sd.executionFee, sd.signatureDeadline)
+            abi.encode(EXECUTE_CCTP_TYPEHASH, routeParamsHash, sd.executionFee, sd.signatureDeadline)
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
             revert InvalidSignature();

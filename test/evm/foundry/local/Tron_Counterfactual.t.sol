@@ -64,7 +64,7 @@ contract Tron_CounterfactualTest is Test {
 
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(address clone,bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -112,15 +112,15 @@ contract Tron_CounterfactualTest is Test {
         address impl,
         bytes32 outputToken,
         uint256 destChainId,
-        bytes memory params
+        bytes memory routeParams
     ) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(params)))));
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))));
     }
 
-    function _setRoot(bytes memory params) internal returns (bytes32[] memory proof) {
+    function _setRoot(bytes memory routeParams) internal returns (bytes32[] memory proof) {
         bytes32 outputToken = bytes32(uint256(uint160(address(usdt))));
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), outputToken, DESTINATION_CHAIN_ID, params);
+        leaves[0] = _computeLeaf(address(spokePoolImpl), outputToken, DESTINATION_CHAIN_ID, routeParams);
         leaves[1] = keccak256("padding");
         bytes32 a = leaves[0];
         bytes32 b = leaves[1];
@@ -137,7 +137,7 @@ contract Tron_CounterfactualTest is Test {
 
     function _signExecute(
         address clone,
-        bytes32 paramsHash,
+        bytes32 routeParamsHash,
         uint256 inputAmount,
         uint256 outputAmount,
         uint32 quoteTimestamp,
@@ -149,7 +149,7 @@ contract Tron_CounterfactualTest is Test {
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
                 clone,
-                paramsHash,
+                routeParamsHash,
                 inputAmount,
                 outputAmount,
                 bytes32(0),
@@ -167,7 +167,7 @@ contract Tron_CounterfactualTest is Test {
 
     function _submitterData(
         address clone,
-        bytes memory paramsEncoded,
+        bytes memory routeParamsEncoded,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 executionFee
@@ -177,7 +177,7 @@ contract Tron_CounterfactualTest is Test {
         uint32 signatureDeadline = uint32(block.timestamp) + 3600;
         bytes memory sig = _signExecute(
             clone,
-            keccak256(paramsEncoded),
+            keccak256(routeParamsEncoded),
             inputAmount,
             outputAmount,
             quoteTimestamp,
@@ -205,8 +205,8 @@ contract Tron_CounterfactualTest is Test {
     // --- Tron-flavored SpokePool fee transfer ---
 
     function test_SpokePoolTron_PaysExecutionFeeOnTronUSDT() public {
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-spoke-pool"));
 
         uint256 inputAmount = 100e6;
@@ -218,13 +218,13 @@ contract Tron_CounterfactualTest is Test {
         usdt.transfer(clone, inputAmount);
         assertEq(usdt.balanceOf(clone), inputAmount);
 
-        bytes memory submitterData = _submitterData(clone, paramsEncoded, inputAmount, outputAmount, executionFee);
+        bytes memory submitterData = _submitterData(clone, routeParamsEncoded, inputAmount, outputAmount, executionFee);
 
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(spokePoolImpl),
-            paramsEncoded,
+            routeParamsEncoded,
             submitterData,
             proof
         );
@@ -235,22 +235,22 @@ contract Tron_CounterfactualTest is Test {
     }
 
     function test_SpokePoolTron_RevertsWhenFeeRecipientBlacklisted() public {
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-spoke-pool-fail"));
 
         vm.prank(user);
         usdt.transfer(clone, 100e6);
         usdt.setBlacklisted(relayer, true);
 
-        bytes memory submitterData = _submitterData(clone, paramsEncoded, 100e6, 98e6, 1e6);
+        bytes memory submitterData = _submitterData(clone, routeParamsEncoded, 100e6, 98e6, 1e6);
 
         vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(spokePoolImpl),
-            paramsEncoded,
+            routeParamsEncoded,
             submitterData,
             proof
         );

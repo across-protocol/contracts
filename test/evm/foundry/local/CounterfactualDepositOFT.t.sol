@@ -71,7 +71,7 @@ contract CounterfactualDepositOFTTest is Test {
     uint256 public constant DESTINATION_CHAIN_ID = 8453;
 
     bytes32 constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFT(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 routeParamsHash,uint256 executionFee,uint32 signatureDeadline)");
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositOFT");
@@ -134,15 +134,15 @@ contract CounterfactualDepositOFTTest is Test {
         address impl,
         bytes32 outputToken,
         uint256 destChainId,
-        bytes memory params
+        bytes memory routeParams
     ) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(params)))));
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))));
     }
 
-    function _setRoot(bytes memory params) internal returns (bytes32[] memory proof) {
+    function _setRoot(bytes memory routeParams) internal returns (bytes32[] memory proof) {
         bytes32 outputToken = bytes32(uint256(uint160(address(token))));
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(oftImpl), outputToken, DESTINATION_CHAIN_ID, params);
+        leaves[0] = _computeLeaf(address(oftImpl), outputToken, DESTINATION_CHAIN_ID, routeParams);
         leaves[1] = keccak256("padding");
         bytes32 a = leaves[0];
         bytes32 b = leaves[1];
@@ -159,12 +159,14 @@ contract CounterfactualDepositOFTTest is Test {
 
     function _sign(
         address clone,
-        bytes32 paramsHash,
+        bytes32 routeParamsHash,
         uint256 executionFee,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes32 structHash = keccak256(abi.encode(EXECUTE_OFT_TYPEHASH, paramsHash, executionFee, signatureDeadline));
+        bytes32 structHash = keccak256(
+            abi.encode(EXECUTE_OFT_TYPEHASH, routeParamsHash, executionFee, signatureDeadline)
+        );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
         return abi.encodePacked(r, s, v);
@@ -172,14 +174,14 @@ contract CounterfactualDepositOFTTest is Test {
 
     function _buildSubmitterData(
         address clone,
-        bytes memory paramsEncoded,
+        bytes memory routeParamsEncoded,
         uint256 amount,
         uint256 executionFee,
         bytes32 nonce,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes memory sig = _sign(clone, keccak256(paramsEncoded), executionFee, signatureDeadline, privKey);
+        bytes memory sig = _sign(clone, keccak256(routeParamsEncoded), executionFee, signatureDeadline, privKey);
         return
             abi.encode(
                 OFTSubmitterData({
@@ -198,8 +200,8 @@ contract CounterfactualDepositOFTTest is Test {
     // --- Tests ---
 
     function testDeployAndExecute() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         uint256 amount = 100e6;
@@ -210,7 +212,7 @@ contract CounterfactualDepositOFTTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             amount,
             executionFee,
             keccak256("nonce"),
@@ -219,7 +221,7 @@ contract CounterfactualDepositOFTTest is Test {
         );
 
         vm.prank(relayer);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), routeParamsEncoded, submitterData, proof);
 
         assertEq(token.balanceOf(clone), 0);
         assertEq(token.balanceOf(relayer), executionFee);
@@ -229,8 +231,8 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testMsgValueForwarded() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         uint256 amount = 100e6;
@@ -243,7 +245,7 @@ contract CounterfactualDepositOFTTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             amount,
             executionFee,
             keccak256("nonce"),
@@ -255,7 +257,7 @@ contract CounterfactualDepositOFTTest is Test {
         ICounterfactualDeposit(clone).execute{ value: lzFee }(
             _cloneArgs(),
             address(oftImpl),
-            paramsEncoded,
+            routeParamsEncoded,
             submitterData,
             proof
         );
@@ -264,8 +266,8 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testInvalidSignatureReverts() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         vm.prank(user);
@@ -273,7 +275,7 @@ contract CounterfactualDepositOFTTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             1e6,
             keccak256("nonce"),
@@ -282,12 +284,12 @@ contract CounterfactualDepositOFTTest is Test {
         );
 
         vm.expectRevert(CounterfactualDepositOFT.InvalidSignature.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testExpiredSignatureReverts() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         vm.prank(user);
@@ -296,7 +298,7 @@ contract CounterfactualDepositOFTTest is Test {
         uint32 deadline = uint32(block.timestamp) + 100;
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             1e6,
             keccak256("nonce"),
@@ -307,12 +309,12 @@ contract CounterfactualDepositOFTTest is Test {
         vm.warp(block.timestamp + 101);
 
         vm.expectRevert(CounterfactualDepositOFT.SignatureExpired.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testMaxExecutionFeeEnforced() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         vm.prank(user);
@@ -320,7 +322,7 @@ contract CounterfactualDepositOFTTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             2e6, // > maxExecutionFee
             keccak256("nonce"),
@@ -329,12 +331,12 @@ contract CounterfactualDepositOFTTest is Test {
         );
 
         vm.expectRevert(CounterfactualDepositOFT.MaxExecutionFee.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(oftImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testCrossCloneReplayReverts() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        bytes32[] memory proof = _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone1 = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt-1"));
 
         CloneArgs memory args2 = _cloneArgs();
@@ -349,7 +351,7 @@ contract CounterfactualDepositOFTTest is Test {
 
         bytes memory submitterData = _buildSubmitterData(
             clone1,
-            paramsEncoded,
+            routeParamsEncoded,
             100e6,
             1e6,
             keccak256("nonce"),
@@ -357,15 +359,21 @@ contract CounterfactualDepositOFTTest is Test {
             signerPrivateKey
         );
 
-        ICounterfactualDeposit(clone1).execute(_cloneArgs(), address(oftImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone1).execute(
+            _cloneArgs(),
+            address(oftImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
 
         vm.expectRevert(CounterfactualDepositOFT.InvalidSignature.selector);
-        ICounterfactualDeposit(clone2).execute(args2, address(oftImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone2).execute(args2, address(oftImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testAdminEscape() public {
-        bytes memory paramsEncoded = abi.encode(defaultDepositParams);
-        _setRoot(paramsEncoded);
+        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         token.mint(clone, 100e6);
 

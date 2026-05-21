@@ -46,7 +46,7 @@ struct SpokePoolSubmitterData {
  *         (recipient, output token, destination chain) from the dispatcher-verified `cloneArgs`.
  * @dev Called via delegatecall from the dispatcher. EIP-712 domain separator uses `address(this)`
  *      (the clone) for cross-clone replay safety; the typehash additionally binds `clone` and
- *      `paramsHash` so signatures are not reusable across clones or across leaves within a policy.
+ *      `routeParamsHash` so signatures are not reusable across clones or across leaves within a policy.
  *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()`
  *      is `address(this)` (the clone), which has no private key and cannot sign `speedUpV3Deposit`.
@@ -81,7 +81,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     /// @notice EIP-712 typehash binding the signature to (clone, leaf, runtime fields).
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(address clone,bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
+            "ExecuteDeposit(address clone,bytes32 routeParamsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
 
     /// @notice Across SpokePool contract.
@@ -183,12 +183,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(bytes32 paramsHash, SpokePoolSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 routeParamsHash, SpokePoolSubmitterData memory sd) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
                 address(this),
-                paramsHash,
+                routeParamsHash,
                 sd.inputAmount,
                 sd.outputAmount,
                 sd.exclusiveRelayer,
