@@ -3,12 +3,14 @@ pragma solidity ^0.8.0;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
- * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery
+ * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery.
  * @custom:security-contact bugs@across.to
  */
 interface ISponsoredCCTPSrcPeriphery {
@@ -16,7 +18,9 @@ interface ISponsoredCCTPSrcPeriphery {
 }
 
 /**
- * @notice Route parameters committed to in the merkle leaf.
+ * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
+ *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
+ *         The destination chain's CCTP-specific identifier lives in `destinationDomain`.
  */
 struct CCTPDepositParams {
     uint32 destinationDomain;
@@ -27,90 +31,135 @@ struct CCTPDepositParams {
     uint32 minFinalityThreshold;
     uint256 maxBpsToSponsor;
     uint256 maxUserSlippageBps;
-    bytes32 finalRecipient;
-    bytes32 finalToken;
     uint32 destinationDex;
     uint8 accountCreationMode;
     uint8 executionMode;
     bytes actionData;
-    uint256 executionFee;
+    uint256 maxExecutionFee;
 }
 
 /**
- * @notice Data supplied by the submitter at execution time.
+ * @notice Data supplied by the submitter at execution time. `executionFee` is dynamic and
+ *         authorized by `counterfactualSignature` (local signer). The CCTP periphery's own quote
+ *         signature is supplied separately via `peripherySignature` and forwarded unchanged.
  */
 struct CCTPSubmitterData {
     uint256 amount;
     address executionFeeRecipient;
     bytes32 nonce;
     uint256 cctpDeadline;
-    bytes signature;
+    uint256 executionFee;
+    uint32 signatureDeadline;
+    bytes peripherySignature;
+    bytes counterfactualSignature;
 }
 
 /**
  * @title CounterfactualDepositCCTP
- * @notice Implementation contract for counterfactual deposits via SponsoredCCTP.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher.
+ * @notice Bridges tokens from a counterfactual clone via SponsoredCCTP.
+ * @dev Called via delegatecall from the dispatcher. Two signatures are checked per execute:
+ *      (1) the periphery quote signature (forwarded to the CCTP src periphery unchanged), and
+ *      (2) the local EIP-712 signature authorizing the runtime `executionFee` (bounded by
+ *      the leaf's `maxExecutionFee`).
  * @custom:security-contact bugs@across.to
  */
-contract CounterfactualDepositCCTP is ICounterfactualImplementation {
+contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     using SafeERC20 for IERC20;
 
-    /**
-     * @notice Emitted after a CCTP deposit is successfully executed.
-     * @param amount Total input amount (including execution fee).
-     * @param executionFeeRecipient Address that received the execution fee.
-     * @param nonce CCTP nonce used for the deposit.
-     * @param cctpDeadline Deadline timestamp for the CCTP quote.
-     */
+    /// @notice Emitted after a CCTP deposit is successfully executed.
     event CCTPDepositExecuted(
         uint256 amount,
         address indexed executionFeeRecipient,
         bytes32 nonce,
-        uint256 cctpDeadline
+        uint256 cctpDeadline,
+        uint256 executionFee
     );
 
-    /// @notice SponsoredCCTPSrcPeriphery contract (immutable, same for all deposits on this chain)
+    error InvalidSignature();
+    error SignatureExpired();
+    error MaxExecutionFee();
+
+    /// @notice EIP-712 typehash binding the local fee signature to (clone, leaf, runtime fee).
+    bytes32 public constant EXECUTE_CCTP_TYPEHASH =
+        keccak256(
+            "ExecuteCCTP(address clone,bytes32 paramsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
+        );
+
+    /// @notice SponsoredCCTPSrcPeriphery contract.
     address public immutable srcPeriphery;
 
-    /// @notice CCTP source domain ID for this chain
+    /// @notice CCTP source domain ID for this chain.
     uint32 public immutable sourceDomain;
 
-    constructor(address _srcPeriphery, uint32 _sourceDomain) {
+    /// @notice Local signer that authorizes the runtime `executionFee`.
+    address public immutable signer;
+
+    constructor(
+        address _srcPeriphery,
+        uint32 _sourceDomain,
+        address _signer
+    ) EIP712("CounterfactualDepositCCTP", "v2.0.0") {
         srcPeriphery = _srcPeriphery;
         sourceDomain = _sourceDomain;
+        signer = _signer;
     }
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev Bridges tokens via SponsoredCCTP. `params` is ABI-encoded as `CCTPDepositParams`;
-     *      `submitterData` as `CCTPSubmitterData` (includes a signature forwarded to the CCTP periphery).
-     *      ERC-20 only (no native tokens). No local signature verification — delegated to `srcPeriphery`.
+     * @dev ERC-20 only (no native tokens). `finalRecipient` and `finalToken` for the CCTP quote
+     *      come from the dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is
+     *      unused by the CCTP path — CCTP uses its own `destinationDomain` field in `routeParams`.
      */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
+    function execute(
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 /* destinationChainId */,
+        bytes calldata routeParams,
+        bytes calldata submitterData
+    ) external payable {
+        CCTPDepositParams memory dp = abi.decode(routeParams, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
+
+        _verifySignature(keccak256(routeParams), sd);
+
+        if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
         address inputToken = address(uint160(uint256(dp.burnToken)));
 
-        if (dp.executionFee > 0) IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, dp.executionFee);
+        if (sd.executionFee > 0) IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
 
-        uint256 depositAmount = sd.amount - dp.executionFee;
+        uint256 depositAmount = sd.amount - sd.executionFee;
 
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
-        _depositForBurn(dp, sd, depositAmount);
+        _depositForBurn(recipient, outputToken, dp, sd, depositAmount);
 
-        emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline);
+        emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline, sd.executionFee);
     }
 
-    /**
-     * @notice Calls depositForBurn on the SponsoredCCTPSrcPeriphery with the constructed quote.
-     * @param dp Route parameters from the merkle leaf.
-     * @param sd Submitter-provided execution data.
-     * @param depositAmount Amount to deposit after deducting the execution fee.
-     */
-    function _depositForBurn(CCTPDepositParams memory dp, CCTPSubmitterData memory sd, uint256 depositAmount) private {
+    function _verifySignature(bytes32 paramsHash, CCTPSubmitterData memory sd) private view {
+        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
+        bytes32 structHash = keccak256(
+            abi.encode(
+                EXECUTE_CCTP_TYPEHASH,
+                address(this),
+                paramsHash,
+                sd.amount,
+                sd.executionFee,
+                sd.signatureDeadline
+            )
+        );
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
+            revert InvalidSignature();
+    }
+
+    function _depositForBurn(
+        bytes32 recipient,
+        bytes32 outputToken,
+        CCTPDepositParams memory dp,
+        CCTPSubmitterData memory sd,
+        uint256 depositAmount
+    ) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
@@ -125,14 +174,14 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation {
                 deadline: sd.cctpDeadline,
                 maxBpsToSponsor: dp.maxBpsToSponsor,
                 maxUserSlippageBps: dp.maxUserSlippageBps,
-                finalRecipient: dp.finalRecipient,
-                finalToken: dp.finalToken,
+                finalRecipient: recipient,
+                finalToken: outputToken,
                 destinationDex: dp.destinationDex,
                 accountCreationMode: dp.accountCreationMode,
                 executionMode: dp.executionMode,
                 actionData: dp.actionData
             }),
-            sd.signature
+            sd.peripherySignature
         );
     }
 }

@@ -6,38 +6,30 @@ import { NATIVE_ASSET } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
- * @notice Withdrawal parameters committed to in the merkle leaf.
- * @param admin Admin address authorized to execute this withdrawal leaf.
- * @param user User address authorized to execute this withdrawal leaf.
- */
-struct WithdrawParams {
-    address admin;
-    address user;
-}
-
-/**
  * @title WithdrawImplementation
- * @notice Handles token/ETH withdrawals as a merkle leaf implementation.
- * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. `address(this)` is the clone
- *      and `msg.sender` is the original caller.
+ * @notice Sweeps tokens / native ETH from a counterfactual clone. Typically invoked by the
+ *         clone's `admin` via the dispatcher's admin escape; can also be a policy-authorized
+ *         route like any other impl, though there's normally no reason to put a withdraw in the
+ *         tree. Performs no authorization of its own — the dispatcher gates access.
+ * @dev Conforms to `ICounterfactualImplementation` so the dispatcher's generic delegate path can
+ *      call it. The clone-identity fields (`recipient`, `outputToken`, `destinationChainId`) and
+ *      `routeParams` are unused; `submitterData` decodes as `(address token, address to, uint256 amount)`.
+ * @custom:security-contact bugs@across.to
  */
 contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
-    event Withdraw(address indexed token, address indexed to, uint256 amount);
+    event Withdraw(address indexed caller, address indexed token, address indexed to, uint256 amount);
 
-    error Unauthorized();
     error NativeTransferFailed();
 
-    /**
-     * @inheritdoc ICounterfactualImplementation
-     * @dev Recovery/sweep mechanism — no bridging. `params` is ABI-encoded as `WithdrawParams` (admin, user);
-     *      `submitterData` as `(address token, address to, uint256 amount)`.
-     *      Reverts: `Unauthorized` (caller is not admin or user), `NativeTransferFailed`.
-     */
-    function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        WithdrawParams memory wp = abi.decode(params, (WithdrawParams));
+    /// @inheritdoc ICounterfactualImplementation
+    function execute(
+        bytes32 /* recipient */,
+        bytes32 /* outputToken */,
+        uint256 /* destinationChainId */,
+        bytes calldata /* routeParams */,
+        bytes calldata submitterData
+    ) external payable {
         (address token, address to, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
-
-        if (msg.sender != wp.admin && msg.sender != wp.user) revert Unauthorized();
 
         if (token == NATIVE_ASSET) {
             (bool success, ) = to.call{ value: amount }("");
@@ -46,6 +38,6 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferER
             _safeTransfer(token, to, amount);
         }
 
-        emit Withdraw(token, to, amount);
+        emit Withdraw(msg.sender, token, to, amount);
     }
 }

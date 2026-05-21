@@ -2,9 +2,8 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { Merkle } from "murky/Merkle.sol";
 
-import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
+import { CounterfactualDepositFactoryTron } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactoryTron.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import {
     SpokePoolDepositParams,
@@ -12,14 +11,13 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
-import { WithdrawParams } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
+import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
 import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
-
+import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MockTronUSDT } from "../../../../contracts/test/MockTronUSDT.sol";
 
-/// @notice Minimal SpokePool stand-in: pulls tokens via `transferFrom` (which is well-formed
-///         on Tron USDT) so `execute()` can complete and we can observe the fee-payment branch.
+/// @notice Minimal SpokePool stand-in: pulls tokens via `transferFrom` (well-formed on Tron USDT).
 contract MockSpokePool {
     function deposit(
         bytes32, // depositor
@@ -37,8 +35,6 @@ contract MockSpokePool {
     ) external payable {
         if (msg.value == 0) {
             address tokenAddr = address(uint160(uint256(inputToken)));
-            // Bypass return-value check: the deposit pull uses transferFrom on the real SpokePool,
-            // which returns true correctly on Tron USDT.
             (bool ok, ) = tokenAddr.call(
                 abi.encodeWithSignature("transferFrom(address,address,uint256)", msg.sender, address(this), inputAmount)
             );
@@ -48,104 +44,120 @@ contract MockSpokePool {
 }
 
 contract Tron_CounterfactualTest is Test {
-    Merkle merkle;
-    CounterfactualDepositFactory factory;
+    CounterfactualDepositFactoryTron factory;
     CounterfactualDeposit dispatcher;
     CounterfactualDepositSpokePoolTr spokePoolImpl;
     WithdrawImplementationTron withdrawImpl;
+    RoutePolicy policy;
     MockSpokePool spokePool;
     MockTronUSDT usdt;
 
     address admin = makeAddr("admin");
     address user = makeAddr("user");
     address relayer = makeAddr("relayer");
+    address policyOwner = makeAddr("policyOwner");
     uint256 signerPrivateKey = 0xA11CE;
     address signerAddr;
+    bytes32 recipient;
 
     SpokePoolDepositParams defaultParams;
 
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(address clone,bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline,uint256 executionFee)"
         );
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-    /// @dev EIP-712 domain inherited from `CounterfactualDepositSpokePool`.
+    // Inherits the parent's EIP-712 domain.
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
-    bytes32 constant VERSION_HASH = keccak256("v1.0.0");
+    bytes32 constant VERSION_HASH = keccak256("v2.0.0");
 
-    address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    uint256 constant DESTINATION_CHAIN_ID = 1;
 
     function setUp() public {
         signerAddr = vm.addr(signerPrivateKey);
+        recipient = bytes32(uint256(uint160(makeAddr("recipient"))));
 
         usdt = new MockTronUSDT();
-        merkle = new Merkle();
         spokePool = new MockSpokePool();
-        factory = new CounterfactualDepositFactory();
+        factory = new CounterfactualDepositFactoryTron();
+        withdrawImpl = new WithdrawImplementationTron();
         dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePoolTr(address(spokePool), signerAddr, makeAddr("weth"));
-        withdrawImpl = new WithdrawImplementationTron();
+        policy = new RoutePolicy(policyOwner, bytes32(0));
 
         usdt.mint(user, 1000e6);
 
         defaultParams = SpokePoolDepositParams({
-            destinationChainId: 1,
             inputToken: bytes32(uint256(uint160(address(usdt)))),
-            outputToken: bytes32(uint256(uint160(address(usdt)))),
-            recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
             message: "",
             stableExchangeRate: 1e18,
             maxFeeFixed: 1e6,
-            maxFeeBps: 500,
-            executionFee: 1e6
+            maxFeeBps: 500
         });
     }
 
-    function _computeLeaf(address implementation, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+    function _cloneArgs() internal view returns (CloneArgs memory) {
+        return
+            CloneArgs({
+                outputToken: bytes32(uint256(uint160(address(usdt)))),
+                destinationChainId: DESTINATION_CHAIN_ID,
+                recipient: recipient,
+                admin: admin,
+                routePolicyAddress: address(policy)
+            });
     }
 
-    function _buildTreeAndDeploy(
-        bytes memory depositParamsEncoded,
-        bytes32 salt
-    ) internal returns (address clone, bytes32[] memory depositProof, bytes32[] memory withdrawProof) {
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
+    function _computeLeaf(
+        address impl,
+        bytes32 outputToken,
+        uint256 destChainId,
+        bytes memory params
+    ) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(params)))));
+    }
 
-        bytes32[] memory leaves = new bytes32[](4);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), depositParamsEncoded);
-        leaves[1] = _computeLeaf(address(withdrawImpl), wp);
-        leaves[2] = keccak256("padding-a");
-        leaves[3] = keccak256("padding-b");
-
-        bytes32 root = merkle.getRoot(leaves);
-        depositProof = merkle.getProof(leaves, 0);
-        withdrawProof = merkle.getProof(leaves, 1);
-        clone = factory.deploy(address(dispatcher), root, salt);
+    function _setRoot(bytes memory params) internal returns (bytes32[] memory proof) {
+        bytes32 outputToken = bytes32(uint256(uint160(address(usdt))));
+        bytes32[] memory leaves = new bytes32[](2);
+        leaves[0] = _computeLeaf(address(spokePoolImpl), outputToken, DESTINATION_CHAIN_ID, params);
+        leaves[1] = keccak256("padding");
+        bytes32 a = leaves[0];
+        bytes32 b = leaves[1];
+        bytes32 root = a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
+        proof = new bytes32[](1);
+        proof[0] = leaves[1];
+        vm.prank(policyOwner);
+        policy.updateRoot(root);
     }
 
     function _domainSeparator(address clone) internal view returns (bytes32) {
         return keccak256(abi.encode(EIP712_DOMAIN_TYPEHASH, NAME_HASH, VERSION_HASH, block.chainid, clone));
     }
 
-    function _signExecuteDeposit(
+    function _signExecute(
         address clone,
+        bytes32 paramsHash,
         uint256 inputAmount,
         uint256 outputAmount,
         uint32 quoteTimestamp,
         uint32 fillDeadline,
-        uint32 signatureDeadline
+        uint32 signatureDeadline,
+        uint256 executionFee
     ) internal view returns (bytes memory) {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                clone,
+                paramsHash,
                 inputAmount,
                 outputAmount,
                 bytes32(0),
                 uint32(0),
                 quoteTimestamp,
                 fillDeadline,
-                signatureDeadline
+                signatureDeadline,
+                executionFee
             )
         );
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
@@ -153,21 +165,25 @@ contract Tron_CounterfactualTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _encodeSubmitterData(
+    function _submitterData(
         address clone,
+        bytes memory paramsEncoded,
         uint256 inputAmount,
         uint256 outputAmount,
-        uint32 quoteTimestamp,
-        uint32 fillDeadline,
-        uint32 signatureDeadline
+        uint256 executionFee
     ) internal view returns (bytes memory) {
-        bytes memory sig = _signExecuteDeposit(
+        uint32 quoteTimestamp = uint32(block.timestamp);
+        uint32 fillDeadline = uint32(block.timestamp) + 3600;
+        uint32 signatureDeadline = uint32(block.timestamp) + 3600;
+        bytes memory sig = _signExecute(
             clone,
+            keccak256(paramsEncoded),
             inputAmount,
             outputAmount,
             quoteTimestamp,
             fillDeadline,
-            signatureDeadline
+            signatureDeadline,
+            executionFee
         );
         return
             abi.encode(
@@ -180,118 +196,102 @@ contract Tron_CounterfactualTest is Test {
                     quoteTimestamp: quoteTimestamp,
                     fillDeadline: fillDeadline,
                     signatureDeadline: signatureDeadline,
-                    signature: sig
+                    executionFee: executionFee,
+                    counterfactualSignature: sig
                 })
             );
     }
 
-    // ───────────────────── deposit-spoke-pool variant ─────────────────────
+    // --- Tron-flavored SpokePool fee transfer ---
 
     function test_SpokePoolTron_PaysExecutionFeeOnTronUSDT() public {
-        bytes32 salt = keccak256("tron-spoke-pool");
+        bytes memory paramsEncoded = abi.encode(defaultParams);
+        bytes32[] memory proof = _setRoot(paramsEncoded);
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-spoke-pool"));
+
         uint256 inputAmount = 100e6;
         uint256 outputAmount = 98e6;
-        uint256 expectedDeposit = inputAmount - defaultParams.executionFee;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address clone, bytes32[] memory proof, ) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            clone,
-            inputAmount,
-            outputAmount,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        uint256 executionFee = 1e6;
 
         vm.prank(user);
-        // MockTronUSDT.transfer returns false but moves tokens — ensure clone still gets funded.
+        // MockTronUSDT.transfer returns false but moves tokens.
         usdt.transfer(clone, inputAmount);
-        assertEq(usdt.balanceOf(clone), inputAmount, "clone should be funded");
+        assertEq(usdt.balanceOf(clone), inputAmount);
+
+        bytes memory submitterData = _submitterData(clone, paramsEncoded, inputAmount, outputAmount, executionFee);
 
         vm.prank(relayer);
-        ICounterfactualDeposit(clone).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(spokePoolImpl),
+            paramsEncoded,
+            submitterData,
+            proof
+        );
 
-        assertEq(usdt.balanceOf(relayer), defaultParams.executionFee, "relayer received execution fee");
-        assertEq(usdt.balanceOf(address(spokePool)), expectedDeposit, "spoke pool received deposit");
-        assertEq(usdt.balanceOf(clone), 0, "clone should be drained");
+        assertEq(usdt.balanceOf(relayer), executionFee);
+        assertEq(usdt.balanceOf(address(spokePool)), inputAmount - executionFee);
+        assertEq(usdt.balanceOf(clone), 0);
     }
 
     function test_SpokePoolTron_RevertsWhenFeeRecipientBlacklisted() public {
-        bytes32 salt = keccak256("tron-spoke-pool-fail");
-        uint256 inputAmount = 100e6;
-        uint256 outputAmount = 98e6;
-        uint32 fillDeadline = uint32(block.timestamp) + 3600;
-
         bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address clone, bytes32[] memory proof, ) = _buildTreeAndDeploy(paramsEncoded, salt);
-
-        bytes memory submitterData = _encodeSubmitterData(
-            clone,
-            inputAmount,
-            outputAmount,
-            uint32(block.timestamp),
-            fillDeadline,
-            uint32(block.timestamp) + 3600
-        );
+        bytes32[] memory proof = _setRoot(paramsEncoded);
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-spoke-pool-fail"));
 
         vm.prank(user);
-        usdt.transfer(clone, inputAmount);
-
-        // Force the fee transfer to revert.
+        usdt.transfer(clone, 100e6);
         usdt.setBlacklisted(relayer, true);
+
+        bytes memory submitterData = _submitterData(clone, paramsEncoded, 100e6, 98e6, 1e6);
 
         vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
         vm.prank(relayer);
-        ICounterfactualDeposit(clone).execute(address(spokePoolImpl), paramsEncoded, submitterData, proof);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(spokePoolImpl),
+            paramsEncoded,
+            submitterData,
+            proof
+        );
     }
 
-    // ───────────────────── withdraw variant ─────────────────────
+    // --- Tron-flavored withdraw escape ---
 
     function test_WithdrawTron_TransfersOnTronUSDT() public {
-        bytes32 salt = keccak256("tron-withdraw");
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address clone, , bytes32[] memory withdrawProof) = _buildTreeAndDeploy(paramsEncoded, salt);
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-withdraw"));
 
         vm.prank(user);
         usdt.transfer(clone, 100e6);
 
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        vm.prank(user);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
             address(withdrawImpl),
-            wp,
-            abi.encode(address(usdt), user, 100e6),
-            withdrawProof
+            "",
+            abi.encode(address(usdt), admin, uint256(100e6)),
+            new bytes32[](0)
         );
 
-        // user started with 1000e6, sent 100e6 to clone, now gets 100e6 back → 1000e6.
-        assertEq(usdt.balanceOf(user), 1000e6);
+        assertEq(usdt.balanceOf(admin), 100e6);
         assertEq(usdt.balanceOf(clone), 0);
     }
 
     function test_WithdrawTron_RevertsWhenRecipientBlacklisted() public {
-        bytes32 salt = keccak256("tron-withdraw-fail");
-        bytes memory paramsEncoded = abi.encode(defaultParams);
-        (address clone, , bytes32[] memory withdrawProof) = _buildTreeAndDeploy(paramsEncoded, salt);
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-withdraw-fail"));
 
         vm.prank(user);
         usdt.transfer(clone, 100e6);
+        usdt.setBlacklisted(admin, true);
 
-        usdt.setBlacklisted(user, true);
-
-        bytes memory wp = abi.encode(WithdrawParams({ admin: admin, user: user }));
-
-        vm.prank(admin);
         vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
             address(withdrawImpl),
-            wp,
-            abi.encode(address(usdt), user, 100e6),
-            withdrawProof
+            "",
+            abi.encode(address(usdt), admin, uint256(100e6)),
+            new bytes32[](0)
         );
     }
 }

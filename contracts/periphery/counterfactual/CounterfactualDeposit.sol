@@ -5,52 +5,85 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
+import { IRoutePolicy } from "../../interfaces/IRoutePolicy.sol";
+import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.sol";
 
 /**
  * @title CounterfactualDeposit
- * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are instances of this contract.
- * @dev The clone's immutable arg is a merkle root. Each leaf is `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))))`.
- *      Callers prove leaf inclusion, then the dispatcher delegatecalls the implementation.
- *
- *      Call chain: Caller → CALL → Clone (EIP-1167 proxy) → DELEGATECALL → Dispatcher → DELEGATECALL → Implementation
- *      - address(this) = clone address throughout (correct for EIP-712, token balances)
- *      - msg.sender = original caller throughout
- *      - msg.value = original value throughout
- *
- *      Note: Some implementations — such as CounterfactualDepositSpokePool — use authorization signatures
- *      that cover execution-time parameters (amounts, deadlines, etc.) but do not commit to the leaf's
- *      route-specific `params` (destination chain, tokens, recipient, etc.). If two leaves share the same
- *      implementation address, a caller could prove leaf A's route params while submitting an authorization
- *      signature intended for leaf B's route, since the signature is valid for either leaf. The system is
- *      intended to be used such that a clone's merkle tree never contains multiple leaves with the same
- *      implementation address.
+ * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are EIP-1167
+ *         proxies that delegatecall into this dispatcher.
+ * @dev The clone's immutable arg is a single 32-byte `argsHash` over the five `CloneArgs` identity
+ *      fields. On every execute, the dispatcher:
+ *        1. Recomputes the hash from caller-supplied `cloneArgs` and reverts on mismatch.
+ *        2. If `msg.sender == cloneArgs.admin`, skips the merkle check (admin escape — admin has
+ *           full execution authority over this clone and can call any implementation regardless of
+ *           policy state, including when the policy's `activeRoot` is `bytes32(0)`).
+ *        3. Otherwise computes the leaf as
+ *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params)))))`
+ *           and verifies the merkle proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
+ *           Binding the clone identity into the leaf preimage ensures a leaf can only be proven
+ *           against the clone it was authored for.
+ *        4. Delegatecalls the implementation, forwarding the dispatcher-verified clone-identity
+ *           fields.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
-    /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).
+    using CounterfactualCloneArgs for CloneArgs;
+
+    /// @dev Accept native ETH sent to the clone (user deposits, refunds, LayerZero fees, etc.).
     receive() external payable {}
 
-    /**
-     * @notice Execute an implementation by proving its inclusion in the clone's merkle tree.
-     * @param implementation The implementation contract to delegatecall.
-     * @param params ABI-encoded route parameters (hashed into the merkle leaf).
-     * @param submitterData ABI-encoded data supplied by the caller at execution time.
-     * @param proof Merkle proof for the (implementation, keccak256(params)) leaf.
-     */
+    /// @inheritdoc ICounterfactualDeposit
     function execute(
+        CloneArgs calldata cloneArgs,
         address implementation,
         bytes calldata params,
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable {
-        bytes32 merkleRoot = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
+        // Verify caller-supplied cloneArgs match the clone's stored hash.
+        bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
+        if (cloneArgs.hash() != storedHash) revert InvalidCloneArgs();
 
-        // Double-hash to prevent leaf/internal-node ambiguity (OpenZeppelin standard).
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+        // Admin escape — admin can execute any implementation, bypassing the policy.
+        // Works even if `activeRoot == bytes32(0)` or the policy contract is bricked.
+        if (msg.sender != cloneArgs.admin) {
+            // Verify merkle proof against the policy's active root. The leaf preimage binds the
+            // clone's identity (outputToken, destinationChainId) so a leaf can only be proven against
+            // the clone it was authored for — no separate identity check needed.
+            bytes32 leaf = keccak256(
+                bytes.concat(
+                    keccak256(
+                        abi.encode(
+                            implementation,
+                            cloneArgs.outputToken,
+                            cloneArgs.destinationChainId,
+                            keccak256(params)
+                        )
+                    )
+                )
+            );
+            if (!MerkleProof.verify(proof, IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(), leaf))
+                revert InvalidProof();
+        }
 
-        if (!MerkleProof.verify(proof, merkleRoot, leaf)) revert InvalidProof();
+        // Delegatecall the implementation with the dispatcher-verified clone-identity fields.
+        // Only `recipient`, `outputToken`, and `destinationChainId` are forwarded; impls do not
+        // see `admin` or `routePolicyAddress`, which are dispatcher-internal concerns.
+        _delegate(implementation, cloneArgs, params, submitterData);
+    }
 
+    function _delegate(
+        address implementation,
+        CloneArgs calldata cloneArgs,
+        bytes calldata params,
+        bytes calldata submitterData
+    ) private {
         (bool success, bytes memory result) = implementation.delegatecall(
-            abi.encodeCall(ICounterfactualImplementation.execute, (params, submitterData))
+            abi.encodeCall(
+                ICounterfactualImplementation.execute,
+                (cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, params, submitterData)
+            )
         );
         if (!success) {
             assembly {
