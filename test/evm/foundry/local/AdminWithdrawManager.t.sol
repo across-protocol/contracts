@@ -42,12 +42,12 @@ contract AdminWithdrawManagerTest is Test {
 
         token = new MintableERC20("USDC", "USDC", 6);
         withdrawImpl = new WithdrawImplementation();
-        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
         policy = new RoutePolicy(address(this), bytes32(0));
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr, address(withdrawImpl));
 
-        // Deploy a clone with withdrawUser = manager so the structural escape lands on the manager.
+        // Deploy a clone with admin = manager so the structural escape lands on the manager.
         depositAddress = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("test-salt"));
         token.mint(depositAddress, 100e6);
     }
@@ -58,7 +58,7 @@ contract AdminWithdrawManagerTest is Test {
                 outputToken: bytes32(uint256(uint160(address(token)))),
                 destinationChainId: 42161,
                 recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                withdrawUser: address(manager),
+                admin: address(manager),
                 routePolicyAddress: address(policy)
             });
     }
@@ -215,7 +215,7 @@ contract AdminWithdrawManagerTest is Test {
     // --- Cross-clone replay: signature includes depositAddress ---
 
     function testSignatureBoundToDepositAddress() public {
-        // Deploy a second clone with the same withdrawUser (manager) but different recipient field
+        // Deploy a second clone with the same admin (manager) but different recipient field
         // → different argsHash → different clone address.
         CloneArgs memory args2 = _cloneArgs();
         args2.recipient = bytes32(uint256(uint160(makeAddr("other-recipient"))));

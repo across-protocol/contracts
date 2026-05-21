@@ -52,7 +52,7 @@ contract Tron_CounterfactualTest is Test {
     MockSpokePool spokePool;
     MockTronUSDT usdt;
 
-    address withdrawUser = makeAddr("withdrawUser");
+    address admin = makeAddr("admin");
     address user = makeAddr("user");
     address relayer = makeAddr("relayer");
     address policyOwner = makeAddr("policyOwner");
@@ -82,7 +82,7 @@ contract Tron_CounterfactualTest is Test {
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactoryTron();
         withdrawImpl = new WithdrawImplementationTron();
-        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePoolTr(address(spokePool), signerAddr, makeAddr("weth"));
         policy = new RoutePolicy(policyOwner, bytes32(0));
 
@@ -103,7 +103,7 @@ contract Tron_CounterfactualTest is Test {
                 outputToken: bytes32(uint256(uint160(address(usdt)))),
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: recipient,
-                withdrawUser: withdrawUser,
+                admin: admin,
                 routePolicyAddress: address(policy)
             });
     }
@@ -264,16 +264,16 @@ contract Tron_CounterfactualTest is Test {
         vm.prank(user);
         usdt.transfer(clone, 100e6);
 
-        vm.prank(withdrawUser);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(usdt), withdrawUser, uint256(100e6)),
+            abi.encode(address(usdt), admin, uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(usdt.balanceOf(withdrawUser), 100e6);
+        assertEq(usdt.balanceOf(admin), 100e6);
         assertEq(usdt.balanceOf(clone), 0);
     }
 
@@ -282,15 +282,15 @@ contract Tron_CounterfactualTest is Test {
 
         vm.prank(user);
         usdt.transfer(clone, 100e6);
-        usdt.setBlacklisted(withdrawUser, true);
+        usdt.setBlacklisted(admin, true);
 
         vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
-        vm.prank(withdrawUser);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(usdt), withdrawUser, uint256(100e6)),
+            abi.encode(address(usdt), admin, uint256(100e6)),
             new bytes32[](0)
         );
     }

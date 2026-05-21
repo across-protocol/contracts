@@ -26,12 +26,12 @@ This document is an implementation specification. Starting point: the original c
 
 ## Goals
 
-1. **Persistent, evolvable addresses.** An address is keyed solely to `(outputToken, destinationChainId, recipient, withdrawUser, routePolicyAddress)` and never needs to change. The routes it can execute can evolve without regenerating the address.
+1. **Persistent, evolvable addresses.** An address is keyed solely to `(outputToken, destinationChainId, recipient, admin, routePolicyAddress)` and never needs to change. The routes it can execute can evolve without regenerating the address.
 2. **Same address on every EVM chain** for a given identity + policy.
 3. **Global upgrade per chain per policy.** One `updateRoot(newRoot)` transaction per chain upgrades every clone using that policy on that chain. No per-clone upgrade transaction.
 4. **Independent integrator lifecycles.** Different policies are owned and upgraded independently of each other.
 5. **Dynamic execution fees.** The executor supplies `executionFee` at execute time; a signer's EIP-712 signature authorizes it. Applies uniformly to **SpokePool, CCTP, and OFT** implementations.
-6. **Bounded trust.** The policy owner is a meaningful authority but cannot redirect destination, output token, or recipient (clone immutables guard those). Fee bounds are committed in the merkle tree. The user retains a structurally-guaranteed withdraw escape.
+6. **Bounded trust.** The policy owner is a meaningful authority but cannot redirect destination, output token, or recipient (clone immutables guard those). Fee bounds are committed in the merkle tree. The clone's `admin` retains a structurally-guaranteed escape — full execution authority over the clone, bypassing the policy entirely.
 
 ---
 
@@ -47,7 +47,7 @@ Deployer / SDK
 │ Immutable arg (single 32-byte slot):                         │
 │   argsHash = keccak256(abi.encode(                           │
 │     outputToken, destinationChainId, recipient,              │
-│     withdrawUser, routePolicyAddress                         │
+│     admin, routePolicyAddress                         │
 │   ))                                                         │
 └──────────────────────────────────────────────────────────────┘
        │
@@ -56,10 +56,10 @@ Deployer / SDK
 ┌──────────────────────────────────────────────────────────────┐                ┌──────────────────────────────────────────┐
 │ CounterfactualDeposit (dispatcher, no per-clone state)       │  staticcall    │ RoutePolicy (one or many, per integrator)│
 │   - verifies keccak256(args) == clone.argsHash               │ ─────────────► │   - owner: Across or integrator multisig │
-│   - withdraw escape if impl == WITHDRAW_IMPL                 │   activeRoot() │   - activeRoot: merkle root over the     │
-│     and msg.sender == args.withdrawUser                      │ ◄───────────── │     chain's 4-dim route-leaf tree        │
-│   - else: verifies merkle proof against policy root, then    │     bytes32    │   - updateRoot(newRoot): replaces root   │
-│     delegatecalls impl with verified args                    │                │                                          │
+│   - if msg.sender == args.admin: skip merkle check           │   activeRoot() │   - activeRoot: merkle root over the     │
+│   - else: verifies merkle proof against policy root          │ ◄───────────── │     chain's 4-dim route-leaf tree        │
+│   - delegatecalls impl with verified args                    │     bytes32    │   - updateRoot(newRoot): replaces root   │
+│                                                              │                │                                          │
 └──────────────────────────────────────────────────────────────┘                └──────────────────────────────────────────┘
        │
        │ delegatecall
@@ -107,19 +107,19 @@ Each clone's bytecode appends a single 32-byte immutable argument after the EIP-
 
 ```
 argsHash = keccak256(abi.encode(
-  outputToken, destinationChainId, recipient, withdrawUser, routePolicyAddress
+  outputToken, destinationChainId, recipient, admin, routePolicyAddress
 ))
 ```
 
 The five underlying fields are:
 
-| Field                | Type      | Description                                                                        |
-| -------------------- | --------- | ---------------------------------------------------------------------------------- |
-| `outputToken`        | `bytes32` | Token received on the destination chain. `bytes32` to support non-EVM tokens.      |
-| `destinationChainId` | `uint256` | Destination chain ID (or a canonical Across-assigned ID for non-EVM destinations). |
-| `recipient`          | `bytes32` | Destination-chain address that receives `outputToken`.                             |
-| `withdrawUser`       | `address` | EVM address authorized to invoke the structural withdraw escape.                   |
-| `routePolicyAddress` | `address` | The `RoutePolicy` that authorizes which routes this clone can execute.             |
+| Field                | Type      | Description                                                                                                                                   |
+| -------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outputToken`        | `bytes32` | Token received on the destination chain. `bytes32` to support non-EVM tokens.                                                                 |
+| `destinationChainId` | `uint256` | Destination chain ID (or a canonical Across-assigned ID for non-EVM destinations).                                                            |
+| `recipient`          | `bytes32` | Destination-chain address that receives `outputToken`.                                                                                        |
+| `admin`              | `address` | EVM address with full execution authority over the clone — can call any impl with any routeParams, bypassing the policy's merkle-proof check. |
+| `routePolicyAddress` | `address` | The `RoutePolicy` that authorizes which routes this clone can execute.                                                                        |
 
 The caller passes all five values in calldata at execute time; the dispatcher recomputes `keccak256(abi.encode(args))`, asserts it equals the clone's stored `argsHash`, and then forwards the now-verified args into the bridge implementation. Tamper-proofness comes from the hash check, not from a signature — once the hash matches, the args are as authoritative as if they were stored in clone bytecode directly.
 
@@ -150,16 +150,18 @@ Intentionally **not** included in V1 of `RoutePolicy`:
 
 ## CounterfactualDeposit (dispatcher)
 
-The dispatcher is the EIP-1167 target every clone delegatecalls into. It has no per-clone or per-call storage. It carries one immutable: the canonical `WithdrawImplementation` address, set at deploy time.
+The dispatcher is the EIP-1167 target every clone delegatecalls into. It has no per-clone or per-call storage and no constructor args.
 
 On `execute(cloneArgs, implementation, leafParams, submitterData, proof)`:
 
 1. **Verify clone-args hash.** Fetch the clone's 32-byte immutable `argsHash`, recompute `keccak256(abi.encode(cloneArgs))`, and revert if they don't match. After this step, `cloneArgs` is as authoritative as if it had been stored directly in clone bytecode.
-2. **Structural withdraw escape.** If `implementation` is the canonical `WithdrawImplementation` **and** `msg.sender == cloneArgs.withdrawUser`, skip the merkle proof entirely and delegatecall the impl. This guarantees withdraw works regardless of policy state — even if the policy contract is broken, missing, or its root is `bytes32(0)`.
-3. **Merkle proof.** Reconstruct the leaf as `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(leafParams)))))` (double-hashed per the OZ standard), fetch `RoutePolicy.activeRoot()` on `cloneArgs.routePolicyAddress`, and verify the proof. Revert if it doesn't verify. Binding the clone identity into the leaf preimage makes the leaf provable only against the clone it was authored for — no separate identity check is needed.
-4. **Delegatecall the implementation** with `(cloneArgs, leafParams, submitterData)`.
+2. **Admin escape.** If `msg.sender == cloneArgs.admin`, skip the merkle proof entirely. The admin has full execution authority over the clone and can call any `implementation` with any `leafParams`. This guarantees the admin can recover funds (or execute anything else) regardless of policy state — even if the policy contract is broken, missing, or its root is `bytes32(0)`.
+3. **Merkle proof.** For non-admin callers, reconstruct the leaf as `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(leafParams)))))` (double-hashed per the OZ standard), fetch `RoutePolicy.activeRoot()` on `cloneArgs.routePolicyAddress`, and verify the proof. Revert if it doesn't verify. Binding the clone identity into the leaf preimage makes the leaf provable only against the clone it was authored for — no separate identity check is needed.
+4. **Delegatecall the implementation** with `(cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, leafParams, submitterData)`.
 
 Step 1 is what makes step 3's binding meaningful — without the hash verification, an attacker could supply a fabricated `cloneArgs` and pick any leaf they liked.
+
+The admin escape's scope is intentionally broad: admin can pass any `implementation` (not just `WithdrawImplementation`) and any `leafParams`. This collapses what was previously a special-cased withdraw path into a single generic escape. The admin's blast radius is already "drain everything" via any withdraw impl, so the broader capability adds no marginal compromise risk — but it does mean a compromised admin can run arbitrary code in the clone's context via delegatecall.
 
 ---
 
@@ -173,9 +175,9 @@ Deploys clones via CREATE2. The user-facing API accepts the five identity fields
 
 ## Bridge implementations
 
-The interface every bridge impl implements is `execute(bytes32 recipient, bytes32 outputToken, uint256 destinationChainId, bytes calldata routeParams, bytes calldata submitterData)`. The dispatcher forwards only the clone-identity fields that bridge impls actually use — `recipient`, `outputToken`, `destinationChainId` — after verifying them against the clone's stored `argsHash`. The remaining `CloneArgs` fields (`withdrawUser`, `routePolicyAddress`) are dispatcher-internal and never reach the impl. Because every field that does reach the impl is dispatcher-verified, impls treat them as fully authoritative.
+The interface every impl implements is `execute(bytes32 recipient, bytes32 outputToken, uint256 destinationChainId, bytes calldata routeParams, bytes calldata submitterData)`. The dispatcher forwards only the clone-identity fields that impls might use — `recipient`, `outputToken`, `destinationChainId` — after verifying them against the clone's stored `argsHash`. The remaining `CloneArgs` fields (`admin`, `routePolicyAddress`) are dispatcher-internal and never reach the impl. Because every field that does reach the impl is dispatcher-verified, impls treat them as fully authoritative.
 
-`WithdrawImplementation` is not a bridge impl — it has its own signature `execute(bytes submitterData)` and does not implement `ICounterfactualImplementation`. The dispatcher's withdraw-escape branch calls it directly with only `submitterData`; none of the clone-identity fields or `routeParams` are forwarded, since withdraw doesn't use them. The dispatcher imports the concrete contract type to encode the call — there's no shared interface because the contract is already pinned via the dispatcher's `WITHDRAW_IMPL` immutable.
+`WithdrawImplementation` conforms to the same interface but only uses `submitterData` (decoded as `(token, to, amount)`); the identity fields and `routeParams` are accepted but ignored. The dispatcher doesn't special-case it — admin invocations of `WithdrawImplementation` flow through the same generic delegate path as any other impl.
 
 Four conventions apply across all bridge impls:
 
@@ -214,13 +216,13 @@ Same pattern as CCTP — **adds local EIP-712 signature validation** that didn't
 
 ## WithdrawImplementation
 
-Invoked via the dispatcher's structural withdraw escape. Receives `(token, to, amount)` as submitter data; transfers the specified token (or native ETH) to `to`. Does not require a merkle proof and does not need to be referenced in any policy's tree.
+A standard `ICounterfactualImplementation` that decodes `submitterData` as `(token, to, amount)` and transfers the specified token (or native ETH) to `to`. The clone-identity fields (`recipient`, `outputToken`, `destinationChainId`) and `routeParams` are accepted but ignored.
 
-The dispatcher pre-checks `msg.sender == clone.withdrawUser` before delegatecalling, so the impl can trust the caller.
+The dispatcher gates access via the admin escape: `msg.sender == clone.admin` skips the merkle proof, so the typical invocation pattern is admin-initiated withdraw. The impl itself performs no authorization — the dispatcher already did.
 
-`WithdrawImplementation` is deployed deterministically with no constructor args — same address on every EVM chain — and the dispatcher's `WITHDRAW_IMPL` immutable references it.
+`WithdrawImplementation` is deployed deterministically with no constructor args — same address on every EVM chain. The dispatcher does not pin it via an immutable; admins choose to invoke it (or any other impl) when they want to sweep funds.
 
-`AdminWithdrawManager` also changes alongside `WithdrawImplementation`. To use it, set `clone.withdrawUser = adminWithdrawManagerAddress` at clone-deploy time. Both manager paths drop their `params` and `proof` arguments since the dispatcher's structural escape bypasses the merkle check. The signed path additionally moves the recipient (`to`) into the signer's EIP-712 typehash — i.e. `SignedWithdraw(address depositAddress, address token, address to, uint256 amount, uint256 deadline)` — so the manager no longer needs an on-chain `user` field to know where to send funds. The direct-withdraw path continues to let the trusted operator choose `to` freely.
+`AdminWithdrawManager` is the recommended admin role for production clones. To use it, set `clone.admin = adminWithdrawManagerAddress` at clone-deploy time. Both manager paths (direct-withdraw and signed-withdraw) call `clone.execute(cloneArgs, withdrawImpl, "", abi.encode(token, to, amount), [])`, and the dispatcher's admin escape lets it through. The signed path puts the recipient (`to`) inside the signer's EIP-712 typehash — `SignedWithdraw(address depositAddress, address token, address to, uint256 amount, uint256 deadline)` — so the signer fixes `to`. The direct path lets the trusted operator choose `to` freely.
 
 ---
 
@@ -259,12 +261,12 @@ Adding a new input token, destination, output token, or bridge requires re-rooti
 For a clone to land at the same CREATE2 address on every EVM chain, its initCode must be identical across chains. That requires:
 
 - **Factory at the same address everywhere.** `CounterfactualDepositFactory` and the dispatcher have no chain-specific construction state and are deployed through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`) with identical initCode.
-- **Identical immutable args.** The clone's appended immutable arg is a single 32-byte `argsHash`. The five underlying fields (`outputToken`, `destinationChainId`, `recipient`, `withdrawUser`, `routePolicyAddress`) are identical across chains by definition, so `argsHash` is identical too. `routePolicyAddress` must also be identical, which means the policy itself must land at the same address everywhere.
+- **Identical immutable args.** The clone's appended immutable arg is a single 32-byte `argsHash`. The five underlying fields (`outputToken`, `destinationChainId`, `recipient`, `admin`, `routePolicyAddress`) are identical across chains by definition, so `argsHash` is identical too. `routePolicyAddress` must also be identical, which means the policy itself must land at the same address everywhere.
 - **`RoutePolicy` at the same address everywhere.** Deploy through the deterministic-deployment proxy with constructor args that are identical across chains: `initialOwner = deployerEOA` (the same EOA the deploying party controls on every chain) and `initialRoot = bytes32(0)`. Ownership is transferred to the chain-local multisig as a per-chain post-deploy step. The transfer is a state change, not an initCode change, so it doesn't affect the policy's address.
 
 Once the policy is deployed and transferred to the chain-local multisig, each chain's deployment has its own per-chain `activeRoot` storage. The merkle tree on Ethereum commits to routes originating from Ethereum; the tree on Arbitrum commits to Arbitrum routes; and so on. **The contract address is uniform across chains; the contract state is per-chain.** This is what makes new source chains cheap to add — deploy on the new chain, approve a fresh root for that chain, no impact on existing chains.
 
-Tron remains a carveout. Its TVM uses a different CREATE2 prefix, so Tron clones derive to different addresses than EVM clones for the same identity. Additionally, the Tron dispatcher pins `WITHDRAW_IMPL` to `WithdrawImplementationTron` rather than the canonical EVM `WithdrawImplementation`, so the EVM and Tron dispatchers have different initCode by design — they aren't trying to land at the same address. Same shape as the original contracts.
+Tron remains a carveout. Its TVM uses a different CREATE2 prefix, so Tron clones derive to different addresses than EVM clones for the same identity. The dispatcher itself is identical between Tron and EVM (no constructor args), so it lands at the same address on Tron as on EVM chains — but clones differ because of the CREATE2 prefix. `WithdrawImplementationTron` is a separate contract from the canonical `WithdrawImplementation`; admins on Tron-deployed clones can choose to invoke whichever applies.
 
 ---
 
@@ -273,7 +275,7 @@ Tron remains a carveout. Its TVM uses a different CREATE2 prefix, so Tron clones
 Deployment must follow a fixed order because two contracts depend on each other's deterministic addresses at construction time:
 
 1. **`WithdrawImplementation`** — deploy first, through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`). No constructor args, so the same address lands on every EVM chain.
-2. **`CounterfactualDeposit` (dispatcher)** — deploy next, through the same proxy, passing the `WithdrawImplementation` address from step 1 as the `WITHDRAW_IMPL` constructor immutable. Because that address is identical across chains, the dispatcher's initCode is identical across chains, so the dispatcher lands at the same address everywhere.
+2. **`CounterfactualDeposit` (dispatcher)** — deploy through the same proxy. No constructor args; initCode is identical across chains, so it lands at the same address everywhere. No deployment-ordering dependency on `WithdrawImplementation` (admins reference the withdraw impl directly at execute time).
 3. **`RoutePolicy`** — deploy through the proxy with `(deployerEOA, bytes32(0))` as constructor args. The deployer EOA is held by the deploying party (Across or an integrator) and must be the same address on every chain. Both constructor values must be identical across chains for the policy to land at the same address everywhere.
 4. **Transfer `RoutePolicy` ownership** — separately per chain, the deployer EOA calls `transferOwnership(chainLocalMultisig)`. This is a state change, not an initCode change, so it doesn't affect the policy's address. Until this transfer lands, the deployer EOA holds full owner authority on the policy — see the [RoutePolicy contract](#routepolicy-contract) section for operational mitigations.
 5. **Bridge implementations** (`CounterfactualDepositSpokePool`, `CounterfactualDepositCCTP`, `CounterfactualDepositOFT`) — deploy with their chain-specific constructor args (SpokePool address, signer address, wrapped native, etc.). These intentionally land at different addresses per chain since their constructor args differ.
@@ -283,7 +285,7 @@ Deployment must follow a fixed order because two contracts depend on each other'
 
 The invariant to remember: anything whose constructor arg comes from a deterministic-proxy-deployed contract is itself eligible for deterministic deployment, as long as it's deployed _after_ its dependency. The ordering above is the only valid topological sort.
 
-**Tron path.** Tron's deployment mirrors steps 1–8 with `WithdrawImplementationTron` and a Tron-specific dispatcher; addresses diverge from the EVM path by design (different CREATE2 prefix, different `WITHDRAW_IMPL`).
+**Tron path.** Tron's deployment mirrors steps 1–8 with `WithdrawImplementationTron`. The dispatcher itself is identical to the EVM version (no constructor args), so it lands at the same address on Tron as on EVM; clone addresses diverge because of Tron's CREATE2 prefix.
 
 ---
 
@@ -295,16 +297,16 @@ Work is split into three tracks — contracts, tests, scripts — each ordered b
 
 - [x] **`IRoutePolicy.sol`** — minimal interface: `activeRoot() view returns (bytes32)`, `updateRoot(bytes32 newRoot)`, `RootUpdated(bytes32)` event.
 - [x] **`RoutePolicy.sol`** — implements `IRoutePolicy`, inherits `Ownable`. One storage slot for `activeRoot`. Constructor takes `(address initialOwner, bytes32 initialRoot)`. No timelock, no version counter (see open questions).
-- [x] **`CloneArgs` struct + hashing helper** — shared `struct CloneArgs { bytes32 outputToken; uint256 destinationChainId; bytes32 recipient; address withdrawUser; address routePolicyAddress; }` defined in a small library (e.g. `CounterfactualCloneArgs.sol`) along with a `hash(CloneArgs)` helper. Dispatcher and factory both depend on this for hash consistency.
-- [x] **`ICounterfactualImplementation.sol`** (interface update) — flat-arg signature `execute(bytes32 recipient, bytes32 outputToken, uint256 destinationChainId, bytes routeParams, bytes submitterData)`. Only the clone-identity fields used by bridge impls are forwarded; `withdrawUser` and `routePolicyAddress` stay inside the dispatcher.
-- [x] **`CounterfactualDeposit.sol`** (dispatcher rewrite) — adds `WITHDRAW_IMPL` constructor immutable; `execute(cloneArgs, implementation, leafParams, submitterData, proof)` (a) loads the clone's 32-byte `argsHash` via `Clones.fetchCloneArgs`, (b) verifies `keccak256(abi.encode(cloneArgs)) == argsHash`, (c) runs the structural withdraw escape using `cloneArgs.withdrawUser`, (d) computes the leaf as `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(leafParams)))))` (binding clone identity into the leaf preimage so the leaf can only be proven against the clone it was authored for), (e) fetches `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()` and verifies the merkle proof, and (f) delegatecalls the impl forwarding `cloneArgs`.
-- [x] **`WithdrawImplementation.sol`** — drop `WithdrawParams`. Standalone contract (does not implement `ICounterfactualImplementation`) with signature `execute(bytes submitterData)` that decodes `submitterData` as `(token, to, amount)`. The dispatcher imports the concrete type to encode the delegatecall. Remove the `msg.sender == admin || msg.sender == user` check (now enforced by the dispatcher's escape).
+- [x] **`CloneArgs` struct + hashing helper** — shared `struct CloneArgs { bytes32 outputToken; uint256 destinationChainId; bytes32 recipient; address admin; address routePolicyAddress; }` defined in a small library (e.g. `CounterfactualCloneArgs.sol`) along with a `hash(CloneArgs)` helper. Dispatcher and factory both depend on this for hash consistency.
+- [x] **`ICounterfactualImplementation.sol`** (interface update) — flat-arg signature `execute(bytes32 recipient, bytes32 outputToken, uint256 destinationChainId, bytes routeParams, bytes submitterData)`. Only the clone-identity fields used by bridge impls are forwarded; `admin` and `routePolicyAddress` stay inside the dispatcher.
+- [x] **`CounterfactualDeposit.sol`** (dispatcher rewrite) — no constructor args, no immutables. `execute(cloneArgs, implementation, leafParams, submitterData, proof)` (a) loads the clone's 32-byte `argsHash` via `Clones.fetchCloneArgs`, (b) verifies `keccak256(abi.encode(cloneArgs)) == argsHash`, (c) if `msg.sender == cloneArgs.admin` skips the merkle check (admin escape), (d) otherwise computes the leaf as `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(leafParams)))))` and verifies the merkle proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`, and (e) delegatecalls the impl forwarding `(cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, leafParams, submitterData)`.
+- [x] **`WithdrawImplementation.sol`** — drop `WithdrawParams`. Implements `ICounterfactualImplementation` with the standard 5-arg signature; only `submitterData` is used (decoded as `(token, to, amount)`), the other args are accepted but ignored. Remove the `msg.sender == admin || msg.sender == user` check (now enforced by the dispatcher's admin escape). No longer special-cased by the dispatcher — the admin can invoke it via the same generic delegate path as any other impl.
 - [x] **`CounterfactualDepositSpokePool.sol`** — adopt the new interface signature; extend `EXECUTE_DEPOSIT_TYPEHASH` to include `address clone` and `bytes32 paramsHash`; move `executionFee` out of `SpokePoolDepositParams` (leaf) and into `SpokePoolSubmitterData` (runtime); drop `destinationChainId`, `outputToken`, and `recipient` from the struct (clone identity is bound into the leaf preimage via `cloneArgs`; recipient is read from `cloneArgs`). No separate `maxExecutionFee` cap — the existing `maxFeeFixed + maxFeeBps` total-fee check bounds `executionFee` implicitly.
 - [x] **`CounterfactualDepositCCTP.sol`** — adopt the new interface signature; add `signer` constructor immutable, `ExecuteCCTP` EIP-712 typehash, signature verification over `(clone, paramsHash, amount, executionFee, signatureDeadline)`, new submitter-data fields, and `maxExecutionFee` leaf field (fixed-amount cap on `executionFee`). Clone identity is bound into the leaf preimage by the dispatcher — `destinationChainId` and `outputToken` are not in the params struct.
 - [x] **`CounterfactualDepositOFT.sol`** — same treatment as CCTP plus `msg.value` forwarding to the OFT periphery is preserved.
 - [x] **`CounterfactualDepositFactory.sol`** — `deploy` / `predictDepositAddress` take the five identity fields; internally compute `argsHash = keccak256(abi.encode(...))` and use that 32-byte hash as the clone's immutable-args blob. Update `deployAndExecute` / `deployIfNeededAndExecute` signatures accordingly. Update `DepositAddressCreated` event to emit the five fields (or just `argsHash`, since indexers can recompute).
 - [x] **`CounterfactualDepositFactoryTron.sol`** — mirror the EVM factory, keep the Tron CREATE2-prefix override.
-- [x] **`AdminWithdrawManager.sol`** — drop `params` and `proof` from both withdraw paths; change `SIGNED_WITHDRAW_TYPEHASH` to `SignedWithdraw(address depositAddress, address token, address to, uint256 amount, uint256 deadline)` so the signer fixes the recipient; the manager calls `clone.execute(cloneArgs, WITHDRAW_IMPL, "", abi.encode(token, to, amount), new bytes32[](0))` and lets the dispatcher's escape do the auth. Caller-supplied `cloneArgs` is required since the manager no longer holds per-clone state — it just forwards what the operator/signer provides.
+- [x] **`AdminWithdrawManager.sol`** — drop `params` and `proof` from both withdraw paths; change `SIGNED_WITHDRAW_TYPEHASH` to `SignedWithdraw(address depositAddress, address token, address to, uint256 amount, uint256 deadline)` so the signer fixes the recipient; the manager calls `clone.execute(cloneArgs, withdrawImpl, "", abi.encode(token, to, amount), new bytes32[](0))` and lets the dispatcher's admin escape do the auth. Caller-supplied `cloneArgs` is required since the manager no longer holds per-clone state — it just forwards what the operator/signer provides.
 
 ### Tests
 
@@ -314,7 +316,7 @@ Existing tests in `test/evm/foundry/local/` are the starting point; each item be
 - [ ] **`CounterfactualDeposit.t.sol`** (rewrite) — covers the dispatcher's new shape:
   - `cloneArgs` hash verification: supplying tampered `cloneArgs` (any field altered) reverts before any other check runs.
   - Leaf identity binding: a leaf authored for clone A's `(outputToken, destinationChainId)` does not verify against clone B with a different identity, even with a valid merkle proof.
-  - Structural withdraw escape: `msg.sender == cloneArgs.withdrawUser` + `implementation == WITHDRAW_IMPL` bypasses the proof, including when `activeRoot == bytes32(0)`. Hash verification still runs first, so a fabricated `withdrawUser` is rejected.
+  - Admin escape: `msg.sender == cloneArgs.admin` bypasses the proof for any `implementation`, including when `activeRoot == bytes32(0)`. Hash verification still runs first, so a fabricated `admin` is rejected.
   - Non-withdraw escape still requires a valid proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
   - After `RoutePolicy.updateRoot(newRoot)`, the same clone can prove leaves under the new root and old proofs stop working.
   - End-to-end delegatecall: the impl receives the same `cloneArgs` the dispatcher verified.
@@ -332,7 +334,7 @@ All scripts live under `script/counterfactual/`. The deterministic-deployment pr
 
 - [ ] **`config.toml` / `CounterfactualConfig.sol`** — extend with policy-related config (deployer EOA used as `initialOwner`, initial root, chain-local multisig owner per chain, signer addresses for CCTP / OFT).
 - [ ] **`DeployWithdrawImplementation.s.sol`** (update) — already deterministic; verify no constructor args change.
-- [ ] **`DeployCounterfactualDeposit.s.sol`** (update) — pass `WITHDRAW_IMPL` constructor arg, sourced from the deterministic `WithdrawImplementation` address. Asserts the deployed dispatcher address is identical across chains.
+- [ ] **`DeployCounterfactualDeposit.s.sol`** (update) — no constructor args. Asserts the deployed dispatcher address is identical across chains.
 - [ ] **`DeployRoutePolicy.s.sol`** (new) — deploys `RoutePolicy` via deterministic-deployment proxy with `(deployerEOA, bytes32(0))`; emits the deployed address. A second `TransferRoutePolicyOwnership.s.sol` runs after, called per-chain by the deployer EOA, transferring ownership to the chain-local multisig.
 - [ ] **`ApproveRoutePolicyRoot.s.sol`** (new) — multisig-callable script that calls `RoutePolicy.updateRoot(newRoot)`. Takes the new root and the policy address as args; usable as a Safe transaction template.
 - [ ] **`DeployCounterfactualDepositSpokePool.s.sol`** (update) — no signature changes to the constructor; just rebuild against the new impl.
@@ -340,21 +342,15 @@ All scripts live under `script/counterfactual/`. The deterministic-deployment pr
 - [ ] **`DeployCounterfactualDepositOFT.s.sol`** (update) — add `signer` constructor arg.
 - [ ] **`DeployCounterfactualDepositFactory.s.sol`** (update) — no constructor-arg changes; the factory's interface changed but its deploy story didn't.
 - [ ] **`DeployAdminWithdrawManager.s.sol`** (update) — no constructor-arg changes (still `owner`, `directWithdrawer`, `signer`); just rebuild.
-- [ ] **`DeployAllCounterfactual.s.sol`** (update) — orchestrate the full sequence: `WithdrawImplementation` → `CounterfactualDeposit` → `RoutePolicy` (then transfer ownership) → bridge impls → `AdminWithdrawManager` → factories. Document the ordering invariant: `WithdrawImplementation` must land first so the dispatcher's `WITHDRAW_IMPL` constructor arg is known.
-- [ ] **`CheckCounterfactualDeployments.s.sol`** (update) — verify the new five-field clone-args layout decodes correctly, that `RoutePolicy.activeRoot()` matches the expected root, that `WITHDRAW_IMPL` on the dispatcher matches the deployed `WithdrawImplementation`, and that all cross-chain addresses (dispatcher, policy, withdraw impl, factory) are identical to a reference chain.
-- [ ] **`tron/`** counterparts — mirror the relevant updates for the Tron deployment path (Tron factory, Tron withdraw impl, Tron dispatcher with `WithdrawImplementationTron` as `WITHDRAW_IMPL`).
+- [ ] **`DeployAllCounterfactual.s.sol`** (update) — orchestrate the full sequence: `WithdrawImplementation`, `CounterfactualDeposit`, `RoutePolicy` (then transfer ownership), bridge impls, `AdminWithdrawManager`, factories. The dispatcher has no constructor-arg dependency on `WithdrawImplementation`, so order between them is flexible.
+- [ ] **`CheckCounterfactualDeployments.s.sol`** (update) — verify the new five-field clone-args layout decodes correctly, that `RoutePolicy.activeRoot()` matches the expected root, and that all cross-chain addresses (dispatcher, policy, withdraw impl, factory) are identical to a reference chain.
+- [ ] **`tron/`** counterparts — mirror the relevant updates for the Tron deployment path (Tron factory, Tron withdraw impl). The dispatcher itself is the same on Tron as EVM.
 
 ## Open questions
 
-**1. Owner compromise / blast radius.** The `RoutePolicy` owner can replace `activeRoot` with any value in one transaction. A compromised owner can authorize draining-style routes (up to the leaf's fee caps), approve degraded fee caps, or set `bytes32(0)` to brick the policy. The structural withdraw escape protects user funds in all cases, but the policy itself can be made unusable. Mitigations to consider: a timelock between propose and activate, and/or an emergency-only path that can shrink the route set without delay while expansions go through the timelock.
+**1. Owner compromise / blast radius.** The `RoutePolicy` owner can replace `activeRoot` with any value in one transaction. A compromised owner can authorize draining-style routes (up to the leaf's fee caps), approve degraded fee caps, or set `bytes32(0)` to brick the policy. The admin escape protects fund recovery in all cases, but the policy itself can be made unusable. Mitigations to consider: a timelock between propose and activate, and/or an emergency-only path that can shrink the route set without delay while expansions go through the timelock.
 
-**2. How should withdraw be structured?** Today it's "structural auth + separate impl": the dispatcher special-cases the auth path (`implementation == WITHDRAW_IMPL && msg.sender == cloneArgs.withdrawUser`), then delegatecalls a one-purpose `WithdrawImplementation` that decodes `(token, to, amount)` from `submitterData` and transfers. The impl's address is pinned by the dispatcher's `WITHDRAW_IMPL` immutable — so it isn't actually swappable. Three coherent options:
-
-- _Structural auth + separate impl (current)_: strongest user-fund guarantee — withdraw works regardless of policy state, including when `activeRoot == bytes32(0)` or the policy owner is compromised. Cost: a second contract to deploy and verify per chain, a `WITHDRAW_IMPL` immutable on the dispatcher, a deployment ordering invariant (withdraw impl must land before the dispatcher), and an `AdminWithdrawManager` special-cased code path.
-- _Structural auth + inlined into dispatcher_: keep the same fund-safety guarantee but drop the separate impl. Move the `(token, to, amount)` decode + transfer into a dispatcher method that the escape branch falls into directly. The escape becomes a function call rather than an impl dispatch. Cost: the dispatcher gains a transfer code path and a `SafeTransferERC20` dependency, and the abstraction "every execute goes through an impl" is broken — withdraw becomes a structural feature of the dispatcher rather than a pluggable implementation. Saves one contract, one immutable, one delegatecall hop, and the unused-parameter conformance.
-- _Policy-committed withdraw_: drop the structural escape entirely; commit withdraw routes as ordinary leaves in the `RoutePolicy` merkle tree. Simplest dispatcher — uniform code path for every execute, no escape branch, no `WITHDRAW_IMPL` immutable, no special case in `AdminWithdrawManager`. Cost: a compromised or misconfigured policy can revoke the user's ability to withdraw, eliminating the bounded-trust property; the policy owner becomes load-bearing for fund safety, not just route safety. Note also that the current `WithdrawImplementation` is not safe to use directly as a policy leaf — `submitterData` is fully attacker-controlled, so a withdraw leaf would let any caller drain to any `to`. Going this route requires either binding `to` (and likely `token`, `amount`) into `params` so the leaf commits them, or adding auth inside the withdraw impl. Either way it's a redesign, not just a leaf addition.
-
-**3. Signature replay within the deadline.** None of the four EIP-712 signed messages (SpokePool `ExecuteDeposit`, CCTP `ExecuteCCTP`, OFT `ExecuteOFT`, AdminWithdrawManager `SignedWithdraw`) include a nonce or one-time mark. A signature remains valid against the same clone until `signatureDeadline` / `deadline` elapses, so if the clone is refunded with at least the signed `amount` during that window an executor can replay the signature and drain it again. The replay window is bounded by the deadline and by clone balance, but there is no on-chain protection. The `SignedWithdraw` path is the most replay-prone of the four because the signature commits a fixed `(token, to, amount)` triple — a refund of the same amount allows a second drain to the same `to` with no further coordination. Options:
+**2. Signature replay within the deadline.** None of the four EIP-712 signed messages (SpokePool `ExecuteDeposit`, CCTP `ExecuteCCTP`, OFT `ExecuteOFT`, AdminWithdrawManager `SignedWithdraw`) include a nonce or one-time mark. A signature remains valid against the same clone until `signatureDeadline` / `deadline` elapses, so if the clone is refunded with at least the signed `amount` during that window an executor can replay the signature and drain it again. The replay window is bounded by the deadline and by clone balance, but there is no on-chain protection. The `SignedWithdraw` path is the most replay-prone of the four because the signature commits a fixed `(token, to, amount)` triple — a refund of the same amount allows a second drain to the same `to` with no further coordination. Options:
 
 - _Operational only (current)_: rely on short deadlines and signer-side bookkeeping. Zero gas overhead, zero contract change. Cost: any leaked or buffered signature is replay-exploitable within its deadline; correctness depends entirely on the signer's discipline.
 - _Monotonic nonce_: add `mapping(address clone => uint256) nonces` in each impl and the manager; include `nonce` in the typehash; require equality and increment on use. Forces ordered consumption — if the signer issues two quotes, the executor must use them in order. Bad fit for the "signer broadcasts, permissionless executors pick up" model.

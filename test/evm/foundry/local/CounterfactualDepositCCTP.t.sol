@@ -47,7 +47,7 @@ contract CounterfactualDepositCCTPTest is Test {
     MockSponsoredCCTPSrcPeriphery public srcPeriphery;
     MintableERC20 public burnToken;
 
-    address public withdrawUser;
+    address public admin;
     address public user;
     address public relayer;
     address public policyOwner;
@@ -71,7 +71,7 @@ contract CounterfactualDepositCCTPTest is Test {
     CCTPDepositParams internal defaultDepositParams;
 
     function setUp() public {
-        withdrawUser = makeAddr("withdrawUser");
+        admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
@@ -84,7 +84,7 @@ contract CounterfactualDepositCCTPTest is Test {
         srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
         factory = new CounterfactualDepositFactory();
         withdrawImpl = new WithdrawImplementation();
-        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        dispatcher = new CounterfactualDeposit();
         cctpImpl = new CounterfactualDepositCCTP(address(srcPeriphery), SOURCE_DOMAIN, signerAddr);
         policy = new RoutePolicy(policyOwner, bytes32(0));
 
@@ -115,7 +115,7 @@ contract CounterfactualDepositCCTPTest is Test {
                 outputToken: bytes32(uint256(uint160(address(burnToken)))),
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: finalRecipient,
-                withdrawUser: withdrawUser,
+                admin: admin,
                 routePolicyAddress: address(policy)
             });
     }
@@ -348,22 +348,22 @@ contract CounterfactualDepositCCTPTest is Test {
         ICounterfactualDeposit(clone2).execute(args2, address(cctpImpl), paramsEncoded, submitterData, proof);
     }
 
-    function testWithdrawEscape() public {
+    function testAdminEscape() public {
         bytes memory paramsEncoded = abi.encode(defaultDepositParams);
         _setRoot(paramsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         burnToken.mint(clone, 100e6);
 
-        vm.prank(withdrawUser);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(burnToken), withdrawUser, uint256(100e6)),
+            abi.encode(address(burnToken), admin, uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(burnToken.balanceOf(withdrawUser), 100e6);
+        assertEq(burnToken.balanceOf(admin), 100e6);
     }
 
     function testCctpMaxFeeBpsCalculation() public {

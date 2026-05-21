@@ -8,14 +8,15 @@ pragma solidity ^0.8.0;
  * @param outputToken Token received on the destination chain (bytes32 to support non-EVM tokens).
  * @param destinationChainId Destination chain ID (or canonical Across ID for non-EVM destinations).
  * @param recipient Destination-chain address that receives `outputToken`.
- * @param withdrawUser EVM address authorized to invoke the structural withdraw escape.
+ * @param admin EVM address with full execution authority over this clone — can call any implementation
+ *              with any routeParams, bypassing the policy's merkle-proof requirement.
  * @param routePolicyAddress `RoutePolicy` contract whose root authorizes this clone's routes.
  */
 struct CloneArgs {
     bytes32 outputToken;
     uint256 destinationChainId;
     bytes32 recipient;
-    address withdrawUser;
+    address admin;
     address routePolicyAddress;
 }
 
@@ -33,7 +34,7 @@ library CounterfactualCloneArgs {
                     args.outputToken,
                     args.destinationChainId,
                     args.recipient,
-                    args.withdrawUser,
+                    args.admin,
                     args.routePolicyAddress
                 )
             );

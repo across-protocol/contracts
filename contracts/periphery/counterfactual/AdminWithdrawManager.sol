@@ -13,9 +13,8 @@ import { CloneArgs } from "./CounterfactualCloneArgs.sol";
  *           1. Direct withdraw — trusted `directWithdrawer` calls with caller-chosen recipient.
  *           2. Signed withdraw — anyone can trigger with a valid `signer` signature; the signer
  *              fixes the recipient via the EIP-712 message.
- * @dev To use, set `cloneArgs.withdrawUser = address(this)` at clone-deploy time. The dispatcher's
- *      structural withdraw escape then trusts this contract as the sole withdraw authority and
- *      bypasses the merkle proof entirely.
+ * @dev To use, set `cloneArgs.admin = address(this)` at clone-deploy time. The dispatcher's
+ *      admin escape then trusts this contract as the sole admin and bypasses the merkle proof.
  * @custom:security-contact bugs@across.to
  */
 contract AdminWithdrawManager is Ownable, EIP712 {

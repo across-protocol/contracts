@@ -58,7 +58,7 @@ contract CounterfactualDepositOFTTest is Test {
     MockSponsoredOFTSrcPeriphery public srcPeriphery;
     MintableERC20 public token;
 
-    address public withdrawUser;
+    address public admin;
     address public user;
     address public relayer;
     address public policyOwner;
@@ -82,7 +82,7 @@ contract CounterfactualDepositOFTTest is Test {
     OFTDepositParams internal defaultDepositParams;
 
     function setUp() public {
-        withdrawUser = makeAddr("withdrawUser");
+        admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
@@ -95,7 +95,7 @@ contract CounterfactualDepositOFTTest is Test {
         srcPeriphery = new MockSponsoredOFTSrcPeriphery(address(token));
         factory = new CounterfactualDepositFactory();
         withdrawImpl = new WithdrawImplementation();
-        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        dispatcher = new CounterfactualDeposit();
         oftImpl = new CounterfactualDepositOFT(address(srcPeriphery), SRC_EID, signerAddr);
         policy = new RoutePolicy(policyOwner, bytes32(0));
 
@@ -127,7 +127,7 @@ contract CounterfactualDepositOFTTest is Test {
                 outputToken: bytes32(uint256(uint160(address(token)))),
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: finalRecipient,
-                withdrawUser: withdrawUser,
+                admin: admin,
                 routePolicyAddress: address(policy)
             });
     }
@@ -368,21 +368,21 @@ contract CounterfactualDepositOFTTest is Test {
         ICounterfactualDeposit(clone2).execute(args2, address(oftImpl), paramsEncoded, submitterData, proof);
     }
 
-    function testWithdrawEscape() public {
+    function testAdminEscape() public {
         bytes memory paramsEncoded = abi.encode(defaultDepositParams);
         _setRoot(paramsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         token.mint(clone, 100e6);
 
-        vm.prank(withdrawUser);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), withdrawUser, uint256(100e6)),
+            abi.encode(address(token), admin, uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(token.balanceOf(withdrawUser), 100e6);
+        assertEq(token.balanceOf(admin), 100e6);
     }
 }

@@ -57,7 +57,7 @@ contract CounterfactualDepositTest is Test {
     RoutePolicy public policy;
     MintableERC20 public token;
 
-    address public withdrawUser;
+    address public admin;
     address public relayer;
     address public policyOwner;
 
@@ -66,13 +66,13 @@ contract CounterfactualDepositTest is Test {
     function setUp() public {
         merkle = new Merkle();
         withdrawImpl = new WithdrawImplementation();
-        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
         recImpl = new RecordingImplementation();
         revImpl = new RevertingImplementation();
         token = new MintableERC20("USDC", "USDC", 6);
 
-        withdrawUser = makeAddr("withdrawUser");
+        admin = makeAddr("admin");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
         policy = new RoutePolicy(policyOwner, bytes32(0));
@@ -84,7 +84,7 @@ contract CounterfactualDepositTest is Test {
                 outputToken: bytes32(uint256(uint160(address(token)))),
                 destinationChainId: 42161,
                 recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                withdrawUser: withdrawUser,
+                admin: admin,
                 routePolicyAddress: address(policy)
             });
     }
@@ -129,17 +129,17 @@ contract CounterfactualDepositTest is Test {
             tampered,
             address(withdrawImpl),
             "",
-            abi.encode(address(token), withdrawUser, uint256(0)),
+            abi.encode(address(token), admin, uint256(0)),
             new bytes32[](0)
         );
     }
 
-    function testTamperedWithdrawUserReverts() public {
+    function testTamperedAdminReverts() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
         CloneArgs memory tampered = _cloneArgs();
-        tampered.withdrawUser = address(this);
+        tampered.admin = address(this);
 
         vm.expectRevert(ICounterfactualDeposit.InvalidCloneArgs.selector);
         ICounterfactualDeposit(clone).execute(
@@ -151,33 +151,53 @@ contract CounterfactualDepositTest is Test {
         );
     }
 
-    // --- Structural withdraw escape ---
+    // --- Admin escape ---
 
-    function testWithdrawEscapeBypassesProof() public {
+    function testAdminEscapeBypassesProofForWithdrawImpl() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
-        // Policy root is bytes32(0) — no proof can verify. The escape should still work.
+        // Policy root is bytes32(0) — no proof can verify. The admin escape should still work.
         assertEq(policy.activeRoot(), bytes32(0));
 
-        vm.prank(withdrawUser);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), withdrawUser, uint256(100e6)),
+            abi.encode(address(token), admin, uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(token.balanceOf(withdrawUser), 100e6);
+        assertEq(token.balanceOf(admin), 100e6);
     }
 
-    function testWithdrawEscapeWrongCallerFallsThroughToProofPath() public {
-        // A non-withdrawUser calling with the withdraw impl falls through to the proof path,
-        // which fails because no proof matches against a bytes32(0) root.
+    function testAdminEscapeBypassesProofForAnyImpl() public {
+        // Admin can call any impl — not just the withdraw impl. Here they call a recording impl
+        // that's never been added to the policy tree, with arbitrary params.
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        CloneArgs memory args = _cloneArgs();
+        bytes memory params = abi.encode(uint256(0xDEAD));
+
+        vm.expectEmit(false, false, false, true);
+        emit RecordingImplementation.Recorded(
+            args.recipient,
+            args.outputToken,
+            args.destinationChainId,
+            params,
+            "data"
+        );
+
+        vm.prank(admin);
+        ICounterfactualDeposit(clone).execute(args, address(recImpl), params, "data", new bytes32[](0));
+    }
+
+    function testNonAdminCallerHitsProofPath() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
+        // Non-admin caller falls through to the proof path, which fails because no proof matches
+        // against a bytes32(0) root.
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute(
@@ -187,15 +207,6 @@ contract CounterfactualDepositTest is Test {
             abi.encode(address(token), relayer, uint256(50e6)),
             new bytes32[](0)
         );
-    }
-
-    function testWithdrawEscapeWrongImplFallsThroughToProofPath() public {
-        // Calling with a different impl AS withdrawUser still falls through to the proof path.
-        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
-
-        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
-        vm.prank(withdrawUser);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(recImpl), "", "", new bytes32[](0));
     }
 
     // --- Leaf is bound to clone identity ---

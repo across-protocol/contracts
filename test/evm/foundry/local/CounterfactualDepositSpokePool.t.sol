@@ -86,7 +86,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
     MintableERC20 public inputToken;
     address public weth;
 
-    address public withdrawUser;
+    address public admin;
     address public user;
     address public relayer;
     address public policyOwner;
@@ -108,7 +108,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
     bytes32 public outputTokenBytes32;
 
     function setUp() public {
-        withdrawUser = makeAddr("withdrawUser");
+        admin = makeAddr("admin");
         user = makeAddr("user");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
@@ -123,7 +123,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
         withdrawImpl = new WithdrawImplementation();
-        dispatcher = new CounterfactualDeposit(address(withdrawImpl));
+        dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
         policy = new RoutePolicy(policyOwner, bytes32(0));
 
@@ -138,7 +138,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
                 outputToken: outputToken_,
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: recipient,
-                withdrawUser: withdrawUser,
+                admin: admin,
                 routePolicyAddress: address(policy)
             });
     }
@@ -482,23 +482,23 @@ contract CounterfactualDepositSpokePoolTest is Test {
         assertEq(spokePool.lastInputAmount(), ctx.inputAmount);
     }
 
-    function testWithdrawEscapeStillWorks() public {
-        // Even with the SpokePool impl wired up and a non-zero policy root, the withdrawUser can
-        // pull funds via the structural escape — bypasses any signature/proof.
+    function testAdminEscapeStillWorks() public {
+        // Even with the SpokePool impl wired up and a non-zero policy root, the admin can
+        // pull funds via the admin escape — bypasses any signature/proof.
         bytes memory paramsEncoded = abi.encode(_defaultParams());
         _setRoot(outputTokenBytes32, paramsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         inputToken.mint(clone, 100e6);
 
-        vm.prank(withdrawUser);
+        vm.prank(admin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(outputTokenBytes32),
             address(withdrawImpl),
             "",
-            abi.encode(address(inputToken), withdrawUser, uint256(100e6)),
+            abi.encode(address(inputToken), admin, uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(inputToken.balanceOf(withdrawUser), 100e6);
+        assertEq(inputToken.balanceOf(admin), 100e6);
     }
 }

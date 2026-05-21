@@ -6,7 +6,6 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
 import { IRoutePolicy } from "../../interfaces/IRoutePolicy.sol";
-import { WithdrawImplementation } from "./WithdrawImplementation.sol";
 import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.sol";
 
 /**
@@ -16,25 +15,20 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  * @dev The clone's immutable arg is a single 32-byte `argsHash` over the five `CloneArgs` identity
  *      fields. On every execute, the dispatcher:
  *        1. Recomputes the hash from caller-supplied `cloneArgs` and reverts on mismatch.
- *        2. If `implementation == WITHDRAW_IMPL && msg.sender == cloneArgs.withdrawUser`, skips the
- *           merkle check (structural withdraw escape — works even if the policy is bricked).
+ *        2. If `msg.sender == cloneArgs.admin`, skips the merkle check (admin escape — admin has
+ *           full execution authority over this clone and can call any implementation regardless of
+ *           policy state, including when the policy's `activeRoot` is `bytes32(0)`).
  *        3. Otherwise computes the leaf as
  *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params)))))`
  *           and verifies the merkle proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
  *           Binding the clone identity into the leaf preimage ensures a leaf can only be proven
  *           against the clone it was authored for.
- *        4. Delegatecalls the implementation forwarding the verified `cloneArgs`.
+ *        4. Delegatecalls the implementation, forwarding the dispatcher-verified clone-identity
+ *           fields.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
     using CounterfactualCloneArgs for CloneArgs;
-
-    /// @notice Canonical `WithdrawImplementation` address referenced by the structural withdraw escape.
-    address public immutable WITHDRAW_IMPL;
-
-    constructor(address _withdrawImpl) {
-        WITHDRAW_IMPL = _withdrawImpl;
-    }
 
     /// @dev Accept native ETH sent to the clone (user deposits, refunds, LayerZero fees, etc.).
     receive() external payable {}
@@ -47,33 +41,35 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         bytes calldata submitterData,
         bytes32[] calldata proof
     ) external payable {
-        // 1. Verify caller-supplied cloneArgs match the clone's stored hash.
+        // Verify caller-supplied cloneArgs match the clone's stored hash.
         bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
         if (cloneArgs.hash() != storedHash) revert InvalidCloneArgs();
 
-        // 2. Structural withdraw escape — bypasses the policy entirely. Calls the canonical
-        // WithdrawImplementation directly; only `submitterData` is forwarded.
-        if (implementation == WITHDRAW_IMPL && msg.sender == cloneArgs.withdrawUser) {
-            _delegateWithdraw(submitterData);
-            return;
+        // Admin escape — admin can execute any implementation, bypassing the policy.
+        // Works even if `activeRoot == bytes32(0)` or the policy contract is bricked.
+        if (msg.sender != cloneArgs.admin) {
+            // Verify merkle proof against the policy's active root. The leaf preimage binds the
+            // clone's identity (outputToken, destinationChainId) so a leaf can only be proven against
+            // the clone it was authored for — no separate identity check needed.
+            bytes32 leaf = keccak256(
+                bytes.concat(
+                    keccak256(
+                        abi.encode(
+                            implementation,
+                            cloneArgs.outputToken,
+                            cloneArgs.destinationChainId,
+                            keccak256(params)
+                        )
+                    )
+                )
+            );
+            if (!MerkleProof.verify(proof, IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(), leaf))
+                revert InvalidProof();
         }
 
-        // 3. Verify merkle proof against the policy's active root. The leaf preimage binds the
-        // clone's identity (outputToken, destinationChainId) so a leaf can only be proven against
-        // the clone it was authored for — no separate identity check needed.
-        bytes32 leaf = keccak256(
-            bytes.concat(
-                keccak256(
-                    abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params))
-                )
-            )
-        );
-        bytes32 root = IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot();
-        if (!MerkleProof.verify(proof, root, leaf)) revert InvalidProof();
-
-        // 4. Delegatecall the implementation with the dispatcher-verified clone-identity fields.
+        // Delegatecall the implementation with the dispatcher-verified clone-identity fields.
         // Only `recipient`, `outputToken`, and `destinationChainId` are forwarded; impls do not
-        // see `withdrawUser` or `routePolicyAddress`, which are dispatcher-internal concerns.
+        // see `admin` or `routePolicyAddress`, which are dispatcher-internal concerns.
         _delegate(implementation, cloneArgs, params, submitterData);
     }
 
@@ -88,17 +84,6 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
                 ICounterfactualImplementation.execute,
                 (cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, params, submitterData)
             )
-        );
-        if (!success) {
-            assembly {
-                revert(add(result, 32), mload(result))
-            }
-        }
-    }
-
-    function _delegateWithdraw(bytes calldata submitterData) private {
-        (bool success, bytes memory result) = WITHDRAW_IMPL.delegatecall(
-            abi.encodeCall(WithdrawImplementation.execute, (submitterData))
         );
         if (!success) {
             assembly {
