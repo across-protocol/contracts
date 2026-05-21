@@ -179,7 +179,7 @@ contract CounterfactualDepositCCTPTest is Test {
                     executionFee: executionFee,
                     signatureDeadline: signatureDeadline,
                     peripherySignature: "periphery-sig",
-                    signature: sig
+                    counterfactualSignature: sig
                 })
             );
     }

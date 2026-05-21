@@ -29,7 +29,7 @@ struct SpokePoolDepositParams {
 
 /**
  * @notice Data supplied by the submitter at execution time. `executionFee` is dynamic (set by the
- *         executor, bounded by `maxExecutionFee` in the leaf) and authorized by `signature`.
+ *         executor, bounded by `maxExecutionFee` in the leaf) and authorized by `counterfactualSignature`.
  */
 struct SpokePoolSubmitterData {
     uint256 inputAmount;
@@ -41,7 +41,7 @@ struct SpokePoolSubmitterData {
     uint32 fillDeadline;
     uint32 signatureDeadline;
     uint256 executionFee;
-    bytes signature;
+    bytes counterfactualSignature;
 }
 
 /**
@@ -203,6 +203,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 sd.executionFee
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
+            revert InvalidSignature();
     }
 }

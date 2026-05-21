@@ -296,7 +296,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
                     fillDeadline: c.fillDeadline,
                     signatureDeadline: c.signatureDeadline,
                     executionFee: c.executionFee,
-                    signature: sig
+                    counterfactualSignature: sig
                 })
             );
     }

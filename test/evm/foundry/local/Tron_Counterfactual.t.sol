@@ -194,7 +194,7 @@ contract Tron_CounterfactualTest is Test {
                     fillDeadline: fillDeadline,
                     signatureDeadline: signatureDeadline,
                     executionFee: executionFee,
-                    signature: sig
+                    counterfactualSignature: sig
                 })
             );
     }
