@@ -16,23 +16,31 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
-/// @notice Records the (cloneArgs, params, submitterData) it was called with for assertions.
+/// @notice Records the args it was called with for assertions.
 contract RecordingImplementation is ICounterfactualImplementation {
-    event Recorded(CloneArgs cloneArgs, bytes params, bytes submitterData);
+    event Recorded(
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 destinationChainId,
+        bytes routeParams,
+        bytes submitterData
+    );
 
     function execute(
-        CloneArgs calldata cloneArgs,
-        bytes calldata params,
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 destinationChainId,
+        bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        emit Recorded(cloneArgs, params, submitterData);
+        emit Recorded(recipient, outputToken, destinationChainId, routeParams, submitterData);
     }
 }
 
 contract RevertingImplementation is ICounterfactualImplementation {
     error CustomRevert(string reason);
 
-    function execute(CloneArgs calldata, bytes calldata, bytes calldata) external payable {
+    function execute(bytes32, bytes32, uint256, bytes calldata, bytes calldata) external payable {
         revert CustomRevert("test revert");
     }
 }
@@ -241,7 +249,13 @@ contract CounterfactualDepositTest is Test {
         address clone = factory.deploy(address(dispatcher), args, SALT);
 
         vm.expectEmit(false, false, false, true);
-        emit RecordingImplementation.Recorded(args, params, "submitter");
+        emit RecordingImplementation.Recorded(
+            args.recipient,
+            args.outputToken,
+            args.destinationChainId,
+            params,
+            "submitter"
+        );
 
         ICounterfactualDeposit(clone).execute(args, address(recImpl), params, "submitter", proof);
     }
@@ -306,7 +320,13 @@ contract CounterfactualDepositTest is Test {
         address clone = factory.deploy(address(dispatcher), args, SALT);
 
         vm.expectEmit(false, false, false, true);
-        emit RecordingImplementation.Recorded(args, params, "data");
+        emit RecordingImplementation.Recorded(
+            args.recipient,
+            args.outputToken,
+            args.destinationChainId,
+            params,
+            "data"
+        );
 
         ICounterfactualDeposit(clone).execute(args, address(recImpl), params, "data", proof);
     }

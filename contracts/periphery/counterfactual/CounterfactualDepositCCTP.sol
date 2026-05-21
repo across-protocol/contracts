@@ -7,7 +7,6 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
-import { CloneArgs } from "./CounterfactualCloneArgs.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
 
 /**
@@ -108,17 +107,20 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev ERC-20 only (no native tokens). `finalRecipient` and `finalToken` for the CCTP quote
-     *      come from `cloneArgs.recipient` / `cloneArgs.outputToken`.
+     *      come from the dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is
+     *      unused by the CCTP path — CCTP uses its own `destinationDomain` field in `routeParams`.
      */
     function execute(
-        CloneArgs calldata cloneArgs,
-        bytes calldata params,
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 /* destinationChainId */,
+        bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        CCTPDepositParams memory dp = abi.decode(params, (CCTPDepositParams));
+        CCTPDepositParams memory dp = abi.decode(routeParams, (CCTPDepositParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
 
-        _verifySignature(keccak256(params), sd);
+        _verifySignature(keccak256(routeParams), sd);
 
         if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
@@ -130,7 +132,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
 
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
-        _depositForBurn(cloneArgs, dp, sd, depositAmount);
+        _depositForBurn(recipient, outputToken, dp, sd, depositAmount);
 
         emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline, sd.executionFee);
     }
@@ -152,7 +154,8 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     }
 
     function _depositForBurn(
-        CloneArgs calldata cloneArgs,
+        bytes32 recipient,
+        bytes32 outputToken,
         CCTPDepositParams memory dp,
         CCTPSubmitterData memory sd,
         uint256 depositAmount
@@ -171,8 +174,8 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
                 deadline: sd.cctpDeadline,
                 maxBpsToSponsor: dp.maxBpsToSponsor,
                 maxUserSlippageBps: dp.maxUserSlippageBps,
-                finalRecipient: cloneArgs.recipient,
-                finalToken: cloneArgs.outputToken,
+                finalRecipient: recipient,
+                finalToken: outputToken,
                 destinationDex: dp.destinationDex,
                 accountCreationMode: dp.accountCreationMode,
                 executionMode: dp.executionMode,

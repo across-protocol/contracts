@@ -6,6 +6,7 @@ import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerklePr
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
 import { IRoutePolicy } from "../../interfaces/IRoutePolicy.sol";
+import { WithdrawImplementation } from "./WithdrawImplementation.sol";
 import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.sol";
 
 /**
@@ -50,9 +51,10 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
         if (cloneArgs.hash() != storedHash) revert InvalidCloneArgs();
 
-        // 2. Structural withdraw escape — bypasses the policy entirely.
+        // 2. Structural withdraw escape — bypasses the policy entirely. Calls the canonical
+        // WithdrawImplementation directly; only `submitterData` is forwarded.
         if (implementation == WITHDRAW_IMPL && msg.sender == cloneArgs.withdrawUser) {
-            _delegate(implementation, cloneArgs, params, submitterData);
+            _delegateWithdraw(submitterData);
             return;
         }
 
@@ -69,7 +71,9 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         bytes32 root = IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot();
         if (!MerkleProof.verify(proof, root, leaf)) revert InvalidProof();
 
-        // 4. Delegatecall the implementation with the verified cloneArgs.
+        // 4. Delegatecall the implementation with the dispatcher-verified clone-identity fields.
+        // Only `recipient`, `outputToken`, and `destinationChainId` are forwarded; impls do not
+        // see `withdrawUser` or `routePolicyAddress`, which are dispatcher-internal concerns.
         _delegate(implementation, cloneArgs, params, submitterData);
     }
 
@@ -80,7 +84,21 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         bytes calldata submitterData
     ) private {
         (bool success, bytes memory result) = implementation.delegatecall(
-            abi.encodeCall(ICounterfactualImplementation.execute, (cloneArgs, params, submitterData))
+            abi.encodeCall(
+                ICounterfactualImplementation.execute,
+                (cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, params, submitterData)
+            )
+        );
+        if (!success) {
+            assembly {
+                revert(add(result, 32), mload(result))
+            }
+        }
+    }
+
+    function _delegateWithdraw(bytes calldata submitterData) private {
+        (bool success, bytes memory result) = WITHDRAW_IMPL.delegatecall(
+            abi.encodeCall(WithdrawImplementation.execute, (submitterData))
         );
         if (!success) {
             assembly {

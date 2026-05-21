@@ -7,7 +7,6 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
-import { CloneArgs } from "./CounterfactualCloneArgs.sol";
 import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
@@ -107,19 +106,22 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev `cloneArgs` is dispatcher-verified; `params` is `SpokePoolDepositParams`; `submitterData`
-     *      is `SpokePoolSubmitterData`. Supports native-token deposits via `NATIVE_ASSET` sentinel.
+     * @dev `recipient`/`outputToken`/`destinationChainId` are dispatcher-verified clone identity;
+     *      `routeParams` is `SpokePoolDepositParams`; `submitterData` is `SpokePoolSubmitterData`.
+     *      Supports native-token deposits via `NATIVE_ASSET` sentinel.
      */
     function execute(
-        CloneArgs calldata cloneArgs,
-        bytes calldata params,
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 destinationChainId,
+        bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
+        SpokePoolDepositParams memory dp = abi.decode(routeParams, (SpokePoolDepositParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
-        _verifySignature(keccak256(params), sd);
+        _verifySignature(keccak256(routeParams), sd);
 
         if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
@@ -134,12 +136,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         bytes32 spokePoolInputToken = isNative ? bytes32(uint256(uint160(wrappedNativeToken))) : dp.inputToken;
         V3SpokePoolInterface(spokePool).deposit{ value: isNative ? depositAmount : 0 }(
             bytes32(uint256(uint160(address(this)))),
-            cloneArgs.recipient,
+            recipient,
             spokePoolInputToken,
-            cloneArgs.outputToken,
+            outputToken,
             depositAmount,
             sd.outputAmount,
-            cloneArgs.destinationChainId,
+            destinationChainId,
             sd.exclusiveRelayer,
             sd.quoteTimestamp,
             sd.fillDeadline,

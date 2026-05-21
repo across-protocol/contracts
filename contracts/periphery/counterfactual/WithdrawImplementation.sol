@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
-import { CloneArgs } from "./CounterfactualCloneArgs.sol";
 import { NATIVE_ASSET } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
@@ -15,20 +13,14 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
  *      pins the canonical address.
  * @custom:security-contact bugs@across.to
  */
-contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
+contract WithdrawImplementation is SafeTransferERC20 {
     event Withdraw(address indexed caller, address indexed token, address indexed to, uint256 amount);
 
     error NativeTransferFailed();
 
-    /**
-     * @inheritdoc ICounterfactualImplementation
-     * @dev `cloneArgs` and `params` are unused; `submitterData` decodes as `(address token, address to, uint256 amount)`.
-     */
-    function execute(
-        CloneArgs calldata /* cloneArgs */,
-        bytes calldata /* params */,
-        bytes calldata submitterData
-    ) external payable {
+    /// @notice Sweep `submitterData`-specified tokens from the clone.
+    /// @param submitterData ABI-encoded `(address token, address to, uint256 amount)`.
+    function execute(bytes calldata submitterData) external payable {
         (address token, address to, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
 
         if (token == NATIVE_ASSET) {

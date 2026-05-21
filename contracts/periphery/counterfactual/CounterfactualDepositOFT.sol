@@ -7,7 +7,6 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
-import { CloneArgs } from "./CounterfactualCloneArgs.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery.
@@ -106,18 +105,22 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev ERC-20 only. `finalRecipient` and `finalToken` for the OFT quote come from
-     *      `cloneArgs.recipient` / `cloneArgs.outputToken`. Forwards `msg.value` for LayerZero fees.
+     * @dev ERC-20 only. `finalRecipient` and `finalToken` for the OFT quote come from the
+     *      dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is unused by the
+     *      OFT path — OFT uses its own `dstEid` field in `routeParams`. Forwards `msg.value` for
+     *      LayerZero fees.
      */
     function execute(
-        CloneArgs calldata cloneArgs,
-        bytes calldata params,
+        bytes32 recipient,
+        bytes32 outputToken,
+        uint256 /* destinationChainId */,
+        bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
+        OFTDepositParams memory dp = abi.decode(routeParams, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
-        _verifySignature(keccak256(params), sd);
+        _verifySignature(keccak256(routeParams), sd);
 
         if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
@@ -127,7 +130,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
 
         IERC20(dp.token).forceApprove(oftSrcPeriphery, depositAmount);
 
-        _deposit(cloneArgs, dp, sd, depositAmount);
+        _deposit(recipient, outputToken, dp, sd, depositAmount);
 
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline, sd.executionFee);
     }
@@ -149,7 +152,8 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     }
 
     function _deposit(
-        CloneArgs calldata cloneArgs,
+        bytes32 recipient,
+        bytes32 outputToken,
         OFTDepositParams memory dp,
         OFTSubmitterData memory sd,
         uint256 depositAmount
@@ -165,8 +169,8 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
                     deadline: sd.oftDeadline,
                     maxBpsToSponsor: dp.maxBpsToSponsor,
                     maxUserSlippageBps: dp.maxUserSlippageBps,
-                    finalRecipient: cloneArgs.recipient,
-                    finalToken: cloneArgs.outputToken,
+                    finalRecipient: recipient,
+                    finalToken: outputToken,
                     destinationDex: dp.destinationDex,
                     lzReceiveGasLimit: dp.lzReceiveGasLimit,
                     lzComposeGasLimit: dp.lzComposeGasLimit,
