@@ -97,7 +97,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         address _oftSrcPeriphery,
         uint32 _srcEid,
         address _signer
-    ) EIP712("CounterfactualDepositOFT", "v1.1.0") {
+    ) EIP712("CounterfactualDepositOFT", "v2.0.0") {
         oftSrcPeriphery = _oftSrcPeriphery;
         srcEid = _srcEid;
         signer = _signer;

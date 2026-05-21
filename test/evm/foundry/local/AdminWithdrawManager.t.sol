@@ -32,7 +32,7 @@ contract AdminWithdrawManagerTest is Test {
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant MANAGER_NAME_HASH = keccak256("AdminWithdrawManager");
-    bytes32 constant MANAGER_VERSION_HASH = keccak256("v1.1.0");
+    bytes32 constant MANAGER_VERSION_HASH = keccak256("v2.0.0");
 
     function setUp() public {
         owner = makeAddr("owner");

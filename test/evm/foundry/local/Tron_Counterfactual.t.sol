@@ -70,7 +70,7 @@ contract Tron_CounterfactualTest is Test {
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     // Inherits the parent's EIP-712 domain.
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
-    bytes32 constant VERSION_HASH = keccak256("v1.1.0");
+    bytes32 constant VERSION_HASH = keccak256("v2.0.0");
 
     uint256 constant DESTINATION_CHAIN_ID = 1;
 

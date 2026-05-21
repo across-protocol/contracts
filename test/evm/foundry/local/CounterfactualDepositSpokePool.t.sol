@@ -101,7 +101,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositSpokePool");
-    bytes32 constant VERSION_HASH = keccak256("v1.1.0");
+    bytes32 constant VERSION_HASH = keccak256("v2.0.0");
 
     address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     uint256 constant DESTINATION_CHAIN_ID = 42161;
