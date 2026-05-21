@@ -71,9 +71,7 @@ contract CounterfactualDepositOFTTest is Test {
     uint256 public constant DESTINATION_CHAIN_ID = 8453;
 
     bytes32 constant EXECUTE_OFT_TYPEHASH =
-        keccak256(
-            "ExecuteOFT(address clone,bytes32 paramsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
-        );
+        keccak256("ExecuteOFT(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositOFT");
@@ -162,14 +160,11 @@ contract CounterfactualDepositOFTTest is Test {
     function _sign(
         address clone,
         bytes32 paramsHash,
-        uint256 amount,
         uint256 executionFee,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_OFT_TYPEHASH, clone, paramsHash, amount, executionFee, signatureDeadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_OFT_TYPEHASH, paramsHash, executionFee, signatureDeadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
         return abi.encodePacked(r, s, v);
@@ -184,7 +179,7 @@ contract CounterfactualDepositOFTTest is Test {
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes memory sig = _sign(clone, keccak256(paramsEncoded), amount, executionFee, signatureDeadline, privKey);
+        bytes memory sig = _sign(clone, keccak256(paramsEncoded), executionFee, signatureDeadline, privKey);
         return
             abi.encode(
                 OFTSubmitterData({

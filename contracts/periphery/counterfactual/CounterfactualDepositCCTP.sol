@@ -79,11 +79,12 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     error SignatureExpired();
     error MaxExecutionFee();
 
-    /// @notice EIP-712 typehash binding the local fee signature to (clone, leaf, runtime fee).
+    /// @notice EIP-712 typehash binding the local fee signature to (leaf, runtime fee, deadline).
+    /// @dev The clone is bound implicitly via the EIP-712 domain separator's `verifyingContract`
+    ///      field (= `address(this)` = the clone during delegatecall). `amount` is bound implicitly
+    ///      via the periphery signature, which covers `depositAmount = sd.amount - sd.executionFee`.
     bytes32 public constant EXECUTE_CCTP_TYPEHASH =
-        keccak256(
-            "ExecuteCCTP(address clone,bytes32 paramsHash,uint256 amount,uint256 executionFee,uint32 signatureDeadline)"
-        );
+        keccak256("ExecuteCCTP(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
 
     /// @notice SponsoredCCTPSrcPeriphery contract.
     address public immutable srcPeriphery;
@@ -140,14 +141,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     function _verifySignature(bytes32 paramsHash, CCTPSubmitterData memory sd) private view {
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
-            abi.encode(
-                EXECUTE_CCTP_TYPEHASH,
-                address(this),
-                paramsHash,
-                sd.amount,
-                sd.executionFee,
-                sd.signatureDeadline
-            )
+            abi.encode(EXECUTE_CCTP_TYPEHASH, paramsHash, sd.executionFee, sd.signatureDeadline)
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
             revert InvalidSignature();
