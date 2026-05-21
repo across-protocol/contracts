@@ -19,13 +19,11 @@ interface ISponsoredCCTPSrcPeriphery {
 }
 
 /**
- * @notice Route parameters committed to the merkle leaf. Layout invariant: first two fields are
- *         `(destinationChainId, outputToken)` for the dispatcher's standardized identity check.
- *         `outputToken` here is the destination-chain `finalToken` the user receives.
+ * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
+ *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
+ *         The destination chain's CCTP-specific identifier lives in `destinationDomain`.
  */
 struct CCTPDepositParams {
-    uint256 destinationChainId;
-    bytes32 outputToken;
     uint32 destinationDomain;
     bytes32 mintRecipient;
     bytes32 burnToken;

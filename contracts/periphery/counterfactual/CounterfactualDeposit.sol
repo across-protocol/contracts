@@ -17,9 +17,11 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  *        1. Recomputes the hash from caller-supplied `cloneArgs` and reverts on mismatch.
  *        2. If `implementation == WITHDRAW_IMPL && msg.sender == cloneArgs.withdrawUser`, skips the
  *           merkle check (structural withdraw escape — works even if the policy is bricked).
- *        3. Otherwise verifies the leaf's first two fields `(destinationChainId, outputToken)` against
- *           `cloneArgs`, then verifies the merkle proof against
- *           `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
+ *        3. Otherwise computes the leaf as
+ *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params)))))`
+ *           and verifies the merkle proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
+ *           Binding the clone identity into the leaf preimage ensures a leaf can only be proven
+ *           against the clone it was authored for.
  *        4. Delegatecalls the implementation forwarding the verified `cloneArgs`.
  * @custom:security-contact bugs@across.to
  */
@@ -54,29 +56,20 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
             return;
         }
 
-        // 3. Standardized destination-identity check on the first two leaf-params fields.
-        // `params` is `abi.encode(StructWithDynamicField)`; the standard ABI encoding for a single
-        // dynamic-tuple argument prefixes the struct's data with a 32-byte offset pointer (0x20).
-        // The two identity fields live at offsets 0x20 and 0x40 within `params`. All current impl
-        // structs include at least one dynamic field (`message` / `actionData`), so the prefix is
-        // always present — new impls must preserve this property.
-        if (params.length < 0x60) revert ParamsTooShort();
-        uint256 leafDestinationChainId;
-        bytes32 leafOutputToken;
-        assembly {
-            leafDestinationChainId := calldataload(add(params.offset, 0x20))
-            leafOutputToken := calldataload(add(params.offset, 0x40))
-        }
-        if (leafDestinationChainId != cloneArgs.destinationChainId || leafOutputToken != cloneArgs.outputToken)
-            revert InvalidIdentity();
-
-        // 4. Verify merkle proof against the policy's active root.
-        // Double-hashed leaf, committing to (implementation, paramsHash).
-        bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))));
+        // 3. Verify merkle proof against the policy's active root. The leaf preimage binds the
+        // clone's identity (outputToken, destinationChainId) so a leaf can only be proven against
+        // the clone it was authored for — no separate identity check needed.
+        bytes32 leaf = keccak256(
+            bytes.concat(
+                keccak256(
+                    abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params))
+                )
+            )
+        );
         bytes32 root = IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot();
         if (!MerkleProof.verify(proof, root, leaf)) revert InvalidProof();
 
-        // 5. Delegatecall the implementation with the verified cloneArgs.
+        // 4. Delegatecall the implementation with the verified cloneArgs.
         _delegate(implementation, cloneArgs, params, submitterData);
     }
 

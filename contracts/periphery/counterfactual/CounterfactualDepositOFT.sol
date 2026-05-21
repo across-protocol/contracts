@@ -18,13 +18,11 @@ interface ISponsoredOFTSrcPeriphery {
 }
 
 /**
- * @notice Route parameters committed to the merkle leaf. Layout invariant: first two fields are
- *         `(destinationChainId, outputToken)` for the dispatcher's standardized identity check.
- *         `outputToken` here is the destination-chain `finalToken` the user receives.
+ * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
+ *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
+ *         The destination chain's LayerZero endpoint ID lives in `dstEid`.
  */
 struct OFTDepositParams {
-    uint256 destinationChainId;
-    bytes32 outputToken;
     uint32 dstEid;
     bytes32 destinationHandler;
     address token;

@@ -81,19 +81,13 @@ contract CounterfactualDepositTest is Test {
             });
     }
 
-    /// @dev Leaf params for a recording impl. Mirrors the wire format of `abi.encode(StructWithDynamicField)`:
-    ///      a 0x20 offset pointer, then `(destinationChainId, outputToken, ...tail)`. The dispatcher's
-    ///      identity check reads the two fields past the offset pointer.
-    function _routeParams(
-        uint256 destChainId,
+    function _computeLeaf(
+        address impl,
         bytes32 outputToken,
-        bytes memory tail
-    ) internal pure returns (bytes memory) {
-        return abi.encodePacked(uint256(0x20), destChainId, outputToken, tail);
-    }
-
-    function _computeLeaf(address impl, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(params)))));
+        uint256 destChainId,
+        bytes memory params
+    ) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(params)))));
     }
 
     function _setPolicyRoot(bytes32 root) internal {
@@ -101,12 +95,14 @@ contract CounterfactualDepositTest is Test {
         policy.updateRoot(root);
     }
 
+    /// @dev Build a tree with a single leaf of interest. Murky needs ≥2 leaves so we add a padding leaf.
     function _buildTreeWithSingleLeaf(
+        CloneArgs memory args,
         address impl,
         bytes memory params
     ) internal returns (bytes32 root, bytes32[] memory proof) {
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(impl, params);
+        leaves[0] = _computeLeaf(impl, args.outputToken, args.destinationChainId, params);
         leaves[1] = keccak256("padding");
         root = merkle.getRoot(leaves);
         proof = merkle.getProof(leaves, 0);
@@ -169,12 +165,12 @@ contract CounterfactualDepositTest is Test {
     }
 
     function testWithdrawEscapeWrongCallerFallsThroughToProofPath() public {
+        // A non-withdrawUser calling with the withdraw impl falls through to the proof path,
+        // which fails because no proof matches against a bytes32(0) root.
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
-        // A non-withdrawUser calling with the withdraw impl falls through to the proof path,
-        // where the leaf check requires `params.length >= 64`.
-        vm.expectRevert(ICounterfactualDeposit.ParamsTooShort.selector);
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         vm.prank(relayer);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
@@ -189,52 +185,57 @@ contract CounterfactualDepositTest is Test {
         // Calling with a different impl AS withdrawUser still falls through to the proof path.
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
 
-        vm.expectRevert(ICounterfactualDeposit.ParamsTooShort.selector);
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         vm.prank(withdrawUser);
         ICounterfactualDeposit(clone).execute(_cloneArgs(), address(recImpl), "", "", new bytes32[](0));
     }
 
-    // --- Identity check ---
+    // --- Leaf is bound to clone identity ---
 
-    function testMismatchedDestinationChainIdReverts() public {
-        bytes32 outputToken = _cloneArgs().outputToken;
-        bytes memory params = _routeParams(999, outputToken, abi.encode(uint256(42)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), params);
+    function testLeafBoundToCloneIdentity() public {
+        // Build a tree with a leaf authored for clone A's identity (outputToken, destChainId).
+        CloneArgs memory argsA = _cloneArgs();
+        bytes memory params = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(argsA, address(recImpl), params);
         _setPolicyRoot(root);
 
-        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        // Clone A can prove the leaf.
+        address cloneA = factory.deploy(address(dispatcher), argsA, SALT);
+        ICounterfactualDeposit(cloneA).execute(argsA, address(recImpl), params, "", proof);
 
-        vm.expectRevert(ICounterfactualDeposit.InvalidIdentity.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(recImpl), params, "", proof);
+        // Clone B (same policy, different outputToken) cannot — the leaf preimage commits to argsA's outputToken.
+        CloneArgs memory argsB = _cloneArgs();
+        argsB.outputToken = bytes32(uint256(uint160(makeAddr("other-token"))));
+        address cloneB = factory.deploy(address(dispatcher), argsB, keccak256("salt-b"));
+
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        ICounterfactualDeposit(cloneB).execute(argsB, address(recImpl), params, "", proof);
     }
 
-    function testMismatchedOutputTokenReverts() public {
-        bytes32 wrongToken = bytes32(uint256(uint160(makeAddr("wrong-token"))));
-        bytes memory params = _routeParams(_cloneArgs().destinationChainId, wrongToken, abi.encode(uint256(42)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), params);
+    function testLeafBoundToDestinationChainId() public {
+        // Same as above but vary destinationChainId.
+        CloneArgs memory argsA = _cloneArgs();
+        bytes memory params = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(argsA, address(recImpl), params);
         _setPolicyRoot(root);
 
-        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
+        address cloneA = factory.deploy(address(dispatcher), argsA, SALT);
+        ICounterfactualDeposit(cloneA).execute(argsA, address(recImpl), params, "", proof);
 
-        vm.expectRevert(ICounterfactualDeposit.InvalidIdentity.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(recImpl), params, "", proof);
-    }
+        CloneArgs memory argsB = _cloneArgs();
+        argsB.destinationChainId = 10; // different chain
+        address cloneB = factory.deploy(address(dispatcher), argsB, keccak256("salt-c"));
 
-    function testParamsTooShortReverts() public {
-        address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
-
-        // Need at least 96 bytes (wrapper offset + two identity fields).
-        bytes memory shortParams = abi.encode(uint256(0x20), uint256(1));
-        vm.expectRevert(ICounterfactualDeposit.ParamsTooShort.selector);
-        ICounterfactualDeposit(clone).execute(_cloneArgs(), address(recImpl), shortParams, "", new bytes32[](0));
+        vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
+        ICounterfactualDeposit(cloneB).execute(argsB, address(recImpl), params, "", proof);
     }
 
     // --- Proof verification against RoutePolicy.activeRoot() ---
 
     function testValidProofExecutesImpl() public {
         CloneArgs memory args = _cloneArgs();
-        bytes memory params = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(42)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), params);
+        bytes memory params = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(args, address(recImpl), params);
         _setPolicyRoot(root);
 
         address clone = factory.deploy(address(dispatcher), args, SALT);
@@ -247,14 +248,14 @@ contract CounterfactualDepositTest is Test {
 
     function testInvalidProofReverts() public {
         CloneArgs memory args = _cloneArgs();
-        bytes memory params = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(42)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), params);
+        bytes memory params = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(args, address(recImpl), params);
         _setPolicyRoot(root);
 
         address clone = factory.deploy(address(dispatcher), args, SALT);
 
-        // Same first two fields (identity passes) but different tail → different leaf → proof fails.
-        bytes memory wrongParams = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(999)));
+        // Different params → different leaf → proof fails.
+        bytes memory wrongParams = abi.encode(uint256(999));
 
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         ICounterfactualDeposit(clone).execute(args, address(recImpl), wrongParams, "", proof);
@@ -262,13 +263,12 @@ contract CounterfactualDepositTest is Test {
 
     function testProofAgainstStaleRootReverts() public {
         CloneArgs memory args = _cloneArgs();
-        bytes memory params = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(42)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), params);
+        bytes memory params = abi.encode(uint256(42));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(args, address(recImpl), params);
         _setPolicyRoot(root);
 
         address clone = factory.deploy(address(dispatcher), args, SALT);
 
-        // Update the policy root → old proof is stale.
         _setPolicyRoot(keccak256("new-root"));
 
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
@@ -277,23 +277,20 @@ contract CounterfactualDepositTest is Test {
 
     function testNewRootAuthorizesPreviouslyInvalidLeaf() public {
         CloneArgs memory args = _cloneArgs();
-        bytes memory paramsA = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(1)));
-        bytes memory paramsB = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(2)));
+        bytes memory paramsA = abi.encode(uint256(1));
+        bytes memory paramsB = abi.encode(uint256(2));
 
-        (bytes32 rootA, bytes32[] memory proofA) = _buildTreeWithSingleLeaf(address(recImpl), paramsA);
-        (bytes32 rootB, bytes32[] memory proofB) = _buildTreeWithSingleLeaf(address(recImpl), paramsB);
+        (bytes32 rootA, bytes32[] memory proofA) = _buildTreeWithSingleLeaf(args, address(recImpl), paramsA);
+        (bytes32 rootB, bytes32[] memory proofB) = _buildTreeWithSingleLeaf(args, address(recImpl), paramsB);
 
         _setPolicyRoot(rootA);
         address clone = factory.deploy(address(dispatcher), args, SALT);
 
-        // Leaf A works under root A.
         ICounterfactualDeposit(clone).execute(args, address(recImpl), paramsA, "", proofA);
 
-        // Leaf B doesn't work under root A.
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         ICounterfactualDeposit(clone).execute(args, address(recImpl), paramsB, "", proofB);
 
-        // After updating to root B, leaf B works.
         _setPolicyRoot(rootB);
         ICounterfactualDeposit(clone).execute(args, address(recImpl), paramsB, "", proofB);
     }
@@ -302,13 +299,12 @@ contract CounterfactualDepositTest is Test {
 
     function testImplReceivesVerifiedCloneArgs() public {
         CloneArgs memory args = _cloneArgs();
-        bytes memory params = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(7)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(recImpl), params);
+        bytes memory params = abi.encode(uint256(7));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(args, address(recImpl), params);
         _setPolicyRoot(root);
 
         address clone = factory.deploy(address(dispatcher), args, SALT);
 
-        // The impl should observe the exact cloneArgs the dispatcher verified.
         vm.expectEmit(false, false, false, true);
         emit RecordingImplementation.Recorded(args, params, "data");
 
@@ -317,8 +313,8 @@ contract CounterfactualDepositTest is Test {
 
     function testRevertingImplBubblesError() public {
         CloneArgs memory args = _cloneArgs();
-        bytes memory params = _routeParams(args.destinationChainId, args.outputToken, abi.encode(uint256(7)));
-        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(revImpl), params);
+        bytes memory params = abi.encode(uint256(7));
+        (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(args, address(revImpl), params);
         _setPolicyRoot(root);
 
         address clone = factory.deploy(address(dispatcher), args, SALT);

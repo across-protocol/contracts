@@ -12,13 +12,10 @@ import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
- * @notice Route parameters committed to the merkle leaf. Layout invariant: the first two fields
- *         are always `(destinationChainId, outputToken)` so the dispatcher's standardized
- *         identity check can decode them without knowing the bridge-specific tail.
+ * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
+ *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
  */
 struct SpokePoolDepositParams {
-    uint256 destinationChainId;
-    bytes32 outputToken;
     bytes32 inputToken;
     bytes message;
     uint256 stableExchangeRate;

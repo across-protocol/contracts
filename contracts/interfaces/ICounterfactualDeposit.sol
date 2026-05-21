@@ -11,21 +11,17 @@ import { CloneArgs } from "../periphery/counterfactual/CounterfactualCloneArgs.s
 interface ICounterfactualDeposit {
     /// @dev Caller-supplied `cloneArgs` did not hash to the clone's stored `argsHash`.
     error InvalidCloneArgs();
-    /// @dev Leaf's `(destinationChainId, outputToken)` did not match the clone's identity.
-    error InvalidIdentity();
     /// @dev Merkle proof verification failed.
     error InvalidProof();
-    /// @dev `params` shorter than the required `(destinationChainId, outputToken)` prefix.
-    error ParamsTooShort();
 
     /**
      * @notice Execute an implementation against the clone's bound route policy.
      * @param cloneArgs The clone's identity fields. Must hash to the clone's stored `argsHash`.
      * @param implementation The implementation contract to delegatecall.
-     * @param params ABI-encoded route parameters. First two fields must be
-     *               `(uint256 destinationChainId, bytes32 outputToken)`.
+     * @param params ABI-encoded route parameters (impl-specific). Hashed into the leaf.
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
-     * @param proof Merkle proof for the leaf `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(params)))))`
+     * @param proof Merkle proof for the leaf
+     *              `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(params)))))`
      *              against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
      */
     function execute(

@@ -102,8 +102,6 @@ contract CounterfactualDepositOFTTest is Test {
         token.mint(user, 1000e6);
 
         defaultDepositParams = OFTDepositParams({
-            destinationChainId: DESTINATION_CHAIN_ID,
-            outputToken: bytes32(uint256(uint160(address(token)))),
             dstEid: DST_EID,
             destinationHandler: bytes32(uint256(uint160(makeAddr("dstHandler")))),
             token: address(token),
@@ -134,13 +132,19 @@ contract CounterfactualDepositOFTTest is Test {
             });
     }
 
-    function _computeLeaf(address impl, bytes memory params) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(params)))));
+    function _computeLeaf(
+        address impl,
+        bytes32 outputToken,
+        uint256 destChainId,
+        bytes memory params
+    ) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(params)))));
     }
 
     function _setRoot(bytes memory params) internal returns (bytes32[] memory proof) {
+        bytes32 outputToken = bytes32(uint256(uint160(address(token))));
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(oftImpl), params);
+        leaves[0] = _computeLeaf(address(oftImpl), outputToken, DESTINATION_CHAIN_ID, params);
         leaves[1] = keccak256("padding");
         bytes32 a = leaves[0];
         bytes32 b = leaves[1];
