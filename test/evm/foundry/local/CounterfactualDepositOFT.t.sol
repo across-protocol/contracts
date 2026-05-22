@@ -8,7 +8,7 @@ import { CounterfactualDepositFactory } from "../../../../contracts/periphery/co
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import {
     CounterfactualDepositOFT,
-    OFTDepositParams,
+    OFTRouteParams,
     OFTSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
@@ -77,7 +77,7 @@ contract CounterfactualDepositOFTTest is Test {
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositOFT");
     bytes32 constant VERSION_HASH = keccak256("v2.0.0");
 
-    OFTDepositParams internal defaultDepositParams;
+    OFTRouteParams internal defaultRouteParams;
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -99,7 +99,7 @@ contract CounterfactualDepositOFTTest is Test {
 
         token.mint(user, 1000e6);
 
-        defaultDepositParams = OFTDepositParams({
+        defaultRouteParams = OFTRouteParams({
             dstEid: DST_EID,
             destinationHandler: bytes32(uint256(uint160(makeAddr("dstHandler")))),
             token: address(token),
@@ -198,7 +198,7 @@ contract CounterfactualDepositOFTTest is Test {
     // --- Tests ---
 
     function testDeployAndExecute() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -229,7 +229,7 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testMsgValueForwarded() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -264,7 +264,7 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testInvalidSignatureReverts() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -286,7 +286,7 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testExpiredSignatureReverts() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -311,7 +311,7 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testMaxExecutionFeeEnforced() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -333,7 +333,7 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testCrossCloneReplayReverts() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone1 = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt-1"));
 
@@ -370,7 +370,7 @@ contract CounterfactualDepositOFTTest is Test {
     }
 
     function testAdminEscape() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         token.mint(clone, 100e6);

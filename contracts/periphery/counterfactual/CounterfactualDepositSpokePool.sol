@@ -14,7 +14,7 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
  * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
  *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
  */
-struct SpokePoolDepositParams {
+struct SpokePoolRouteParams {
     bytes32 inputToken;
     bytes message;
     uint256 stableExchangeRate;
@@ -107,7 +107,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
      * @inheritdoc ICounterfactualImplementation
      * @dev `recipient`/`outputToken`/`destinationChainId` are dispatcher-verified clone identity;
      *      `admin` is unused (this impl is policy-callable and doesn't gate on admin);
-     *      `routeParams` is `SpokePoolDepositParams`; `submitterData` is `SpokePoolSubmitterData`.
+     *      `routeParams` is `SpokePoolRouteParams`; `submitterData` is `SpokePoolSubmitterData`.
      *      Supports native-token deposits via `NATIVE_ASSET` sentinel.
      */
     function execute(
@@ -118,7 +118,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        SpokePoolDepositParams memory dp = abi.decode(routeParams, (SpokePoolDepositParams));
+        SpokePoolRouteParams memory dp = abi.decode(routeParams, (SpokePoolRouteParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
@@ -172,7 +172,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     }
 
     function _checkFee(
-        SpokePoolDepositParams memory dp,
+        SpokePoolRouteParams memory dp,
         uint256 inputAmount,
         uint256 outputAmount,
         uint256 depositAmount,

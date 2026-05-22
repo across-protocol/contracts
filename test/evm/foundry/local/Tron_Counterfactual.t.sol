@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { CounterfactualDepositFactoryTron } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactoryTron.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import {
-    SpokePoolDepositParams,
+    SpokePoolRouteParams,
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
@@ -60,7 +60,7 @@ contract Tron_CounterfactualTest is Test {
     address signerAddr;
     bytes32 recipient;
 
-    SpokePoolDepositParams defaultParams;
+    SpokePoolRouteParams defaultParams;
 
     bytes32 constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
@@ -88,7 +88,7 @@ contract Tron_CounterfactualTest is Test {
 
         usdt.mint(user, 1000e6);
 
-        defaultParams = SpokePoolDepositParams({
+        defaultParams = SpokePoolRouteParams({
             inputToken: bytes32(uint256(uint160(address(usdt)))),
             message: "",
             stableExchangeRate: 1e18,

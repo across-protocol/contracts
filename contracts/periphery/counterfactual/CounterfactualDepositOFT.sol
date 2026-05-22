@@ -21,7 +21,7 @@ interface ISponsoredOFTSrcPeriphery {
  *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
  *         The destination chain's LayerZero endpoint ID lives in `dstEid`.
  */
-struct OFTDepositParams {
+struct OFTRouteParams {
     uint32 dstEid;
     bytes32 destinationHandler;
     address token;
@@ -123,7 +123,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        OFTDepositParams memory dp = abi.decode(routeParams, (OFTDepositParams));
+        OFTRouteParams memory dp = abi.decode(routeParams, (OFTRouteParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
         _verifySignature(sd);
@@ -153,7 +153,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     function _deposit(
         bytes32 recipient,
         bytes32 outputToken,
-        OFTDepositParams memory dp,
+        OFTRouteParams memory dp,
         OFTSubmitterData memory sd,
         uint256 depositAmount
     ) private {

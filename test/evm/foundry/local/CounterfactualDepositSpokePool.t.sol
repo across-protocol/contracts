@@ -8,7 +8,7 @@ import { CounterfactualDepositFactory } from "../../../../contracts/periphery/co
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import {
     CounterfactualDepositSpokePool,
-    SpokePoolDepositParams,
+    SpokePoolRouteParams,
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
@@ -143,9 +143,9 @@ contract CounterfactualDepositSpokePoolTest is Test {
             });
     }
 
-    function _defaultParams() internal view returns (SpokePoolDepositParams memory) {
+    function _defaultParams() internal view returns (SpokePoolRouteParams memory) {
         return
-            SpokePoolDepositParams({
+            SpokePoolRouteParams({
                 inputToken: bytes32(uint256(uint160(address(inputToken)))),
                 message: "",
                 stableExchangeRate: 1e18,
@@ -154,9 +154,9 @@ contract CounterfactualDepositSpokePoolTest is Test {
             });
     }
 
-    function _nativeParams() internal pure returns (SpokePoolDepositParams memory) {
+    function _nativeParams() internal pure returns (SpokePoolRouteParams memory) {
         return
-            SpokePoolDepositParams({
+            SpokePoolRouteParams({
                 inputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
                 message: "",
                 stableExchangeRate: 1e18,

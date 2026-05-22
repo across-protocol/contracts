@@ -22,7 +22,7 @@ interface ISponsoredCCTPSrcPeriphery {
  *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
  *         The destination chain's CCTP-specific identifier lives in `destinationDomain`.
  */
-struct CCTPDepositParams {
+struct CCTPRouteParams {
     uint32 destinationDomain;
     bytes32 mintRecipient;
     bytes32 burnToken;
@@ -124,7 +124,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        CCTPDepositParams memory dp = abi.decode(routeParams, (CCTPDepositParams));
+        CCTPRouteParams memory dp = abi.decode(routeParams, (CCTPRouteParams));
         CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
 
         _verifySignature(sd);
@@ -156,7 +156,7 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     function _depositForBurn(
         bytes32 recipient,
         bytes32 outputToken,
-        CCTPDepositParams memory dp,
+        CCTPRouteParams memory dp,
         CCTPSubmitterData memory sd,
         uint256 depositAmount
     ) private {

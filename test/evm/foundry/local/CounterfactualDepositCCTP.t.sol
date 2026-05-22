@@ -7,7 +7,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import {
     CounterfactualDepositCCTP,
-    CCTPDepositParams,
+    CCTPRouteParams,
     CCTPSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
@@ -66,7 +66,7 @@ contract CounterfactualDepositCCTPTest is Test {
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositCCTP");
     bytes32 constant VERSION_HASH = keccak256("v2.0.0");
 
-    CCTPDepositParams internal defaultDepositParams;
+    CCTPRouteParams internal defaultRouteParams;
 
     function setUp() public {
         admin = makeAddr("admin");
@@ -88,7 +88,7 @@ contract CounterfactualDepositCCTPTest is Test {
 
         burnToken.mint(user, 1000e6);
 
-        defaultDepositParams = CCTPDepositParams({
+        defaultRouteParams = CCTPRouteParams({
             destinationDomain: DESTINATION_DOMAIN,
             mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
             burnToken: bytes32(uint256(uint160(address(burnToken)))),
@@ -186,7 +186,7 @@ contract CounterfactualDepositCCTPTest is Test {
     // --- Tests ---
 
     function testDeployAndExecute() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -223,7 +223,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testInvalidSignatureReverts() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -251,7 +251,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testExpiredSignatureReverts() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -282,7 +282,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testMaxExecutionFeeEnforced() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -310,7 +310,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testZeroExecutionFee() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
@@ -341,7 +341,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testCrossCloneReplayReverts() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone1 = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt-1"));
 
@@ -380,7 +380,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testAdminEscape() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         burnToken.mint(clone, 100e6);
@@ -398,7 +398,7 @@ contract CounterfactualDepositCCTPTest is Test {
     }
 
     function testCctpMaxFeeBpsCalculation() public {
-        bytes memory routeParamsEncoded = abi.encode(defaultDepositParams);
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
