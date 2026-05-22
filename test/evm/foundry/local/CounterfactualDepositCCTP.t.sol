@@ -60,7 +60,7 @@ contract CounterfactualDepositCCTPTest is Test {
     uint256 public constant DESTINATION_CHAIN_ID = 999;
 
     bytes32 constant EXECUTE_CCTP_TYPEHASH =
-        keccak256("ExecuteCCTP(bytes32 routeParamsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteCCTP(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
     bytes32 constant EIP712_DOMAIN_TYPEHASH =
         keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
     bytes32 constant NAME_HASH = keccak256("CounterfactualDepositCCTP");
@@ -147,14 +147,12 @@ contract CounterfactualDepositCCTPTest is Test {
 
     function _sign(
         address clone,
-        bytes32 routeParamsHash,
+        bytes32 nonce,
         uint256 executionFee,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_CCTP_TYPEHASH, routeParamsHash, executionFee, signatureDeadline)
-        );
+        bytes32 structHash = keccak256(abi.encode(EXECUTE_CCTP_TYPEHASH, nonce, executionFee, signatureDeadline));
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", _domainSeparator(clone), structHash));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
         return abi.encodePacked(r, s, v);
@@ -162,14 +160,14 @@ contract CounterfactualDepositCCTPTest is Test {
 
     function _buildSubmitterData(
         address clone,
-        bytes memory routeParamsEncoded,
+        bytes memory /* routeParamsEncoded */,
         uint256 amount,
         uint256 executionFee,
         bytes32 nonce,
         uint32 signatureDeadline,
         uint256 privKey
     ) internal view returns (bytes memory) {
-        bytes memory sig = _sign(clone, keccak256(routeParamsEncoded), executionFee, signatureDeadline, privKey);
+        bytes memory sig = _sign(clone, nonce, executionFee, signatureDeadline, privKey);
         return
             abi.encode(
                 CCTPSubmitterData({

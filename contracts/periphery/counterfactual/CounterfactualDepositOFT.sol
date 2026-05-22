@@ -78,12 +78,16 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     error SignatureExpired();
     error MaxExecutionFee();
 
-    /// @notice EIP-712 typehash binding the local fee signature to (leaf, runtime fee, deadline).
+    /// @notice EIP-712 typehash binding the local fee signature to (nonce, runtime fee, deadline).
     /// @dev The clone is bound implicitly via the EIP-712 domain separator's `verifyingContract`
     ///      field (= `address(this)` = the clone during delegatecall). `amount` is bound implicitly
     ///      via the periphery signature, which covers `depositAmount = sd.amount - sd.executionFee`.
+    ///      The route is bound transitively: the periphery signature commits `(route, nonce)`
+    ///      together, so binding the local sig to `nonce` pins the route via the periphery's quote
+    ///      (and cleanly gives single-use replay protection — once the periphery consumes the
+    ///      nonce, the local sig can never be replayed).
     bytes32 public constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFT(bytes32 routeParamsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
     /// @notice SponsoredOFTSrcPeriphery contract.
     address public immutable oftSrcPeriphery;
@@ -122,7 +126,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         OFTDepositParams memory dp = abi.decode(routeParams, (OFTDepositParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
-        _verifySignature(keccak256(routeParams), sd);
+        _verifySignature(sd);
 
         if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
 
@@ -137,10 +141,10 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline, sd.executionFee);
     }
 
-    function _verifySignature(bytes32 routeParamsHash, OFTSubmitterData memory sd) private view {
+    function _verifySignature(OFTSubmitterData memory sd) private view {
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_OFT_TYPEHASH, routeParamsHash, sd.executionFee, sd.signatureDeadline)
+            abi.encode(EXECUTE_OFT_TYPEHASH, sd.nonce, sd.executionFee, sd.signatureDeadline)
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
             revert InvalidSignature();
