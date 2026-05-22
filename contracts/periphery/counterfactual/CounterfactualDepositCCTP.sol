@@ -121,67 +121,79 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
         bytes32 outputToken,
         uint256 /* destinationChainId */,
         address /* admin */,
-        bytes calldata routeParams,
-        bytes calldata submitterData
+        bytes calldata routeParamsEncoded,
+        bytes calldata submitterDataEncoded
     ) external payable {
-        CCTPRouteParams memory dp = abi.decode(routeParams, (CCTPRouteParams));
-        CCTPSubmitterData memory sd = abi.decode(submitterData, (CCTPSubmitterData));
+        CCTPRouteParams memory routeParams = abi.decode(routeParamsEncoded, (CCTPRouteParams));
+        CCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (CCTPSubmitterData));
 
-        _verifySignature(sd);
+        _verifySignature(submitterData);
 
-        if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
+        if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
-        address inputToken = address(uint160(uint256(dp.burnToken)));
+        address inputToken = address(uint160(uint256(routeParams.burnToken)));
 
-        if (sd.executionFee > 0) IERC20(inputToken).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
+        if (submitterData.executionFee > 0)
+            IERC20(inputToken).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
-        uint256 depositAmount = sd.amount - sd.executionFee;
+        uint256 depositAmount = submitterData.amount - submitterData.executionFee;
 
         IERC20(inputToken).forceApprove(srcPeriphery, depositAmount);
 
-        _depositForBurn(recipient, outputToken, dp, sd, depositAmount);
+        _depositForBurn(recipient, outputToken, routeParams, submitterData, depositAmount);
 
-        emit CCTPDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.cctpDeadline, sd.executionFee);
+        emit CCTPDepositExecuted(
+            submitterData.amount,
+            submitterData.executionFeeRecipient,
+            submitterData.nonce,
+            submitterData.cctpDeadline,
+            submitterData.executionFee
+        );
     }
 
-    function _verifySignature(CCTPSubmitterData memory sd) private view {
-        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
+    function _verifySignature(CCTPSubmitterData memory submitterData) private view {
+        if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_CCTP_TYPEHASH, sd.nonce, sd.executionFee, sd.signatureDeadline)
+            abi.encode(
+                EXECUTE_CCTP_TYPEHASH,
+                submitterData.nonce,
+                submitterData.executionFee,
+                submitterData.signatureDeadline
+            )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != signer)
             revert InvalidSignature();
     }
 
     function _depositForBurn(
         bytes32 recipient,
         bytes32 outputToken,
-        CCTPRouteParams memory dp,
-        CCTPSubmitterData memory sd,
+        CCTPRouteParams memory routeParams,
+        CCTPSubmitterData memory submitterData,
         uint256 depositAmount
     ) private {
         ISponsoredCCTPSrcPeriphery(srcPeriphery).depositForBurn(
             SponsoredCCTPInterface.SponsoredCCTPQuote({
                 sourceDomain: sourceDomain,
-                destinationDomain: dp.destinationDomain,
-                mintRecipient: dp.mintRecipient,
+                destinationDomain: routeParams.destinationDomain,
+                mintRecipient: routeParams.mintRecipient,
                 amount: depositAmount,
-                burnToken: dp.burnToken,
-                destinationCaller: dp.destinationCaller,
-                maxFee: (depositAmount * dp.cctpMaxFeeBps) / BPS_SCALAR,
-                minFinalityThreshold: dp.minFinalityThreshold,
-                nonce: sd.nonce,
-                deadline: sd.cctpDeadline,
-                maxBpsToSponsor: dp.maxBpsToSponsor,
-                maxUserSlippageBps: dp.maxUserSlippageBps,
+                burnToken: routeParams.burnToken,
+                destinationCaller: routeParams.destinationCaller,
+                maxFee: (depositAmount * routeParams.cctpMaxFeeBps) / BPS_SCALAR,
+                minFinalityThreshold: routeParams.minFinalityThreshold,
+                nonce: submitterData.nonce,
+                deadline: submitterData.cctpDeadline,
+                maxBpsToSponsor: routeParams.maxBpsToSponsor,
+                maxUserSlippageBps: routeParams.maxUserSlippageBps,
                 finalRecipient: recipient,
                 finalToken: outputToken,
-                destinationDex: dp.destinationDex,
-                accountCreationMode: dp.accountCreationMode,
-                executionMode: dp.executionMode,
-                actionData: dp.actionData
+                destinationDex: routeParams.destinationDex,
+                accountCreationMode: routeParams.accountCreationMode,
+                executionMode: routeParams.executionMode,
+                actionData: routeParams.actionData
             }),
-            sd.peripherySignature
+            submitterData.peripherySignature
         );
     }
 }

@@ -120,67 +120,81 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
         bytes32 outputToken,
         uint256 /* destinationChainId */,
         address /* admin */,
-        bytes calldata routeParams,
-        bytes calldata submitterData
+        bytes calldata routeParamsEncoded,
+        bytes calldata submitterDataEncoded
     ) external payable {
-        OFTRouteParams memory dp = abi.decode(routeParams, (OFTRouteParams));
-        OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
+        OFTRouteParams memory routeParams = abi.decode(routeParamsEncoded, (OFTRouteParams));
+        OFTSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (OFTSubmitterData));
 
-        _verifySignature(sd);
+        _verifySignature(submitterData);
 
-        if (sd.executionFee > dp.maxExecutionFee) revert MaxExecutionFee();
+        if (submitterData.executionFee > routeParams.maxExecutionFee) revert MaxExecutionFee();
 
-        if (sd.executionFee > 0) IERC20(dp.token).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
+        if (submitterData.executionFee > 0)
+            IERC20(routeParams.token).safeTransfer(submitterData.executionFeeRecipient, submitterData.executionFee);
 
-        uint256 depositAmount = sd.amount - sd.executionFee;
+        uint256 depositAmount = submitterData.amount - submitterData.executionFee;
 
-        IERC20(dp.token).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(routeParams.token).forceApprove(oftSrcPeriphery, depositAmount);
 
-        _deposit(recipient, outputToken, dp, sd, depositAmount);
+        _deposit(recipient, outputToken, routeParams, submitterData, depositAmount);
 
-        emit OFTDepositExecuted(sd.amount, sd.executionFeeRecipient, sd.nonce, sd.oftDeadline, sd.executionFee);
+        emit OFTDepositExecuted(
+            submitterData.amount,
+            submitterData.executionFeeRecipient,
+            submitterData.nonce,
+            submitterData.oftDeadline,
+            submitterData.executionFee
+        );
     }
 
-    function _verifySignature(OFTSubmitterData memory sd) private view {
-        if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
+    function _verifySignature(OFTSubmitterData memory submitterData) private view {
+        if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_OFT_TYPEHASH, sd.nonce, sd.executionFee, sd.signatureDeadline)
+            abi.encode(
+                EXECUTE_OFT_TYPEHASH,
+                submitterData.nonce,
+                submitterData.executionFee,
+                submitterData.signatureDeadline
+            )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
+        if (ECDSA.recover(_hashTypedDataV4(structHash), submitterData.counterfactualSignature) != signer)
             revert InvalidSignature();
     }
 
     function _deposit(
         bytes32 recipient,
         bytes32 outputToken,
-        OFTRouteParams memory dp,
-        OFTSubmitterData memory sd,
+        OFTRouteParams memory routeParams,
+        OFTSubmitterData memory submitterData,
         uint256 depositAmount
     ) private {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
                     srcEid: srcEid,
-                    dstEid: dp.dstEid,
-                    destinationHandler: dp.destinationHandler,
+                    dstEid: routeParams.dstEid,
+                    destinationHandler: routeParams.destinationHandler,
                     amountLD: depositAmount,
-                    nonce: sd.nonce,
-                    deadline: sd.oftDeadline,
-                    maxBpsToSponsor: dp.maxBpsToSponsor,
-                    maxUserSlippageBps: dp.maxUserSlippageBps,
+                    nonce: submitterData.nonce,
+                    deadline: submitterData.oftDeadline,
+                    maxBpsToSponsor: routeParams.maxBpsToSponsor,
+                    maxUserSlippageBps: routeParams.maxUserSlippageBps,
                     finalRecipient: recipient,
                     finalToken: outputToken,
-                    destinationDex: dp.destinationDex,
-                    lzReceiveGasLimit: dp.lzReceiveGasLimit,
-                    lzComposeGasLimit: dp.lzComposeGasLimit,
-                    maxOftFeeBps: dp.maxOftFeeBps,
-                    accountCreationMode: dp.accountCreationMode,
-                    executionMode: dp.executionMode,
-                    actionData: dp.actionData
+                    destinationDex: routeParams.destinationDex,
+                    lzReceiveGasLimit: routeParams.lzReceiveGasLimit,
+                    lzComposeGasLimit: routeParams.lzComposeGasLimit,
+                    maxOftFeeBps: routeParams.maxOftFeeBps,
+                    accountCreationMode: routeParams.accountCreationMode,
+                    executionMode: routeParams.executionMode,
+                    actionData: routeParams.actionData
                 }),
-                unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({ refundRecipient: dp.refundRecipient })
+                unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({
+                    refundRecipient: routeParams.refundRecipient
+                })
             }),
-            sd.peripherySignature
+            submitterData.peripherySignature
         );
     }
 }
