@@ -2,108 +2,86 @@
 pragma solidity ^0.8.0;
 
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualDepositFactory } from "../../interfaces/ICounterfactualDepositFactory.sol";
 
 /**
  * @title CounterfactualDepositFactory
- * @notice Generic factory for deploying counterfactual deposit addresses via CREATE2
- * @dev Bridge-agnostic: takes a pre-computed paramsHash and stores it in the clone's immutable args.
- *      Each implementation defines its own immutables struct. The caller hashes the params off-chain.
+ * @notice Factory for deploying counterfactual deposit clones via CREATE2.
+ * @dev The factory deploys clones of the `CounterfactualDeposit` dispatcher (passed in at construction).
+ *      Clone identity is `keccak256(abi.encode(recipient, dstChainId, outputToken))`; the genesis
+ *      operational root is folded into the CREATE2 salt so a different `initialRoot` produces a
+ *      different address. Deploy is permissionless — front-running with a malicious root cannot
+ *      collide with an honest user's predicted address.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
-    /**
-     * @notice Deploys a counterfactual deposit contract
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @return depositAddress Address of deployed contract
-     */
-    function deploy(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt
-    ) public returns (address depositAddress) {
-        depositAddress = Clones.cloneDeterministicWithImmutableArgs(
-            counterfactualDepositImplementation,
-            abi.encode(paramsHash),
-            salt
-        );
-        emit DepositAddressCreated(depositAddress, counterfactualDepositImplementation, paramsHash, salt);
+    /// @notice The dispatcher contract that every clone proxies into.
+    address public immutable dispatcher;
+
+    constructor(address _dispatcher) {
+        dispatcher = _dispatcher;
     }
 
-    /**
-     * @notice Forwards calldata to a deployed clone, bubbling up any revert
-     * @param depositAddress Address of the deployed clone
-     * @param executeCalldata Calldata to forward (e.g. abi.encodeCall of executeDeposit)
-     */
+    /// @inheritdoc ICounterfactualDepositFactory
+    function deploy(bytes32 identityHash, bytes32 initialRoot) public returns (address depositAddress) {
+        bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
+        depositAddress = Clones.cloneDeterministicWithImmutableArgs(dispatcher, abi.encode(identityHash), salt);
+        ICounterfactualDeposit(payable(depositAddress)).initialize(initialRoot);
+        emit DepositAddressCreated(depositAddress, identityHash, initialRoot);
+    }
+
+    /// @inheritdoc ICounterfactualDepositFactory
     function execute(address depositAddress, bytes calldata executeCalldata) external payable {
         _execute(depositAddress, executeCalldata);
     }
 
-    /**
-     * @notice Deploys and executes a deposit in one transaction
-     * @dev Reverts if the clone is already deployed. Use deployIfNeededAndExecute for idempotent behavior.
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
-     * @return depositAddress Address of deposit contract
-     */
+    /// @inheritdoc ICounterfactualDepositFactory
     function deployAndExecute(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt,
+        bytes32 identityHash,
+        bytes32 initialRoot,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
-        depositAddress = deploy(counterfactualDepositImplementation, paramsHash, salt);
+        depositAddress = deploy(identityHash, initialRoot);
         _execute(depositAddress, executeCalldata);
     }
 
-    /**
-     * @notice Deploys (if not already deployed) and executes a deposit in one transaction
-     * @dev Unlike deployAndExecute, this does not revert if the clone already exists.
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @param executeCalldata Calldata to forward to the clone (e.g. abi.encodeCall of executeDeposit)
-     * @return depositAddress Address of deposit contract
-     */
+    /// @inheritdoc ICounterfactualDepositFactory
     function deployIfNeededAndExecute(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt,
+        bytes32 identityHash,
+        bytes32 initialRoot,
         bytes calldata executeCalldata
     ) external payable returns (address depositAddress) {
-        depositAddress = predictDepositAddress(counterfactualDepositImplementation, paramsHash, salt);
-        if (depositAddress.code.length == 0) deploy(counterfactualDepositImplementation, paramsHash, salt);
+        depositAddress = predictDepositAddress(identityHash, initialRoot);
+        if (depositAddress.code.length == 0) deploy(identityHash, initialRoot);
         _execute(depositAddress, executeCalldata);
     }
 
-    /**
-     * @notice Predicts the address of a counterfactual deposit contract
-     * @param counterfactualDepositImplementation Implementation contract address
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters
-     * @param salt Unique salt for address generation
-     * @return Predicted address
-     */
-    function predictDepositAddress(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt
-    ) public view virtual returns (address) {
-        return
-            Clones.predictDeterministicAddressWithImmutableArgs(
-                counterfactualDepositImplementation,
-                abi.encode(paramsHash),
-                salt
-            );
+    /// @inheritdoc ICounterfactualDepositFactory
+    function deployAndMigrateAndExecute(
+        bytes32 identityHash,
+        bytes32 initialRoot,
+        bytes32 newOperationalRoot,
+        bytes32[] calldata migrateProof,
+        bytes calldata executeCalldata
+    ) external payable returns (address depositAddress) {
+        depositAddress = predictDepositAddress(identityHash, initialRoot);
+        if (depositAddress.code.length == 0) deploy(identityHash, initialRoot);
+        // Skip migrate if the clone is already at the target root (e.g., genesis root already matches).
+        if (ICounterfactualDeposit(payable(depositAddress)).merkleRoot() != newOperationalRoot) {
+            ICounterfactualDeposit(payable(depositAddress)).migrate(newOperationalRoot, migrateProof);
+        }
+        _execute(depositAddress, executeCalldata);
+    }
+
+    /// @inheritdoc ICounterfactualDepositFactory
+    function predictDepositAddress(bytes32 identityHash, bytes32 initialRoot) public view virtual returns (address) {
+        bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
+        return Clones.predictDeterministicAddressWithImmutableArgs(dispatcher, abi.encode(identityHash), salt);
     }
 
     /**
      * @dev Forwards calldata to a clone, bubbling up any revert.
-     * @param depositAddress Address of the deployed clone.
-     * @param executeCalldata Calldata to forward.
      */
     function _execute(address depositAddress, bytes calldata executeCalldata) private {
         (bool success, bytes memory returnData) = depositAddress.call{ value: msg.value }(executeCalldata);

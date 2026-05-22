@@ -22,15 +22,17 @@ struct SpokePoolDepositParams {
     uint256 stableExchangeRate;
     uint256 maxFeeFixed;
     uint256 maxFeeBps;
-    uint256 executionFee;
 }
 
 /**
  * @notice Data supplied by the submitter at execution time.
+ * @dev `executionFee` is signer-bound (in the EIP-712 payload), but `executionFeeRecipient` is
+ *      submitter-chosen so any relayer can claim the fee.
  */
 struct SpokePoolSubmitterData {
     uint256 inputAmount;
     uint256 outputAmount;
+    uint256 executionFee;
     bytes32 exclusiveRelayer;
     uint32 exclusivityDeadline;
     address executionFeeRecipient;
@@ -47,9 +49,16 @@ struct SpokePoolSubmitterData {
  *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
  *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
  *
+ *      The signed payload binds `paramsHash` (the leaf's committed route params), so two leaves on the
+ *      same impl with different routes cannot be cross-signed: the signature is valid only against the
+ *      proven leaf's params.
+ *
+ *      `executionFee` is signer-bound (carried in the submitter data and committed in the typehash) so it
+ *      can vary across executes without changing the clone address. `executionFeeRecipient` is submitter-
+ *      chosen so any relayer can earn the fee.
+ *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
- *      `address(this)` (the clone), which has no private key and does not implement EIP-1271, and therefore
- *      cannot sign `speedUpV3Deposit` messages.
+ *      `address(this)` (the clone), which has no private key and does not implement EIP-1271.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712, SafeTransferERC20 {
@@ -64,6 +73,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
      * @notice Emitted after a SpokePool deposit is successfully executed.
      * @param inputAmount Total input amount (including execution fee).
      * @param outputAmount Output amount on the destination chain.
+     * @param executionFee Execution fee paid to the submitter-chosen recipient.
      * @param exclusiveRelayer Address of the exclusive relayer (bytes32-encoded).
      * @param exclusivityDeadline Timestamp until which the exclusive relayer has priority.
      * @param executionFeeRecipient Address that received the execution fee.
@@ -74,6 +84,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     event SpokePoolDepositExecuted(
         uint256 inputAmount,
         uint256 outputAmount,
+        uint256 executionFee,
         bytes32 indexed exclusiveRelayer,
         uint32 exclusivityDeadline,
         address indexed executionFeeRecipient,
@@ -88,9 +99,11 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     error NativeTransferFailed();
 
     /// @notice EIP-712 typehash for execute deposit signature verification.
+    /// @dev Binds the route's `paramsHash` (prevents cross-leaf replay even on the same impl) and the
+    ///      submitter-controlled execution fields including `executionFee`.
     bytes32 public constant EXECUTE_DEPOSIT_TYPEHASH =
         keccak256(
-            "ExecuteDeposit(uint256 inputAmount,uint256 outputAmount,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
+            "ExecuteDeposit(bytes32 paramsHash,uint256 inputAmount,uint256 outputAmount,uint256 executionFee,bytes32 exclusiveRelayer,uint32 exclusivityDeadline,uint32 quoteTimestamp,uint32 fillDeadline,uint32 signatureDeadline)"
         );
 
     /// @notice Across SpokePool contract
@@ -124,12 +137,12 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
-        _verifySignature(sd);
+        _verifySignature(keccak256(params), sd);
 
         address inputToken = address(uint160(uint256(dp.inputToken)));
-        uint256 depositAmount = sd.inputAmount - dp.executionFee;
+        uint256 depositAmount = sd.inputAmount - sd.executionFee;
 
-        _checkFee(dp, sd.inputAmount, sd.outputAmount, depositAmount);
+        _checkFee(dp, sd, depositAmount);
 
         bool isNative = inputToken == NATIVE_ASSET;
         if (!isNative) IERC20(inputToken).forceApprove(spokePool, depositAmount);
@@ -151,18 +164,19 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         );
 
         // Pay execution fee
-        if (dp.executionFee > 0) {
+        if (sd.executionFee > 0) {
             if (isNative) {
-                (bool success, ) = sd.executionFeeRecipient.call{ value: dp.executionFee }("");
+                (bool success, ) = sd.executionFeeRecipient.call{ value: sd.executionFee }("");
                 if (!success) revert NativeTransferFailed();
             } else {
-                _safeTransfer(inputToken, sd.executionFeeRecipient, dp.executionFee);
+                _safeTransfer(inputToken, sd.executionFeeRecipient, sd.executionFee);
             }
         }
 
         emit SpokePoolDepositExecuted(
             sd.inputAmount,
             sd.outputAmount,
+            sd.executionFee,
             sd.exclusiveRelayer,
             sd.exclusivityDeadline,
             sd.executionFeeRecipient,
@@ -174,23 +188,24 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
 
     function _checkFee(
         SpokePoolDepositParams memory dp,
-        uint256 inputAmount,
-        uint256 outputAmount,
+        SpokePoolSubmitterData memory sd,
         uint256 depositAmount
     ) private pure {
-        uint256 outputInInputToken = (outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
+        uint256 outputInInputToken = (sd.outputAmount * dp.stableExchangeRate) / EXCHANGE_RATE_SCALAR;
         uint256 relayerFee = depositAmount > outputInInputToken ? depositAmount - outputInInputToken : 0;
-        uint256 totalFee = relayerFee + dp.executionFee;
-        uint256 maxFee = dp.maxFeeFixed + (dp.maxFeeBps * inputAmount) / BPS_SCALAR;
+        uint256 totalFee = relayerFee + sd.executionFee;
+        uint256 maxFee = dp.maxFeeFixed + (dp.maxFeeBps * sd.inputAmount) / BPS_SCALAR;
         if (totalFee > maxFee) revert MaxFee();
     }
 
-    function _verifySignature(SpokePoolSubmitterData memory sd) private view {
+    function _verifySignature(bytes32 paramsHash, SpokePoolSubmitterData memory sd) private view {
         bytes32 structHash = keccak256(
             abi.encode(
                 EXECUTE_DEPOSIT_TYPEHASH,
+                paramsHash,
                 sd.inputAmount,
                 sd.outputAmount,
+                sd.executionFee,
                 sd.exclusiveRelayer,
                 sd.exclusivityDeadline,
                 sd.quoteTimestamp,

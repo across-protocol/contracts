@@ -6,31 +6,23 @@ import { CounterfactualDepositFactory } from "./CounterfactualDepositFactory.sol
 
 /**
  * @title CounterfactualDepositFactoryTron
- * @notice Tron-compatible factory for deploying counterfactual deposit addresses via CREATE2.
+ * @notice Tron-compatible factory for deploying counterfactual deposit clones via CREATE2.
  * @dev Tron's TVM uses 0x41 instead of 0xff as the CREATE2 address derivation prefix.
- *      OZ Clones deploys correctly (the create2 opcode natively uses 0x41 on Tron), but its
- *      address prediction hardcodes 0xff. This factory overrides predictDepositAddress to use
- *      TronClones with the correct 0x41 prefix. All other logic is inherited from the base factory.
+ *      OZ Clones deploys correctly (the CREATE2 opcode natively uses 0x41 on Tron), but its
+ *      address prediction hardcodes 0xff. This factory overrides `predictDepositAddress` to use
+ *      `TronClones` with the correct 0x41 prefix. All other logic is inherited from the base factory.
+ *
+ *      Tron clones live at different addresses than EVM clones for the same identity — Tron requires
+ *      its own dispatcher (different transfer hook), so the dispatcher address passed at construction
+ *      differs from the mainline EVM dispatcher.
+ * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositFactoryTron is CounterfactualDepositFactory {
-    /**
-     * @notice Predicts the Tron CREATE2 address of a counterfactual deposit contract.
-     * @dev Uses TronClones with the 0x41 prefix instead of OZ's 0xff to match TVM behavior.
-     * @param counterfactualDepositImplementation Implementation contract address.
-     * @param paramsHash keccak256 hash of the ABI-encoded route parameters.
-     * @param salt Unique salt for address generation.
-     * @return Predicted address of the clone on Tron.
-     */
-    function predictDepositAddress(
-        address counterfactualDepositImplementation,
-        bytes32 paramsHash,
-        bytes32 salt
-    ) public view override returns (address) {
-        return
-            TronClones.predictDeterministicAddressWithImmutableArgs(
-                counterfactualDepositImplementation,
-                abi.encode(paramsHash),
-                salt
-            );
+    constructor(address _dispatcher) CounterfactualDepositFactory(_dispatcher) {} // solhint-disable-line no-empty-blocks
+
+    /// @inheritdoc CounterfactualDepositFactory
+    function predictDepositAddress(bytes32 identityHash, bytes32 initialRoot) public view override returns (address) {
+        bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
+        return TronClones.predictDeterministicAddressWithImmutableArgs(dispatcher, abi.encode(identityHash), salt);
     }
 }
