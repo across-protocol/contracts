@@ -213,6 +213,17 @@ abstract contract SpokePool is
     /// @notice Thrown when the native fee sent by the caller is insufficient to cover the OFT transfer.
     error OFTFeeUnderpaid();
 
+    // SpokePool is the per-chain endpoint of Across's hub-and-spoke intents system. An instance is deployed on every
+    // supported chain and serves both origin- and destination-chain roles for cross-chain transfers:
+    //   - On the origin chain it accepts depositor funds (locking them in the contract) and emits FundsDeposited
+    //     events that relayers observe to fulfill the transfer.
+    //   - On the destination chain it lets relayers call fillRelay() to front the recipient's tokens.
+    //   - It stores root bundles relayed from HubPool on L1 and executes their leaves: relayer refunds (repaying
+    //     relayers from contract reserves) and slow fills (the protocol's fallback when no relayer fills in time).
+    //   - Locked origin-chain tokens are later bridged back to HubPool on L1 via the canonical bridge.
+    // This base contract is abstract and UUPS-upgradeable. Chain-specific variants (e.g. Arbitrum_SpokePool,
+    // Optimism_SpokePool) override cross-chain admin verification and any bridge-specific logic. Admin actions
+    // originate on HubPool (L1) and are relayed in via the appropriate chain adapter.
     /**
      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
      * have constructors since the following code will be executed within the logic contract's state, not the
