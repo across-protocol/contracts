@@ -215,8 +215,11 @@ abstract contract SpokePool is
 
     // SpokePool is the per-chain endpoint of Across's hub-and-spoke intents system. An instance is deployed on every
     // supported chain and serves both origin- and destination-chain roles for cross-chain transfers:
-    //   - On the origin chain it accepts depositor funds (locking them in the contract) and emits FundsDeposited
-    //     events that relayers observe to fulfill the transfer.
+    //   - L2 deposit flow: a depositor calls deposit() / depositV3() (or unsafeDeposit()) on the origin SpokePool,
+    //     specifying input/output tokens, amounts, destination chain, recipient, exclusivity, quote timestamp, and
+    //     fill deadline. The contract pulls and locks the input tokens (wrapping native ETH if sent), assigns a
+    //     unique deposit ID, and emits FundsDeposited for relayers to observe. Native-token deposits are auto-wrapped
+    //     into the chain's wrappedNativeToken before being locked.
     //   - On the destination chain it lets relayers call fillRelay() to front the recipient's tokens.
     //   - It stores root bundles relayed from HubPool on L1 and executes their leaves: relayer refunds (repaying
     //     relayers from contract reserves) and slow fills (the protocol's fallback when no relayer fills in time).
