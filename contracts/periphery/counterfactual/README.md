@@ -224,12 +224,14 @@ Same two-signature pattern as CCTP. `execute` is `payable` — `msg.value` cover
 
 ### EIP-712 Signature Verification
 
-Unlike CCTP/OFT (where `SrcPeriphery` verifies a periphery-issued quote signature), the SpokePool implementation verifies a single signature itself since it calls `SpokePool.deposit()` directly.
+SpokePool verifies a single local signature itself (no periphery sits between it and `SpokePool.deposit()`). CCTP and OFT verify a local signature too, alongside the periphery's own quote signature — see their sections above.
 
 - **Domain separator** uses OpenZeppelin's `EIP712` with `address(this)` (the clone address) — prevents cross-clone replay
 - **Typehash**: `ExecuteDeposit(address clone, bytes32 routeParamsHash, uint256 inputAmount, uint256 outputAmount, bytes32 exclusiveRelayer, uint32 exclusivityDeadline, uint32 quoteTimestamp, uint32 fillDeadline, uint32 signatureDeadline, uint256 executionFee)`
   - `clone` and `routeParamsHash` together pin the signature to a specific clone + specific leaf, so it can't be reused across clones or across leaves within a policy.
 - **Signer** is an immutable set at impl construction, shared across all clones
+
+Unlike CCTP/OFT, SpokePool's typehash binds the full set of runtime fields (`inputAmount`, `outputAmount`, etc.) because there's no periphery quote covering them. The local signature is the only thing standing between the executor and arbitrary-parameter execution.
 
 ### Fee Check
 
