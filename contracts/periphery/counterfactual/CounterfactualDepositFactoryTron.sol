@@ -23,6 +23,7 @@ contract CounterfactualDepositFactoryTron is CounterfactualDepositFactory {
     /// @inheritdoc CounterfactualDepositFactory
     function predictDepositAddress(bytes32 identityHash, bytes32 initialRoot) public view override returns (address) {
         bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
-        return TronClones.predictDeterministicAddressWithImmutableArgs(dispatcher, abi.encode(identityHash), salt);
+        // Empty args → bare EIP-1167 proxy; matches CounterfactualDepositFactory.deploy().
+        return TronClones.predictDeterministicAddressWithImmutableArgs(dispatcher, "", salt);
     }
 }

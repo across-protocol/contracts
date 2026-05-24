@@ -23,7 +23,7 @@ Design spec and implementation plan for evolving the current Enumerated Routes d
 
 ### Lifecycle of a counterfactual address
 
-1. **Address generation (off-chain, in SDK).** The SDK builds `identityHash = keccak256(recipient, dstChainId, outputToken)` and constructs a merkle tree enumerating every `(srcChainId, inputToken, bridge)` route the user wants supported, **across every source chain**, with each leaf carrying `block.chainid` in its preimage. The root of that tree is `initialRoot`. The predicted CREATE2 address is derived from `(factory, salt = keccak256(identityHash, initialRoot), dispatcher, immutableArg = identityHash)` — same address on every EVM chain.
+1. **Address generation (off-chain, in SDK).** The SDK builds `identityHash = keccak256(recipient, dstChainId, outputToken)` and constructs a merkle tree enumerating every `(srcChainId, inputToken, bridge)` route the user wants supported, **across every source chain**, with each leaf carrying `block.chainid` in its preimage. The root of that tree is `initialRoot`. The predicted CREATE2 address is derived from `(factory, salt = keccak256(identityHash, initialRoot), dispatcher)` — a bare EIP-1167 proxy with no immutable args. Same address on every EVM chain.
 
 2. **Funding (counterfactual).** User sends supported tokens (or ETH) to the predicted address before any contract is deployed. Nothing exists on-chain yet at that address.
 
@@ -31,21 +31,21 @@ Design spec and implementation plan for evolving the current Enumerated Routes d
 
 4. **Subsequent executes.** Once deployed, callers go straight to `factory.execute(depositAddress, calldata)` (or call the clone directly). Each execute consumes the token balance sitting at the clone, so re-funding the same address starts a new deposit at the same identity.
 
-5. **Migration (admin-driven, executor-applied).** Admin builds an off-chain meta-merkle tree where each leaf is `keccak256(identityHash, newRoot)`, then calls `registry.setMetaRoot(metaMerkleRoot)`. Any executor can then call `clone.migrate(newRoot, metaProof)` on any clone whose identity appears in the metaRoot. The clone verifies the proof against the registry's current `metaRoot` and updates `merkleRoot`. Future `execute` calls use the new root.
+5. **Migration (admin-driven, executor-applied).** Admin builds an off-chain meta-merkle tree where each leaf is `keccak256(cloneAddress, newRoot)`, then calls `registry.setMetaRoot(metaMerkleRoot)`. Any executor can then call `clone.migrate(newRoot, metaProof)` on any clone whose address appears in the metaRoot. The clone verifies the proof against the registry's current `metaRoot` (keying on its own `address(this)`) and updates `merkleRoot`. Future `execute` calls use the new root.
 
 6. **Refunds for unsupported inputs.** Tokens that don't match any deposit leaf in the current operational root are recovered through the `WithdrawImplementation` leaf — same mechanism as today.
 
 ### Cross-chain invariants
 
 - **The merkle root is byte-identical on every source chain.** A counterfactual's merkle tree contains the union of routes across _all_ source chains, with `block.chainid` in each leaf's preimage. On chain X, only leaves with `chainId == X` can be executed, but the **root** the dispatcher verifies against is the same value everywhere. This is what makes one CREATE2 derivation produce one address on every EVM chain.
-- **The same property holds after migration.** Admin's meta-merkle tree maps each `identityHash` to its target merkle root — and that target root is, again, a union-across-chains tree. After migration, every chain's clone for that identity holds the same `merkleRoot`.
+- **The same property holds after migration.** Admin's meta-merkle tree maps each clone address to its target merkle root — and that target root is, again, a union-across-chains tree. Since a given identity's clone has the same address on every chain, one admin-published metaRoot leaf authorizes migration on every chain. After migration, every chain's clone for that identity holds the same `merkleRoot`.
 - **Migrations apply per chain.** Each chain's registry is independent ([D12](#d12-each-chains-counterfactualmigrationregistry-is-independent)). Admin sets `metaRoot` on every chain (manually or via a cross-chain governance message). An executor calls `migrate` on each clone separately.
 
 ### Differences from the original counterfactual system
 
 | Property                             | Original                                                        | New                                                                                                                    |
 | ------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Clone's immutable arg                | `merkleRoot` (32 bytes)                                         | `identityHash` (32 bytes)                                                                                              |
+| Clone's immutable arg                | `merkleRoot` (32 bytes)                                         | None (bare EIP-1167 proxy; address itself identifies the clone)                                                        |
 | CREATE2 derivation                   | depends on `merkleRoot`                                         | depends on `keccak256(identityHash, initialRoot)`                                                                      |
 | Same address across source chains?   | No — each chain's tree had different leaves → different roots   | **Yes** — root is byte-identical on every chain via `chainId`-in-leaf                                                  |
 | Add a route after deploy?            | No — would change the merkle root and thus the address          | **Yes** — admin publishes a new metaRoot; executor calls `migrate`                                                     |
@@ -75,7 +75,7 @@ Design spec and implementation plan for evolving the current Enumerated Routes d
                               |
                               v
    CounterfactualDeposit  (MODIFIED — merkle-dispatched proxy)
-   - immutable arg: identityHash                   <-- 32 bytes, used at migrate-time
+   - no immutable args (bare EIP-1167 proxy; address(this) identifies the clone)
    - salt (at CREATE2):    keccak256(identityHash, initialRoot)
    - storage: bytes32 merkleRoot
    - execute(impl, params, submitterData, proof)   <-- proves against merkleRoot
@@ -138,10 +138,10 @@ initCode  = factory bytecode  +  abi.encode(dispatcher)
 ### Clones (per-identity counterfactual instances)
 
 ```
-deployer    = factory                                            // global address from above
-salt        = keccak256(abi.encode(identityHash, initialRoot))
+deployer     = factory                                           // global address from above
+salt         = keccak256(abi.encode(identityHash, initialRoot))
 identityHash = keccak256(abi.encode(recipient, dstChainId, outputToken))
-initCode    = EIP-1167 proxy(dispatcher)  +  abi.encode(identityHash)   // immutable arg
+initCode     = EIP-1167 proxy(dispatcher)                        // bare 45-byte minimal proxy, no immutable args
 ```
 
 - `recipient` is a `bytes32` (Across convention — supports non-EVM recipients).
@@ -149,8 +149,8 @@ initCode    = EIP-1167 proxy(dispatcher)  +  abi.encode(identityHash)   // immut
 - `outputToken` is a `bytes32` (Across convention — supports non-EVM destination tokens).
 - `initialRoot` is the canonical merkle root for this identity, published by the SDK. It is **byte-identical on every chain** (the tree's `block.chainid`-in-leaf design lets one root enumerate routes for all chains — see [Merkle Tree Structure](#merkle-tree-structure)).
 - **EIP-1167 proxy target** = the dispatcher's global address from above.
-- **Immutable arg** = `identityHash` (32 bytes appended to the proxy bytecode), readable at runtime via `Clones.fetchCloneArgs(address(this))`; used inside `migrate` to construct the meta-leaf.
-- `initialRoot` is folded into the CREATE2 **salt** (not the immutable arg). A malicious deployer using a different `initialRoot` produces a different salt → different CREATE2 address → no collision with the honest predicted address. This is the [D2](#d2-initialroot-is-folded-into-the-create2-salt) front-run mitigation.
+- **No immutable args.** The clone is a bare minimal proxy. The CREATE2 salt encodes `(identityHash, initialRoot)`, so the address itself is the unique handle — `migrate` keys its meta-leaf on `address(this)` rather than on a decoded `identityHash`.
+- `initialRoot` is folded into the CREATE2 **salt**. A malicious deployer using a different `initialRoot` produces a different salt → different CREATE2 address → no collision with the honest predicted address. This is the [D2](#d2-initialroot-is-folded-into-the-create2-salt) front-run mitigation.
 - The clone's merkle root lives in **storage**, not in `initCode`, so migrations don't disturb the address.
 
 All inputs are globally consistent → clones derive to the same address on every EVM chain.
@@ -198,7 +198,7 @@ A tree contains:
 | Withdraw leaf  | 1 per `(admin, user)` configuration (typically 1 per clone) | `WithdrawParams{admin, user}`    |
 | Padding        | as needed to pow-2                                          | —                                |
 
-Because `inputToken` is in the leaf preimage (not the clone identity), a clone accepts every input enumerated in its current `merkleRoot`. To add support for a new input, the admin publishes a new metaRoot that maps each affected `identityHash` to a new merkle root.
+Because `inputToken` is in the leaf preimage (not the clone identity), a clone accepts every input enumerated in its current `merkleRoot`. To add support for a new input, the admin publishes a new metaRoot that maps each affected clone address to a new merkle root.
 
 ## Migration Mechanism
 
@@ -225,17 +225,17 @@ contract CounterfactualMigrationRegistry {
 ### Meta merkle leaf format
 
 ```solidity
-metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(identityHash, newRoot))));
+metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(cloneAddress, newRoot))));
 ```
 
-- `identityHash` — same identity binding as the clone's immutable arg.
+- `cloneAddress` — the clone's CREATE2 address (the dispatcher reads this as `address(this)` at migrate time). Since each `(identityHash, initialRoot)` pair maps to a unique address, the address is itself a fine-grained identity.
 - `newRoot` — the operational root to install.
 
-A clone migrates to `newRoot` iff `(identityHash, newRoot)` is a leaf in the registry's **current** `metaRoot`. There is no on-chain version counter; replay protection comes from the fact that only the current `metaRoot` produces valid proofs. As soon as admin calls `setMetaRoot` with a new value, every proof against the previous metaRoot stops verifying.
+A clone migrates to `newRoot` iff `(cloneAddress, newRoot)` is a leaf in the registry's **current** `metaRoot`. There is no on-chain version counter; replay protection comes from the fact that only the current `metaRoot` produces valid proofs. As soon as admin calls `setMetaRoot` with a new value, every proof against the previous metaRoot stops verifying.
 
-**Admin convention:** the off-chain meta-tree builder publishes at most one leaf per `identityHash` per metaRoot. The contract does not enforce this — if admin published two leaves for the same identity (say `(id, R1)` and `(id, R2)`), either could be applied. Admin tooling guarantees this single-leaf-per-identity invariant.
+**Admin convention:** the off-chain meta-tree builder publishes at most one leaf per clone address per metaRoot. The contract does not enforce this — if admin published two leaves for the same clone (say `(addr, R1)` and `(addr, R2)`), either could be applied. Admin tooling guarantees this single-leaf-per-clone invariant.
 
-**Rollback is an explicit admin action, not a replay.** If admin needs to revert an identity from `R2` back to `R1`, they publish a new metaRoot containing the leaf `(id, R1)`. That is intentional. There is no contract-level rejection of "moving backward" because there is no on-chain notion of "forward."
+**Rollback is an explicit admin action, not a replay.** If admin needs to revert a clone from `R2` back to `R1`, they publish a new metaRoot containing the leaf `(addr, R1)`. That is intentional. There is no contract-level rejection of "moving backward" because there is no on-chain notion of "forward."
 
 ### CounterfactualDeposit (modified dispatcher)
 
@@ -272,8 +272,7 @@ contract CounterfactualDeposit {
 
   function migrate(bytes32 newRoot, bytes32[] calldata metaProof) external {
     if (newRoot == merkleRoot) revert NoOpMigration();
-    bytes32 identityHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
-    bytes32 metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(identityHash, newRoot))));
+    bytes32 metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(address(this), newRoot))));
     bytes32 metaRoot = ICounterfactualMigrationRegistry(MIGRATION_REGISTRY).metaRoot();
     if (!MerkleProof.verify(metaProof, metaRoot, metaLeaf)) revert InvalidMetaProof();
     merkleRoot = newRoot;
@@ -287,7 +286,7 @@ Notes:
 - `MIGRATION_REGISTRY` is a compile-time constant — the deterministic address of the registry, identical on every chain.
 - `migrate` is permissionless: anyone with a valid proof against the current `metaRoot` can execute it (the "executor" role from the requirements).
 - Replay of stale meta-leaves is blocked by the registry's "current root only" model: as soon as admin calls `setMetaRoot`, every proof against the prior `metaRoot` stops verifying.
-- The clone's immutable arg remains 32 bytes (now `identityHash` instead of merkle root) → no change to clone bytecode size or deployment gas.
+- The clone has no immutable args at all (bare EIP-1167 proxy) — `address(this)` is the clone's identity. Saves ~32 bytes of clone bytecode compared to the old design.
 - Total clone storage: one slot (`merkleRoot`). `merkleRoot != 0` doubles as the "initialized" sentinel since a zero root is rejected at `initialize` time (and would be useless anyway — it would authorize no leaves).
 
 ### Initial deployment
@@ -297,7 +296,7 @@ Deployment is permissionless. The factory CREATE2s the clone at a salt derived f
 ```solidity
 function deploy(bytes32 identityHash, bytes32 initialRoot) public returns (address depositAddress) {
   bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
-  depositAddress = Clones.cloneDeterministicWithImmutableArgs(DEPOSIT_DISPATCHER, abi.encode(identityHash), salt);
+  depositAddress = Clones.cloneDeterministic(DEPOSIT_DISPATCHER, salt);
   CounterfactualDeposit(payable(depositAddress)).initialize(initialRoot);
   emit DepositAddressCreated(depositAddress, identityHash, initialRoot);
 }
@@ -331,7 +330,7 @@ Ordered by dependency, smallest changes first. Each step is a separate commit.
 - Add storage: `merkleRoot` (single public slot; `!= 0` doubles as the "initialized" sentinel).
 - Add `initialize(bytes32)` (factory-only via implicit ordering, see step 3). Rejects `bytes32(0)` and re-initialization.
 - Change `execute` leaf preimage to include `block.chainid`.
-- Read `merkleRoot` from storage instead of `fetchCloneArgs`; immutable arg becomes `identityHash` (used only by `migrate`).
+- Read `merkleRoot` from storage. No immutable args on the clone — the meta-leaf in `migrate` keys on `address(this)`.
 - Add `migrate(bytes32 newRoot, bytes32[] proof)`.
 - Add `MIGRATION_REGISTRY` constant (set at deploy via deterministic address).
 - Add events: `Initialized(bytes32 initialRoot)`, `Migrated(bytes32 newRoot)`.
@@ -340,7 +339,7 @@ Ordered by dependency, smallest changes first. Each step is a separate commit.
 ### 3. Modified: `CounterfactualDepositFactory.sol`
 
 - Change `deploy` signature to `(bytes32 identityHash, bytes32 initialRoot)`.
-- Salt = `keccak256(abi.encode(identityHash, initialRoot))`; immutable arg = `identityHash`.
+- Salt = `keccak256(abi.encode(identityHash, initialRoot))`; no immutable args (use `Clones.cloneDeterministic` / `predictDeterministicAddress`).
 - Call `initialize(initialRoot)` on the freshly deployed clone in the same tx (atomicity prevents anyone from racing into the `_initialized` slot with a different root).
 - Update `predictDepositAddress(bytes32 identityHash, bytes32 initialRoot)` to take both.
 - `deployAndExecute` / `deployIfNeededAndExecute` thread the new args.
@@ -460,17 +459,18 @@ The CREATE2 derivation depends on these three fields and nothing else from the u
 
 **Alternatives considered:** add `admin`/`signer` to the identity (rejected — fragments address space without a clear use case); use only `(recipient, dstChain)` and let `outputToken` be selected at execute time (rejected — would re-introduce volatile-swap ambiguity).
 
-### D2. `initialRoot` is folded into the CREATE2 salt
+### D2. `initialRoot` is folded into the CREATE2 salt; clones carry no immutable args
 
-`salt = keccak256(identityHash, initialRoot)`; `immutableArg = identityHash` only.
+`salt = keccak256(identityHash, initialRoot)`; clones are bare EIP-1167 proxies with no appended immutable args. `migrate` keys its meta-leaf on `address(this)` rather than on a decoded `identityHash`.
 
-**Rationale:** Lets the factory accept a permissionless `deploy(identityHash, initialRoot)` without any registry pre-loading. A malicious deployer using a different `initialRoot` produces a different address, so an honest user's pre-funded predicted address can't be hijacked. Cross-chain address equality holds because the genesis tree uses `chainId`-in-leaf, so the same `initialRoot` is valid on every chain.
+**Rationale:** Lets the factory accept a permissionless `deploy(identityHash, initialRoot)` without any registry pre-loading. A malicious deployer using a different `initialRoot` produces a different address, so an honest user's pre-funded predicted address can't be hijacked. Cross-chain address equality holds because the genesis tree uses `chainId`-in-leaf, so the same `initialRoot` is valid on every chain. Dropping the immutable arg (which originally held `identityHash`) is a small simplification: each clone address is itself a one-way function of `(identityHash, initialRoot)`, so the address alone uniquely identifies the clone — no need to recover `identityHash` at runtime. Saves ~32 bytes of clone bytecode (slightly lower deploy gas) and removes an `extcodecopy + abi.decode` in `migrate`.
 
 **Alternatives considered:**
 
 - _Identity-only salt, `metaProof` gates deploy_ — rejected because it forced the admin to pre-publish every `(identityHash, initialRoot)` pair before its owner could deploy, killing self-service issuance and putting the full recipient set on-chain.
 - _Identity-only salt, no metaProof_ — rejected because a front-runner could deploy a malicious clone at the predicted address before the honest user.
-- _Both `identityHash` and `initialRoot` in immutable args_ — equivalent security; rejected as marginally larger clone bytecode for no benefit (`identityHash` alone suffices for `migrate` auth, and `initialRoot` is recoverable from genesis events).
+- _Both `identityHash` and `initialRoot` in immutable args_ — equivalent security; rejected as marginally larger clone bytecode for no benefit (`initialRoot` is recoverable from genesis events; `identityHash` isn't needed at runtime now that meta-leaves are address-keyed).
+- _`identityHash` in immutable args, meta-leaf keyed on `identityHash`_ — equivalent security but adds 32 bytes of clone bytecode and an `extcodecopy` on every migrate, in exchange for slightly broader authorization (one meta-leaf covers all clones sharing an identity even if they differ in `initialRoot`). Rejected for simplicity; the address-keyed form requires admin to enumerate clones individually in the meta-tree, which is already the natural workflow.
 
 ### D3. Merkle root lives in storage, not in immutable args
 

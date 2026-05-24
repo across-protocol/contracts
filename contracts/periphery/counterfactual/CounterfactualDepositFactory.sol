@@ -26,7 +26,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /// @inheritdoc ICounterfactualDepositFactory
     function deploy(bytes32 identityHash, bytes32 initialRoot) public returns (address depositAddress) {
         bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
-        depositAddress = Clones.cloneDeterministicWithImmutableArgs(dispatcher, abi.encode(identityHash), salt);
+        depositAddress = Clones.cloneDeterministic(dispatcher, salt);
         ICounterfactualDeposit(payable(depositAddress)).initialize(initialRoot);
         emit DepositAddressCreated(depositAddress, identityHash, initialRoot);
     }
@@ -77,7 +77,7 @@ contract CounterfactualDepositFactory is ICounterfactualDepositFactory {
     /// @inheritdoc ICounterfactualDepositFactory
     function predictDepositAddress(bytes32 identityHash, bytes32 initialRoot) public view virtual returns (address) {
         bytes32 salt = keccak256(abi.encode(identityHash, initialRoot));
-        return Clones.predictDeterministicAddressWithImmutableArgs(dispatcher, abi.encode(identityHash), salt);
+        return Clones.predictDeterministicAddress(dispatcher, salt);
     }
 
     /**

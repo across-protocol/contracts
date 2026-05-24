@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { MerkleProof } from "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { ICounterfactualDeposit } from "../../interfaces/ICounterfactualDeposit.sol";
@@ -12,9 +11,11 @@ import { ICounterfactualMigrationRegistry } from "../../interfaces/ICounterfactu
  * @notice Merkle-dispatched entrypoint for counterfactual deposit clones. All clones are instances of
  *         this contract via EIP-1167 minimal proxies.
  * @dev Cross-chain identity model:
- *      - Each clone's immutable arg is `identityHash = keccak256(abi.encode(recipient, dstChainId, outputToken))`.
- *      - The CREATE2 salt at the factory is `keccak256(abi.encode(identityHash, initialRoot))`, so the
- *        clone address is the same on every EVM chain for the same `(identity, initialRoot)` pair.
+ *      - `identityHash = keccak256(abi.encode(recipient, dstChainId, outputToken))` is folded into
+ *        the CREATE2 salt at the factory (`salt = keccak256(abi.encode(identityHash, initialRoot))`),
+ *        so the clone address is the same on every EVM chain for the same `(identity, initialRoot)`
+ *        pair. The clone has no immutable args — `address(this)` itself uniquely identifies the clone
+ *        and is what the migrate meta-leaf is keyed on.
  *      - The clone's merkle root lives in storage (`merkleRoot`) and can be rotated via `migrate`
  *        without changing the clone's address.
  *
@@ -87,8 +88,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
     function migrate(bytes32 newRoot, bytes32[] calldata metaProof) external {
         if (newRoot == merkleRoot) revert NoOpMigration();
 
-        bytes32 identityHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
-        bytes32 metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(identityHash, newRoot))));
+        bytes32 metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(address(this), newRoot))));
         bytes32 metaRoot = ICounterfactualMigrationRegistry(migrationRegistry).metaRoot();
 
         if (!MerkleProof.verify(metaProof, metaRoot, metaLeaf)) revert InvalidMetaProof();
