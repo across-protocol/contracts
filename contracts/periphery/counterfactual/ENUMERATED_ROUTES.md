@@ -528,13 +528,20 @@ Meta leaf = `keccak256(identityHash, newRoot)` — no version field. The registr
 
 **Alternatives considered:** keep `executionFee` committed at address generation (rejected — gas costs vary too much; users would over-commit at genesis or be stranded later); pull live fee from an on-chain oracle (rejected — adds a global trust point for a problem a signed amount already solves).
 
-### D9. Bind `paramsHash` in every impl's EIP-712 typehash
+### D9. Route binding in EIP-712 typehashes — `paramsHash` for SpokePool, `nonce` for CCTP/OFT
 
-Each of SpokePool/CCTP/OFT verifies the signature is bound to the specific leaf's `params`, not just to a route-agnostic amount payload.
+Each impl-level signature commits to enough route data to prevent cross-leaf replay even when multiple leaves on the same impl exist in a clone's tree. The exact field differs by bridge:
 
-**Rationale:** Removes the "no duplicate impls per clone" constraint cheaply (~500 gas/execute). Lets future trees include multiple SpokePool (or CCTP/OFT) routes — e.g., per supported input token — under one impl without cross-leaf signature replay risk.
+- **SpokePool** binds `paramsHash` (the leaf's `keccak256(params)`). There is no SrcPeriphery for SpokePool — the impl-level signature is the only signature gating the deposit, so it must commit directly to the route.
+- **CCTP and OFT** bind `nonce` instead. The SrcPeriphery's quote signature already commits `(route, nonce)` together, so the local signature transitively pins the route through the periphery — and gets single-use replay protection for free, since the periphery consumes the nonce on first use.
 
-**Alternatives considered:** preserve the "one impl per clone" invariant by SDK discipline (rejected — invariant is easy to break, audit reviewers would have to verify it holds in every emitted tree).
+**Rationale:** Removes the "no duplicate impls per clone" constraint cheaply (~500 gas/execute). Lets future trees include multiple SpokePool (or CCTP/OFT) routes — e.g., per supported input token — under one impl without cross-leaf signature replay risk. For CCTP/OFT, the asymmetry vs SpokePool is justified because the bridge layer already does the heavy lifting: binding `nonce` is sufficient and yields a smaller, simpler typehash.
+
+**Alternatives considered:**
+
+- _Bind `paramsHash` in CCTP/OFT too_ — more defensive but redundant given the SrcPeriphery quote already commits the route. Rejected because it adds typehash complexity for marginal protection (only useful if the SrcPeriphery's quote signature has a route-binding bug).
+- _Preserve the "one impl per clone" invariant by SDK discipline instead_ — rejected. Invariant is easy to break; audit reviewers would have to verify it holds in every emitted tree.
+- _Don't bind anything beyond `executionFee + signatureDeadline` on CCTP/OFT_ — rejected. Without nonce or paramsHash, the local signature is route-agnostic and could in principle be replayed across deposits with the same fee.
 
 ### D10. Tron clones break cross-chain address equality with EVM clones
 

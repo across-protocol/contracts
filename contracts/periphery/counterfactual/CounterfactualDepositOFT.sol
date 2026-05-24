@@ -18,8 +18,10 @@ interface ISponsoredOFTSrcPeriphery {
 
 /**
  * @notice Route parameters committed to in the merkle leaf.
+ * @dev `maxExecutionFee` bounds the dynamic `executionFee` set by the signer at runtime; even a
+ *      compromised counterfactual signer cannot authorize a fee above this cap.
  */
-struct OFTDepositParams {
+struct OFTRouteParams {
     uint32 dstEid;
     bytes32 destinationHandler;
     address token;
@@ -35,12 +37,13 @@ struct OFTDepositParams {
     uint8 executionMode;
     address refundRecipient;
     bytes actionData;
+    uint256 maxExecutionFee;
 }
 
 /**
  * @notice Data supplied by the submitter at execution time.
- * @dev `executionFee` and `signatureDeadline` are bound by `implSignature` from the impl-level signer
- *      (independent from the SrcPeriphery's quote signer — see D11). `srcPeripherySignature` continues
+ * @dev `executionFee` is dynamic and authorized by `counterfactualSignature` (local signer,
+ *      independent from the SrcPeriphery's quote signer — see D11). `peripherySignature` continues
  *      to authorize the SponsoredOFT quote (amount, nonce, oftDeadline, etc.).
  */
 struct OFTSubmitterData {
@@ -50,8 +53,8 @@ struct OFTSubmitterData {
     bytes32 nonce;
     uint256 oftDeadline;
     uint32 signatureDeadline;
-    bytes srcPeripherySignature;
-    bytes implSignature;
+    bytes peripherySignature;
+    bytes counterfactualSignature;
 }
 
 /**
@@ -61,13 +64,16 @@ struct OFTSubmitterData {
  *      `msg.value` covers LayerZero native messaging fees, forwarded to the SrcPeriphery.
  *
  *      Two independent signatures gate execution:
- *      - `srcPeripherySignature` — verified by SponsoredOFTSrcPeriphery; binds the bridge-level quote.
- *      - `implSignature` — verified here; binds `paramsHash`, `executionFee`, and `signatureDeadline`,
- *        signed by `signer` (independent from the SrcPeriphery signer).
+ *      - `peripherySignature` — verified by SponsoredOFTSrcPeriphery; binds the bridge-level quote.
+ *      - `counterfactualSignature` — verified here; binds `nonce`, `executionFee`, and
+ *        `signatureDeadline`, signed by `signer` (independent from the SrcPeriphery signer).
  *
- *      Binding `paramsHash` prevents cross-leaf signature replay between two OFT leaves on the same
- *      impl. The EIP-712 domain separator uses `address(this)` (the clone address) to prevent
- *      cross-clone replay.
+ *      The local signature binds `nonce` rather than `paramsHash`: the periphery quote signature
+ *      commits `(route, nonce)` together, so pinning the local sig to `nonce` transitively pins the
+ *      route via the periphery — and gives single-use replay protection for free (once the
+ *      periphery consumes the nonce, the local sig is unreplayable).
+ *
+ *      The EIP-712 domain separator uses `address(this)` (the clone) to prevent cross-clone replay.
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
@@ -80,7 +86,7 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
      * @param executionFeeRecipient Address that received the execution fee.
      * @param nonce OFT nonce used for the deposit.
      * @param oftDeadline Deadline timestamp for the OFT quote.
-     * @param signatureDeadline Deadline timestamp for the impl-level signature.
+     * @param signatureDeadline Deadline timestamp for the counterfactual signature.
      */
     event OFTDepositExecuted(
         uint256 amount,
@@ -93,13 +99,14 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
 
     error InvalidSignature();
     error SignatureExpired();
+    error MaxExecutionFee();
 
-    /// @notice EIP-712 typehash for the impl-level OFT execute signature.
-    /// @dev The SrcPeriphery signature already binds amount/nonce/oftDeadline; the impl-level
-    ///      signature adds `paramsHash` (cross-leaf safety) and `executionFee` (dynamic fee) under
-    ///      a deadline distinct from the bridge quote's deadline.
+    /// @notice EIP-712 typehash for the local OFT execute signature.
+    /// @dev Binds `nonce` (transitive route binding via the periphery's quote signature, plus
+    ///      single-use replay protection through periphery nonce consumption), `executionFee`
+    ///      (dynamic fee), and `signatureDeadline`.
     bytes32 public constant EXECUTE_OFT_TYPEHASH =
-        keccak256("ExecuteOFTDeposit(bytes32 paramsHash,uint256 executionFee,uint32 signatureDeadline)");
+        keccak256("ExecuteOFT(bytes32 nonce,uint256 executionFee,uint32 signatureDeadline)");
 
     /// @notice SponsoredOFTSrcPeriphery contract
     address public immutable oftSrcPeriphery;
@@ -107,14 +114,14 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     /// @notice OFT source endpoint ID for this chain
     uint32 public immutable srcEid;
 
-    /// @notice Signer that authorizes impl-level execution parameters (independent from SrcPeriphery signer).
+    /// @notice Signer that authorizes counterfactual execution parameters (independent from SrcPeriphery signer).
     address public immutable signer;
 
     constructor(
         address _oftSrcPeriphery,
         uint32 _srcEid,
         address _signer
-    ) EIP712("CounterfactualDepositOFT", "v1.0.0") {
+    ) EIP712("CounterfactualDepositOFT", "v2.0.0") {
         oftSrcPeriphery = _oftSrcPeriphery;
         srcEid = _srcEid;
         signer = _signer;
@@ -122,25 +129,27 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev Bridges tokens via SponsoredOFT (LayerZero). `params` is ABI-encoded as `OFTDepositParams`;
-     *      `submitterData` as `OFTSubmitterData`. Verifies the impl-level signature locally, then
-     *      forwards the quote (and the SrcPeriphery signature) to the periphery. ERC-20 only.
-     *      Forwards `msg.value` for LayerZero messaging fees.
+     * @dev Bridges tokens via SponsoredOFT (LayerZero). `params` is ABI-encoded as `OFTRouteParams`;
+     *      `submitterData` as `OFTSubmitterData`. Verifies the local signature, enforces
+     *      `executionFee <= maxExecutionFee`, then forwards the quote (and the periphery
+     *      signature) to the SrcPeriphery. ERC-20 only. Forwards `msg.value` for LayerZero
+     *      messaging fees.
      */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        OFTDepositParams memory dp = abi.decode(params, (OFTDepositParams));
+        OFTRouteParams memory rp = abi.decode(params, (OFTRouteParams));
         OFTSubmitterData memory sd = abi.decode(submitterData, (OFTSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
-        _verifyImplSignature(keccak256(params), sd);
+        if (sd.executionFee > rp.maxExecutionFee) revert MaxExecutionFee();
+        _verifyCounterfactualSignature(sd);
 
-        if (sd.executionFee > 0) IERC20(dp.token).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
+        if (sd.executionFee > 0) IERC20(rp.token).safeTransfer(sd.executionFeeRecipient, sd.executionFee);
 
         uint256 depositAmount = sd.amount - sd.executionFee;
 
-        IERC20(dp.token).forceApprove(oftSrcPeriphery, depositAmount);
+        IERC20(rp.token).forceApprove(oftSrcPeriphery, depositAmount);
 
-        _deposit(dp, sd, depositAmount);
+        _deposit(rp, sd, depositAmount);
 
         emit OFTDepositExecuted(
             sd.amount,
@@ -154,42 +163,43 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
 
     /**
      * @notice Calls deposit on the SponsoredOFTSrcPeriphery with the constructed quote.
-     * @param dp Route parameters from the merkle leaf.
+     * @param rp Route parameters from the merkle leaf.
      * @param sd Submitter-provided execution data.
      * @param depositAmount Amount to deposit after deducting the execution fee.
      */
-    function _deposit(OFTDepositParams memory dp, OFTSubmitterData memory sd, uint256 depositAmount) private {
+    function _deposit(OFTRouteParams memory rp, OFTSubmitterData memory sd, uint256 depositAmount) private {
         ISponsoredOFTSrcPeriphery(oftSrcPeriphery).deposit{ value: msg.value }(
             SponsoredOFTInterface.Quote({
                 signedParams: SponsoredOFTInterface.SignedQuoteParams({
                     srcEid: srcEid,
-                    dstEid: dp.dstEid,
-                    destinationHandler: dp.destinationHandler,
+                    dstEid: rp.dstEid,
+                    destinationHandler: rp.destinationHandler,
                     amountLD: depositAmount,
                     nonce: sd.nonce,
                     deadline: sd.oftDeadline,
-                    maxBpsToSponsor: dp.maxBpsToSponsor,
-                    maxUserSlippageBps: dp.maxUserSlippageBps,
-                    finalRecipient: dp.finalRecipient,
-                    finalToken: dp.finalToken,
-                    destinationDex: dp.destinationDex,
-                    lzReceiveGasLimit: dp.lzReceiveGasLimit,
-                    lzComposeGasLimit: dp.lzComposeGasLimit,
-                    maxOftFeeBps: dp.maxOftFeeBps,
-                    accountCreationMode: dp.accountCreationMode,
-                    executionMode: dp.executionMode,
-                    actionData: dp.actionData
+                    maxBpsToSponsor: rp.maxBpsToSponsor,
+                    maxUserSlippageBps: rp.maxUserSlippageBps,
+                    finalRecipient: rp.finalRecipient,
+                    finalToken: rp.finalToken,
+                    destinationDex: rp.destinationDex,
+                    lzReceiveGasLimit: rp.lzReceiveGasLimit,
+                    lzComposeGasLimit: rp.lzComposeGasLimit,
+                    maxOftFeeBps: rp.maxOftFeeBps,
+                    accountCreationMode: rp.accountCreationMode,
+                    executionMode: rp.executionMode,
+                    actionData: rp.actionData
                 }),
-                unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({ refundRecipient: dp.refundRecipient })
+                unsignedParams: SponsoredOFTInterface.UnsignedQuoteParams({ refundRecipient: rp.refundRecipient })
             }),
-            sd.srcPeripherySignature
+            sd.peripherySignature
         );
     }
 
-    function _verifyImplSignature(bytes32 paramsHash, OFTSubmitterData memory sd) private view {
+    function _verifyCounterfactualSignature(OFTSubmitterData memory sd) private view {
         bytes32 structHash = keccak256(
-            abi.encode(EXECUTE_OFT_TYPEHASH, paramsHash, sd.executionFee, sd.signatureDeadline)
+            abi.encode(EXECUTE_OFT_TYPEHASH, sd.nonce, sd.executionFee, sd.signatureDeadline)
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.implSignature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
+            revert InvalidSignature();
     }
 }

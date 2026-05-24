@@ -13,7 +13,7 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 /**
  * @notice Route parameters committed to in the merkle leaf.
  */
-struct SpokePoolDepositParams {
+struct SpokePoolRouteParams {
     uint256 destinationChainId;
     bytes32 inputToken;
     bytes32 outputToken;
@@ -39,7 +39,7 @@ struct SpokePoolSubmitterData {
     uint32 quoteTimestamp;
     uint32 fillDeadline;
     uint32 signatureDeadline;
-    bytes signature;
+    bytes counterfactualSignature;
 }
 
 /**
@@ -119,7 +119,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
         address _spokePool,
         address _signer,
         address _wrappedNativeToken
-    ) EIP712("CounterfactualDepositSpokePool", "v1.0.0") {
+    ) EIP712("CounterfactualDepositSpokePool", "v2.0.0") {
         spokePool = _spokePool;
         signer = _signer;
         wrappedNativeToken = _wrappedNativeToken;
@@ -127,13 +127,13 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
 
     /**
      * @inheritdoc ICounterfactualImplementation
-     * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolDepositParams`;
+     * @dev Deposits into the Across SpokePool. `params` is ABI-encoded as `SpokePoolRouteParams`;
      *      `submitterData` as `SpokePoolSubmitterData` (includes an EIP-712 signature from `signer`).
      *      Supports native-token deposits. Reverts: `SignatureExpired`, `InvalidSignature`, `MaxFee`,
      *      `NativeTransferFailed`.
      */
     function execute(bytes calldata params, bytes calldata submitterData) external payable {
-        SpokePoolDepositParams memory dp = abi.decode(params, (SpokePoolDepositParams));
+        SpokePoolRouteParams memory dp = abi.decode(params, (SpokePoolRouteParams));
         SpokePoolSubmitterData memory sd = abi.decode(submitterData, (SpokePoolSubmitterData));
 
         if (block.timestamp > sd.signatureDeadline) revert SignatureExpired();
@@ -187,7 +187,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     }
 
     function _checkFee(
-        SpokePoolDepositParams memory dp,
+        SpokePoolRouteParams memory dp,
         SpokePoolSubmitterData memory sd,
         uint256 depositAmount
     ) private pure {
@@ -213,6 +213,7 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
                 sd.signatureDeadline
             )
         );
-        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.signature) != signer) revert InvalidSignature();
+        if (ECDSA.recover(_hashTypedDataV4(structHash), sd.counterfactualSignature) != signer)
+            revert InvalidSignature();
     }
 }
