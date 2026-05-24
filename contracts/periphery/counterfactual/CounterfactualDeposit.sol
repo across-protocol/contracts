@@ -20,7 +20,7 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  *           policy state, including when the policy's `activeRoot` is `bytes32(0)`).
  *        3. Otherwise computes the leaf as
  *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))`
- *           and verifies the merkle proof against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
+ *           and verifies the merkle proof against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`.
  *           Binding the clone identity into the leaf preimage ensures a leaf can only be proven
  *           against the clone it was authored for.
  *        4. Delegatecalls the implementation, forwarding the dispatcher-verified clone-identity
@@ -63,8 +63,8 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
                     )
                 )
             );
-            if (!MerkleProof.verify(proof, IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(), leaf))
-                revert InvalidProof();
+            bytes32 root = IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this));
+            if (!MerkleProof.verify(proof, root, leaf)) revert InvalidProof();
         }
 
         // Delegatecall the implementation with the dispatcher-verified clone-identity fields.

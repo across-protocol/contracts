@@ -8,6 +8,7 @@ import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfa
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../../../contracts/interfaces/ICounterfactualImplementation.sol";
 import {
@@ -77,7 +78,7 @@ contract CounterfactualDepositTest is Test {
         admin = makeAddr("admin");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
-        policy = new RoutePolicy(policyOwner, bytes32(0));
+        policy = deployRoutePolicy(policyOwner, bytes32(0));
     }
 
     function _cloneArgs() internal returns (CloneArgs memory) {
@@ -160,7 +161,7 @@ contract CounterfactualDepositTest is Test {
         token.mint(clone, 100e6);
 
         // Policy root is bytes32(0) — no proof can verify. The admin escape should still work.
-        assertEq(policy.activeRoot(), bytes32(0));
+        assertEq(policy.activeRoot(address(0)), bytes32(0));
 
         vm.prank(admin);
         ICounterfactualDeposit(clone).execute(

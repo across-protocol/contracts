@@ -13,6 +13,7 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -125,7 +126,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         withdrawImpl = new WithdrawImplementation();
         dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
-        policy = new RoutePolicy(policyOwner, bytes32(0));
+        policy = deployRoutePolicy(policyOwner, bytes32(0));
 
         inputToken.mint(user, 1000e6);
     }

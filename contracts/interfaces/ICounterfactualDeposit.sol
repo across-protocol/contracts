@@ -22,7 +22,7 @@ interface ICounterfactualDeposit {
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
      * @param proof Merkle proof for the leaf
      *              `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))`
-     *              against `RoutePolicy(cloneArgs.routePolicyAddress).activeRoot()`.
+     *              against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`.
      */
     function execute(
         CloneArgs calldata cloneArgs,

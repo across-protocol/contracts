@@ -6,6 +6,7 @@ import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfa
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -31,7 +32,7 @@ contract WithdrawImplementationTest is Test {
         withdrawImpl = new WithdrawImplementation();
         dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
-        policy = new RoutePolicy(address(this), bytes32(0));
+        policy = deployRoutePolicy(address(this), bytes32(0));
         token = new MintableERC20("USDC", "USDC", 6);
 
         admin = makeAddr("admin");

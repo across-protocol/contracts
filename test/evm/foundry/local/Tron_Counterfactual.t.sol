@@ -12,6 +12,7 @@ import {
 import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -84,7 +85,7 @@ contract Tron_CounterfactualTest is Test {
         withdrawImpl = new WithdrawImplementationTron();
         dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePoolTr(address(spokePool), signerAddr, makeAddr("weth"));
-        policy = new RoutePolicy(policyOwner, bytes32(0));
+        policy = deployRoutePolicy(policyOwner, bytes32(0));
 
         usdt.mint(user, 1000e6);
 

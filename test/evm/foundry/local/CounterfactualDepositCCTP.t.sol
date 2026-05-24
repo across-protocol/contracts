@@ -13,6 +13,7 @@ import {
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -84,7 +85,7 @@ contract CounterfactualDepositCCTPTest is Test {
         withdrawImpl = new WithdrawImplementation();
         dispatcher = new CounterfactualDeposit();
         cctpImpl = new CounterfactualDepositCCTP(address(srcPeriphery), SOURCE_DOMAIN, signerAddr);
-        policy = new RoutePolicy(policyOwner, bytes32(0));
+        policy = deployRoutePolicy(policyOwner, bytes32(0));
 
         burnToken.mint(user, 1000e6);
 

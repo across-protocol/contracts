@@ -13,6 +13,7 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -95,7 +96,7 @@ contract CounterfactualDepositOFTTest is Test {
         withdrawImpl = new WithdrawImplementation();
         dispatcher = new CounterfactualDeposit();
         oftImpl = new CounterfactualDepositOFT(address(srcPeriphery), SRC_EID, signerAddr);
-        policy = new RoutePolicy(policyOwner, bytes32(0));
+        policy = deployRoutePolicy(policyOwner, bytes32(0));
 
         token.mint(user, 1000e6);
 

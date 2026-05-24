@@ -8,6 +8,7 @@ import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfa
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
 import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -44,7 +45,7 @@ contract AdminWithdrawManagerTest is Test {
         withdrawImpl = new WithdrawImplementation();
         dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
-        policy = new RoutePolicy(address(this), bytes32(0));
+        policy = deployRoutePolicy(address(this), bytes32(0));
         manager = new AdminWithdrawManager(owner, directWithdrawer, signerAddr, address(withdrawImpl));
 
         // Deploy a clone with admin = manager so the structural escape lands on the manager.
