@@ -41,6 +41,16 @@ import { ICounterfactualMigrationRegistry } from "../../interfaces/ICounterfactu
  * @custom:security-contact bugs@across.to
  */
 contract CounterfactualDeposit is ICounterfactualDeposit {
+    /// @dev Sentinel value written to the dispatcher's own storage in the constructor so that
+    ///      direct `initialize` calls on the dispatcher (rather than via a clone) revert with
+    ///      `AlreadyInitialized`, and direct `execute` calls find no provable leaf (`leaf` would
+    ///      have to hash to this value, which is cryptographically infeasible). Each clone has
+    ///      its own storage starting at zero, so this lock does not affect clones.
+    bytes32 private constant IMPLEMENTATION_LOCK = bytes32(uint256(1));
+
+    /// @dev Thrown when a critical address argument is the zero address.
+    error ZeroAddress();
+
     /// @notice Address of the migration registry consulted by `migrate`. Same address on every chain.
     address public immutable migrationRegistry;
 
@@ -48,13 +58,31 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
     bytes32 public merkleRoot;
 
     constructor(address _migrationRegistry) {
+        if (_migrationRegistry == address(0)) revert ZeroAddress();
         migrationRegistry = _migrationRegistry;
+        // Lock the dispatcher's own storage: makes the dispatcher itself non-executable while
+        // leaving clones' separate storage untouched (they delegatecall, so writes target the
+        // clone's storage, not the dispatcher's).
+        merkleRoot = IMPLEMENTATION_LOCK;
     }
 
     /// @dev Accept native ETH sent to the clone (e.g. user deposits or refunds).
     receive() external payable {}
 
-    /// @inheritdoc ICounterfactualDeposit
+    /**
+     * @inheritdoc ICounterfactualDeposit
+     * @dev `initialize` is permissionless by design. Safety relies on three properties:
+     *      1. The clone's CREATE2 address is a function of `(factory, salt = keccak256(identityHash, initialRoot), dispatcher)`,
+     *         so only the factory can deploy a clone at the predicted address. The factory calls
+     *         `initialize` atomically in the same tx as the CREATE2 — no window for anyone else
+     *         to slip in.
+     *      2. The `merkleRoot != 0` guard rejects any subsequent `initialize` call on the same
+     *         clone.
+     *      3. The dispatcher's own storage has `merkleRoot` locked to `IMPLEMENTATION_LOCK` in its
+     *         constructor (see above), so direct calls to the dispatcher hit `AlreadyInitialized`.
+     *      Together these prevent a third party from installing a different `initialRoot` into a
+     *      clone or initializing the dispatcher contract itself.
+     */
     function initialize(bytes32 initialRoot) external {
         if (merkleRoot != bytes32(0)) revert AlreadyInitialized();
         if (initialRoot == bytes32(0)) revert InvalidInitialRoot();

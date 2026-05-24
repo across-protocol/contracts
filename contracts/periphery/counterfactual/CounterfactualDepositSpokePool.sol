@@ -46,8 +46,7 @@ struct SpokePoolSubmitterData {
  * @title CounterfactualDepositSpokePool
  * @notice Implementation contract for counterfactual deposits via Across SpokePool.
  * @dev Called via delegatecall from the CounterfactualDeposit dispatcher. EIP-712 domain separator uses
- *      `address(this)` (the clone address) to prevent cross-clone replay attacks. No nonce is needed:
- *      token balance is consumed on execution (natural replay protection), and short deadlines bound the window.
+ *      `address(this)` (the clone address) to prevent cross-clone replay attacks.
  *
  *      The signed payload binds `paramsHash` (the leaf's committed route params), so two leaves on the
  *      same impl with different routes cannot be cross-signed: the signature is valid only against the
@@ -56,6 +55,14 @@ struct SpokePoolSubmitterData {
  *      `executionFee` is signer-bound (carried in the submitter data and committed in the typehash) so it
  *      can vary across executes without changing the clone address. `executionFeeRecipient` is submitter-
  *      chosen so any relayer can earn the fee.
+ *
+ *      **Replay-window semantics.** Unlike CCTP/OFT, SpokePool has no nonce in its on-chain state — the
+ *      protocol relies on the depositor address + input-balance consumption for natural replay protection.
+ *      As a result, `counterfactualSignature` is bounded only by `signatureDeadline` and the consumption
+ *      of the clone's input-token balance on a successful execute. If the same clone is re-funded with
+ *      the same input token *before* `signatureDeadline`, the same `counterfactualSignature` can fire
+ *      again — this is by design (short deadlines bound the practical replay window) but it does mean
+ *      signers should issue tight deadlines.
  *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()` is
  *      `address(this)` (the clone), which has no private key and does not implement EIP-1271.

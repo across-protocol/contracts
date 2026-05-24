@@ -70,8 +70,13 @@ struct OFTSubmitterData {
  *
  *      The local signature binds `nonce` rather than `paramsHash`: the periphery quote signature
  *      commits `(route, nonce)` together, so pinning the local sig to `nonce` transitively pins the
- *      route via the periphery — and gives single-use replay protection for free (once the
- *      periphery consumes the nonce, the local sig is unreplayable).
+ *      route via the periphery.
+ *
+ *      **Replay-window semantics.** `counterfactualSignature` is single-use: it binds the same
+ *      `nonce` the SponsoredOFT periphery consumes on first deposit. Once the periphery records the
+ *      nonce as used, both signatures are permanently unreplayable. `signatureDeadline` is an
+ *      additional safety bound for the pre-consumption window (e.g. if the deposit reverts before
+ *      the periphery state-changes, the local sig remains usable until the deadline).
  *
  *      The EIP-712 domain separator uses `address(this)` (the clone) to prevent cross-clone replay.
  * @custom:security-contact bugs@across.to

@@ -273,7 +273,7 @@ contract CounterfactualDeposit {
   function migrate(bytes32 newRoot, bytes32[] calldata metaProof) external {
     if (newRoot == merkleRoot) revert NoOpMigration();
     bytes32 metaLeaf = keccak256(bytes.concat(keccak256(abi.encode(address(this), newRoot))));
-    bytes32 metaRoot = ICounterfactualMigrationRegistry(MIGRATION_REGISTRY).metaRoot();
+    bytes32 metaRoot = ICounterfactualMigrationRegistry(migrationRegistry).metaRoot();
     if (!MerkleProof.verify(metaProof, metaRoot, metaLeaf)) revert InvalidMetaProof();
     merkleRoot = newRoot;
     emit Migrated(newRoot);
@@ -283,7 +283,7 @@ contract CounterfactualDeposit {
 
 Notes:
 
-- `MIGRATION_REGISTRY` is a compile-time constant — the deterministic address of the registry, identical on every chain.
+- `migrationRegistry` is a constructor-set `immutable` on the dispatcher — set once at deploy and inlined into the dispatcher bytecode. Functionally equivalent to a compile-time constant for the cross-chain-address argument, since the constructor arg is globally identical (the registry sits at the same address on every chain). Chose `immutable` over `constant` so the registry's address doesn't have to be hardcoded into the source file before compile time.
 - `migrate` is permissionless: anyone with a valid proof against the current `metaRoot` can execute it (the "executor" role from the requirements).
 - Replay of stale meta-leaves is blocked by the registry's "current root only" model: as soon as admin calls `setMetaRoot`, every proof against the prior `metaRoot` stops verifying.
 - The clone has no immutable args at all (bare EIP-1167 proxy) — `address(this)` is the clone's identity. Saves ~32 bytes of clone bytecode compared to the old design.
@@ -332,7 +332,7 @@ Ordered by dependency, smallest changes first. Each step is a separate commit.
 - Change `execute` leaf preimage to include `block.chainid`.
 - Read `merkleRoot` from storage. No immutable args on the clone — the meta-leaf in `migrate` keys on `address(this)`.
 - Add `migrate(bytes32 newRoot, bytes32[] proof)`.
-- Add `MIGRATION_REGISTRY` constant (set at deploy via deterministic address).
+- Add `migrationRegistry` immutable (set at construction via deterministic-deployer-predicted address).
 - Add events: `Initialized(bytes32 initialRoot)`, `Migrated(bytes32 newRoot)`.
 - Errors: `InvalidProof`, `InvalidMetaProof`, `AlreadyInitialized`, `InvalidInitialRoot`, `NoOpMigration`.
 
@@ -358,7 +358,7 @@ Move `executionFee` out of leaf `params` and into a signer-signed submitter payl
 
 - New constant per impl: `address public immutable signer` (same configuration mechanism as today's SpokePool impl).
 - EIP-712 domain uses `address(this)` (the clone) → cross-clone replay prevention; no nonce needed (deadline + token-balance consumption bound the replay window).
-- Typehash binds, at minimum: every signed amount/fee field, `executionFeeRecipient`, the route's `paramsHash`, and `signatureDeadline`. Binding `paramsHash` prevents the cross-leaf attack flagged in `DESIGN_COMPARISON.md` §"Per-bridge considerations" if a clone ever ends up with multiple leaves on the same impl.
+- Typehash binds, at minimum: every signed amount/fee field, a route-binding field (`paramsHash` for SpokePool, `nonce` for CCTP/OFT — see [D9](#d9-route-binding-in-eip-712-typehashes--paramshash-for-spokepool-nonce-for-cctpoft)), and `signatureDeadline`. **`executionFeeRecipient` is intentionally not bound** — it's submitter-chosen so any relayer can earn the fee. The route-binding field prevents cross-leaf signature replay between two leaves on the same impl.
 
 **`CounterfactualDepositSpokePool`**
 
@@ -425,7 +425,7 @@ Move `executionFee` out of leaf `params` and into a signer-signed submitter payl
 Working assumptions we have not yet committed to. Each lists what we're currently planning and what's still up in the air. Locked-in decisions live under [Design Decisions](#design-decisions).
 
 1. **Migration registry address pinning.**
-   _Working assumption:_ deploy `CounterfactualMigrationRegistry` via the deterministic deployer (`0x4e59…956C`) with a chosen salt, compute the resulting address, embed it as the `MIGRATION_REGISTRY` compile-time constant in `CounterfactualDeposit`. No router or proxy — the registry is single-purpose, and a fresh deployment with different logic would change every clone's address. The specific salt value needs to be chosen before dispatcher source is finalized.
+   _Working assumption:_ deploy `CounterfactualMigrationRegistry` via the deterministic deployer (`0x4e59…956C`) with a chosen salt, compute the resulting address, and pass it to the dispatcher's constructor (where it lives as an `immutable`). No router or proxy — the registry is single-purpose, and a fresh deployment with different logic would change every clone's address. The specific salt value needs to be chosen before dispatcher deployment.
    _Alternatives:_ (a) put the registry behind a router that the dispatcher reads (would let us swap registry implementations without breaking clone addresses, at the cost of an extra contract + indirection + audit surface); (b) make the registry address a runtime parameter at dispatcher construction (breaks dispatcher's cross-chain address invariant since immutable args would differ).
 
 2. **New-chain onboarding entrypoint.**
@@ -490,7 +490,7 @@ Clones expose `merkleRoot` as their only (public) storage slot; the dispatcher r
 
 ### D5. Meta merkle root lives in a separate `CounterfactualMigrationRegistry`
 
-A new single-purpose contract holds the admin-approved `metaRoot`. Clones read it at `migrate` time via a compile-time constant address.
+A new single-purpose contract holds the admin-approved `metaRoot`. Clones read it at `migrate` time via the dispatcher's `migrationRegistry` immutable (set at dispatcher construction; same address on every chain).
 
 **Rationale:** Keeps the factory logic-only and gives the governance surface a single, easily-monitored contract. Same deterministic-deploy pattern as `AdminWithdrawManager` — identical address on every chain.
 
