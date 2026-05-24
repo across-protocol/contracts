@@ -91,27 +91,94 @@ All three deposit implementations now verify an EIP-712 signature over execution
 
 ## Address Derivation
 
+Every contract in the system uses CREATE2 via the universal deterministic deployer (`0x4e59…956C`) so that addresses are reproducible on every EVM chain. CREATE2 derives an address from three inputs:
+
 ```
-identity        = abi.encode(recipient, dstChainId, outputToken)   // 96 bytes
-identityHash    = keccak256(identity)
-initialRoot     = canonical merkle root for this identity (computed off-chain by SDK)
-salt            = keccak256(identityHash, initialRoot)
-implementation  = CounterfactualDeposit                            // same address every chain (no constructor args)
-immutableArg    = identityHash                                     // 32 bytes appended to EIP-1167 clone
-cloneAddress    = CREATE2(factory, salt, initCode(impl, immutableArg))
+address = keccak256(0xff, deployer, salt, keccak256(initCode))[12:]
 ```
 
-- `recipient` is a `bytes32` (matches existing convention).
+For an address to be the same on chain A and chain B, all three inputs must be byte-identical on both chains. We use the same deployer everywhere; we choose the salts; the per-contract sections below explain how each contract's `initCode` is kept identical across chains.
+
+### CounterfactualMigrationRegistry
+
+```
+deployer  = 0x4e59…956C                                      // universal
+salt      = TBD (chosen once; see Q1)
+initCode  = registry bytecode  +  abi.encode(initialOwner, initialMetaRoot)
+```
+
+- **Bytecode is identical** — single source file, compiler version pinned in `foundry.toml`.
+- **Constructor args must be byte-identical across chains:**
+  - `initialOwner` — must be a globally consistent address on every chain. Two practical options: (a) a Safe multisig deployed deterministically (Safe's factory + the same setup script → the same address on every chain); (b) a known bootstrap EOA the team controls, used for initial deploy and immediately handed off via `transferOwnership`.
+  - `initialMetaRoot` — typically `bytes32(0)` at genesis; the owner publishes the first real metaRoot via `setMetaRoot` once all chains are live.
+- Anyone trying to deploy with different args produces different `initCode` → a different address → lands at an unused address. This is the [D14](#d14-registry-takes-initialowner-and-initialmetaroot-as-constructor-args) front-run mitigation.
+
+### CounterfactualDeposit (dispatcher)
+
+```
+deployer  = 0x4e59…956C
+salt      = TBD
+initCode  = dispatcher bytecode  +  abi.encode(migrationRegistry)
+```
+
+- **Bytecode is identical** — single source, pinned compiler.
+- **Constructor arg `migrationRegistry`** = the registry's globally-consistent address from above. Since the registry is at the same address on every chain, this arg is the same everywhere → dispatcher `initCode` is identical → dispatcher address is global.
+
+### CounterfactualDepositFactory
+
+```
+deployer  = 0x4e59…956C
+salt      = TBD
+initCode  = factory bytecode  +  abi.encode(dispatcher)
+```
+
+- **Bytecode is identical** — single source, pinned compiler.
+- **Constructor arg `dispatcher`** = the dispatcher's global address from above. Same on every chain.
+
+### Clones (per-identity counterfactual instances)
+
+```
+deployer    = factory                                            // global address from above
+salt        = keccak256(abi.encode(identityHash, initialRoot))
+identityHash = keccak256(abi.encode(recipient, dstChainId, outputToken))
+initCode    = EIP-1167 proxy(dispatcher)  +  abi.encode(identityHash)   // immutable arg
+```
+
+- `recipient` is a `bytes32` (Across convention — supports non-EVM recipients).
 - `dstChainId` is a `uint256`.
-- `outputToken` is a `bytes32` (Across convention — supports non-EVM destinations).
-- Same `(identity, initialRoot)` pair → same `cloneAddress` on every EVM chain.
-- `initialRoot` is folded into the CREATE2 salt, so a malicious deployer using a different root produces a **different** address — front-running can't redirect funds sent to the honest predicted address.
-- The merkle root is **not** in the immutable arg; the operational root lives in storage and can be migrated freely without disturbing the address.
-- `identityHash` is in the immutable arg so the dispatcher can authenticate itself during `migrate` (the meta leaf includes `identityHash`).
+- `outputToken` is a `bytes32` (Across convention — supports non-EVM destination tokens).
+- `initialRoot` is the canonical merkle root for this identity, published by the SDK. It is **byte-identical on every chain** (the tree's `block.chainid`-in-leaf design lets one root enumerate routes for all chains — see [Merkle Tree Structure](#merkle-tree-structure)).
+- **EIP-1167 proxy target** = the dispatcher's global address from above.
+- **Immutable arg** = `identityHash` (32 bytes appended to the proxy bytecode), readable at runtime via `Clones.fetchCloneArgs(address(this))`; used inside `migrate` to construct the meta-leaf.
+- `initialRoot` is folded into the CREATE2 **salt** (not the immutable arg). A malicious deployer using a different `initialRoot` produces a different salt → different CREATE2 address → no collision with the honest predicted address. This is the [D2](#d2-initialroot-is-folded-into-the-create2-salt) front-run mitigation.
+- The clone's merkle root lives in **storage**, not in `initCode`, so migrations don't disturb the address.
 
-**Cross-chain consistency of `initialRoot`.** The genesis tree enumerates `(chainId, impl, params)` leaves across every supported source chain (the `chainId`-in-leaf design described under [Merkle Tree Structure](#merkle-tree-structure)), so a single byte-identical root is valid on every chain. Each chain can only execute the slice of leaves where `chainId == block.chainid`. Adding a new chain or token after genesis is handled by [Migration](#migration-mechanism), not by changing `initialRoot`.
+All inputs are globally consistent → clones derive to the same address on every EVM chain.
 
-**Implication for the SDK.** The factory cannot recompute the canonical `initialRoot` from `identityHash` alone — that would require enumerating the catalog (chains, tokens, impl addresses per chain) on-chain. The SDK / API publishes the canonical root for each identity, the same way it publishes proofs. Anyone funding the predicted address must consult the SDK to learn what root they're committing to.
+### Bridge implementations (`CounterfactualDepositSpokePool` / `CCTP` / `OFT`)
+
+These contracts hold chain-specific configuration (SpokePool address, signer, srcPeriphery, sourceDomain, srcEid, wrappedNativeToken). Their constructor args differ per chain, so their **addresses differ per chain** by design.
+
+This is intentional and harmless: clones don't reference bridge implementations through `migrationRegistry` or `dispatcher`. They get implementation addresses from leaves inside the merkle tree, and each leaf includes `block.chainid` in its preimage so chain-X's leaves carry chain-X's specific impl addresses. The genesis tree enumerates per-chain impl addresses explicitly.
+
+### Withdraw and admin contracts
+
+- **`WithdrawImplementation`** has no constructor args → bytecode-only `initCode` → same address on every chain. Referenced via the withdraw leaf in each clone's tree.
+- **`AdminWithdrawManager`** has chain-specific constructor args (per the existing deployment script). Address differs per chain; referenced through the withdraw leaf's `admin` field, so per-chain values are explicit at tree-construction time.
+
+### Deployment ordering
+
+Each contract's address depends on the previous one's, so the bootstrap is staged:
+
+1. **Pick globally-consistent values:** `initialOwner` for the registry; salts for registry / dispatcher / factory.
+2. **Compute predicted addresses** of registry, dispatcher, and factory using CREATE2 derivation (off-chain). At this point we know every address that will exist on every chain.
+3. **Deploy in any order via the deterministic deployer.** Each call to `0x4e59…956C` with the chosen salt + initCode lands the contract at its predicted address. Already-deployed contracts are auto-skipped — repeating the call is a no-op.
+4. **Bridge implementations and `AdminWithdrawManager` deploy per chain** using chain-specific constructor args from `script/counterfactual/config.toml`.
+5. **Owner publishes the genesis `metaRoot`** via `registry.setMetaRoot(...)` once all chain registries are live.
+
+### Tron divergence
+
+Tron uses Tron-specific dispatcher and factory variants ([D10](#d10-tron-clones-break-cross-chain-address-equality-with-evm-clones)) — different bytecode → different `initCode` → different CREATE2 addresses than the EVM versions. Tron clones therefore live at different addresses than their EVM counterparts for the same identity; this is accepted. The Tron registry is independent ([D12](#d12-each-chains-counterfactualmigrationregistry-is-independent), Q3).
 
 ## Merkle Tree Structure
 
@@ -375,6 +442,12 @@ Working assumptions we have not yet committed to. Each lists what we're currentl
    _Working assumption:_ accept the gap; rely on an off-chain sweeper bot that watches `MetaRootUpdated` events and immediately calls `migrate()` on every affected clone. Monitor metaRoot lag in a dashboard. Document the revocation latency as an operational property.
    _Alternatives:_ (a) **Direct-mapping registry** — registry stores `mapping(identityHash => approvedRoot)` instead of a meta-merkle root; `execute()` reads the approved root from the registry every time. Adds ~2.1k cold-SLOAD per execute and gives up batched admin updates (per-identity admin txs), but stale-root execution becomes structurally impossible. (b) **Execute-time consistency check** — clones keep their own root but `execute()` requires `merkleRoot == registry.approvedRoot(identityHash)` and reverts otherwise, forcing a `migrate()` first. Same cost as (a). (c) **Pointer-based architecture** — clones point at a policy address (per the broader route-policy discussion); admin upgrades the policy in one tx and every pointing clone is affected immediately. Bigger redesign but cleanly eliminates this class of issue.
 
+5. **Label-only address derivation vs. keeping `initialRoot` in the salt.**
+   _The proposal:_ derive the clone address purely from a versioned identity "label" (e.g., `keccak256("counterfactual:v1", recipient, dstChainId, outputToken)`) and drop `initialRoot` from CREATE2 input entirely. Cleaner address-derivation story, easier off-chain prediction (no need to publish per-identity `initialRoot` values), pairs naturally with a policy-design refactor where the registry is the source of truth for config.
+   _Working assumption:_ keep `initialRoot` in the salt as in [D2](#d2-initialroot-is-folded-into-the-create2-salt). The cryptographic anchor between address and original config is what protects the pre-deploy funding window without any governance dependency — different `initialRoot` produces a different address, so a malicious deployer can't collide with what an honest user funded. Dropping it shifts that guarantee from math to "trust the registry's state at the moment of deploy," which is fine in a policy-design world but a regression in the current per-counterfactual-root model.
+   _Alternatives if we adopted label-only:_ (a) **Admin-gated deploy** — factory requires admin signature or registry proof at deploy; deploys are no longer self-service. (b) **Registry-driven initial config** — `factory.deploy(label)` reads the canonical root/policy from the registry; no caller-supplied root exists. (c) **No initial root at all** — clones start with `merkleRoot = bytes32(0)` and require a `migrate()` before first execute. Each of these closes the front-run gap that the salt currently closes cryptographically. Worth revisiting if [Q4](#open-questions) drives us toward a direct-mapping registry or policy-design refactor.
+   _Independent of the larger decision:_ the **`"counterfactual:v1"` prefix in `identityHash` is worth adding regardless.** It costs nothing and gives a clean v2 migration path if the schema ever changes — v2 clones derive from a different prefix and can't collide with v1 addresses.
+
 ## Design Decisions
 
 A running log of locked-in choices. Each entry: decision, rationale, alternatives considered. Open items live under [Open Questions](#open-questions).
@@ -500,3 +573,17 @@ The withdraw leaf (the `{admin, user}` pair gating fund recovery) is just anothe
 - _Pin the entire withdraw leaf at genesis_ — rejected. Strongest user guarantee but blocks all `AdminWithdrawManager` upgrades, requires an extra storage slot to store the pinned commitment, and forces re-funding new addresses for any custody-config change.
 - _Pin only the `user` address, allow `admin` to mutate_ — rejected for v1 in favor of single-mechanism simplicity. Worth revisiting if `metaRoot` governance ends up lighter than custody-grade; in that case, asymmetric pinning is the right escape-hatch protection.
 - _Mutable leaf but contract-level rejection of `user` changes_ — equivalent to the above; rejected for the same reason.
+
+### D14. Registry takes `(initialOwner, initialMetaRoot)` as constructor args
+
+`CounterfactualMigrationRegistry`'s constructor takes `(address initialOwner, bytes32 initialMetaRoot)` rather than setting `owner = tx.origin` with no args. For cross-chain address consistency, the same `(initialOwner, initialMetaRoot)` tuple is passed on every chain.
+
+**Rationale:** A registry with no constructor args has identical `initCode` everywhere → identical CREATE2 address via the deterministic deployer. With `owner = tx.origin`, the first EOA to submit the deploy tx (anywhere) becomes permanent owner of the squatted registry on that chain, and any mempool watcher can race ahead of the legitimate deployer. Putting `initialOwner` in the constructor solves it cryptographically: anyone deploying with different args produces different `initCode` → lands at a different (unused) address. Including `initialMetaRoot` lets the bootstrap state be set atomically with deploy instead of in a separate transaction.
+
+**Trade-off accepted:** `initialOwner` must be a globally consistent address on every chain — typically a Safe multisig deployed deterministically (same Safe factory + identical setup → same address), or a known bootstrap EOA that's handed off post-deploy via `transferOwnership`. This is the same operational pattern as `AdminWithdrawManager`'s deployer/owner.
+
+**Alternatives considered:**
+
+- _Set `owner = tx.origin` in constructor with no args_ — rejected (the original implementation). Critical front-run risk on every chain.
+- _Custom factory that authenticates the deployer before deploying the registry_ — rejected. Workable but adds an extra contract to audit and another address to coordinate. Constructor-args achieves the same property with a smaller surface.
+- _Admin-only deploy via a permissioned factory_ — rejected. Removes the "any chain, deterministic-deployer, no special setup" property that's the whole point of the universal deterministic-deployer pattern.
