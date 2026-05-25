@@ -84,7 +84,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), user, uint256(100e6)),
             new bytes32[](0)
         );
 
@@ -105,12 +105,33 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(NATIVE_ASSET, uint256(1 ether)),
+            abi.encode(NATIVE_ASSET, user, uint256(1 ether)),
             new bytes32[](0)
         );
 
         assertEq(user.balance - balBefore, 1 ether);
         assertEq(clone.balance, 0);
+    }
+
+    function testUserCanWithdrawToCustomRecipient() public {
+        // The user has full execution authority, so they can pick any recipient — including a
+        // different address than their `userAddress`. (This is a property of the user-escape
+        // path; the manager's signedWithdraw forces recipient = userAddress.)
+        address customRecipient = makeAddr("custom-recipient");
+        address clone = _deployClone();
+        token.mint(clone, 100e6);
+
+        vm.prank(user);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), customRecipient, uint256(100e6)),
+            new bytes32[](0)
+        );
+
+        assertEq(token.balanceOf(customRecipient), 100e6);
+        assertEq(token.balanceOf(user), 0);
     }
 
     function testPartialWithdraw() public {
@@ -122,7 +143,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(30e6)),
+            abi.encode(address(token), user, uint256(30e6)),
             new bytes32[](0)
         );
         assertEq(token.balanceOf(user), 30e6);
@@ -133,7 +154,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(70e6)),
+            abi.encode(address(token), user, uint256(70e6)),
             new bytes32[](0)
         );
         assertEq(token.balanceOf(user), 100e6);
@@ -143,24 +164,26 @@ contract WithdrawImplementationTest is Test {
     // --- Immutable admin can withdraw via the merkle path ---
 
     function testAdminCanWithdrawViaMerklePath() public {
+        // The immutable admin (e.g. AdminWithdrawManager) chooses the recipient via submitterData.
+        // Here the admin sends to a custom recipient — that's the directWithdraw-style behavior.
+        address customRecipient = makeAddr("admin-chosen");
         address clone = _deployClone();
         token.mint(clone, 100e6);
         bytes32[] memory proof = _activateWithdrawLeaf();
 
         vm.expectEmit(true, true, true, true);
-        emit WithdrawImplementation.Withdraw(withdrawAdmin, address(token), user, 100e6);
+        emit WithdrawImplementation.Withdraw(withdrawAdmin, address(token), customRecipient, 100e6);
 
         vm.prank(withdrawAdmin);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), customRecipient, uint256(100e6)),
             proof
         );
 
-        // Funds always go to userAddress, never to the caller.
-        assertEq(token.balanceOf(user), 100e6);
+        assertEq(token.balanceOf(customRecipient), 100e6);
         assertEq(token.balanceOf(withdrawAdmin), 0);
         assertEq(token.balanceOf(clone), 0);
     }
@@ -180,7 +203,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), relayer, uint256(100e6)),
             proof
         );
     }
@@ -195,36 +218,32 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), relayer, uint256(100e6)),
             new bytes32[](0)
         );
     }
 
     // --- Native ETH transfer failure ---
 
-    function testNativeETHRevertsIfUserAddressRejects() public {
-        // Set up a clone whose userAddress is a contract that rejects ETH. Native transfer to it fails.
+    function testNativeETHRevertsIfRecipientRejects() public {
         RejectsETH rejecter = new RejectsETH();
-
-        CloneArgs memory args = _cloneArgs();
-        args.userAddress = address(rejecter);
-        address clone = factory.deploy(address(dispatcher), args, keccak256("rejecter-clone"));
+        address clone = _deployClone();
         vm.deal(clone, 1 ether);
 
         vm.expectRevert(WithdrawImplementation.NativeTransferFailed.selector);
-        vm.prank(address(rejecter));
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(
-            args,
+            _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(NATIVE_ASSET, uint256(1 ether)),
+            abi.encode(NATIVE_ASSET, address(rejecter), uint256(1 ether)),
             new bytes32[](0)
         );
     }
 
-    // --- Event carries caller + forced recipient ---
+    // --- Event carries caller + recipient ---
 
-    function testCallerRecordedInEvent() public {
+    function testCallerAndRecipientRecordedInEvent() public {
         address clone = _deployClone();
         token.mint(clone, 50e6);
 
@@ -236,7 +255,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(50e6)),
+            abi.encode(address(token), user, uint256(50e6)),
             new bytes32[](0)
         );
     }

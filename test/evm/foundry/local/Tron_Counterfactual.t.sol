@@ -266,7 +266,7 @@ contract Tron_CounterfactualTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(usdt), uint256(100e6)),
+            abi.encode(address(usdt), user, uint256(100e6)),
             new bytes32[](0)
         );
 
@@ -288,7 +288,7 @@ contract Tron_CounterfactualTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(usdt), uint256(100e6)),
+            abi.encode(address(usdt), user, uint256(100e6)),
             new bytes32[](0)
         );
     }

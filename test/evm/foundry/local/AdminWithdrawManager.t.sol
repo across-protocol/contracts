@@ -116,7 +116,7 @@ contract AdminWithdrawManagerTest is Test {
 
     // --- directWithdraw ---
 
-    function testDirectWithdrawSendsToUserAddress() public {
+    function testDirectWithdrawToUserAddress() public {
         vm.expectEmit(true, true, true, true);
         emit WithdrawImplementation.Withdraw(address(manager), address(token), user, 50e6);
 
@@ -126,11 +126,34 @@ contract AdminWithdrawManagerTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             address(token),
+            user,
             50e6,
             withdrawProof
         );
 
         assertEq(token.balanceOf(user), 50e6);
+    }
+
+    function testDirectWithdrawerCanChooseRecipient() public {
+        // The directWithdrawer is a fully-trusted role and can withdraw to any address it picks.
+        address customRecipient = makeAddr("custom-recipient");
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawImplementation.Withdraw(address(manager), address(token), customRecipient, 50e6);
+
+        vm.prank(directWithdrawer);
+        manager.directWithdraw(
+            depositAddress,
+            _cloneArgs(),
+            address(withdrawImpl),
+            address(token),
+            customRecipient,
+            50e6,
+            withdrawProof
+        );
+
+        assertEq(token.balanceOf(customRecipient), 50e6);
+        assertEq(token.balanceOf(user), 0);
     }
 
     function testDirectWithdrawUnauthorized() public {
@@ -141,28 +164,10 @@ contract AdminWithdrawManagerTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             address(token),
+            makeAddr("attacker"),
             50e6,
             withdrawProof
         );
-    }
-
-    function testDirectWithdrawerCannotRedirectFunds() public {
-        // Even though directWithdrawer is trusted to trigger withdrawals, it cannot choose recipient —
-        // funds always go to cloneArgs.userAddress. Trust gain: a compromised directWithdrawer can
-        // only force withdrawals to land in the user's wallet, not in the attacker's.
-        address attackerControlled = makeAddr("attacker-controlled");
-        vm.prank(directWithdrawer);
-        manager.directWithdraw(
-            depositAddress,
-            _cloneArgs(),
-            address(withdrawImpl),
-            address(token),
-            50e6,
-            withdrawProof
-        );
-
-        assertEq(token.balanceOf(user), 50e6);
-        assertEq(token.balanceOf(attackerControlled), 0);
     }
 
     // --- signedWithdraw ---

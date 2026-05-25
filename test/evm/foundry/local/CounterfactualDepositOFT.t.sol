@@ -425,7 +425,7 @@ contract CounterfactualDepositOFTTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), user, uint256(100e6)),
             new bytes32[](0)
         );
 

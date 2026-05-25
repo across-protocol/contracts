@@ -7,19 +7,23 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
  * @title WithdrawImplementation
- * @notice Sweeps tokens / native ETH from a counterfactual clone to its bound `userAddress`. The
- *         recipient is fixed by clone identity, not chosen at execute time. Callers are restricted
- *         to either the immutable `admin` (typically an `AdminWithdrawManager` that gates calls
- *         behind its own auth) or the clone's `userAddress` (so users can always withdraw their
- *         own funds, independent of policy state or manager availability).
+ * @notice Sweeps tokens / native ETH from a counterfactual clone to a caller-specified recipient.
+ *         Authorized callers are either the impl's immutable `admin` (typically an
+ *         `AdminWithdrawManager` that gates calls behind its own auth) or the clone's
+ *         `userAddress` (so users can always withdraw their own funds, independent of policy
+ *         state or manager availability). The recipient is supplied by the caller via
+ *         `submitterData`; the manager's `signedWithdraw` path forces the recipient to the
+ *         clone's `userAddress` so a compromised `signer` cannot redirect funds.
  * @dev Conforms to `ICounterfactualImplementation` so the dispatcher's generic delegate path can
- *      call it. The clone-identity fields (`recipient`, `outputToken`, `destinationChainId`) and
- *      `routeParams` are unused; `submitterData` decodes as `(address token, uint256 amount)` —
- *      the destination is always `userAddress`.
+ *      call it. The clone-identity bridge fields (`recipient`, `outputToken`,
+ *      `destinationChainId`) and `routeParams` are unused; `submitterData` decodes as
+ *      `(address token, address recipient, uint256 amount)`.
  *
- *      Trust model: the `AdminWithdrawManager` (or whatever `admin` points to) authorizes _when_
- *      and _how much_, never _where_. A compromised manager / signer / direct-withdrawer can
- *      force withdrawals to the user's address but cannot redirect them.
+ *      Trust model: the immutable `admin` (e.g. `AdminWithdrawManager`) decides what level of
+ *      flexibility to grant each of its own roles — the manager's `directWithdrawer` is trusted
+ *      to choose recipient, while its `signer` is not (recipient pinned to `userAddress`). A
+ *      compromised `signer` can force a withdrawal to the user's address but cannot redirect it.
+ *      A compromised `directWithdrawer` retains full authority.
  * @custom:security-contact bugs@across.to
  */
 contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
@@ -47,15 +51,15 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferER
     ) external payable {
         if (msg.sender != admin && msg.sender != userAddress) revert Unauthorized();
 
-        (address token, uint256 amount) = abi.decode(submitterData, (address, uint256));
+        (address token, address recipient, uint256 amount) = abi.decode(submitterData, (address, address, uint256));
 
         if (token == NATIVE_ASSET) {
-            (bool success, ) = userAddress.call{ value: amount }("");
+            (bool success, ) = recipient.call{ value: amount }("");
             if (!success) revert NativeTransferFailed();
         } else {
-            _safeTransfer(token, userAddress, amount);
+            _safeTransfer(token, recipient, amount);
         }
 
-        emit Withdraw(msg.sender, token, userAddress, amount);
+        emit Withdraw(msg.sender, token, recipient, amount);
     }
 }

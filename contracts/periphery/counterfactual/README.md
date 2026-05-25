@@ -13,7 +13,7 @@ Gas-optimized system for creating persistent, reusable deposit addresses via det
 - `CounterfactualDepositCCTP` — Deposit implementation for SponsoredCCTP. Verifies a local EIP-712 signature authorizing the runtime `executionFee`, then forwards a `SponsoredCCTPQuote` to `SponsoredCCTPSrcPeriphery.depositForBurn()` along with the periphery's own quote signature.
 - `CounterfactualDepositOFT` — Deposit implementation for SponsoredOFT (LayerZero). Same shape as CCTP plus `msg.value` forwarding for LZ native messaging fees.
 - `WithdrawImplementation` — Withdraw implementation. Conforms to `ICounterfactualImplementation` like any other impl. The withdrawal destination is always `cloneArgs.userAddress` — fixed by clone identity, not chosen at execute time. Authorized callers are either the impl's immutable `admin` (typically an `AdminWithdrawManager`) or the clone's `userAddress`. Either path goes through `CounterfactualDeposit` — the user via the user escape, the impl `admin` via a merkle proof against a policy tree that includes the withdraw leaf.
-- `AdminWithdrawManager` — Contract designed to be set as the immutable `admin` on a `WithdrawImplementation` to gate manager-driven withdrawals. Provides two paths: (1) direct withdraw by a trusted `directWithdrawer` and (2) signed withdraw by anyone with a valid EIP-712 signature from `signer`. Neither path chooses recipient — funds always land at `cloneArgs.userAddress`. A compromised `directWithdrawer` or `signer` can force a withdrawal to happen but cannot redirect it.
+- `AdminWithdrawManager` — Contract designed to be set as the immutable `admin` on a `WithdrawImplementation` to gate manager-driven withdrawals. Provides two paths with different trust levels: (1) direct withdraw by a trusted `directWithdrawer` who picks the recipient freely (full trust), and (2) signed withdraw by anyone with a valid EIP-712 signature from `signer`, where the recipient is forced to `cloneArgs.userAddress` (bounded trust — a compromised `signer` can force a withdrawal but cannot redirect funds).
 - `CounterfactualConstants` — Shared file-level constants (`NATIVE_ASSET`, `BPS_SCALAR`) imported by name.
 
 ```
@@ -77,13 +77,13 @@ Deployer / SDK
 
 Each clone's bytecode appends a single 32-byte immutable argument: `argsHash = keccak256(abi.encode(cloneArgs))` over five identity fields:
 
-| Field                | Type      | Description                                                                                                                                                                                                                                                                                         |
-| -------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `outputToken`        | `bytes32` | Token received on the destination chain. `bytes32` to support non-EVM tokens.                                                                                                                                                                                                                       |
-| `destinationChainId` | `uint256` | Destination chain ID (or canonical Across-assigned ID for non-EVM destinations).                                                                                                                                                                                                                    |
-| `recipient`          | `bytes32` | Destination-chain address that receives `outputToken`.                                                                                                                                                                                                                                              |
-| `userAddress`        | `address` | EVM address representing the clone's user. The canonical authority — can call any impl with any routeParams via the dispatcher's user escape, bypassing the policy. Also the sole destination for `WithdrawImplementation` payouts: a compromised manager / signer cannot redirect funds elsewhere. |
-| `routePolicyAddress` | `address` | The `RoutePolicy` proxy whose `activeRoot(clone)` authorizes this clone's routes.                                                                                                                                                                                                                   |
+| Field                | Type      | Description                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `outputToken`        | `bytes32` | Token received on the destination chain. `bytes32` to support non-EVM tokens.                                                                                                                                                                                                                                                                                                                                       |
+| `destinationChainId` | `uint256` | Destination chain ID (or canonical Across-assigned ID for non-EVM destinations).                                                                                                                                                                                                                                                                                                                                    |
+| `recipient`          | `bytes32` | Destination-chain address that receives `outputToken`.                                                                                                                                                                                                                                                                                                                                                              |
+| `userAddress`        | `address` | EVM address representing the clone's user. The canonical authority — can call any impl with any routeParams via the dispatcher's user escape, bypassing the policy. Also the forced destination for `WithdrawImplementation` payouts on the manager's `signedWithdraw` path: a compromised `signer` cannot redirect funds elsewhere. The trusted `directWithdrawer` and the user themselves can pick any recipient. |
+| `routePolicyAddress` | `address` | The `RoutePolicy` proxy whose `activeRoot(clone)` authorizes this clone's routes.                                                                                                                                                                                                                                                                                                                                   |
 
 The caller passes all five values in calldata at execute time; `CounterfactualDeposit` recomputes `keccak256(abi.encode(args))` and reverts on mismatch. After the check, `cloneArgs` is as authoritative as if stored in clone bytecode directly. Storing the 32-byte hash instead of the full ~140 bytes of unhashed args keeps clones cheap to deploy (~77 bytes total).
 
@@ -132,7 +132,7 @@ A single policy's tree typically holds many leaves (one per route). Multiple clo
 
 If `msg.sender == cloneArgs.userAddress`, `CounterfactualDeposit` skips the merkle proof entirely and delegatecalls whatever implementation the user specified with whatever `routeParams` and `submitterData` they supplied. The user has full execution authority over their own clone, independent of policy state — withdraw works even when `activeRoot == bytes32(0)` or the policy contract is bricked. This is the structural guarantee that backs the bounded-trust property: the policy owner governs routes for permissionless executors; the user retains ultimate control over the clone's funds.
 
-`WithdrawImplementation` additionally checks `msg.sender ∈ {admin, userAddress}` inside the impl. This serves two purposes: (a) it lets the impl's immutable `admin` (typically `AdminWithdrawManager`) trigger withdrawals via the merkle path while still forcing the recipient to `userAddress`, and (b) it provides defense-in-depth — random callers proving a withdraw leaf still get rejected.
+`WithdrawImplementation` additionally checks `msg.sender ∈ {admin, userAddress}` inside the impl. This serves two purposes: (a) it lets the impl's immutable `admin` (typically `AdminWithdrawManager`) trigger withdrawals via the merkle path, and (b) it provides defense-in-depth — random callers proving a withdraw leaf still get rejected. The recipient is caller-specified in `submitterData`; the `AdminWithdrawManager`'s `signedWithdraw` path overrides it to `cloneArgs.userAddress` so a compromised `signer` cannot redirect funds.
 
 ## CCTP Implementation (`CounterfactualDepositCCTP`)
 
@@ -282,7 +282,7 @@ The clone has a `receive()` function (in `CounterfactualDeposit`) to accept ETH 
 
 ## Withdraw Implementation (`WithdrawImplementation`)
 
-Standalone impl that conforms to `ICounterfactualImplementation` like any other. The clone-identity fields `recipient`, `outputToken`, `destinationChainId` and `routeParams` are accepted but ignored; the impl uses `userAddress` (forwarded from `cloneArgs.userAddress`) as the forced withdrawal destination.
+Standalone impl that conforms to `ICounterfactualImplementation` like any other. The clone-identity bridge fields (`recipient`, `outputToken`, `destinationChainId`) and `routeParams` are accepted but ignored; the impl reads the withdrawal destination from `submitterData` (caller-specified). `userAddress` (forwarded from `cloneArgs.userAddress`) is used only for the caller-auth check.
 
 | Variable      | Source                           | Description                                                                                                             |
 | ------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -300,18 +300,18 @@ Two typical invocation paths:
 
 ## AdminWithdrawManager
 
-A contract designed to be set as the `WithdrawImplementation`'s immutable `admin`. It gates manager-driven withdrawals; the destination is fixed by the clone's `userAddress`, so neither the manager nor its `directWithdrawer` / `signer` can choose recipient. It exposes two withdrawal paths:
+A contract designed to be set as the `WithdrawImplementation`'s immutable `admin`. It gates manager-driven withdrawals with two paths at different trust levels:
 
-1. **`directWithdraw`** — only callable by `directWithdrawer` (a trusted operator address). The caller specifies `(token, amount)` and supplies the merkle proof for the policy's withdraw leaf. The manager invokes the clone's `execute` accordingly. Recipient is `cloneArgs.userAddress`.
-2. **`signedWithdraw`** — callable by anyone with a valid EIP-712 signature from `signer`. The signed message commits `(depositAddress, token, amount, deadline)` — recipient is not part of the signature because it's fixed by clone identity. The submitter supplies the merkle proof (the policy tree is publicly known off-chain).
+1. **`directWithdraw`** — only callable by `directWithdrawer` (a tightly-controlled operator address). The caller specifies `(token, recipient, amount)` and supplies the merkle proof for the policy's withdraw leaf. The manager forwards the recipient as-is. Full trust: `directWithdrawer` can withdraw to any address.
+2. **`signedWithdraw`** — callable by anyone with a valid EIP-712 signature from `signer`. The signed message commits `(depositAddress, withdrawImpl, token, amount, deadline)` — recipient is not in the typehash. The manager forces the recipient to `cloneArgs.userAddress` when invoking the impl. Bounded trust: a compromised `signer` can force a withdrawal but cannot redirect it.
 
 EIP-712 typehash: `SignedWithdraw(address depositAddress,address withdrawImpl,address token,uint256 amount,uint256 deadline)`.
 
 `owner` can update `directWithdrawer` and `signer`. The target `withdrawImpl` is supplied per call — the manager has no immutable impl reference. This breaks what would otherwise be a circular construction dependency (impl needs manager address for its immutable `admin`; manager would otherwise need impl address for its immutable `withdrawImpl`). Deployment is straightforward: deploy the manager first, then deploy `WithdrawImplementation(managerAddress)`. Both are deterministic across chains via Nick's factory with no prediction logic required. The signer's typehash commits to `withdrawImpl` so a submitter cannot redirect an authorized withdrawal to a different impl; the dispatcher's merkle check independently restricts which impls are reachable for a given clone.
 
-For either path, the call chain is `caller → AdminWithdrawManager → clone.execute(...) → CounterfactualDeposit → WithdrawImpl`. The dispatcher checks the merkle proof (manager isn't `userAddress`); the impl's caller check passes because `msg.sender == admin` (= manager); funds always land at `userAddress`.
+For either path, the call chain is `caller → AdminWithdrawManager → clone.execute(...) → CounterfactualDeposit → WithdrawImpl`. The dispatcher checks the merkle proof (manager isn't `userAddress`); the impl's caller check passes because `msg.sender == admin` (= manager); funds land at the recipient encoded in `submitterData`.
 
-**Trust model.** `directWithdrawer` and `signer` are "hot" roles in practice — they authorize withdrawals. A compromised key in either role can force a withdrawal to happen at an inconvenient time but cannot redirect funds. The user receives their own money in their own wallet.
+**Trust model.** `directWithdrawer` is a "cold" / tightly-controlled role (operator multisig, hardware-backed EOA, etc.) — given full authority including recipient choice. `signer` is a "hot" / API-side role — given bounded authority: can force withdrawals but only to the clone's `userAddress`. A compromised `signer` can force the user to receive their own money at an inconvenient time but cannot send funds to an attacker.
 
 ## Tron Variants
 
@@ -357,7 +357,7 @@ Why this structure rather than baking binding into the dispatcher: each impl can
 
 The user can call any implementation with any `routeParams`, regardless of policy state. This guarantees fund recovery even if the policy contract is bricked, its root is `bytes32(0)`, or the policy owner is compromised. It's the structural backstop behind the bounded-trust property: the policy owner governs routes for permissionless executors; the user retains ultimate control over their own clone.
 
-The `userAddress` field is also the forced destination for `WithdrawImplementation`. That tie — "the user is both the escape authority and the only valid withdraw destination" — is what lets `AdminWithdrawManager`'s `directWithdrawer` and `signer` roles be "hot" without being able to redirect funds. The worst a compromised manager role can do is force the user to receive their own money.
+The `userAddress` field also serves as the safe-destination fallback used by `AdminWithdrawManager`'s `signedWithdraw` path. That path commits `(token, amount)` in the signer's typehash but not recipient — the manager substitutes `cloneArgs.userAddress` as the recipient, so a compromised `signer` can force withdrawals but cannot redirect them. The trusted `directWithdraw` path passes the caller-specified recipient through unmodified, since that role is fully trusted.
 
 ### 6. Per-Chain Policy
 
@@ -483,8 +483,8 @@ The `AdminWithdrawManager` is deployed with the deployer as owner and directWith
 
 Provides two withdrawal paths gated by a `WithdrawImplementation` whose immutable `admin` is the manager. Funds always land at `cloneArgs.userAddress`; neither path can redirect.
 
-1. **Direct withdraw** (`directWithdraw`) — A trusted `directWithdrawer` address calls the manager with `(depositAddress, cloneArgs, withdrawImpl, token, amount, proof)`. The manager invokes the clone's execute with the proof for the policy's withdraw leaf.
-2. **Signed withdraw** (`signedWithdraw`) — Anyone with a valid EIP-712 signature from `signer` can trigger a withdrawal. The signed message is `SignedWithdraw(address depositAddress,address withdrawImpl,address token,uint256 amount,uint256 deadline)` — recipient is not part of the signature because it's fixed to `userAddress` inside the impl. The submitter supplies the merkle proof.
+1. **Direct withdraw** (`directWithdraw`) — A trusted `directWithdrawer` address calls the manager with `(depositAddress, cloneArgs, withdrawImpl, token, recipient, amount, proof)`. The manager forwards the caller-specified recipient as-is. Full trust on `directWithdrawer`.
+2. **Signed withdraw** (`signedWithdraw`) — Anyone with a valid EIP-712 signature from `signer` can trigger a withdrawal. The signed message is `SignedWithdraw(address depositAddress,address withdrawImpl,address token,uint256 amount,uint256 deadline)` — recipient is not in the typehash. The manager forces the recipient to `cloneArgs.userAddress` when invoking the impl. The submitter supplies the merkle proof.
 
 The `owner` can update `directWithdrawer` and `signer` addresses.
 

@@ -536,7 +536,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
             _cloneArgs(outputTokenBytes32),
             address(withdrawImpl),
             "",
-            abi.encode(address(inputToken), uint256(100e6)),
+            abi.encode(address(inputToken), user, uint256(100e6)),
             new bytes32[](0)
         );
 

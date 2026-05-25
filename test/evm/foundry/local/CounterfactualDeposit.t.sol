@@ -127,7 +127,7 @@ contract CounterfactualDepositTest is Test {
             tampered,
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(0)),
+            abi.encode(address(token), user, uint256(0)),
             new bytes32[](0)
         );
     }
@@ -144,7 +144,7 @@ contract CounterfactualDepositTest is Test {
             tampered,
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), user, uint256(100e6)),
             new bytes32[](0)
         );
     }
@@ -163,11 +163,11 @@ contract CounterfactualDepositTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), user, uint256(100e6)),
             new bytes32[](0)
         );
 
-        // WithdrawImplementation always sends funds to userAddress.
+        // The user supplied themselves as the recipient.
         assertEq(token.balanceOf(user), 100e6);
     }
 
@@ -204,7 +204,7 @@ contract CounterfactualDepositTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(50e6)),
+            abi.encode(address(token), relayer, uint256(50e6)),
             new bytes32[](0)
         );
     }
@@ -227,7 +227,7 @@ contract CounterfactualDepositTest is Test {
             args,
             address(withdrawImpl),
             routeParams,
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), relayer, uint256(100e6)),
             proof
         );
     }

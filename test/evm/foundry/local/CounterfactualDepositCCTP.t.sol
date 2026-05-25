@@ -437,7 +437,7 @@ contract CounterfactualDepositCCTPTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(burnToken), uint256(100e6)),
+            abi.encode(address(burnToken), user, uint256(100e6)),
             new bytes32[](0)
         );
 
