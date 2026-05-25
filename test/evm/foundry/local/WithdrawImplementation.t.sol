@@ -14,7 +14,8 @@ import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 /**
  * @notice Tests for WithdrawImplementation. Two authorized callers — the impl's immutable `admin`
  *         (typically an AdminWithdrawManager) and the clone's `userAddress` — can trigger
- *         withdrawals; recipients are always forced to `userAddress`.
+ *         withdrawals. The admin can specify an arbitrary `to` address; the user's `to` is always
+ *         forced to `userAddress`.
  */
 contract WithdrawImplementationTest is Test {
     CounterfactualDeposit public dispatcher;
@@ -84,7 +85,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), uint256(100e6), user),
             new bytes32[](0)
         );
 
@@ -105,7 +106,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(NATIVE_ASSET, uint256(1 ether)),
+            abi.encode(NATIVE_ASSET, uint256(1 ether), user),
             new bytes32[](0)
         );
 
@@ -122,7 +123,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(30e6)),
+            abi.encode(address(token), uint256(30e6), user),
             new bytes32[](0)
         );
         assertEq(token.balanceOf(user), 30e6);
@@ -133,7 +134,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(70e6)),
+            abi.encode(address(token), uint256(70e6), user),
             new bytes32[](0)
         );
         assertEq(token.balanceOf(user), 100e6);
@@ -142,7 +143,7 @@ contract WithdrawImplementationTest is Test {
 
     // --- Immutable admin can withdraw via the merkle path ---
 
-    function testAdminCanWithdrawViaMerklePath() public {
+    function testAdminCanWithdrawToUserViaMerklePath() public {
         address clone = _deployClone();
         token.mint(clone, 100e6);
         bytes32[] memory proof = _activateWithdrawLeaf();
@@ -155,13 +156,35 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), uint256(100e6), user),
             proof
         );
 
-        // Funds always go to userAddress, never to the caller.
         assertEq(token.balanceOf(user), 100e6);
         assertEq(token.balanceOf(withdrawAdmin), 0);
+        assertEq(token.balanceOf(clone), 0);
+    }
+
+    function testAdminCanWithdrawToArbitraryAddress() public {
+        address clone = _deployClone();
+        token.mint(clone, 100e6);
+        bytes32[] memory proof = _activateWithdrawLeaf();
+        address treasury = makeAddr("treasury");
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawImplementation.Withdraw(withdrawAdmin, address(token), treasury, 100e6);
+
+        vm.prank(withdrawAdmin);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), uint256(100e6), treasury),
+            proof
+        );
+
+        assertEq(token.balanceOf(treasury), 100e6);
+        assertEq(token.balanceOf(user), 0);
         assertEq(token.balanceOf(clone), 0);
     }
 
@@ -180,7 +203,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), uint256(100e6), user),
             proof
         );
     }
@@ -195,7 +218,7 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(100e6)),
+            abi.encode(address(token), uint256(100e6), user),
             new bytes32[](0)
         );
     }
@@ -217,7 +240,7 @@ contract WithdrawImplementationTest is Test {
             args,
             address(withdrawImpl),
             "",
-            abi.encode(NATIVE_ASSET, uint256(1 ether)),
+            abi.encode(NATIVE_ASSET, uint256(1 ether), address(rejecter)),
             new bytes32[](0)
         );
     }
@@ -236,9 +259,31 @@ contract WithdrawImplementationTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), uint256(50e6)),
+            abi.encode(address(token), uint256(50e6), user),
             new bytes32[](0)
         );
+    }
+
+    function testUserToIsAlwaysOverridden() public {
+        address clone = _deployClone();
+        token.mint(clone, 100e6);
+        address someOtherAddr = makeAddr("some-other");
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawImplementation.Withdraw(user, address(token), user, 100e6);
+
+        // User passes a different `to` — it gets overridden to userAddress.
+        vm.prank(user);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(),
+            address(withdrawImpl),
+            "",
+            abi.encode(address(token), uint256(100e6), someOtherAddr),
+            new bytes32[](0)
+        );
+
+        assertEq(token.balanceOf(user), 100e6);
+        assertEq(token.balanceOf(someOtherAddr), 0);
     }
 }
 

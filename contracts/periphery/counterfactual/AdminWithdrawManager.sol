@@ -10,10 +10,10 @@ import { CloneArgs } from "./CounterfactualCloneArgs.sol";
 /**
  * @title AdminWithdrawManager
  * @notice Manages withdrawals from counterfactual deposit clones via two paths:
- *           1. Direct withdraw — trusted `directWithdrawer` triggers a withdrawal.
- *           2. Signed withdraw — anyone can trigger with a valid `signer` signature.
- *         Funds always land at `cloneArgs.userAddress` — neither path can choose recipient.
- *         Withdrawal authority is therefore "when and how much", not "where".
+ *           1. Direct withdraw — trusted `directWithdrawer` triggers a withdrawal to an
+ *              arbitrary `to` address (the multisig controls where funds go).
+ *           2. Signed withdraw — anyone can trigger with a valid `signer` signature;
+ *              funds always land at `cloneArgs.userAddress`.
  * @dev The target `withdrawImpl` is supplied per call rather than stored on the manager. This
  *      avoids a circular construction dependency with `WithdrawImplementation` (which holds the
  *      manager's address as its immutable `admin`): the manager can be deployed first, then the
@@ -64,12 +64,10 @@ contract AdminWithdrawManager is Ownable, EIP712 {
     }
 
     /**
-     * @notice Direct withdraw — triggers a sweep of `(token, amount)` from `depositAddress` to its
-     *         bound `userAddress` via the supplied `withdrawImpl`.
-     * @dev Only callable by `directWithdrawer`. Recipient is fixed by clone identity — the caller
-     *      cannot redirect funds. The caller supplies both the impl and the merkle proof for the
-     *      policy's withdraw leaf; the dispatcher verifies the proof before delegatecalling the
-     *      impl, and the impl checks `msg.sender == admin` (= this manager).
+     * @notice Direct withdraw — triggers a sweep of `(token, amount)` from `depositAddress` to `to`
+     *         via the supplied `withdrawImpl`.
+     * @dev Only callable by `directWithdrawer`. The `to` address is unrestricted — the admin
+     *      (typically a multisig) has full control over the destination.
      */
     function directWithdraw(
         address depositAddress,
@@ -77,19 +75,24 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         address withdrawImpl,
         address token,
         uint256 amount,
+        address to,
         bytes32[] calldata proof
     ) external {
         if (msg.sender != directWithdrawer) revert Unauthorized();
-        ICounterfactualDeposit(depositAddress).execute(cloneArgs, withdrawImpl, "", abi.encode(token, amount), proof);
+        ICounterfactualDeposit(depositAddress).execute(
+            cloneArgs,
+            withdrawImpl,
+            "",
+            abi.encode(token, amount, to),
+            proof
+        );
     }
 
     /**
      * @notice Signed withdraw — anyone can trigger with a valid `signer` signature over
-     *         `(depositAddress, withdrawImpl, token, amount, deadline)`. Recipient is fixed to
-     *         `cloneArgs.userAddress` inside `WithdrawImplementation`; a compromised signer can
-     *         force withdrawals to happen but cannot redirect them. The submitter supplies the
-     *         merkle proof for the policy's withdraw leaf (it is not part of what the signer
-     *         authorizes — the tree is publicly known off-chain).
+     *         `(depositAddress, withdrawImpl, token, amount, deadline)`. Recipient is hardcoded to
+     *         `cloneArgs.userAddress`; a compromised signer can force withdrawals to happen but
+     *         cannot redirect them.
      */
     function signedWithdraw(
         address depositAddress,
@@ -108,7 +111,13 @@ contract AdminWithdrawManager is Ownable, EIP712 {
         );
         if (ECDSA.recover(_hashTypedDataV4(structHash), signature) != signer) revert InvalidSignature();
 
-        ICounterfactualDeposit(depositAddress).execute(cloneArgs, withdrawImpl, "", abi.encode(token, amount), proof);
+        ICounterfactualDeposit(depositAddress).execute(
+            cloneArgs,
+            withdrawImpl,
+            "",
+            abi.encode(token, amount, cloneArgs.userAddress),
+            proof
+        );
     }
 
     /// @notice Updates the direct withdrawer address.

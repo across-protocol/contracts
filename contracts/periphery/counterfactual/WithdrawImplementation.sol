@@ -7,19 +7,19 @@ import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
 
 /**
  * @title WithdrawImplementation
- * @notice Sweeps tokens / native ETH from a counterfactual clone to its bound `userAddress`. The
- *         recipient is fixed by clone identity, not chosen at execute time. Callers are restricted
- *         to either the immutable `admin` (typically an `AdminWithdrawManager` that gates calls
+ * @notice Sweeps tokens / native ETH from a counterfactual clone. Callers are restricted to
+ *         either the immutable `admin` (typically an `AdminWithdrawManager` that gates calls
  *         behind its own auth) or the clone's `userAddress` (so users can always withdraw their
  *         own funds, independent of policy state or manager availability).
  * @dev Conforms to `ICounterfactualImplementation` so the dispatcher's generic delegate path can
  *      call it. The clone-identity fields (`recipient`, `outputToken`, `destinationChainId`) and
- *      `routeParams` are unused; `submitterData` decodes as `(address token, uint256 amount)` —
- *      the destination is always `userAddress`.
+ *      `routeParams` are unused; `submitterData` decodes as `(address token, uint256 amount,
+ *      address to)`.
  *
- *      Trust model: the `AdminWithdrawManager` (or whatever `admin` points to) authorizes _when_
- *      and _how much_, never _where_. A compromised manager / signer / direct-withdrawer can
- *      force withdrawals to the user's address but cannot redirect them.
+ *      When called by the clone's `userAddress`, the `to` field is ignored and funds are always
+ *      sent to `userAddress`. When called by the `admin`, the `to` address is used as-is —
+ *      the admin (typically `AdminWithdrawManager`) is responsible for enforcing its own
+ *      recipient restrictions per withdraw path.
  * @custom:security-contact bugs@across.to
  */
 contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferERC20 {
@@ -47,15 +47,18 @@ contract WithdrawImplementation is ICounterfactualImplementation, SafeTransferER
     ) external payable {
         if (msg.sender != admin && msg.sender != userAddress) revert Unauthorized();
 
-        (address token, uint256 amount) = abi.decode(submitterData, (address, uint256));
+        (address token, uint256 amount, address to) = abi.decode(submitterData, (address, uint256, address));
+
+        // User always withdraws to themselves regardless of the supplied `to`.
+        if (msg.sender == userAddress) to = userAddress;
 
         if (token == NATIVE_ASSET) {
-            (bool success, ) = userAddress.call{ value: amount }("");
+            (bool success, ) = to.call{ value: amount }("");
             if (!success) revert NativeTransferFailed();
         } else {
-            _safeTransfer(token, userAddress, amount);
+            _safeTransfer(token, to, amount);
         }
 
-        emit Withdraw(msg.sender, token, userAddress, amount);
+        emit Withdraw(msg.sender, token, to, amount);
     }
 }

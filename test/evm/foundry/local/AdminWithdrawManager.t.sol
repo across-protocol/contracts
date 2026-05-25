@@ -127,10 +127,32 @@ contract AdminWithdrawManagerTest is Test {
             address(withdrawImpl),
             address(token),
             50e6,
+            user,
             withdrawProof
         );
 
         assertEq(token.balanceOf(user), 50e6);
+    }
+
+    function testDirectWithdrawToArbitraryAddress() public {
+        address treasury = makeAddr("treasury");
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawImplementation.Withdraw(address(manager), address(token), treasury, 50e6);
+
+        vm.prank(directWithdrawer);
+        manager.directWithdraw(
+            depositAddress,
+            _cloneArgs(),
+            address(withdrawImpl),
+            address(token),
+            50e6,
+            treasury,
+            withdrawProof
+        );
+
+        assertEq(token.balanceOf(treasury), 50e6);
+        assertEq(token.balanceOf(user), 0);
     }
 
     function testDirectWithdrawUnauthorized() public {
@@ -142,27 +164,9 @@ contract AdminWithdrawManagerTest is Test {
             address(withdrawImpl),
             address(token),
             50e6,
+            user,
             withdrawProof
         );
-    }
-
-    function testDirectWithdrawerCannotRedirectFunds() public {
-        // Even though directWithdrawer is trusted to trigger withdrawals, it cannot choose recipient —
-        // funds always go to cloneArgs.userAddress. Trust gain: a compromised directWithdrawer can
-        // only force withdrawals to land in the user's wallet, not in the attacker's.
-        address attackerControlled = makeAddr("attacker-controlled");
-        vm.prank(directWithdrawer);
-        manager.directWithdraw(
-            depositAddress,
-            _cloneArgs(),
-            address(withdrawImpl),
-            address(token),
-            50e6,
-            withdrawProof
-        );
-
-        assertEq(token.balanceOf(user), 50e6);
-        assertEq(token.balanceOf(attackerControlled), 0);
     }
 
     // --- signedWithdraw ---
