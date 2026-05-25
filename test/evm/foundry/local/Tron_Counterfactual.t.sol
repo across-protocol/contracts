@@ -11,8 +11,8 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { CounterfactualDepositSpokePoolTr } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePoolTr.sol";
 import { WithdrawImplementationTron } from "../../../../contracts/periphery/counterfactual/WithdrawImplementationTron.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
-import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
+import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { TronTransferLib } from "../../../../contracts/libraries/TronTransferLib.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -49,7 +49,7 @@ contract Tron_CounterfactualTest is Test {
     CounterfactualDeposit dispatcher;
     CounterfactualDepositSpokePoolTr spokePoolImpl;
     WithdrawImplementationTron withdrawImpl;
-    RoutePolicy policy;
+    RoutePolicyImmutableRoot policy;
     MockSpokePool spokePool;
     MockTronUSDT usdt;
 
@@ -128,8 +128,7 @@ contract Tron_CounterfactualTest is Test {
         bytes32 root = a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
         proof = new bytes32[](1);
         proof[0] = leaves[1];
-        vm.prank(policyOwner);
-        policy.updateRoot(root);
+        rotateRoot(policy, policyOwner, root);
     }
 
     function _domainSeparator(address clone) internal view returns (bytes32) {

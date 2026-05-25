@@ -28,7 +28,7 @@ This document is an implementation specification. Starting point: the original c
 
 1. **Persistent, evolvable addresses.** An address is keyed solely to `(outputToken, destinationChainId, recipient, admin, routePolicyAddress)` and never needs to change. The routes it can execute can evolve without regenerating the address.
 2. **Same address on every EVM chain** for a given identity + policy.
-3. **Global upgrade per chain per policy.** One `updateRoot(newRoot)` transaction per chain upgrades every clone using that policy on that chain. No per-clone upgrade transaction.
+3. **Global upgrade per chain per policy.** One root rotation per chain upgrades every clone using that policy on that chain. No per-clone upgrade transaction. Rotation is performed by the policy owner via `upgradeToAndCall` — deploying a new implementation with the new root baked in and pointing the proxy at it.
 4. **Independent integrator lifecycles.** Different policies are owned and upgraded independently of each other.
 5. **Dynamic execution fees.** The executor supplies `executionFee` at execute time; a signer's EIP-712 signature authorizes it. Applies uniformly to **SpokePool, CCTP, and OFT** implementations.
 6. **Bounded trust.** The policy owner is a meaningful authority but cannot redirect destination, output token, or recipient (clone immutables guard those). Fee bounds are committed in the merkle tree. The clone's `admin` retains a structurally-guaranteed escape — full execution authority over the clone, bypassing the policy entirely.
@@ -54,11 +54,11 @@ Deployer / SDK
        │ delegatecall (via EIP-1167) — caller supplies the 5 args in calldata
        ▼
 ┌──────────────────────────────────────────────────────────────┐                ┌──────────────────────────────────────────┐
-│ CounterfactualDeposit (dispatcher, no per-clone state)       │  staticcall    │ RoutePolicy (one or many, per integrator)│
+│ CounterfactualDeposit (dispatcher, no per-clone state)       │  staticcall    │ RoutePolicyImmutableRoot (UUPS proxy)    │
 │   - verifies keccak256(args) == clone.argsHash               │ ─────────────► │   - owner: Across or integrator multisig │
-│   - if msg.sender == args.admin: skip merkle check           │   activeRoot() │   - activeRoot: merkle root over the     │
+│   - if msg.sender == args.admin: skip merkle check           │   activeRoot   │   - root: immutable on the impl, baked   │
 │   - else: verifies merkle proof against policy root          │ ◄───────────── │     chain's 4-dim route-leaf tree        │
-│   - delegatecalls impl with verified args                    │     bytes32    │   - updateRoot(newRoot): replaces root   │
+│   - delegatecalls impl with verified args                    │     bytes32    │   - rotate via upgradeToAndCall to a new │
 │                                                              │                │                                          │
 └──────────────────────────────────────────────────────────────┘                └──────────────────────────────────────────┘
        │
@@ -85,16 +85,16 @@ Deployer / SDK
 
 ## What is a policy?
 
-A policy is a deployed `RoutePolicy` contract instance. Each one holds an `activeRoot` (the merkle root of a tree enumerating every route the policy authorizes on this chain) and an `owner` (typically a multisig) with authority to replace the root.
+A policy is a deployed `RoutePolicyImmutableRoot` proxy instance. Each one exposes an `activeRoot(clone)` view returning the merkle root of a tree enumerating every route the policy authorizes on this chain. The root itself is `immutable` on the implementation contract behind the proxy; rotating it requires a UUPS upgrade. An `owner` (typically a multisig) holds upgrade authority and is the only party that can rotate the root.
 
 The policy's content lives off-chain in the merkle tree; the on-chain state is just the root and the owner. A policy is the unit of governance: one owner runs it, one approval upgrades it, one address identifies it.
 
-Clones reference a specific policy via their `routePolicyAddress` immutable arg. Every clone pointing at the same `RoutePolicy` shares the same authorized routes and upgrades together. A clone is bound to one policy for life — switching policies requires generating a new address (different `routePolicyAddress` → different CREATE2).
+Clones reference a specific policy via their `routePolicyAddress` immutable arg. Every clone pointing at the same policy shares the same authorized routes and rotates together. A clone is bound to one policy for life — switching policies requires generating a new address (different `routePolicyAddress` → different CREATE2).
 
 Multiple policies can coexist on the same chain. As one example deployment shape:
 
 - **Default policy** — owned by the Across multisig. Holds the canonical set of routes.
-- **Per-integrator policies** — an integrator or institutional partner deploys their own `RoutePolicy` with their own bridge whitelist, fee caps, and supported destinations.
+- **Per-integrator policies** — an integrator or institutional partner deploys their own `RoutePolicyImmutableRoot` proxy with their own bridge whitelist, fee caps, and supported destinations.
 - **Experimental policy** — a beta route set for early adopters to opt into.
 
 The contracts impose no constraints on how many policies exist or who runs them; the above is illustrative.
@@ -131,20 +131,18 @@ All five values still participate in CREATE2 address derivation — they're comm
 
 ## RoutePolicy contract
 
-A UUPS-upgradeable, `Ownable` contract with one storage slot for the active merkle root and one external function to replace it. The interface is intentionally minimal — `IRoutePolicy.activeRoot(address clone)` — leaving room for future implementations to vary the root per-clone without changing consumers. The V1 implementation ignores the `clone` argument and returns a single global root.
+`RoutePolicyImmutableRoot` is a UUPS-upgradeable, `Ownable` implementation of `IRoutePolicy`. The active merkle root lives in `bytes32 immutable _root` on the implementation contract — baked into the implementation's runtime bytecode at construction time, not in storage. `activeRoot(clone)` returns it directly with no `SLOAD`. The interface is intentionally minimal — `IRoutePolicy.activeRoot(address clone)` — leaving room for future implementations to vary the root per-clone without changing consumers. The V1 implementation ignores the `clone` argument and returns the single immutable root.
 
-The proxy is initialized with an `initialOwner` and an `initialRoot`. To make the proxy land at the same address on every chain (cross-chain consistency, see below), both the implementation contract _and_ the proxy's init data must be identical across chains at deploy time. `initialOwner` is a **deployer EOA** controlled by the party deploying the policy (Across, or an integrator deploying their own policy); ownership is transferred to the chain-local multisig as a post-deploy step. Chain-local multisigs are typically not at the same address across chains, which is why a deployer EOA — held by a single party and trivially identical across chains — is used as the bootstrap owner. `initialRoot` is `bytes32(0)` (the policy is unusable until a real root is approved).
+Because the root is immutable on the impl, "rotating the root" is a UUPS upgrade: the owner deploys a new implementation with the new root in its constructor and calls `upgradeToAndCall(newImpl, "")` on the proxy. The proxy's address is unchanged; only its ERC-1967 implementation slot moves. Off-chain indexers watch the standard `Upgraded(address newImpl)` event and read `activeRoot(...)` to learn the new root.
 
-The deployer EOA holds full owner authority on the policy during the window between deployment and ownership transfer. Operationally this is mitigated by (a) using a hardware-wallet-backed key, (b) deploying and transferring ownership in the same campaign so the window is short, and (c) destroying / retiring the key after the deployment campaign — the key has no purpose after every policy on every chain has been transferred to its chain-local multisig.
+At genesis the implementation is constructed with `initialRoot = bytes32(0)`, and the proxy is initialized via `initialize(initialOwner)`. To make the proxy land at the same address on every chain (cross-chain consistency, see below), both the implementation's constructor arg and the proxy's init data must be identical across chains at genesis. `initialOwner` is a **deployer EOA** controlled by the party deploying the policy (Across, or an integrator deploying their own policy); ownership is transferred to the chain-local multisig as a post-deploy step. Chain-local multisigs are typically not at the same address across chains, which is why a deployer EOA — held by a single party and trivially identical across chains — is used as the bootstrap owner.
 
-The contract emits a `RootUpdated(bytes32 newRoot)` event on every successful root update. Off-chain indexers use this to detect upgrades. Implementation upgrades emit the standard ERC-1967 `Upgraded(address newImpl)` event.
+The deployer EOA holds full upgrade authority on the policy during the window between deployment and ownership transfer. Operationally this is mitigated by (a) using a hardware-wallet-backed key, (b) deploying and transferring ownership in the same campaign so the window is short, and (c) destroying / retiring the key after the deployment campaign — the key has no purpose after every policy on every chain has been transferred to its chain-local multisig.
 
-Storage uses the ERC-7201 namespaced layout (`erc7201:counterfactual.routepolicy.storage`) so future implementations can extend the storage struct (e.g. add a per-clone override mapping) without colliding with prior fields.
+Intentionally **not** included in V1 of `RoutePolicyImmutableRoot`:
 
-Intentionally **not** included in V1 of `RoutePolicy`:
-
-- No timelock between approval and activation (timelock is still flagged in [open questions](#open-questions) as the mitigation for owner compromise / unauthorized upgrades).
-- No separate upgrade role — the owner is also the upgrader. A future hardening would split these so day-to-day root updates can be signed by a lower-trust multisig while upgrades require a more conservative one.
+- No timelock between root proposal and activation (timelock is still flagged in [open questions](#open-questions) as the mitigation for owner compromise / unauthorized upgrades).
+- No separate upgrade role — the owner is also the upgrader. A future hardening would split these so day-to-day root rotations can be signed by a lower-trust multisig while truly arbitrary impl upgrades require a more conservative one.
 - No multi-root grandfathering.
 - No per-leaf governance.
 - No per-clone root behavior in the V1 implementation. The interface accepts a `clone` argument so this can be added later as an upgrade without changing consumers.
@@ -237,7 +235,7 @@ The dispatcher gates access via the admin escape: `msg.sender == clone.admin` sk
 
 Each leaf is computed as `keccak256(bytes.concat(keccak256(abi.encode(bridgeImpl, keccak256(routeParams)))))`. The outer `keccak256(bytes.concat(...))` provides the OZ-standard double-hash (preventing leaf/internal-node ambiguity in the merkle proof); the inner `keccak256(abi.encode(bridgeImpl, keccak256(routeParams)))` commits to the bridge impl address alongside the params hash. `routeParams` is itself pre-hashed because it's a variable-length bytes blob — packing it through abi.encode as-is would still work but yields a longer preimage for no benefit. `bridgeImpl` is chain-specific (different per-chain immutables → different addresses), so each chain's tree naturally includes only that chain's impls.
 
-`block.chainid` is **not** in the leaf preimage. Per-chain `RoutePolicy.activeRoot` storage enforces chain-specificity automatically — a leaf committed to chain A's root cannot be proven against chain B's root because the roots are different values.
+`block.chainid` is **not** in the leaf preimage. Per-chain `RoutePolicyImmutableRoot` enforces chain-specificity automatically — a leaf committed to chain A's root cannot be proven against chain B's root because the roots are different values (each chain has its own implementation with its own immutable root).
 
 Each chain's policy tree enumerates a **4-dimensional cross-product**: `inputToken × bridge × destinationChainId × outputToken`. The dimensions are:
 
@@ -246,7 +244,7 @@ Each chain's policy tree enumerates a **4-dimensional cross-product**: `inputTok
 - **`destinationChainId`** — the canonical chain ID where funds land.
 - **`outputToken`** — what the user receives on the destination chain.
 
-Source chain is not a dimension. It's implicit in _which_ `RoutePolicy` deployment is being read: each chain has its own per-chain `activeRoot` storage on its local copy of the policy contract, so a leaf committed to chain A's root cannot be proven against chain B's root. The chain context is enforced by the storage layout, not by anything in the leaf.
+Source chain is not a dimension. It's implicit in _which_ policy proxy is being read: each chain has its own proxy carrying its own immutable root (via its current implementation), so a leaf committed to chain A's root cannot be proven against chain B's root. The chain context is enforced by per-chain deployment, not by anything in the leaf.
 
 Realistic policies are sparse (CCTP only handles USDC, OFT only specific tokens, etc.). Typical sizes:
 
@@ -269,9 +267,9 @@ For a clone to land at the same CREATE2 address on every EVM chain, its initCode
 
 - **Factory at the same address everywhere.** `CounterfactualDepositFactory` and the dispatcher have no chain-specific construction state and are deployed through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`) with identical initCode.
 - **Identical immutable args.** The clone's appended immutable arg is a single 32-byte `argsHash`. The five underlying fields (`outputToken`, `destinationChainId`, `recipient`, `admin`, `routePolicyAddress`) are identical across chains by definition, so `argsHash` is identical too. `routePolicyAddress` must also be identical, which means the policy itself must land at the same address everywhere.
-- **`RoutePolicy` at the same address everywhere.** Deploy through the deterministic-deployment proxy with constructor args that are identical across chains: `initialOwner = deployerEOA` (the same EOA the deploying party controls on every chain) and `initialRoot = bytes32(0)`. Ownership is transferred to the chain-local multisig as a per-chain post-deploy step. The transfer is a state change, not an initCode change, so it doesn't affect the policy's address.
+- **Policy proxy at the same address everywhere.** Deploy the `RoutePolicyImmutableRoot` implementation through the deterministic-deployment proxy with constructor arg `bytes32(0)` (the genesis sentinel root, identical across chains), then deploy an `ERC1967Proxy` pointing at it with init data `abi.encodeCall(RoutePolicyImmutableRoot.initialize, (deployerEOA))` (the same EOA the deploying party controls on every chain). Both go through the deterministic-deployment proxy. Ownership is transferred to the chain-local multisig as a per-chain post-deploy step — a state change that doesn't affect the proxy's address.
 
-Once the policy is deployed and transferred to the chain-local multisig, each chain's deployment has its own per-chain `activeRoot` storage. The merkle tree on Ethereum commits to routes originating from Ethereum; the tree on Arbitrum commits to Arbitrum routes; and so on. **The contract address is uniform across chains; the contract state is per-chain.** This is what makes new source chains cheap to add — deploy on the new chain, approve a fresh root for that chain, no impact on existing chains.
+Once the policy proxy is deployed and transferred to the chain-local multisig, each chain rotates independently. The first rotation deploys a chain-specific implementation carrying that chain's real root and upgrades the proxy to it. The merkle tree on Ethereum commits to routes originating from Ethereum; the tree on Arbitrum commits to Arbitrum routes; and so on. **The proxy address is uniform across chains; the implementation behind it diverges per chain after genesis.** This is what makes new source chains cheap to add — deploy genesis impl + proxy on the new chain, then upgrade to a chain-specific impl, no impact on existing chains.
 
 Tron remains a carveout. Its TVM uses a different CREATE2 prefix, so Tron clones derive to different addresses than EVM clones for the same identity. The dispatcher itself is identical between Tron and EVM (no constructor args), so it lands at the same address on Tron as on EVM chains — but clones differ because of the CREATE2 prefix. `WithdrawImplementationTron` is a separate contract from the canonical `WithdrawImplementation`; admins on Tron-deployed clones can choose to invoke whichever applies.
 
@@ -283,12 +281,12 @@ Deployment must follow a fixed order because two contracts depend on each other'
 
 1. **`WithdrawImplementation`** — deploy first, through the deterministic-deployment proxy (`0x4e59b44847b379578588920cA78FbF26c0B4956C`). No constructor args, so the same address lands on every EVM chain.
 2. **`CounterfactualDeposit` (dispatcher)** — deploy through the same proxy. No constructor args; initCode is identical across chains, so it lands at the same address everywhere. No deployment-ordering dependency on `WithdrawImplementation` (admins reference the withdraw impl directly at execute time).
-3. **`RoutePolicy`** — two deterministic deploys: (a) the `RoutePolicy` implementation contract (no constructor args), (b) an `ERC1967Proxy` pointing at the implementation with init data `abi.encodeCall(RoutePolicy.initialize, (deployerEOA, bytes32(0)))`. Both go through the deterministic-deployment proxy. The deployer EOA is held by the deploying party (Across or an integrator) and must be the same address on every chain — it's baked into the proxy's init data, so any change makes the proxy land at a different address. Both values must be identical across chains for the proxy to land at the same address everywhere.
-4. **Transfer `RoutePolicy` ownership** — separately per chain, the deployer EOA calls `transferOwnership(chainLocalMultisig)`. This is a state change, not an initCode change, so it doesn't affect the policy's address. Until this transfer lands, the deployer EOA holds full owner authority on the policy — see the [RoutePolicy contract](#routepolicy-contract) section for operational mitigations.
+3. **`RoutePolicyImmutableRoot`** — two deterministic deploys: (a) the implementation contract, constructed with `bytes32(0)` as the genesis root; (b) an `ERC1967Proxy` pointing at the implementation with init data `abi.encodeCall(RoutePolicyImmutableRoot.initialize, (deployerEOA))`. Both go through the deterministic-deployment proxy. The deployer EOA must be the same address on every chain — it's baked into the proxy's init data, so any change makes the proxy land at a different address. The genesis root must be `bytes32(0)` (or some other constant) across chains so the implementation's bytecode is identical and it lands at the same address everywhere.
+4. **Transfer policy ownership** — separately per chain, the deployer EOA calls `transferOwnership(chainLocalMultisig)`. This is a state change, not an initCode change, so it doesn't affect the policy's address. Until this transfer lands, the deployer EOA holds full upgrade authority on the policy — see the [RoutePolicy contract](#routepolicy-contract) section for operational mitigations.
 5. **Bridge implementations** (`CounterfactualDepositSpokePool`, `CounterfactualDepositCCTP`, `CounterfactualDepositOFT`) — deploy with their chain-specific constructor args (SpokePool address, signer address, wrapped native, etc.). These intentionally land at different addresses per chain since their constructor args differ.
 6. **`AdminWithdrawManager`** — deploy with `(owner, directWithdrawer, signer)`. Chain-specific.
 7. **`CounterfactualDepositFactory`** / **`CounterfactualDepositFactoryTron`** — deploy through the proxy. Because the factory's only chain-dependent reference is the dispatcher (which lives at the same address everywhere), the factory's initCode is identical and it lands at the same address everywhere.
-8. **First root approval** — the multisig calls `RoutePolicy.updateRoot(initialRoot)` to activate the policy. Until this transaction lands the policy is unusable (root is `bytes32(0)`, no proof can verify).
+8. **First root rotation** — the multisig deploys a new implementation `new RoutePolicyImmutableRoot(initialRoot)` and calls `proxy.upgradeToAndCall(newImpl, "")` to activate the policy. Until this transaction lands the policy is unusable (root is `bytes32(0)`, no proof can verify).
 
 The invariant to remember: anything whose constructor arg comes from a deterministic-proxy-deployed contract is itself eligible for deterministic deployment, as long as it's deployed _after_ its dependency. The ordering above is the only valid topological sort.
 
@@ -302,8 +300,8 @@ Work is split into three tracks — contracts, tests, scripts — each ordered b
 
 ### Contracts
 
-- [x] **`IRoutePolicy.sol`** — minimal interface: just `activeRoot(address clone) view returns (bytes32)`. `updateRoot` and the `RootUpdated` event are implementation details on `RoutePolicy`, not on the interface.
-- [x] **`RoutePolicy.sol`** — UUPS-upgradeable, implements `IRoutePolicy` and inherits `OwnableUpgradeable` + `UUPSUpgradeable`. Single root in ERC-7201 namespaced storage; `initialize(address initialOwner, bytes32 initialRoot)`. `activeRoot(address clone)` ignores its argument in V1 (a single global root authorizes every clone). Owner can `updateRoot` and `upgradeToAndCall`. No timelock, no separate upgrade role (see open questions).
+- [x] **`IRoutePolicy.sol`** — minimal interface: just `activeRoot(address clone) view returns (bytes32)`. The mechanism by which the root changes is an implementation detail, not part of the interface.
+- [x] **`RoutePolicyImmutableRoot.sol`** — UUPS-upgradeable, implements `IRoutePolicy` and inherits `OwnableUpgradeable` + `UUPSUpgradeable`. The root is `bytes32 immutable` on the implementation contract — baked into runtime bytecode at construction, not stored. `initialize(address initialOwner)` is the proxy's only initializer (root is fixed by the impl's constructor). `activeRoot(address clone)` ignores its argument in V1 and returns the immutable. Owners rotate the root by deploying a new implementation and calling `upgradeToAndCall`. No timelock, no separate upgrade role (see open questions).
 - [x] **`CloneArgs` struct + hashing helper** — shared `struct CloneArgs { bytes32 outputToken; uint256 destinationChainId; bytes32 recipient; address admin; address routePolicyAddress; }` defined in a small library (e.g. `CounterfactualCloneArgs.sol`) along with a `hash(CloneArgs)` helper. Dispatcher and factory both depend on this for hash consistency.
 - [x] **`ICounterfactualImplementation.sol`** (interface update) — flat-arg signature `execute(bytes32 recipient, bytes32 outputToken, uint256 destinationChainId, address admin, bytes routeParams, bytes submitterData)`. `admin` is forwarded so impls that depend on the dispatcher's admin escape (notably `WithdrawImplementation`) can verify `msg.sender == admin` independently; `routePolicyAddress` stays inside the dispatcher.
 - [x] **`CounterfactualDeposit.sol`** (dispatcher rewrite) — no constructor args, no immutables. `execute(cloneArgs, implementation, routeParams, submitterData, proof)` (a) loads the clone's 32-byte `argsHash` via `Clones.fetchCloneArgs`, (b) verifies `keccak256(abi.encode(cloneArgs)) == argsHash`, (c) if `msg.sender == cloneArgs.admin` skips the merkle check (admin escape), (d) otherwise computes the leaf as `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))` and verifies the merkle proof against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`, and (e) delegatecalls the impl forwarding `(cloneArgs.recipient, cloneArgs.outputToken, cloneArgs.destinationChainId, routeParams, submitterData)`.
@@ -319,13 +317,13 @@ Work is split into three tracks — contracts, tests, scripts — each ordered b
 
 Existing tests in `test/evm/foundry/local/` are the starting point; each item below indicates whether it's a rewrite (existing file) or new.
 
-- [ ] **`RoutePolicy.t.sol`** (new) — owner can `updateRoot`, non-owner reverts, `RootUpdated` event emitted with the new root, `activeRoot()` returns the latest root, two-step ownership transfer works.
+- [x] **`RoutePolicyImmutableRoot.t.sol`** — owner can rotate the root via `upgradeToAndCall` to a new impl, non-owner reverts, the proxy's address survives rotations, ownership transfer works, `activeRoot(clone)` returns the rotated root, day-0 deploy with `bytes32(0)` reproduces the same proxy address.
 - [ ] **`CounterfactualDeposit.t.sol`** (rewrite) — covers the dispatcher's new shape:
   - `cloneArgs` hash verification: supplying tampered `cloneArgs` (any field altered) reverts before any other check runs.
   - Leaf identity binding: a leaf authored for clone A's `(outputToken, destinationChainId)` does not verify against clone B with a different identity, even with a valid merkle proof.
   - Admin escape: `msg.sender == cloneArgs.admin` bypasses the proof for any `implementation`, including when `activeRoot == bytes32(0)`. Hash verification still runs first, so a fabricated `admin` is rejected.
   - Non-withdraw escape still requires a valid proof against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`.
-  - After `RoutePolicy.updateRoot(newRoot)`, the same clone can prove leaves under the new root and old proofs stop working.
+  - After a root rotation (deploy new impl + `upgradeToAndCall`), the same clone can prove leaves under the new root and old proofs stop working.
   - End-to-end delegatecall: the impl receives the same `cloneArgs` the dispatcher verified.
 - [ ] **`CounterfactualDepositSpokePool.t.sol`** (update) — signature now includes `clone` and `routeParamsHash`; cross-clone and cross-leaf signature reuse both revert; dynamic `executionFee` is bounded by the existing `maxFeeFixed + maxFeeBps` total-fee check; native-token path still works.
 - [ ] **`CounterfactualDepositCCTP.t.sol`** (update) — local signature is required, signature reuse across clones / leaves reverts, `maxExecutionFee` bound is enforced, periphery signature is still forwarded unchanged.
@@ -333,7 +331,7 @@ Existing tests in `test/evm/foundry/local/` are the starting point; each item be
 - [ ] **`WithdrawImplementation.t.sol`** (slim down) — drops the admin/user-auth tests (now covered by the dispatcher tests) and keeps token / native transfer correctness.
 - [ ] **`AdminWithdrawManager.t.sol`** (update) — new EIP-712 typehash with `to`; direct-withdraw and signed-withdraw flows both round-trip through the dispatcher's escape; recipient mismatch in the signed path reverts.
 - [ ] **`Tron_Counterfactual.t.sol`** (update) — mirror EVM coverage for the Tron factory + Tron withdraw impl.
-- [ ] **Cross-chain address consistency test** (new, in `test/evm/foundry/local/`) — script-style test that computes `predictDepositAddress` against several mocked `block.chainid` values with identical immutable args and asserts they all match. Same exercise for `RoutePolicy` (constructor args identical → same address).
+- [ ] **Cross-chain address consistency test** (new, in `test/evm/foundry/local/`) — script-style test that computes `predictDepositAddress` against several mocked `block.chainid` values with identical immutable args and asserts they all match. Similar exercise for the policy proxy is covered in `RoutePolicyImmutableRoot.t.sol`.
 
 ### Scripts
 
@@ -342,20 +340,20 @@ All scripts live under `script/counterfactual/`. The deterministic-deployment pr
 - [ ] **`config.toml` / `CounterfactualConfig.sol`** — extend with policy-related config (deployer EOA used as `initialOwner`, initial root, chain-local multisig owner per chain, signer addresses for CCTP / OFT).
 - [ ] **`DeployWithdrawImplementation.s.sol`** (update) — already deterministic; verify no constructor args change.
 - [ ] **`DeployCounterfactualDeposit.s.sol`** (update) — no constructor args. Asserts the deployed dispatcher address is identical across chains.
-- [ ] **`DeployRoutePolicy.s.sol`** (new) — deploys the `RoutePolicy` implementation (no constructor args) and then an `ERC1967Proxy` pointing at it with init data `abi.encodeCall(RoutePolicy.initialize, (deployerEOA, bytes32(0)))`, both via the deterministic-deployment proxy. Emits both addresses. A second `TransferRoutePolicyOwnership.s.sol` runs after, called per-chain by the deployer EOA, transferring proxy ownership to the chain-local multisig.
-- [ ] **`ApproveRoutePolicyRoot.s.sol`** (new) — multisig-callable script that calls `RoutePolicy.updateRoot(newRoot)`. Takes the new root and the policy address as args; usable as a Safe transaction template.
+- [ ] **`DeployRoutePolicy.s.sol`** (new) — deploys `RoutePolicyImmutableRoot(bytes32(0))` (the genesis implementation) and then an `ERC1967Proxy` pointing at it with init data `abi.encodeCall(RoutePolicyImmutableRoot.initialize, (deployerEOA))`, both via the deterministic-deployment proxy. Emits both addresses. A second `TransferRoutePolicyOwnership.s.sol` runs after, called per-chain by the deployer EOA, transferring proxy ownership to the chain-local multisig.
+- [ ] **`RotateRoutePolicyRoot.s.sol`** (new) — multisig-callable script that deploys `new RoutePolicyImmutableRoot(newRoot)` and calls `proxy.upgradeToAndCall(newImpl, "")`. Takes the new root and the policy proxy address as args; usable as a Safe transaction template (or a two-step batch).
 - [ ] **`DeployCounterfactualDepositSpokePool.s.sol`** (update) — no signature changes to the constructor; just rebuild against the new impl.
 - [ ] **`DeployCounterfactualDepositCCTP.s.sol`** (update) — add `signer` constructor arg.
 - [ ] **`DeployCounterfactualDepositOFT.s.sol`** (update) — add `signer` constructor arg.
 - [ ] **`DeployCounterfactualDepositFactory.s.sol`** (update) — no constructor-arg changes; the factory's interface changed but its deploy story didn't.
 - [ ] **`DeployAdminWithdrawManager.s.sol`** (update) — no constructor-arg changes (still `owner`, `directWithdrawer`, `signer`); just rebuild.
-- [ ] **`DeployAllCounterfactual.s.sol`** (update) — orchestrate the full sequence: `WithdrawImplementation`, `CounterfactualDeposit`, `RoutePolicy` (then transfer ownership), bridge impls, `AdminWithdrawManager`, factories. The dispatcher has no constructor-arg dependency on `WithdrawImplementation`, so order between them is flexible.
+- [ ] **`DeployAllCounterfactual.s.sol`** (update) — orchestrate the full sequence: `WithdrawImplementation`, `CounterfactualDeposit`, `RoutePolicyImmutableRoot` (impl + proxy, then transfer ownership), bridge impls, `AdminWithdrawManager`, factories. The dispatcher has no constructor-arg dependency on `WithdrawImplementation`, so order between them is flexible.
 - [ ] **`CheckCounterfactualDeployments.s.sol`** (update) — verify the new five-field clone-args layout decodes correctly, that `IRoutePolicy.activeRoot(clone)` returns the expected root, and that all cross-chain addresses (dispatcher, policy proxy, withdraw impl, factory) are identical to a reference chain.
 - [ ] **`tron/`** counterparts — mirror the relevant updates for the Tron deployment path (Tron factory, Tron withdraw impl). The dispatcher itself is the same on Tron as EVM.
 
 ## Open questions
 
-**1. Owner compromise / blast radius.** The `RoutePolicy` owner can both (a) replace `activeRoot` with any value in one transaction and (b) upgrade the implementation to one with arbitrary logic (since V1 collapses the upgrade role into `onlyOwner`). A compromised owner can authorize draining-style routes (up to the leaf's fee caps), approve degraded fee caps, set `bytes32(0)` to brick the policy, or push a malicious implementation that returns whatever root it wants. The admin escape protects fund recovery in all cases, but the policy itself can be made unusable. Mitigations to consider: a timelock between propose and activate (both for `updateRoot` and for `upgradeToAndCall`), a separate `upgrader` role distinct from the day-to-day root-update owner, and/or an emergency-only path that can shrink the route set without delay while expansions go through the timelock.
+**1. Owner compromise / blast radius.** Because the root is immutable on the impl, root rotation _is_ an upgrade — `onlyOwner`-gated `upgradeToAndCall`. The owner can therefore (a) rotate to any chosen root by deploying a new impl carrying it, (b) deploy a malicious impl with arbitrary `activeRoot` logic, or (c) leave the policy stuck on a zero-root impl to brick it. A compromised owner can authorize draining-style routes (up to the leaf's fee caps), approve degraded fee caps, or push an implementation that returns whatever root it wants. The admin escape protects fund recovery in all cases, but the policy itself can be made unusable. Mitigations to consider: a timelock between propose and activate on `upgradeToAndCall`, a separate `upgrader` role distinct from the day-to-day owner, and/or an emergency-only path that can shrink the route set without delay while expansions go through the timelock.
 
 **2. Signature replay within the deadline (SpokePool + AdminWithdrawManager only).** CCTP and OFT bind their local sigs to `nonce` (which the periphery enforces as single-use), so once the periphery consumes the nonce the local sig is also unusable — replay closed for free. SpokePool's `ExecuteDeposit` and AdminWithdrawManager's `SignedWithdraw` don't have a nonce-like field; both signatures remain valid against the same clone until their deadline, so if the clone is refunded with at least the signed `amount` during that window an executor can replay the signature and drain it again. The `SignedWithdraw` path is the more replay-prone of the two because the signature commits a fixed `(token, to, amount)` triple — a refund of the same amount allows a second drain to the same `to` with no further coordination. Options:
 

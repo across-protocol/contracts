@@ -7,8 +7,8 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
-import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
+import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { ICounterfactualImplementation } from "../../../../contracts/interfaces/ICounterfactualImplementation.sol";
 import {
@@ -57,7 +57,7 @@ contract CounterfactualDepositTest is Test {
     WithdrawImplementation public withdrawImpl;
     RecordingImplementation public recImpl;
     RevertingImplementation public revImpl;
-    RoutePolicy public policy;
+    RoutePolicyImmutableRoot public policy;
     MintableERC20 public token;
 
     address public admin;
@@ -102,8 +102,7 @@ contract CounterfactualDepositTest is Test {
     }
 
     function _setPolicyRoot(bytes32 root) internal {
-        vm.prank(policyOwner);
-        policy.updateRoot(root);
+        rotateRoot(policy, policyOwner, root);
     }
 
     /// @dev Build a tree with a single leaf of interest. Murky needs ≥2 leaves so we add a padding leaf.
@@ -277,7 +276,7 @@ contract CounterfactualDepositTest is Test {
         ICounterfactualDeposit(cloneB).execute(argsB, address(recImpl), routeParams, "", proof);
     }
 
-    // --- Proof verification against RoutePolicy.activeRoot() ---
+    // --- Proof verification against RoutePolicyImmutableRoot.activeRoot(clone) ---
 
     function testValidProofExecutesImpl() public {
         CloneArgs memory args = _cloneArgs();

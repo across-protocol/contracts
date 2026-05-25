@@ -12,8 +12,8 @@ import {
     OFTSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositOFT.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
-import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
+import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -55,7 +55,7 @@ contract CounterfactualDepositOFTTest is Test {
     CounterfactualDeposit public dispatcher;
     CounterfactualDepositOFT public oftImpl;
     WithdrawImplementation public withdrawImpl;
-    RoutePolicy public policy;
+    RoutePolicyImmutableRoot public policy;
     MockSponsoredOFTSrcPeriphery public srcPeriphery;
     MintableERC20 public token;
 
@@ -150,8 +150,7 @@ contract CounterfactualDepositOFTTest is Test {
         bytes32 root = a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
         proof = new bytes32[](1);
         proof[0] = leaves[1];
-        vm.prank(policyOwner);
-        policy.updateRoot(root);
+        rotateRoot(policy, policyOwner, root);
     }
 
     function _domainSeparator(address clone) internal view returns (bytes32) {

@@ -12,8 +12,8 @@ import {
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositCCTP.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
-import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
+import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -44,7 +44,7 @@ contract CounterfactualDepositCCTPTest is Test {
     CounterfactualDeposit public dispatcher;
     CounterfactualDepositCCTP public cctpImpl;
     WithdrawImplementation public withdrawImpl;
-    RoutePolicy public policy;
+    RoutePolicyImmutableRoot public policy;
     MockSponsoredCCTPSrcPeriphery public srcPeriphery;
     MintableERC20 public burnToken;
 
@@ -138,8 +138,7 @@ contract CounterfactualDepositCCTPTest is Test {
         bytes32 root = a < b ? keccak256(abi.encodePacked(a, b)) : keccak256(abi.encodePacked(b, a));
         proof = new bytes32[](1);
         proof[0] = leaves[1];
-        vm.prank(policyOwner);
-        policy.updateRoot(root);
+        rotateRoot(policy, policyOwner, root);
     }
 
     function _domainSeparator(address clone) internal view returns (bytes32) {

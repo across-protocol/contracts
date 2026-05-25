@@ -12,8 +12,8 @@ import {
     SpokePoolSubmitterData
 } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositSpokePool.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
-import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
+import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
@@ -82,7 +82,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
     CounterfactualDeposit public dispatcher;
     CounterfactualDepositSpokePool public spokePoolImpl;
     WithdrawImplementation public withdrawImpl;
-    RoutePolicy public policy;
+    RoutePolicyImmutableRoot public policy;
     MockSpokePool public spokePool;
     MintableERC20 public inputToken;
     address public weth;
@@ -182,8 +182,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         leaves[1] = keccak256("padding");
         bytes32 root = _merkleRoot(leaves);
         proof = _merkleProof(leaves, 0);
-        vm.prank(policyOwner);
-        policy.updateRoot(root);
+        rotateRoot(policy, policyOwner, root);
     }
 
     function _merkleRoot(bytes32[] memory leaves) internal pure returns (bytes32) {

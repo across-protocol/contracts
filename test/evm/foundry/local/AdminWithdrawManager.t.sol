@@ -7,7 +7,7 @@ import { CounterfactualDepositFactory } from "../../../../contracts/periphery/co
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
 import { AdminWithdrawManager } from "../../../../contracts/periphery/counterfactual/AdminWithdrawManager.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
 import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -18,7 +18,7 @@ contract AdminWithdrawManagerTest is Test {
     CounterfactualDeposit public dispatcher;
     WithdrawImplementation public withdrawImpl;
     AdminWithdrawManager public manager;
-    RoutePolicy public policy;
+    RoutePolicyImmutableRoot public policy;
     MintableERC20 public token;
 
     address public owner;

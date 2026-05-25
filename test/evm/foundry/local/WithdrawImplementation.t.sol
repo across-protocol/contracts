@@ -5,7 +5,7 @@ import { Test } from "forge-std/Test.sol";
 import { CounterfactualDeposit } from "../../../../contracts/periphery/counterfactual/CounterfactualDeposit.sol";
 import { CounterfactualDepositFactory } from "../../../../contracts/periphery/counterfactual/CounterfactualDepositFactory.sol";
 import { WithdrawImplementation } from "../../../../contracts/periphery/counterfactual/WithdrawImplementation.sol";
-import { RoutePolicy } from "../../../../contracts/periphery/counterfactual/RoutePolicy.sol";
+import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counterfactual/RoutePolicyImmutableRoot.sol";
 import { deployRoutePolicy } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
@@ -20,7 +20,7 @@ contract WithdrawImplementationTest is Test {
     CounterfactualDeposit public dispatcher;
     CounterfactualDepositFactory public factory;
     WithdrawImplementation public withdrawImpl;
-    RoutePolicy public policy;
+    RoutePolicyImmutableRoot public policy;
     MintableERC20 public token;
 
     address public admin;
