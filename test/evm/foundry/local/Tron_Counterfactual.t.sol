@@ -53,8 +53,8 @@ contract Tron_CounterfactualTest is Test {
     MockSpokePool spokePool;
     MockTronUSDT usdt;
 
-    address admin = makeAddr("admin");
     address user = makeAddr("user");
+    address depositor = makeAddr("depositor");
     address relayer = makeAddr("relayer");
     address policyOwner = makeAddr("policyOwner");
     uint256 signerPrivateKey = 0xA11CE;
@@ -82,12 +82,12 @@ contract Tron_CounterfactualTest is Test {
         usdt = new MockTronUSDT();
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactoryTron();
-        withdrawImpl = new WithdrawImplementationTron();
+        withdrawImpl = new WithdrawImplementationTron(makeAddr("withdrawAdmin"));
         dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePoolTr(address(spokePool), signerAddr, makeAddr("weth"));
         policy = deployRoutePolicy(policyOwner, bytes32(0));
 
-        usdt.mint(user, 1000e6);
+        usdt.mint(depositor, 1000e6);
 
         defaultParams = SpokePoolRouteParams({
             outputToken: bytes32(uint256(uint160(address(usdt)))),
@@ -106,7 +106,7 @@ contract Tron_CounterfactualTest is Test {
                 outputToken: bytes32(uint256(uint160(address(usdt)))),
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: recipient,
-                admin: admin,
+                userAddress: user,
                 routePolicyAddress: address(policy)
             });
     }
@@ -209,7 +209,7 @@ contract Tron_CounterfactualTest is Test {
         uint256 outputAmount = 98e6;
         uint256 executionFee = 1e6;
 
-        vm.prank(user);
+        vm.prank(depositor);
         // MockTronUSDT.transfer returns false but moves tokens.
         usdt.transfer(clone, inputAmount);
         assertEq(usdt.balanceOf(clone), inputAmount);
@@ -235,7 +235,7 @@ contract Tron_CounterfactualTest is Test {
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-spoke-pool-fail"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         usdt.transfer(clone, 100e6);
         usdt.setBlacklisted(relayer, true);
 
@@ -257,36 +257,38 @@ contract Tron_CounterfactualTest is Test {
     function test_WithdrawTron_TransfersOnTronUSDT() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-withdraw"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         usdt.transfer(clone, 100e6);
 
-        vm.prank(admin);
+        // User escape — user is the only authorized caller (the withdraw impl's immutable admin is a dummy here).
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(usdt), admin, uint256(100e6)),
+            abi.encode(address(usdt), uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(usdt.balanceOf(admin), 100e6);
+        assertEq(usdt.balanceOf(user), 100e6);
         assertEq(usdt.balanceOf(clone), 0);
     }
 
     function test_WithdrawTron_RevertsWhenRecipientBlacklisted() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("tron-withdraw-fail"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         usdt.transfer(clone, 100e6);
-        usdt.setBlacklisted(admin, true);
+        // The withdraw destination (`user`) is now fixed; blacklist that.
+        usdt.setBlacklisted(user, true);
 
         vm.expectRevert(TronTransferLib.TronTransferCallReverted.selector);
-        vm.prank(admin);
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(usdt), admin, uint256(100e6)),
+            abi.encode(address(usdt), uint256(100e6)),
             new bytes32[](0)
         );
     }

@@ -118,14 +118,14 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
      * @dev ERC-20 only. `finalRecipient` and `finalToken` for the OFT quote come from the
      *      dispatcher-verified `recipient` / `outputToken`. OFT routing uses `routeParams.dstEid`
      *      (LayerZero-specific) for periphery dispatch; the EVM `destinationChainId` is committed
-     *      inside `routeParams` purely as identity binding against the clone. `admin` is unused
-     *      (policy-callable impl). Forwards `msg.value` for LayerZero fees.
+     *      inside `routeParams` purely as identity binding against the clone. `userAddress` is
+     *      unused (policy-callable impl). Forwards `msg.value` for LayerZero fees.
      */
     function execute(
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
-        address /* admin */,
+        address /* userAddress */,
         bytes calldata routeParamsEncoded,
         bytes calldata submitterDataEncoded
     ) external payable {

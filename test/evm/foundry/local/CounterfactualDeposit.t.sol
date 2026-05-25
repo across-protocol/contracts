@@ -23,7 +23,7 @@ contract RecordingImplementation is ICounterfactualImplementation {
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
-        address admin,
+        address userAddress,
         bytes routeParams,
         bytes submitterData
     );
@@ -32,11 +32,11 @@ contract RecordingImplementation is ICounterfactualImplementation {
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
-        address admin,
+        address userAddress,
         bytes calldata routeParams,
         bytes calldata submitterData
     ) external payable {
-        emit Recorded(recipient, outputToken, destinationChainId, admin, routeParams, submitterData);
+        emit Recorded(recipient, outputToken, destinationChainId, userAddress, routeParams, submitterData);
     }
 }
 
@@ -60,7 +60,8 @@ contract CounterfactualDepositTest is Test {
     RoutePolicyImmutableRoot public policy;
     MintableERC20 public token;
 
-    address public admin;
+    address public user;
+    address public withdrawAdmin;
     address public relayer;
     address public policyOwner;
 
@@ -68,14 +69,15 @@ contract CounterfactualDepositTest is Test {
 
     function setUp() public {
         merkle = new Merkle();
-        withdrawImpl = new WithdrawImplementation();
+        withdrawAdmin = makeAddr("withdrawAdmin");
+        withdrawImpl = new WithdrawImplementation(withdrawAdmin);
         dispatcher = new CounterfactualDeposit();
         factory = new CounterfactualDepositFactory();
         recImpl = new RecordingImplementation();
         revImpl = new RevertingImplementation();
         token = new MintableERC20("USDC", "USDC", 6);
 
-        admin = makeAddr("admin");
+        user = makeAddr("user");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
         policy = deployRoutePolicy(policyOwner, bytes32(0));
@@ -87,7 +89,7 @@ contract CounterfactualDepositTest is Test {
                 outputToken: bytes32(uint256(uint160(address(token)))),
                 destinationChainId: 42161,
                 recipient: bytes32(uint256(uint160(makeAddr("recipient")))),
-                admin: admin,
+                userAddress: user,
                 routePolicyAddress: address(policy)
             });
     }
@@ -125,51 +127,52 @@ contract CounterfactualDepositTest is Test {
             tampered,
             address(withdrawImpl),
             "",
-            abi.encode(address(token), admin, uint256(0)),
+            abi.encode(address(token), uint256(0)),
             new bytes32[](0)
         );
     }
 
-    function testTamperedAdminReverts() public {
+    function testTamperedUserAddressReverts() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
         CloneArgs memory tampered = _cloneArgs();
-        tampered.admin = address(this);
+        tampered.userAddress = address(this);
 
         vm.expectRevert(ICounterfactualDeposit.InvalidCloneArgs.selector);
         ICounterfactualDeposit(clone).execute(
             tampered,
             address(withdrawImpl),
             "",
-            abi.encode(address(token), address(this), uint256(100e6)),
+            abi.encode(address(token), uint256(100e6)),
             new bytes32[](0)
         );
     }
 
-    // --- Admin escape ---
+    // --- User escape ---
 
-    function testAdminEscapeBypassesProofForWithdrawImpl() public {
+    function testUserEscapeBypassesProofForWithdrawImpl() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
-        // Policy root is bytes32(0) — no proof can verify. The admin escape should still work.
+        // Policy root is bytes32(0) — no proof can verify. The user escape should still work.
         assertEq(policy.activeRoot(address(0)), bytes32(0));
 
-        vm.prank(admin);
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), admin, uint256(100e6)),
+            abi.encode(address(token), uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(token.balanceOf(admin), 100e6);
+        // WithdrawImplementation always sends funds to userAddress.
+        assertEq(token.balanceOf(user), 100e6);
     }
 
-    function testAdminEscapeBypassesProofForAnyImpl() public {
-        // Admin can call any impl — not just the withdraw impl. Here they call a recording impl
+    function testUserEscapeBypassesProofForAnyImpl() public {
+        // The user can call any impl — not just the withdraw impl. Here they call a recording impl
         // that's never been added to the policy tree, with arbitrary routeParams.
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         CloneArgs memory args = _cloneArgs();
@@ -180,20 +183,20 @@ contract CounterfactualDepositTest is Test {
             args.recipient,
             args.outputToken,
             args.destinationChainId,
-            args.admin,
+            args.userAddress,
             routeParams,
             "data"
         );
 
-        vm.prank(admin);
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(args, address(recImpl), routeParams, "data", new bytes32[](0));
     }
 
-    function testNonAdminCallerHitsProofPath() public {
+    function testNonUserCallerHitsProofPath() public {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), SALT);
         token.mint(clone, 100e6);
 
-        // Non-admin caller falls through to the proof path, which fails because no proof matches
+        // Non-user caller falls through to the proof path, which fails because no proof matches
         // against a bytes32(0) root.
         vm.expectRevert(ICounterfactualDeposit.InvalidProof.selector);
         vm.prank(relayer);
@@ -201,16 +204,15 @@ contract CounterfactualDepositTest is Test {
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(token), relayer, uint256(50e6)),
+            abi.encode(address(token), uint256(50e6)),
             new bytes32[](0)
         );
     }
 
-    function testWithdrawImplRejectsNonAdminEvenWithValidProof() public {
+    function testWithdrawImplRejectsRandomCallerEvenWithValidProof() public {
         // Defense-in-depth: even if a policy tree mistakenly includes a withdrawImpl leaf, the
-        // impl itself rejects non-admin callers based on the dispatcher-forwarded `admin` arg.
+        // impl itself rejects callers that are neither its immutable admin nor the clone's user.
         CloneArgs memory args = _cloneArgs();
-        // Withdraw impl uses empty routeParams.
         bytes memory routeParams = "";
         (bytes32 root, bytes32[] memory proof) = _buildTreeWithSingleLeaf(address(withdrawImpl), routeParams);
         _setPolicyRoot(root);
@@ -225,7 +227,7 @@ contract CounterfactualDepositTest is Test {
             args,
             address(withdrawImpl),
             routeParams,
-            abi.encode(address(token), relayer, uint256(100e6)),
+            abi.encode(address(token), uint256(100e6)),
             proof
         );
     }
@@ -256,7 +258,7 @@ contract CounterfactualDepositTest is Test {
             argsB.recipient,
             argsB.outputToken,
             argsB.destinationChainId,
-            argsB.admin,
+            argsB.userAddress,
             routeParams,
             ""
         );
@@ -282,7 +284,7 @@ contract CounterfactualDepositTest is Test {
             argsB.recipient,
             argsB.outputToken,
             argsB.destinationChainId,
-            argsB.admin,
+            argsB.userAddress,
             routeParams,
             ""
         );
@@ -304,7 +306,7 @@ contract CounterfactualDepositTest is Test {
             args.recipient,
             args.outputToken,
             args.destinationChainId,
-            args.admin,
+            args.userAddress,
             routeParams,
             "submitter"
         );
@@ -376,7 +378,7 @@ contract CounterfactualDepositTest is Test {
             args.recipient,
             args.outputToken,
             args.destinationChainId,
-            args.admin,
+            args.userAddress,
             routeParams,
             "data"
         );

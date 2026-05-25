@@ -120,13 +120,13 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
      *      come from the dispatcher-verified `recipient` / `outputToken`. CCTP routing uses
      *      `routeParams.destinationDomain` (CCTP-specific) for periphery dispatch; the EVM
      *      `destinationChainId` is committed inside `routeParams` purely as identity binding
-     *      against the clone. `admin` is unused (policy-callable impl).
+     *      against the clone. `userAddress` is unused (policy-callable impl).
      */
     function execute(
         bytes32 recipient,
         bytes32 outputToken,
         uint256 destinationChainId,
-        address /* admin */,
+        address /* userAddress */,
         bytes calldata routeParamsEncoded,
         bytes calldata submitterDataEncoded
     ) external payable {

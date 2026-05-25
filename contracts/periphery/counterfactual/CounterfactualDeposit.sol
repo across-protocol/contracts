@@ -15,9 +15,9 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  * @dev The clone's immutable arg is a single 32-byte `argsHash` over the five `CloneArgs` identity
  *      fields. On every execute, the dispatcher:
  *        1. Recomputes the hash from caller-supplied `cloneArgs` and reverts on mismatch.
- *        2. If `msg.sender == cloneArgs.admin`, skips the merkle check (admin escape — admin has
- *           full execution authority over this clone and can call any implementation regardless of
- *           policy state, including when the policy's `activeRoot` is `bytes32(0)`).
+ *        2. If `msg.sender == cloneArgs.userAddress`, skips the merkle check (user escape — the
+ *           user has full execution authority over their own clone and can call any implementation
+ *           regardless of policy state, including when the policy's `activeRoot` is `bytes32(0)`).
  *        3. Otherwise computes the leaf as
  *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(routeParams)))))`
  *           and verifies the merkle proof against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`.
@@ -51,9 +51,9 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         bytes32 storedHash = abi.decode(Clones.fetchCloneArgs(address(this)), (bytes32));
         if (cloneArgs.hash() != storedHash) revert InvalidCloneArgs();
 
-        // Admin escape — admin can execute any implementation, bypassing the policy.
+        // User escape — the clone's user can execute any implementation, bypassing the policy.
         // Works even if `activeRoot == bytes32(0)` or the policy contract is bricked.
-        if (msg.sender != cloneArgs.admin) {
+        if (msg.sender != cloneArgs.userAddress) {
             // Verify merkle proof against the policy's active root. The leaf commits only
             // `(implementation, keccak256(routeParams))`
             bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(routeParams)))));
@@ -62,9 +62,9 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         }
 
         // Delegatecall the implementation with the dispatcher-verified clone-identity fields.
-        // `recipient`, `outputToken`, `destinationChainId`, and `admin` are forwarded; impls that
-        // depend on the admin escape for authorization (e.g. WithdrawImplementation) verify
-        // `msg.sender == admin` independently. `routePolicyAddress` stays dispatcher-internal.
+        // `recipient`, `outputToken`, `destinationChainId`, and `userAddress` are forwarded;
+        // `WithdrawImplementation` uses `userAddress` as both the forced withdrawal destination
+        // and one of the authorized callers. `routePolicyAddress` stays dispatcher-internal.
         _delegate(implementation, cloneArgs, routeParams, submitterData);
     }
 
@@ -81,7 +81,7 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
                     cloneArgs.recipient,
                     cloneArgs.outputToken,
                     cloneArgs.destinationChainId,
-                    cloneArgs.admin,
+                    cloneArgs.userAddress,
                     routeParams,
                     submitterData
                 )

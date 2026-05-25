@@ -49,8 +49,8 @@ contract CounterfactualDepositCCTPTest is Test {
     MockSponsoredCCTPSrcPeriphery public srcPeriphery;
     MintableERC20 public burnToken;
 
-    address public admin;
     address public user;
+    address public depositor;
     address public relayer;
     address public policyOwner;
     uint256 public signerPrivateKey;
@@ -71,8 +71,8 @@ contract CounterfactualDepositCCTPTest is Test {
     CCTPRouteParams internal defaultRouteParams;
 
     function setUp() public {
-        admin = makeAddr("admin");
         user = makeAddr("user");
+        depositor = makeAddr("depositor");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
         signerPrivateKey = 0xA11CE;
@@ -83,12 +83,12 @@ contract CounterfactualDepositCCTPTest is Test {
 
         srcPeriphery = new MockSponsoredCCTPSrcPeriphery();
         factory = new CounterfactualDepositFactory();
-        withdrawImpl = new WithdrawImplementation();
+        withdrawImpl = new WithdrawImplementation(makeAddr("withdrawAdmin"));
         dispatcher = new CounterfactualDeposit();
         cctpImpl = new CounterfactualDepositCCTP(address(srcPeriphery), SOURCE_DOMAIN, signerAddr);
         policy = deployRoutePolicy(policyOwner, bytes32(0));
 
-        burnToken.mint(user, 1000e6);
+        burnToken.mint(depositor, 1000e6);
 
         defaultRouteParams = CCTPRouteParams({
             outputToken: bytes32(uint256(uint160(address(burnToken)))),
@@ -117,7 +117,7 @@ contract CounterfactualDepositCCTPTest is Test {
                 outputToken: bytes32(uint256(uint160(address(burnToken)))),
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: finalRecipient,
-                admin: admin,
+                userAddress: user,
                 routePolicyAddress: address(policy)
             });
     }
@@ -190,7 +190,7 @@ contract CounterfactualDepositCCTPTest is Test {
         uint256 amount = 100e6;
         uint256 executionFee = 1e6;
 
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone, amount);
 
         bytes memory submitterData = _buildSubmitterData(
@@ -224,7 +224,7 @@ contract CounterfactualDepositCCTPTest is Test {
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone, 100e6);
 
         bytes memory submitterData = _buildSubmitterData(
@@ -252,7 +252,7 @@ contract CounterfactualDepositCCTPTest is Test {
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone, 100e6);
 
         uint32 deadline = uint32(block.timestamp) + 100;
@@ -283,7 +283,7 @@ contract CounterfactualDepositCCTPTest is Test {
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone, 100e6);
 
         bytes memory submitterData = _buildSubmitterData(
@@ -312,7 +312,7 @@ contract CounterfactualDepositCCTPTest is Test {
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
 
         uint256 amount = 100e6;
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone, amount);
 
         bytes memory submitterData = _buildSubmitterData(
@@ -346,10 +346,10 @@ contract CounterfactualDepositCCTPTest is Test {
         args2.recipient = bytes32(uint256(uint160(makeAddr("other-recipient"))));
         address clone2 = factory.deploy(address(dispatcher), args2, keccak256("salt-2"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone1, 100e6);
-        burnToken.mint(user, 100e6);
-        vm.prank(user);
+        burnToken.mint(depositor, 100e6);
+        vm.prank(depositor);
         burnToken.transfer(clone2, 100e6);
 
         // Sign for clone1.
@@ -426,22 +426,22 @@ contract CounterfactualDepositCCTPTest is Test {
         ICounterfactualDeposit(clone).execute(args, address(cctpImpl), routeParamsEncoded, submitterData, proof);
     }
 
-    function testAdminEscape() public {
+    function testUserEscape() public {
         bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
         _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(), keccak256("salt"));
         burnToken.mint(clone, 100e6);
 
-        vm.prank(admin);
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(),
             address(withdrawImpl),
             "",
-            abi.encode(address(burnToken), admin, uint256(100e6)),
+            abi.encode(address(burnToken), uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(burnToken.balanceOf(admin), 100e6);
+        assertEq(burnToken.balanceOf(user), 100e6);
     }
 
     function testCctpMaxFeeBpsCalculation() public {
@@ -453,7 +453,7 @@ contract CounterfactualDepositCCTPTest is Test {
         uint256 executionFee = 1e6;
         uint256 depositAmount = amount - executionFee;
 
-        vm.prank(user);
+        vm.prank(depositor);
         burnToken.transfer(clone, amount);
 
         bytes memory submitterData = _buildSubmitterData(

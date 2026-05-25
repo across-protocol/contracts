@@ -88,8 +88,8 @@ contract CounterfactualDepositSpokePoolTest is Test {
     MintableERC20 public inputToken;
     address public weth;
 
-    address public admin;
     address public user;
+    address public depositor;
     address public relayer;
     address public policyOwner;
     uint256 public signerPrivateKey;
@@ -110,8 +110,8 @@ contract CounterfactualDepositSpokePoolTest is Test {
     bytes32 public outputTokenBytes32;
 
     function setUp() public {
-        admin = makeAddr("admin");
         user = makeAddr("user");
+        depositor = makeAddr("depositor");
         relayer = makeAddr("relayer");
         policyOwner = makeAddr("policyOwner");
         signerPrivateKey = 0xA11CE;
@@ -124,12 +124,12 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
         spokePool = new MockSpokePool();
         factory = new CounterfactualDepositFactory();
-        withdrawImpl = new WithdrawImplementation();
+        withdrawImpl = new WithdrawImplementation(makeAddr("withdrawAdmin"));
         dispatcher = new CounterfactualDeposit();
         spokePoolImpl = new CounterfactualDepositSpokePool(address(spokePool), signerAddr, weth);
         policy = deployRoutePolicy(policyOwner, bytes32(0));
 
-        inputToken.mint(user, 1000e6);
+        inputToken.mint(depositor, 1000e6);
     }
 
     // --- Helpers ---
@@ -140,7 +140,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
                 outputToken: outputToken_,
                 destinationChainId: DESTINATION_CHAIN_ID,
                 recipient: recipient,
-                admin: admin,
+                userAddress: user,
                 routePolicyAddress: address(policy)
             });
     }
@@ -307,7 +307,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
 
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
@@ -333,7 +333,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
@@ -353,7 +353,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
@@ -376,7 +376,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         // Drop outputAmount so the implicit relayer fee shoots past maxFeeFixed + maxFeeBps*input.
@@ -404,10 +404,10 @@ contract CounterfactualDepositSpokePoolTest is Test {
         args2.recipient = bytes32(uint256(uint160(makeAddr("other-recipient"))));
         address clone2 = factory.deploy(address(dispatcher), args2, keccak256("salt-2"));
 
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone1, 100e6);
-        inputToken.mint(user, 100e6);
-        vm.prank(user);
+        inputToken.mint(depositor, 100e6);
+        vm.prank(depositor);
         inputToken.transfer(clone2, 100e6);
 
         // Sign for clone1.
@@ -463,7 +463,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
         bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
@@ -490,7 +490,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
         bytes32 wrongOutput = bytes32(uint256(uint160(makeAddr("wrong-token"))));
         address clone = factory.deploy(address(dispatcher), _cloneArgs(wrongOutput), keccak256("wrong-token-salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
@@ -513,7 +513,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
         CloneArgs memory args = _cloneArgs(outputTokenBytes32);
         args.destinationChainId = 12345;
         address clone = factory.deploy(address(dispatcher), args, keccak256("wrong-chain-salt"));
-        vm.prank(user);
+        vm.prank(depositor);
         inputToken.transfer(clone, 100e6);
 
         ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
@@ -523,23 +523,23 @@ contract CounterfactualDepositSpokePoolTest is Test {
         ICounterfactualDeposit(clone).execute(args, address(spokePoolImpl), routeParamsEncoded, submitterData, proof);
     }
 
-    function testAdminEscapeStillWorks() public {
-        // Even with the SpokePool impl wired up and a non-zero policy root, the admin can
-        // pull funds via the admin escape — bypasses any signature/proof.
+    function testUserEscapeStillWorks() public {
+        // Even with the SpokePool impl wired up and a non-zero policy root, the user can
+        // pull funds via the user escape — bypasses any signature/proof.
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
         _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         inputToken.mint(clone, 100e6);
 
-        vm.prank(admin);
+        vm.prank(user);
         ICounterfactualDeposit(clone).execute(
             _cloneArgs(outputTokenBytes32),
             address(withdrawImpl),
             "",
-            abi.encode(address(inputToken), admin, uint256(100e6)),
+            abi.encode(address(inputToken), uint256(100e6)),
             new bytes32[](0)
         );
 
-        assertEq(inputToken.balanceOf(admin), 100e6);
+        assertEq(inputToken.balanceOf(user), 100e6);
     }
 }
