@@ -7,6 +7,7 @@ import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredOFTInterface } from "../../interfaces/SponsoredOFTInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
+import { CloneIdentity } from "./CloneIdentity.sol";
 
 /**
  * @notice Minimal interface for calling deposit on SponsoredOFTSrcPeriphery.
@@ -17,11 +18,15 @@ interface ISponsoredOFTSrcPeriphery {
 }
 
 /**
- * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
- *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
+ * @notice Route parameters committed to the merkle leaf. The dispatcher's leaf is agnostic to
+ *         clone identity, so this impl binds the leaf to a specific clone by committing
+ *         `outputToken` and `destinationChainId` inside `routeParams`. `execute` verifies these
+ *         match the dispatcher-forwarded `cloneArgs` values via `CloneIdentity.enforce(...)`.
  *         The destination chain's LayerZero endpoint ID lives in `dstEid`.
  */
 struct OFTRouteParams {
+    bytes32 outputToken;
+    uint256 destinationChainId;
     uint32 dstEid;
     bytes32 destinationHandler;
     address token;
@@ -111,20 +116,26 @@ contract CounterfactualDepositOFT is ICounterfactualImplementation, EIP712 {
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev ERC-20 only. `finalRecipient` and `finalToken` for the OFT quote come from the
-     *      dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is unused by the
-     *      OFT path — OFT uses its own `dstEid` field in `routeParams`. `admin` is unused
+     *      dispatcher-verified `recipient` / `outputToken`. OFT routing uses `routeParams.dstEid`
+     *      (LayerZero-specific) for periphery dispatch; the EVM `destinationChainId` is committed
+     *      inside `routeParams` purely as identity binding against the clone. `admin` is unused
      *      (policy-callable impl). Forwards `msg.value` for LayerZero fees.
      */
     function execute(
         bytes32 recipient,
         bytes32 outputToken,
-        uint256 /* destinationChainId */,
+        uint256 destinationChainId,
         address /* admin */,
         bytes calldata routeParamsEncoded,
         bytes calldata submitterDataEncoded
     ) external payable {
         OFTRouteParams memory routeParams = abi.decode(routeParamsEncoded, (OFTRouteParams));
         OFTSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (OFTSubmitterData));
+
+        // Bind the leaf to this clone's identity. The leaf already commits `keccak256(routeParams)`,
+        // so the values inside `routeParams` are authenticated by the merkle proof; this check
+        // verifies they match the dispatcher-forwarded `cloneArgs` values.
+        CloneIdentity.enforce(routeParams.outputToken, outputToken, routeParams.destinationChainId, destinationChainId);
 
         _verifySignature(submitterData);
 

@@ -19,10 +19,16 @@ import { CloneArgs, CounterfactualCloneArgs } from "./CounterfactualCloneArgs.so
  *           full execution authority over this clone and can call any implementation regardless of
  *           policy state, including when the policy's `activeRoot` is `bytes32(0)`).
  *        3. Otherwise computes the leaf as
- *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))`
+ *           `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(routeParams)))))`
  *           and verifies the merkle proof against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`.
- *           Binding the clone identity into the leaf preimage ensures a leaf can only be proven
- *           against the clone it was authored for.
+ *           The dispatcher is **agnostic to clone identity at the leaf level** —
+ *           `cloneArgs.outputToken` and `cloneArgs.destinationChainId` are forwarded to the
+ *           implementation but not committed to the leaf. Implementations that need to bind a leaf
+ *           to a specific clone identity (e.g. CCTP, OFT) declare so by including the binding
+ *           fields in their `routeParams` struct and checking them via `CloneIdentity.enforce(...)`
+ *           at the top of `execute`. Implementations that are agnostic to clone identity
+ *           (e.g. SpokePool, where the relayer market refunds infeasible routes) omit the fields
+ *           from their `routeParams` and don't enforce a check.
  *        4. Delegatecalls the implementation, forwarding the dispatcher-verified clone-identity
  *           fields.
  * @custom:security-contact bugs@across.to
@@ -48,21 +54,9 @@ contract CounterfactualDeposit is ICounterfactualDeposit {
         // Admin escape — admin can execute any implementation, bypassing the policy.
         // Works even if `activeRoot == bytes32(0)` or the policy contract is bricked.
         if (msg.sender != cloneArgs.admin) {
-            // Verify merkle proof against the policy's active root. The leaf preimage binds the
-            // clone's identity (outputToken, destinationChainId) so a leaf can only be proven against
-            // the clone it was authored for — no separate identity check needed.
-            bytes32 leaf = keccak256(
-                bytes.concat(
-                    keccak256(
-                        abi.encode(
-                            implementation,
-                            cloneArgs.outputToken,
-                            cloneArgs.destinationChainId,
-                            keccak256(routeParams)
-                        )
-                    )
-                )
-            );
+            // Verify merkle proof against the policy's active root. The leaf commits only
+            // `(implementation, keccak256(routeParams))`
+            bytes32 leaf = keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(routeParams)))));
             bytes32 root = IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this));
             if (!MerkleProof.verify(proof, root, leaf)) revert InvalidProof();
         }

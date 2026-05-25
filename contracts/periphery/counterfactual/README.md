@@ -93,12 +93,12 @@ Per-chain `RoutePolicyImmutableRoot` proxies expose a merkle root over the route
 
 The root itself is `immutable` on the implementation contract — baked into the runtime bytecode at construction time, not stored. `activeRoot(clone)` returns it directly with no `SLOAD`. To rotate the root, the policy owner — typically a multisig — deploys a new implementation carrying the new root in its constructor and calls `upgradeToAndCall(newImpl, "")` on the proxy. The proxy's address is unchanged across rotations; only the ERC-1967 implementation slot moves. Off-chain indexers can watch the standard `Upgraded(address)` event and read `activeRoot(...)` to learn the new root.
 
-Each chain's policy tree enumerates a **4-dimensional cross-product** of authorized routes:
+Each chain's policy tree enumerates authorized route shapes. What dimensions a leaf binds depends on the implementation it targets:
 
-- **`inputToken`** — token funding the clone on the source chain
-- **`bridge`** — which impl handles the route (SpokePool, CCTP, OFT, etc.)
-- **`destinationChainId`** — destination chain (also bound into the leaf preimage via `cloneArgs`)
-- **`outputToken`** — token received on destination (also bound into the leaf preimage via `cloneArgs`)
+- **`inputToken`** — token funding the clone on the source chain (always bound, inside `routeParams`)
+- **`bridge`** — which impl handles the route (SpokePool, CCTP, OFT, etc.) — always bound (the leaf commits `implementation`)
+- **`outputToken`** — token received on destination (bound only for identity-binding impls; see below)
+- **`destinationChainId`** — destination chain (bound only for identity-binding impls; see below)
 
 Source chain is implicit — each chain has its own `RoutePolicyImmutableRoot` proxy carrying its own root (via its current implementation's `immutable`). A leaf committed to chain A's root cannot be proven against chain B's root.
 
@@ -109,13 +109,22 @@ Each leaf is computed as:
 ```
 keccak256(bytes.concat(keccak256(abi.encode(
     implementation,
-    outputToken,
-    destinationChainId,
     keccak256(routeParams)
 ))))
 ```
 
-The leaf preimage binds the clone's identity (`outputToken`, `destinationChainId`) so a leaf can only be proven against the clone it was authored for — no separate identity check needed. `routeParams` is itself pre-hashed because it's a variable-length bytes blob. The outer double-hash prevents leaf/internal-node ambiguity (OZ standard).
+The dispatcher is **agnostic to clone identity at the leaf level**. `cloneArgs.outputToken` and `cloneArgs.destinationChainId` are forwarded to the implementation but **not** committed to the leaf preimage. `routeParams` is itself pre-hashed because it's a variable-length bytes blob. The outer double-hash prevents leaf/internal-node ambiguity (OZ standard).
+
+Implementations that need to bind a leaf to a specific clone identity declare so by committing the binding fields inside their `routeParams` struct and verifying them at execute time via `CloneIdentity.enforce(...)`:
+
+| Impl                             | Identity binding                                                                                                    | Why                                                                                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `CounterfactualDepositSpokePool` | Bound — `outputToken` and `destinationChainId` in `SpokePoolRouteParams`, checked via `CloneIdentity.enforce(...)`. | `stableExchangeRate` is a per-pair assumption (input↔output). A leaf authored for one pair would produce an incorrect fee bound if executed against a clone with a different output token. |
+| `CounterfactualDepositCCTP`      | Bound — same pattern.                                                                                               | The destination periphery routes directly to the bound output token; no refund path for infeasible routes.                                                                                 |
+| `CounterfactualDepositOFT`       | Bound — same pattern.                                                                                               | Same reasoning as CCTP.                                                                                                                                                                    |
+| `WithdrawImplementation`         | N/A — gated by `msg.sender == admin`, never executed via merkle path in normal flows.                               | Admin escape, not policy authorization.                                                                                                                                                    |
+
+All current production impls bind identity, so the practical leaf cardinality matches the per-pair cross-product. The architecture leaves room for future agnostic impls — an impl that doesn't include the binding fields in its `routeParams` and doesn't call `CloneIdentity.enforce(...)` is free to be agnostic — but no current impl exercises that option.
 
 A single policy's tree typically holds many leaves (one per route). Multiple clones with the same `(outputToken, destinationChainId)` identity share authorized routes; clones with different identities prove against the same root but different leaves.
 
@@ -327,11 +336,15 @@ Why: The factory hashes the args into a 32-byte `argsHash` and uses that as the 
 
 [EIP-1167](https://eips.ethereum.org/EIPS/eip-1167) defines a 45-byte minimal proxy. OpenZeppelin's `Clones.cloneDeterministicWithImmutableArgs` appends arbitrary bytes after the proxy bytecode. Storing the 32-byte `argsHash` keeps the clone at ~77 bytes total. Storing the full ~140 bytes of unhashed args would inflate every clone's deployment. `CounterfactualDeposit` recomputes the hash from caller-supplied fields on every execute and reverts on mismatch — once it matches, the args are as authoritative as if stored in clone bytecode.
 
-### 4. Identity-Bound Leaf Format
+### 4. Impl-Declared Identity Binding
 
-**`destinationChainId` and `outputToken` are bound into the leaf preimage via `cloneArgs`, not duplicated in `routeParams`.**
+**The dispatcher's leaf commits only `(implementation, keccak256(routeParams))`. Each impl declares its own identity-binding semantics by what it puts in `routeParams`.**
 
-The leaf is `keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))))`. A leaf authored for clone A's identity can't be proven against clone B with a different identity — no separate identity check needed. This also means impl-specific structs (`SpokePoolRouteParams`, `CCTPRouteParams`, `OFTRouteParams`) don't carry duplicated `outputToken`/`destinationChainId` fields.
+The leaf is `keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(routeParams)))))` — agnostic to `outputToken` and `destinationChainId`. Implementations that need to bind a leaf to a specific clone identity commit `outputToken` and `destinationChainId` inside their `routeParams` struct and verify them via `CloneIdentity.enforce(...)` at the top of `execute`.
+
+All three production impls (`CounterfactualDepositSpokePool`, `CounterfactualDepositCCTP`, `CounterfactualDepositOFT`) currently bind, each for its own reason — SpokePool because `stableExchangeRate` is a per-pair assumption, CCTP and OFT because their destination peripheries route directly to the bound output token with no refund path. The architecture leaves the door open for a future agnostic impl (whose `routeParams` would omit the binding fields and skip the `CloneIdentity.enforce(...)` call), but no current impl exercises that option.
+
+Why this structure rather than baking binding into the dispatcher: each impl can declare its own binding semantics, making the audit story local. A future variant that's safe to be agnostic — or one with different binding requirements — doesn't require dispatcher changes.
 
 ### 5. Admin Escape
 

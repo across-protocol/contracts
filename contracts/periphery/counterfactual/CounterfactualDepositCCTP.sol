@@ -8,6 +8,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { SponsoredCCTPInterface } from "../../interfaces/SponsoredCCTPInterface.sol";
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { BPS_SCALAR } from "./CounterfactualConstants.sol";
+import { CloneIdentity } from "./CloneIdentity.sol";
 
 /**
  * @notice Minimal interface for calling depositForBurn on SponsoredCCTPSrcPeriphery.
@@ -18,11 +19,15 @@ interface ISponsoredCCTPSrcPeriphery {
 }
 
 /**
- * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
- *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
+ * @notice Route parameters committed to the merkle leaf. The dispatcher's leaf is agnostic to
+ *         clone identity, so this impl binds the leaf to a specific clone by committing
+ *         `outputToken` and `destinationChainId` inside `routeParams`. `execute` verifies these
+ *         match the dispatcher-forwarded `cloneArgs` values via `CloneIdentity.enforce(...)`.
  *         The destination chain's CCTP-specific identifier lives in `destinationDomain`.
  */
 struct CCTPRouteParams {
+    bytes32 outputToken;
+    uint256 destinationChainId;
     uint32 destinationDomain;
     bytes32 mintRecipient;
     bytes32 burnToken;
@@ -112,20 +117,26 @@ contract CounterfactualDepositCCTP is ICounterfactualImplementation, EIP712 {
     /**
      * @inheritdoc ICounterfactualImplementation
      * @dev ERC-20 only (no native tokens). `finalRecipient` and `finalToken` for the CCTP quote
-     *      come from the dispatcher-verified `recipient` / `outputToken`. `destinationChainId` is
-     *      unused by the CCTP path — CCTP uses its own `destinationDomain` field in `routeParams`.
-     *      `admin` is unused (policy-callable impl).
+     *      come from the dispatcher-verified `recipient` / `outputToken`. CCTP routing uses
+     *      `routeParams.destinationDomain` (CCTP-specific) for periphery dispatch; the EVM
+     *      `destinationChainId` is committed inside `routeParams` purely as identity binding
+     *      against the clone. `admin` is unused (policy-callable impl).
      */
     function execute(
         bytes32 recipient,
         bytes32 outputToken,
-        uint256 /* destinationChainId */,
+        uint256 destinationChainId,
         address /* admin */,
         bytes calldata routeParamsEncoded,
         bytes calldata submitterDataEncoded
     ) external payable {
         CCTPRouteParams memory routeParams = abi.decode(routeParamsEncoded, (CCTPRouteParams));
         CCTPSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (CCTPSubmitterData));
+
+        // Bind the leaf to this clone's identity. The leaf already commits `keccak256(routeParams)`,
+        // so the values inside `routeParams` are authenticated by the merkle proof; this check
+        // verifies they match the dispatcher-forwarded `cloneArgs` values.
+        CloneIdentity.enforce(routeParams.outputToken, outputToken, routeParams.destinationChainId, destinationChainId);
 
         _verifySignature(submitterData);
 

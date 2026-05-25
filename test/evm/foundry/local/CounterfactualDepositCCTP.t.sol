@@ -17,6 +17,7 @@ import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.so
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredCCTPInterface } from "../../../../contracts/interfaces/SponsoredCCTPInterface.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
+import { CloneIdentity } from "../../../../contracts/periphery/counterfactual/CloneIdentity.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 contract MockSponsoredCCTPSrcPeriphery {
@@ -90,6 +91,8 @@ contract CounterfactualDepositCCTPTest is Test {
         burnToken.mint(user, 1000e6);
 
         defaultRouteParams = CCTPRouteParams({
+            outputToken: bytes32(uint256(uint160(address(burnToken)))),
+            destinationChainId: DESTINATION_CHAIN_ID,
             destinationDomain: DESTINATION_DOMAIN,
             mintRecipient: bytes32(uint256(uint160(makeAddr("dstPeriphery")))),
             burnToken: bytes32(uint256(uint160(address(burnToken)))),
@@ -119,19 +122,13 @@ contract CounterfactualDepositCCTPTest is Test {
             });
     }
 
-    function _computeLeaf(
-        address impl,
-        bytes32 outputToken,
-        uint256 destChainId,
-        bytes memory routeParams
-    ) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))));
+    function _computeLeaf(address impl, bytes memory routeParams) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(routeParams)))));
     }
 
     function _setRoot(bytes memory routeParams) internal returns (bytes32[] memory proof) {
-        bytes32 outputToken = bytes32(uint256(uint160(address(burnToken))));
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(cctpImpl), outputToken, DESTINATION_CHAIN_ID, routeParams);
+        leaves[0] = _computeLeaf(address(cctpImpl), routeParams);
         leaves[1] = keccak256("padding");
         bytes32 a = leaves[0];
         bytes32 b = leaves[1];
@@ -377,6 +374,56 @@ contract CounterfactualDepositCCTPTest is Test {
         // Replay on clone2 fails — EIP-712 domain separator binds to clone1.
         vm.expectRevert(CounterfactualDepositCCTP.InvalidSignature.selector);
         ICounterfactualDeposit(clone2).execute(args2, address(cctpImpl), routeParamsEncoded, submitterData, proof);
+    }
+
+    function testCloneIdentityWrongOutputTokenReverts() public {
+        // Leaf authored with routeParams.outputToken=burnToken. A clone with a different
+        // outputToken executing the leaf reverts at the impl-level CloneIdentity check.
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
+
+        CloneArgs memory args = _cloneArgs();
+        args.outputToken = bytes32(uint256(uint160(makeAddr("wrong-token"))));
+        address clone = factory.deploy(address(dispatcher), args, keccak256("wrong-token-salt"));
+
+        burnToken.mint(clone, 100e6);
+
+        bytes memory submitterData = _buildSubmitterData(
+            clone,
+            routeParamsEncoded,
+            100e6,
+            1e6,
+            keccak256("nonce"),
+            uint32(block.timestamp) + 3600,
+            signerPrivateKey
+        );
+
+        vm.expectRevert(CloneIdentity.WrongOutputToken.selector);
+        ICounterfactualDeposit(clone).execute(args, address(cctpImpl), routeParamsEncoded, submitterData, proof);
+    }
+
+    function testCloneIdentityWrongDestinationChainReverts() public {
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
+
+        CloneArgs memory args = _cloneArgs();
+        args.destinationChainId = 12345;
+        address clone = factory.deploy(address(dispatcher), args, keccak256("wrong-chain-salt"));
+
+        burnToken.mint(clone, 100e6);
+
+        bytes memory submitterData = _buildSubmitterData(
+            clone,
+            routeParamsEncoded,
+            100e6,
+            1e6,
+            keccak256("nonce"),
+            uint32(block.timestamp) + 3600,
+            signerPrivateKey
+        );
+
+        vm.expectRevert(CloneIdentity.WrongDestinationChain.selector);
+        ICounterfactualDeposit(clone).execute(args, address(cctpImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testAdminEscape() public {

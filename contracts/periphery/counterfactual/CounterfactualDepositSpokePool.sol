@@ -9,12 +9,22 @@ import { V3SpokePoolInterface } from "../../interfaces/V3SpokePoolInterface.sol"
 import { ICounterfactualImplementation } from "../../interfaces/ICounterfactualImplementation.sol";
 import { NATIVE_ASSET, BPS_SCALAR } from "./CounterfactualConstants.sol";
 import { SafeTransferERC20 } from "../../libraries/SafeTransferERC20.sol";
+import { CloneIdentity } from "./CloneIdentity.sol";
 
 /**
- * @notice Route parameters committed to the merkle leaf. Clone identity (`destinationChainId`,
- *         `outputToken`) is bound into the leaf preimage by the dispatcher, not duplicated here.
+ * @notice Route parameters committed to the merkle leaf. The dispatcher's leaf is agnostic to
+ *         clone identity, so this impl binds the leaf to a specific clone by committing
+ *         `outputToken` and `destinationChainId` inside `routeParams`. `execute` verifies these
+ *         match the dispatcher-forwarded `cloneArgs` values via `CloneIdentity.enforce(...)`.
+ *
+ *         Identity binding is required here because `stableExchangeRate` is a per-pair assumption
+ *         (input token ↔ output token). Without the binding, a clone with a different
+ *         `outputToken` could prove the leaf and the fee check would translate amounts using the
+ *         wrong rate, allowing fee bounds to be bypassed.
  */
 struct SpokePoolRouteParams {
+    bytes32 outputToken;
+    uint256 destinationChainId;
     bytes32 inputToken;
     bytes message;
     uint256 stableExchangeRate;
@@ -44,9 +54,16 @@ struct SpokePoolSubmitterData {
  * @title CounterfactualDepositSpokePool
  * @notice Deposits into an Across SpokePool from a counterfactual clone. Reads destination identity
  *         (recipient, output token, destination chain) from the dispatcher-verified `cloneArgs`.
- * @dev Called via delegatecall from the dispatcher. EIP-712 domain separator uses `address(this)`
- *      (the clone) for cross-clone replay safety; the typehash additionally binds `clone` and
- *      `routeParamsHash` so signatures are not reusable across clones or across leaves within a policy.
+ * @dev Called via delegatecall from the dispatcher. **Identity-bound at the impl level** via
+ *      `CloneIdentity.enforce(...)`: `routeParams.outputToken` and `routeParams.destinationChainId`
+ *      must match the dispatcher-forwarded `cloneArgs` values. Binding is required because
+ *      `stableExchangeRate` is a per-pair assumption — a leaf authored for one `(inputToken,
+ *      outputToken)` pair would produce an incorrect fee bound if executed against a clone with
+ *      a different output token.
+ *
+ *      EIP-712 domain separator uses `address(this)` (the clone) for cross-clone signature replay
+ *      safety; the typehash additionally binds `clone` and `routeParamsHash` so signatures are not
+ *      reusable across clones or across leaves within a policy.
  *
  *      Depositor-driven speed-ups are not supported: the `depositor` passed to `SpokePool.deposit()`
  *      is `address(this)` (the clone), which has no private key and cannot sign `speedUpV3Deposit`.
@@ -120,6 +137,10 @@ contract CounterfactualDepositSpokePool is ICounterfactualImplementation, EIP712
     ) external payable {
         SpokePoolRouteParams memory routeParams = abi.decode(routeParamsEncoded, (SpokePoolRouteParams));
         SpokePoolSubmitterData memory submitterData = abi.decode(submitterDataEncoded, (SpokePoolSubmitterData));
+
+        // Bind the leaf to this clone's identity. Required because `stableExchangeRate` is a
+        // per-pair assumption — see the contract natspec for details.
+        CloneIdentity.enforce(routeParams.outputToken, outputToken, routeParams.destinationChainId, destinationChainId);
 
         if (block.timestamp > submitterData.signatureDeadline) revert SignatureExpired();
         _verifySignature(keccak256(routeParamsEncoded), submitterData);

@@ -21,8 +21,10 @@ interface ICounterfactualDeposit {
      * @param routeParams ABI-encoded route parameters (impl-specific). Hashed into the leaf.
      * @param submitterData ABI-encoded data supplied by the caller at execution time.
      * @param proof Merkle proof for the leaf
-     *              `keccak256(bytes.concat(keccak256(abi.encode(implementation, cloneArgs.outputToken, cloneArgs.destinationChainId, keccak256(routeParams)))))`
+     *              `keccak256(bytes.concat(keccak256(abi.encode(implementation, keccak256(routeParams)))))`
      *              against `IRoutePolicy(cloneArgs.routePolicyAddress).activeRoot(address(this))`.
+     *              Implementations that bind to clone identity commit `(outputToken, destinationChainId)`
+     *              inside their `routeParams` struct and check them at execute time.
      */
     function execute(
         CloneArgs calldata cloneArgs,

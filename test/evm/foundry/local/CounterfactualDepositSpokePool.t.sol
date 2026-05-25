@@ -16,6 +16,7 @@ import { RoutePolicyImmutableRoot } from "../../../../contracts/periphery/counte
 import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.sol";
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
+import { CloneIdentity } from "../../../../contracts/periphery/counterfactual/CloneIdentity.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 /**
@@ -147,6 +148,8 @@ contract CounterfactualDepositSpokePoolTest is Test {
     function _defaultParams() internal view returns (SpokePoolRouteParams memory) {
         return
             SpokePoolRouteParams({
+                outputToken: outputTokenBytes32,
+                destinationChainId: DESTINATION_CHAIN_ID,
                 inputToken: bytes32(uint256(uint160(address(inputToken)))),
                 message: "",
                 stableExchangeRate: 1e18,
@@ -158,6 +161,8 @@ contract CounterfactualDepositSpokePoolTest is Test {
     function _nativeParams() internal pure returns (SpokePoolRouteParams memory) {
         return
             SpokePoolRouteParams({
+                outputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
+                destinationChainId: DESTINATION_CHAIN_ID,
                 inputToken: bytes32(uint256(uint160(NATIVE_ASSET))),
                 message: "",
                 stableExchangeRate: 1e18,
@@ -166,19 +171,14 @@ contract CounterfactualDepositSpokePoolTest is Test {
             });
     }
 
-    function _computeLeaf(
-        address impl,
-        bytes32 outputToken,
-        uint256 destChainId,
-        bytes memory routeParams
-    ) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))));
+    function _computeLeaf(address impl, bytes memory routeParams) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(routeParams)))));
     }
 
-    function _setRoot(bytes32 outputToken_, bytes memory routeParams) internal returns (bytes32[] memory proof) {
+    function _setRoot(bytes memory routeParams) internal returns (bytes32[] memory proof) {
         // For a single-leaf-of-interest tree, murky needs ≥2 leaves.
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(spokePoolImpl), outputToken_, DESTINATION_CHAIN_ID, routeParams);
+        leaves[0] = _computeLeaf(address(spokePoolImpl), routeParams);
         leaves[1] = keccak256("padding");
         bytes32 root = _merkleRoot(leaves);
         proof = _merkleProof(leaves, 0);
@@ -304,7 +304,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
     function testDeployAndExecute() public {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
 
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         vm.prank(user);
@@ -331,7 +331,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
     function testInvalidSignatureReverts() public {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         vm.prank(user);
         inputToken.transfer(clone, 100e6);
@@ -351,7 +351,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
     function testExpiredSignatureReverts() public {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         vm.prank(user);
         inputToken.transfer(clone, 100e6);
@@ -374,7 +374,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
     function testTotalFeeCapEnforced() public {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         vm.prank(user);
         inputToken.transfer(clone, 100e6);
@@ -396,7 +396,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
     function testCrossCloneReplayReverts() public {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone1 = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt-1"));
 
         // Second clone with different recipient → different argsHash → different address.
@@ -432,7 +432,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
     function testNativeDeposit() public {
         bytes32 nativeOutput = bytes32(uint256(uint160(NATIVE_ASSET)));
         bytes memory routeParamsEncoded = abi.encode(_nativeParams());
-        bytes32[] memory proof = _setRoot(nativeOutput, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
 
         address clone = factory.deploy(address(dispatcher), _cloneArgs(nativeOutput), keccak256("native"));
         vm.deal(clone, 1 ether);
@@ -461,7 +461,7 @@ contract CounterfactualDepositSpokePoolTest is Test {
 
     function testZeroExecutionFee() public {
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        bytes32[] memory proof = _setRoot(outputTokenBytes32, routeParamsEncoded);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         vm.prank(user);
         inputToken.transfer(clone, 100e6);
@@ -482,11 +482,52 @@ contract CounterfactualDepositSpokePoolTest is Test {
         assertEq(spokePool.lastInputAmount(), ctx.inputAmount);
     }
 
+    function testCloneIdentityWrongOutputTokenReverts() public {
+        // Leaf authored with routeParams.outputToken=outputTokenBytes32. A clone with a different
+        // outputToken executing the leaf reverts at the impl-level CloneIdentity check.
+        bytes memory routeParamsEncoded = abi.encode(_defaultParams());
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
+
+        bytes32 wrongOutput = bytes32(uint256(uint160(makeAddr("wrong-token"))));
+        address clone = factory.deploy(address(dispatcher), _cloneArgs(wrongOutput), keccak256("wrong-token-salt"));
+        vm.prank(user);
+        inputToken.transfer(clone, 100e6);
+
+        ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
+        bytes memory submitterData = _buildSubmitterData(ctx, signerPrivateKey);
+
+        vm.expectRevert(CloneIdentity.WrongOutputToken.selector);
+        ICounterfactualDeposit(clone).execute(
+            _cloneArgs(wrongOutput),
+            address(spokePoolImpl),
+            routeParamsEncoded,
+            submitterData,
+            proof
+        );
+    }
+
+    function testCloneIdentityWrongDestinationChainReverts() public {
+        bytes memory routeParamsEncoded = abi.encode(_defaultParams());
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
+
+        CloneArgs memory args = _cloneArgs(outputTokenBytes32);
+        args.destinationChainId = 12345;
+        address clone = factory.deploy(address(dispatcher), args, keccak256("wrong-chain-salt"));
+        vm.prank(user);
+        inputToken.transfer(clone, 100e6);
+
+        ExecCtx memory ctx = _defaultExecCtx(clone, routeParamsEncoded);
+        bytes memory submitterData = _buildSubmitterData(ctx, signerPrivateKey);
+
+        vm.expectRevert(CloneIdentity.WrongDestinationChain.selector);
+        ICounterfactualDeposit(clone).execute(args, address(spokePoolImpl), routeParamsEncoded, submitterData, proof);
+    }
+
     function testAdminEscapeStillWorks() public {
         // Even with the SpokePool impl wired up and a non-zero policy root, the admin can
         // pull funds via the admin escape — bypasses any signature/proof.
         bytes memory routeParamsEncoded = abi.encode(_defaultParams());
-        _setRoot(outputTokenBytes32, routeParamsEncoded);
+        _setRoot(routeParamsEncoded);
         address clone = factory.deploy(address(dispatcher), _cloneArgs(outputTokenBytes32), keccak256("salt"));
         inputToken.mint(clone, 100e6);
 

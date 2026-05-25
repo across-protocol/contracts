@@ -17,6 +17,7 @@ import { deployRoutePolicy, rotateRoot } from "../utils/RoutePolicyTestHelper.so
 import { ICounterfactualDeposit } from "../../../../contracts/interfaces/ICounterfactualDeposit.sol";
 import { SponsoredOFTInterface } from "../../../../contracts/interfaces/SponsoredOFTInterface.sol";
 import { CloneArgs } from "../../../../contracts/periphery/counterfactual/CounterfactualCloneArgs.sol";
+import { CloneIdentity } from "../../../../contracts/periphery/counterfactual/CloneIdentity.sol";
 import { MintableERC20 } from "../../../../contracts/test/MockERC20.sol";
 
 contract MockSponsoredOFTSrcPeriphery {
@@ -101,6 +102,8 @@ contract CounterfactualDepositOFTTest is Test {
         token.mint(user, 1000e6);
 
         defaultRouteParams = OFTRouteParams({
+            outputToken: bytes32(uint256(uint160(address(token)))),
+            destinationChainId: DESTINATION_CHAIN_ID,
             dstEid: DST_EID,
             destinationHandler: bytes32(uint256(uint160(makeAddr("dstHandler")))),
             token: address(token),
@@ -131,19 +134,13 @@ contract CounterfactualDepositOFTTest is Test {
             });
     }
 
-    function _computeLeaf(
-        address impl,
-        bytes32 outputToken,
-        uint256 destChainId,
-        bytes memory routeParams
-    ) internal pure returns (bytes32) {
-        return keccak256(bytes.concat(keccak256(abi.encode(impl, outputToken, destChainId, keccak256(routeParams)))));
+    function _computeLeaf(address impl, bytes memory routeParams) internal pure returns (bytes32) {
+        return keccak256(bytes.concat(keccak256(abi.encode(impl, keccak256(routeParams)))));
     }
 
     function _setRoot(bytes memory routeParams) internal returns (bytes32[] memory proof) {
-        bytes32 outputToken = bytes32(uint256(uint160(address(token))));
         bytes32[] memory leaves = new bytes32[](2);
-        leaves[0] = _computeLeaf(address(oftImpl), outputToken, DESTINATION_CHAIN_ID, routeParams);
+        leaves[0] = _computeLeaf(address(oftImpl), routeParams);
         leaves[1] = keccak256("padding");
         bytes32 a = leaves[0];
         bytes32 b = leaves[1];
@@ -367,6 +364,54 @@ contract CounterfactualDepositOFTTest is Test {
 
         vm.expectRevert(CounterfactualDepositOFT.InvalidSignature.selector);
         ICounterfactualDeposit(clone2).execute(args2, address(oftImpl), routeParamsEncoded, submitterData, proof);
+    }
+
+    function testCloneIdentityWrongOutputTokenReverts() public {
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
+
+        CloneArgs memory args = _cloneArgs();
+        args.outputToken = bytes32(uint256(uint160(makeAddr("wrong-token"))));
+        address clone = factory.deploy(address(dispatcher), args, keccak256("wrong-token-salt"));
+
+        token.mint(clone, 100e6);
+
+        bytes memory submitterData = _buildSubmitterData(
+            clone,
+            routeParamsEncoded,
+            100e6,
+            1e6,
+            keccak256("nonce"),
+            uint32(block.timestamp) + 3600,
+            signerPrivateKey
+        );
+
+        vm.expectRevert(CloneIdentity.WrongOutputToken.selector);
+        ICounterfactualDeposit(clone).execute(args, address(oftImpl), routeParamsEncoded, submitterData, proof);
+    }
+
+    function testCloneIdentityWrongDestinationChainReverts() public {
+        bytes memory routeParamsEncoded = abi.encode(defaultRouteParams);
+        bytes32[] memory proof = _setRoot(routeParamsEncoded);
+
+        CloneArgs memory args = _cloneArgs();
+        args.destinationChainId = 12345;
+        address clone = factory.deploy(address(dispatcher), args, keccak256("wrong-chain-salt"));
+
+        token.mint(clone, 100e6);
+
+        bytes memory submitterData = _buildSubmitterData(
+            clone,
+            routeParamsEncoded,
+            100e6,
+            1e6,
+            keccak256("nonce"),
+            uint32(block.timestamp) + 3600,
+            signerPrivateKey
+        );
+
+        vm.expectRevert(CloneIdentity.WrongDestinationChain.selector);
+        ICounterfactualDeposit(clone).execute(args, address(oftImpl), routeParamsEncoded, submitterData, proof);
     }
 
     function testAdminEscape() public {
