@@ -15,28 +15,28 @@ import { ArbitraryEVMFlowExecutor } from "../../../contracts/periphery/mintburn/
 // Usage (pick the entry point matching your use case):
 //
 // 1) DirectToCore (most common):
-//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//    forge script script/mintburn/cctp/createSponsoredDeposit.s.sol:CreateSponsoredDeposit \
 //      --sig "runDirectToCore(address,uint256,uint32,address,address,address,uint256,bool)" \
 //      0xTOKEN 1000000 19 0xMINT_RECIPIENT 0xFINAL_RECIPIENT 0xFINAL_TOKEN 100 false \
 //      --rpc-url <network> -vvvv
 //    Args: token, amount, destinationDomain, mintRecipient, finalRecipient, finalToken, maxFeeBps, showCast
 //
 // 2) DirectToCore with custom slippage/sponsor bps:
-//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//    forge script script/mintburn/cctp/createSponsoredDeposit.s.sol:CreateSponsoredDeposit \
 //      --sig "runDirectToCoreWithFees(address,uint256,uint32,address,address,address,uint256,uint256,uint256,bool)" \
 //      0xTOKEN 1000000 19 0xMINT_RECIPIENT 0xFINAL_RECIPIENT 0xFINAL_TOKEN 100 400 400 false \
 //      --rpc-url <network> -vvvv
 //    Args: token, amount, destinationDomain, mintRecipient, finalRecipient, finalToken, maxFeeBps, maxBpsToSponsor, maxUserSlippageBps, showCast
 //
 // 3) Arbitrary execution mode (with action data):
-//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//    forge script script/mintburn/cctp/createSponsoredDeposit.s.sol:CreateSponsoredDeposit \
 //      --sig "runArbitrary(address,uint256,uint32,address,address,address,uint256,uint8,bytes,bool)" \
 //      0xTOKEN 1000000 19 0xMINT_RECIPIENT 0xFINAL_RECIPIENT 0xFINAL_TOKEN 100 1 0xACTION_DATA false \
 //      --rpc-url <network> -vvvv
 //    Args: token, amount, destinationDomain, mintRecipient, finalRecipient, finalToken, maxFeeBps, executionMode, actionData, showCast
 //
 // 4) Full control over all parameters:
-//    forge script script/mintburn/cctp/createSponsoredDeposit.sol:CreateSponsoredDeposit \
+//    forge script script/mintburn/cctp/createSponsoredDeposit.s.sol:CreateSponsoredDeposit \
 //      --sig "runFull(address,uint256,uint32,address,address,address,address,uint256,uint32,uint256,uint256,uint256,uint32,uint8,uint8,bytes,bool)" \
 //      ...args --rpc-url <network> -vvvv
 //    Args: token, amount, destinationDomain, mintRecipient, finalRecipient, finalToken, destinationCaller,
@@ -92,7 +92,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
                 destinationCaller: mintRecipient, // destinationCaller = mintRecipient
                 finalRecipient: finalRecipient,
                 finalToken: finalToken,
-                maxFee: (amount * maxFeeBps) / 10000,
+                maxFee: (amount * maxFeeBps) / 100000,
                 minFinalityThreshold: 1000,
                 maxBpsToSponsor: 400,
                 maxUserSlippageBps: 400,
@@ -127,7 +127,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
                 destinationCaller: mintRecipient,
                 finalRecipient: finalRecipient,
                 finalToken: finalToken,
-                maxFee: (amount * maxFeeBps) / 10000,
+                maxFee: (amount * maxFeeBps) / 100000,
                 minFinalityThreshold: 1000,
                 maxBpsToSponsor: maxBpsToSponsor,
                 maxUserSlippageBps: maxUserSlippageBps,
@@ -169,7 +169,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
                 destinationCaller: mintRecipient,
                 finalRecipient: finalRecipient,
                 finalToken: finalToken,
-                maxFee: (amount * maxFeeBps) / 10000,
+                maxFee: (amount * maxFeeBps) / 100000,
                 minFinalityThreshold: 1000,
                 maxBpsToSponsor: 400,
                 maxUserSlippageBps: 400,
@@ -214,7 +214,7 @@ contract CreateSponsoredDeposit is DeploymentUtils {
                 destinationCaller: destinationCaller,
                 finalRecipient: finalRecipient,
                 finalToken: finalToken,
-                maxFee: (amount * maxFeeBps) / 10000,
+                maxFee: (amount * maxFeeBps) / 100000,
                 minFinalityThreshold: minFinalityThreshold,
                 maxBpsToSponsor: maxBpsToSponsor,
                 maxUserSlippageBps: maxUserSlippageBps,

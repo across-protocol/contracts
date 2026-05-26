@@ -21,7 +21,7 @@ contract SetUpTokens is DeploymentUtils {
         _loadConfig("./script/mintburn/cctp/config.toml", false);
 
         address dstPeriphery = config.get("sponsoredCCTPDstPeriphery").toAddress();
-        address baseToken = config.get("baseToken").toAddress();
+        address baseToken = config.get("usdc").toAddress();
         uint256 coreIndex = config.get("coreIndex").toUint256();
         uint256 accountActivationFeeCore = config.get("accountActivationFeeCore").toUint256();
         uint256 bridgeSafetyBufferCore = config.get("bridgeSafetyBufferCore").toUint256();
