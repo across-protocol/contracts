@@ -220,7 +220,7 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
 
           if (contractName === "ERC1967Proxy") {
             contractName = "SpokePool";
-          } else if (contractName.endsWith("_SpokePool")) {
+          } else if (contractName.endsWith("_SpokePool") || contractName.startsWith("DonationBox")) {
             // skip
             continue;
           } else if (["Universal_Adapter", "OP_Adapter"].includes(contractName)) {
@@ -255,14 +255,6 @@ function extractContractAddresses(broadcastFile: BroadcastFile): Contract[] {
                 `No chainId found for cctpDomainId (${cctpDomainId}) or oftDstEid (${oftDstEid}) in PUBLIC_NETWORKS`
               );
             }
-          }
-
-          if (broadcastFile.scriptName === "DeployDstHandler.s.sol") {
-            contractName += "_OFT_USDT";
-          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeriphery.s.sol") {
-            contractName += "_CCTP_USDC";
-          } else if (broadcastFile.scriptName === "DeploySponsoredCCTPDstPeripheryUSDH.s.sol") {
-            contractName += "_CCTP_USDH";
           }
 
           contracts.push({

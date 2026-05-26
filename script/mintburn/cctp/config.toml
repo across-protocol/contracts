@@ -124,9 +124,12 @@ cctpDomainId = 7
 endpoint_url = "${NODE_URL_143}"
 
 [143.address]
-sponsoredCCTPSrcPeriphery = "0xc49226858478DE8757E425661b1B5297102330d7"
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+sponsoredCCTPSrcPeriphery = "0x6185A81Ac9e74d15c9d50101308E4A35780154a3"
 usdc = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603"
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+sponsoredCCTPDstPeriphery = "0x647aFB7d935Ff0aaE4F0DdEfE0499d13AdE69178"
+multicallHandler = "0xA0542655D7dE212386d9dE26A7cb9BEf621D01A2"
 
 [143.uint]
 cctpDomainId = 15
@@ -136,8 +139,11 @@ endpoint_url = "${NODE_URL_57073}"
 
 [57073.address]
 cctpTokenMessenger = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"
+sponsoredCCTPSrcPeriphery = "0x8bBd8dA892f793A271af4D74C7B8895019f4ea77"
 usdc = "0x2D270e6886d130D724215A266106e6832161EAEd"
-sponsoredCCTPSrcPeriphery = "0x1771c470d41b8c39338450C380bf2C080a2CEdD8"
+cctpMessageTransmitter = "0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"
+sponsoredCCTPDstPeriphery = "0x087B70E43BF01359678E7b927bbAC76D175F3293"
+multicallHandler = "0xDAC391869D4b1a0B658626A6F4bc90484667B617"
 
 [57073.uint]
 cctpDomainId = 21
