@@ -143,11 +143,9 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
      */
     function lzCompose(
         address _oApp,
-        bytes32,
-        /* _guid */
+        bytes32 /* _guid */,
         bytes calldata _message,
-        address,
-        /* _executor */
+        address /* _executor */,
         bytes calldata /* _extraData */
     ) external payable override nonReentrant authorizeFundedFlow {
         _requireAuthorizedMessage(_oApp, _message);
