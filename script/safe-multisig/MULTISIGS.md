@@ -1,6 +1,6 @@
 # Safe Multisig Migration Status
 
-**Migration progress: 26.1%** — 23 of 88 checks pass (65 outstanding).
+**Migration progress: 3.0%** — 2 of 66 checks pass (64 outstanding).
 
 | Chain ID  | Chain           | Ops Multisig Deployed                                                                                                               | Universal SpokePool Owner                                                                                                      | Counterfactual WithdrawManager Owner                                                                                                            | Counterfactual WithdrawManager directWithdrawer                                                                                                 | Sponsored CCTP Periphery Owner                                                                                                                  | Sponsored OFT Periphery Owner                                                                                                   | DonationBox Admin |
 | --------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
@@ -65,4 +65,4 @@ Cell labels (any cell that resolves to an on-chain address links to that address
 
 A `?` in any cell means the on-chain call for that check failed after retries — see the **Errors from last run** section above for the underlying error.
 
-The `Migration progress` percentage is `(Ops multisig cells) / (Ops multisig cells + red cells)` across every cell in the migration columns.
+The `Migration progress` percentage is `(Ops multisig cells) / (Ops multisig cells + red cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count.

@@ -28,7 +28,7 @@ The script only includes a chain when at least one of these is deployed on it:
 
 Testnets (every chain ID in `TESTNET_CHAIN_IDs`), Scroll, and Solana are always excluded, even if they qualify above.
 
-"Ops multisig" refers to the chain's new operations Safe (the address from `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`). The output starts with an overall **Migration progress** percentage = `(Ops multisig cells) / (Ops multisig cells + red cells)` across every cell in the migration columns. The `Ops Multisig Deployed` column is included, so a missing Safe also counts against progress.
+"Ops multisig" refers to the chain's new operations Safe (the address from `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`). The output starts with an overall **Migration progress** percentage = `(Ops multisig cells) / (Ops multisig cells + red cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count (it tracks Safe deployment, not ownership transfer).
 
 For each qualifying chain the table reports:
 

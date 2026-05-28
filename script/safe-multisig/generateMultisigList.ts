@@ -518,7 +518,9 @@ function renderMarkdown(entries: ChainEntry[]): string {
           );
 
     const cells = [safeDeployedCell, universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell, donationBoxCell];
-    for (const cell of cells) {
+    // Migration progress measures ownership/admin transfer only; whether the Ops multisig (Safe) is deployed
+    // (safeDeployedCell) is excluded from the count.
+    for (const cell of [universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell, donationBoxCell]) {
       if (cell.kind === "yes") yesCount += 1;
       else if (cell.kind === "red") noCount += 1;
     }
@@ -619,7 +621,7 @@ function renderMarkdown(entries: ChainEntry[]): string {
   );
   lines.push("");
   lines.push(
-    "The `Migration progress` percentage is `(Ops multisig cells) / (Ops multisig cells + red cells)` across every cell in the migration columns."
+    "The `Migration progress` percentage is `(Ops multisig cells) / (Ops multisig cells + red cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count."
   );
   lines.push("");
   return lines.join("\n");
