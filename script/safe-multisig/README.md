@@ -28,7 +28,7 @@ The script only includes a chain when at least one of these is deployed on it:
 
 Testnets (every chain ID in `TESTNET_CHAIN_IDs`), Scroll, and Solana are always excluded, even if they qualify above.
 
-"Ops multisig" refers to the chain's new operations Safe (the address from `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`). The output starts with an overall **Migration progress** percentage = `(Ops multisig cells) / (Ops multisig cells + red cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count (it tracks Safe deployment, not ownership transfer).
+"Ops multisig" refers to the chain's new operations Safe (the address from `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`). The output starts with an overall **Migration progress** percentage = `(🟢 cells) / (🟢 cells + 🔴 cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count (it tracks Safe deployment, not ownership transfer).
 
 For each qualifying chain the table reports:
 
@@ -38,13 +38,13 @@ For each qualifying chain the table reports:
 4. **Sponsored CCTP / OFT Periphery Owner** — the on-chain `owner()` of the Ownable sponsored mintburn peripheries (`SponsoredCCTPSrcPeriphery`, `SponsoredOFTSrcPeriphery`). The Dst variants use `AccessControl` and are not included.
 5. **DonationBox Admin** — who holds `DEFAULT_ADMIN_ROLE` on every deployed `DonationBox` variant on the chain (`DonationBox`, `DonationBox_CCTP`, `DonationBox_OFT`). The script calls `hasRole(DEFAULT_ADMIN_ROLE, …)` against the Safe, the chain's legacy multisig, and the fallback EOA so it can attribute the holder.
 
-Cell content:
+Cell content (status is shown with a 🟢/🔴 dot; the label after the dot links to that address on the chain's block explorer, since GitHub renders neither colored LaTeX nor inline HTML color inside a link):
 
-- green **Ops multisig** — the Safe is the owner / admin (migration complete for this cell).
-- red **Legacy multisig** — the chain's pre-migration multisig is still the owner (per-chain entry in `script/mintburn/prod-readiness-multisigs.json`).
-- red **fallbackEOA** — the shared fallback EOA from the same config is the owner.
-- red `0xABCD…WXYZ` — some other address is the owner (abbreviated to first 4 / last 4 hex chars).
-- red **No** — boolean-style checks (`Ops Multisig Deployed`, `DonationBox Admin`) when no candidate matches.
+- 🟢 **Ops multisig** — the Safe is the owner / admin (migration complete for this cell).
+- 🔴 **Legacy multisig** — the chain's pre-migration multisig is still the owner (per-chain entry in `script/mintburn/prod-readiness-multisigs.json`).
+- 🔴 **fallbackEOA** — the shared fallback EOA from the same config is the owner.
+- 🔴 `0xABCD…WXYZ` — some other address is the owner (abbreviated to first 4 / last 4 hex chars).
+- 🔴 **No** — boolean-style checks (`Ops Multisig Deployed`, `DonationBox Admin`) when no candidate matches.
 - `—` — not applicable (contract not deployed on the chain, or no Ops multisig deployed yet to compare against).
 - `?` — the on-chain call for that cell failed after retries; full error details are in the **Errors from last run** section directly below the table.
 

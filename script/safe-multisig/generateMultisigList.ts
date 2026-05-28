@@ -47,13 +47,11 @@ const OWNABLE_ABI = ["function owner() view returns (address)"];
 const AWM_ABI = ["function owner() view returns (address)", "function directWithdrawer() view returns (address)"];
 const ACCESS_CONTROL_ABI = ["function hasRole(bytes32 role, address account) view returns (bool)"];
 
-// GitHub renders LaTeX inline in markdown tables; this gives true colored text without needing emoji.
-// Lighter shades than the default named `red`/`green` so cells read softly; column headers stay bold (GitHub renders header rows bold automatically).
-const GREEN = "#57ab5a";
-const RED = "#e5736f";
-function colorLabel(color: string, text: string): string {
-  return `$\\color{${color}}\\textsf{${text}}$`;
-}
+// Status is conveyed with a colored dot rather than colored text: GitHub renders neither LaTeX math nor
+// inline HTML color inside a markdown link, but a leading emoji + a normal link renders everywhere and lets
+// each address cell stay clickable. Plain link text also matches the size of the Chain / Chain ID columns.
+const GREEN_DOT = "🟢";
+const RED_DOT = "🔴";
 
 // Base block-explorer URL for a chain, if known.
 function explorerBaseFor(chainId: number): string | undefined {
@@ -79,8 +77,9 @@ const ERROR_CELL: Cell = { kind: "error" };
 function renderCell(cell: Cell, explorer: string | undefined): string {
   if (cell.kind === "na") return "—";
   if (cell.kind === "error") return "?";
-  const colored = colorLabel(cell.kind === "yes" ? GREEN : RED, cell.text ?? "");
-  return cell.address && explorer ? `[${colored}](${explorerAddressUrl(explorer, cell.address)})` : colored;
+  const dot = cell.kind === "yes" ? GREEN_DOT : RED_DOT;
+  const label = cell.address && explorer ? `[${cell.text}](${explorerAddressUrl(explorer, cell.address)})` : cell.text;
+  return `${dot} ${label}`;
 }
 
 function abbreviateAddress(addr: string): string {
@@ -587,7 +586,7 @@ function renderMarkdown(entries: ChainEntry[]): string {
   lines.push("");
   lines.push("For each qualifying chain the table reports:");
   lines.push(
-    "- **Ops Multisig Deployed** — green `Yes` / red `No` for whether the chain's Ops multisig (Safe) is deployed"
+    "- **Ops Multisig Deployed** — 🟢 `Yes` / 🔴 `No` for whether the chain's Ops multisig (Safe) is deployed"
   );
   lines.push("- **Universal SpokePool Owner** — the on-chain `owner()` of the chain's `Universal_SpokePool` (if any)");
   lines.push(
@@ -601,19 +600,17 @@ function renderMarkdown(entries: ChainEntry[]): string {
   );
   lines.push("");
   lines.push(
-    "Cell labels (any cell that resolves to an on-chain address links to that address on the chain's block explorer):"
+    "Cell labels (🟢 = migrated / good, 🔴 = outstanding; the label after the dot links to that address on the chain's block explorer):"
   );
   lines.push(
-    "- green `Yes` / green `Ops multisig` — the chain's Ops multisig (Safe) is deployed / is the owner / admin (migration complete)"
+    "- 🟢 `Yes` / 🟢 `Ops multisig` — the chain's Ops multisig (Safe) is deployed / is the owner / admin (migration complete)"
   );
   lines.push(
-    "- red `Legacy multisig` — the chain's pre-migration multisig is still the owner (from `script/mintburn/prod-readiness-multisigs.json`)"
+    "- 🔴 `Legacy multisig` — the chain's pre-migration multisig is still the owner (from `script/mintburn/prod-readiness-multisigs.json`)"
   );
-  lines.push("- red `fallbackEOA` — the shared fallback EOA from the same config is the owner");
-  lines.push("- red `0xABCD…WXYZ` — some other address is the owner (abbreviated)");
-  lines.push(
-    "- red `No` — for boolean checks (`Ops Multisig Deployed`, `DonationBox Admin`) when no candidate matches"
-  );
+  lines.push("- 🔴 `fallbackEOA` — the shared fallback EOA from the same config is the owner");
+  lines.push("- 🔴 `0xABCD…WXYZ` — some other address is the owner (abbreviated)");
+  lines.push("- 🔴 `No` — for boolean checks (`Ops Multisig Deployed`, `DonationBox Admin`) when no candidate matches");
   lines.push("- `—` — not applicable (contract not deployed, or no Ops multisig yet to compare against)");
   lines.push("");
   lines.push(
@@ -621,7 +618,7 @@ function renderMarkdown(entries: ChainEntry[]): string {
   );
   lines.push("");
   lines.push(
-    "The `Migration progress` percentage is `(Ops multisig cells) / (Ops multisig cells + red cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count."
+    "The `Migration progress` percentage is `(🟢 cells) / (🟢 cells + 🔴 cells)` across the ownership/admin columns. The `Ops Multisig Deployed` column is excluded from the count."
   );
   lines.push("");
   return lines.join("\n");
