@@ -18,7 +18,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
  * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read
- *     `BaseModuleHandler` contract code to learn more.
+    `BaseModuleHandler` contract code to learn more.
  */
 contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;

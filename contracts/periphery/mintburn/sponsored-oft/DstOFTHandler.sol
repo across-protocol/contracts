@@ -20,9 +20,9 @@ import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC2
 
 /**
  * @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
- *     sender), and forwards authorized params to the `_executeFlow` function
+    sender), and forwards authorized params to the `_executeFlow` function
  * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read
- *     `BaseModuleHandler` contract code to learn more.
+    `BaseModuleHandler` contract code to learn more.
  */
 contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
