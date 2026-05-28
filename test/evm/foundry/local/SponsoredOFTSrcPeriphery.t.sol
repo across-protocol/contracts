@@ -47,7 +47,7 @@ contract SponsoredOFTSrcPeripheryTest is Test {
         oft.setEndpoint(address(endpoint));
         oft.setFeesToReturn(QUOTED_NATIVE_FEE, 0);
 
-        periphery = new SponsoredOFTSrcPeriphery(address(token), address(oft), SRC_EID, signer);
+        periphery = new SponsoredOFTSrcPeriphery(address(token), address(oft), SRC_EID, signer, owner);
 
         // Fund user with tokens and ETH
         deal(address(token), user, USER_INITIAL_BAL, true);

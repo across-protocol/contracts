@@ -19,10 +19,10 @@ import { IERC20Metadata } from "@openzeppelin/contracts-v4/token/ERC20/extension
 import { SafeERC20 } from "@openzeppelin/contracts-v4/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain 
-    sender), and forwards authorized params to the `_executeFlow` function
- * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
-    `BaseModuleHandler` contract code to learn more.
+ * @notice Handler that receives funds from LZ system, checks authorizations(both against LZ system and src chain
+ *     sender), and forwards authorized params to the `_executeFlow` function
+ * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read
+ *     `BaseModuleHandler` contract code to learn more.
  */
 contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, ArbitraryEVMFlowExecutor {
     using ComposeMsgCodec for bytes;
@@ -86,7 +86,8 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
         address _ioft,
         address _donationBox,
         address _baseToken,
-        address _multicallHandler
+        address _multicallHandler,
+        address _admin
     )
         BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE)
         ArbitraryEVMFlowExecutor(_multicallHandler)
@@ -104,7 +105,7 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
             revert IOFTEndpointMismatch();
         }
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
@@ -142,9 +143,11 @@ contract DstOFTHandler is BaseModuleHandler, OFTCoreMath, ILayerZeroComposer, Ar
      */
     function lzCompose(
         address _oApp,
-        bytes32 /* _guid */,
+        bytes32,
+        /* _guid */
         bytes calldata _message,
-        address /* _executor */,
+        address,
+        /* _executor */
         bytes calldata /* _extraData */
     ) external payable override nonReentrant authorizeFundedFlow {
         _requireAuthorizedMessage(_oApp, _message);

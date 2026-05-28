@@ -17,8 +17,8 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
  * @title SponsoredCCTPDstPeriphery
  * @notice Destination chain periphery contract that supports sponsored/non-sponsored CCTP deposits.
  * @dev This contract is used to receive tokens via CCTP and execute the flow accordingly.
- * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read 
-    `BaseModuleHandler` contract code to learn more.
+ * @dev IMPORTANT. `BaseModuleHandler` should always be the first contract in inheritance chain. Read
+ *     `BaseModuleHandler` contract code to learn more.
  */
 contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface, ArbitraryEVMFlowExecutor {
     using SafeERC20 for IERC20Metadata;
@@ -62,6 +62,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
      * @param _donationBox The address of the donation box contract. This is used to store funds that are used for sponsored flows.
      * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
      * @param _multicallHandler The address of the multicall handler contract.
+     * @param _admin The address granted DEFAULT_ADMIN_ROLE.
      */
     constructor(
         address _cctpMessageTransmitter,
@@ -69,7 +70,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         address _signer,
         address _donationBox,
         address _baseToken,
-        address _multicallHandler
+        address _multicallHandler,
+        address _admin
     ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
         baseToken = _baseToken;
 
@@ -80,7 +82,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         $.signer = _signer;
         $.quoteDeadlineBuffer = 30 minutes;
 
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
 
     /**
