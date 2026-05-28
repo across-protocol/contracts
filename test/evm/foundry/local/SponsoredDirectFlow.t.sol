@@ -314,7 +314,8 @@ contract CCTPDirectFlowTest is BaseSimulatorTest {
             address(donationBox),
             address(usdc),
             multicallHandler,
-            address(this)
+            address(this),
+            30 minutes
         );
 
         // Grant DIRECT_CALLER_ROLE to srcPeriphery on dstPeriphery
