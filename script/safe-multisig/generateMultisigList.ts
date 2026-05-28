@@ -5,7 +5,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { getAddress } from "ethers/lib/utils";
 import { ethers } from "../../utils/utils";
-import { getNodeUrl } from "../../utils";
+import { getNodeUrl, CHAIN_IDs, TESTNET_CHAIN_IDs, PUBLIC_NETWORKS } from "../../utils";
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const BROADCAST_DIR = path.join(REPO_ROOT, "broadcast");
@@ -13,13 +13,15 @@ const DEPLOYED_ADDRESSES_PATH = path.join(BROADCAST_DIR, "deployed-addresses.jso
 const SAFE_BROADCAST_DIR = path.join(BROADCAST_DIR, "DeploySafe.s.sol");
 const UNIVERSAL_BROADCAST_DIR = path.join(BROADCAST_DIR, "DeployUniversalSpokePool.s.sol");
 const TRON_UNIVERSAL_BROADCAST_DIR = path.join(BROADCAST_DIR, "TronDeployUniversal_SpokePool.s.sol");
+const PROD_READINESS_PATH = path.join(REPO_ROOT, "script/mintburn/prod-readiness-multisigs.json");
 const DEFAULT_OUTPUT_PATH = path.resolve(__dirname, "MULTISIGS.md");
 
 const NON_EVM_CHAIN_IDS = new Set<number>([
   728126428, // TRON — needs TronWeb, not JsonRpcProvider
-  133268194659241, // Solana Devnet
-  34268394551451, // Solana
 ]);
+
+// Testnets (and Scroll, Solana) are excluded from the migration report entirely.
+const EXCLUDED_CHAIN_IDS = new Set<number>([...Object.values(TESTNET_CHAIN_IDs), CHAIN_IDs.SCROLL, CHAIN_IDs.SOLANA]);
 
 const COUNTERFACTUAL_FACTORY_NAMES = ["CounterfactualDepositFactory", "CounterfactualDepositFactoryTron"];
 
@@ -46,8 +48,73 @@ const AWM_ABI = ["function owner() view returns (address)", "function directWith
 const ACCESS_CONTROL_ABI = ["function hasRole(bytes32 role, address account) view returns (bool)"];
 
 // GitHub renders LaTeX inline in markdown tables; this gives true colored text without needing emoji.
-const GREEN_YES = "$\\color{green}\\textsf{Yes}$";
-const RED_NO = "$\\color{red}\\textsf{No}$";
+// Lighter shades than the default named `red`/`green` so cells read softly; column headers stay bold (GitHub renders header rows bold automatically).
+const GREEN = "#57ab5a";
+const RED = "#e5736f";
+function colorLabel(color: string, text: string): string {
+  return `$\\color{${color}}\\textsf{${text}}$`;
+}
+
+// Base block-explorer URL for a chain, if known.
+function explorerBaseFor(chainId: number): string | undefined {
+  const net = (PUBLIC_NETWORKS as Record<number, { blockExplorer?: string }>)[chainId];
+  return net?.blockExplorer || undefined;
+}
+
+function explorerAddressUrl(base: string, addr: string): string {
+  return `${base.replace(/\/+$/, "")}/address/${addr}`;
+}
+
+// A rendered table cell. `address`, when set, is the on-chain address the cell refers to and gets a block-explorer link.
+type CellKind = "na" | "error" | "yes" | "red";
+interface Cell {
+  kind: CellKind;
+  text?: string;
+  address?: string;
+}
+
+const NA_CELL: Cell = { kind: "na" };
+const ERROR_CELL: Cell = { kind: "error" };
+
+function renderCell(cell: Cell, explorer: string | undefined): string {
+  if (cell.kind === "na") return "—";
+  if (cell.kind === "error") return "?";
+  const colored = colorLabel(cell.kind === "yes" ? GREEN : RED, cell.text ?? "");
+  return cell.address && explorer ? `[${colored}](${explorerAddressUrl(explorer, cell.address)})` : colored;
+}
+
+function abbreviateAddress(addr: string): string {
+  if (/^0x[0-9a-fA-F]+$/.test(addr) && addr.length > 10) {
+    return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+  }
+  if (addr.length > 8) {
+    return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
+  }
+  return addr;
+}
+
+interface ProdReadinessConfig {
+  legacyByChainId: Map<number, string>;
+  fallbackEOA: string;
+}
+
+function loadProdReadiness(): ProdReadinessConfig {
+  const raw = JSON.parse(fs.readFileSync(PROD_READINESS_PATH, "utf8")) as Record<string, string>;
+  const legacyByChainId = new Map<number, string>();
+  let fallbackEOA = "";
+  for (const [key, value] of Object.entries(raw)) {
+    if (key === "fallbackEOA") {
+      fallbackEOA = getAddress(value);
+      continue;
+    }
+    const cid = Number(key);
+    if (Number.isInteger(cid) && cid > 0) {
+      legacyByChainId.set(cid, getAddress(value));
+    }
+  }
+  if (!fallbackEOA) throw new Error(`${PROD_READINESS_PATH} is missing a "fallbackEOA" entry`);
+  return { legacyByChainId, fallbackEOA };
+}
 
 type SpokePoolType = "universal" | "native" | "none";
 
@@ -56,12 +123,22 @@ interface DonationBoxInstance {
   address: string;
 }
 
+interface DonationBoxRoleState {
+  name: string;
+  address: string;
+  safeHasRole?: boolean;
+  legacyHasRole?: boolean;
+  fallbackHasRole?: boolean;
+}
+
 interface ChainEntry {
   chainId: number;
   chainName: string;
   spokePoolAddress?: string;
   spokePoolType: SpokePoolType;
   safeAddress?: string;
+  legacyMultisig?: string;
+  fallbackEOA: string;
   adminWithdrawManagerAddress?: string;
   universalOwner?: string;
   universalOwnerError?: string;
@@ -75,7 +152,7 @@ interface ChainEntry {
   sponsoredOftOwner?: string;
   sponsoredOftError?: string;
   donationBoxes: DonationBoxInstance[];
-  donationBoxSafeIsAdmin?: boolean;
+  donationBoxStates?: DonationBoxRoleState[];
   donationBoxError?: string;
   skippedNonEvm?: boolean;
 }
@@ -189,7 +266,11 @@ function findAllContractInstances(contracts: Record<string, any>, names: readonl
   return out;
 }
 
-async function buildEntry(chainId: number, info: { chain_name?: string; contracts?: any }): Promise<ChainEntry> {
+async function buildEntry(
+  chainId: number,
+  info: { chain_name?: string; contracts?: any },
+  prodReadiness: ProdReadinessConfig
+): Promise<ChainEntry> {
   const contracts = info.contracts ?? {};
   const spokePoolAddress = safeChecksum(contracts.SpokePool?.address);
   const adminWithdrawManagerAddress = safeChecksum(contracts.AdminWithdrawManager?.address);
@@ -198,6 +279,8 @@ async function buildEntry(chainId: number, info: { chain_name?: string; contract
   const donationBoxes = findAllContractInstances(contracts, DONATION_BOX_NAMES);
   const safeAddress = readSafeAddress(chainId);
   const spokePoolType = detectSpokePoolType(chainId, spokePoolAddress);
+  const legacyMultisig = prodReadiness.legacyByChainId.get(chainId);
+  const fallbackEOA = prodReadiness.fallbackEOA;
 
   const entry: ChainEntry = {
     chainId,
@@ -205,6 +288,8 @@ async function buildEntry(chainId: number, info: { chain_name?: string; contract
     spokePoolAddress,
     spokePoolType,
     safeAddress,
+    legacyMultisig,
+    fallbackEOA,
     adminWithdrawManagerAddress,
     sponsoredCctpAddress,
     sponsoredOftAddress,
@@ -282,19 +367,34 @@ async function buildEntry(chainId: number, info: { chain_name?: string; contract
 
   if (donationBoxes.length > 0 && safeAddress) {
     tasks.push(
-      Promise.all(
-        donationBoxes.map((b) =>
-          withRetry(`chain ${chainId} ${b.name}.hasRole(DEFAULT_ADMIN_ROLE, safe)`, () =>
-            fetchHasDefaultAdminRole(provider, b.address, safeAddress)
-          )
-        )
-      )
-        .then((results) => {
-          entry.donationBoxSafeIsAdmin = results.every(Boolean);
-        })
-        .catch((err: Error) => {
-          entry.donationBoxError = err.message;
-        })
+      (async () => {
+        try {
+          const states: DonationBoxRoleState[] = await Promise.all(
+            donationBoxes.map(async (b) => {
+              const state: DonationBoxRoleState = { name: b.name, address: b.address };
+              const candidates: { key: keyof DonationBoxRoleState; account: string | undefined; label: string }[] = [
+                { key: "safeHasRole", account: safeAddress, label: "safe" },
+                { key: "legacyHasRole", account: legacyMultisig, label: "legacy" },
+                { key: "fallbackHasRole", account: fallbackEOA, label: "fallback" },
+              ];
+              await Promise.all(
+                candidates.map(async (cand) => {
+                  if (!cand.account) return;
+                  const result = await withRetry(
+                    `chain ${chainId} ${b.name}.hasRole(DEFAULT_ADMIN_ROLE, ${cand.label})`,
+                    () => fetchHasDefaultAdminRole(provider, b.address, cand.account as string)
+                  );
+                  (state as any)[cand.key] = result;
+                })
+              );
+              return state;
+            })
+          );
+          entry.donationBoxStates = states;
+        } catch (err: any) {
+          entry.donationBoxError = err?.message ?? String(err);
+        }
+      })()
     );
   }
 
@@ -307,38 +407,53 @@ function eqAddr(a: string | undefined, b: string | undefined): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
 
-// Returns a colored Yes/No (or "—") for a column whose underlying check is "does <contract>.owner match the Safe?"
-// - deployed=false → "—" (contract not deployed on this chain)
-// - deployed=true, error → "?"
-// - deployed=true, no Safe → "—" (no Safe yet, nothing to migrate to)
-// - actual missing for any other reason → "—"
-// - addresses equal → green Yes
-// - addresses differ → red No
+// Cell content for an Ownable-style check ("does <contract>.owner() match the Safe?"):
+// - deployed=false → "—"
+// - error → "?"
+// - actual missing or no Safe to compare against → "—"
+// - actual === safe → green "Ops multisig"
+// - actual === legacy multisig for this chain → red "Legacy multisig"
+// - actual === fallback EOA → red "fallbackEOA"
+// - otherwise → red abbreviated address
+// In every non-trivial case the cell carries the underlying address so it can be linked to the block explorer.
 function ownershipCell(
   deployed: boolean,
   actual: string | undefined,
   safe: string | undefined,
+  legacy: string | undefined,
+  fallback: string | undefined,
   error: string | undefined
-): string {
-  if (!deployed) return "—";
-  if (error) return "?";
-  if (!actual) return "—";
-  if (!safe) return "—";
-  return eqAddr(actual, safe) ? GREEN_YES : RED_NO;
+): Cell {
+  if (!deployed) return NA_CELL;
+  if (error) return ERROR_CELL;
+  if (!actual) return NA_CELL;
+  if (!safe) return NA_CELL;
+  if (eqAddr(actual, safe)) return { kind: "yes", text: "Ops multisig", address: actual };
+  if (legacy && eqAddr(actual, legacy)) return { kind: "red", text: "Legacy multisig", address: actual };
+  if (fallback && eqAddr(actual, fallback)) return { kind: "red", text: "fallbackEOA", address: actual };
+  return { kind: "red", text: abbreviateAddress(actual), address: actual };
 }
 
-// AccessControl flavour: cell is Yes if the Safe has DEFAULT_ADMIN_ROLE on the deployed contract(s).
-function adminRoleCell(
-  deployed: boolean,
-  safeIsAdmin: boolean | undefined,
+// AccessControl flavour: aggregates DEFAULT_ADMIN_ROLE membership across every deployed DonationBox variant.
+// Returns Yes if the Safe holds the role on every box; otherwise tries to attribute to the legacy multisig
+// or fallback EOA when one of those holds the role on every box; otherwise red "No".
+// The cell links to whichever role-holder address it attributes to (safe / legacy / fallback).
+function donationBoxAdminCell(
+  states: DonationBoxRoleState[] | undefined,
+  hasDeployments: boolean,
   safe: string | undefined,
+  legacy: string | undefined,
+  fallback: string | undefined,
   error: string | undefined
-): string {
-  if (!deployed) return "—";
-  if (!safe) return "—";
-  if (error) return "?";
-  if (safeIsAdmin === undefined) return "—";
-  return safeIsAdmin ? GREEN_YES : RED_NO;
+): Cell {
+  if (!hasDeployments) return NA_CELL;
+  if (!safe) return NA_CELL;
+  if (error) return ERROR_CELL;
+  if (!states || states.length === 0) return NA_CELL;
+  if (states.every((s) => s.safeHasRole)) return { kind: "yes", text: "Ops multisig", address: safe };
+  if (legacy && states.every((s) => s.legacyHasRole)) return { kind: "red", text: "Legacy multisig", address: legacy };
+  if (states.every((s) => s.fallbackHasRole)) return { kind: "red", text: "fallbackEOA", address: fallback };
+  return { kind: "red", text: "No" };
 }
 
 function collectErrors(entry: ChainEntry): { check: string; message: string }[] {
@@ -362,57 +477,59 @@ function renderMarkdown(entries: ChainEntry[]): string {
   type Row = { chainId: number; chainName: string; migration: string[] };
   const rows: Row[] = [];
 
+  let yesCount = 0;
+  let noCount = 0;
+
   for (const entry of entries) {
     const isNonEvm = Boolean(entry.skippedNonEvm);
-    const safeDeployedCell = entry.safeAddress ? GREEN_YES : RED_NO;
+    const legacy = entry.legacyMultisig;
+    const fallback = entry.fallbackEOA;
+    const safe = entry.safeAddress;
+    // Only EVM chains get explorer links; non-EVM addresses are stored in a hex format their explorers don't accept.
+    const explorer = isNonEvm ? undefined : explorerBaseFor(entry.chainId);
 
-    const universalDeployed = entry.spokePoolType === "universal";
-    const universalCell =
-      isNonEvm && universalDeployed
-        ? "—"
-        : ownershipCell(universalDeployed, entry.universalOwner, entry.safeAddress, entry.universalOwnerError);
+    // Non-EVM chains can't be probed over JSON-RPC, so any deployed-but-unprobed contract renders as N/A.
+    const ownership = (deployed: boolean, actual: string | undefined, error: string | undefined): Cell =>
+      isNonEvm && deployed ? NA_CELL : ownershipCell(deployed, actual, safe, legacy, fallback, error);
 
+    const safeDeployedCell: Cell = safe ? { kind: "yes", text: "Yes", address: safe } : { kind: "red", text: "No" };
+    const universalCell = ownership(
+      entry.spokePoolType === "universal",
+      entry.universalOwner,
+      entry.universalOwnerError
+    );
     const awmDeployed = Boolean(entry.adminWithdrawManagerAddress);
-    const awmOwnerCell =
-      isNonEvm && awmDeployed ? "—" : ownershipCell(awmDeployed, entry.awmOwner, entry.safeAddress, entry.awmError);
-    const awmDwCell =
-      isNonEvm && awmDeployed
-        ? "—"
-        : ownershipCell(awmDeployed, entry.awmDirectWithdrawer, entry.safeAddress, entry.awmError);
-
-    const cctpDeployed = Boolean(entry.sponsoredCctpAddress);
-    const cctpCell =
-      isNonEvm && cctpDeployed
-        ? "—"
-        : ownershipCell(cctpDeployed, entry.sponsoredCctpOwner, entry.safeAddress, entry.sponsoredCctpError);
-
-    const oftDeployed = Boolean(entry.sponsoredOftAddress);
-    const oftCell =
-      isNonEvm && oftDeployed
-        ? "—"
-        : ownershipCell(oftDeployed, entry.sponsoredOftOwner, entry.safeAddress, entry.sponsoredOftError);
+    const awmOwnerCell = ownership(awmDeployed, entry.awmOwner, entry.awmError);
+    const awmDwCell = ownership(awmDeployed, entry.awmDirectWithdrawer, entry.awmError);
+    const cctpCell = ownership(Boolean(entry.sponsoredCctpAddress), entry.sponsoredCctpOwner, entry.sponsoredCctpError);
+    const oftCell = ownership(Boolean(entry.sponsoredOftAddress), entry.sponsoredOftOwner, entry.sponsoredOftError);
 
     const donationBoxDeployed = entry.donationBoxes.length > 0;
     const donationBoxCell =
       isNonEvm && donationBoxDeployed
-        ? "—"
-        : adminRoleCell(donationBoxDeployed, entry.donationBoxSafeIsAdmin, entry.safeAddress, entry.donationBoxError);
+        ? NA_CELL
+        : donationBoxAdminCell(
+            entry.donationBoxStates,
+            donationBoxDeployed,
+            safe,
+            legacy,
+            fallback,
+            entry.donationBoxError
+          );
+
+    const cells = [safeDeployedCell, universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell, donationBoxCell];
+    for (const cell of cells) {
+      if (cell.kind === "yes") yesCount += 1;
+      else if (cell.kind === "red") noCount += 1;
+    }
 
     rows.push({
       chainId: entry.chainId,
       chainName: entry.chainName,
-      migration: [safeDeployedCell, universalCell, awmOwnerCell, awmDwCell, cctpCell, oftCell, donationBoxCell],
+      migration: cells.map((cell) => renderCell(cell, explorer)),
     });
   }
 
-  let yesCount = 0;
-  let noCount = 0;
-  for (const row of rows) {
-    for (const cell of row.migration) {
-      if (cell === GREEN_YES) yesCount += 1;
-      else if (cell === RED_NO) noCount += 1;
-    }
-  }
   const decided = yesCount + noCount;
   const pct = decided === 0 ? 0 : (yesCount / decided) * 100;
   const pctLabel = `${pct.toFixed(1)}%`;
@@ -426,7 +543,7 @@ function renderMarkdown(entries: ChainEntry[]): string {
   lines.push(progressLine);
   lines.push("");
   lines.push(
-    "| Chain ID | Chain | Safe Deployed | Safe owns Universal Spoke Pool | Counterfactual WithdrawManager owner | Counterfactual WithdrawManager directWithdrawer | Sponsored CCTP Periphery owner | Sponsored OFT Periphery owner | DonationBox admin |"
+    "| Chain ID | Chain | Ops Multisig Deployed | Universal SpokePool Owner | Counterfactual WithdrawManager Owner | Counterfactual WithdrawManager directWithdrawer | Sponsored CCTP Periphery Owner | Sponsored OFT Periphery Owner | DonationBox Admin |"
   );
   lines.push("| --- | --- | --- | --- | --- | --- | --- | --- | --- |");
   for (const row of rows) {
@@ -461,28 +578,49 @@ function renderMarkdown(entries: ChainEntry[]): string {
   lines.push("- a `Universal_SpokePool` deployment");
   lines.push("- a sponsored mintburn deployment from `contracts/periphery/mintburn/` (sponsored CCTP / OFT)");
   lines.push("");
-  lines.push("For each qualifying chain it reports:");
-  lines.push("- whether the chain's Safe is deployed (`broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`)");
-  lines.push("- whether the Safe is the `owner()` of the chain's `Universal_SpokePool` (if any)");
+  lines.push("Testnets (per `TESTNET_CHAIN_IDs`), Scroll, and Solana are excluded.");
+  lines.push("");
+  lines.push("Throughout this document, **Ops multisig** refers to the chain's new operations Safe");
+  lines.push("(from `broadcast/DeploySafe.s.sol/<chainId>/run-latest.json`).");
+  lines.push("");
+  lines.push("For each qualifying chain the table reports:");
   lines.push(
-    "- whether the Safe is the `owner()` and `directWithdrawer()` of the chain's `AdminWithdrawManager` (Counterfactual WithdrawManager)"
+    "- **Ops Multisig Deployed** — green `Yes` / red `No` for whether the chain's Ops multisig (Safe) is deployed"
+  );
+  lines.push("- **Universal SpokePool Owner** — the on-chain `owner()` of the chain's `Universal_SpokePool` (if any)");
+  lines.push(
+    "- **Counterfactual WithdrawManager Owner / directWithdrawer** — the on-chain `owner()` and `directWithdrawer()` of the chain's `AdminWithdrawManager`"
   );
   lines.push(
-    "- whether the Safe is the `owner()` of the chain's Ownable sponsored mintburn peripheries (`SponsoredCCTPSrcPeriphery`, `SponsoredOFTSrcPeriphery`)"
+    "- **Sponsored CCTP / OFT Periphery Owner** — the on-chain `owner()` of the chain's Ownable sponsored mintburn peripheries (`SponsoredCCTPSrcPeriphery`, `SponsoredOFTSrcPeriphery`)"
   );
   lines.push(
-    "- whether the Safe holds `DEFAULT_ADMIN_ROLE` on every deployed `DonationBox` variant (DonationBox uses AccessControl, not Ownable)"
+    "- **DonationBox Admin** — who holds `DEFAULT_ADMIN_ROLE` on every deployed `DonationBox` variant (DonationBox uses AccessControl, not Ownable)"
   );
   lines.push("");
   lines.push(
-    "Status legend: green **Yes** = check passes (Safe is the owner / admin); red **No** = check fails; `—` = not applicable (contract not deployed, or no Safe to compare against)."
+    "Cell labels (any cell that resolves to an on-chain address links to that address on the chain's block explorer):"
   );
+  lines.push(
+    "- green `Yes` / green `Ops multisig` — the chain's Ops multisig (Safe) is deployed / is the owner / admin (migration complete)"
+  );
+  lines.push(
+    "- red `Legacy multisig` — the chain's pre-migration multisig is still the owner (from `script/mintburn/prod-readiness-multisigs.json`)"
+  );
+  lines.push("- red `fallbackEOA` — the shared fallback EOA from the same config is the owner");
+  lines.push("- red `0xABCD…WXYZ` — some other address is the owner (abbreviated)");
+  lines.push(
+    "- red `No` — for boolean checks (`Ops Multisig Deployed`, `DonationBox Admin`) when no candidate matches"
+  );
+  lines.push("- `—` — not applicable (contract not deployed, or no Ops multisig yet to compare against)");
   lines.push("");
   lines.push(
     "A `?` in any cell means the on-chain call for that check failed after retries — see the **Errors from last run** section above for the underlying error."
   );
   lines.push("");
-  lines.push("The `Migration progress` percentage is `Yes / (Yes + No)` across every cell in the migration columns.");
+  lines.push(
+    "The `Migration progress` percentage is `(Ops multisig cells) / (Ops multisig cells + red cells)` across every cell in the migration columns."
+  );
   lines.push("");
   return lines.join("\n");
 }
@@ -525,10 +663,12 @@ Env vars: NODE_URL_<chainId> or CUSTOM_NODE_URL provide the RPC. Falls back to P
 
   const outputPath = path.resolve(getArg("--output") ?? DEFAULT_OUTPUT_PATH);
   const deployed = loadJson(DEPLOYED_ADDRESSES_PATH);
+  const prodReadiness = loadProdReadiness();
   const chainIds = Object.keys(deployed.chains)
     .map(Number)
     .filter((cid) => {
       if (!Number.isInteger(cid)) return false;
+      if (EXCLUDED_CHAIN_IDS.has(cid)) return false;
       const info = deployed.chains[String(cid)];
       const contracts = info?.contracts ?? {};
       const spokePoolAddress = contracts.SpokePool?.address;
@@ -540,7 +680,7 @@ Env vars: NODE_URL_<chainId> or CUSTOM_NODE_URL provide the RPC. Falls back to P
   console.log(`Building migration report for ${chainIds.length} chain(s)...`);
   const entries = await Promise.all(
     chainIds.map(async (cid) => {
-      const entry = await buildEntry(cid, deployed.chains[String(cid)]);
+      const entry = await buildEntry(cid, deployed.chains[String(cid)], prodReadiness);
       console.log(`  ✓ ${cid} ${entry.chainName}`);
       return entry;
     })
