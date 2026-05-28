@@ -63,6 +63,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
      * @param _baseToken The address of the base token which would be the USDC on HyperEVM.
      * @param _multicallHandler The address of the multicall handler contract.
      * @param _admin The address granted DEFAULT_ADMIN_ROLE.
+     * @param _quoteDeadlineBuffer The quote deadline buffer in seconds.
      */
     constructor(
         address _cctpMessageTransmitter,
@@ -71,7 +72,8 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
         address _donationBox,
         address _baseToken,
         address _multicallHandler,
-        address _admin
+        address _admin,
+        uint256 _quoteDeadlineBuffer
     ) BaseModuleHandler(_donationBox, _baseToken, DEFAULT_ADMIN_ROLE) ArbitraryEVMFlowExecutor(_multicallHandler) {
         baseToken = _baseToken;
 
@@ -80,7 +82,7 @@ contract SponsoredCCTPDstPeriphery is BaseModuleHandler, SponsoredCCTPInterface,
 
         MainStorage storage $ = _getMainStorage();
         $.signer = _signer;
-        $.quoteDeadlineBuffer = 30 minutes;
+        $.quoteDeadlineBuffer = _quoteDeadlineBuffer;
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
     }
